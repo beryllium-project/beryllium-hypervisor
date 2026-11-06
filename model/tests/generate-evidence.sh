@@ -32,8 +32,6 @@ cd "$repository"
 	find model -type f -print
 	find planning/diagrams planning/public/diagrams -type f -print
 	printf '%s\n' \
-		.github/copilot-instructions.md \
-		.github/skills/helium-documentation/SKILL.md \
 		LLM_POLICY_ALIGNMENT.md \
 		Makefile \
 		README.md \
@@ -42,10 +40,6 @@ cd "$repository"
 		docs/README.txt \
 		package.json \
 		package-lock.json \
-		pathfinder/docs/.vitepress/config.mts \
-		pathfinder/docs/check-links.mjs \
-		pathfinder/scripts/docs-preview.sh \
-		pathfinder/tests/check-docs-render.mjs \
 		planning/.vitepress/config.mts \
 		planning/README.md \
 		planning/HANDOFF.md \
@@ -55,7 +49,6 @@ cd "$repository"
 		planning/architecture-model-0.2.md \
 		planning/architecture-model-0.2-evidence.md \
 		scripts/build-planning-diagrams.sh \
-		scripts/check-be.sh \
 		scripts/docs-preview.sh \
 		scripts/serve-docs.mjs
 } |
