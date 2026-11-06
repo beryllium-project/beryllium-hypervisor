@@ -16,10 +16,13 @@ with the fixed method vocabulary and claim.md's review items; the methods
 validation", or "formal verification"); each artifact a regular file with its
 stated SHA-256, a cited MANIFEST.sha256's record verified against it; each
 named commit a commit, skipped, saying so, with --no-git, where git finds
-no repository (the evaluator mounts a linked worktree without one), or in a
+no repository (the evaluator mounts a linked worktree without one), in a
 fresh-history snapshot of another repository, which SNAPSHOT.txt at the
 repository root declares (schema=be-snapshot-v1 and the source commit, which
 must not be a commit of the snapshot itself; a malformed marker is a
+finding), or in MVP 1.0's clean repository, which RELEASE.txt at the root
+declares likewise (schema=be-release-v1; the cited commits are then the
+private internal repository's; a malformed marker, or both markers, is a
 finding); the rendering; the release surfaces (claim.md, guide.md, and
 ai-assistance.md each name the ledger's current candidate, by number in
 their self-description sentence and by the release-candidate commit's first
@@ -31,7 +34,7 @@ mvp/results/*-rc/; and the SPDX and copyright lines. join adds records to a
 verified bundle under records/claim-ledger/ and writes its manifest again
 (`check` runs it after the bundle). --self-test: seeded single-defect
 mutations of a copy, each failing exactly its own check (S1 H39), variants
-that pass, and the snapshot marker's cases in a scratch repository.
+that pass, and the two markers' cases in a scratch repository.
 """
 
 import argparse
@@ -83,6 +86,16 @@ COMMIT, SHA256 = re.compile(r"[0-9a-f]{40}"), re.compile(r"[0-9a-f]{64}")
 # A fresh-history snapshot of another repository (tools/snapshot.sh) carries
 # this marker at its root; the ledger's commits are then the source's.
 SNAPSHOT, SNAPSHOT_SCHEMA = "SNAPSHOT.txt", "be-snapshot-v1"
+# MVP 1.0's clean repository, made with fresh history from the private
+# internal repository (the release path's step 3), carries this one.
+RELEASE_TXT, RELEASE_SCHEMA = "RELEASE.txt", "be-release-v1"
+# Each marker: its file, its schema, the source commit's description and
+# whose the cited commits are, as the commits check's skip says them, and
+# what the repository is not where its source commit is its own.
+MARKERS = ((SNAPSHOT, SNAPSHOT_SCHEMA, "snapshot of",
+            "the source repository's", "snapshot"),
+           (RELEASE_TXT, RELEASE_SCHEMA, "release from",
+            "the private internal repository's", "fresh-history release"))
 HEADER = ["<!-- SPDX-License-Identifier: GPL-3.0-only -->",
           "<!-- Copyright (C) 2026 James Morris "
           "<jamorris@linux.microsoft.com> -->"]
@@ -338,42 +351,50 @@ def check_evidence(context):
     return out, f"artifacts={count} records={len(records)}"
 
 
-def snapshot_source(repo):
-    """None where REPO has no snapshot marker; else (source commit, findings):
-    the commit SNAPSHOT.txt names when the marker is well formed and that
-    commit is not one of REPO's own, and the findings otherwise."""
-    path = pathlib.Path(repo) / SNAPSHOT
-    if not path.is_file():
+def marker_source(repo):
+    """None where REPO has no marker at its root; else (marker, source
+    commit, findings), the marker as MARKERS has it: the commit SNAPSHOT.txt
+    or RELEASE.txt names when the marker is well formed and that commit is
+    not one of REPO's own, and the findings otherwise. Both markers at once
+    is a finding, with no marker and no commit."""
+    present = [marker for marker in MARKERS
+               if (pathlib.Path(repo) / marker[0]).is_file()]
+    if not present:
         return None
+    if len(present) > 1:
+        return None, "", [f"{SNAPSHOT} and {RELEASE_TXT} are both at the "
+                          "root, and a repository carries one marker"]
+    name, schema, _, _, noun = marker = present[0]
     fields = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in (pathlib.Path(repo) / name).read_text(
+            encoding="utf-8").splitlines():
         key, equals, value = line.partition("=")
         if equals and key not in fields:
             fields[key] = value
     source = fields.get("source_commit", "")
-    findings = [f"{SNAPSHOT}: {finding}" for finding, wrong in (
-        (f"schema is not {SNAPSHOT_SCHEMA}",
-         fields.get("schema") != SNAPSHOT_SCHEMA),
+    findings = [f"{name}: {finding}" for finding, wrong in (
+        (f"schema is not {schema}", fields.get("schema") != schema),
         ("source_commit is not a full commit", not COMMIT.fullmatch(source)),
         ("source_repository is missing", not fields.get("source_repository")))
         if wrong]
     if not findings and git(repo, "cat-file", "-e", f"{source}^{{commit}}"
                             ).returncode == 0:
-        findings.append(f"{SNAPSHOT}: source_commit {source[:8]} is a commit "
-                        "of this repository, which is then no snapshot of it")
-    return source, findings
+        findings.append(f"{name}: source_commit {source[:8]} is a commit "
+                        f"of this repository, which is then no {noun} of it")
+    return marker, source, findings
 
 
 def check_commits(context):
     if context["git"]:
         raise Skip(context["git"])
-    snapshot = snapshot_source(context["repo"])
-    if snapshot is not None:
-        source, findings = snapshot
+    found = marker_source(context["repo"])
+    if found is not None:
+        marker, source, findings = found
         if findings:
-            return findings, "snapshot marker"
-        raise Skip(f"snapshot of {source[:8]}: the cited commits are the "
-                   f"source repository's ({SNAPSHOT})")
+            return findings, f"{marker[4]} marker" if marker else "markers"
+        name, _, what, whose, _ = marker
+        raise Skip(f"{what} {source[:8]}: the cited commits are {whose} "
+                   f"({name})")
     data = context["data"]
     named = {entry["evidence_source_commit"] for row in data["claims"]
              for entry in row["evidence"]} | {
@@ -658,13 +679,12 @@ def self_test(scratch):
     for path in sorted(DOCS.glob("*.md")) + [DOCS / "claim-ledger.json"]:
         shutil.copyfile(path, scratch / "base" / path.name)
     reason, rng = git_missing(REPO), random.Random(SEED)
-    # In a snapshot (SNAPSHOT.txt) the commits check skips, so the mutation
-    # that expects it to fail is skipped too, as where git finds no
-    # repository.
-    snapshot = None if reason else snapshot_source(REPO)
+    # In a snapshot (SNAPSHOT.txt), or in MVP 1.0's clean repository
+    # (RELEASE.txt), the commits check skips, so the mutation that expects
+    # it to fail is skipped too, as where git finds no repository.
+    found = None if reason else marker_source(REPO)
     commits_reason = reason or (
-        f"snapshot of {snapshot[0][:8]}" if snapshot and not snapshot[1]
-        else None)
+        f"{found[0][2]} {found[1][:8]}" if found and not found[2] else None)
     claims = json.loads((DOCS / "claim-ledger.json").read_text("utf-8"))[
         "claims"]
     cited = [(row, index) for row, claim in enumerate(claims)
@@ -778,10 +798,11 @@ def self_test(scratch):
         print(f"{'ok  ' if passed[-1] else 'FAIL'} {name}"
               + (f" ({target})" * bool(target)) + ": "
               + (f"failed {', '.join(failed)}" if failed else "passed"))
-    # The snapshot marker (SNAPSHOT.txt), in a scratch repository of its
-    # own so that the source is never marked: well formed, the commits
-    # check skips; malformed, or naming a commit of the repository itself,
-    # it fails; and the marker is read from the repository's root alone.
+    # The two markers (SNAPSHOT.txt and RELEASE.txt), in a scratch
+    # repository of its own so that the source is never marked: well formed,
+    # the commits check skips; malformed, naming a commit of the repository
+    # itself, or beside the other marker, it fails; and a marker is read
+    # from the repository's root alone.
     source = "a" * 40 if reason else git(REPO, "rev-parse", "HEAD").stdout.strip()
     repo = scratch / "snapshot"
     repo.mkdir()
@@ -790,31 +811,36 @@ def self_test(scratch):
                                        "--allow-empty", "-m", "snapshot")):
         git(repo, *arguments)
     own = git(repo, "rev-parse", "HEAD").stdout.strip()
-    marker = [("a well-formed marker (skipped)", None,
-               f"schema={SNAPSHOT_SCHEMA}\nsource_repository=r\n"
-               f"source_commit={'b' * 40}\n"),
-              ("a marker without its schema", "commits",
-               f"source_repository=r\nsource_commit={'b' * 40}\n"),
-              ("a marker with a short source commit", "commits",
-               f"schema={SNAPSHOT_SCHEMA}\nsource_repository=r\n"
-               f"source_commit={'b' * 8}\n"),
-              ("a marker naming a commit of the repository itself",
-               "commits", f"schema={SNAPSHOT_SCHEMA}\nsource_repository=r\n"
-               f"source_commit={own}\n"),
-              ("a marker in a subdirectory, not the root (no marker)",
-               "commits", None)]
+    marker = []
+    for file, schema, kind in ((SNAPSHOT, SNAPSHOT_SCHEMA, ""),
+                               (RELEASE_TXT, RELEASE_SCHEMA, "release ")):
+        good = (f"schema={schema}\nsource_repository=r\n"
+                f"source_commit={'b' * 40}\n")
+        marker += [
+            (f"a well-formed {kind}marker (skipped)", None, {file: good}),
+            (f"a {kind}marker without its schema", "commits",
+             {file: f"source_repository=r\nsource_commit={'b' * 40}\n"}),
+            (f"a {kind}marker with a short source commit", "commits",
+             {file: f"schema={schema}\nsource_repository=r\n"
+                    f"source_commit={'b' * 8}\n"}),
+            (f"a {kind}marker naming a commit of the repository itself",
+             "commits", {file: f"schema={schema}\nsource_repository=r\n"
+                               f"source_commit={own}\n"}),
+            (f"a {kind}marker in a subdirectory, not the root (no marker)",
+             "commits", {f"mvp/{file}": good})]
+    marker.append(("a release marker beside a snapshot marker", "commits", {
+        file: f"schema={schema}\nsource_repository=r\n"
+              f"source_commit={'b' * 40}\n"
+        for file, schema, *_ in MARKERS}))
     data = {"claims": [{"evidence": [{"evidence_source_commit": source}]}],
             "release": {"candidate_tree_commit": None,
                         "release_candidate_commit": None}}
-    for name, expected, text_ in marker:
-        (repo / SNAPSHOT).unlink(missing_ok=True)
-        if text_ is None:
-            (repo / "mvp").mkdir(exist_ok=True)
-            (repo / "mvp" / SNAPSHOT).write_text(
-                f"schema={SNAPSHOT_SCHEMA}\nsource_repository=r\n"
-                f"source_commit={'b' * 40}\n", encoding="utf-8")
-        else:
-            (repo / SNAPSHOT).write_text(text_, encoding="utf-8")
+    for name, expected, files in marker:
+        for file, *_ in MARKERS:
+            (repo / file).unlink(missing_ok=True)
+        for path, text_ in files.items():
+            (repo / path).parent.mkdir(exist_ok=True)
+            (repo / path).write_text(text_, encoding="utf-8")
         try:
             findings, _ = check_commits({"git": None, "repo": repo,
                                          "data": data})

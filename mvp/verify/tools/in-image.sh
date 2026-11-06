@@ -31,7 +31,6 @@ here=$(cd -- "$(dirname -- "$0")" && pwd)
 mvp=$(dirname -- "$(dirname -- "$here")")
 tree=$(dirname -- "$mvp")
 podman=$(sed -n 's/^MVP_TOOL_podman_command=//p' "$mvp/tools/lock/tool-lock.conf")
-git=$(sed -n 's/^MVP_TOOL_git_command=//p' "$mvp/tools/lock/tool-lock.conf")
 scratch=$tree/build/mvp/in-image
 
 die() {
@@ -48,12 +47,8 @@ if [ -L "$scratch" ] || { [ -e "$scratch" ] && [ ! -d "$scratch" ]; }; then
 	die "$scratch is a symbolic link or not a directory"
 fi
 mkdir -p -- "$scratch/home" "$scratch/tmp"
-[ -x "${git:-/nonexistent}" ] || die "the lock's git ($git) is missing"
-pinned=$(sed -n 's/^pin specification file=\([^ ]*\) commit=\([0-9a-f]\{40\}\) .*$/\2:\1/p' \
-	"$mvp/verify/target-digests.txt")
-[ -n "$pinned" ] || die "target-digests.txt pins no specification commit"
-"$git" -C "$tree" show "$pinned" >"$scratch/specification.md" ||
-	die "cannot export the specification at $pinned"
+"$here/specification-text.sh" "$scratch/specification.md" >/dev/null ||
+	die "cannot write the specification's text at the pin"
 exec "$podman" run --rm --init --network=none --security-opt label=disable \
 	-v "$tree:$tree" -w "$tree" "$tag" \
 	/usr/bin/env -i \

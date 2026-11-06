@@ -78,7 +78,6 @@ mvp=$(dirname -- "$tools")
 tree=$(dirname -- "$mvp")
 python=/usr/bin/python3
 podman=$(sed -n 's/^MVP_TOOL_podman_command=//p' "$tools/lock/tool-lock.conf")
-git=$(sed -n 's/^MVP_TOOL_git_command=//p' "$tools/lock/tool-lock.conf")
 out=$tree/build/mvp/verify
 marker=$out/.verify-run
 export MVP_VERIFIER_RPMS=${MVP_VERIFIER_RPMS:-$tree/build/mvp-verifier/rpms}
@@ -148,12 +147,8 @@ fi
 
 # The specification's text at the pinned commit, for digests.py in the
 # image (the pin is that blob's SHA-256; a wrong text fails the check).
-[ -x "${git:-/nonexistent}" ] || die "the lock's git ($git) is missing"
-pinned=$(sed -n 's/^pin specification file=\([^ ]*\) commit=\([0-9a-f]\{40\}\) .*$/\2:\1/p' \
-	"$mvp/verify/target-digests.txt")
-[ -n "$pinned" ] || die "target-digests.txt pins no specification commit"
-"$git" -C "$tree" show "$pinned" >"$out/specification.md" ||
-	die "cannot export the specification at $pinned"
+pinned=$("$mvp/verify/tools/specification-text.sh" "$out/specification.md") ||
+	die "cannot write the specification's text at the pin"
 note "specification $pinned sha256=$(sha256sum -- "$out/specification.md" | cut -d' ' -f1)"
 
 # A suite's command in the image, or, for a tool the image lacks, on the

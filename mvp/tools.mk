@@ -166,7 +166,7 @@ K3_ENV = PYTHON=$(PYTHON) K3_KERNEL=$(MVP_GUEST_IMAGE) K3_PINS=$(MVP_GUEST_PINS)
 	K3_RUN_ROOT=$(K3_RUN_ROOT) K3_SERIAL_LOG=$(K3_SERIAL_LOG)
 
 .PHONY: tools-check capture-check platform-probe-check partition-tool-check \
-	evidence-check rc-record-check run-tool-check snapshot-check qemu-test evidence \
+	evidence-check rc-record-check run-tool-check qemu-test evidence \
 	session-typist-check verify-tools-check platform-record-check sessions \
 	verifier-image verify print-k3-plan \
 	k3-preflight k3-stage k3-env-record k3-env-install k3-env-restore \
@@ -246,14 +246,6 @@ run-tool-check: image variants probes $(MVP_EXPECT_STAMP) \
 		$(BUILD) $(BUILD)/run-tool-check 2>&1 | \
 		tee $(RECORDS)/run-tool-check.txt
 
-# The snapshot tool (tools/snapshot.sh; planning/mvp-plan.md, "Release
-# path") on a snapshot of HEAD under the scratch directory: the exclusions,
-# the marker, the README's fields, one commit, and the ledger's reading of
-# the marker.
-snapshot-check:
-	PYTHON=$(PYTHON) $(MVP_DIR)/tools/snapshot.sh self-test \
-		$(TMPDIR)/snapshot-self-test
-
 # The QEMU typist's self-test (tests/session-typist.py; M7-4): its line
 # tracker and waits on a synthetic capture, and its key record's form.
 session-typist-check:
@@ -267,14 +259,15 @@ session-typist-check:
 # (verify/tools/token-equal.py) on a scratch copy of Leaf A and its
 # mutants; the qualification runner (verify/tools/qualify.py) on its
 # expectations and recorded outputs; the target digests (verify/tools/
-# digests.py) on a synthetic tree; the litmus runner (verify/tools/
-# litmus.py, M8-4) on the five tests, their record of the compiled
-# sequences, herd7's outputs, and a fake objdump (verify checks the record
-# against the built monitors); the Leaf A arms' runners (verify/tools/
-# wp-arm.py, cn-arm.py, cbmc-leaf-a.py; M8-6) on recorded outputs and the
-# committed annotations; the verifier closure's resolver and fetch
-# (tools/verifier/closure.py) and the source fetch with a planted wrong
-# digest (tools/verifier/fetch-sources.py); then the verifier's shell
+# digests.py) on a synthetic tree; the specification's text (verify/tools/
+# specification-text.sh) in scratch repositories; the litmus runner
+# (verify/tools/litmus.py, M8-4) on the five tests, their record of the
+# compiled sequences, herd7's outputs, and a fake objdump (verify checks the
+# record against the built monitors); the Leaf A arms' runners
+# (verify/tools/wp-arm.py, cn-arm.py, cbmc-leaf-a.py; M8-6) on recorded
+# outputs and the committed annotations; the verifier closure's resolver
+# and fetch (tools/verifier/closure.py) and the source fetch with a planted
+# wrong digest (tools/verifier/fetch-sources.py); then the verifier's shell
 # scripts (bash -n, shellcheck) and Python (parsed), which the lint
 # target's lists do not reach.
 VERIFIER_SHELL := $(wildcard $(MVP_DIR)/tools/verifier/*.sh \
@@ -291,6 +284,8 @@ verify-tools-check:
 	bash -n $(MVP_DIR)/verify/tools/in-image-ring.sh && shellcheck $(MVP_DIR)/verify/tools/in-image-ring.sh
 	$(PYTHON) -I -B $(MVP_DIR)/verify/tools/digests.py --self-test \
 		--scratch $(TMPDIR)/digests-self-test
+	$(MVP_DIR)/verify/tools/specification-text.sh --self-test \
+		$(TMPDIR)/specification-text-self-test
 	$(PYTHON) -I -B $(MVP_DIR)/verify/tools/litmus.py --self-test
 	$(PYTHON) -I -B $(MVP_DIR)/verify/tools/wp-arm.py --self-test
 	$(PYTHON) -I -B $(MVP_DIR)/verify/tools/cn-arm.py --self-test
@@ -304,7 +299,7 @@ verify-tools-check:
 	@echo "BE_MVP_VERIFY_TOOLS_CHECK: PASS"
 
 tools-check: capture-check platform-probe-check partition-tool-check \
-		evidence-check rc-record-check run-tool-check snapshot-check \
+		evidence-check rc-record-check run-tool-check \
 		session-typist-check verify-tools-check platform-record-check
 	@echo "BE_MVP_TOOLS_CHECK: PASS"
 

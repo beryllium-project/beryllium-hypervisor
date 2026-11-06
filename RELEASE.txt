@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+schema=be-release-v1
+kind=fresh-history-clean-repository
+source_repository=the Beryllium project's private internal repository
+source_commit=9d06b0245c39a34a0b2c8cbd45d40db07cdebb68
+source_tree=5d1714aab58dd666053ba323ab13eeababeb3db4
+selected_tree=9383943ff5c3091b63173f09849480230502170d
+release_candidate=MVP 1.0 release candidate 4
+release_candidate_commit=d70a8535474a690920ff152e7b38a25c589adba9
+candidate_tree_commit=a6eaa88501b1d08b9e83c734d692c82376117e77
+selection_commit=38fa3a0803fc898ac357078e5ea95768581a271f
+record=RELEASE.md
