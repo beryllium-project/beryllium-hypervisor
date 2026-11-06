@@ -22,24 +22,15 @@ planning)
 	port=${BE_DOCS_PORT:-4174}
 	no_browser=${BE_NO_BROWSER:-0}
 	;;
-helium)
-	label='Helium'
-	build_command='he:docs:build:http'
-	server_site='helium-preview'
-	host=${HE_DOCS_HOST:-0.0.0.0}
-	port=${HE_DOCS_PORT:-4173}
-	no_browser=${HE_NO_BROWSER:-0}
-	;;
 *)
-	printf 'usage: scripts/docs-preview.sh planning|helium [options]\n' >&2
+	printf 'usage: scripts/docs-preview.sh planning [options]\n' >&2
 	exit 2
 	;;
 esac
 
 usage()
 {
-	if [ "$site" = planning ]; then
-		cat <<'EOF'
+	cat <<'EOF'
 Usage: docs-preview.sh planning [--host HOST] [--port PORT]
 
 Environment:
@@ -47,16 +38,6 @@ Environment:
   BE_DOCS_PORT     Preview TCP port (default: 4174)
   BE_NO_BROWSER=1  Do not open the Windows browser under WSL
 EOF
-	else
-		cat <<'EOF'
-Usage: docs-preview.sh helium [--host HOST] [--port PORT]
-
-Environment:
-  HE_DOCS_HOST     Preview bind address (default: 0.0.0.0)
-  HE_DOCS_PORT     Preview TCP port (default: 4173)
-  HE_NO_BROWSER=1  Do not open the Windows browser under WSL
-EOF
-	fi
 }
 
 while [ "$#" -gt 0 ]; do

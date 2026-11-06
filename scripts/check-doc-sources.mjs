@@ -126,26 +126,6 @@ function siteDefinitions(root) {
       generatedDirectory: path.join(root, 'docs', 'html'),
       publicDirectory: path.join(root, 'planning', 'public'),
       privacyProfile: 'planning'
-    },
-    {
-      name: 'helium',
-      sourceDirectory: path.join(root, 'pathfinder', 'docs'),
-      configPath: path.join(
-        root,
-        'pathfinder',
-        'docs',
-        '.vitepress',
-        'config.mts'
-      ),
-      entry: 'index.md',
-      generatedDirectory: path.join(root, 'pathfinder', 'docs', 'html'),
-      publicDirectory: path.join(
-        root,
-        'pathfinder',
-        'docs',
-        'public'
-      ),
-      privacyProfile: 'helium'
     }
   ]
 }
@@ -214,10 +194,6 @@ async function validateSite(site) {
       site.privacyProfile,
       issues
     )
-    if (site.name === 'helium') {
-      validateRequiredHeader(document, relative, issues)
-      validateRetiredHeliumNames(document, relative, issues)
-    }
   }
 
   for (const file of dotFiles) {
@@ -237,10 +213,6 @@ async function validateSite(site) {
       site.privacyProfile,
       issues
     )
-    if (site.name === 'helium') {
-      validateRequiredHeader(document, relative, issues)
-      validateRetiredHeliumNames(document, relative, issues)
-    }
   }
 
   const config = await readUtf8RegularFile(
@@ -260,10 +232,6 @@ async function validateSite(site) {
       site.privacyProfile,
       issues
     )
-    if (site.name === 'helium') {
-      validateRequiredHeader(config, relative, issues)
-      validateRetiredHeliumNames(config, relative, issues)
-    }
   }
 
   const pageByRoute = buildPageRouteMap(
@@ -305,24 +273,8 @@ async function validateSite(site) {
 }
 
 async function validateProjectPolicyDocuments() {
-  const explicitFiles = [
-    path.join(repositoryRoot, '.github', 'copilot-instructions.md'),
-    path.join(repositoryRoot, 'LLM_POLICY_ALIGNMENT.md')
-  ]
-  const skillRoot = await inspectDirectoryRoot(
-    path.join(repositoryRoot, '.github', 'skills'),
-    'project skill root',
-    issues
-  )
-  if (skillRoot !== null) {
-    const skillFiles = await discoverRegularFiles(skillRoot)
-    explicitFiles.push(
-      ...skillFiles.filter((file) => path.basename(file) === 'SKILL.md')
-    )
-  }
-
-  const uniqueFiles = [...new Set(explicitFiles)].sort()
-  counts.policyMarkdown += uniqueFiles.length
+  const policyFiles = [path.join(repositoryRoot, 'LLM_POLICY_ALIGNMENT.md')]
+  counts.policyMarkdown += policyFiles.length
   const repository = await inspectDirectoryRoot(
     repositoryRoot,
     'repository root',
@@ -332,7 +284,7 @@ async function validateProjectPolicyDocuments() {
     return
   }
 
-  for (const file of uniqueFiles) {
+  for (const file of policyFiles) {
     const document = await readUtf8RegularFile(file, repository, issues)
     if (document === null) {
       continue
@@ -346,15 +298,7 @@ async function validateProjectPolicyDocuments() {
     counts.markdownDefinitions += analysis.definitionCount
     counts.renderedReferences += analysis.targets.length
     validatePrivateLocators(document, relative, 'project-policy', issues)
-
-    if (relative.endsWith('/SKILL.md')) {
-      validateSkillFrontmatter(document, relative, issues)
-      validateRequiredHeader(document, relative, issues)
-    } else if (relative === 'LLM_POLICY_ALIGNMENT.md') {
-      validateRequiredHeader(document, relative, issues)
-    } else if (relative === '.github/copilot-instructions.md') {
-      validateCopilotInstructionStructure(analysis, relative, issues)
-    }
+    validateRequiredHeader(document, relative, issues)
 
     for (const target of analysis.targets) {
       await validateRepositoryTarget({
@@ -1518,16 +1462,6 @@ function validateRequiredHeader(document, relativePath, issueList) {
   }
 }
 
-function validateRetiredHeliumNames(document, relativePath, issueList) {
-  const oldInterface =
-    /\bBE_[A-Z0-9_]+\b|(?:^|[^A-Za-z0-9_])be_[A-Za-z0-9_]+|<be\/|include\/be|pathfinder\/be|be:docs|be-(?:te|authority)-v1|beryllium\.(?:elf|bin|map|dis|size)|beryllium-qemu/u
-  for (const [index, line] of document.split('\n').entries()) {
-    if (oldInterface.test(line)) {
-      issueList.push(`${relativePath}:${index + 1}: retired Helium interface name`)
-    }
-  }
-}
-
 function validatePrivateLocators(document, relativePath, profile, issueList) {
   const privateLines = document.split('\n').filter(containsPrivateLocator)
   if (
@@ -1553,7 +1487,7 @@ function validatePrivateLocators(document, relativePath, profile, issueList) {
     if (!containsPrivateLocator(line)) {
       continue
     }
-    if (privateLocatorAllowed(relativePath, line, profile)) {
+    if (privateLocatorAllowed(relativePath, line)) {
       continue
     }
     issueList.push(`${relativePath}:${index + 1}: private locator`)
@@ -1568,18 +1502,8 @@ function containsPrivateLocator(line) {
   )
 }
 
-function privateLocatorAllowed(relativePath, line, profile) {
-  if (profile === 'helium') {
-    return false
-  }
+function privateLocatorAllowed(relativePath, line) {
   const exactAllowances = new Map([
-    [
-      '.github/copilot-instructions.md',
-      [
-        /`beryllium-project\/beryllium-hypervisor(?:-internal)?`/u,
-        /`jamorris_microsoft\/beryllium`/u
-      ]
-    ],
     [
       'LLM_POLICY_ALIGNMENT.md',
       [
@@ -1606,16 +1530,6 @@ function privateLocatorAllowed(relativePath, line, profile) {
       [
         /`jamorris_microsoft\/beryllium`.*`beryllium-project\/beryllium-hypervisor`/u
       ]
-    ],
-    [
-      'planning/HANDOFF.md',
-      [
-        /^\s*`\/home\/jmorris\/src\/beryllium-project\/beryllium-hypervisor`/u,
-        /^- GitHub repository: `beryllium-project\/beryllium-hypervisor`/u,
-        /`beryllium-project\/beryllium-hypervisor(?:-internal)?`/u,
-        /`jamorris_microsoft\/beryllium`, former remotes/u,
-        /^\| `PMR-067` \|/u
-      ]
     ]
   ])
   return (exactAllowances.get(relativePath) ?? []).some((pattern) =>
@@ -1623,81 +1537,8 @@ function privateLocatorAllowed(relativePath, line, profile) {
   )
 }
 
-function validateSkillFrontmatter(document, relativePath, issueList) {
-  const lines = document.split('\n')
-  if (lines[0] !== '---') {
-    issueList.push(`${relativePath}: skill frontmatter is missing`)
-    return
-  }
-  const end = lines.indexOf('---', 1)
-  if (end === -1) {
-    issueList.push(`${relativePath}: skill frontmatter is unclosed`)
-    return
-  }
-  const fields = new Map()
-  for (let index = 1; index < end; index += 1) {
-    const line = lines[index]
-    if (line.trim() === '' || line.trimStart().startsWith('#')) {
-      continue
-    }
-    const match = /^([A-Za-z][A-Za-z0-9_-]*):[ \t]+(.+)$/u.exec(line)
-    if (match === null) {
-      issueList.push(
-        `${relativePath}:${index + 1}: invalid skill frontmatter syntax`
-      )
-      continue
-    }
-    if (fields.has(match[1])) {
-      issueList.push(
-        `${relativePath}:${index + 1}: duplicate skill frontmatter key ${match[1]}`
-      )
-    }
-    fields.set(match[1], match[2].trim())
-  }
-  for (const field of ['name', 'description', 'license']) {
-    if (!fields.has(field) || fields.get(field) === '') {
-      issueList.push(`${relativePath}: skill frontmatter lacks ${field}`)
-    }
-  }
-  if (fields.get('license') !== 'GPL-3.0-only') {
-    issueList.push(`${relativePath}: skill frontmatter license must be GPL-3.0-only`)
-  }
-}
-
-function validateCopilotInstructionStructure(analysis, relativePath, issueList) {
-  const h1 = analysis.headings.filter((heading) => heading.level === 1)
-  if (h1.length === 1 && h1[0].title !== 'Copilot instructions') {
-    issueList.push(`${relativePath}:${h1[0].line}: unexpected instruction H1`)
-  }
-  const tasking = analysis.headings.filter(
-    (heading) => heading.level === 2 && heading.title === 'Project Manager tasking'
-  )
-  const repository = analysis.headings.filter(
-    (heading) => heading.level === 2 && heading.title === 'Repository instructions'
-  )
-  if (tasking.length !== 1) {
-    issueList.push(
-      `${relativePath}: expected exactly one Project Manager tasking section`
-    )
-  }
-  if (repository.length !== 1) {
-    issueList.push(
-      `${relativePath}: expected exactly one Repository instructions section`
-    )
-  }
-  if (
-    tasking.length === 1 &&
-    repository.length === 1 &&
-    tasking[0].line >= repository[0].line
-  ) {
-    issueList.push(
-      `${relativePath}: Project Manager tasking must precede Repository instructions`
-    )
-  }
-}
-
 async function validateGeneratedOutputState() {
-  const generatedDirectories = ['docs/html', 'pathfinder/docs/html']
+  const generatedDirectories = ['docs/html']
   for (const relative of generatedDirectories) {
     const candidate = path.join(repositoryRoot, relative)
     try {

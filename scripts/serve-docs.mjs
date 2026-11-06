@@ -23,20 +23,12 @@ const repositoryRoot = path.resolve(
 )
 const sites = {
   planning: path.join(repositoryRoot, 'docs', 'html'),
-  helium: path.join(repositoryRoot, 'pathfinder', 'docs', 'html'),
   'planning-preview': path.join(
     repositoryRoot,
     'build',
     'docs',
     'preview',
     'planning'
-  ),
-  'helium-preview': path.join(
-    repositoryRoot,
-    'build',
-    'docs',
-    'preview',
-    'helium'
   )
 }
 const siteName = process.argv[2]
@@ -44,8 +36,7 @@ const outputDirectory = sites[siteName]
 
 if (!outputDirectory) {
   fail(
-    'usage: serve-docs.mjs ' +
-      'planning|helium|planning-preview|helium-preview ' +
+    'usage: serve-docs.mjs planning|planning-preview ' +
       '[--host HOST] [--port PORT]'
   )
 }
@@ -60,7 +51,7 @@ try {
 }
 
 let host = '127.0.0.1'
-let port = siteName.startsWith('planning') ? 4174 : 4173
+let port = 4174
 
 for (let index = 3; index < process.argv.length; index += 1) {
   const argument = process.argv[index]

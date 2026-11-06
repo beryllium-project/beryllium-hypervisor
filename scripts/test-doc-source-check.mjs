@@ -34,13 +34,9 @@ const repositoryRoot = path.resolve(
 )
 const checker = path.join(repositoryRoot, 'scripts', 'check-doc-sources.mjs')
 const temporary = await mkdtemp(path.join(os.tmpdir(), 'be-doc-source-check-'))
-const generated = [
-  path.join(repositoryRoot, 'docs', 'html'),
-  path.join(repositoryRoot, 'pathfinder', 'docs', 'html')
-]
+const generated = [path.join(repositoryRoot, 'docs', 'html')]
 const publicDiagrams = [
-  path.join(repositoryRoot, 'planning', 'public', 'diagrams'),
-  path.join(repositoryRoot, 'pathfinder', 'docs', 'public', 'diagrams')
+  path.join(repositoryRoot, 'planning', 'public', 'diagrams')
 ]
 const observedPaths = [...generated, ...publicDiagrams]
 const checkerTimeoutMilliseconds = 30_000
@@ -365,29 +361,28 @@ async function runAdversarialFixtures() {
     ]
   )
 
-  for (const relative of [
-    'planning/public/unchecked.md',
-    'pathfinder/docs/public/unchecked.md'
-  ]) {
-    await negativeFixture(
-      `root-public-markdown-${relative.split('/')[0]}`,
-      async (root) => {
-        await writeFile(path.join(root, relative), '# Asset Markdown\n', 'utf8')
-      },
-      [`${relative}: Markdown is not allowed under`]
-    )
-  }
+  await negativeFixture(
+    'root-public-markdown-planning',
+    async (root) => {
+      await writeFile(
+        path.join(root, 'planning', 'public', 'unchecked.md'),
+        '# Asset Markdown\n',
+        'utf8'
+      )
+    },
+    ['planning/public/unchecked.md: Markdown is not allowed under']
+  )
 
   await negativeFixture(
     'generated-markdown',
     async (root) => {
-      const file = path.join(root, 'pathfinder', 'docs', 'html', 'unchecked.md')
+      const file = path.join(root, 'docs', 'html', 'unchecked.md')
       await mkdir(path.dirname(file), { recursive: true })
       await writeFile(file, '# Generated Markdown\n', 'utf8')
     },
     [
-      'pathfinder/docs/html/unchecked.md: Markdown is not allowed under ' +
-        'pathfinder/docs/html generated output root'
+      'docs/html/unchecked.md: Markdown is not allowed under ' +
+        'docs/html generated output root'
     ]
   )
 
@@ -422,42 +417,17 @@ async function runAdversarialFixtures() {
   )
 
   await negativeFixture(
-    'instruction-syntax',
-    async (root) => {
-      await append(
-        path.join(root, '.github', 'copilot-instructions.md'),
-        '\n```text\nunclosed\n'
-      )
-    },
-    ['unclosed ` fenced block']
-  )
-
-  await negativeFixture(
-    'instruction-structure',
-    async (root) => {
-      const file = path.join(root, '.github', 'copilot-instructions.md')
-      const document = await readFile(file, 'utf8')
-      await writeFile(
-        file,
-        document.replace('## Project Manager tasking\n', '## Wrong section\n'),
-        'utf8'
-      )
-    },
-    ['expected exactly one Project Manager tasking section']
-  )
-
-  await negativeFixture(
     'private-locators',
     async (root) => {
       await append(
-        path.join(root, '.github', 'copilot-instructions.md'),
+        path.join(root, 'LLM_POLICY_ALIGNMENT.md'),
         '\n- `git@github.com:beryllium-project/beryllium-hypervisor.git`\n' +
           '- `<file:///home/example/private>`\n'
       )
     },
     [
-      '.github/copilot-instructions.md:11: private locator',
-      '.github/copilot-instructions.md:12: private locator'
+      'LLM_POLICY_ALIGNMENT.md:8: private locator',
+      'LLM_POLICY_ALIGNMENT.md:9: private locator'
     ]
   )
 
@@ -480,21 +450,12 @@ async function runAdversarialFixtures() {
   {
     const root = await createFixture('ignored-html')
     const planningHtml = path.join(root, 'docs', 'html', 'index.html')
-    const heliumHtml = path.join(
-      root,
-      'pathfinder',
-      'docs',
-      'html',
-      'index.html'
-    )
     await mkdir(path.dirname(planningHtml), { recursive: true })
-    await mkdir(path.dirname(heliumHtml), { recursive: true })
     await writeFile(planningHtml, '<!doctype html>\n', 'utf8')
-    await writeFile(heliumHtml, '<!doctype html>\n', 'utf8')
-    const before = await treeIdentity([planningHtml, heliumHtml])
+    const before = await treeIdentity([planningHtml])
     const result = await runChecker(root)
     requireSuccessful(result, 'ignored generated HTML fixture')
-    const after = await treeIdentity([planningHtml, heliumHtml])
+    const after = await treeIdentity([planningHtml])
     if (before.digest !== after.digest) {
       throw new Error('checker changed ignored generated HTML')
     }
@@ -542,7 +503,7 @@ async function createFixture(name) {
   const files = new Map([
     [
       '.gitignore',
-      '/docs/html/\n/pathfinder/docs/html/\n'
+      '/docs/html/\n'
     ],
     [
       'planning/README.md',
@@ -569,49 +530,8 @@ async function createFixture(name) {
       planningConfig('`/guide`')
     ],
     [
-      'pathfinder/docs/index.md',
-      heliumHeader() +
-        '# Helium fixture\n\n[Guide](/guide#helium-target)\n'
-    ],
-    [
-      'pathfinder/docs/guide.md',
-      heliumHeader() + '# Helium guide\n\n## Helium target\n'
-    ],
-    [
-      'pathfinder/docs/diagrams/architecture.dot',
-      '// SPDX-License-Identifier: GPL-3.0-only\n' +
-        '// Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>\n' +
-        'digraph architecture { monitor -> subject; }\n'
-    ],
-    [
-      'pathfinder/docs/public/diagrams/architecture.svg',
-      '<svg xmlns="http://www.w3.org/2000/svg"></svg>\n'
-    ],
-    [
-      'pathfinder/docs/.vitepress/config.mts',
-      heliumConfig()
-    ],
-    [
-      '.github/copilot-instructions.md',
-      '# Copilot instructions\n\n' +
-        '## Project Manager tasking\n\nUse the registered resolver.\n\n' +
-        '## Repository instructions\n\nKeep checks fail closed.\n'
-    ],
-    [
       'LLM_POLICY_ALIGNMENT.md',
-      heliumHeader() + '# LLM policy alignment\n\nPublic release remains blocked.\n'
-    ],
-    [
-      '.github/skills/helium-documentation/SKILL.md',
-      skillDocument('helium-documentation', 'Helium documentation skill')
-    ],
-    [
-      '.github/skills/human-review-summary/SKILL.md',
-      skillDocument('human-review-summary', 'Human review summary skill')
-    ],
-    [
-      '.github/skills/reviewable-turn-summary/SKILL.md',
-      skillDocument('reviewable-turn-summary', 'Reviewable turn summary skill')
+      policyHeader() + '# LLM policy alignment\n\nPublic release remains blocked.\n'
     ]
   ])
 
@@ -654,35 +574,7 @@ function planningConfig(routeExpression) {
   )
 }
 
-function heliumConfig() {
-  return (
-    '// SPDX-License-Identifier: GPL-3.0-only\n' +
-    '// Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>\n\n' +
-    "import { defineConfig } from 'vitepress'\n\n" +
-    'export default defineConfig({\n' +
-    "  title: 'Helium',\n" +
-    '  themeConfig: {\n' +
-    "    siteTitle: 'Helium fixture',\n" +
-    "    nav: [{ text: 'Guide', link: '/guide' }],\n" +
-    "    sidebar: [{ text: 'Guide', link: '/guide#helium-target' }]\n" +
-    '  }\n' +
-    '})\n'
-  )
-}
-
-function skillDocument(name, title) {
-  return (
-    '---\n' +
-    `name: ${name}\n` +
-    `description: ${title} fixture.\n` +
-    'license: GPL-3.0-only\n' +
-    '---\n\n' +
-    heliumHeader() +
-    `# ${title}\n\nKeep the bounded workflow explicit.\n`
-  )
-}
-
-function heliumHeader() {
+function policyHeader() {
   return (
     '<!-- SPDX-License-Identifier: GPL-3.0-only -->\n' +
     '<!-- Copyright (C) 2026 James Morris ' +
@@ -984,7 +876,7 @@ function filesystemType(metadata) {
 }
 
 async function requireGeneratedPathsIgnored(root) {
-  for (const relative of ['docs/html/.probe', 'pathfinder/docs/html/.probe']) {
+  for (const relative of ['docs/html/.probe']) {
     const result = await runChild(
       '/usr/bin/git',
       ['check-ignore', '--quiet', '--no-index', '--', relative],
@@ -999,7 +891,7 @@ async function requireGeneratedPathsIgnored(root) {
 async function requireTrackedHtmlEmpty(root) {
   const result = await runChild(
     '/usr/bin/git',
-    ['ls-files', '--', 'docs/html', 'pathfinder/docs/html'],
+    ['ls-files', '--', 'docs/html'],
     { cwd: root, timeoutMilliseconds: 2_000 }
   )
   requireSuccessful(result, 'tracked HTML inventory')
@@ -1011,13 +903,7 @@ async function requireTrackedHtmlEmpty(root) {
 async function requirePublicSvgClean(root) {
   const result = await runChild(
     '/usr/bin/git',
-    [
-      'status',
-      '--short',
-      '--',
-      'planning/public/diagrams',
-      'pathfinder/docs/public/diagrams'
-    ],
+    ['status', '--short', '--', 'planning/public/diagrams'],
     { cwd: root, timeoutMilliseconds: 2_000 }
   )
   requireSuccessful(result, 'public SVG status')

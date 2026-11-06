@@ -17,6 +17,9 @@ Build and validate:
   npm ci
   ./be docs-check
 
+Check the sources alone, without a build (./be model-check runs this too):
+  ./be docs-source-check
+
 Build and open the full interactive planning site:
   ./be docs
 
@@ -29,10 +32,3 @@ and the complete interactive site.
 
 Set DOCS_BASE when publishing below a URL prefix, for example:
   DOCS_BASE=/beryllium/ npm run docs:build
-
-Helium has a separate standalone generated site:
-  pathfinder/docs/html/index.html
-
-Its source and validation commands are:
-  pathfinder/docs/*.md
-  ./be helium docs-check

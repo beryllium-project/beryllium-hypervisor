@@ -10,14 +10,9 @@
     "docs:source-check": "node scripts/check-doc-sources.mjs --self-test && node scripts/test-doc-source-check.mjs",
     "docs:build": "sh scripts/build-planning-diagrams.sh && vitepress build planning --force",
     "docs:build:http": "sh scripts/build-planning-diagrams.sh && DOCS_BASE=/ DOCS_OUT_DIR=../build/docs/preview/planning vitepress build planning --force",
-    "docs:check": "npm run docs:build && npm run docs:build:http && node docs/check-links.mjs && node pathfinder/tests/check-docs-render.mjs planning",
+    "docs:check": "npm run docs:build && npm run docs:build:http && node docs/check-links.mjs",
     "docs:dev": "DOCS_BASE=/ vitepress dev planning",
-    "docs:preview": "npm run docs:build:http && node scripts/serve-docs.mjs planning-preview",
-    "he:docs:build": "sh pathfinder/scripts/build-diagrams.sh && vitepress build pathfinder/docs --force",
-    "he:docs:build:http": "sh pathfinder/scripts/build-diagrams.sh && HE_DOCS_BASE=/ HE_DOCS_OUT_DIR=../../build/docs/preview/helium vitepress build pathfinder/docs --force",
-    "he:docs:check": "npm run he:docs:build && npm run he:docs:build:http && node pathfinder/docs/check-links.mjs && node pathfinder/tests/check-docs-render.mjs",
-    "he:docs:dev": "sh pathfinder/scripts/build-diagrams.sh && HE_DOCS_BASE=/ vitepress dev pathfinder/docs",
-    "he:docs:preview": "npm run he:docs:build:http && node scripts/serve-docs.mjs helium-preview"
+    "docs:preview": "npm run docs:build:http && node scripts/serve-docs.mjs planning-preview"
   },
   "devDependencies": {
     "playwright-core": "1.61.1",
