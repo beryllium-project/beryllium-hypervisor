@@ -1623,9 +1623,9 @@ a fresh generation. The MVP distributes no binary of any of them.
 - **The development log**, [`mvp/README.md`](../README.md): the design, the
   plan revisions, the commands, the lock and the evaluator in detail, the
   harness, every milestone's results, the budgets, the open items, and the
-  non-claims. It and the root [`README.md`](../../README.md) are internal
-  development documents whose public form the release path decides (the M4
-  plan's Q13).
+  non-claims. It is published as it stood at the source commit, byte for
+  byte, as the development log (the release path's step 2, Q5); the root
+  [`README.md`](../../README.md) is this repository's own.
 - **Plans and records**, under `planning/`: the
   [MVP plan](../../planning/mvp-plan.md), with Plan revision S3-A (the board
   policy, M5, and the release candidates); the milestone plans

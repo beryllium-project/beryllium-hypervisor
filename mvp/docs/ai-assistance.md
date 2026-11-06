@@ -24,6 +24,15 @@ M6-3 merge. Paths are relative to the repository root. Where
 this document and a record differ, the record holds. It describes how the
 work was done and adds no evidence to the [claim](claim.md).
 
+**In this repository.** This document is published in MVP 1.0's clean
+repository, whose history begins at its copy commit (`RELEASE.md` at the
+repository's root). The Git commands it cites ran on the private internal
+repository's history, which this repository does not hold, and the commit
+IDs it names are that repository's. The files it cites under `.github/`,
+and the internal session handoff, are that repository's too and are not
+part of this one. Section 8 discloses the assistance in the release path's
+steps 2 and 3, which made this repository.
+
 ## 1. The responsible human
 
 James Morris is the responsible human for Beryllium, the decision-maker on
@@ -43,14 +52,19 @@ signatory, reviewer, or public-release approver" (`LLM_POLICY_ALIGNMENT.md`,
   repository). The 41 commits after `30800dd3` up to `154dc810` (the rest
   of M4, Plan revision S3-A, the M5 plan, and M5-1 to M5-3) name the same
   identity as both (the same command over `30800dd3..154dc810`).
-- **Two addresses.** Source files added to this internal repository, this
+- **Two addresses.** Source files added to the internal repository, this
   document among them, carry `James Morris <jamorris@linux.microsoft.com>`
   in their copyright line, as the accepted runtime plan and the
   source-policy checkers require; `James Morris <jmorris@namei.org>` is the
   preferred identity for Git authorship and DCO sign-offs, and for new
   source in a future clean repository unless its reviewed policy requires
   another. Both identify the same responsible human
-  (`LLM_POLICY_ALIGNMENT.md`, "Local authorship rules").
+  (`LLM_POLICY_ALIGNMENT.md`, "Local authorship rules"). In the clean
+  repository, files copied from the internal repository keep their bytes,
+  their copyright lines among them; files new there name `James Morris
+  <jmorris@namei.org>`, except where a checker binds the old line; and
+  every commit is authored and committed as `James Morris
+  <jmorris@namei.org>` (the release path's step 2, Q13).
 - **Earlier history.** Of the 457 commits reachable from `30800dd3`, 347
   name `jmorris@namei.org`; the other 110, all dated 2026-07-14 to
   2026-08-09, name two other addresses under the same name (108) or a
@@ -347,7 +361,7 @@ in-tree work needs a separate licensing and provenance decision
 ## 7. Scope of this disclosure
 
 This document covers the MVP 1.0 release candidates' development history
-in this repository, as their plans and records state it, from the MVP
+in the private internal repository, as their plans and records state it, from the MVP
 plan's first candidate (2026-10-22) to M4-3, the commit that added this
 document, and, as M5-4 revised it for release candidate 2, through
 `154dc810`; the plans and records are the source of truth (the M4 plan,
@@ -364,3 +378,37 @@ migrate to a clean public repository, and in what form, is the
 responsible human's decision at the release path's step 2; nothing here
 selects or publishes anything (the MVP plan, "Release path";
 `LLM_POLICY_ALIGNMENT.md`, "Future clean public repository").
+
+## 8. The release path's steps 2 and 3
+
+This repository was made under the release path's steps 2 and 3 (the MVP
+plan, "Release path"; the step 2 selection,
+`planning/mvp-release-step-2.md`; the step 3 plan,
+`planning/mvp-release-step-3-plan.md`), in one Copilot CLI session,
+`c9f9a152-50f1-4e28-a3c6-6b0865b78703`. Every commit of this repository
+carries that session's `Copilot-Session` trailer beside the
+`Co-authored-by: Copilot` one (`git log
+--format='%(trailers:key=Copilot-Session,valueonly)'`). The owner session
+and its sub-agents ran Claude Opus 5.5 (`claude-opus-5.5`), the
+sub-agents at `max` effort with the `long_context` tier (the step 3 plan,
+section 5).
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| Step 2's proposal of what migrates, and its review packet | A sub-agent of the owner session; reviewed by the owner session | The form answer `run=both_lanes` (2026-11-05) |
+| The selection | The responsible human | `accept 38fa3a08` (2026-11-06) |
+| Step 3's plan and its review packet | A sub-agent of the owner session; reviewed by the owner session, whose review notes are part of the record | `ff + push, write the step 3 plan, create the clean repo` (2026-11-06) |
+| The plan's acceptance | The responsible human | `accept 6944d7b4` (2026-11-06) |
+| The internal tools that copy, scan, and record this repository (in the internal repository) | A sub-agent; reviewed by the owner session | The plan's acceptance |
+| The copy commit | The owner session, running the tools' `copy` command | The plan's acceptance |
+| The scans, gitleaks among them, and the proposed classification rules | The owner session | The plan's acceptance |
+| The classification of every finding | The responsible human | `classify as proposed` (2026-11-06) |
+| The adaptations' texts: A6, A1, A7, and A8 | The owner session | The plan's acceptance |
+| The adaptations' code: A2, A3, A4, and A5 | A sub-agent; each commit reviewed by the owner session | The plan's acceptance |
+| The recheck of the Linux kernel's AI and patch-process documents (the plan's Q10) | The owner session | The plan's acceptance |
+| Approving the exit commit, signing off, approving the public commit and its tag, and publishing | The responsible human alone | Each its own instruction |
+
+No AI system selected what migrated, classified a finding, approved a
+commit, added a `Signed-off-by`, or published anything
+(`LLM_POLICY_ALIGNMENT.md`, "Beryllium public GitHub release
+boundary").

@@ -5,30 +5,23 @@
 
 ## Purpose
 
-This is the maintained policy crosswalk for the Beryllium repository,
-including its Helium pathfinder component, and every parent or partner
-open-source project with which they collaborate. It records binding upstream
-rules separately from local safeguards and blocks public GitHub release when
-responsible-human review has not been recorded.
+This is the maintained policy crosswalk for this repository, Beryllium's
+MVP 1.0 clean repository, and for every parent or partner open-source
+project with which Beryllium collaborates. It records binding upstream
+rules separately from local safeguards, and it states the conditions under
+which this repository's commits are published.
 
-**Beryllium** (`Be` / `be`) is the repository, project, and future hypervisor
-name and the umbrella name for repository-wide policy. **Helium** (`He` /
-`he`) is only the bounded pathfinder component name as of version 0.5.0.
-Pre-0.5.0 commits retain their historical identity and remain governed by the
-same licensing, assistance, and publication limits.
+**Beryllium** (`Be` / `be`) is the repository, project, and future
+hypervisor name and the umbrella name for project-wide policy. **Helium**
+(`He` / `he`) is the name of the bounded pathfinder whose lessons the
+planning record cites; it is not part of this repository (below).
 
-**Current Beryllium public GitHub release status: BLOCKED.** A review
-snapshot of one accepted commit, published on the responsible human's
-instruction of 2026-10-31, is not a release; see "Review snapshot
-(2026-10-31)" below.
+**This repository's publication status:** a commit of this repository is
+published only once the responsible human has reviewed and approved that
+exact commit; automation neither approves nor publishes ("Beryllium public
+GitHub release boundary", below).
 
-Private internal development is allowed: local/private branches, commits,
-builds, reviews, evidence generation, and private evaluator access do not
-require gate approval. The repository-wide release boundary applies before
-publishing any current Beryllium material. Helium is additionally subject to
-its component-specific publication gate.
-
-The responsible human for Beryllium and Helium is:
+The responsible human for Beryllium is:
 
 ```text
 James Morris <jmorris@namei.org>
@@ -41,7 +34,7 @@ signatory, reviewer, or public-release approver.
 
 | Project | Relationship | Policy revision checked | Local status |
 | --- | --- | --- | --- |
-| Linux kernel | Primary prospective parent/integration project | `36aad21d50d1af3f6954bb0c988257a908202477` (v7.3-19809), 2026-10-31; before that `481ed5dd3ed7136f627b8ec372ba39f5b2e7d27f`, 2026-07-16 | Process aligned; the `Assisted-by` tag the earlier revision required was dropped upstream on 2026-10-14 and this document follows (below); current Beryllium license incompatible for direct code inclusion |
+| Linux kernel | Primary prospective parent/integration project | `36aad21d50d1af3f6954bb0c988257a908202477` (v7.3-19809), 2026-10-31; rechecked 2026-11-06 against mainline `d48723711bae9b8cdc56719c448ba42fef28cbee`, at which `coding-assistants.rst`, `generated-content.rst`, and `submitting-patches.rst` are byte for byte those of the revision checked; before that `481ed5dd3ed7136f627b8ec372ba39f5b2e7d27f`, 2026-07-16 | Process aligned; the `Assisted-by` tag the earlier revision required was dropped upstream on 2026-10-14 and this document follows (below); current Beryllium license incompatible for direct code inclusion |
 
 ## Linux kernel alignment
 
@@ -111,8 +104,10 @@ below) decides.
 
 ### License boundary
 
-The current Beryllium repository, including Model 0.1, planning and tooling,
-and the Helium pathfinder, is intentionally licensed `GPL-3.0-only`. Linux is
+Beryllium, this repository's MVP line, models, planning, and tooling among
+it, is intentionally licensed `GPL-3.0-only`; one file, the guest
+management module `mvp/guest/mgmt/be-mgmt.c`, is `GPL-2.0-only`, because
+it is built against the guest's Linux kernel (`COPYING`). Linux is
 `GPL-2.0-only`, and its
 [`license-rules.rst`](https://github.com/torvalds/linux/blob/78d979db6cef557c171d6059cbce06c3db89c7ee/Documentation/process/license-rules.rst)
 requires every in-tree source license to be GPL-2.0 compatible.
@@ -136,106 +131,75 @@ submission.
 
 ## Beryllium public GitHub release boundary
 
-Pushing any part of the current private Beryllium repository to a public
-GitHub repository is blocked. A future public release must use the clean
-repository process below and contain only responsible-human-reviewed source
-and selected artifacts.
+This repository holds only material the responsible human selected and
+reviewed (`RELEASE.md`). Its commits are published under these rules:
 
-If the selected public artifacts include Helium, the following additional
-component gate applies.
+1. The responsible human reviews and approves each exact commit before it
+   is published, with its tag where it has one; any later change to the
+   source invalidates that approval, and the changed commit needs its own.
+2. Each published commit carries the responsible human's own
+   `Signed-off-by` ("Local authorship rules", below).
+3. Automation may prepare commits and run checks. It never approves, tags,
+   pushes, or publishes a commit, and it never adds a human
+   `Signed-off-by`.
+4. A change that changes what the project may claim follows the claim's
+   own rules (`mvp/docs/claim.md`).
 
-### Helium component gate
+### Helium
 
-Pushing Helium to a public GitHub repository is blocked unless:
+Helium is not part of this repository. Its current source is the separate
+helium-te-poc repository, and its own publication gate stays with it:
+nothing of Helium enters this repository without that gate and a separate
+decision of the responsible human.
 
-1. the complete source and generated diff have been reviewed by James Morris;
-2. the standalone HTML site, diagrams, references, and assurance claims match
-   the reviewed source;
-3. `./pathfinder/he check` and `./pathfinder/he evaluate` have passed for the
-   reviewed commit;
-4. generated evidence and dependency/license changes have been inspected;
-5. the reviewed source commit is clean and recorded in
-   `pathfinder/publication-gate.conf`, followed by a human-created gate-only
-   commit;
-6. LLM assistance and specialized tools are disclosed appropriately for the
-   destination project;
-7. the destination license and contribution process have been rechecked; and
-8. `./pathfinder/he publication-check` reports `APPROVED`.
+Generated HTML is not committed here; the planning site is built from its
+Markdown sources (`./be docs`).
 
-Automation may verify a human-authored approval record, but it may never set
-`status=approved`, choose the reviewed commit, or sign on the human's behalf.
-Any source change after approval invalidates the gate. The checker requires
-the reviewed commit to be `HEAD^` and the approval commit to change only
-`pathfinder/publication-gate.conf`; this avoids a self-referential hash.
+## This repository's provenance
 
-Generated HTML is not a routine active-line deliverable. The private branch
-`archive/generated-docs-2026-09-30` at
-`d4c5ff0616c78d997367a050db85512c44960acb` preserves the 2026-09-30
-historical generated snapshot only; it is not source authority or publication
-approval. If a future reviewed release includes generated documentation, the
-release candidate must regenerate, validate, and review those selected
-artifacts under the complete publication gates above. This source-first
-maintenance policy does not weaken any publication requirement.
+This repository is the clean repository the release path's step 3 made
+(the MVP plan, "Release path"): a fresh-history copy of the responsible
+human's selection from one commit of the project's private internal
+repository, MVP 1.0 release candidate 4's tree with its acceptance record,
+then the adaptations that let its gates run here. `RELEASE.md` records the
+source, the copy commit, each adaptation with its reason, the exclusions,
+the scans with the human's classification, and the gates' results. The
+private internal repository's history, its development handoff, and its AI
+operating instructions are not part of it; historical records here may
+name that repository and a former private identity as packet-time
+evidence.
 
-## Future clean public repository
+Before this release, from 2026-10-31, the responsible human published
+fresh-history review snapshots of accepted commits for external review;
+they were review copies, not releases, and `mvp/README.md` records their
+selection and checks ("Snapshot support").
 
-The private internal development history is the repository
-`beryllium-project/beryllium-hypervisor-internal` (since 2026-10-31; before
-that `beryllium-project/beryllium-hypervisor`, whose name the responsible
-human re-uses for the public review snapshot below). Historical review
-records may retain the former private identity `jamorris_microsoft/beryllium`
-as packet-time evidence. A future public release still uses a new clean
-Beryllium project repository populated only with the
-responsible-human-reviewed codebase and selected artifacts.
+Automation must not:
 
-### Review snapshot (2026-10-31)
-
-On 2026-10-31 the responsible human directed (`give me a clean RC3 snapshot
-repo which I will put up until the main repo is ready`) a fresh-history
-snapshot of one accepted commit, MVP 1.0 release candidate 3's tree with its
-acceptance record (`5c693b88` of the internal repository), to be published
-by the human under the name `beryllium-project/beryllium-hypervisor` ahead
-of the release path's later steps. `mvp/tools/snapshot.sh` makes it: `git
-archive` of the one commit, the human's selection removed (`pathfinder/`,
-the Helium pathfinder under its own gate below; `.github/`, the AI
-operating instructions and skills; `planning/HANDOFF.md`, the internal
-session handoff), a README naming the source, the exclusions, the
-identifying strings kept, and the checks run in it, and `SNAPSHOT.txt`
-naming the source commit; one commit, no history. It is a review copy, not
-a release: the claim stays the one `mvp/docs/claim.md` states with its
-required limit, the AI-assistance disclosure `mvp/docs/ai-assistance.md` is
-in it, the private history is not pushed, and the release boundary above
-and the clean-repository process stand. Automation made the snapshot and
-ran its checks on the human's instruction and did not push it; the push is
-the human's act. The selection and the gates run are recorded in
-`mvp/README.md` ("Snapshot support", "The RC3 snapshot").
-
-After that migration is reviewed and completed, the current internal
-repository is archived. Automation must not:
-
-- create or populate the public repository without explicit authorization;
-- infer that the current private history is approved for publication;
-- select which history or artifacts migrate;
-- bypass the Helium publication gate for included pathfinder material; or
+- push, tag, or publish this repository without the responsible human's
+  explicit instruction for that exact commit;
+- infer that any material is approved for publication;
+- select what migrates from the internal repository;
+- add material from Helium or from the internal history; or
 - archive the internal repository on the responsible human's behalf.
 
 ## Local authorship rules
 
-- The preferred identity for future Beryllium Git authorship, review
-  correspondence, and human DCO signoffs is
-  `James Morris <jmorris@namei.org>`.
-- Existing and newly added source headers in this internal repository
-  continue to identify James Morris `<jamorris@linux.microsoft.com>` as
-  required by the accepted runtime plan and current source-policy checkers.
-  Accepted inputs, tool locks, manifests, package metadata, and historical
-  records that identify James Morris
-  `<jamorris@linux.microsoft.com>` remain unchanged. They identify the same
-  responsible human and are retained as historical evidence or exact accepted
-  bytes, not as the preferred future signoff address.
-- New Beryllium source in a future clean repository should use
-  `James Morris <jmorris@namei.org>` unless the destination's reviewed policy
-  requires another identity. Current Helium identity-policy changes must be
-  made separately in the authoritative `../helium-te-poc` repository.
+- The identity for Beryllium Git authorship, review correspondence, and
+  human DCO sign-offs is `James Morris <jmorris@namei.org>`.
+- Files copied from the internal repository keep their bytes, their
+  copyright lines naming James Morris `<jamorris@linux.microsoft.com>`
+  among them; they identify the same responsible human and are kept as
+  historical evidence or exact accepted bytes. Files new in this repository
+  name `James Morris <jmorris@namei.org>`, except where a checker binds the
+  old line, as it binds this document's (the release path's step 2, Q13).
+- Every commit is authored and committed as
+  `James Morris <jmorris@namei.org>`. A commit that automation prepares
+  carries the trailer
+  `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
+  and the session's `Copilot-Session` trailer, which disclose the
+  assistance. The responsible human adds his own `Signed-off-by` to each
+  commit published, after his review and DCO assessment, and only he may.
 - LLM systems are acknowledged in commit/submission metadata where the
   destination policy requires it; they are not listed as source-code authors.
 - Generated artifacts identify their source and generator and are reviewed
@@ -273,3 +237,8 @@ Recheck this document when:
       transparency rule in `generated-content.rst`; this document and
       `mvp/docs/ai-assistance.md` section 6 updated. No other partner
       project is in the matrix.
+- [x] Rechecked 2026-11-06 (the release path's step 3, its plan's Q10,
+      before this repository's release record): the same three documents
+      at mainline `d48723711bae` are byte for byte those of `36aad21d50d1`,
+      so nothing bears on this repository's disclosure, licence, or
+      sign-off. No other partner project is in the matrix.

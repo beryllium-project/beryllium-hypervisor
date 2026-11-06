@@ -37,7 +37,3 @@ mvp/tools/check-licenses.py, run by `./mvp/mvp check`, requires that every
 identifier a tracked file's header names, a `source` line of the guest
 pins names for an external input, or a `licence` line of the licence
 manifest names, has its text under LICENSES/ and is named in this file.
-
-The retained Helium pathfinder under pathfinder/ carries its own copy of
-the GPL-3.0-only text (pathfinder/LICENSES/); its current source is the
-separate helium-te-poc repository.
