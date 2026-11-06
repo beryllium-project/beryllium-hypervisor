@@ -1,0 +1,7 @@
+attempt_utc=2026-11-05T22:25:44Z
+be_image=be-mvp-probe-vmid-distinct-gcc.img
+printenv_be_image=be_image=be-mvp-probe-vmid-distinct-gcc.img
+select-01-check_sha256=a0317cad6574c9a39e8d6cfe059d888e9e96fdda9c4f595292508b0e63066f08
+select_check=PASS
+saveenv=OK
+verdict=PASS

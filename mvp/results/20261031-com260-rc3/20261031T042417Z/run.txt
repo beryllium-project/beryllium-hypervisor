@@ -1,0 +1,29 @@
+run=20261031T042417Z
+image=<repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp-boot.img
+image_sha256=63892c7c140846fbf90ed6db82a8516f3ce0d47222d1fa96dc95eb6b255d2bb5
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp-boot.img bytes=0x277000 sha256=63892c7c140846fbf90ed6db82a8516f3ce0d47222d1fa96dc95eb6b255d2bb5 flat_sha256=4a75cfe046aae7087240b7c7a625bbf0a9ce2c112f6d6304beed2c92f89ed5fb kexec_fdt=0x108400000 variant=wrong-measurement dtb0=0x275000 scenario=anchor
+toolchain=gcc
+expect=wrong-measurement.json expect_sha256=c5e4b838a44adaae743e859835f929b6f8c84b0d51e8868f45015af4f6691f3b
+report=authority-report.json report_sha256=beb0189859a3d9e4565a301aaff3a665c46d9633225c2320cda53b94a1b56278
+measured=Image kernel_sha256=c7ae03e6b26e1433bb1cdcd995467b5df2dec61cb8ed1c38ede0d4458c4799ed mvp-guest-g1-anchor.dtb dtb_sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025
+variant=wrong-measurement
+launcher=uboot-autoboot-nvme
+loader=uboot-autoboot-nvme be_image=be-mvp-anchor-wrong-measurement-gcc.img load=0x140000000 booti=0x140000000 fdt=${fdtcontroladdr}
+be_image=be-mvp-anchor-wrong-measurement-gcc.img
+remote_image_sha256=63892c7c140846fbf90ed6db82a8516f3ce0d47222d1fa96dc95eb6b255d2bb5
+staged_bytes=2584576 staged_md5=695b05024760ac3747a46422cf99c6f0
+selected_be_image=be-mvp-anchor-wrong-measurement-gcc.img
+serial_source=log:<home>/src/spacemit-k3/logs/boot-7.log
+boot_id_before=reset-34@15565314
+reset_utc=2026-10-31T04:24:18.807Z
+serial_range=15565314-15571807
+outcome=terminal-marker
+terminal_marker_utc=2026-10-31T04:24:31Z
+spl_banner=U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)
+uboot_banner=U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395
+board_kernel=none (boot from system reset)
+check_status=0
+BE_MVP_RESULT: PASS terminal=fail-marker
+attribution_lines=bytes_read=2584576 digest=md5:695b05024760ac3747a46422cf99c6f0
+attribution=PASS selected=yes staged_sha256=yes size_md5=yes check=yes
+banner_audit=PASS

@@ -1,0 +1,22 @@
+run=20261027T175222Z
+image=<repo>/build/mvp/gcc/te-poc/be-mvp-boot.img
+image_sha256=a55a5791b4b4cd490cc4abf8e7c955831c871bec3154472d513cea39e4602113
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/gcc/te-poc/be-mvp-boot.img bytes=0x227000 sha256=a55a5791b4b4cd490cc4abf8e7c955831c871bec3154472d513cea39e4602113 flat_sha256=e8acb6f067ec080855e6f964531cc31e1f5439ca08fcd3aa789ff781d5b5fb01 kexec_fdt=0x108400000 variant=none dtb0=0x225000 scenario=te-poc
+toolchain=gcc
+expect=te-poc.json expect_sha256=4aeedbbb6b653a1970446eb6c6af4239ab94258925577d38908c01e5d7207362
+report=authority-report.json report_sha256=fcbf210072d30c0d865c5219cc13a1d47ff17825bdd178e463e2c34d4beafdae
+variant=none
+k3_ssh=fedora@k3-f45
+loader_mode=raw
+loader_sha256=14d7bf025de9052bb70cd64d3a1d5461a0303966e61ca3309cfa40db42a0ee47
+layout_sha256=7e6a0a190bcf61a39b10209f3a35eb8cd589578ccd43dddd0aca3009cd1dbe42
+serial_source=none:load-only
+boot_id_before=42cc2284-9b93-4e19-8064-8eaa3ce7850f
+board_kernel=7.3.0-65.1.riscv64.omni.fc45.riscv64
+board_lockdown=[none] integrity confidentiality
+board_tmp_fstype=tmpfs
+remote_image_sha256=a55a5791b4b4cd490cc4abf8e7c955831c871bec3154472d513cea39e4602113
+loader=kexec_load entry=0x108000000 fdt=0x108400000 image_memsz=0x227000 fdt_bytes=49280 kexec_loaded=1
+kexec_loaded=1
+kexec_loaded_after_unload=0
+outcome=load-only

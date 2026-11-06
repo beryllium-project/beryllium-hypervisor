@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+//
+// The K3 B7 guest device tree (planning/k3-b7-plan.md, Guest software, Q7):
+// B6's tree (planning/k3-b6-plan.md, Device tree) with the B7 model and
+// compatible. One hart with its interrupt controller, the timebase, and one
+// memory node, and no other device. scripts/gen-dts.py fills each
+// placeholder from src/b7-layout.h, the guest, and the selected variant, so
+// G0's and G1's DTBs differ only in bootargs; the pinned kernel tree's own
+// dtc compiles each with -S 4096.
+/dts-v1/;
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	compatible = "beryllium,k3-b7-guest";
+	model = "Beryllium K3 B7 guest";
+
+	chosen {
+		bootargs = "${BOOTARGS}";
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <${TIMEBASE_HZ}>;
+
+		cpu@0 {
+			device_type = "cpu";
+			reg = <0>;
+			compatible = "riscv";
+			mmu-type = "riscv,sv39";
+			riscv,isa-base = "rv64i";
+			riscv,isa-extensions = ${ISA_EXTENSIONS};
+
+			interrupt-controller {
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+				#interrupt-cells = <1>;
+			};
+		};
+	};
+
+	memory@${MEMORY_UNIT} {
+		device_type = "memory";
+		reg = <${MEMORY_REG}>;
+	};
+};

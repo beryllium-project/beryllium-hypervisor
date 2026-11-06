@@ -1,0 +1,20 @@
+label=anchor/gcc
+kind=scenario
+file=anchor-gcc.img
+stage=done
+error=-
+qemu_exit=0
+seconds=12.2
+sbi_version=2.0
+boot_hart=0
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2748416
+crc32=0052cd38
+fdt=0xff7383d0
+fdt_end=0xff73edd8
+rule_hart=0
+shim_fdt=0xff7383d0
+terminal=BE_MVP:14 SHUTDOWN type=0 reason=0
+console_bytes=27661
+console_sha256=197671cb1d7e254216f94274a085a89d660f695d679a9438fffe07181d2818b4
+BE_MVP_UBOOT_SESSION[anchor/gcc]: PASS boot_hart=0 qemu_exit=0 fdt=0xff7383d0 crc32=0052cd38 seconds=12.2

@@ -1,0 +1,62 @@
+hostname=k3e
+kernel=7.1.5-201.0.riscv64.omni.fc44.riscv64
+machine=riscv64
+boot_id=cabaf3c9-61c9-4edd-b9bc-07e0c355e72a
+cmdline=root=UUID=<redacted> rootflags=subvol=root clk_ignore_unused console=ttyS0,115200n8 boot_mode=nor clk_ignore_unused
+lockdown=[none] integrity confidentiality
+kexec_loaded=0
+kexec_tool=absent
+python3=/usr/bin/python3
+sudo_noninteractive=yes
+tmp_fstype=tmpfs
+online_cpus=0-7
+CONFIG_KEXEC=y
+CONFIG_KEXEC_FILE=y
+CONFIG_RISCV_SBI=y
+CONFIG_HOTPLUG_CPU=y
+CONFIG_SECURITY_LOCKDOWN_LSM=y
+102000000-2ffffffff : System RAM
+  102200000-102201fff : Reserved
+  102202000-105c058f7 : Kernel image
+    102202000-103501909 : Kernel code
+    104200000-1051fffff : Kernel rodata
+    105400000-105a82dff : Kernel data
+    105a83000-105c058f7 : Kernel bss
+  105c058f8-105dfffff : Reserved
+  2ee048000-2f75fffff : Reserved
+  2f7610000-2f7658fff : Reserved
+  2f7659000-2f7663fff : Reserved
+  2f7666000-2fbd72fff : Reserved
+  2fbd9d000-2fbdb4fff : Reserved
+  2fbdb5000-2fbdb6fff : Reserved
+  2fbdb7000-2fbdb7fff : Reserved
+  2fbdba000-2fbdbafff : Reserved
+  2fbdbb000-2fbdbbfff : Reserved
+  2fbdbc000-2fddc0fff : Reserved
+  2fddc1000-2fddf5fff : Reserved
+  2fddf6000-2fdffffff : Reserved
+  2fe000000-2ffffffff : Reserved
+[    0.000000] Booting Linux on hartid 0
+[    0.000000] SBI specification v2.0 detected
+[    0.000000] SBI implementation ID=0x1 Version=0x10006
+[    0.000000] SBI TIME extension detected
+[    0.000000] SBI IPI extension detected
+[    0.000000] SBI RFENCE extension detected
+[    0.000000] SBI SRST extension detected
+[    0.000000] SBI DBCN extension detected
+[    0.000000] SBI HSM extension detected
+[    0.018158] suspend: SBI SUSP extension detected
+[    0.111234] riscv-pmu-sbi: SBI PMU extension is available
+kernel=/lib/modules/7.1.5-201.0.riscv64.omni.fc44.riscv64/vmlinuz
+container=efi-zboot-zstd
+purgatory=present
+pcrel_lo12_i=13
+adjacent=13
+separated=0
+pcrel_lo12_s=0
+kexec_file_purgatory=safe
+kexec_load=available
+kexec_file_load=available
+kexec_load_disabled=0
+kexec_loaded=0
+viable=kexec_load

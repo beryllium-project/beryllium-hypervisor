@@ -1,0 +1,581 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/*
+ * Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+ *
+ * Purpose: run the accepted R3 construction sequence and the in-image R4
+ *          management prelude, import exact R4 COMPLETE state, and drive the
+ *          two checked R5 switch transactions to terminal shutdown.
+ * Trust:   privileged restricted-C orchestration. Every CSR write, the local
+ *          G-stage fence, frame transfer, and the no-call SRET tails remain in
+ *          the explicit assembly boundary; observed backing is monitor-owned.
+ * Scope:   management -> protected -> management -> shutdown only. No PTE or
+ *          root is ever written, no rollback or re-entry exists, and R6+
+ *          behavior is absent.
+ *
+ * R5 owns no boot or diagnostic error class, so boot-stage, R3/R4 prelude, and
+ * DBCN platform failures are reported through the R5 prerequisite class
+ * %BE_R5_ERROR_IMPORT.
+ */
+#include "r5-platform.h"
+
+#include <be/r1-config.h>
+
+#include "r0-layout.h"
+#include "r0-sbi.h"
+
+_Static_assert(sizeof(struct be_r5_controls) == 32U,
+	       "assembly controls size mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_controls, hgatp) == 0U,
+	       "assembly controls hgatp offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_controls, hstatus) == 8U,
+	       "assembly controls hstatus offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_controls, vsatp) == 16U,
+	       "assembly controls vsatp offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_controls, sscratch) == 24U,
+	       "assembly controls sscratch offset mismatch");
+
+_Static_assert(sizeof(struct be_r5_fence_ack) == 32U,
+	       "assembly fence-ack size mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_fence_ack, source_hgatp) == 0U,
+	       "assembly fence-ack source offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_fence_ack, hgatp_written) == 8U,
+	       "assembly fence-ack written offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_fence_ack, hgatp_readback) ==
+		       16U,
+	       "assembly fence-ack readback offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_fence_ack,
+				  virtualization_off) == 24U,
+	       "assembly fence-ack virtualization offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_fence_ack,
+				  fence_completed) == 28U,
+	       "assembly fence-ack fence offset mismatch");
+
+_Static_assert(sizeof(struct be_r5_entry_state) == 80U,
+	       "assembly entry-state size mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_entry_state, hgatp) == 0U,
+	       "assembly entry hgatp offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_entry_state, hstatus) == 8U,
+	       "assembly entry hstatus offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_entry_state, sstatus) == 16U,
+	       "assembly entry sstatus offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_entry_state, vsatp) == 24U,
+	       "assembly entry vsatp offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_entry_state, vstvec) == 32U,
+	       "assembly entry vstvec offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_entry_state, vsepc) == 40U,
+	       "assembly entry vsepc offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_entry_state, vscause) == 48U,
+	       "assembly entry vscause offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_entry_state, vstval) == 56U,
+	       "assembly entry vstval offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_entry_state, trusted_sp) == 64U,
+	       "assembly entry trusted-stack offset mismatch");
+_Static_assert(__builtin_offsetof(struct be_r5_entry_state,
+				  saved_state_pa) == 72U,
+	       "assembly entry saved-page offset mismatch");
+
+/* Stable error identities the assembly boundary reports directly. */
+_Static_assert(BE_R5_ERROR_INVALID_PHASE == 2, "assembly phase error moved");
+_Static_assert(BE_R5_ERROR_TRUSTED_STACK == 6, "assembly stack error moved");
+_Static_assert(BE_R5_ERROR_HGATP == 8, "assembly hgatp error moved");
+_Static_assert(BE_R5_ERROR_VS_ORIGIN == 9, "assembly origin error moved");
+_Static_assert(BE_R5_ERROR_ENTRY_CONTROLS == 16, "assembly control error moved");
+
+static struct be_runtime be_r5_runtime = BE_RUNTIME_INITIALIZER;
+static struct be_r2_output be_r5_r2_output;
+static struct be_r2_leaf_set be_r5_leaf_sets[BE_MAX_ROOTS];
+static struct be_r3_state be_r5_r3_control = BE_R3_STATE_INITIALIZER;
+static struct be_r4_state be_r5_r4_control = BE_R4_STATE_INITIALIZER;
+static struct be_r5_state be_r5_control = BE_R5_STATE_INITIALIZER;
+static struct be_r3_image_layout be_r5_layout;
+static struct be_r3_hs_state be_r5_hs;
+static be_u64 be_r5_hart_id;
+
+static const char marker_boot[] = "BE_R3:01 BOOT_VALIDATED\n";
+static const char marker_r1[] = "BE_R3:02 R1_DERIVED\n";
+static const char marker_r2[] = "BE_R3:03 R2_BUILT_REWALKED\n";
+static const char marker_hs[] = "BE_R3:04 HS_VS_STATE_VERIFIED\n";
+static const char marker_binding[] = "BE_R3:05 BINDING_PREPARED\n";
+static const char marker_fence[] = "BE_R3:06 HGATP_FENCED_PUBLISHED\n";
+static const char marker_entry[] =
+	"BE_R3:07 ENTER_MANAGEMENT_VS pc=0x40010000\n";
+static const char marker_r4_begin[] = "BE_R4:01 ENTRY_ARMED_IMPORTED\n";
+static const char marker_r4_fault[] =
+	"BE_R4:02 EXPECTED_DENIED_LOAD pc=0x40010014 resume=0x40010018\n";
+static const char marker_r4_event[] =
+	"BE_R4:03 PRIVATE_EVENT pc=0x40010030 resume=0x40010034\n";
+static const char marker_import[] =
+	"BE_R5:01 R4_COMPLETE_IMPORTED sepc=0x40010034\n";
+static const char marker_pending_protected[] =
+	"BE_R5:02 PENDING_PROTECTED direction=management-to-protected\n";
+static const char marker_protected_fenced[] =
+	"BE_R5:03 PROTECTED_HGATP_WRITTEN_FENCED_READBACK\n";
+static const char marker_protected_verified[] =
+	"BE_R5:04 PROTECTED_TARGET_VERIFIED pc=0x40011000\n";
+static const char marker_protected_load[] =
+	"BE_R5:05 EXPECTED_DENIED_LOAD pc=0x40011014 resume=0x40011018\n";
+static const char marker_protected_store[] =
+	"BE_R5:06 EXPECTED_DENIED_SHARED_STORE pc=0x40011024 resume=0x40011028\n";
+static const char marker_switch_event[] =
+	"BE_R5:07 SWITCH_EVENT pc=0x40011030 saved=0x40011034\n";
+static const char marker_pending_management[] =
+	"BE_R5:08 PENDING_MANAGEMENT direction=protected-to-management\n";
+static const char marker_management_fenced[] =
+	"BE_R5:09 MANAGEMENT_HGATP_WRITTEN_FENCED_READBACK\n";
+static const char marker_management_verified[] =
+	"BE_R5:10 MANAGEMENT_TARGET_VERIFIED pc=0x40010034\n";
+static const char marker_final_event[] =
+	"BE_R5:11 FINAL_EVENT pc=0x40010038 s0=17 a0=17 a1=34 shared=34 protected=51\n";
+static const char marker_shutdown[] = "BE_R5:12 SHUTDOWN type=0 reason=0\n";
+static const char marker_failure[] = "BE_R5:FAIL ";
+static const char marker_srst[] = "BE_R5:SRST_RETURNED\n";
+static const char marker_newline[] = "\n";
+
+static be_u64 symbol_address(const be_u8 *symbol)
+{
+	return (be_u64)symbol;
+}
+
+static void build_image_layout(struct be_r3_image_layout *layout)
+{
+	*layout = (struct be_r3_image_layout) {
+		.entry = symbol_address(be_reset),
+		.monitor_code_start = symbol_address(__be_monitor_code_start),
+		.monitor_code_end = symbol_address(__be_monitor_code_end),
+		.monitor_data_start = symbol_address(__be_monitor_data_start),
+		.monitor_data_end = symbol_address(__be_monitor_data_end),
+		.input_start = symbol_address(__be_input_start),
+		.input_end = symbol_address(__be_input_end),
+		.bss_start = symbol_address(__be_bss_start),
+		.bss_end = symbol_address(__be_bss_end),
+		.diagnostic_start = symbol_address(__be_diagnostic_start),
+		.diagnostic_end = symbol_address(__be_diagnostic_end),
+		.root_management_start = symbol_address(__be_root_management_start),
+		.root_management_end = symbol_address(__be_root_management_end),
+		.root_protected_start = symbol_address(__be_root_protected_start),
+		.root_protected_end = symbol_address(__be_root_protected_end),
+		.stack_management_start =
+			symbol_address(__be_stack_management_start),
+		.stack_management_end = symbol_address(__be_stack_management_end),
+		.stack_protected_start =
+			symbol_address(__be_stack_protected_start),
+		.stack_protected_end = symbol_address(__be_stack_protected_end),
+		.saved_management_start =
+			symbol_address(__be_saved_management_start),
+		.saved_management_end = symbol_address(__be_saved_management_end),
+		.saved_protected_start =
+			symbol_address(__be_saved_protected_start),
+		.saved_protected_end = symbol_address(__be_saved_protected_end),
+		.private_management_start =
+			symbol_address(__be_private_management_start),
+		.private_management_end =
+			symbol_address(__be_private_management_end),
+		.private_protected_start =
+			symbol_address(__be_private_protected_start),
+		.private_protected_end =
+			symbol_address(__be_private_protected_end),
+		.shared_start = symbol_address(__be_shared_start),
+		.shared_end = symbol_address(__be_shared_end),
+		.guest_management_start =
+			symbol_address(__be_guest_management_start),
+		.guest_management_end =
+			symbol_address(__be_guest_management_end),
+		.guest_protected_start =
+			symbol_address(__be_guest_protected_start),
+		.guest_protected_end =
+			symbol_address(__be_guest_protected_end),
+		.trap_vector = symbol_address(be_r5_trap_vector),
+	};
+}
+
+static enum be_r3_error write_text(const char *text)
+{
+	be_u64 length = be_r3_text_length(text);
+
+	if (length > BE_PAGE_SIZE)
+		return BE_R3_ERROR_DBCN_RANGE;
+	return be_r3_platform_write(text, length);
+}
+
+void be_r5_runtime_terminal(enum be_r5_error error)
+{
+	(void)be_r5_fail(&be_r5_control, error);
+	(void)write_text(marker_failure);
+	(void)write_text(be_r5_error_name(be_r5_control.error));
+	(void)write_text(marker_newline);
+	(void)be_r3_platform_reset();
+	(void)write_text(marker_srst);
+	be_r5_arch_halt();
+}
+
+static void emit_marker(const char *marker)
+{
+	if (write_text(marker) != BE_R3_ERROR_NONE)
+		be_r5_runtime_terminal(BE_R5_ERROR_IMPORT);
+}
+
+static void prerequisite_fail(void) __attribute__((noreturn));
+static void prerequisite_fail(void)
+{
+	be_r5_runtime_terminal(BE_R5_ERROR_IMPORT);
+}
+
+static void run_r1(void)
+{
+	if (be_runtime_copy_inventory(&be_r5_runtime,
+				      be_r1_inventory()) != BE_RUNTIME_OK ||
+	    be_runtime_copy_proposal(&be_r5_runtime,
+				     be_r1_proposal()) != BE_RUNTIME_OK ||
+	    be_runtime_validate(&be_r5_runtime) != BE_RUNTIME_OK ||
+	    be_runtime_seal(&be_r5_runtime) != BE_RUNTIME_OK ||
+	    be_runtime_derive(&be_r5_runtime) != BE_RUNTIME_OK ||
+	    be_r3_note_r1_derived(&be_r5_r3_control,
+				  &be_r5_runtime) != BE_R3_ERROR_NONE)
+		prerequisite_fail();
+}
+
+static void run_r2(void)
+{
+	struct be_r2_pool_desc pools[BE_MAX_ROOTS] = {
+		{ .base = BE_R0_PA_ROOT_POOL_MANAGEMENT,
+		  .buf = __be_root_management_start,
+		  .buf_size = BE_SV39X4_POOL_SIZE },
+		{ .base = BE_R0_PA_ROOT_POOL_PROTECTED,
+		  .buf = __be_root_protected_start,
+		  .buf_size = BE_SV39X4_POOL_SIZE },
+	};
+
+	if (be_r2_build(&be_r5_runtime, pools, &be_r5_r2_output) != BE_CHECK_OK ||
+	    be_r2_walk_and_check(&be_r5_runtime, pools, &be_r5_r2_output,
+				 be_r5_leaf_sets) != BE_CHECK_OK ||
+	    be_r3_note_r2_built(&be_r5_r3_control, &be_r5_runtime,
+				&be_r5_r2_output,
+				be_r5_leaf_sets) != BE_R3_ERROR_NONE)
+		prerequisite_fail();
+}
+
+static void initialise_backing(void)
+{
+	volatile be_u64 *management =
+		(volatile be_u64 *)__be_private_management_start;
+	volatile be_u64 *protected =
+		(volatile be_u64 *)__be_private_protected_start;
+	volatile be_u64 *shared = (volatile be_u64 *)__be_shared_start;
+
+	/*
+	 * Each fixture's own first store must establish its value.  Preseeding
+	 * would make the denied-access observations non-evidentiary.
+	 */
+	*management = 0U;
+	*protected = 0U;
+	*shared = 0U;
+	if (*management != 0U || *protected != 0U || *shared != 0U)
+		be_r5_runtime_terminal(BE_R5_ERROR_BACKING);
+}
+
+/*
+ * The monitor saved page is named only by the fixed trusted-stack identity and
+ * the linked physical extent, never by a guest value or a fault address.
+ */
+static be_u64 saved_page_address(be_u64 trusted_sp)
+{
+	if (trusted_sp == BE_R3_INITIAL_TRUSTED_SP)
+		return BE_R3_MANAGEMENT_SAVED_PA;
+	if (trusted_sp == BE_R5_PROTECTED_TRUSTED_SP)
+		return BE_R5_PROTECTED_SAVED_PA;
+	be_r5_runtime_terminal(BE_R5_ERROR_TRUSTED_STACK);
+}
+
+static struct be_r4_frame *saved_frame(be_u64 saved_state_pa)
+{
+	if (saved_state_pa == BE_R3_MANAGEMENT_SAVED_PA &&
+	    symbol_address(__be_saved_management_start) == saved_state_pa)
+		return (struct be_r4_frame *)(void *)
+			__be_saved_management_start;
+	if (saved_state_pa == BE_R5_PROTECTED_SAVED_PA &&
+	    symbol_address(__be_saved_protected_start) == saved_state_pa)
+		return (struct be_r4_frame *)(void *)
+			__be_saved_protected_start;
+	be_r5_runtime_terminal(BE_R5_ERROR_SAVED_PAGE);
+}
+
+static struct be_r5_observation sample_observation(void)
+{
+	volatile const be_u64 *management =
+		(const volatile be_u64 *)__be_private_management_start;
+	volatile const be_u64 *protected =
+		(const volatile be_u64 *)__be_private_protected_start;
+	volatile const be_u64 *shared =
+		(const volatile be_u64 *)__be_shared_start;
+	struct be_r5_controls controls;
+	struct be_r5_observation observation;
+
+	be_r5_arch_read_controls(&controls);
+	observation = (struct be_r5_observation) {
+		.hart_id = be_r5_hart_id,
+		.active = be_r5_control.phase == BE_R5_PHASE_FRESH ?
+				  be_r5_r4_control.active :
+				  be_r5_control.active,
+		.current_hgatp = controls.hgatp,
+		.hstatus = controls.hstatus,
+		.vsatp = controls.vsatp,
+		.trusted_sp = controls.sscratch,
+		.saved_state_pa = saved_page_address(controls.sscratch),
+		.management_private_value = *management,
+		.protected_private_value = *protected,
+		.shared_value = *shared,
+	};
+	return observation;
+}
+
+static void switch_domain(enum be_r5_direction direction)
+	__attribute__((noreturn));
+static void request_shutdown(const struct be_r5_result *result)
+	__attribute__((noreturn));
+static void r5_exit(struct be_r4_frame *frame,
+		    const struct be_r5_observation *observation)
+	__attribute__((noreturn));
+static void r4_prelude_exit(struct be_r4_frame *frame,
+			    const struct be_r5_observation *observation)
+	__attribute__((noreturn));
+
+/*
+ * Exact ordered transaction: form one pending target, write its root while
+ * V=0, fence locally, read back, reset and verify the target, publish, then
+ * leave through the no-call tail.  There is no rollback or alternate target.
+ * Publication is deliberately the last restricted-C step, so no diagnostic
+ * write or any other call separates it from the tail.
+ */
+static void switch_domain(enum be_r5_direction direction)
+{
+	struct be_r5_pending pending;
+	struct be_r5_fence_ack ack;
+	struct be_r5_entry_state entry;
+	struct be_r5_transition transition;
+	struct be_r4_frame *target_frame;
+	int outbound = direction == BE_R5_DIRECTION_MANAGEMENT_TO_PROTECTED;
+
+	if (be_r5_prepare_pending(&be_r5_control, direction, &pending) !=
+	    BE_R5_ERROR_NONE)
+		be_r5_runtime_terminal(be_r5_control.error);
+	emit_marker(outbound ? marker_pending_protected :
+			       marker_pending_management);
+
+	be_r5_arch_install_root(&ack, pending.target.hgatp);
+	if (be_r5_note_target_fenced(&be_r5_control, &ack) != BE_R5_ERROR_NONE)
+		be_r5_runtime_terminal(be_r5_control.error);
+	emit_marker(outbound ? marker_protected_fenced :
+			       marker_management_fenced);
+
+	be_r5_arch_reset_target(&entry, BE_R3_INITIAL_TRUSTED_SP);
+	if (entry.saved_state_pa != pending.target.saved_state_pa)
+		be_r5_runtime_terminal(BE_R5_ERROR_SAVED_PAGE);
+	target_frame = saved_frame(pending.target.saved_state_pa);
+	emit_marker(outbound ? marker_protected_verified :
+			       marker_management_verified);
+
+	if (be_r5_publish_target(&be_r5_control, &entry, target_frame,
+				 &transition) != BE_R5_ERROR_NONE)
+		be_r5_runtime_terminal(be_r5_control.error);
+	if (transition.action != BE_R5_ACTION_ENTER_TARGET ||
+	    transition.direction != direction)
+		be_r5_runtime_terminal(BE_R5_ERROR_PUBLICATION);
+	be_r5_switch_tail(target_frame, transition.active.hgatp,
+			  transition.trusted_sp);
+}
+
+static void request_shutdown(const struct be_r5_result *result)
+{
+	struct be_r3_sbi_return sbi = { BE_R0_SBI_ERR_FAILED, 0U };
+	enum be_r5_error error;
+
+	if (result->shutdown_type != BE_R5_SHUTDOWN_TYPE ||
+	    result->shutdown_reason != BE_R5_SHUTDOWN_REASON)
+		be_r5_runtime_terminal(BE_R5_ERROR_INVALID_PHASE);
+	emit_marker(marker_shutdown);
+	be_r3_arch_sbi_call(&sbi, BE_R0_SBI_EID_SRST,
+			    BE_R0_SBI_SRST_FID_SYSTEM_RESET,
+			    result->shutdown_type, result->shutdown_reason, 0U);
+	/* A conforming allowlisted shutdown does not return, so this is fatal. */
+	error = be_r5_note_shutdown_returned(&be_r5_control, sbi.error);
+	(void)write_text(marker_failure);
+	(void)write_text(be_r5_error_name(error));
+	(void)write_text(marker_newline);
+	(void)write_text(marker_srst);
+	be_r5_arch_halt();
+}
+
+static void complete_sequence(const struct be_r5_observation *observation)
+{
+	if (be_r5_control.phase != BE_R5_PHASE_COMPLETE ||
+	    observation->management_private_value != BE_R4_PRIVATE_VALUE ||
+	    observation->shared_value != BE_R4_SHARED_VALUE ||
+	    observation->protected_private_value !=
+		    BE_R5_PROTECTED_PRIVATE_VALUE)
+		be_r5_runtime_terminal(BE_R5_ERROR_BACKING);
+	emit_marker(marker_final_event);
+}
+
+static void r5_exit(struct be_r4_frame *frame,
+		    const struct be_r5_observation *observation)
+{
+	struct be_r5_result result = { 0 };
+
+	if (be_r5_handle_exit(&be_r5_control, frame, observation, &result) !=
+	    BE_R5_ERROR_NONE)
+		be_r5_runtime_terminal(be_r5_control.error);
+	switch (result.exit_class) {
+	case BE_R5_EXIT_PROTECTED_DENIED_LOAD:
+		emit_marker(marker_protected_load);
+		break;
+	case BE_R5_EXIT_PROTECTED_DENIED_SHARED_STORE:
+		emit_marker(marker_protected_store);
+		break;
+	case BE_R5_EXIT_PROTECTED_SWITCH_EVENT:
+		emit_marker(marker_switch_event);
+		break;
+	case BE_R5_EXIT_MANAGEMENT_FINAL_EVENT:
+		complete_sequence(observation);
+		break;
+	default:
+		be_r5_runtime_terminal(BE_R5_ERROR_INVALID_PHASE);
+	}
+
+	if (result.action == BE_R5_ACTION_RESUME_SAME_DOMAIN_FULL_FRAME)
+		be_r5_arch_restore_active(frame, result.active.hgatp,
+					  result.active.trusted_sp);
+	if (result.action == BE_R5_ACTION_SWITCH_TO_MANAGEMENT)
+		switch_domain(BE_R5_DIRECTION_PROTECTED_TO_MANAGEMENT);
+	if (result.action == BE_R5_ACTION_SHUTDOWN)
+		request_shutdown(&result);
+	be_r5_runtime_terminal(BE_R5_ERROR_INVALID_PHASE);
+}
+
+/*
+ * The accepted R4 phase machine still governs the in-image prelude.  R5 takes
+ * over only at exact R4 COMPLETE, where it suppresses the same-management
+ * restore decision and begins the first checked switch.
+ */
+static void r4_prelude_exit(struct be_r4_frame *frame,
+			    const struct be_r5_observation *observation)
+{
+	struct be_r4_observation r4_observation = {
+		.hart_id = observation->hart_id,
+		.active = be_r5_r4_control.active,
+		.current_hgatp = observation->current_hgatp,
+		.private_value = observation->management_private_value,
+		.protected_value = observation->protected_private_value,
+		.shared_value = observation->shared_value,
+	};
+	struct be_r4_result result = { 0 };
+
+	if (observation->trusted_sp != BE_R3_INITIAL_TRUSTED_SP ||
+	    observation->saved_state_pa != BE_R3_MANAGEMENT_SAVED_PA)
+		be_r5_runtime_terminal(BE_R5_ERROR_TRUSTED_STACK);
+	if ((observation->hstatus & BE_R3_HSTATUS_CONTROL_MASK) !=
+	    BE_R3_HSTATUS_CONTROL_VALUE)
+		be_r5_runtime_terminal(BE_R5_ERROR_VS_ORIGIN);
+	if (observation->vsatp != 0U)
+		be_r5_runtime_terminal(BE_R5_ERROR_VSATP);
+	if (be_r4_handle_trap(&be_r5_r4_control, frame, &r4_observation,
+			      &result) != BE_R4_ERROR_NONE ||
+	    result.decision !=
+		    BE_R4_DECISION_RESUME_SAME_MANAGEMENT_FULL_FRAME ||
+	    result.active.hgatp != BE_R3_MANAGEMENT_HGATP)
+		be_r5_runtime_terminal(BE_R5_ERROR_IMPORT);
+
+	if (result.trap_class == BE_R4_TRAP_EXPECTED_DENIED_LOAD) {
+		emit_marker(marker_r4_fault);
+		be_r5_arch_restore_active(frame, result.active.hgatp,
+					  result.active.trusted_sp);
+	}
+	if (result.trap_class != BE_R4_TRAP_PRIVATE_EVENT ||
+	    be_r5_r4_control.phase != BE_R4_PHASE_COMPLETE)
+		be_r5_runtime_terminal(BE_R5_ERROR_IMPORT);
+	emit_marker(marker_r4_event);
+
+	if (be_r5_import_r4_complete(&be_r5_control, &be_r5_r4_control, frame,
+				     observation) != BE_R5_ERROR_NONE)
+		be_r5_runtime_terminal(be_r5_control.error);
+	emit_marker(marker_import);
+	switch_domain(BE_R5_DIRECTION_MANAGEMENT_TO_PROTECTED);
+}
+
+void be_r5_trap_dispatch(struct be_r4_frame *frame)
+{
+	struct be_r5_observation observation = sample_observation();
+
+	if (frame == (struct be_r4_frame *)0 ||
+	    symbol_address((const be_u8 *)(const void *)frame) !=
+		    observation.saved_state_pa)
+		be_r5_runtime_terminal(BE_R5_ERROR_SAVED_PAGE);
+	if (be_r5_control.phase == BE_R5_PHASE_FRESH)
+		r4_prelude_exit(frame, &observation);
+	else
+		r5_exit(frame, &observation);
+}
+
+void be_r5_runtime_main(be_u64 hart_id, be_u64 firmware_pointer)
+{
+	struct be_r3_boot_contract boot = { 0 };
+	struct be_r3_binding binding = {
+		.domain = BE_DOMAIN_MANAGEMENT, .vcpu_id = 1U, .root_id = 101U,
+		.vmid = 0U, .hgatp = BE_R3_MANAGEMENT_HGATP,
+		.guest_pc = BE_R3_INITIAL_GUEST_PC,
+		.guest_sp = BE_R3_INITIAL_GUEST_SP,
+		.trusted_sp = BE_R3_INITIAL_TRUSTED_SP,
+		.saved_state_id = 1U,
+		.saved_state_pa = BE_R3_MANAGEMENT_SAVED_PA,
+		.vsatp = 0U, .published = 0U,
+	};
+	be_u64 hgatp_readback;
+
+	build_image_layout(&be_r5_layout);
+	boot.entry = symbol_address(be_reset);
+	boot.hart_id = hart_id;
+	boot.firmware_pointer = firmware_pointer;
+	boot.layout = be_r5_layout;
+	if (be_r3_platform_get_spec_version(&boot.sbi_spec_version) !=
+		    BE_R0_SBI_SUCCESS ||
+	    be_r3_platform_probe_extension(BE_R0_SBI_EID_DBCN,
+					 &boot.dbcn_probe) != BE_R0_SBI_SUCCESS ||
+	    be_r3_platform_probe_extension(BE_R0_SBI_EID_SRST,
+					 &boot.srst_probe) != BE_R0_SBI_SUCCESS ||
+	    be_r3_validate_boot(&be_r5_r3_control, &boot) != BE_R3_ERROR_NONE)
+		prerequisite_fail();
+	/* The validated single-hart identity is the only accepted observer. */
+	be_r5_hart_id = boot.hart_id;
+	emit_marker(marker_boot);
+	run_r1();
+	emit_marker(marker_r1);
+	run_r2();
+	emit_marker(marker_r2);
+
+	be_r5_arch_reset_state(be_r5_layout.trap_vector, &be_r5_hs);
+	if (be_r3_note_hs_ready(&be_r5_r3_control, &be_r5_hs,
+				&be_r5_layout) != BE_R3_ERROR_NONE)
+		prerequisite_fail();
+	emit_marker(marker_hs);
+	if (be_r3_prepare_management_binding(&be_r5_r3_control, &binding) !=
+	    BE_R3_ERROR_NONE)
+		prerequisite_fail();
+	emit_marker(marker_binding);
+	hgatp_readback = be_r3_arch_install_management(binding.hgatp);
+	if (be_r3_publish_management_binding(&be_r5_r3_control, hgatp_readback,
+					     1U) != BE_R3_ERROR_NONE)
+		prerequisite_fail();
+	emit_marker(marker_fence);
+	if (be_r3_arm_management_entry(&be_r5_r3_control,
+				       &be_r5_r3_control.active) !=
+	    BE_R3_ERROR_NONE)
+		prerequisite_fail();
+	emit_marker(marker_entry);
+	if (be_r4_begin(&be_r5_r4_control, &be_r5_r3_control) !=
+	    BE_R4_ERROR_NONE)
+		prerequisite_fail();
+	initialise_backing();
+	emit_marker(marker_r4_begin);
+	be_r3_arch_enter_management(be_r5_r4_control.active.guest_pc,
+				    be_r5_r4_control.active.guest_sp,
+				    be_r5_r4_control.active.trusted_sp);
+}

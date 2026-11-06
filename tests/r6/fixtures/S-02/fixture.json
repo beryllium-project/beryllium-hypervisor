@@ -1,0 +1,76 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "S-02",
+  "partition": "static",
+  "declared_delta": null,
+  "base": "arch/riscv/be/r5-beryllium.lds",
+  "base_sha256": "0df278b45d33500af08204b364a3f3e61178a7cd9981cb499025d95411baa56a",
+  "defect_file": "r5-beryllium.lds.defect",
+  "defect_sha256": "0fca4281640305de3681a843b6558ec4de4f3ca335252a63ef1f9c89d3827104",
+  "defect": {
+    "kind": "linker-script-origin",
+    "summary": ".guest.code.protected origin 0x80233000 -> 0x80234000",
+    "accepted": "0x80233000",
+    "malformed": "0x80234000",
+    "source_path": "arch/riscv/be/r5-beryllium.lds",
+    "target": {
+      "line": 127,
+      "line_anchor": ".guest.code.protected : ALIGN(4096)",
+      "symbol": "__be_guest_protected_start",
+      "slot": null
+    },
+    "anchor": "\t.guest.code.protected : ALIGN(4096)\n",
+    "replacement": "\t. = 0x80234000;\n\t.guest.code.protected : ALIGN(4096)\n"
+  },
+  "diff": {
+    "sha256": "5cbf56cb43ec10c87f5d4487cc39d86c0506d2fd5a3d0652488603bbff319ab9",
+    "added": 1,
+    "removed": 0,
+    "budget": {
+      "added": 6,
+      "removed": 6
+    },
+    "unified": "--- a/arch/riscv/be/r5-beryllium.lds\n+++ b/arch/riscv/be/r5-beryllium.lds\n@@ -124,6 +124,7 @@\n \t\t. = __be_guest_management_start + 0x1000;\n \t\t__be_guest_management_end = .;\n \t} :guest_management\n+\t. = 0x80234000;\n \t.guest.code.protected : ALIGN(4096)\n \t{\n \t\t__be_guest_protected_start = .;\n"
+  },
+  "expected": {
+    "first_rejection_layer": "L5",
+    "outcome": "rejected-at-link",
+    "message_completeness": "primary-only",
+    "primary_message": "R5 protected guest moved",
+    "placeholders": {},
+    "stages": {
+      "l3": "pass",
+      "gcc-link": "reject",
+      "clang-link": "reject"
+    },
+    "absent_stages": [
+      "gcc-image-check",
+      "clang-image-check"
+    ],
+    "messages": {
+      "gcc-link": [
+        "R5 protected fixture first instruction moved",
+        "R5 protected guest moved"
+      ],
+      "clang-link": [
+        "R5 protected fixture first instruction moved",
+        "R5 protected guest moved"
+      ]
+    },
+    "prohibited_layers": [
+      "L6",
+      "L7",
+      "L8",
+      "L9",
+      "L10",
+      "L11"
+    ],
+    "qemu": "forbidden",
+    "artifacts": {
+      "quarantined": [],
+      "scratch_elf": false
+    }
+  }
+}

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# A test-only stand-in for the command it is named after, for
+# tests/test-k3-make-partition.sh: ../fake-partition-tools.py answers.
+exec python3 -B "$(dirname -- "$0")/../fake-partition-tools.py" \
+	"$(basename -- "$0")" "$@"

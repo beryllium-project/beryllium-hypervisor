@@ -1,0 +1,13 @@
+{
+  "spdx": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "purpose": "The build-time negative image undeclared-flow (planning/mvp-m1-plan.md, Scenarios and the harness, Negative images; Q11; S1 H27): te-poc's policy plus allow reader_t shared_wr_t : memory { write }; (undeclared-flow.te, appended to policy.te), the manifest unchanged. The build stops at the offline check: A6 fails (the undeclared flow reader_t -> writer_t through shared_wr_t), as do A5 (two writers) and A4 (write outside the reader's need); every other analysis passes; tools/gen-scenario.py writes no header, so no image exists. make -C mvp policy-negatives runs it with tools/policy-check.py --negative undeclared-flow, which passes only if the check fails exactly as declared below.",
+  "schema": "be-mvp-policy-negative-v1",
+  "name": "undeclared-flow",
+  "change": {"policy_append": "undeclared-flow.te"},
+  "expect": {
+    "fail": ["A4", "A5", "A6"],
+    "source_none": [],
+    "undeclared": []
+  }
+}

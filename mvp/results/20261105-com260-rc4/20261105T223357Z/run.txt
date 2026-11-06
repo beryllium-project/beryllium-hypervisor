@@ -1,0 +1,29 @@
+run=20261105T223357Z
+image=<repo>/build/mvp/variants/gcc/no-inject/be-mvp-boot.img
+image_sha256=9a2b747c0cd1a93b232fdf295d66b5a394b2dd774a51a622998acc267e11b87c
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/variants/gcc/no-inject/be-mvp-boot.img bytes=0x29f000 sha256=9a2b747c0cd1a93b232fdf295d66b5a394b2dd774a51a622998acc267e11b87c flat_sha256=009562c19368851e11a7411301b2b9c8719862a78d3ebd46ec9bac2294fc7d44 kexec_fdt=0x108400000 variant=no-inject dtb0=0x29d000 scenario=te-poc
+toolchain=gcc
+expect=no-inject.json expect_sha256=6224df6ec8830758bae894ae29644dc558ffdc09f002b4264ef5eaffa411a31b
+report=authority-report.json report_sha256=a7b2a39acdcc1b078951ab8bbe4726ffc41415208f9e03cbbb8ee097ea826963
+variant=no-inject
+launcher=uboot-autoboot-nvme
+loader=uboot-autoboot-nvme be_image=be-mvp-te-poc-no-inject-gcc.img load=0x140000000 booti=0x140000000 fdt=${fdtcontroladdr}
+be_image=be-mvp-te-poc-no-inject-gcc.img
+remote_image_sha256=9a2b747c0cd1a93b232fdf295d66b5a394b2dd774a51a622998acc267e11b87c
+staged_bytes=2748416 staged_md5=0bb1aab96d23fff7d47f80defe9ad3f5
+selected_be_image=be-mvp-te-poc-no-inject-gcc.img
+serial_source=log:<home>/src/spacemit-k3/logs/boot-8.log
+staged_sha256=yes
+boot_id_before=reset-34@2834922
+reset_utc=2026-11-05T22:33:58.646Z
+serial_range=2834922-2855397
+outcome=terminal-marker
+terminal_marker_utc=2026-11-05T22:34:12Z
+spl_banner=U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)
+uboot_banner=U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395
+board_kernel=none (boot from system reset)
+check_status=0
+BE_MVP_RESULT: PASS terminal=fail-marker
+attribution_lines=bytes_read=2748416 digest=md5:0bb1aab96d23fff7d47f80defe9ad3f5 autoboot_lines=1
+attribution=PASS selected=yes staged_sha256=yes size_md5=yes check=yes
+banner_audit=PASS

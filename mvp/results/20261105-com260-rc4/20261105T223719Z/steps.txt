@@ -1,0 +1,29 @@
++5.712 2026-11-05T22:37:27.724Z ready-boot line_end=3060060 Starting kernel ...
++6.440 2026-11-05T22:37:28.452Z ready-armed line_end=3067270 BE_MVP:15 INPUT_ARMED grants=g0 prefix=0x7e
++6.464 2026-11-05T22:37:28.476Z ready-focus line_end=3067292 BE_MVP:16 FOCUS none
++7.291 2026-11-05T22:37:29.303Z ready-shell g0 line_end=3076987 BE_MVP_G0: MVPINIT 11 SHELL tty=/dev/hvc0 role=host
++7.338 2026-11-05T22:37:29.349Z step=0 focus keys=2 offset=3077916
++7.416 2026-11-05T22:37:29.428Z step=0 line_end=3077936 BE_MVP:16 FOCUS g0
++7.918 2026-11-05T22:37:29.930Z step=1 send keys=22 offset=3077936
++8.281 2026-11-05T22:37:30.292Z step=1 line_end=3077972 BE_MVP_G0: # echo 509f8bb2fd689733
++8.301 2026-11-05T22:37:30.313Z step=2 line_end=3078001 BE_MVP_G0: 509f8bb2fd689733
++8.804 2026-11-05T22:37:30.816Z step=3 send keys=20 offset=3078001
++9.144 2026-11-05T22:37:31.156Z step=3 line_end=3078035 BE_MVP_G0: # be-anchor request 7
++9.165 2026-11-05T22:37:31.177Z step=4 line_end=3078250 BE_MVP_G0: MVPINIT 09 REQUEST n=7 digest=c5d9991a64599dea550c3d7d312e376f864d47b060469247c6acdd189a2b2569
++9.668 2026-11-05T22:37:31.680Z step=5 send keys=21 offset=3078250
++10.018 2026-11-05T22:37:32.030Z step=5 line_end=3078285 BE_MVP_G0: # be-deny store-shared
++10.047 2026-11-05T22:37:32.059Z step=6 line_end=3078639 BE_MVP_G0: MVPINIT 08 DENIED n=1 kind=store gpa=0x84001ff8 va=0x3f9cb74ff8 pc=0x127f8 signo=11 code=2 observed=1 unchanged=1
++10.550 2026-11-05T22:37:32.562Z step=7 send keys=22 offset=3078639
++10.914 2026-11-05T22:37:32.926Z step=7 line_end=3078675 BE_MVP_G0: # be-deny load-unmapped
++10.936 2026-11-05T22:37:32.948Z step=8 line_end=3079015 BE_MVP_G0: MVPINIT 08 DENIED n=2 kind=load gpa=0x84002000 va=0x3fa0bf1000 pc=0x127ec signo=11 code=2 observed=1
++11.438 2026-11-05T22:37:33.450Z step=9 negative keys=2 offset=3079015
++11.513 2026-11-05T22:37:33.525Z step=9 line_end=3079046 BE_MVP:17 INPUT_DROP no-grant
++12.016 2026-11-05T22:37:34.027Z step=10 send keys=16 offset=3079046
++12.314 2026-11-05T22:37:34.325Z step=10 line_end=3079076 BE_MVP_G0: # be-anchor pause
++12.334 2026-11-05T22:37:34.346Z step=11 line_end=3079397 BE_MVP_G0: MVPINIT 10 MGMT fid=pause target=1 result=0
++12.836 2026-11-05T22:37:34.848Z step=12 send keys=20 offset=3079397
++13.183 2026-11-05T22:37:35.195Z step=12 line_end=3079431 BE_MVP_G0: # be-anchor terminate
++13.206 2026-11-05T22:37:35.218Z step=13 line_end=3079762 BE_MVP_G0: MVPINIT 10 MGMT fid=terminate target=1 result=0
++13.708 2026-11-05T22:37:35.720Z step=14 send keys=5 offset=3079762
++13.867 2026-11-05T22:37:35.879Z step=14 line_end=3079781 BE_MVP_G0: # exit
++13.887 2026-11-05T22:37:35.899Z step=15 line_end=3079817 BE_MVP_G0: MVPINIT 11 SHELL exit=0

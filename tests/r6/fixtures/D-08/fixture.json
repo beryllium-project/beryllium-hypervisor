@@ -1,0 +1,139 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "D-08",
+  "partition": "dynamic",
+  "base": "arch/riscv/be/r5-guest.S",
+  "defect_file": "r5-guest.S.defect",
+  "base_sha256": "cd1a0d719418b4a5b07b7fcace5b432be210a425ea4f7bfa8dff6f89d2cc764b",
+  "defect_sha256": "bd11789890cb8e3381da24676bcc31ff73775c6212ebf90fb6bf19bf72367f54",
+  "change": {
+    "added": 1,
+    "removed": 1,
+    "limit": 6,
+    "hunks": [
+      {
+        "line": 35,
+        "removed": [
+          "\taddi\ta0, s0, 0\t\t\t/* +0x28 */"
+        ],
+        "added": [
+          "\taddi\ta0, zero, 0\t\t\t/* +0x28 defect: reports 0 */"
+        ]
+      }
+    ],
+    "sha256": "f616c65ff5c262c313d9a80c7a383929bf0a53f0fcd824be4e9268eb9e0b6908"
+  },
+  "declared_delta": {
+    "kind": "guest-word",
+    "domain": "management",
+    "slot": 1073807400,
+    "file_offset": 204840,
+    "base_word": "00040513",
+    "defect_word": "00000513",
+    "bytes": 4
+  },
+  "accepted_image_check": {
+    "disposition": "reject-with",
+    "messages": [
+      "{toolchain}: management fixture slot 40010028 is 00000513, expected 00040513"
+    ]
+  },
+  "expected": {
+    "outcome": "terminated-fail-closed",
+    "error_class": "import",
+    "last_marker": "BE_R4:02",
+    "qemu_status": 0,
+    "shutdown": "monitor-issued-srst",
+    "guest_entered": false,
+    "preempted_entry": null,
+    "console": [
+      "BE_R3:01 BOOT_VALIDATED",
+      "BE_R3:02 R1_DERIVED",
+      "BE_R3:03 R2_BUILT_REWALKED",
+      "BE_R3:04 HS_VS_STATE_VERIFIED",
+      "BE_R3:05 BINDING_PREPARED",
+      "BE_R3:06 HGATP_FENCED_PUBLISHED",
+      "BE_R3:07 ENTER_MANAGEMENT_VS pc=0x40010000",
+      "BE_R4:01 ENTRY_ARMED_IMPORTED",
+      "BE_R4:02 EXPECTED_DENIED_LOAD pc=0x40010014 resume=0x40010018",
+      "BE_R5:FAIL import"
+    ],
+    "forbidden_markers": [
+      "BE_R5:12",
+      "BE_R5:SRST_RETURNED",
+      "GENERAL_GUEST_SBI",
+      "HGATP_WRITE_AFTER_ENTRY",
+      "HFENCE_AFTER_ENTRY",
+      "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+      "SHARED_STORE_BY_PROTECTED"
+    ],
+    "guest_entries": [
+      {
+        "pc": "0000000040010000",
+        "hstatus": "0000000200700100",
+        "s0": "0000000000000000",
+        "a0": "0000000000000000",
+        "a1": "0000000000000000"
+      },
+      {
+        "pc": "0000000040010018",
+        "hstatus": "0000000200700140",
+        "s0": "0000000000000011",
+        "a0": "0000000000000000",
+        "a1": "0000000000000000"
+      }
+    ],
+    "guest_exits": [
+      {
+        "label": "management-denied-private-load",
+        "scause": "0000000000000015",
+        "sepc": "0000000040010014",
+        "stval": "0000000040001000",
+        "htval": "0000000010000400"
+      },
+      {
+        "label": "management-private-event",
+        "scause": "000000000000000a",
+        "sepc": "0000000040010030",
+        "stval": "0000000000000000",
+        "htval": "0000000000000000"
+      }
+    ],
+    "root_installs": [],
+    "final_registers": {
+      "s0": "0000000000000011",
+      "s1": "0000000000000000",
+      "a0": "0000000000000000",
+      "a1": "0000000000000022",
+      "a6": "0000000000000000",
+      "a7": "0000000000000001"
+    },
+    "backing": {
+      "management_private": 17,
+      "protected_private": null,
+      "shared": 34,
+      "witnesses": [
+        {
+          "register": "s0",
+          "value": 17,
+          "source": "management_private"
+        },
+        {
+          "register": "a1",
+          "value": 34,
+          "source": "shared"
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "scause": "accepted",
+    "sepc": "accepted",
+    "stval": "accepted",
+    "htval": "accepted",
+    "registers": "plan",
+    "class": "plan"
+  }
+}

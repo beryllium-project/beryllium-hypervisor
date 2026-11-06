@@ -1,0 +1,39 @@
+PASS published image <repo>/build/mvp/gcc/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/gcc/te-poc/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/gcc/anchor/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/variants/gcc/payload/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/variants/gcc/reader-write/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/variants/gcc/no-inject/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/variants/gcc/no-grant-check/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/clang/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/clang/te-poc/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/clang/anchor/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/variants/clang/payload/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/variants/clang/reader-write/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/variants/clang/no-inject/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/variants/clang/wrong-measurement/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/variants/clang/no-grant-check/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/probes/gcc/probe-platform/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/probes/gcc/probe-vmid-shared/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/probes/clang/probe-platform/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/probes/clang/probe-vmid-distinct/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS published image <repo>/build/mvp/probes/clang/probe-vmid-shared/be-mvp-boot.img: footprint 0x277000, entry 0x108000000, FDT 0x108400000
+PASS adjacent_pairs_are_safe
+PASS separated_pair_is_unsafe
+PASS pcrel_store_is_unsafe
+PASS missing_purgatory_is_unknown
+PASS kernel_containers_unpack
+PASS fdt_reservations_are_collected
+PASS corrupt_fdt_is_rejected
+PASS layout_comes_from_the_header
+PASS recorded_map_places_the_boot_image_at_l
+PASS raw_layout_refuses_busy_and_bad_ranges
+PASS recorded_map_leaves_every_extent_free
+PASS recorded_preflight_passes_the_region_check
+PASS region_check_stops_on_any_overlap
+PASS preflight_record_is_read
+PASS shared_pages_are_an_mvp_extent
+PASS boot_image_header_is_validated
+kexec-load self-test: 16/16 PASS images=22

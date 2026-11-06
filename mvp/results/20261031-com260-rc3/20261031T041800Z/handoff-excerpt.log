@@ -1,0 +1,181 @@
+[   1.966] Autoboot in 3 seconds
+[   4.975] pcie_dw_spacemit pcie@80000000: Port0 has no device detect gpio
+[   4.988] Now int init_x2_puphy...
+[   4.989] waiting pll lock...
+[   4.991] PHY PLL Locked.
+[   5.004] Now int init_x2_puphy...
+[   5.004] waiting pll lock...
+[   5.007] PHY PLL Locked.
+[   5.009] pcie_dw_spacemit pcie@80000000: pcie config device cmd in rc mode: 0x3bf
+[   5.132] PCIE-0: Link up (Gen3-x4, Bus0)
+[   5.147] Now int init_x1_puphy...
+[   5.147] waiting pll lock...
+[   5.150] PHY PLL Locked.
+[   5.152] pcie_dw_spacemit pcie@80c00000: pcie config device cmd in rc mode: 0x33f
+[   6.261] PCIE-2: Link down
+[   6.293] 2584576 bytes read in 2 ms (1.2 GiB/s)
+[   6.302] md5 for 140000000 ... 140276fff ==> 545c94b8dba622d35a8795a5627c8385
+[   6.306] Moving Image from 0x140000000 to 0x108000000, end=108277000
+[   6.312] ## Flattened Device Tree blob at 2fbe8aa50
+[   6.317]    Booting using the fdt blob at 0x2fbe8aa50
+[   6.322]    Loading Device Tree to 00000002fbd5d000, end 00000002fbd6f2ef ... OK
+fail to get alias node efuse_power
+[   6.533] 
+Starting kernel ...
+
+[   6.534] Removing MTD device #0 (nor0) with use count 1
+BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x00000002fbd5d000 dest=0x0000000102000000 bytes=0x00000000000a4000
+BE_MVP:00 BOOT_VALIDATED
+BE_MVP:00 CONFIG_SEALED inventory=14 authorities=2 roots=2 harts=0,1,2 identity=16bd3ebb3796bb68
+BE_MVP:01 SCENARIO name=two-guests domains=2 harts=0,1,2 of=8 ring_bytes=0x8000 mvp_region=0x102064000 mvp_bytes=0x40000 image_bytes=0xa4000
+BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status=1:1,2:1,3:1,4:1,5:1,6:1,7:1 started=none
+BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 hart=1 gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 root=0x102034000 vmid=1
+BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 hart=2 gpa=0x80000000 hpa=0x114000000 size=0x4000000 leaves=32 root=0x10203c000 vmid=2
+BE_MVP:04 PAYLOAD_CHECKED kernel_bytes=0x1cfcc4 image_size=0x203fb0
+BE_MVP:05 DOMAIN_RAM_CLEARED domain=0 gpa=0x80000000 size=0x4000000 ticks=0x860e7
+BE_MVP:05 DOMAIN_RAM_CLEARED domain=1 gpa=0x80000000 size=0x4000000 ticks=0x860df
+BE_MVP:06 PAYLOAD_PLACED domain=0 kernel=0x80200000 kernel_bytes=0x1cfcc4 image_size=0x203fb0 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x5171
+BE_MVP:06 PAYLOAD_PLACED domain=1 kernel=0x80200000 kernel_bytes=0x1cfcc4 image_size=0x203fb0 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x54f8
+BE_MVP:07 BLOCKS_PUBLISHED region=0x102044000 bytes=0x20000 generation=1 budget_ticks=0x100000000
+BE_MVP:08 HART_STARTED hart=1 domain=0 result=0 status=0 ticks=0x597
+BE_MVP:08 HART_STARTED hart=2 domain=1 result=0 status=0 ticks=0x4d0
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0xb15c hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0xb15c hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x69e
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x23f6d
+BE_MVP_G0: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP_G1: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP_G0: [    0.000000] Machine model: Beryllium MVP guest
+BE_MVP_G1: [    0.000000] Machine model: Beryllium MVP guest
+BE_MVP_G0: [    0.000000] SBI specification v2.0 detected
+BE_MVP_G1: [    0.000000] SBI specification v2.0 detected
+BE_MVP_G0: [    0.000000] SBI implementation ID=0x4245 Version=0x3
+BE_MVP_G1: [    0.000000] SBI implementation ID=0x4245 Version=0x3
+BE_MVP_G0: [    0.000000] SBI TIME extension detected
+BE_MVP_G1: [    0.000000] SBI TIME extension detected
+BE_MVP_G0: [    0.000000] SBI SRST extension detected
+BE_MVP_G1: [    0.000000] SBI SRST extension detected
+BE_MVP_G0: [    0.000000] SBI DBCN extension detected
+BE_MVP_G1: [    0.000000] SBI DBCN extension detected
+BE_MVP_G0: [    0.000000] earlycon: sbi0 at I/O port 0x0 (options '')
+BE_MVP_G1: [    0.000000] earlycon: sbi0 at I/O port 0x0 (options '')
+BE_MVP_G0: [    0.000000] printk: legacy bootconsole [sbi0] enabled
+BE_MVP_G1: [    0.000000] printk: legacy bootconsole [sbi0] enabled
+BE_MVP_G0: [    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+BE_MVP_G1: [    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+BE_MVP_G0: [    0.000000] riscv: base ISA extensions acim
+BE_MVP_G1: [    0.000000] riscv: base ISA extensions acim
+BE_MVP_G0: [    0.000000] riscv: ELF capabilities acim
+BE_MVP_G1: [    0.000000] riscv: ELF capabilities acim
+BE_MVP_G0: [    0.000000] Ticket spinlock: enabled
+BE_MVP_G1: [    0.000000] Ticket spinlock: enabled
+BE_MVP_G0: [    0.000000] Zone ranges:
+BE_MVP_G1: [    0.000000] Zone ranges:
+BE_MVP_G0: [    0.000000]   DMA32    [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G1: [    0.000000]   DMA32    [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G0: [    0.000000]   Normal   empty
+BE_MVP_G1: [    0.000000]   Normal   empty
+BE_MVP_G0: [    0.000000] Movable zone start for each node
+BE_MVP_G1: [    0.000000] Movable zone start for each node
+BE_MVP_G0: [    0.000000] Early memory node ranges
+BE_MVP_G1: [    0.000000] Early memory node ranges
+BE_MVP_G0: [    0.000000]   node   0: [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G1: [    0.000000]   node   0: [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G0: [    0.000000] Initmem setup node 0 [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G1: [    0.000000] Initmem setup node 0 [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G0: [    0.000000] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=0
+BE_MVP_G1: [    0.000000] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=1
+BE_MVP_G0: [    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes
+BE_MVP_G1: [    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes
+BE_MVP_G0: [    0.000000] Dentry cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+BE_MVP_G1: [    0.000000] Dentry cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+BE_MVP_G0: [    0.000000] Inode-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+BE_MVP_G1: [    0.000000] Inode-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+BE_MVP_G0: [    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 16384
+BE_MVP_G1: [    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 16384
+BE_MVP_G0: [    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+BE_MVP_G1: [    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+BE_MVP_G0: [    0.000000] SLUB: HWalign=64, Order=0-1, MinObjects=0, CPUs=1, Nodes=1
+BE_MVP_G1: [    0.000000] SLUB: HWalign=64, Order=0-1, MinObjects=0, CPUs=1, Nodes=1
+BE_MVP_G0: [    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+BE_MVP_G1: [    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+BE_MVP_G0: [    0.000000] riscv-intc: 64 local interrupts mapped
+BE_MVP_G1: [    0.000000] riscv-intc: 64 local interrupts mapped
+BE_MVP_G0: [    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+BE_MVP_G1: [    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+BE_MVP_G0: [    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+BE_MVP_G1: [    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+BE_MVP_G0: [    0.000000] sched_clock: 64 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+BE_MVP_G1: [    0.000000] sched_clock: 64 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+BE_MVP_G0: [    0.000010] riscv-timer: Timer interrupt in S-mode is available via sstc extension
+BE_MVP_G1: [    0.000013] riscv-timer: Timer interrupt in S-mode is available via sstc extension
+BE_MVP_G0: [    0.000029] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+BE_MVP_G1: [    0.000037] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+BE_MVP_G0: [    0.000037] pid_max: default: 32768 minimum: 301
+BE_MVP_G1: [    0.000046] pid_max: default: 32768 minimum: 301
+BE_MVP_G0: [    0.000089] Mount-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_MVP_G1: [    0.000102] Mount-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_MVP_G0: [    0.000098] Mountpoint-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_MVP_G1: [    0.000110] Mountpoint-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_MVP_G0: [    0.000146] VFS: Finished mounting rootfs on nullfs
+BE_MVP_G1: [    0.000177] VFS: Finished mounting rootfs on nullfs
+BE_MVP_G0: [    0.000349] ASID allocator using 16 bits (65536 entries)
+BE_MVP_G1: [    0.000434] ASID allocator using 16 bits (65536 entries)
+BE_MVP_G0: [    0.000408] Memory: 61688K/65536K available (870K kernel code, 548K rwdata, 270K rodata, 161K init, 207K bss, 3236K reserved, 0K cma-reserved)
+BE_MVP_G1: [    0.000504] Memory: 61688K/65536K available (870K kernel code, 548K rwdata, 270K rodata, 161K init, 207K bss, 3236K reserved, 0K cma-reserved)
+BE_MVP_G0: [    0.000605] clocksource: Switched to clocksource riscv_clocksource
+BE_MVP_G1: [    0.000743] clocksource: Switched to clocksource riscv_clocksource
+BE_MVP_G0: [    0.016699] cpu0: scalar unaligned word access speed is 4.94x byte access speed (fast)
+BE_MVP_G1: [    0.016844] cpu0: scalar unaligned word access speed is 4.94x byte access speed (fast)
+BE_MVP_G0: [    0.016892] workingset: timestamp_bits=62 (anon: 57) max_order=14 bucket_order=0 (anon: 0)
+BE_MVP_G1: [    0.017026] workingset: timestamp_bits=62 (anon: 57) max_order=14 bucket_order=0 (anon: 0)
+BE_MVP_G0: [    0.017002] printk: legacy console [hvc0] enabled
+BE_MVP_G1: [    0.017133] printk: legacy console [hvc0] enabled
+BE_MVP_G0: [    0.017002] printk: legacy console [hvc0] enabled
+BE_MVP_G1: [    0.017133] printk: legacy console [hvc0] enabled
+BE_MVP_G0: [    0.017018] printk: legacy bootconsole [sbi0] disabled
+BE_MVP_G1: [    0.017148] printk: legacy bootconsole [sbi0] disabled
+BE_MVP_G0: [    0.017018] printk: legacy bootconsole [sbi0] disabled
+BE_MVP_G1: [    0.017148] printk: legacy bootconsole [sbi0] disabled
+BE_MVP_G0: [    0.020635] clk: Disabling unused clocks
+BE_MVP_G1: [    0.020772] clk: Disabling unused clocks
+BE_MVP_G0: [    0.020694] Freeing unused kernel image (initmem) memory: 160K
+BE_MVP_G1: [    0.020829] Freeing unused kernel image (initmem) memory: 160K
+BE_MVP_G0: [    0.020704] Kernel memory protection not selected by kernel config.
+BE_MVP_G1: [    0.020839] Kernel memory protection not selected by kernel config.
+BE_MVP_G0: [    0.020712] Run /init as init process
+BE_MVP_G1: [    0.020847] Run /init as init process
+BE_MVP_G0: MVPINIT 01 START guest=0 pid=1
+BE_MVP_G1: MVPINIT 01 START guest=1 pid=1
+BE_MVP_G0: MVPINIT 02 UNAME release=7.2.0 machine=riscv64
+BE_MVP_G1: MVPINIT 02 UNAME release=7.2.0 machine=riscv64
+BE_MVP_G0: MVPINIT 03 STEP n=1/8 rounds=2191 t_ms=45
+BE_MVP_G1: MVPINIT 03 STEP n=1/8 rounds=2191 t_ms=45
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x1ce576 received=0x1ce5c5 answered=0x1ce5d2 spv=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0x235986 received=0x2359b4 answered=0x2359c0 spv=1
+BE_MVP_G0: MVPINIT 03 STEP n=2/8 rounds=2191 t_ms=121
+BE_MVP_G1: MVPINIT 03 STEP n=2/8 rounds=2191 t_ms=121
+BE_MVP_G0: MVPINIT 03 STEP n=3/8 rounds=2191 t_ms=197
+BE_MVP_G1: MVPINIT 03 STEP n=3/8 rounds=2191 t_ms=197
+BE_MVP_G0: MVPINIT 03 STEP n=4/8 rounds=2192 t_ms=273
+BE_MVP_G1: MVPINIT 03 STEP n=4/8 rounds=2192 t_ms=273
+BE_MVP_G0: MVPINIT 03 STEP n=5/8 rounds=2192 t_ms=349
+BE_MVP_G1: MVPINIT 03 STEP n=5/8 rounds=2192 t_ms=349
+BE_MVP_G0: MVPINIT 03 STEP n=6/8 rounds=2192 t_ms=425
+BE_MVP_G1: MVPINIT 03 STEP n=6/8 rounds=2192 t_ms=425
+BE_MVP_G0: MVPINIT 03 STEP n=7/8 rounds=2192 t_ms=501
+BE_MVP_G1: MVPINIT 03 STEP n=7/8 rounds=2192 t_ms=501
+BE_MVP_G0: MVPINIT 03 STEP n=8/8 rounds=2192 t_ms=577
+BE_MVP_G1: MVPINIT 03 STEP n=8/8 rounds=2192 t_ms=577
+BE_MVP_G0: MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=1004 ok=1
+BE_MVP_G0: MVPINIT 05 RESULT pass
+BE_MVP_G0: MVPINIT 06 POWER_OFF
+BE_MVP_G1: MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=1004 ok=1
+BE_MVP_G0: [    1.632628] reboot: Power down
+BE_MVP_G1: MVPINIT 05 RESULT pass
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=157 sbi=156 ipi=1 base=14 time=0 dbcn_write=98 dbcn_read=43 dbcn_byte=0 srst=1 refused=0 lines=65 ring_peak=0x1278 entered=0x69e ticks=0x256456c
+BE_MVP_G1: MVPINIT 06 POWER_OFF
+BE_MVP_G1: [    1.632764] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=157 sbi=156 ipi=1 base=14 time=0 dbcn_write=98 dbcn_read=43 dbcn_byte=0 srst=1 refused=0 lines=65 ring_peak=0x12b0 entered=0x23f6d ticks=0x2589b28
+BE_MVP:13 RUN_COMPLETE domains=2 records=138 wakes=2 idle_ticks=0x10c4a6c overlap_ticks=0x25405ff ticks=0x26d274d
+BE_MVP:14 SHUTDOWN type=0 reason=0

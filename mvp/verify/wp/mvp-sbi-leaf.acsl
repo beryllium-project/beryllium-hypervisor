@@ -1,0 +1,255 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+//
+// Purpose: the WP arm's round 0 on Leaf A (planning/mvp-m8-plan.md, D-4,
+//          D-5, D-7, M8-6): the contract of be_mvp_denial_decide and its
+//          four static helpers, planning/mvp-m8-specifications.md section
+//          4 as its Revision 1 states it (SHA-256
+//          aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b,
+//          accepted at 93a8d136; the clauses it corrected are marked
+//          [R1-n] below), transcribed into ACSL for Frama-C's ACSL importer
+//          (-acsl-import), which places it on the unmodified
+//          mvp/src/mvp-sbi.c. This run's round 0 is the first run's
+//          annotations through its round 3 (against the accepted text of
+//          004f31ae; mvp/results/20261103-verify/leaf-a/wp/) re-made
+//          against Revision 1: the helpers' clauses that run added in its
+//          round 1 are section 4.5's now [R1-3]; its round 1's three cases
+//          of D_complete are not restated (Revision 1's E7 and section 4.3
+//          exclude the first two, and the third is D_complete itself); its
+//          rounds 2 and 3's lemmas, leaf_at's two converse clauses, and
+//          its assertions at the leaf's calls are kept, each a goal, with
+//          its options (-wp-split; the lemmas' own run with WP's bitwise
+//          tactics). Each clause is named after the section it
+//          transcribes; tools/wp-arm.py records the mapping
+//          (transcription.txt). Later rounds' annotations are round-N.acsl
+//          beside this file, imported after it.
+// Trust:   nothing here is assumed: every requires is section 4.3's or
+//          4.5's, every ensures, assertion, lemma, and loop annotation is a
+//          goal WP must close. The logic definitions mirror section 4.1;
+//          the array of leaves has BE_MVP_PAGES_MAX = 3 entries (the
+//          type's), so "some page" and "the page with the lowest index"
+//          are written over the indices 0, 1, and 2.
+// Scope:   Leaf A only.
+// wp-options: -wp-split
+// wp-lemma-options: -wp-auto=wp:split,wp:bitwised,wp:bitrange,wp:bittestrange,wp:bitshift,wp:range
+
+// ---- 4.1 Definitions
+logic integer U64_LIMIT = 18446744073709551616;
+logic integer BIT(integer v, integer n) = (v >> n) & 1;
+logic integer SPV(integer h) = BIT(h, 7);
+logic integer SPVP(integer h) = BIT(h, 8);
+logic integer GVA(integer h) = BIT(h, 6);
+logic integer GPA(integer htval, integer stval) = (htval << 2) | (stval & 3);
+logic integer OPCODE(integer i) = (i >> 2) & 0x1f;
+logic integer LOAD = 0x00;
+logic integer STORE = 0x08;
+logic integer AMO = 0x0b;
+predicate HTINST_OK(integer scause, integer i) =
+  i == 0 ||
+  (i < 4294967296 && (i & 1) == 1 &&
+   ((scause == 21 && OPCODE(i) == LOAD) ||
+    (scause == 23 && (OPCODE(i) == STORE || OPCODE(i) == AMO))));
+predicate INSIDE(integer a, integer base, integer n) = base <= a < base + n;
+predicate IN_PAGE{L}(struct be_mvp_gstage_leaves *l, integer i, integer gpa) =
+  l->page[i].bytes > 0 && INSIDE(gpa, l->page[i].gpa, l->page[i].bytes);
+// Some page holds gpa: PAGE(gpa) exists.
+predicate HAS_PAGE{L}(struct be_mvp_gstage_leaves *l, integer gpa) =
+  IN_PAGE{L}(l, 0, gpa) || IN_PAGE{L}(l, 1, gpa) || IN_PAGE{L}(l, 2, gpa);
+// MAPPED, kept as section 4.1 keeps it; E7 does not use it [R1-1].
+predicate MAPPED{L}(struct be_mvp_gstage_map *m,
+                    struct be_mvp_gstage_leaves *l, integer gpa) =
+  INSIDE(gpa, m->gpa_base, m->size) || HAS_PAGE{L}(l, gpa);
+// PAGE(gpa) is page i: the lowest index.
+predicate PAGE_IS{L}(struct be_mvp_gstage_leaves *l, integer i, integer gpa) =
+  (i == 0 && IN_PAGE{L}(l, 0, gpa)) ||
+  (i == 1 && !IN_PAGE{L}(l, 0, gpa) && IN_PAGE{L}(l, 1, gpa)) ||
+  (i == 2 && !IN_PAGE{L}(l, 0, gpa) && !IN_PAGE{L}(l, 1, gpa) &&
+   IN_PAGE{L}(l, 2, gpa));
+predicate W(integer pte) = BIT(pte, 2) == 1;
+// PAGE(gpa) exists and lacks W.
+predicate PAGE_READ_ONLY{L}(struct be_mvp_gstage_leaves *l, integer gpa) =
+  (PAGE_IS{L}(l, 0, gpa) && !W(l->page[0].pte)) ||
+  (PAGE_IS{L}(l, 1, gpa) && !W(l->page[1].pte)) ||
+  (PAGE_IS{L}(l, 2, gpa) && !W(l->page[2].pte));
+// 1, 5, 7 for 20, 21, 23; section 4.5's access_fault is 0 elsewhere [R1-3].
+logic integer ACCESS_FAULT(integer scause) =
+  scause == 20 ? 1 : (scause == 21 ? 5 : (scause == 23 ? 7 : 0));
+logic integer VSTVEC_MODE(integer v) = v & 3;
+
+// ---- 4.2 The entry
+predicate E1{L}(struct be_mvp_state *s) = s->accept_denial == 1;
+predicate E2{L}(struct be_mvp_exit *r) =
+  r->frame.scause == 20 || r->frame.scause == 21 || r->frame.scause == 23;
+predicate E3{L}(struct be_mvp_exit *r) =
+  SPV(r->hstatus) == 1 && SPVP(r->hstatus) == 0 && GVA(r->hstatus) == 1;
+predicate E4{L}(struct be_mvp_exit *r) = r->frame.htval < 549755813888;
+predicate E5{L}(struct be_mvp_exit *r) =
+  HTINST_OK(r->frame.scause, r->htinst);
+predicate E6{L}(struct be_mvp_exit *r) =
+  VSTVEC_MODE(r->frame.vstvec) == 0 || VSTVEC_MODE(r->frame.vstvec) == 1;
+// The GPA inside the window.
+predicate IN_WINDOW{L}(struct be_mvp_gstage_map *m, struct be_mvp_exit *r) =
+  INSIDE(GPA(r->frame.htval, r->frame.stval), m->gpa_base, m->size);
+// E7's unmapped case: PAGE(GPA(record)) does not exist [R1-1].
+predicate UNMAPPED{L}(struct be_mvp_gstage_leaves *l, struct be_mvp_exit *r) =
+  !HAS_PAGE{L}(l, GPA(r->frame.htval, r->frame.stval));
+// E7's read-only case: cause 23, PAGE(GPA(record)) exists and lacks W.
+predicate READ_ONLY{L}(struct be_mvp_gstage_leaves *l,
+                       struct be_mvp_exit *r) =
+  r->frame.scause == 23 &&
+  PAGE_READ_ONLY{L}(l, GPA(r->frame.htval, r->frame.stval));
+// E7: the GPA outside the window first, for every cause, and then either
+// case [R1-1].
+predicate E7{L}(struct be_mvp_gstage_map *m, struct be_mvp_gstage_leaves *l,
+                struct be_mvp_exit *r) =
+  !IN_WINDOW{L}(m, r) && (UNMAPPED{L}(l, r) || READ_ONLY{L}(l, r));
+predicate ENTRY{L}(struct be_mvp_state *s, struct be_mvp_gstage_map *m,
+                   struct be_mvp_gstage_leaves *l, struct be_mvp_exit *r) =
+  E1{L}(s) && E2{L}(r) && E3{L}(r) && E4{L}(r) && E5{L}(r) && E6{L}(r) &&
+  E7{L}(m, l, r);
+
+// The leaf's three-bit test of hstatus is E3 (first run's round 2).
+lemma E3_MASK: \forall integer h; 0 <= h < U64_LIMIT ==>
+  (((h & 448) == 192) <==> (SPV(h) == 1 && SPVP(h) == 0 && GVA(h) == 1));
+// The leaf's test of a PTE's W bit is W negated; htval << 2 stays below
+// 2^64 under E4's bound (first run's round 3).
+lemma W_MASK: \forall integer p; 0 <= p < U64_LIMIT ==>
+  (((p & 4) == 0) <==> !W(p));
+lemma HTVAL_SHIFT: \forall integer x; 0 <= x < 549755813888 ==>
+  0 <= (x << 2) < U64_LIMIT;
+
+// ---- 4.5 The helpers [R1-3]
+function access_fault:
+  contract:
+    assigns \nothing;
+    ensures AF_cause: (scause == 20 || scause == 21 || scause == 23) ==>
+      \result == ACCESS_FAULT(scause);
+    ensures AF_other: !(scause == 20 || scause == 21 || scause == 23) ==>
+      \result == 0;
+
+function htinst_accepted:
+  contract:
+    assigns \nothing;
+    ensures HI_iff: \result == 1 <==> HTINST_OK(scause, htinst);
+    ensures HI_bool: \result == 0 || \result == 1;
+
+function inside:
+  contract:
+    requires IN_nowrap: base + bytes < U64_LIMIT;
+    assigns \nothing;
+    ensures IN_iff: \result == 1 <==> INSIDE(address, base, bytes);
+    ensures IN_bool: \result == 0 || \result == 1;
+
+function leaf_at:
+  contract:
+    requires LA_valid: \valid_read(leaves);
+    requires LA_nowrap: \forall integer i; 0 <= i < 3 ==>
+      leaves->page[i].gpa + leaves->page[i].bytes < U64_LIMIT;
+    assigns \nothing;
+    ensures LA_page: \forall integer i; PAGE_IS{Pre}(leaves, i, gpa) ==>
+      \result == &leaves->page[i];
+    ensures LA_none: !HAS_PAGE{Pre}(leaves, gpa) ==> \result == \null;
+    ensures LA_null: \result == \null ==> !HAS_PAGE{Pre}(leaves, gpa);
+    ensures LA_found: \result != \null ==>
+      (PAGE_IS{Pre}(leaves, 0, gpa) && \result == &leaves->page[0]) ||
+      (PAGE_IS{Pre}(leaves, 1, gpa) && \result == &leaves->page[1]) ||
+      (PAGE_IS{Pre}(leaves, 2, gpa) && \result == &leaves->page[2]);
+  at loop 1:
+    loop invariant LA_index: 0 <= index <= 3;
+    loop invariant LA_before: \forall integer j; 0 <= j < index ==>
+      !IN_PAGE{Here}(leaves, j, gpa);
+    loop assigns index;
+    loop variant 3 - index;
+
+// ---- 4.3 Preconditions and 4.4 Result and postconditions
+function be_mvp_denial_decide:
+  contract:
+    requires D_valid: \valid_read(state) && \valid_read(map) &&
+      \valid_read(leaves) && \valid_read(record) && \valid(out);
+    requires D_separated: \separated(state, map, leaves, record, out);
+    requires D_map_size: map->size > 0;
+    requires D_map_nowrap: map->gpa_base + map->size < U64_LIMIT;
+    requires D_pages_nowrap: \forall integer i; 0 <= i < 3 ==>
+      leaves->page[i].gpa + leaves->page[i].bytes < U64_LIMIT;
+    assigns *out;
+    ensures D_result: \result == 0 || \result == 1;
+    ensures D_E1: \result == 1 ==> E1{Pre}(state);
+    ensures D_E2: \result == 1 ==> E2{Pre}(record);
+    ensures D_E3: \result == 1 ==> E3{Pre}(record);
+    ensures D_E4: \result == 1 ==> E4{Pre}(record);
+    ensures D_E5: \result == 1 ==> E5{Pre}(record);
+    ensures D_E6: \result == 1 ==> E6{Pre}(record);
+    ensures D_E7: \result == 1 ==> E7{Pre}(map, leaves, record);
+    ensures D_complete: ENTRY{Pre}(state, map, leaves, record) ==>
+      \result == 1;
+    ensures D_cause: \result == 1 ==>
+      out->cause == \old(record->frame.scause);
+    ensures D_kind_unmapped: \result == 1 && UNMAPPED{Pre}(leaves, record) ==>
+      out->kind == 0;
+    ensures D_kind_read_only: \result == 1 && READ_ONLY{Pre}(leaves, record) ==>
+      out->kind == 1;
+    ensures D_gpa: \result == 1 ==> out->gpa ==
+      GPA(\old(record->frame.htval), \old(record->frame.stval));
+    ensures D_htval: \result == 1 ==>
+      out->htval == \old(record->frame.htval);
+    ensures D_htinst: \result == 1 ==> out->htinst == \old(record->htinst);
+    ensures D_stval: \result == 1 ==>
+      out->stval == \old(record->frame.stval);
+    ensures D_sepc: \result == 1 ==> out->sepc == \old(record->frame.sepc);
+    ensures D_vsstatus: \result == 1 ==>
+      out->vsstatus == \old(record->vsstatus);
+    ensures D_vstvec: \result == 1 ==>
+      out->vstvec == \old(record->frame.vstvec);
+    ensures D_time: \result == 1 ==> out->time == \old(record->time);
+    ensures D_inject_vscause: \result == 1 ==>
+      out->inject_vscause == ACCESS_FAULT(\old(record->frame.scause));
+    ensures D_inject_vstval: \result == 1 ==>
+      out->inject_vstval == \old(record->frame.stval);
+    ensures D_inject_vsepc: \result == 1 ==>
+      out->inject_vsepc == \old(record->frame.sepc);
+    ensures D_inject_vsstatus_spp: \result == 1 ==>
+      BIT(out->inject_vsstatus, 8) == SPVP(\old(record->hstatus));
+    ensures D_inject_vsstatus_spie: \result == 1 ==>
+      BIT(out->inject_vsstatus, 5) == BIT(\old(record->vsstatus), 1);
+    ensures D_inject_vsstatus_sie: \result == 1 ==>
+      BIT(out->inject_vsstatus, 1) == 0;
+    ensures D_inject_vsstatus_rest: \result == 1 ==>
+      (out->inject_vsstatus & ~0x122) == (\old(record->vsstatus) & ~0x122);
+    ensures D_resume_pc: \result == 1 ==>
+      out->resume_pc == (\old(record->frame.vstvec) & ~3);
+    ensures D_zero_cause: \result == 0 ==> out->cause == 0;
+    ensures D_zero_kind: \result == 0 ==> out->kind == 0;
+    ensures D_zero_gpa: \result == 0 ==> out->gpa == 0;
+    ensures D_zero_htval: \result == 0 ==> out->htval == 0;
+    ensures D_zero_htinst: \result == 0 ==> out->htinst == 0;
+    ensures D_zero_stval: \result == 0 ==> out->stval == 0;
+    ensures D_zero_sepc: \result == 0 ==> out->sepc == 0;
+    ensures D_zero_vsstatus: \result == 0 ==> out->vsstatus == 0;
+    ensures D_zero_vstvec: \result == 0 ==> out->vstvec == 0;
+    ensures D_zero_time: \result == 0 ==> out->time == 0;
+    ensures D_zero_inject_vscause: \result == 0 ==> out->inject_vscause == 0;
+    ensures D_zero_inject_vstval: \result == 0 ==> out->inject_vstval == 0;
+    ensures D_zero_inject_vsepc: \result == 0 ==> out->inject_vsepc == 0;
+    ensures D_zero_inject_vsstatus: \result == 0 ==>
+      out->inject_vsstatus == 0;
+    ensures D_zero_resume_pc: \result == 0 ==> out->resume_pc == 0;
+  at call htinst_accepted:
+    assert D_E3_here: E3{Here}(record);
+  at call inside:
+    assert D_gpa_here: gpa == GPA(record->frame.htval, record->frame.stval);
+  at call inside:
+    assert D_window_here:
+      gpa == GPA(\at(record->frame.htval, Pre), \at(record->frame.stval, Pre))
+      && map->gpa_base == \at(map->gpa_base, Pre)
+      && map->size == \at(map->size, Pre);
+  at call leaf_at:
+    assert D_place_here:
+      gpa == GPA(\at(record->frame.htval, Pre), \at(record->frame.stval, Pre))
+      && frame->scause == \at(record->frame.scause, Pre)
+      && !INSIDE(gpa, \at(map->gpa_base, Pre), \at(map->size, Pre))
+      && (HAS_PAGE{Here}(leaves, gpa) <==> HAS_PAGE{Pre}(leaves, gpa))
+      && (PAGE_IS{Here}(leaves, 0, gpa) <==> PAGE_IS{Pre}(leaves, 0, gpa))
+      && (PAGE_IS{Here}(leaves, 1, gpa) <==> PAGE_IS{Pre}(leaves, 1, gpa))
+      && (PAGE_IS{Here}(leaves, 2, gpa) <==> PAGE_IS{Pre}(leaves, 2, gpa))
+      && (PAGE_READ_ONLY{Here}(leaves, gpa) <==>
+          PAGE_READ_ONLY{Pre}(leaves, gpa));

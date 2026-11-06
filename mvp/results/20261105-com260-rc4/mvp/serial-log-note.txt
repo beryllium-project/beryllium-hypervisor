@@ -1,0 +1,17 @@
+Serial-log note: M10-6 release candidate 4
+
+The human's picocom remained the only serial reader and wrote boot-8.log.
+The session's recorded serial range begins with reset 1 at byte offset
+2264647 (2026-11-05T22:20:04.252Z) and ends after reset 49 at byte
+offset 3111437 (2026-11-05T22:41:59.696Z). The tools recorded 49 resets
+and the corresponding banners, with no finding; every campaign run's
+serial.log is the bounded excerpt the capture checker judged.
+
+The tool typed only the accepted U-Boot templates and, for the three
+shell runs, the accepted session files under item 8. No human typed
+during the session. There was no retry s, late prompt, missed stop,
+unplanned boot, hand reset, unexplained banner, or recovery action. The
+environment install and restore each completed their attended saveenv.
+
+Private U-Boot environment text and board identifiers remain in the
+session's private records and are not repeated here.

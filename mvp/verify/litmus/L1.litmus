@@ -1,0 +1,66 @@
+RISCV L1
+(* SPDX-License-Identifier: GPL-3.0-only *)
+(* Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com> *)
+(* Premise L1: "the barrier: a domain hart that reads the published
+   generation word reads every block word hart 0 wrote before its
+   `fence w, w`" (planning/mvp-m8-plan.md, D-3 and D-9), the premise of
+   P1, barrier_publication (planning/mvp-m8-specifications.md, sections 1
+   and 3, specification SHA-256
+   ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d).
+   Message passing with fence w,w and fence r,r, as the two toolchains
+   compiled it in build/mvp/gcc/be-mvp.elf and build/mvp/clang/be-mvp.elf
+   (the lines in mvp/verify/litmus/sequences/SYMBOL-TOOLCHAIN.s; GCC's
+   address, then Clang's):
+   P0, hart 0 in publish_blocks (GCC inlines it in be_mvp_runtime_main):
+     sd x6,0(x10)    desc->hart, be_mvp_block_fill      1020676ec 102067c1c
+     sd x7,0(x11)    desc->hgatp, be_mvp_block_fill     10206771e 102067c22
+     fence w,w       be_mvp_arch_fence_w_w, through be_mvp_exec_fence_w_w,
+                     called at                          102065bfa 1020650a6
+     sd x8,0(x12)    the generation word, 1             102065c0a 1020650ba
+   P1, the domain hart in be_mvp_hart_main:
+     ld x5,0(x12)    the generation word                1020664c8 102066626
+     bne x5,x9,LC00  not 1: the hart parks              1020664d0 10206662c
+     fence r,r       be_mvp_arch_fence_r_r, through be_mvp_exec_fence_r_r,
+                     called at                          1020664d8 102066638
+     ld x6,0(x10)    desc->hart, be_mvp_block_check     102067788 102067c8a
+     ld x7,0(x11)    desc->hgatp, for the one install   102066554 102066694
+   Every other word hart 0 publishes (the cleared state page, the rest of
+   the descriptor, the entry frame, the walked map and leaves, the ring
+   views) is stored before the same fence, and every other word the domain
+   hart checks is loaded after its own; two of each stand for them. A
+   reduced test keeps fewer accesses and orderings than the code, so it
+   allows at least the code's outcomes: Never here is Never there. Domain
+   1's generation word is stored after the fence too.
+   Forbidden: the domain hart reads generation 1 with an old (zero)
+   descriptor word.
+   Digests (mvp/verify/litmus/sequences.txt):
+   be_mvp_block_fill@gcc sha256=0595a9126e441a8aa62580ea013e3ca1c77c0220afb20ef8e046eddf31d8d005
+   be_mvp_block_fill@clang sha256=cc2feb6261be2f59a6995bbfef3b2533dfec9c0142e66284d4c38fc457b2c364
+   be_mvp_runtime_main@gcc sha256=6f9914debedfe11c76a51000ee26a265e7128529cfe813fddcf60ebba2c86f56
+   publish_blocks@clang sha256=92bf89df1f156a4fd320a0dc459b88c1886803be168c79ad5441c67b3a34ee92
+   be_mvp_exec_fence_w_w@gcc sha256=d2af5007185244ecff68554a5dba4d5b9d680932e87437fb430399451331246f
+   be_mvp_exec_fence_w_w@clang sha256=8e7211664d0945b560dd409a522e5b3267c3c6443146ecb502f8c84051f21975
+   be_mvp_arch_fence_w_w@gcc sha256=4a9c49b5aeb97cd559e75906fa16144d0b05bd33affb259ae823429b7fb89d2b
+   be_mvp_arch_fence_w_w@clang sha256=4a9c49b5aeb97cd559e75906fa16144d0b05bd33affb259ae823429b7fb89d2b
+   be_mvp_hart_main@gcc sha256=2754ae74c2b48f495a2e6c4009609da42973854664a950b6bb39ba5f405a9e2c
+   be_mvp_hart_main@clang sha256=eb0618c2c2216fafab4777cacd749b5ee51521573c33cab80a2755ea4f5236f9
+   be_mvp_exec_fence_r_r@gcc sha256=d2af5007185244ecff68554a5dba4d5b9d680932e87437fb430399451331246f
+   be_mvp_exec_fence_r_r@clang sha256=8e7211664d0945b560dd409a522e5b3267c3c6443146ecb502f8c84051f21975
+   be_mvp_arch_fence_r_r@gcc sha256=a173287af103bb3df9e7a542c380e51560c7777708cf7ac49430094df5ce713b
+   be_mvp_arch_fence_r_r@clang sha256=a173287af103bb3df9e7a542c380e51560c7777708cf7ac49430094df5ce713b
+   be_mvp_block_check@gcc sha256=1dae2e4489eff6606d6da62b376d7ccbfdc7258155678923a6c232f4ca17e1ff
+   be_mvp_block_check@clang sha256=66590436b99d0c23a61b2c5b659ca6eba6607f60de2e730193e0633739520273 *)
+{
+desc_hart=0; desc_hgatp=0; generation=0;
+0:x10=desc_hart; 0:x11=desc_hgatp; 0:x12=generation;
+0:x6=1; 0:x7=2; 0:x8=1;
+1:x10=desc_hart; 1:x11=desc_hgatp; 1:x12=generation; 1:x9=1;
+}
+ P0           | P1             ;
+ sd x6,0(x10) | ld x5,0(x12)   ;
+ sd x7,0(x11) | bne x5,x9,LC00 ;
+ fence w,w    | fence r,r      ;
+ sd x8,0(x12) | ld x6,0(x10)   ;
+              | ld x7,0(x11)   ;
+              | LC00:          ;
+exists (1:x5=1 /\ (1:x6=0 \/ 1:x7=0))

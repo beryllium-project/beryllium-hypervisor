@@ -1,0 +1,40 @@
++5.715 2026-11-05T22:36:48.827Z ready-boot line_end=3021243 Starting kernel ...
++6.342 2026-11-05T22:36:49.454Z ready-armed line_end=3027575 BE_MVP:15 INPUT_ARMED grants=g0,g1 prefix=0x7e
++6.376 2026-11-05T22:36:49.488Z ready-focus line_end=3027597 BE_MVP:16 FOCUS none
++7.204 2026-11-05T22:36:50.316Z ready-shell g0 line_end=3037157 BE_MVP_G0: MVPINIT 11 SHELL tty=/dev/hvc0 role=writer
++7.229 2026-11-05T22:36:50.342Z ready-shell g1 line_end=3037212 BE_MVP_G1: MVPINIT 11 SHELL tty=/dev/hvc0 role=reader
++7.779 2026-11-05T22:36:50.892Z step=0 negative keys=18 offset=3037398
++8.040 2026-11-05T22:36:51.153Z step=0 line_end=3037429 BE_MVP:17 INPUT_DROP no-focus
++8.041 2026-11-05T22:36:51.154Z step=1 focus keys=2 offset=3037429
++8.120 2026-11-05T22:36:51.232Z step=1 line_end=3037449 BE_MVP:16 FOCUS g0
++8.622 2026-11-05T22:36:51.734Z step=2 send keys=22 offset=3037449
++8.989 2026-11-05T22:36:52.101Z step=2 line_end=3037485 BE_MVP_G0: # echo 324d54f2cfc0f6ab
++9.011 2026-11-05T22:36:52.123Z step=3 line_end=3037514 BE_MVP_G0: 324d54f2cfc0f6ab
++9.513 2026-11-05T22:36:52.626Z step=4 send keys=37 offset=3037514
++10.066 2026-11-05T22:36:53.179Z step=4 line_end=3037565 BE_MVP_G0: # be-chan write hello 324d54f2cfc0f6ab
++10.089 2026-11-05T22:36:53.201Z step=5 line_end=3037651 BE_MVP_G0: MVPINIT 12 CHAN write gpa=0x84000000 bytes=22 text=hello 324d54f2cfc0f6ab
++10.592 2026-11-05T22:36:53.704Z step=6 send keys=22 offset=3037651
++10.953 2026-11-05T22:36:54.065Z step=6 line_end=3037687 BE_MVP_G0: # be-deny load-unmapped
++10.976 2026-11-05T22:36:54.088Z step=7 line_end=3038027 BE_MVP_G0: MVPINIT 08 DENIED n=1 kind=load gpa=0x84001000 va=0x3f9f3b8000 pc=0x127ec signo=11 code=2 observed=1
++10.977 2026-11-05T22:36:54.089Z step=8 focus keys=2 offset=3038027
++11.054 2026-11-05T22:36:54.166Z step=8 line_end=3038047 BE_MVP:16 FOCUS g1
++11.557 2026-11-05T22:36:54.669Z step=9 send keys=22 offset=3038047
++11.920 2026-11-05T22:36:55.032Z step=9 line_end=3038083 BE_MVP_G1: # echo 324d54f2cfc0f6ab
++11.940 2026-11-05T22:36:55.052Z step=10 line_end=3038112 BE_MVP_G1: 324d54f2cfc0f6ab
++12.442 2026-11-05T22:36:55.554Z step=11 send keys=13 offset=3038112
++12.699 2026-11-05T22:36:55.812Z step=11 line_end=3038139 BE_MVP_G1: # be-chan read
++12.726 2026-11-05T22:36:55.838Z step=12 line_end=3038224 BE_MVP_G1: MVPINIT 12 CHAN read gpa=0x84000000 bytes=22 text=hello 324d54f2cfc0f6ab
++13.228 2026-11-05T22:36:56.340Z step=13 send keys=21 offset=3038224
++13.578 2026-11-05T22:36:56.691Z step=13 line_end=3038259 BE_MVP_G1: # be-deny store-shared
++13.599 2026-11-05T22:36:56.711Z step=14 line_end=3038613 BE_MVP_G1: MVPINIT 08 DENIED n=1 kind=store gpa=0x84000ff8 va=0x3fb94e8ff8 pc=0x127f8 signo=11 code=2 observed=1 unchanged=1
++14.101 2026-11-05T22:36:57.213Z step=15 send keys=22 offset=3038613
++14.459 2026-11-05T22:36:57.572Z step=15 line_end=3038649 BE_MVP_G1: # be-deny load-unmapped
++14.481 2026-11-05T22:36:57.593Z step=16 line_end=3038989 BE_MVP_G1: MVPINIT 08 DENIED n=2 kind=load gpa=0x90000000 va=0x3fa35a7000 pc=0x127ec signo=11 code=2 observed=1
++14.984 2026-11-05T22:36:58.096Z step=17 send keys=5 offset=3038989
++15.144 2026-11-05T22:36:58.257Z step=17 line_end=3039008 BE_MVP_G1: # exit
++15.166 2026-11-05T22:36:58.278Z step=18 line_end=3039044 BE_MVP_G1: MVPINIT 11 SHELL exit=0
++15.167 2026-11-05T22:36:58.279Z step=19 focus keys=2 offset=3039354
++15.244 2026-11-05T22:36:58.356Z step=19 line_end=3039374 BE_MVP:16 FOCUS g0
++15.746 2026-11-05T22:36:58.859Z step=20 send keys=5 offset=3039374
++15.961 2026-11-05T22:36:59.074Z step=20 line_end=3039393 BE_MVP_G0: # exit
++15.989 2026-11-05T22:36:59.101Z step=21 line_end=3039429 BE_MVP_G0: MVPINIT 11 SHELL exit=0

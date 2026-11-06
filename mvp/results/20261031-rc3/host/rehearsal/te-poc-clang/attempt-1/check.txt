@@ -1,0 +1,5 @@
+BE_MVP_COUNTS: boot_hart=7 rule_hart=7 started=7 exits_g0=164 exits_g1=167 denials_g0=1 denials_g1=2 records=146 wakes=129 overlap_ticks=0x26d1586 shorter_ticks=0x26d15ae alternations=97 g0=67 g1=68
+BE_MVP_COSTS: g0_denial1_service_ticks=1947 g0_ping_to_receipt_ticks=1820 g0_receipt_to_pong_ticks=2472 g0_run_ticks=40703406 g0_run_ticks_per_exit=248191 g1_denial1_service_ticks=366 g1_denial2_service_ticks=45 g1_ping_to_receipt_ticks=261 g1_receipt_to_pong_ticks=34 g1_run_ticks=40730018 g1_run_ticks_per_exit=243892 hart0_idle_permille=993 hart0_idle_ticks=40502589 hart0_records=146 hart0_run_ticks=40754216 hart0_wakes=129
+BE_MVP_UBOOT: load_bytes=2584576 load_digest_kind=crc32 load_digest=57e4ff5a moving_from=0x140000000 moving_to=0x108000000 moving_end=0x108277000 fdt_blob=0xff7383d0 fdt_loaded=0xff7383d0 fdt_end=0xff73edd8 fdt_in_place=true
+BE_MVP_RESULT: PASS terminal=shutdown-requested
+BE_MVP_CAPTURE[uboot te-poc]: PASS

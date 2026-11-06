@@ -1,0 +1,7 @@
+attempt_utc=2026-11-05T22:30:23Z
+be_image=be-mvp-te-poc-clang.img
+printenv_be_image=be_image=be-mvp-te-poc-clang.img
+select-07-check_sha256=61762ce4277debc6f13542048de3c4b6e437ece3f1d67b353b23ce5cabd3c19d
+select_check=PASS
+saveenv=OK
+verdict=PASS

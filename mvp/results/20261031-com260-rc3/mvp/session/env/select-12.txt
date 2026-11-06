@@ -1,0 +1,7 @@
+attempt_utc=2026-10-31T04:24:02Z
+be_image=be-mvp-anchor-wrong-measurement-gcc.img
+printenv_be_image=be_image=be-mvp-anchor-wrong-measurement-gcc.img
+select-12-check_sha256=799fd8f2acacce851d2637b200e7043bb262a864ed69981c688016100c0a0510
+select_check=PASS
+saveenv=OK
+verdict=PASS

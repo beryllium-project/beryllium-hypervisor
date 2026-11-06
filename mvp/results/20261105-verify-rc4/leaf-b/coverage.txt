@@ -1,0 +1,43 @@
+# MVP M8 Leaf B: CBMC bounded model check of mvp-ring.c (planning/mvp-m8-plan.md, D-8): a bounded model check, never a proof
+specification=planning/mvp-m8-specifications.md revision=1 accepted=93a8d136 sha256=aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b
+leaf=mvp/src/mvp-ring.c sha256=432dbc511397da4b051da37f3860b1f8d078ef87fa175ea47d7b3c7a1bc267ba
+started=2026-11-05T15:29:39Z cbmc=6.8.0 (ad933aa-dirty) cvc5=cvc5 1.3.4
+seconds=7378
+cover function=post part=buffer capacity=4096 class=3960 solver=sat criterion=assertion covered=3/3 seconds=45.4 ok=yes
+cover function=post_words part=buffer capacity=4096 class=3960 solver=sat criterion=assertion covered=3/3 seconds=74.0 ok=yes
+cover function=take part=buffer capacity=4096 class=3960 solver=sat criterion=assertion covered=7/7 seconds=33.7 ok=yes
+cover function=sequence part=window capacity=4096 class=3960 solver=sat criterion=assertion covered=3/3 seconds=99.5 ok=yes
+cover-wraps function=sequence part=window capacity=4096 class=3960 solver=sat criterion=cover covered=2/2 seconds=91.4 ok=yes
+cover function=post part=buffer capacity=512 class=376 solver=sat criterion=assertion covered=3/3 seconds=2.4 ok=yes
+cover function=post_words part=buffer capacity=512 class=376 solver=sat criterion=assertion covered=3/3 seconds=3.9 ok=yes
+cover function=take part=buffer capacity=512 class=376 solver=sat criterion=assertion covered=7/7 seconds=6.5 ok=yes
+cover function=sequence part=window capacity=512 class=376 solver=sat criterion=assertion covered=3/3 seconds=51.6 ok=yes
+cover-wraps function=sequence part=window capacity=512 class=376 solver=sat criterion=cover covered=2/2 seconds=39.5 ok=yes
+cover function=reset part=all capacity=4096 solver=sat criterion=assertion covered=2/2 seconds=0.1 ok=yes
+cover function=init part=all capacity=4096 solver=sat criterion=assertion covered=8/8 seconds=0.1 ok=yes
+cover function=record_bytes part=all capacity=4096 solver=sat criterion=assertion covered=1/1 seconds=0.1 ok=yes
+cover function=post part=scalar capacity=4096 solver=sat criterion=assertion covered=7/7 seconds=1.5 ok=yes
+cover function=room part=all capacity=4096 solver=sat criterion=assertion covered=6/6 seconds=0.6 ok=yes
+cover function=post_words part=scalar capacity=4096 solver=sat criterion=assertion covered=7/7 seconds=0.6 ok=yes
+cover function=publish part=all capacity=4096 solver=sat criterion=assertion covered=3/3 seconds=0.1 ok=yes
+cover function=acquire part=all capacity=4096 solver=sat criterion=assertion covered=5/5 seconds=0.1 ok=yes
+cover function=take part=scalar capacity=4096 solver=cvc5 sat=timeout@600.6s criterion=assertion covered=3/3 seconds=11.9 ok=yes
+cover function=release part=all capacity=4096 solver=sat criterion=assertion covered=2/2 seconds=0.1 ok=yes
+cover function=peak part=all capacity=4096 solver=sat criterion=assertion covered=2/2 seconds=0.1 ok=yes
+cover function=taken part=all capacity=4096 solver=sat criterion=assertion covered=3/3 seconds=0.1 ok=yes
+cover function=published part=all capacity=4096 solver=sat criterion=assertion covered=2/2 seconds=0.6 ok=yes
+cover function=record_word part=all capacity=4096 solver=sat criterion=assertion covered=2/2 seconds=0.1 ok=yes
+cover function=reset part=all capacity=512 solver=sat criterion=assertion covered=2/2 seconds=0.1 ok=yes
+cover function=init part=all capacity=512 solver=sat criterion=assertion covered=8/8 seconds=0.1 ok=yes
+cover function=record_bytes part=all capacity=512 solver=sat criterion=assertion covered=1/1 seconds=0.1 ok=yes
+cover function=post part=scalar capacity=512 solver=sat criterion=assertion covered=7/7 seconds=0.8 ok=yes
+cover function=room part=all capacity=512 solver=sat criterion=assertion covered=6/6 seconds=0.2 ok=yes
+cover function=post_words part=scalar capacity=512 solver=sat criterion=assertion covered=7/7 seconds=0.6 ok=yes
+cover function=publish part=all capacity=512 solver=sat criterion=assertion covered=3/3 seconds=0.1 ok=yes
+cover function=acquire part=all capacity=512 solver=sat criterion=assertion covered=6/6 seconds=118.4 ok=yes
+cover function=take part=scalar capacity=512 solver=sat criterion=assertion covered=3/3 seconds=65.9 ok=yes
+cover function=release part=all capacity=512 solver=sat criterion=assertion covered=2/2 seconds=56.4 ok=yes
+cover function=peak part=all capacity=512 solver=sat criterion=assertion covered=2/2 seconds=0.1 ok=yes
+cover function=taken part=all capacity=512 solver=sat criterion=assertion covered=3/3 seconds=0.6 ok=yes
+cover function=published part=all capacity=512 solver=sat criterion=assertion covered=2/2 seconds=0.1 ok=yes
+cover function=record_word part=all capacity=512 solver=sat criterion=assertion covered=2/2 seconds=0.1 ok=yes

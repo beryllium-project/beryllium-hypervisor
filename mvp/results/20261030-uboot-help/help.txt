@@ -1,0 +1,117 @@
+?         - alias for 'help'
+[   4.910] base      - print or set address offset
+[   4.914] bdinfo    - print Board Info structure
+[   4.918] bmp       - manipulate BMP image data
+[   4.923] boot      - boot default, i.e., run 'bootcmd'
+[   4.928] bootd     - boot default, i.e., run 'bootcmd'
+[   4.933] bootefi   - Boots an EFI payload from memory
+[   4.938] booti     - boot Linux kernel 'Image' format from memory
+[   4.944] bootm     - boot application image from memory
+[   4.949] bootp     - boot image via network using BOOTP/TFTP protocol
+[   4.955] chpart    - change active partition of a MTD device
+[   4.961] cls       - clear screen
+[   4.964] cmp       - memory compare
+[   4.967] coninfo   - print console devices and information
+[   4.973] cp        - memory copy
+[   4.976] cpu       - display information about CPUs
+[   4.981] crc32     - checksum calculation
+[   4.985] crosec    - CROS-EC utility command
+[   4.989] dhcp      - boot image via network using DHCP/TFTP protocol
+[   4.995] dm        - Driver model low level access
+[   5.000] drv       - Driver management tools
+[   5.004] echo      - echo args to console
+[   5.008] editenv   - edit environment variable
+[   5.012] efidebug  - Configure UEFI environment
+[   5.017] env       - environment handling commands
+[   5.021] erase     - erase FLASH memory
+[   5.025] espi      - eSPI (Enhanced SPI) operations
+[   5.030] exit      - exit script
+[   5.033] ext2load  - load binary file from a Ext2 filesystem
+[   5.038] ext2ls    - list files in a directory (default /)
+[   5.044] ext4load  - load binary file from a Ext4 filesystem
+[   5.049] ext4ls    - list files in a directory (default /)
+[   5.055] ext4size  - determine a file's size
+[   5.059] false     - do nothing, unsuccessfully
+[   5.063] fastboot  - run as a fastboot usb or udp device
+[   5.069] fatinfo   - print information about filesystem
+[   5.074] fatload   - load binary file from a dos filesystem
+[   5.079] fatls     - list files in a directory (default /)
+[   5.085] fatmkdir  - create a directory
+[   5.088] fatrm     - delete a file
+[   5.092] fatsize   - determine a file's size
+[   5.096] fatwrite  - write file into a dos filesystem
+[   5.101] fdt       - flattened device tree utility commands
+[   5.106] flash_image- flash image from specified source
+[   5.111] flinfo    - print FLASH memory information
+[   5.116] fstype    - Look up a filesystem type
+[   5.120] fstypes   - List supported filesystem types
+[   5.125] fsuuid    - Look up a filesystem UUID
+[   5.130] go        - start application at address 'addr'
+[   5.135] gpio      - query and control gpio pins
+[   5.139] gpt       - GUID Partition Table
+[   5.143] gzwrite   - unzip and write memory to block device
+[   5.149] help      - print command description/usage
+[   5.154] i2c       - I2C sub-system
+[   5.157] iminfo    - print header information for application image
+[   5.163] imxtract  - extract a part of a multi-image
+[   5.168] itest     - return true/false on integer compare
+[   5.173] lcdputs   - print string on video framebuffer
+[   5.178] ln        - Create a symbolic link
+[   5.182] load      - load binary file from a filesystem
+[   5.187] loadb     - load binary file over serial line (kermit mode)
+[   5.194] loads     - load S-Record file over serial line
+[   5.199] loadx     - load binary file over serial line (xmodem mode)
+[   5.205] loady     - load binary file over serial line (ymodem mode)
+[   5.211] loop      - infinite loop on address range
+[   5.216] ls        - list files in a directory (default /)
+[   5.222] md        - memory display
+[   5.225] md5sum    - compute MD5 message digest
+[   5.229] mm        - memory modify (auto-incrementing address)
+[   5.235] mmc       - MMC sub system
+[   5.239] mmcinfo   - display MMC info
+[   5.242] mtd       - MTD utils
+[   5.245] mtdparts  - define flash/nand partitions
+[   5.250] mw        - memory write (fill)
+[   5.253] net       - NET sub-system
+[   5.257] nfs       - boot image via network using NFS protocol
+[   5.263] nm        - memory modify (constant address)
+[   5.268] nvme      - NVM Express sub-system
+[   5.272] panic     - Panic with optional message
+[   5.276] part      - disk partition related commands
+[   5.281] pci       - list and access PCI Configuration Space
+[   5.287] ping      - send ICMP ECHO_REQUEST to network host
+[   5.292] pinmux    - show pin-controller muxing
+[   5.296] printenv  - print environment variables
+[   5.301] protect   - enable or disable FLASH write protection
+[   5.307] pxe       - commands to get and boot from pxe files
+[   5.312] random    - fill memory with random pattern
+[   5.317] reset     - Perform RESET of the CPU
+[   5.321] run       - run commands in an environment variable
+[   5.327] save      - save file to a filesystem
+[   5.331] saveenv   - save environment variables to persistent storage
+[   5.337] scsi      - SCSI sub-system
+[   5.341] scsiboot  - boot from SCSI device
+[   5.345] setcurs   - set cursor position within screen
+[   5.350] setenv    - set environment variables
+[   5.354] setexpr   - set environment variable as the result of eval expression
+[   5.361] sf        - SPI flash sub-system
+[   5.365] showvar   - print local hushshell variables
+[   5.370] size      - determine a file's size
+[   5.374] sleep     - delay execution for some time
+[   5.379] source    - run script from memory
+[   5.383] sqfsload  - load binary file from a SquashFS filesystem
+[   5.389] sqfsls    - List files in directory. Default: root (/).
+[   5.395] sysboot   - command to get and boot from syslinux files
+[   5.401] tcpm      - TCPM sub-system
+[   5.404] test      - minimal test like /bin/sh
+[   5.409] tftpboot  - load file via network using TFTP protocol
+[   5.414] time      - run commands and summarize execution time
+[   5.420] tlv_eeprom- Display and program the system EEPROM data block.
+[   5.427] true      - do nothing, successfully
+[   5.431] ufs       - UFS  sub system
+[   5.434] ums       - Use the UMS [USB Mass Storage]
+[   5.439] unzip     - unzip a memory region
+[   5.443] usb       - USB sub-system
+[   5.446] usbboot   - boot from USB device
+[   5.450] version   - print monitor, compiler and linker version
+[   5.456] wdt       - Watchdog sub-system

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The calls.log of an --apply whose btrfs filesystem resize fails
+# (tests/test-k3-make-partition.sh, resize-fails): the temporary mount is
+# unmounted, and the partition table is never written. Lines starting
+# with # are not compared.
+dd if=@ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL of=@ROOT@/var/k3mp-backup/gpt-primary.before.bin bs=512 count=34 conv=excl
+dd if=@ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL of=@ROOT@/var/k3mp-backup/gpt-backup.before.bin bs=512 skip=976773135 count=33 conv=excl
+sync
+btrfs check --readonly -- @ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL-part3
+mount -t btrfs -o subvolid=5 -- @ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL-part3 @ROOT@/run/k3-make-partition.XXXXXX
+btrfs filesystem resize 1:-1140850688 @ROOT@/run/k3-make-partition.XXXXXX
+umount -- @ROOT@/run/k3-make-partition.XXXXXX

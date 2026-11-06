@@ -1,0 +1,39 @@
+scenario two-guests sha256=87c6f18b6a18f99cad8604c796f88b9cab63c9c86f307f338a395894d9d3cc34
+config mvp-config.c sha256=eda5f753fc8bee93c89013442e0470cbf899b380b7ae43cb1538184b7e2a0a5e identity=16bd3ebb3796bb68a787f511d32162a9a0d7a665f1712fbf56a96d09f96c8167
+session sessions/shell.json sha256=06ccc1f53a0eed19d3f4c28eb62ef213bc5cb1926cef8459c30f1df132cd4f63 image=two-guests-shell
+log image=exit-budget sequence=v1 run=post-launch-failure r2=kept count=13 launch=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7,f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+log image=hart-start sequence=v1 run=post-launch-failure r2=kept count=13 launch=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7,f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+log image=hostile sequence=v1 run=complete r2=kept count=13 launch=c1696d47d94823f0c83113233e3cefb1d76f2706ea880da4e7edbc333041cabc,f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+log image=init-exit sequence=v1 run=post-launch-failure r2=kept count=13 launch=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7,af052baee8363f69748c7c51088ddeaa326e8f9bdc31a68df7b9778176157af8
+log image=no-sstc sequence=v1 run=pre-measurement r2=kept count=13 launch=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7,f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+log image=payload sequence=v1 run=pre-measurement r2=kept count=13 launch=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7,f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+log image=probe-console-input sequence=probe run=complete r2=kept count=9 launch=none
+log image=probe-platform sequence=probe run=complete r2=kept count=9 launch=none
+log image=probe-vmid-distinct sequence=probe run=complete r2=kept count=9 launch=none
+log image=probe-vmid-shared sequence=probe run=complete r2=kept count=9 launch=none
+log image=rdcycle sequence=v1 run=post-launch-failure r2=kept count=13 launch=3dbc0cdb79531dc70d3f5099a55b8eb786745e794c8682652f4e6cfa93afd90a,f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+log image=ring-full sequence=v1 run=post-launch-failure r2=kept count=13 launch=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7,f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+log image=run-timeout sequence=v1 run=post-launch-failure r2=kept count=13 launch=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7,f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+log image=sbi-3.0 sequence=v1 run=pre-measurement r2=kept count=13 launch=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7,f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+log image=sbi-time sequence=v1 run=complete r2=kept count=13 launch=76eb30ca7422f8ee1210ebd745597599099af26d4384777bb89e7b207e5dc78e,3b28efaee01f4a873f0fc1d9beead4caf16f0f5fe3df84aabb2d4239153c9e8d
+log image=shim-rule sequence=v1 run=complete r2=kept count=13 launch=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7,f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+log image=two-guests sequence=v1 run=complete r2=kept count=13 launch=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7,f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+log image=two-guests-shell sequence=v1 run=complete r2=kept count=13 launch=eb5ee7c1dde0a2466e6f3b87dad919e56e5e4955fe3457a977245dc200550778,ffd1c4ee5600a158c56fec049e083aa159a8356c1c7c5ab50a04ffdfe1a88976
+expect exit-budget.json
+expect hart-start.json
+expect hostile.json
+expect init-exit.json
+expect no-sstc.json
+expect payload.json
+expect probe-console-input.json
+expect probe-platform.json
+expect probe-vmid-distinct.json
+expect probe-vmid-shared.json
+expect rdcycle.json
+expect ring-full.json
+expect run-timeout.json
+expect sbi-3.0.json
+expect sbi-time.json
+expect shim-rule.json
+expect two-guests.json
+expect two-guests-shell.json

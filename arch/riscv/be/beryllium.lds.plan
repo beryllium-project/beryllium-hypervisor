@@ -1,0 +1,102 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/*
+ * Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+ *
+ * Purpose: frozen R0 linker-script PLAN for the fixed single-hart Beryllium
+ *          image. It declares every security-sensitive section, its exact
+ *          physical extent symbol, and the ASSERT requirements the R3 boot
+ *          package must satisfy.
+ * Trust:   reviewable non-authoritative PLAN. This file is deliberately NOT a
+ *          build target and is linked by nothing at R0. R0 adds no privileged
+ *          image; the working linker script and its assertions are delivered
+ *          by R3.
+ * Scope:   R0 freeze only. Extents mirror arch/riscv/be/r0-layout.h and
+ *          include/be/r0-config.h. The two R-X guest-code overlays (12, 13)
+ *          are an operational extension and W^X-preserving code cut point; the
+ *          W^X and monitor-exclusion ASSERTs below must cover them at R3.
+ *
+ * ==========================================================================
+ * PLAN ONLY - NOT COMPILED, NOT LINKED, NO IMAGE TARGET AT R0
+ * ==========================================================================
+ */
+
+/*
+ * OUTPUT_ARCH(riscv)
+ * ENTRY(be_reset)   -- R3 entry symbol; absent at R0.
+ *
+ * Frozen physical placement (see r0-layout.h for the authoritative table):
+ *
+ *   BE_R0_IMAGE_ENTRY              = 0x80200000   image entry / monitor code
+ *   OpenSBI-reserved              = [0x80000000, 0x80200000)  M-mode only
+ *   DRAM window (-m 128M)         = [0x80000000, 0x88000000)
+ */
+
+/*
+MEMORY
+{
+	dram (rwxa) : ORIGIN = 0x80200000, LENGTH = 0x07E00000
+}
+
+SECTIONS
+{
+	. = 0x80200000;
+
+	.monitor.text : ALIGN(4K) {
+		__be_monitor_code_start = .;
+		*(.text.be.entry)
+		*(.text .text.*)
+		. = ALIGN(4K);
+		__be_monitor_code_end = .;
+	} > dram					// R-X, 0x8000
+
+	.monitor.data : ALIGN(4K) {
+		__be_monitor_data_start = .;
+		*(.rodata .rodata.*)		// frozen inventory/proposal input
+		*(.data .data.*)
+		*(.bss .bss.*)
+		__be_diagnostic_page = 0x8020F000;   // last page of monitor data
+		. = ALIGN(4K);
+		__be_monitor_data_end = .;
+	} > dram					// RW-NX, 0x8000
+
+	. = 0x80214000;
+	.gstage.root.management (NOLOAD) : ALIGN(16K) {
+		__be_root_pool_management = .;	// root(16K)+L1(4K)+L0(4K)+spare(8K)
+		. += 0x8000;
+	} > dram
+
+	.gstage.root.protected (NOLOAD) : ALIGN(16K) {
+		__be_root_pool_protected = .;
+		. += 0x8000;
+	} > dram
+
+	. = 0x80225000;
+	.stack.management (NOLOAD) : ALIGN(4K) { __be_stack_management = .; . += 0x2000; }
+	.stack.protected (NOLOAD) : ALIGN(4K) { __be_stack_protected = 0x80228000; }
+	.saved.management (NOLOAD) : ALIGN(4K) { __be_saved_management = 0x8022B000; }
+	.saved.protected (NOLOAD) : ALIGN(4K) { __be_saved_protected = 0x8022C000; }
+	.private.management (NOLOAD) : ALIGN(4K) { __be_private_management = 0x8022E000; }
+	.private.protected (NOLOAD) : ALIGN(4K) { __be_private_protected = 0x8022F000; }
+	.shared (NOLOAD) : ALIGN(4K) { __be_shared = 0x80230000; }
+	.guest.code.management : ALIGN(4K) { __be_guest_code_management = 0x80232000; }  // R-X
+	.guest.code.protected  : ALIGN(4K) { __be_guest_code_protected  = 0x80233000; }  // R-X
+}
+*/
+
+/*
+ * Required R3 ASSERTs (frozen intent; wired to the real script at R3):
+ *
+ *   ASSERT(__be_monitor_code_start == 0x80200000, "entry moved");
+ *   ASSERT(__be_monitor_code_end   <= 0x80208000, "monitor code overflow");
+ *   ASSERT(__be_monitor_data_end   <= 0x80210000, "monitor data overflow");
+ *   ASSERT((__be_root_pool_management & 0x3FFF) == 0, "root not 16K aligned");
+ *   ASSERT((__be_root_pool_protected  & 0x3FFF) == 0, "root not 16K aligned");
+ *   ASSERT(__be_diagnostic_page >= __be_monitor_data_start &&
+ *          __be_diagnostic_page +  0x1000 <= __be_monitor_data_end,
+ *          "diagnostic page escaped monitor data");
+ *   -- W^X: no section is both writable and executable.
+ *   -- monitor exclusion: no G-stage leaf frame lies within any monitor,
+ *      root-pool, stack, or saved-state extent.
+ *   -- non-overlap: every named extent is disjoint (checked now by
+ *      tests/r0/r0-check.c against r0-layout.h).
+ */

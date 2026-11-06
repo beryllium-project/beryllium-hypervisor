@@ -1,0 +1,14 @@
+run=20261006T113537Z
+image=<repo>/build/k3-b2/gcc/be-k3-b2.bin
+image_sha256=9c145f000067d36035a18cc27c53bbbf231d41cb2088a7765ed5742323a08c79
+k3_ssh=fedora@k3e
+loader_mode=raw:0x102000000
+serial_source=none:load-only
+boot_id_before=cabaf3c9-61c9-4edd-b9bc-07e0c355e72a
+board_kernel=7.1.5-201.0.riscv64.omni.fc44.riscv64
+board_lockdown=[none] integrity confidentiality
+remote_image_sha256=9c145f000067d36035a18cc27c53bbbf231d41cb2088a7765ed5742323a08c79
+loader=kexec_load entry=0x102000000 fdt=0x102100000 image_memsz=0x34000 fdt_bytes=41088 kexec_loaded=1
+kexec_loaded=1
+kexec_loaded_after_unload=0
+outcome=load-only

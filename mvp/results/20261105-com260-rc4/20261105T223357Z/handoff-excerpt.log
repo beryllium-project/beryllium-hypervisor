@@ -1,0 +1,176 @@
+[   2.015] Autoboot in 3 seconds
+[   5.024] pcie_dw_spacemit pcie@80000000: Port0 has no device detect gpio
+[   5.037] Now int init_x2_puphy...
+[   5.038] waiting pll lock...
+[   5.040] PHY PLL Locked.
+[   5.053] Now int init_x2_puphy...
+[   5.053] waiting pll lock...
+[   5.056] PHY PLL Locked.
+[   5.058] pcie_dw_spacemit pcie@80000000: pcie config device cmd in rc mode: 0x3bf
+[   5.181] PCIE-0: Link up (Gen3-x4, Bus0)
+[   5.196] Now int init_x1_puphy...
+[   5.196] waiting pll lock...
+[   5.199] PHY PLL Locked.
+[   5.201] pcie_dw_spacemit pcie@80c00000: pcie config device cmd in rc mode: 0x33f
+[   6.310] PCIE-2: Link down
+[   6.343] 2748416 bytes read in 3 ms (873.7 MiB/s)
+[   6.352] md5 for 140000000 ... 14029efff ==> 0bb1aab96d23fff7d47f80defe9ad3f5
+[   6.356] Moving Image from 0x140000000 to 0x108000000, end=10829f000
+[   6.363] ## Flattened Device Tree blob at 2fbe8aa50
+[   6.367]    Booting using the fdt blob at 0x2fbe8aa50
+[   6.372]    Loading Device Tree to 00000002fbd5d000, end 00000002fbd6f2ef ... OK
+fail to get alias node efuse_power
+[   6.584] 
+Starting kernel ...
+
+[   6.584] Removing MTD device #0 (nor0) with use count 1
+BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x00000002fbd5d000 dest=0x0000000102000000 bytes=0x00000000000a4000
+BE_MVP:00 BOOT_VALIDATED
+BE_MVP:00 CONFIG_SEALED inventory=15 authorities=4 roots=2 harts=0,1,2 identity=6b72438740dba149
+BE_MVP:01 SCENARIO name=te-poc domains=2 harts=0,1,2 of=8 ring_bytes=0x8000 mvp_region=0x102064000 mvp_bytes=0x40000 image_bytes=0xa4000
+BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status=1:1,2:1,3:1,4:1,5:1,6:1,7:1 started=none
+BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 hart=1 gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 root=0x102034000 vmid=1
+BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 hart=2 gpa=0x80000000 hpa=0x114000000 size=0x4000000 leaves=32 root=0x10203c000 vmid=2
+BE_MVP:03 CHANNEL_CHECKED channel=0 writer=0 reader=1 gpa=0x84000000 hpa=0x118000000 bytes=0x1000 level0=0x102039000,0x102041000 writer_pte=0x460000d7 reader_pte=0x46000053 config=5c9678f15a7e9906b5822b7e1fe4642c7b16d53970a3e82a18f6f167af7ac551
+BE_MVP:04 PAYLOAD_CHECKED kernel_bytes=0x1f7cc4 image_size=0x22bfb0
+BE_MVP:05 DOMAIN_RAM_CLEARED domain=0 gpa=0x80000000 size=0x4000000 ticks=0x617fa
+BE_MVP:05 DOMAIN_RAM_CLEARED domain=1 gpa=0x80000000 size=0x4000000 ticks=0x616b9
+BE_MVP:05 CHANNEL_CLEARED channel=0 hpa=0x118000000 bytes=0x1000 ticks=0x2c
+BE_MVP:06 PAYLOAD_PLACED domain=0 kernel=0x80200000 kernel_bytes=0x1f7cc4 image_size=0x22bfb0 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x5ab4
+BE_MVP:06 PAYLOAD_PLACED domain=1 kernel=0x80200000 kernel_bytes=0x1f7cc4 image_size=0x22bfb0 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x5ef8
+BE_MVP:06 LAUNCH domain=0 hart=1 register=d4a20b058b9a0f17a1ab30bb152c5bd6906204293a593713d3b6fe2e6a99d35e expected=match ticks=0xd5e6e
+BE_MVP:06 LAUNCH domain=1 hart=2 register=050a0c56f991e333a6797785c607657dcba8baa494a0139fd5173919135db580 expected=match ticks=0xd63d1
+BE_MVP:19 LOG header magic=BEMVPLOG version=1 hlen=128 rlen=96 capacity=41 count=14 state=closed alg=0x000b scenario=d40c11c10b397ab6e60b675a9c5c1e303f0b2c329a50cd8dd653752a5c208c77 config=5c9678f15a7e9906b5822b7e1fe4642c7b16d53970a3e82a18f6f167af7ac551
+BE_MVP:19 LOG record seq=0 producer=0 type=measured stream=0 object=monitor-text repr=as-placed outcome=recorded base=0x0000000102000000 length=0x0000000000002e10 dlen=32 srec=0 expected=0 digest=ffb708f0808023a1cc29462194c84248642024e862df90cd05cc8ced98374daf
+BE_MVP:19 LOG record seq=1 producer=0 type=measured stream=0 object=monitor-rodata repr=as-placed outcome=recorded base=0x0000000102008820 length=0x0000000000000080 dlen=32 srec=1 expected=0 digest=d40b48a062859d0b0e080f3aed9adc6de90ee26ceb778419046e9834adaa4000
+BE_MVP:19 LOG record seq=2 producer=0 type=measured stream=0 object=monitor-input repr=as-placed outcome=recorded base=0x0000000102008000 length=0x0000000000000820 dlen=32 srec=2 expected=0 digest=9420002d844b6d8b8e78a245f6a200b9d042b80f97536176eb5bfdd6cb4843e0
+BE_MVP:19 LOG record seq=3 producer=0 type=measured stream=0 object=mvp-text repr=as-placed outcome=recorded base=0x0000000102064000 length=0x00000000000071a0 dlen=32 srec=3 expected=0 digest=735935b826ec974b9ebb7e5329e911401987e3a308e41d88d097ddae90b08685
+BE_MVP:19 LOG record seq=4 producer=0 type=measured stream=0 object=mvp-rodata repr=as-placed outcome=recorded base=0x000000010206b1a0 length=0x0000000000001788 dlen=32 srec=4 expected=0 digest=9dc162992bdddd64922f28f9c906fc526bdc1ebaf5de9ea63a470c65a7178498
+BE_MVP:19 LOG record seq=5 producer=0 type=measured stream=1 object=core-identity repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=0 digest=6b72438740dba14915ab56a0100fc930f694463d4c0272246587a46500ee1c6c
+BE_MVP:19 LOG record seq=6 producer=0 type=measured stream=1 object=console-grants repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=1 expected=0 digest=96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7
+BE_MVP:19 LOG record seq=7 producer=0 type=informational stream=1 object=configuration-identity repr=build-recorded outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=2 expected=0 digest=5c9678f15a7e9906b5822b7e1fe4642c7b16d53970a3e82a18f6f167af7ac551
+BE_MVP:19 LOG record seq=8 producer=0 type=informational stream=1 object=policy-identity repr=build-recorded outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=3 expected=0 digest=4a1fac2bdea04cbcf4f3248c21cb41cf2823625b46d284c45d9c69b6a25b8b2d
+BE_MVP:19 LOG record seq=9 producer=0 type=measured stream=2 object=kernel-image repr=as-placed outcome=recorded base=0x0000000110200000 length=0x00000000001f7cc4 dlen=32 srec=0 expected=0 digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6
+BE_MVP:19 LOG record seq=10 producer=0 type=measured stream=2 object=device-tree repr=as-placed outcome=gated-pass base=0x0000000113e00000 length=0x0000000000001000 dlen=32 srec=1 expected=0 digest=5aca65d93e8488f44f0c8a746993ce8ceb231542fc9aa64bd491ede90fb9156b
+BE_MVP:19 LOG record seq=11 producer=0 type=measured stream=3 object=kernel-image repr=as-placed outcome=recorded base=0x0000000114200000 length=0x00000000001f7cc4 dlen=32 srec=0 expected=0 digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6
+BE_MVP:19 LOG record seq=12 producer=0 type=measured stream=3 object=device-tree repr=as-placed outcome=gated-pass base=0x0000000117e00000 length=0x0000000000001000 dlen=32 srec=1 expected=0 digest=d761366dce46edb1fe2ecf17bc517c84f79b4630c1af332d5be58855c3cafef0
+BE_MVP:19 LOG record seq=13 producer=0 type=close stream=255 object=close repr=none outcome=none base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=14 digest=0000000000000000000000000000000000000000000000000000000000000000
+BE_MVP:20 REGISTERS at=barrier r0=313e776bf1f3d0c6a76cfc4fd9d49e4cc559f71e248c3f3cfdf101b13895d2b6 r1=c1dbf437c16c772a5c261c3c22c023d7548fe1fe01646b297937bec516e46525 r2=d4a20b058b9a0f17a1ab30bb152c5bd6906204293a593713d3b6fe2e6a99d35e r3=050a0c56f991e333a6797785c607657dcba8baa494a0139fd5173919135db580 ticks=0x1b1585
+BE_MVP:07 BLOCKS_PUBLISHED region=0x102044000 bytes=0x20000 generation=1 budget_ticks=0x100000000
+BE_MVP:08 HART_STARTED hart=1 domain=0 result=0 status=0 ticks=0x5ab
+BE_MVP:08 HART_STARTED hart=2 domain=1 result=0 status=0 ticks=0x450
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0xb15c hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0xb15c hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x6a9
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x23ec5
+BE_MVP_G0: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP_G1: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP_G0: [    0.000000] Machine model: Beryllium MVP guest
+BE_MVP_G1: [    0.000000] Machine model: Beryllium MVP guest
+BE_MVP_G0: [    0.000000] SBI specification v2.0 detected
+BE_MVP_G1: [    0.000000] SBI specification v2.0 detected
+BE_MVP_G0: [    0.000000] SBI implementation ID=0x4245 Version=0x5
+BE_MVP_G1: [    0.000000] SBI implementation ID=0x4245 Version=0x5
+BE_MVP_G0: [    0.000000] SBI TIME extension detected
+BE_MVP_G1: [    0.000000] SBI TIME extension detected
+BE_MVP_G0: [    0.000000] SBI SRST extension detected
+BE_MVP_G1: [    0.000000] SBI SRST extension detected
+BE_MVP_G0: [    0.000000] SBI DBCN extension detected
+BE_MVP_G1: [    0.000000] SBI DBCN extension detected
+BE_MVP_G0: [    0.000000] earlycon: sbi0 at I/O port 0x0 (options '')
+BE_MVP_G1: [    0.000000] earlycon: sbi0 at I/O port 0x0 (options '')
+BE_MVP_G0: [    0.000000] printk: legacy bootconsole [sbi0] enabled
+BE_MVP_G1: [    0.000000] printk: legacy bootconsole [sbi0] enabled
+BE_MVP_G0: [    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+BE_MVP_G1: [    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+BE_MVP_G0: [    0.000000] riscv: base ISA extensions acim
+BE_MVP_G1: [    0.000000] riscv: base ISA extensions acim
+BE_MVP_G0: [    0.000000] riscv: ELF capabilities acim
+BE_MVP_G1: [    0.000000] riscv: ELF capabilities acim
+BE_MVP_G0: [    0.000000] Ticket spinlock: enabled
+BE_MVP_G1: [    0.000000] Ticket spinlock: enabled
+BE_MVP_G0: [    0.000000] Zone ranges:
+BE_MVP_G1: [    0.000000] Zone ranges:
+BE_MVP_G0: [    0.000000]   DMA32    [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G1: [    0.000000]   DMA32    [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G0: [    0.000000]   Normal   empty
+BE_MVP_G1: [    0.000000]   Normal   empty
+BE_MVP_G0: [    0.000000] Movable zone start for each node
+BE_MVP_G1: [    0.000000] Movable zone start for each node
+BE_MVP_G0: [    0.000000] Early memory node ranges
+BE_MVP_G1: [    0.000000] Early memory node ranges
+BE_MVP_G0: [    0.000000]   node   0: [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G1: [    0.000000]   node   0: [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G0: [    0.000000] Initmem setup node 0 [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G1: [    0.000000] Initmem setup node 0 [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G0: [    0.000000] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=0 be.role=writer be.channel=0x84000000 be.deny=load@0x84001000
+BE_MVP_G1: [    0.000000] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=1 be.role=reader be.channel=0x84000000 be.deny=store@0x84000ff8,load@0x90000000
+BE_MVP_G0: [    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes
+BE_MVP_G1: [    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes
+BE_MVP_G0: [    0.000000] Dentry cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+BE_MVP_G1: [    0.000000] Dentry cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+BE_MVP_G0: [    0.000000] Inode-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+BE_MVP_G1: [    0.000000] Inode-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+BE_MVP_G0: [    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 16384
+BE_MVP_G1: [    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 16384
+BE_MVP_G0: [    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+BE_MVP_G1: [    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+BE_MVP_G0: [    0.000000] SLUB: HWalign=64, Order=0-1, MinObjects=0, CPUs=1, Nodes=1
+BE_MVP_G1: [    0.000000] SLUB: HWalign=64, Order=0-1, MinObjects=0, CPUs=1, Nodes=1
+BE_MVP_G0: [    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+BE_MVP_G1: [    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+BE_MVP_G0: [    0.000000] riscv-intc: 64 local interrupts mapped
+BE_MVP_G1: [    0.000000] riscv-intc: 64 local interrupts mapped
+BE_MVP_G0: [    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+BE_MVP_G1: [    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+BE_MVP_G0: [    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+BE_MVP_G1: [    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+BE_MVP_G0: [    0.000000] sched_clock: 64 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+BE_MVP_G1: [    0.000000] sched_clock: 64 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+BE_MVP_G0: [    0.000010] riscv-timer: Timer interrupt in S-mode is available via sstc extension
+BE_MVP_G1: [    0.000012] riscv-timer: Timer interrupt in S-mode is available via sstc extension
+BE_MVP_G0: [    0.000028] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+BE_MVP_G1: [    0.000032] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+BE_MVP_G0: [    0.000037] pid_max: default: 32768 minimum: 301
+BE_MVP_G1: [    0.000040] pid_max: default: 32768 minimum: 301
+BE_MVP_G0: [    0.000089] Mount-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_MVP_G1: [    0.000094] Mount-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_MVP_G0: [    0.000097] Mountpoint-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_MVP_G1: [    0.000103] Mountpoint-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_MVP_G0: [    0.000143] VFS: Finished mounting rootfs on nullfs
+BE_MVP_G1: [    0.000157] VFS: Finished mounting rootfs on nullfs
+BE_MVP_G0: [    0.000342] ASID allocator using 16 bits (65536 entries)
+BE_MVP_G1: [    0.000392] ASID allocator using 16 bits (65536 entries)
+BE_MVP_G0: [    0.000401] Memory: 61528K/65536K available (870K kernel code, 560K rwdata, 270K rodata, 309K init, 207K bss, 3396K reserved, 0K cma-reserved)
+BE_MVP_G1: [    0.000462] Memory: 61528K/65536K available (870K kernel code, 560K rwdata, 270K rodata, 309K init, 207K bss, 3396K reserved, 0K cma-reserved)
+BE_MVP_G0: [    0.000596] clocksource: Switched to clocksource riscv_clocksource
+BE_MVP_G1: [    0.000686] clocksource: Switched to clocksource riscv_clocksource
+BE_MVP_G0: [    0.016684] cpu0: scalar unaligned word access speed is 4.94x byte access speed (fast)
+BE_MVP_G1: [    0.016789] cpu0: scalar unaligned word access speed is 4.94x byte access speed (fast)
+BE_MVP_G0: [    0.017070] workingset: timestamp_bits=62 (anon: 57) max_order=14 bucket_order=0 (anon: 0)
+BE_MVP_G1: [    0.017163] workingset: timestamp_bits=62 (anon: 57) max_order=14 bucket_order=0 (anon: 0)
+BE_MVP_G0: [    0.017190] printk: legacy console [hvc0] enabled
+BE_MVP_G1: [    0.017281] printk: legacy console [hvc0] enabled
+BE_MVP_G0: [    0.017190] printk: legacy console [hvc0] enabled
+BE_MVP_G1: [    0.017281] printk: legacy console [hvc0] enabled
+BE_MVP_G0: [    0.017205] printk: legacy bootconsole [sbi0] disabled
+BE_MVP_G1: [    0.017296] printk: legacy bootconsole [sbi0] disabled
+BE_MVP_G0: [    0.017205] printk: legacy bootconsole [sbi0] disabled
+BE_MVP_G1: [    0.017296] printk: legacy bootconsole [sbi0] disabled
+BE_MVP_G0: [    0.020627] clk: Disabling unused clocks
+BE_MVP_G1: [    0.020718] clk: Disabling unused clocks
+BE_MVP_G0: [    0.020705] Freeing unused kernel image (initmem) memory: 308K
+BE_MVP_G1: [    0.020790] Freeing unused kernel image (initmem) memory: 308K
+BE_MVP_G0: [    0.020715] Kernel memory protection not selected by kernel config.
+BE_MVP_G1: [    0.020800] Kernel memory protection not selected by kernel config.
+BE_MVP_G0: [    0.020724] Run /init as init process
+BE_MVP_G1: [    0.020808] Run /init as init process
+BE_MVP_G0: MVPINIT 01 START guest=0 pid=1
+BE_MVP_G1: MVPINIT 01 START guest=1 pid=1
+BE_MVP_G0: MVPINIT 02 UNAME release=7.2.0 machine=riscv64
+BE_MVP_G1: MVPINIT 02 UNAME release=7.2.0 machine=riscv64
+BE_MVP_G0: MVPINIT 07 CHANNEL role=writer gpa=0x84000000 bytes=4088 digest=0xeacaea8433f5c641 flag=0x42454d314348414e
+BE_MVP_G1: MVPINIT 07 CHANNEL role=reader gpa=0x84000000 bytes=4088 digest=0xeacaea8433f5c641 polls=1 match=1
+BE_MVP:20 REGISTERS at=terminal r0=313e776bf1f3d0c6a76cfc4fd9d49e4cc559f71e248c3f3cfdf101b13895d2b6 r1=c1dbf437c16c772a5c261c3c22c023d7548fe1fe01646b297937bec516e46525 r2=d4a20b058b9a0f17a1ab30bb152c5bd6906204293a593713d3b6fe2e6a99d35e r3=050a0c56f991e333a6797785c607657dcba8baa494a0139fd5173919135db580
+BE_MVP:FAIL guest-page-fault
+BE_MVP:DETAIL domain=0 hart=1 cause=0x15 pc=0x127ec tval=0x3f87f67000 htval=0x21000400 htinst=0x3303 spvp=0 vsatp=0x8000200000080922 exits=91

@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Purpose: the MVP clean evaluator image (planning/mvp-m0-plan.md, "Tool
+#          lock and the clean evaluator", Q7, and Plan revision M0-B.3): a
+#          Fedora base named by digest, as model/Containerfile names it,
+#          with exactly the package closure the tool lock records
+#          (tools/lock/closure.txt: exact NEVRAs, each with its RPM's
+#          SHA-256; no weak dependencies), installed from the verified
+#          local cache of exact RPMs that tools/evaluator/fetch-closure.py
+#          fills, with every repository disabled. The image records its
+#          installed packages as /etc/mvp-evaluator-rpms.txt, by which
+#          tools/lock/tool-lock.py also recognizes the evaluator, and the
+#          base packages it removed by name as /etc/mvp-evaluator-swap.txt.
+# Trust:   only the base image's pull uses the network. evaluate.sh mounts
+#          the cache read-only at /rpms (podman build -v CACHE:/rpms:ro).
+#          Every file's SHA-256 must equal the closure's (the list is kept
+#          as /etc/mvp-evaluator-closure.sha256) before anything is
+#          installed, dnf sees no repository, and every closure NEVRA must
+#          then be installed exactly, or the build fails. No
+#          --allowerasing, --skip-unavailable, --skip-broken, or --nobest
+#          is used, and with clean_requirements_on_remove off the base
+#          loses exactly the packages named below. dnf skips OpenPGP checks
+#          for local files; the SHA-256 check against digests recorded from
+#          signature-verified files (M0-B.1) stands in for them. The
+#          reproducibility wording is "digest-pinned base plus recorded
+#          closure with per-RPM digests" (S1 H32): the remaining assumption
+#          is that some source keeps the exact bytes, which the digests
+#          verify from any source.
+# Scope:   the MVP line's evaluator; nothing here is proprietary, and no
+#          QEMU, board, or hardware state is part of the image.
+#
+# Build context: mvp/tools (tools/evaluator/evaluate.sh runs
+#   podman build -v CACHE:/rpms:ro -f evaluator/Containerfile mvp/tools).
+
+FROM registry.fedoraproject.org/fedora@sha256:daf897befd7a78a52f11db5ca2229a4923991bb30709932770cb493f7a000cf0
+
+COPY lock/closure.txt /etc/mvp-evaluator-closure.txt
+
+# The base packages removed by name in the closure's transaction (Plan
+# revision M0-B.3), each because the closure replaces a package that it
+# conflicts with or requires at the base's exact version:
+#   systemd-standalone-sysusers    conflicts with the closure's
+#                                  systemd-sysusers-259.10-1.fc44 (the swap)
+#   glibc-minimal-langpack         requires the base's glibc-2.43-7.fc44; the
+#                                  closure's glibc-all-langpacks provides
+#                                  glibc-langpack in its place
+#   rpm-build-libs, rpm-sign-libs  require the base's rpm-libs-6.0.1-2.fc44
+#   dnf5-plugins                   requires rpm-build-libs' librpmbuild
+RUN set -eu; \
+    closure=/etc/mvp-evaluator-closure.txt; \
+    sums=/etc/mvp-evaluator-closure.sha256; \
+    removed='systemd-standalone-sysusers glibc-minimal-langpack'; \
+    removed="$removed rpm-build-libs rpm-sign-libs dnf5-plugins"; \
+    awk '!/^#/ { f = $1; sub(/-[0-9]+:/, "-", f); \
+        print $2 "  /rpms/" f ".rpm" }' "$closure" >"$sums"; \
+    sha256sum --check --quiet --strict "$sums"; \
+    rpm -q --qf 'removed %{NEVRA}\n' $removed >/etc/mvp-evaluator-swap.txt; \
+    dnf5 -y --disablerepo='*' --setopt=install_weak_deps=False \
+        --setopt=clean_requirements_on_remove=False do \
+        --action=remove $removed --action=install $(cut -d' ' -f3 "$sums"); \
+    awk '!/^#/ { print $1 }' "$closure" | xargs rpm -q; \
+    for package in $removed; do \
+        if rpm -q "$package"; then exit 1; fi; \
+    done; \
+    rpm -q --qf 'installed %{NEVRA}\n' systemd-sysusers \
+        >>/etc/mvp-evaluator-swap.txt; \
+    dnf5 clean all; \
+    rpm -qa | sort >/etc/mvp-evaluator-rpms.txt
+
+WORKDIR /work

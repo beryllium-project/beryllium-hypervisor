@@ -1,0 +1,45 @@
+# MVP M8 Leaf B: CBMC bounded model check of mvp-ring.c (planning/mvp-m8-plan.md, D-8): a bounded model check, never a proof
+specification=planning/mvp-m8-specifications.md revision=1 accepted=93a8d136 sha256=aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b
+leaf=mvp/src/mvp-ring.c sha256=432dbc511397da4b051da37f3860b1f8d078ef87fa175ea47d7b3c7a1bc267ba
+started=2026-11-05T15:29:39Z cbmc=6.8.0 (ad933aa-dirty) cvc5=cvc5 1.3.4
+seconds=7378
+# How each row of section 5 is checked (mvp/verify/cbmc/ring/), and where each clause Revision 1 corrected is transcribed
+common safety -> CBMC's --bounds-check, --pointer-check, --signed-overflow-check, --undefined-shift-check, and --unwinding-assertions on the leaf in every configuration B run; configuration A adds --unsigned-overflow-check and classifies each flagged site (wrap-sites.txt)
+reset -> reset.c: both index values 0; the pads unchanged
+init -> init.c: the result iff the row's conditions, the cursor, the limit, the peak, failed, no index or buffer byte written
+record_bytes -> record_bytes.c: 16 + ((length + 7) & ~7) for length <= 256, else 0, every u64 length
+post -> post.c: the result iff the row's conditions (two cases named: the cursor at or past the published head), the cursor, the peak, the index lines, the failed view (scalar part); every buffer byte (buffer part, by position class)
+room -> room.c: a well-formed tail's answer relationally (the largest payload that fits; 0 if none), writes nothing; a malformed tail, a reader's, or a failed view: 0 and failed
+post_words -> post_words.c: as post with the words little-endian; count > 32 refused
+publish -> publish.c: the head set to the cursor, 1; otherwise 0 and failed; no buffer byte
+acquire -> acquire.c: limit := h and h - cursor (two cases named: the cursor at or past the released tail); otherwise 0 and failed; a writer's or failed view 0; no index or buffer byte
+take -> take.c: EMPTY, RECORD, or INVALID from a model computed from [cursor, limit) alone; the record, the cursor, the failed view; no index or buffer byte
+release -> release.c: the tail set to the cursor, 1; otherwise 0 and failed
+peak -> peak.c: the writer view's peak; writes nothing
+taken -> taken.c: a writer view not failed: the reader's tail, the view unchanged; 0 otherwise
+published -> published.c: a writer view not failed: the head; 0 otherwise
+record_word -> record_word.c: the little-endian word when 8*index + 8 <= length, else 0
+sequence -> sequence.c: post, publish, acquire, take, release across the windows' wraps: the record byte for byte, and the writer's free bytes
+R1-1, R1-2, R1-3 -> section 4 (Leaf A), not this arm's
+R1-4 -> init.c: domain <= 1 in the conditions of the result; head and tail each absent or valid (nondeterministically), non-null in the conditions; peak == head - tail on 1
+R1-5 -> init.c: limit == cursor on 1 (the view's own index)
+R1-6 -> post.c, post_words.c: the tail well formed, (t & 7) == 0 and limit - t <= C, then cursor - t <= C and cursor - t + record_bytes(length) <= C, in the result's conditions (and the payload, or the words, non-null when length, or count, > 0); room.c: well formed is (t & 7) == 0 and limit - t <= C alone, the row's parenthesis, and a record of payload n fits when cursor - t <= C and cursor - t + record_bytes(n) <= C (the well-formed case asserted in two cases: cursor - t at most C, or more)
+R1-7 -> acquire.c: r the reader's index line at the call; the head accepted when (h & 7) == 0, h - r <= C, and cursor - r <= h - r
+R1-8 -> taken.c: a writer view not failed returns the reader's tail from its index line with the view unchanged; 0 for an absent, failed, or reader's view
+R1-9 -> sequence.c: free_after == free_before + size, the free bytes C - (cursor - tail) of the writer view just before and after the release (no room call); wrap-sites.txt: the advances cursor + 8, cursor + 16, cursor + 16 + i, and cursor + size classified intended-wrap (cbmc-ring.py's ADVANCES), every other advance a finding
+file mvp/verify/cbmc/ring/acquire.c sha256=d780cb69e4f7e9384dac64f882df2a7b4157fa4dc2a5393c7148d6ef57adcd60
+file mvp/verify/cbmc/ring/harness.h sha256=eaac155d62f45f80869445843351108c7428d4e4fd697bc4d080377e47b47c04
+file mvp/verify/cbmc/ring/init.c sha256=01d8ff65cce255c3d4b88405f47cafe58fe544331f95ca84e94c866c21fed84e
+file mvp/verify/cbmc/ring/peak.c sha256=599c5dbfc37ed1cb808383649ece4e36885609e09a5a53679e0a12d42c56e344
+file mvp/verify/cbmc/ring/post.c sha256=01e00afc51a9b48ac99ee6b74ac436415256e8e16d15de7d889a2f349a7953a4
+file mvp/verify/cbmc/ring/post_words.c sha256=f3286e504c753f9354c7face5f59b6eb20c65e621a4b8ea5f043870a3cc7f64e
+file mvp/verify/cbmc/ring/publish.c sha256=775d5cc290aa0b1bfbc07879537177009ff6f07c976cb607ab648dda6a25d84f
+file mvp/verify/cbmc/ring/published.c sha256=3c2e268b4e7dd8c33c81db27845606cb8c802f2e14bc9cb088fe81428b12695d
+file mvp/verify/cbmc/ring/record_bytes.c sha256=99f3eaebbbfb3faefbe3bfa8032cb7f57f59f9b31b75f7ffeca6b048c0bd178d
+file mvp/verify/cbmc/ring/record_word.c sha256=8b5ef23e215df8aa41e157e44c3cabfbdf58e5861d50818a1fbf154cfb2d32ed
+file mvp/verify/cbmc/ring/release.c sha256=6e9af89db1dcd055432cf13601b22dac86006879c65e74f66bbe38fc72041ed5
+file mvp/verify/cbmc/ring/reset.c sha256=8ab53f19ad2ffa87a232a80bc838f85dcfe6e3b4946e8bb7bd6bc64e4e249c33
+file mvp/verify/cbmc/ring/room.c sha256=ab264fe42ef72c7f96abf873078ce74c175790119e94bc0998026e8821b38804
+file mvp/verify/cbmc/ring/sequence.c sha256=df82bc85f07571c89c3842500aca380d299ba6d274f1b6fe3f61b7ee78fe815c
+file mvp/verify/cbmc/ring/take.c sha256=824ceda26bd0392a8742e4826393e4de139d6c73d2a90cc6ffae7101cdba028c
+file mvp/verify/cbmc/ring/taken.c sha256=5a8682e1139a6dcc17c8d8ae20a7e1984eab797d67eb85632a670c457f84a237

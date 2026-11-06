@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# VitePress emits whitespace-only indentation lines in generated HTML. Keep
+# Git's whitespace checks strict for authored source while exempting only the
+# two generated documentation trees.
+
+docs/html/*.html whitespace=-blank-at-eol
+pathfinder/docs/html/*.html whitespace=-blank-at-eol
+
+# A release-candidate record (mvp/results/*-rc/ and *-rc2/, M4 plan, "The
+# release-candidate evidence") retains raw QEMU console captures byte for
+# byte under its SHA-256 manifest; their serial line endings carry a CR.
+mvp/results/*-rc*/host/qemu/*.console.log whitespace=-blank-at-eol,-trailing-space,-cr-at-eol
+mvp/results/*-rc*/host/rehearsal/*/attempt-*/console.log whitespace=-blank-at-eol,-trailing-space,-cr-at-eol
+mvp/results/*-rc*/rehearsal/*/attempt-*/console.log whitespace=-blank-at-eol,-trailing-space,-cr-at-eol
+# A board record of a boot from system reset (M5 plan) retains each run's
+# capture excerpt from `Autoboot in` byte for byte under its manifest; the
+# BSP's U-Boot prints a stamped empty line (a trailing space) before
+# `Starting kernel ...`. Release candidate 2's staging record's one file
+# list ends in a space the staging tool wrote (mvp/README.md, open item 85,
+# closed by debt sweep 1 for later records).
+mvp/results/*-com260-rc*/*/handoff-excerpt.log whitespace=-trailing-space
+mvp/results/20261030-com260-rc2/mvp/session/stage/staging.txt whitespace=-trailing-space

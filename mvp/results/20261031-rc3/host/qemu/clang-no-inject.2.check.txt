@@ -1,0 +1,3 @@
+BE_MVP_COUNTS: boot_hart=0 started=none g0=54 g1=51
+BE_MVP_RESULT: PASS terminal=fail-marker
+BE_MVP_CAPTURE[direct no-inject]: PASS

@@ -1,0 +1,32 @@
+BE_MVP_VERIFY: record=build/mvp/verify
+BE_MVP_VERIFY: rpms PASS cache=build/mvp-verifier/rpms rpms=481 closure_sha256=ce7ca11cb75564200c528833f77b76e1fec8ef9ba8aa96957262eda503d18571 sources=resolve:481
+BE_MVP_VERIFY: sources PASS cache=build/mvp-verifier/sources archives=4 sources_sha256=36eaf6d2362b9532d61390c1b4fed451463cbec0aed3b7886d7928e2a1e1fde0 sources=url:4
+BE_MVP_VERIFY: image present tag=localhost/beryllium-mvp-verifier:ce7ca11cb755-b71721530f48-36eaf6d2362b id=d93cc31a18b2e7fcc7f0271a70b289c784478b7a6598b91ca29836c41a6e4998 base=registry.fedoraproject.org/fedora@sha256:daf897befd7a78a52f11db5ca2229a4923991bb30709932770cb493f7a000cf0 closure_sha256=ce7ca11cb75564200c528833f77b76e1fec8ef9ba8aa96957262eda503d18571 containerfile_sha256=b71721530f484adad7c59e946c09cfa0d27aede77dab4f3a0bb905d040ba53dc sources_sha256=36eaf6d2362b9532d61390c1b4fed451463cbec0aed3b7886d7928e2a1e1fde0
+BE_MVP_VERIFY: image_rpms=613 rpms_sha256=ee38a2c8b336a36e802935ad7b28244ae332d906f75f88fbb4d2653ad77f9f8e
+BE_MVP_VERIFY: tool frama-c: 33.0 (Arsenic)
+BE_MVP_VERIFY: tool why3: Why3 platform, version 1.8.2
+BE_MVP_VERIFY: tool alt-ergo: 2.4.3-free
+BE_MVP_VERIFY: tool z3: Z3 version 4.16.0 - 64 bit
+BE_MVP_VERIFY: tool cvc5: cvc5 1.3.4
+BE_MVP_VERIFY: tool cbmc: 6.8.0 (ad933aa-dirty)
+BE_MVP_VERIFY: tool rocq: The Rocq Prover, version 9.3.0
+BE_MVP_VERIFY: tool ocaml: The OCaml toplevel, version 5.4.0
+BE_MVP_VERIFY: tool herd7: 7.58, Rev: exported
+BE_MVP_VERIFY: tool cn: unknown [unknown]
+BE_MVP_VERIFY: tool source herdtools7: 7.58 herdtools7-7.58.tar.gz 1b72798457e678dec781ce914c4bd84dc6bae3c3c044cf4257d0974bf7f066ad
+BE_MVP_VERIFY: tool source monomorphic: 2.1.0 monomorphic-2.1.0.tar.gz 68bd9ee17e2b544219cf69b9e172cdd0e5763c02102f308a4a6553c9dcbb856b
+BE_MVP_VERIFY: tool source cerberus: 68bdc84bfadba203ecd465a09d5e9fced46b7ac0 cerberus-68bdc84bfadba203ecd465a09d5e9fced46b7ac0.tar.gz b9ff2912ccf57caaec0031735c96b5ae66362d93642b50ddbb81f9a66b6a4284
+BE_MVP_VERIFY: tool source cn: cbe879c74190b7e09323527b55abf7248f81c033 cn-cbe879c74190b7e09323527b55abf7248f81c033.tar.gz c54adf69b36f5627d3516e35f0680135a027ef007a47f8e43b9fbc843eafbea3
+BE_MVP_VERIFY: specification 93a8d136d38547a8c581197315f7607b5eef7bad:planning/mvp-m8-specifications.md sha256=aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b
+BE_MVP_VERIFY: suite sequences BE_MVP_LITMUS_SEQUENCES: PASS elfs=2 symbols=55 lines=206 elf_files=equal record=mvp/verify/litmus/sequences.txt exit=0
+BE_MVP_VERIFY: suite digests BE_MVP_TARGET_DIGESTS: PASS files=13 record=mvp/verify/target-digests.txt exit=0
+BE_MVP_VERIFY: suite token-equal BE_MVP_TOKEN_EQUAL_SELF_TEST: PASS cases=28 exit=0
+BE_MVP_VERIFY: suite token-equal-cn BE_MVP_TOKEN_EQUAL: PASS tokens=686 range=mvp/src/mvp-sbi.c:201-324 directives=3 functions=access_fault:201-210,htinst_accepted:218-234,inside:236-239,leaf_at:242-252,be_mvp_denial_decide:254-324 exit=0
+BE_MVP_VERIFY: suite qualify BE_MVP_QUALIFY: PASS arms=9 qualified=6 not_run=0 exit=0
+BE_MVP_VERIFY: suite litmus BE_MVP_LITMUS: PASS premises=5 never=5 sometimes=0 not_run=0 exit=0
+BE_MVP_VERIFY: suite wp-arm BE_MVP_WP_ARM: OPEN goals=134 proved=130 rounds=1 solvers=alt-ergo mutants=24 killed=18 unobservable=0 contract-findings=0 vacuity=not-ok pair=not-formed exit=0
+BE_MVP_VERIFY: suite cn-arm BE_MVP_CN_ARM: OPEN goals=55 proved=5 rounds=0 solvers=z3,cvc5 mutants=24 killed=1 unobservable=1 contract-findings=0 vacuity=not-ok pair=formed exit=0
+BE_MVP_VERIFY: suite cbmc-leaf-a BE_MVP_CBMC_LEAF_A: SUCCESSFUL properties=336 failed=0 solvers=sat,cvc5 mutants=24 killed=22 unobservable=1 contract-findings=1 vacuity=ok unwind=4 exit=0
+BE_MVP_VERIFY: suite cbmc-ring BE_MVP_CBMC_RING: OPEN functions=14 capacities=512,4096 properties=14931 checked=13547 open=1384 solvers=sat,cvc5 mutants=24 killed=22 unobservable=1 harness-findings=1 coverage=ok vacuity=ok exit=0
+BE_MVP_VERIFY: wall_seconds=13554
+BE_MVP_VERIFY: PASS image=localhost/beryllium-mvp-verifier:ce7ca11cb755-b71721530f48-36eaf6d2362b

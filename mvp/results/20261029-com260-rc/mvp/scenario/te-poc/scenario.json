@@ -1,0 +1,187 @@
+{
+  "spdx": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "purpose": "M1's scenario (planning/mvp-m1-plan.md, Scenarios and the harness, Q10): Instance 2 of security model v1 on M0's two Linux domains, each on its own hart, with one declared channel page that G0, the writer, maps read-write and G1, the reader, read-only, and three denied accesses that the monitor logs, delivers to the guest as access faults, and resumes. It names the binding, the rings, the run limits, the policy with its labeling and need sets, the manifest (domains, objects, channels), the accepted exits, the guests' roles and denials, and the expected outcomes of the scenario and its two negative images.",
+  "trust": "Data only. tools/policy-check.py runs A1 to A6 and A8, with A7 vacuous, on policy.te with this labeling, these need sets, and this manifest, and writes the authority report; tools/gen-scenario.py writes no header unless that check passes, then checks the rest against src/mvp-layout.h and tools/gen-dts.py and emits the build header and the checkers' expectation files from it; a change is a rebuild, never a run-time selection.",
+  "scope": "M1. Types, labels, domain indices, hart IDs, VMIDs, and GPAs are identifiers, not authority (S1 H03): only the sealed record and the leaves a hart installs grant access.",
+  "schema": "be-mvp-scenario-v2",
+  "name": "te-poc",
+  "platform": {
+    "harts": 8,
+    "control_hart": 0,
+    "timebase_hz": 24000000
+  },
+  "rings": {
+    "inbound_bytes": 4096,
+    "outbound_bytes": 32768
+  },
+  "limits": {
+    "exit_ceiling": 1048576,
+    "run_budget_ticks": "0x100000000",
+    "hart_start_ticks": "0x1000000",
+    "ready_ticks": "0x4000000",
+    "fail_ack_ticks": "0x1000000"
+  },
+  "policy": "policy.te",
+  "labeling": {
+    "subjects": [
+      {"name": "monitor", "type": "monitor_t"},
+      {"name": "G0", "domain_index": 0, "type": "writer_t"},
+      {"name": "G1", "domain_index": 1, "type": "reader_t"}
+    ],
+    "objects": [
+      {"name": "g0_window", "class": "memory", "hpa": "0x110000000", "bytes": "0x4000000", "type": "writer_mem_t"},
+      {"name": "g1_window", "class": "memory", "hpa": "0x114000000", "bytes": "0x4000000", "type": "reader_mem_t"},
+      {"name": "shared_page", "class": "memory", "hpa": "0x118000000", "bytes": "0x1000", "type": "shared_wr_t"},
+      {"name": "channel0", "class": "channel", "object": "shared_page", "type": "shared_wr_t"},
+      {"name": "accepted_image", "class": "memory", "hpa": "0x102000000", "bytes": "0x34000", "type": "monitor_mem_t"},
+      {"name": "pool", "class": "memory", "hpa": "0x102034000", "bytes": "0x10000", "type": "monitor_mem_t"},
+      {"name": "hart_region", "class": "memory", "hpa": "0x102044000", "bytes": "0x20000", "type": "monitor_mem_t"},
+      {"name": "mvp_region", "class": "memory", "hpa": "0x102064000", "bytes": "0x40000", "type": "monitor_mem_t"},
+      {"name": "staging", "class": "memory", "hpa": "0x108000000", "bytes": "0x400000", "type": "monitor_mem_t"},
+      {"name": "kexec_fdt", "class": "memory", "hpa": "0x108400000", "bytes": "0x200000", "type": "monitor_mem_t"}
+    ]
+  },
+  "need": [
+    {"source": "writer_t", "target": "writer_mem_t", "class": "memory", "permissions": ["read", "write", "execute", "map"]},
+    {"source": "writer_t", "target": "shared_wr_t", "class": "memory", "permissions": ["read", "write", "map"]},
+    {"source": "writer_t", "target": "shared_wr_t", "class": "channel", "permissions": ["send"]},
+    {"source": "reader_t", "target": "reader_mem_t", "class": "memory", "permissions": ["read", "write", "execute", "map"]},
+    {"source": "reader_t", "target": "shared_wr_t", "class": "memory", "permissions": ["read", "map"]},
+    {"source": "reader_t", "target": "shared_wr_t", "class": "channel", "permissions": ["receive"]}
+  ],
+  "objects": [
+    {"name": "accepted_image", "class": "memory", "hpa": "0x102000000", "bytes": "0x34000", "owner": "monitor"},
+    {"name": "pool", "class": "memory", "hpa": "0x102034000", "bytes": "0x10000", "owner": "monitor"},
+    {"name": "hart_region", "class": "memory", "hpa": "0x102044000", "bytes": "0x20000", "owner": "monitor"},
+    {"name": "mvp_region", "class": "memory", "hpa": "0x102064000", "bytes": "0x40000", "owner": "monitor"},
+    {"name": "staging", "class": "memory", "hpa": "0x108000000", "bytes": "0x400000", "owner": "monitor"},
+    {"name": "kexec_fdt", "class": "memory", "hpa": "0x108400000", "bytes": "0x200000", "owner": "monitor"},
+    {"name": "shared_page", "class": "memory", "hpa": "0x118000000", "bytes": "0x1000", "owner": "channel0"}
+  ],
+  "channels": [
+    {"name": "channel0", "object": "shared_page", "gpa": "0x84000000", "writer": "G0", "reader": "G1", "writer_rights": ["read", "write"], "reader_rights": ["read"]}
+  ],
+  "accepted_exits": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "ipi", "denial"],
+  "domains": [
+    {
+      "index": 0,
+      "name": "G0",
+      "prefix": "BE_MVP_G0: ",
+      "hart": 1,
+      "vmid": 1,
+      "root": "0x102034000",
+      "block": "0x102044000",
+      "window": {
+        "gpa": "0x80000000",
+        "hpa": "0x110000000",
+        "bytes": "0x4000000",
+        "rights": ["read", "write", "execute"]
+      },
+      "kernel": "Image",
+      "dtb": "mvp-guest-g0-te-poc.dtb",
+      "bootargs": "earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=0 be.role=writer be.channel=0x84000000 be.deny=load@0x84001000",
+      "program": "/init",
+      "role": "writer",
+      "deny": [
+        {"access": "load", "gpa": "0x84001000"}
+      ]
+    },
+    {
+      "index": 1,
+      "name": "G1",
+      "prefix": "BE_MVP_G1: ",
+      "hart": 2,
+      "vmid": 2,
+      "root": "0x10203c000",
+      "block": "0x102054000",
+      "window": {
+        "gpa": "0x80000000",
+        "hpa": "0x114000000",
+        "bytes": "0x4000000",
+        "rights": ["read", "write", "execute"]
+      },
+      "kernel": "Image",
+      "dtb": "mvp-guest-g1-te-poc.dtb",
+      "bootargs": "earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=1 be.role=reader be.channel=0x84000000 be.deny=store@0x84000ff8,load@0x90000000",
+      "program": "/init",
+      "role": "reader",
+      "deny": [
+        {"access": "store", "gpa": "0x84000ff8"},
+        {"access": "load", "gpa": "0x90000000"}
+      ]
+    }
+  ],
+  "expect": {
+    "domain_lines": [
+      "[<s>] Linux version 7.2.0 <banner>",
+      "[<s>] SBI implementation ID=0x4245 Version=0x3",
+      "[<s>] Kernel command line: <bootargs>",
+      "[<s>] riscv-timer: Timer interrupt in S-mode is available via sstc extension",
+      "[<s>] Memory: <m>K/65536K available <rest>",
+      "[<s>] Run /init as init process",
+      "MVPINIT 01 START guest=<g> pid=1",
+      "MVPINIT 02 UNAME release=7.2.0 machine=riscv64",
+      "MVPINIT 03 STEP n=<i>/8 rounds=<r> t_ms=<t>",
+      "MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=<e> ok=1",
+      "MVPINIT 05 RESULT pass",
+      "MVPINIT 06 POWER_OFF",
+      "[<s>] reboot: Power down"
+    ],
+    "rejected": [
+      "panic",
+      "Oops",
+      "WARN",
+      "BUG:",
+      "kernel BUG",
+      "Attempted to kill init",
+      "cut here",
+      "Call Trace:",
+      "Unable to handle kernel",
+      "rcu: INFO:",
+      "soft lockup",
+      "blocked for more than",
+      "segfault",
+      "unhandled signal",
+      "extension is not available in SBI",
+      "sbi_srst_reset",
+      "No working init found",
+      "Failed to execute",
+      "Out of memory",
+      "RESULT fail"
+    ],
+    "counters": {
+      "ipi": {"exact": 1},
+      "time": {"exact": 0},
+      "dbcn_byte": {"exact": 0},
+      "srst": {"exact": 1},
+      "refused": {"exact": 0},
+      "exits": {"min": 1, "max": 1048576},
+      "ring_peak": {"min": 16, "max": 16384}
+    },
+    "exit_classes": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "ipi"],
+    "concurrency": {
+      "overlap": "half-of-shorter",
+      "alternations": 8
+    },
+    "denials": {
+      "0": [
+        {"seq": 1, "access": "load", "kind": "unmapped", "gpa": "0x84001000"}
+      ],
+      "1": [
+        {"seq": 1, "access": "store", "kind": "read-only", "gpa": "0x84000ff8"},
+        {"seq": 2, "access": "load", "kind": "unmapped", "gpa": "0x90000000"}
+      ]
+    },
+    "report": {
+      "grants": 6,
+      "flows": [
+        {"from_subject": "G0", "to_subject": "G1", "via_object": "shared_page", "declared": "yes"}
+      ]
+    }
+  },
+  "variants": [
+    {"name": "reader-write", "toolchains": ["gcc", "clang"], "where": ["qemu", "board"], "change": "the root builder writes W and D into the reader's channel leaf (a compile-time switch in src/mvp-gstage.c); the sealed record is unchanged", "fail": "gstage", "after": "BE_MVP:03", "detail": "channel", "domain": 1, "hart": 2, "walked": "0x460000d7", "declared": "0x46000053"},
+    {"name": "no-inject", "toolchains": ["gcc", "clang"], "where": ["qemu", "board"], "change": "te-poc with denial removed from its accepted-exit set", "accepted_exits": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "ipi"], "fail": "guest-page-fault", "after": "BE_MVP:10", "detail": "domain", "first_fault": [{"domain": 0, "hart": 1, "cause": 21, "htval": "0x21000400"}, {"domain": 1, "hart": 2, "cause": 23, "htval": "0x210003fe"}]}
+  ]
+}

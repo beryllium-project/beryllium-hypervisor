@@ -1,0 +1,11 @@
+ERROR:   CMD8
+ERROR:   sd f! l:90
+=> [  25.579] loady 0x140000000 && booti 0x140000000 - ${fdtcontroladdr}
+## Ready for binary (ymodem) download to 0x140000000 at 115200 bps...
+C[  71.849] ## Total Size      = 0x00035000 = 217088 Bytes
+[  71.851] ## Start Addr      = 0x140000000
+[  71.855] Moving Image from 0x140000000 to 0x102200000, end=102235000
+[  71.861] ## Flattened Device Tree blob at 2fbe8aa50
+[  71.866]    Booting using the fdt blob at 0x2fbe8aa50
+[  71.871]    Loading Device Tree to 00000002fbd6b000, end 00000002fbd7d2ef ... OK
+Starting kernel ...

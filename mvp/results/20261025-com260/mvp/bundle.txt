@@ -1,0 +1,12 @@
+schema=be-mvp-evidence-v1
+kind=board
+campaign=20261025-com260
+source_commit=13992d6d902131a6c19978b620724fad0524256f
+source_tree=clean
+lock_sha256=6e99262f04a14e8f1c4658791a2437c83e27edeb56a189d604e5cfc4ad7c8418
+lock_check_status=0
+closure_sha256=2875ddd675b49c390159d55ac2847a9eb1990061bfe972693bd8260b2d123009
+scenario=two-guests scenario_sha256=9978db42902d36734e70ec43e62c5682ddb558f62ce01f4a5cca862be3f1d8b2
+images=146
+load_checks=gcc-20261025T035420Z,clang-20261025T035440Z
+runs=8 pass=8 fail=0 refused=0 stop=0

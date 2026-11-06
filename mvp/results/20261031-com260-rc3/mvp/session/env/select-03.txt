@@ -1,0 +1,7 @@
+attempt_utc=2026-10-31T04:17:30Z
+be_image=be-mvp-two-guests-gcc.img
+printenv_be_image=be_image=be-mvp-two-guests-gcc.img
+select-03-check_sha256=8134977b3efcab1031851d599aa169a31d77e8aeeb45564192ca1814e732cb2d
+select_check=PASS
+saveenv=OK
+verdict=PASS

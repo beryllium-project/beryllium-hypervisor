@@ -1,0 +1,7 @@
+run	toolchain	image	image_sha256	expect	variant	verdict	stop	reset
+20261027T175315Z	gcc	gcc/te-poc/be-mvp-boot-pic.img	a55a5791b4b4cd490cc4abf8e7c955831c871bec3154472d513cea39e4602113	te-poc.json	none	PASS	none	k3ctl
+20261027T175447Z	gcc	gcc/te-poc/be-mvp-boot-pic.img	a55a5791b4b4cd490cc4abf8e7c955831c871bec3154472d513cea39e4602113	te-poc.json	none	PASS	none	k3ctl
+20261027T175609Z	gcc	gcc/te-poc/be-mvp-boot-pic.img	a55a5791b4b4cd490cc4abf8e7c955831c871bec3154472d513cea39e4602113	te-poc.json	none	PASS	none	k3ctl
+20261027T175803Z	clang	clang/te-poc/be-mvp-boot-pic.img	e32de2439ef00da032018d25d68a66880ab6f88a0d070e3571a9b4d468c2a5b4	te-poc.json	none	PASS	none	k3ctl
+20261027T175944Z	gcc	variants/gcc/reader-write/be-mvp-boot-pic.img	c575bc03d456d4d32b271b530f2f5d9ebf946ec5af4b85ef955538beb77d2708	reader-write.json	reader-write	PASS	none	k3ctl
+20261027T180124Z	gcc	variants/gcc/no-inject/be-mvp-boot-pic.img	4cb0df81bcdbacdd512f82be73ee85145ef814fbdb224d1b9a71d8c02a3b90e7	no-inject.json	no-inject	PASS	none	k3ctl

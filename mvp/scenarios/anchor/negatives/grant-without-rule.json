@@ -1,0 +1,17 @@
+{
+  "spdx": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "purpose": "The build-time negative image grant-without-rule (planning/mvp-m2-plan.md, Scenarios and the harness, Q10): anchor's manifest unchanged, so it still grants G0 (host_t) pause and terminate on G1 (prot_t), while its policy lacks the domain rule allow host_t prot_t : domain { pause terminate };. A8 fails alone: the report holds the management grant with source none; tools/gen-scenario.py writes no header, so no image exists. make -C mvp policy-negatives runs it with tools/policy-check.py --negative grant-without-rule, which passes only if the check fails exactly as declared below.",
+  "schema": "be-mvp-policy-negative-v1",
+  "name": "grant-without-rule",
+  "change": {"edits": [
+    ["swap", "allow host_t prot_t     : domain { pause terminate };\n", ""]
+  ]},
+  "expect": {
+    "fail": ["A8"],
+    "source_none": [
+      {"subject": "G0", "object": "G1", "class": "domain", "permissions": ["pause", "terminate"]}
+    ],
+    "undeclared": []
+  }
+}

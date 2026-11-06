@@ -1,0 +1,22 @@
+label=anchor/gcc
+image=gcc/anchor/be-mvp-boot.img
+image_sha256=72de23d21cd387c61958819dbd975eb5fcf31e899651e7e469b28aa56601e857
+qemu_image_bytes=2584576
+qemu_image_sha256=a321e0b3270e28f4e80e3d04a8d0cb8bde4e0d72180e47af3505148464829876
+qemu_image_crc32=d78da5ed
+qemu_text_offset=0x88000000
+qemu_image_source=built
+qemu_image=gcc/anchor/be-mvp-boot-qemu.img
+disk_file=anchor-gcc.img
+be_image=anchor-gcc.img
+disk_sha256=e8b28ad189c73d7afa630116b8bdae8ff0263cd38303977726f7afeced078fc2
+expect=gen/anchor/expect/anchor.json
+expect_sha256=65212dd2ff7bda8959f4db9eee3e6b622f06b8321acd6be333661206c6bce4b2
+report=gen/anchor/authority-report.json
+report_sha256=beb0189859a3d9e4565a301aaff3a665c46d9633225c2320cda53b94a1b56278
+measured_kernel=guest/Image
+measured_kernel_sha256=c7ae03e6b26e1433bb1cdcd995467b5df2dec61cb8ed1c38ede0d4458c4799ed
+measured_dtb=guest/mvp-guest-g1-anchor.dtb
+measured_dtb_sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025
+attempt=1 session=PASS check=PASS check_exit=0 boot_hart=3 qemu_exit=0 disk=same console_sha256=831f41e3963e3a7dbf3ce24743fc474817828a0ffa095533cd10ad9d397853a6
+BE_MVP_UBOOT_REHEARSAL[anchor/gcc]: PASS attempts=1 refused=0 boot_harts=3 session=PASS check=PASS check_exit=0 qemu_exit=0 image=a321e0b3270e crc32=d78da5ed

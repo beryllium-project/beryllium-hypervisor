@@ -1,0 +1,3 @@
+BE_MVP_COUNTS: boot_hart=4 rule_hart=4 started=4 denials_g0=1 denials_g1=1 mgmt_g0=0 mgmt_g1=2 g0=55 g1=58
+BE_MVP_RESULT: PASS terminal=fail-marker
+BE_MVP_CAPTURE[direct no-grant-check]: PASS

@@ -1,0 +1,212 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/*
+ * Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+ *
+ * Planning-site presentation and responsive sidebar geometry. CSS defaults
+ * remain complete without client JavaScript, while VitePress continues to
+ * own the mobile navigation drawer and document layout breakpoints.
+ */
+
+:root {
+  --vp-c-brand-1: #2563eb;
+  --vp-c-brand-2: #1d4ed8;
+  --vp-c-brand-3: #1e40af;
+  --vp-c-brand-soft: rgba(37, 99, 235, 0.14);
+  --vp-layout-max-width: 1680px;
+  --vp-sidebar-width: 320px;
+  --be-outline-sidebar-width: 256px;
+  --be-outline-sidebar-gutter: 32px;
+  --be-sidebar-resizer-hit-width: 12px;
+  --be-sidebar-resizer-half-width: 6px;
+  --be-sidebar-centered-gutter: max(
+    0px,
+    calc((100vw - var(--vp-layout-max-width)) / 2)
+  );
+  --be-navigation-sidebar-boundary: calc(
+    var(--be-sidebar-centered-gutter) + var(--vp-sidebar-width)
+  );
+}
+
+.dark {
+  --vp-c-brand-1: #60a5fa;
+  --vp-c-brand-2: #93c5fd;
+  --vp-c-brand-3: #bfdbfe;
+  --vp-c-brand-soft: rgba(96, 165, 250, 0.16);
+}
+
+.VPNavBarTitle .title {
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.VPSidebar {
+  border-right: 1px solid var(--vp-c-divider);
+}
+
+.be-sidebar-resizer {
+  display: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.be-sidebar-resizer::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--be-sidebar-resizer-half-width);
+  width: 1px;
+  background: var(--vp-c-divider);
+  content: "";
+  transition:
+    width 120ms ease,
+    background-color 120ms ease,
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.be-sidebar-resizer:hover::before,
+.be-sidebar-resizer:focus-visible::before,
+.be-sidebar-resizer.is-dragging::before {
+  width: 3px;
+  background: var(--vp-c-brand-1);
+  opacity: 0.9;
+  transform: translateX(-1px);
+}
+
+.be-sidebar-resizer:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -2px;
+}
+
+html.be-sidebar-resizing,
+html.be-sidebar-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+@media (min-width: 960px) {
+  .be-sidebar-resizer--navigation {
+    position: fixed;
+    top: calc(
+      var(--vp-nav-height) + var(--vp-layout-top-height, 0px)
+    );
+    bottom: 0;
+    left: calc(
+      var(--be-navigation-sidebar-boundary) -
+        var(--be-sidebar-resizer-half-width)
+    );
+    z-index: calc(var(--vp-z-index-sidebar) + 1);
+    display: block;
+    width: var(--be-sidebar-resizer-hit-width);
+  }
+}
+
+@media (min-width: 1280px) {
+  /*
+   * Move VitePress's 32px outline gutter inside its fixed container. This
+   * preserves the default content position while keeping the resize target
+   * inside the container's horizontal clipping boundary.
+   */
+  .VPDoc .aside:not(.left-aside) {
+    flex: 0 0 var(--be-outline-sidebar-width);
+    padding-left: 0;
+    width: var(--be-outline-sidebar-width);
+    max-width: var(--be-outline-sidebar-width);
+  }
+
+  .VPDoc .aside:not(.left-aside) .aside-container,
+  .VPDoc .aside:not(.left-aside) .aside-curtain {
+    width: var(--be-outline-sidebar-width);
+  }
+
+  .VPDoc .aside:not(.left-aside) .aside-content {
+    padding-left: var(--be-outline-sidebar-gutter);
+  }
+
+  .be-sidebar-resizer--outline {
+    position: absolute;
+    top: calc(
+      var(--vp-nav-height) + var(--vp-layout-top-height, 0px)
+    );
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    display: block;
+    width: var(--be-sidebar-resizer-hit-width);
+  }
+
+  .be-sidebar-resizer--outline::before {
+    left: 0;
+  }
+}
+
+@media (min-width: 1440px) {
+  /*
+   * VitePress's upstream formulas assume its default layout maximum. Keep the
+   * centered gutter non-negative and derive every navigation boundary from
+   * the same value so the sidebar, document, and splitter cannot diverge.
+   * Above the configured maximum, the outer gutter grows while the selected
+   * sidebar width continues to describe the complete text-and-padding region.
+   */
+  .VPSidebar.VPSidebar {
+    padding-left: calc(var(--be-sidebar-centered-gutter) + 32px);
+    width: var(--be-navigation-sidebar-boundary);
+  }
+
+  .VPContent.VPContent.has-sidebar {
+    padding-right: var(--be-sidebar-centered-gutter);
+    padding-left: var(--be-navigation-sidebar-boundary);
+  }
+}
+
+.VPSidebarItem .text {
+  line-height: 1.35;
+}
+
+.VPDoc.has-aside .content-container {
+  max-width: 980px;
+}
+
+.vp-doc h2 {
+  border-top: 1px solid var(--vp-c-divider);
+  padding-top: 1.5rem;
+}
+
+.vp-doc table {
+  display: table;
+  width: 100%;
+}
+
+@media (max-width: 959px) {
+  .vp-doc table {
+    table-layout: fixed;
+  }
+
+  .vp-doc th,
+  .vp-doc td {
+    overflow-wrap: anywhere;
+  }
+}
+
+.vp-doc code {
+  overflow-wrap: anywhere;
+}
+
+.source-notice {
+  margin: 0 0 1.75rem;
+  border: 1px solid var(--vp-c-brand-soft);
+  border-left: 4px solid var(--vp-c-brand-1);
+  border-radius: 8px;
+  background: var(--vp-c-brand-soft);
+  padding: 0.8rem 1rem;
+  color: var(--vp-c-text-1);
+  font-size: 0.9rem;
+}
+
+.source-notice code {
+  color: var(--vp-c-brand-1);
+  font-weight: 650;
+}

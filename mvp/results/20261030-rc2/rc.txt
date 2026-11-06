@@ -1,0 +1,18 @@
+schema=be-mvp-rc-record-v1
+kind=release-candidate
+candidate_tree_commit=6dd81ee39dd620a1815605c50c9c916894c9974c
+candidate_tree=2eaafb365d956751134001c6c7d58508627fb76b
+generated_utc=2026-10-30T09:23:37Z
+host_os=Fedora Linux 44 (Server Edition)
+host_arch=x86_64
+lock_sha256=2f1b732dcf2415c7a4b25c5008ab06bae4c9af0fc3804028772f16a693e47d70
+closure_sha256=2875ddd675b49c390159d55ac2847a9eb1990061bfe972693bd8260b2d123009
+host_bundle_manifest_sha256=8590a3ff4b7f486ce8f4fb506b18be6c5caf9329c39ff757f11f0203416a1b40 files_rewritten=0
+evaluator_record=20261030T091428Z
+gate=tool-lock result=BE_MVP_LOCK: PASS roles=32 host_only_skipped=0 closure=259 lock_sha256=2f1b732dcf24 start_utc=2026-10-30T09:09:18Z end_utc=2026-10-30T09:09:20Z duration_s=2
+gate=check result=BE_MVP_CHECK: PASS start_utc=2026-10-30T09:09:20Z end_utc=2026-10-30T09:14:28Z duration_s=308
+gate=evaluate result=BE_MVP_EVALUATE: PASS image=localhost/beryllium-mvp-evaluator:2875ddd675b4-009c2eba5655 start_utc=2026-10-30T09:14:28Z end_utc=2026-10-30T09:19:16Z duration_s=288
+gate=uboot-rehearsal result=BE_MVP_UBOOT_REHEARSAL: PASS cases=7 attempts=7 refused=0 uboot=d96d1c22c67b opensbi=78f14d30c951 qemu=10.2.2 start_utc=2026-10-30T09:19:16Z end_utc=2026-10-30T09:21:02Z duration_s=106
+gate=kernel-repro result=BE_MVP_KERNEL_REPRO: PASS outputs=15 identical; sysroot_files=1065 sysroot_sha256=c931b51b8789ec8c57c2169a954d421ec8cc7aa3e5c7e5a951ec08a241cc1df0; kernel_build_seconds=12 start_utc=2026-10-30T09:21:02Z end_utc=2026-10-30T09:21:33Z duration_s=31
+gate=model-check result=Beryllium Architecture Model 0.2 evidence: PASS start_utc=2026-10-30T09:21:33Z end_utc=2026-10-30T09:22:30Z duration_s=57
+gate=model-evaluate result=BE_EVALUATION: Model 0.2 rootless evidence PASS start_utc=2026-10-30T09:22:30Z end_utc=2026-10-30T09:23:27Z duration_s=57

@@ -1,0 +1,6 @@
+GNU Make 4.4.1
+gcc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)
+clang version 22.1.8 (Fedora 22.1.8-4.fc44)
+v22.23.1
+The Rocq Prover, version 9.3.0
+Python 3.14.8

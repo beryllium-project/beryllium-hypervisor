@@ -1,0 +1,77 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "S-05",
+  "partition": "static",
+  "declared_delta": null,
+  "base": "arch/riscv/be/r5-trap.S",
+  "base_sha256": "4721da5693b3bde3e91ca1dc36aa8042693d858f198ef06986881171f1216841",
+  "defect_file": "r5-trap.S.defect",
+  "defect_sha256": "640cf5f3b416eb2e3ea265369423480d787ff29b25ddf91efb728edf38b96e67",
+  "defect": {
+    "kind": "assembly-instruction",
+    "summary": "hfence.gvma removed from be_r5_arch_install_root",
+    "accepted": null,
+    "malformed": null,
+    "source_path": "arch/riscv/be/r5-trap.S",
+    "target": {
+      "line": 380,
+      "line_anchor": "hfence.gvma zero, zero",
+      "symbol": "be_r5_arch_install_root",
+      "slot": null
+    },
+    "anchor": "\thfence.gvma zero, zero\n\tsw t1, ACK_FENCE_COMPLETED(a0)\n",
+    "replacement": "\tsw t1, ACK_FENCE_COMPLETED(a0)\n"
+  },
+  "diff": {
+    "sha256": "4bc34cf80c17ab22f3b2eccc32e36cdafe2ec1c08b94d56947cf2f210d0a5547",
+    "added": 0,
+    "removed": 1,
+    "budget": {
+      "added": 6,
+      "removed": 6
+    },
+    "unified": "--- a/arch/riscv/be/r5-trap.S\n+++ b/arch/riscv/be/r5-trap.S\n@@ -377,7 +377,6 @@\n \tsd a1, ACK_HGATP_WRITTEN(a0)\n \tli t1, 1\n \tsw t1, ACK_VIRTUALIZATION_OFF(a0)\n-\thfence.gvma zero, zero\n \tsw t1, ACK_FENCE_COMPLETED(a0)\n \tcsrr t0, hgatp\n \tsd t0, ACK_HGATP_READBACK(a0)\n"
+  },
+  "expected": {
+    "first_rejection_layer": "L6",
+    "outcome": "rejected-by-image-check",
+    "message_completeness": "complete",
+    "primary_message": "{toolchain}: HGATP writes and fences are not paired: be_r3_arch_install_management,be_r3_arch_reset_state,be_r5_arch_reset_state",
+    "placeholders": {},
+    "stages": {
+      "l3": "pass",
+      "gcc-link": "pass",
+      "clang-link": "pass",
+      "gcc-image-check": "reject",
+      "clang-image-check": "reject"
+    },
+    "absent_stages": [],
+    "messages": {
+      "gcc-image-check": [
+        "gcc: HGATP writes and fences are not paired: be_r3_arch_install_management,be_r3_arch_reset_state,be_r5_arch_reset_state"
+      ],
+      "clang-image-check": [
+        "clang: HGATP writes and fences are not paired: be_r3_arch_install_management,be_r3_arch_reset_state,be_r5_arch_reset_state"
+      ]
+    },
+    "prohibited_layers": [
+      "L7",
+      "L8",
+      "L9",
+      "L10",
+      "L11"
+    ],
+    "qemu": "forbidden",
+    "artifacts": {
+      "quarantined": [
+        "clang-beryllium.bin",
+        "clang-beryllium.elf",
+        "gcc-beryllium.bin",
+        "gcc-beryllium.elf"
+      ],
+      "scratch_elf": true
+    }
+  }
+}

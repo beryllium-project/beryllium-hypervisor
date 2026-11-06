@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The MVP verifier's source archives (planning/mvp-m8-plan.md, D-7 item 1,
+# D-9, D-10, Q3, Q10): one line per archive,
+#   <name> <version or commit> <URL> <archive file> <SHA-256> <licence>
+# fetched by tools/verifier/fetch-sources.py into the verified source cache
+# (build/mvp-verifier/sources; MVP_SRC_CACHE, a directory of exact archives,
+# is tried first) and admitted only if its SHA-256 is the one below. The
+# verifier image (tools/verifier/Containerfile) checks them again and builds
+# them with no network, with the OCaml, dune, and libraries of
+# tools/verifier/closure.txt; nothing comes from opam or ~/.local.
+#
+# herdtools7 (herd7 and its RISC-V model riscv.cat; D-9): the latest
+# numbered release, 7.58 (2025-02-12; the later ArmARM-* and ASLRef* tags
+# are Arm specification snapshots). GitHub's archive of the tag; its
+# SHA-512 and MD5 equal opam-repository's record for herdtools7.7.58
+# (a8acfafe...224f94, f38a754a...0147fb). Built with Fedora's ocaml,
+# ocaml-dune, ocaml-menhir, ocaml-zarith-devel, and which.
+herdtools7 7.58 https://github.com/herd/herdtools7/archive/refs/tags/7.58.tar.gz herdtools7-7.58.tar.gz 1b72798457e678dec781ce914c4bd84dc6bae3c3c044cf4257d0974bf7f066ad CECILL-B
+#
+# CN (the pilot's second arm on Leaf A; Q10): rems-project/cn, which left
+# the Cerberus repository in 2025 and builds against cerberus-lib. CN
+# publishes no release: the tip of its main branch on 2026-10-31, and the
+# Cerberus commit its cn.opam pins (pin-depends cerberus-lib.dev at
+# 68bdc84), each as GitHub's archive of the commit; and monomorphic 2.1.0,
+# which cerberus-lib requires exactly and Fedora does not package (its
+# release asset; its SHA-512 and MD5 equal opam-repository's record,
+# a3a5e09b...82cc34, ec4c56ac...43f30). Lem and every other OCaml library
+# cerberus-lib and cn name come from Fedora's RPMs in the closure. Each
+# licence is the project's own file; Cerberus and CN list their exceptions
+# in THIRD_PARTY_FILES.md.
+monomorphic 2.1.0 https://github.com/kit-ty-kate/ocaml-monomorphic/releases/download/2.1.0/monomorphic-2.1.0.tar.gz monomorphic-2.1.0.tar.gz 68bd9ee17e2b544219cf69b9e172cdd0e5763c02102f308a4a6553c9dcbb856b MIT
+cerberus 68bdc84bfadba203ecd465a09d5e9fced46b7ac0 https://github.com/rems-project/cerberus/archive/68bdc84bfadba203ecd465a09d5e9fced46b7ac0.tar.gz cerberus-68bdc84bfadba203ecd465a09d5e9fced46b7ac0.tar.gz b9ff2912ccf57caaec0031735c96b5ae66362d93642b50ddbb81f9a66b6a4284 BSD-2-Clause
+cn cbe879c74190b7e09323527b55abf7248f81c033 https://github.com/rems-project/cn/archive/cbe879c74190b7e09323527b55abf7248f81c033.tar.gz cn-cbe879c74190b7e09323527b55abf7248f81c033.tar.gz c54adf69b36f5627d3516e35f0680135a027ef007a47f8e43b9fbc843eafbea3 BSD-2-Clause

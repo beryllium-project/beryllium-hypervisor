@@ -1,0 +1,625 @@
+make: Entering directory '/work/model'
+rm -rf "../build/model"
+tests/check-tools.sh
+Beryllium Architecture Model 0.2 tools: PASS
+sh -n tests/*.sh
+node --check tests/*.mjs
+tests/check-source-policy.sh
+Beryllium Architecture Model 0.2 source policy: PASS
+gcc -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Iinclude tests/unit/test_main.c src/manifest.c src/state.c src/fixtures.c -o ../build/model/unit/gcc/unit-tests
+../build/model/unit/gcc/unit-tests
+Beryllium Architecture Model 0.2 unit tests: PASS
+clang -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Iinclude tests/unit/test_main.c src/manifest.c src/state.c src/fixtures.c -o ../build/model/unit/clang/unit-tests
+../build/model/unit/clang/unit-tests
+Beryllium Architecture Model 0.2 unit tests: PASS
+Beryllium policy layer: no file input in the model binaries
+node tools/gen-policy-fixtures.mjs --output "../build/model/policy"
+Beryllium policy fixtures: PASS instances=3 projection=1 mutations=91
+gcc -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Iinclude tests/unit/policy_test.c src/policy.c src/manifest.c src/fixtures.c \
+	../build/model/policy/fixtures.c -o ../build/model/unit/gcc/policy-tests
+clang -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Iinclude tests/unit/policy_test.c src/policy.c src/manifest.c \
+	src/fixtures.c ../build/model/policy/fixtures.c -o ../build/model/unit/clang/policy-tests
+../build/model/unit/gcc/policy-tests >"../build/model/unit/gcc/policy-tests.out"
+../build/model/unit/clang/policy-tests >"../build/model/unit/clang/policy-tests.out"
+cmp "../build/model/unit/gcc/policy-tests.out" "../build/model/unit/clang/policy-tests.out"
+Beryllium policy layer unit tests: PASS checks=169 instances=4 mutations=91
+gcc -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Iinclude tools/model-run.c src/manifest.c src/state.c src/fixtures.c -o ../build/model/host/gcc/model-run
+Beryllium Architecture Model 0.2
+fixture=source-a proposal=0xa102000000000001 vocabulary=relations-a
+bind platform inventory              ok
+copy untrusted proposal              ok
+validate canonical state             ok
+canonical configuration identity     0x2a4c5a62bc446015
+seal canonical authority             ok
+derive enforcement roots             ok
+activate management binding          ok
+set management saved-state input     ok
+management private read/write        allowed
+management cross-private denial      denied
+management channel write             allowed
+select protected binding             ok
+cached translations before fence     2 retained
+complete global HFENCE.GVMA          ok
+cached translations after fence      0 retained
+finish protected entry               ok
+protected private read/write         allowed
+protected cross-private denial       denied
+protected channel read               allowed
+protected channel write denial       denied
+switch back to management            ok
+fence before management re-entry     ok
+finish management re-entry           ok
+read restored management state       ok
+BE_MODEL_RESULT: PASS fixture=source-a
+Beryllium Architecture Model 0.2
+fixture=source-b proposal=0xb102000000000002 vocabulary=relations-b
+bind platform inventory              ok
+copy untrusted proposal              ok
+validate canonical state             ok
+canonical configuration identity     0x2a4c5a62bc446015
+seal canonical authority             ok
+derive enforcement roots             ok
+activate management binding          ok
+set management saved-state input     ok
+management private read/write        allowed
+management cross-private denial      denied
+management channel write             allowed
+select protected binding             ok
+cached translations before fence     2 retained
+complete global HFENCE.GVMA          ok
+cached translations after fence      0 retained
+finish protected entry               ok
+protected private read/write         allowed
+protected cross-private denial       denied
+protected channel read               allowed
+protected channel write denial       denied
+switch back to management            ok
+fence before management re-entry     ok
+finish management re-entry           ok
+read restored management state       ok
+BE_MODEL_RESULT: PASS fixture=source-b
+clang -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Iinclude tools/model-run.c src/manifest.c src/state.c src/fixtures.c -o ../build/model/host/clang/model-run
+Beryllium Architecture Model 0.2
+fixture=source-a proposal=0xa102000000000001 vocabulary=relations-a
+bind platform inventory              ok
+copy untrusted proposal              ok
+validate canonical state             ok
+canonical configuration identity     0x2a4c5a62bc446015
+seal canonical authority             ok
+derive enforcement roots             ok
+activate management binding          ok
+set management saved-state input     ok
+management private read/write        allowed
+management cross-private denial      denied
+management channel write             allowed
+select protected binding             ok
+cached translations before fence     2 retained
+complete global HFENCE.GVMA          ok
+cached translations after fence      0 retained
+finish protected entry               ok
+protected private read/write         allowed
+protected cross-private denial       denied
+protected channel read               allowed
+protected channel write denial       denied
+switch back to management            ok
+fence before management re-entry     ok
+finish management re-entry           ok
+read restored management state       ok
+BE_MODEL_RESULT: PASS fixture=source-a
+Beryllium Architecture Model 0.2
+fixture=source-b proposal=0xb102000000000002 vocabulary=relations-b
+bind platform inventory              ok
+copy untrusted proposal              ok
+validate canonical state             ok
+canonical configuration identity     0x2a4c5a62bc446015
+seal canonical authority             ok
+derive enforcement roots             ok
+activate management binding          ok
+set management saved-state input     ok
+management private read/write        allowed
+management cross-private denial      denied
+management channel write             allowed
+select protected binding             ok
+cached translations before fence     2 retained
+complete global HFENCE.GVMA          ok
+cached translations after fence      0 retained
+finish protected entry               ok
+protected private read/write         allowed
+protected cross-private denial       denied
+protected channel read               allowed
+protected channel write denial       denied
+switch back to management            ok
+fence before management re-entry     ok
+finish management re-entry           ok
+read restored management state       ok
+BE_MODEL_RESULT: PASS fixture=source-b
+gcc -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Iinclude tools/policy-run.c src/policy.c src/manifest.c ../build/model/policy/fixtures.c \
+	-o ../build/model/host/gcc/policy-run
+clang -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Iinclude tools/policy-run.c src/policy.c src/manifest.c ../build/model/policy/fixtures.c \
+	-o ../build/model/host/clang/policy-run
+../build/model/host/gcc/policy-run >"../build/model/reports/policy-verdicts.txt"
+../build/model/host/clang/policy-run >"../build/model/reports/policy-verdicts.clang.txt"
+cmp "../build/model/reports/policy-verdicts.txt" \
+	"../build/model/reports/policy-verdicts.clang.txt"
+BE_POLICY_VERDICT name=instance1 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=pass identity=0x63c22d4da9dcedfa
+BE_POLICY_NOTE name=instance1 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_BINDING name=instance1 result=not-applicable
+BE_POLICY_VERDICT name=instance2 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=pass identity=0x109e99ab2a212420
+BE_POLICY_NOTE name=instance2 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_BINDING name=instance2 result=ok
+BE_POLICY_VERDICT name=instance3 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=pass identity=0x735e5d85aea8ba73
+BE_POLICY_NOTE name=instance3 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=instance3 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_BINDING name=instance3 result=ok
+BE_POLICY_VERDICT name=instance1_m02 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=pass identity=0x2145ed531d6de1c8
+BE_POLICY_NOTE name=instance1_m02 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_BINDING name=instance1_m02 result=not-applicable
+BE_POLICY_VERDICT name=mutation0 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x4df6a095d3df61dc
+BE_POLICY_NOTE name=mutation0 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_FINDING name=mutation0 analysis=A8 code=a8-unallowed index=5 first=3 second=0
+BE_POLICY_FINDING name=mutation0 analysis=A8 code=a8-unallowed index=5 first=0 second=0
+BE_POLICY_FINDING name=mutation0 analysis=A8 code=a8-unallowed index=5 first=2 second=0
+BE_POLICY_BINDING name=mutation0 result=not-applicable
+BE_POLICY_VERDICT name=mutation1 A1=pass A2=pass A3=pass A4=fail A5=pass A6=pass A7=pass A8=pass identity=0x617a05829fb6d08f
+BE_POLICY_FINDING name=mutation1 analysis=A4 code=a4-excess index=2 first=2 second=0
+BE_POLICY_NOTE name=mutation1 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_BINDING name=mutation1 result=not-applicable
+BE_POLICY_VERDICT name=mutation2 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0xe554e18b729155dd
+BE_POLICY_NOTE name=mutation2 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_FINDING name=mutation2 analysis=A8 code=a8-unallowed index=2 first=0 second=0
+BE_POLICY_BINDING name=mutation2 result=not-applicable
+BE_POLICY_VERDICT name=mutation3 A1=pass A2=pass A3=fail A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x908b539f3e256447
+BE_POLICY_FINDING name=mutation3 analysis=A3 code=a3-monitor-memory index=2 first=1 second=7
+BE_POLICY_FINDING name=mutation3 analysis=A3 code=a3-monitor-memory index=3 first=1 second=7
+BE_POLICY_FINDING name=mutation3 analysis=A3 code=a3-monitor-memory index=6 first=2 second=7
+BE_POLICY_FINDING name=mutation3 analysis=A3 code=a3-monitor-memory index=7 first=2 second=7
+BE_POLICY_NOTE name=mutation3 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_FINDING name=mutation3 analysis=A8 code=a8-unallowed index=2 first=3 second=0
+BE_POLICY_FINDING name=mutation3 analysis=A8 code=a8-unallowed index=2 first=0 second=0
+BE_POLICY_FINDING name=mutation3 analysis=A8 code=a8-unallowed index=2 first=1 second=0
+BE_POLICY_FINDING name=mutation3 analysis=A8 code=a8-unallowed index=6 first=3 second=0
+BE_POLICY_FINDING name=mutation3 analysis=A8 code=a8-unallowed index=6 first=0 second=0
+BE_POLICY_BINDING name=mutation3 result=not-applicable
+BE_POLICY_VERDICT name=mutation4 A1=pass A2=fail A3=fail A4=pass A5=pass A6=pass A7=pass A8=fail identity=0xa0a742680d295f02
+BE_POLICY_FINDING name=mutation4 analysis=A2 code=a2-target-unreachable index=1 first=5 second=0
+BE_POLICY_FINDING name=mutation4 analysis=A2 code=a2-target-unreachable index=3 first=7 second=0
+BE_POLICY_FINDING name=mutation4 analysis=A2 code=a2-target-unreachable index=7 first=7 second=0
+BE_POLICY_FINDING name=mutation4 analysis=A3 code=a3-foreign-private-map index=6 first=2 second=7
+BE_POLICY_NOTE name=mutation4 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_FINDING name=mutation4 analysis=A8 code=a8-unallowed index=1 first=2 second=0
+BE_POLICY_FINDING name=mutation4 analysis=A8 code=a8-unallowed index=3 first=4 second=0
+BE_POLICY_FINDING name=mutation4 analysis=A8 code=a8-unallowed index=7 first=5 second=0
+BE_POLICY_BINDING name=mutation4 result=not-applicable
+BE_POLICY_VERDICT name=mutation5 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x018b6ab74edf7481
+BE_POLICY_FINDING name=mutation5 analysis=A1 code=a1-undeclared-type index=1 first=9 second=0
+BE_POLICY_BINDING name=mutation5 result=not-applicable
+BE_POLICY_VERDICT name=mutation6 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x53913379b41afd0c
+BE_POLICY_FINDING name=mutation6 analysis=A1 code=a1-unknown-permission index=3 first=10 second=0
+BE_POLICY_BINDING name=mutation6 result=not-applicable
+BE_POLICY_VERDICT name=mutation7 A1=pass A2=pass A3=pass A4=fail A5=pass A6=pass A7=pass A8=pass identity=0x63c22d4da9dcedfa
+BE_POLICY_FINDING name=mutation7 analysis=A4 code=a4-excess index=2 first=1 second=0
+BE_POLICY_NOTE name=mutation7 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_BINDING name=mutation7 result=not-applicable
+BE_POLICY_VERDICT name=mutation8 A1=pass A2=pass A3=fail A4=pass A5=pass A6=fail A7=pass A8=fail identity=0x4244705eb7579f5c
+BE_POLICY_FINDING name=mutation8 analysis=A3 code=a3-channel-without-storage index=6 first=2 second=7
+BE_POLICY_FINDING name=mutation8 analysis=A6 code=a6-unrealized-channel index=1 first=1 second=2
+BE_POLICY_FINDING name=mutation8 analysis=A8 code=a8-unallowed index=6 first=3 second=0
+BE_POLICY_FINDING name=mutation8 analysis=A8 code=a8-unallowed index=6 first=0 second=0
+BE_POLICY_BINDING name=mutation8 result=not-applicable
+BE_POLICY_VERDICT name=mutation9 A1=pass A2=pass A3=fail A4=pass A5=pass A6=fail A7=pass A8=fail identity=0x8c633a476e707e2f
+BE_POLICY_FINDING name=mutation9 analysis=A3 code=a3-storage-without-channel index=7 first=2 second=7
+BE_POLICY_NOTE name=mutation9 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_FINDING name=mutation9 analysis=A6 code=a6-undeclared-flow index=1 first=1 second=2
+BE_POLICY_FINDING name=mutation9 analysis=A8 code=a8-unallowed index=7 first=5 second=0
+BE_POLICY_BINDING name=mutation9 result=not-applicable
+BE_POLICY_VERDICT name=mutation10 A1=pass A2=fail A3=fail A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x8656200236dc4c58
+BE_POLICY_FINDING name=mutation10 analysis=A2 code=a2-target-unreachable index=1 first=5 second=0
+BE_POLICY_FINDING name=mutation10 analysis=A3 code=a3-foreign-private-map index=6 first=2 second=7
+BE_POLICY_NOTE name=mutation10 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_FINDING name=mutation10 analysis=A8 code=a8-unallowed index=1 first=2 second=0
+BE_POLICY_BINDING name=mutation10 result=not-applicable
+BE_POLICY_VERDICT name=mutation11 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0xf8d5330eb9c89d07
+BE_POLICY_NOTE name=mutation11 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_FINDING name=mutation11 analysis=A8 code=a8-unallowed index=8 first=3 second=0
+BE_POLICY_FINDING name=mutation11 analysis=A8 code=a8-unallowed index=8 first=0 second=0
+BE_POLICY_BINDING name=mutation11 result=not-applicable
+BE_POLICY_VERDICT name=mutation12 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0xca1ef58123ea1ce0
+BE_POLICY_FINDING name=mutation12 analysis=A1 code=a1-empty-permissions index=7 first=1 second=0
+BE_POLICY_BINDING name=mutation12 result=not-applicable
+BE_POLICY_VERDICT name=mutation13 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0xa30497d67ba008cf
+BE_POLICY_FINDING name=mutation13 analysis=A1 code=a1-duplicate-type index=9 first=1 second=0
+BE_POLICY_BINDING name=mutation13 result=not-applicable
+BE_POLICY_VERDICT name=mutation14 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0xa90883ac9b353c7b
+BE_POLICY_FINDING name=mutation14 analysis=A1 code=a1-doubly-labeled index=17 first=10 second=0
+BE_POLICY_BINDING name=mutation14 result=not-applicable
+BE_POLICY_VERDICT name=mutation15 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x83f7653a43e74072
+BE_POLICY_FINDING name=mutation15 analysis=A1 code=a1-unlabeled index=13 first=13 second=0
+BE_POLICY_BINDING name=mutation15 result=not-applicable
+BE_POLICY_VERDICT name=mutation16 A1=pass A2=pass A3=fail A4=pass A5=pass A6=pass A7=pass A8=pass identity=0xe31eb7f3813a93c0
+BE_POLICY_FINDING name=mutation16 analysis=A3 code=a3-monitor-memory index=8 first=1 second=8
+BE_POLICY_NOTE name=mutation16 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_BINDING name=mutation16 result=not-applicable
+BE_POLICY_VERDICT name=mutation17 A1=pass A2=pass A3=pass A4=fail A5=pass A6=pass A7=pass A8=pass identity=0x63c22d4da9dcedfa
+BE_POLICY_FINDING name=mutation17 analysis=A4 code=a4-no-need index=0 first=1 second=3
+BE_POLICY_NOTE name=mutation17 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_BINDING name=mutation17 result=not-applicable
+BE_POLICY_VERDICT name=mutation18 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x2b708b0d75cf4615
+BE_POLICY_NOTE name=mutation18 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_FINDING name=mutation18 analysis=A8 code=a8-unallowed index=0 first=2 second=0
+BE_POLICY_BINDING name=mutation18 result=not-applicable
+BE_POLICY_VERDICT name=mutation19 A1=pass A2=fail A3=pass A4=pass A5=pass A6=pass A7=pass A8=pass identity=0x30e008f731b18683
+BE_POLICY_FINDING name=mutation19 analysis=A2 code=a2-target-unreachable index=8 first=9 second=0
+BE_POLICY_NOTE name=mutation19 analysis=A5 code=a5-static-single-writer target=shared_mp_t writer=mgmt_t
+BE_POLICY_BINDING name=mutation19 result=not-applicable
+BE_POLICY_VERDICT name=mutation20 A1=pass A2=pass A3=fail A4=pass A5=pass A6=fail A7=pass A8=fail identity=0x7ca0d9254cc6ad87
+BE_POLICY_FINDING name=mutation20 analysis=A3 code=a3-storage-without-channel index=5 first=2 second=5
+BE_POLICY_NOTE name=mutation20 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_FINDING name=mutation20 analysis=A6 code=a6-undeclared-flow index=1 first=1 second=2
+BE_POLICY_FINDING name=mutation20 analysis=A8 code=a8-unallowed index=5 first=5 second=0
+BE_POLICY_BINDING name=mutation20 result=ok
+BE_POLICY_VERDICT name=mutation21 A1=pass A2=pass A3=fail A4=pass A5=pass A6=fail A7=pass A8=fail identity=0x9ef30bb4da5f2a10
+BE_POLICY_FINDING name=mutation21 analysis=A3 code=a3-channel-without-storage index=1 first=1 second=5
+BE_POLICY_FINDING name=mutation21 analysis=A6 code=a6-unrealized-channel index=1 first=1 second=2
+BE_POLICY_FINDING name=mutation21 analysis=A8 code=a8-unallowed index=1 first=3 second=0
+BE_POLICY_FINDING name=mutation21 analysis=A8 code=a8-unallowed index=1 first=0 second=0
+BE_POLICY_FINDING name=mutation21 analysis=A8 code=a8-unallowed index=1 first=1 second=0
+BE_POLICY_BINDING name=mutation21 result=ok
+BE_POLICY_VERDICT name=mutation22 A1=pass A2=pass A3=pass A4=fail A5=pass A6=pass A7=pass A8=pass identity=0xaa9b22933b3313a8
+BE_POLICY_FINDING name=mutation22 analysis=A4 code=a4-excess index=2 first=5 second=0
+BE_POLICY_NOTE name=mutation22 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_BINDING name=mutation22 result=ok
+BE_POLICY_VERDICT name=mutation23 A1=pass A2=pass A3=pass A4=fail A5=fail A6=fail A7=pass A8=pass identity=0xb5be802fd7773ddf
+BE_POLICY_FINDING name=mutation23 analysis=A4 code=a4-excess index=4 first=1 second=0
+BE_POLICY_FINDING name=mutation23 analysis=A5 code=a5-multiple-writers index=5 first=5 second=6
+BE_POLICY_FINDING name=mutation23 analysis=A6 code=a6-undeclared-flow index=1 first=1 second=1
+BE_POLICY_FINDING name=mutation23 analysis=A6 code=a6-undeclared-flow index=2 first=2 second=1
+BE_POLICY_FINDING name=mutation23 analysis=A6 code=a6-undeclared-flow index=2 first=2 second=2
+BE_POLICY_BINDING name=mutation23 result=ok
+BE_POLICY_VERDICT name=mutation24 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x9ee41833deae5732
+BE_POLICY_NOTE name=mutation24 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_FINDING name=mutation24 analysis=A8 code=a8-unallowed index=0 first=0 second=0
+BE_POLICY_BINDING name=mutation24 result=ok
+BE_POLICY_VERDICT name=mutation25 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x535816cf429d2a3b
+BE_POLICY_NOTE name=mutation25 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_FINDING name=mutation25 analysis=A8 code=a8-unallowed index=3 first=3 second=0
+BE_POLICY_BINDING name=mutation25 result=ok
+BE_POLICY_VERDICT name=mutation26 A1=pass A2=fail A3=fail A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x5f73d1e0bfcf97ef
+BE_POLICY_FINDING name=mutation26 analysis=A2 code=a2-target-unreachable index=0 first=3 second=0
+BE_POLICY_FINDING name=mutation26 analysis=A2 code=a2-target-unreachable index=2 first=5 second=0
+BE_POLICY_FINDING name=mutation26 analysis=A2 code=a2-target-unreachable index=5 first=5 second=0
+BE_POLICY_FINDING name=mutation26 analysis=A3 code=a3-foreign-private-map index=4 first=2 second=5
+BE_POLICY_NOTE name=mutation26 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_FINDING name=mutation26 analysis=A8 code=a8-unallowed index=0 first=2 second=0
+BE_POLICY_FINDING name=mutation26 analysis=A8 code=a8-unallowed index=2 first=4 second=0
+BE_POLICY_FINDING name=mutation26 analysis=A8 code=a8-unallowed index=5 first=5 second=0
+BE_POLICY_BINDING name=mutation26 result=ok
+BE_POLICY_VERDICT name=mutation27 A1=pass A2=pass A3=fail A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x24b58ce41a41eb21
+BE_POLICY_FINDING name=mutation27 analysis=A3 code=a3-monitor-memory index=3 first=2 second=4
+BE_POLICY_NOTE name=mutation27 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_FINDING name=mutation27 analysis=A8 code=a8-unallowed index=3 first=3 second=0
+BE_POLICY_FINDING name=mutation27 analysis=A8 code=a8-unallowed index=3 first=0 second=0
+BE_POLICY_FINDING name=mutation27 analysis=A8 code=a8-unallowed index=3 first=1 second=0
+BE_POLICY_FINDING name=mutation27 analysis=A8 code=a8-unallowed index=3 first=2 second=0
+BE_POLICY_BINDING name=mutation27 result=ok
+BE_POLICY_VERDICT name=mutation28 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0xacffd2a9bc2dac77
+BE_POLICY_FINDING name=mutation28 analysis=A1 code=a1-undeclared-type index=2 first=7 second=0
+BE_POLICY_BINDING name=mutation28 result=ok
+BE_POLICY_VERDICT name=mutation29 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x1cbafc40311c8f2f
+BE_POLICY_FINDING name=mutation29 analysis=A1 code=a1-unknown-permission index=0 first=10 second=0
+BE_POLICY_BINDING name=mutation29 result=ok
+BE_POLICY_VERDICT name=mutation30 A1=pass A2=pass A3=pass A4=fail A5=pass A6=pass A7=pass A8=pass identity=0x109e99ab2a212420
+BE_POLICY_FINDING name=mutation30 analysis=A4 code=a4-excess index=4 first=0 second=0
+BE_POLICY_NOTE name=mutation30 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_BINDING name=mutation30 result=ok
+BE_POLICY_VERDICT name=mutation31 A1=pass A2=pass A3=fail A4=pass A5=pass A6=fail A7=pass A8=fail identity=0xdc46ab4f4f92e7f6
+BE_POLICY_FINDING name=mutation31 analysis=A3 code=a3-channel-without-storage index=4 first=2 second=5
+BE_POLICY_FINDING name=mutation31 analysis=A6 code=a6-unrealized-channel index=1 first=1 second=2
+BE_POLICY_FINDING name=mutation31 analysis=A8 code=a8-unallowed index=4 first=3 second=0
+BE_POLICY_FINDING name=mutation31 analysis=A8 code=a8-unallowed index=4 first=0 second=0
+BE_POLICY_BINDING name=mutation31 result=ok
+BE_POLICY_VERDICT name=mutation32 A1=pass A2=pass A3=fail A4=pass A5=pass A6=fail A7=pass A8=fail identity=0x5170ac6b7b6763d3
+BE_POLICY_FINDING name=mutation32 analysis=A3 code=a3-storage-without-channel index=5 first=1 second=5
+BE_POLICY_NOTE name=mutation32 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_FINDING name=mutation32 analysis=A6 code=a6-undeclared-flow index=1 first=1 second=2
+BE_POLICY_FINDING name=mutation32 analysis=A8 code=a8-unallowed index=2 first=4 second=0
+BE_POLICY_BINDING name=mutation32 result=ok
+BE_POLICY_VERDICT name=mutation33 A1=pass A2=fail A3=fail A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x639094446a762531
+BE_POLICY_FINDING name=mutation33 analysis=A2 code=a2-target-unreachable index=0 first=3 second=0
+BE_POLICY_FINDING name=mutation33 analysis=A3 code=a3-foreign-private-map index=4 first=2 second=5
+BE_POLICY_NOTE name=mutation33 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_FINDING name=mutation33 analysis=A8 code=a8-unallowed index=0 first=2 second=0
+BE_POLICY_BINDING name=mutation33 result=ok
+BE_POLICY_VERDICT name=mutation34 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0xe1a2ec2e4b99ea93
+BE_POLICY_NOTE name=mutation34 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_FINDING name=mutation34 analysis=A8 code=a8-unallowed index=1 first=2 second=0
+BE_POLICY_BINDING name=mutation34 result=ok
+BE_POLICY_VERDICT name=mutation35 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0xc04727c9e5bb97b9
+BE_POLICY_FINDING name=mutation35 analysis=A1 code=a1-empty-permissions index=2 first=1 second=0
+BE_POLICY_BINDING name=mutation35 result=ok
+BE_POLICY_VERDICT name=mutation36 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x44491ab7ee6d3b27
+BE_POLICY_FINDING name=mutation36 analysis=A1 code=a1-duplicate-type index=7 first=1 second=0
+BE_POLICY_BINDING name=mutation36 result=ok
+BE_POLICY_VERDICT name=mutation37 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0xd117eef14d010647
+BE_POLICY_FINDING name=mutation37 analysis=A1 code=a1-duplicate-class index=2 first=0 second=0
+BE_POLICY_BINDING name=mutation37 result=ok
+BE_POLICY_VERDICT name=mutation38 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x242acaaa1433d181
+BE_POLICY_FINDING name=mutation38 analysis=A1 code=a1-doubly-labeled index=12 first=2 second=0
+BE_POLICY_BINDING name=mutation38 result=ok
+BE_POLICY_VERDICT name=mutation39 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x3d4d3d59160974b6
+BE_POLICY_FINDING name=mutation39 analysis=A1 code=a1-doubly-labeled index=3 first=2 second=0
+BE_POLICY_BINDING name=mutation39 result=ok
+BE_POLICY_VERDICT name=mutation40 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x5d7a947c2cbcc2b1
+BE_POLICY_FINDING name=mutation40 analysis=A1 code=a1-unlabeled index=8 first=8 second=0
+BE_POLICY_BINDING name=mutation40 result=ok
+BE_POLICY_VERDICT name=mutation41 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0xae4d1d8b6b94e0d0
+BE_POLICY_FINDING name=mutation41 analysis=A1 code=a1-undeclared-type index=4 first=1 second=0
+BE_POLICY_BINDING name=mutation41 result=ok
+BE_POLICY_VERDICT name=mutation42 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x62b9e3eeb8480024
+BE_POLICY_FINDING name=mutation42 analysis=A1 code=a1-unknown-permission index=5 first=0 second=0
+BE_POLICY_BINDING name=mutation42 result=ok
+BE_POLICY_VERDICT name=mutation43 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x1dbdac219c45fd36
+BE_POLICY_FINDING name=mutation43 analysis=A1 code=a1-undeclared-class index=6 first=2 second=0
+BE_POLICY_BINDING name=mutation43 result=ok
+BE_POLICY_VERDICT name=mutation44 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0xa8ab218dd478284a
+BE_POLICY_FINDING name=mutation44 analysis=A1 code=a1-repeated-permission index=4 first=0 second=0
+BE_POLICY_BINDING name=mutation44 result=ok
+BE_POLICY_VERDICT name=mutation45 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=fail A8=pass identity=0x75b4f54df91d8dca
+BE_POLICY_NOTE name=mutation45 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_FINDING name=mutation45 analysis=A7 code=a7-delegation index=6 first=7 second=0
+BE_POLICY_BINDING name=mutation45 result=ok
+BE_POLICY_VERDICT name=mutation46 A1=pass A2=pass A3=fail A4=pass A5=pass A6=pass A7=pass A8=pass identity=0xb49e8119bce3f460
+BE_POLICY_FINDING name=mutation46 analysis=A3 code=a3-monitor-memory index=6 first=2 second=6
+BE_POLICY_NOTE name=mutation46 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_BINDING name=mutation46 result=ok
+BE_POLICY_VERDICT name=mutation47 A1=pass A2=pass A3=fail A4=pass A5=pass A6=pass A7=pass A8=pass identity=0x569fd34bde119285
+BE_POLICY_FINDING name=mutation47 analysis=A3 code=a3-foreign-private-map index=6 first=2 second=3
+BE_POLICY_FINDING name=mutation47 analysis=A3 code=a3-storage-without-channel index=3 first=1 second=3
+BE_POLICY_FINDING name=mutation47 analysis=A3 code=a3-storage-without-channel index=3 first=2 second=3
+BE_POLICY_NOTE name=mutation47 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_BINDING name=mutation47 result=ok
+BE_POLICY_VERDICT name=mutation48 A1=pass A2=fail A3=pass A4=pass A5=pass A6=pass A7=pass A8=pass identity=0x2da61eef4d197d4b
+BE_POLICY_FINDING name=mutation48 analysis=A2 code=a2-target-unreachable index=6 first=7 second=0
+BE_POLICY_NOTE name=mutation48 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_BINDING name=mutation48 result=ok
+BE_POLICY_VERDICT name=mutation49 A1=pass A2=pass A3=pass A4=fail A5=pass A6=pass A7=pass A8=pass identity=0x109e99ab2a212420
+BE_POLICY_FINDING name=mutation49 analysis=A4 code=a4-no-need index=1 first=1 second=5
+BE_POLICY_NOTE name=mutation49 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_BINDING name=mutation49 result=ok
+BE_POLICY_VERDICT name=mutation50 A1=pass A2=pass A3=pass A4=fail A5=pass A6=pass A7=pass A8=pass identity=0x109e99ab2a212420
+BE_POLICY_FINDING name=mutation50 analysis=A4 code=a4-malformed-need index=6 first=1 second=3
+BE_POLICY_NOTE name=mutation50 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_BINDING name=mutation50 result=ok
+BE_POLICY_VERDICT name=mutation51 A1=pass A2=pass A3=pass A4=pass A5=fail A6=pass A7=pass A8=pass identity=0xcbe114288e803727
+BE_POLICY_FINDING name=mutation51 analysis=A5 code=a5-multiple-writers index=5 first=5 second=6
+BE_POLICY_BINDING name=mutation51 result=ok
+BE_POLICY_VERDICT name=mutation52 A1=pass A2=pass A3=pass A4=pass A5=fail A6=fail A7=pass A8=pass identity=0x3613118c233d260b
+BE_POLICY_FINDING name=mutation52 analysis=A5 code=a5-multiple-writers index=5 first=5 second=6
+BE_POLICY_FINDING name=mutation52 analysis=A6 code=a6-undeclared-flow index=1 first=1 second=1
+BE_POLICY_FINDING name=mutation52 analysis=A6 code=a6-undeclared-flow index=2 first=2 second=1
+BE_POLICY_FINDING name=mutation52 analysis=A6 code=a6-undeclared-flow index=2 first=2 second=2
+BE_POLICY_BINDING name=mutation52 result=ok
+BE_POLICY_VERDICT name=mutation53 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x57ac7806103b15a5
+BE_POLICY_NOTE name=mutation53 analysis=A5 code=a5-static-single-writer target=shared_wr_t writer=writer_t
+BE_POLICY_FINDING name=mutation53 analysis=A8 code=a8-unallowed index=4 first=1 second=0
+BE_POLICY_BINDING name=mutation53 result=ok
+BE_POLICY_VERDICT name=mutation54 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x1a94df2315d93bde
+BE_POLICY_NOTE name=mutation54 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation54 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation54 analysis=A8 code=a8-unallowed index=11 first=3 second=0
+BE_POLICY_FINDING name=mutation54 analysis=A8 code=a8-unallowed index=11 first=0 second=0
+BE_POLICY_BINDING name=mutation54 result=ok
+BE_POLICY_VERDICT name=mutation55 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x906ac0788aaf14c0
+BE_POLICY_NOTE name=mutation55 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation55 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation55 analysis=A8 code=a8-unallowed index=5 first=9 second=0
+BE_POLICY_FINDING name=mutation55 analysis=A8 code=a8-unallowed index=5 first=8 second=0
+BE_POLICY_BINDING name=mutation55 result=ok
+BE_POLICY_VERDICT name=mutation56 A1=pass A2=pass A3=pass A4=fail A5=pass A6=pass A7=fail A8=pass identity=0xa253d18dde467257
+BE_POLICY_FINDING name=mutation56 analysis=A4 code=a4-excess index=5 first=6 second=0
+BE_POLICY_NOTE name=mutation56 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation56 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation56 analysis=A7 code=a7-delegation index=5 first=6 second=0
+BE_POLICY_BINDING name=mutation56 result=ok
+BE_POLICY_VERDICT name=mutation57 A1=pass A2=pass A3=pass A4=fail A5=pass A6=pass A7=pass A8=pass identity=0x0169eb0bbd653ff2
+BE_POLICY_FINDING name=mutation57 analysis=A4 code=a4-excess index=3 first=2 second=0
+BE_POLICY_NOTE name=mutation57 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation57 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_BINDING name=mutation57 result=ok
+BE_POLICY_VERDICT name=mutation58 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x9c226c8c857c4d6c
+BE_POLICY_NOTE name=mutation58 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation58 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation58 analysis=A8 code=a8-unallowed index=0 first=0 second=0
+BE_POLICY_BINDING name=mutation58 result=ok
+BE_POLICY_VERDICT name=mutation59 A1=pass A2=pass A3=pass A4=pass A5=pass A6=fail A7=pass A8=fail identity=0x53bb2b8c6c00b330
+BE_POLICY_NOTE name=mutation59 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation59 analysis=A6 code=a6-unrealized-channel index=1 first=1 second=1
+BE_POLICY_FINDING name=mutation59 analysis=A6 code=a6-unrealized-channel index=1 first=1 second=2
+BE_POLICY_FINDING name=mutation59 analysis=A6 code=a6-unrealized-channel index=2 first=2 second=2
+BE_POLICY_FINDING name=mutation59 analysis=A8 code=a8-unallowed index=7 first=0 second=0
+BE_POLICY_BINDING name=mutation59 result=ok
+BE_POLICY_VERDICT name=mutation60 A1=pass A2=pass A3=fail A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x2972e3c84fb8b625
+BE_POLICY_FINDING name=mutation60 analysis=A3 code=a3-foreign-private-map index=0 first=1 second=3
+BE_POLICY_FINDING name=mutation60 analysis=A3 code=a3-foreign-private-map index=6 first=2 second=4
+BE_POLICY_NOTE name=mutation60 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation60 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation60 analysis=A8 code=a8-unallowed index=0 first=3 second=0
+BE_POLICY_FINDING name=mutation60 analysis=A8 code=a8-unallowed index=0 first=0 second=0
+BE_POLICY_FINDING name=mutation60 analysis=A8 code=a8-unallowed index=0 first=1 second=0
+BE_POLICY_FINDING name=mutation60 analysis=A8 code=a8-unallowed index=0 first=2 second=0
+BE_POLICY_FINDING name=mutation60 analysis=A8 code=a8-unallowed index=6 first=3 second=0
+BE_POLICY_FINDING name=mutation60 analysis=A8 code=a8-unallowed index=6 first=0 second=0
+BE_POLICY_FINDING name=mutation60 analysis=A8 code=a8-unallowed index=6 first=1 second=0
+BE_POLICY_FINDING name=mutation60 analysis=A8 code=a8-unallowed index=6 first=2 second=0
+BE_POLICY_BINDING name=mutation60 result=ok
+BE_POLICY_VERDICT name=mutation61 A1=pass A2=pass A3=fail A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x02465a34a1cc236e
+BE_POLICY_FINDING name=mutation61 analysis=A3 code=a3-monitor-memory index=11 first=2 second=7
+BE_POLICY_NOTE name=mutation61 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation61 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation61 analysis=A8 code=a8-unallowed index=11 first=3 second=0
+BE_POLICY_FINDING name=mutation61 analysis=A8 code=a8-unallowed index=11 first=0 second=0
+BE_POLICY_BINDING name=mutation61 result=ok
+BE_POLICY_VERDICT name=mutation62 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0xfbbaae4b98429b3f
+BE_POLICY_FINDING name=mutation62 analysis=A1 code=a1-undeclared-type index=1 first=9 second=0
+BE_POLICY_BINDING name=mutation62 result=ok
+BE_POLICY_VERDICT name=mutation63 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x8142a0c24b7f31f5
+BE_POLICY_FINDING name=mutation63 analysis=A1 code=a1-unknown-permission index=5 first=10 second=0
+BE_POLICY_BINDING name=mutation63 result=ok
+BE_POLICY_VERDICT name=mutation64 A1=pass A2=pass A3=pass A4=fail A5=pass A6=pass A7=pass A8=pass identity=0x735e5d85aea8ba73
+BE_POLICY_FINDING name=mutation64 analysis=A4 code=a4-excess index=0 first=1 second=0
+BE_POLICY_NOTE name=mutation64 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation64 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_BINDING name=mutation64 result=ok
+BE_POLICY_VERDICT name=mutation65 A1=pass A2=pass A3=fail A4=pass A5=pass A6=fail A7=pass A8=fail identity=0x4e9cef65edc7ae9e
+BE_POLICY_FINDING name=mutation65 analysis=A3 code=a3-channel-without-storage index=3 first=1 second=6
+BE_POLICY_NOTE name=mutation65 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_FINDING name=mutation65 analysis=A6 code=a6-unrealized-channel index=1 first=1 second=1
+BE_POLICY_FINDING name=mutation65 analysis=A6 code=a6-unrealized-channel index=2 first=2 second=1
+BE_POLICY_FINDING name=mutation65 analysis=A6 code=a6-unrealized-channel index=2 first=2 second=2
+BE_POLICY_FINDING name=mutation65 analysis=A8 code=a8-unallowed index=3 first=3 second=0
+BE_POLICY_FINDING name=mutation65 analysis=A8 code=a8-unallowed index=3 first=0 second=0
+BE_POLICY_BINDING name=mutation65 result=ok
+BE_POLICY_VERDICT name=mutation66 A1=pass A2=pass A3=fail A4=pass A5=pass A6=fail A7=pass A8=fail identity=0x2fb68155f1b25694
+BE_POLICY_FINDING name=mutation66 analysis=A3 code=a3-storage-without-channel index=5 first=1 second=5
+BE_POLICY_NOTE name=mutation66 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation66 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation66 analysis=A6 code=a6-undeclared-flow index=1 first=1 second=1
+BE_POLICY_FINDING name=mutation66 analysis=A6 code=a6-undeclared-flow index=1 first=1 second=2
+BE_POLICY_FINDING name=mutation66 analysis=A6 code=a6-undeclared-flow index=2 first=2 second=2
+BE_POLICY_FINDING name=mutation66 analysis=A8 code=a8-unallowed index=2 first=4 second=0
+BE_POLICY_BINDING name=mutation66 result=ok
+BE_POLICY_VERDICT name=mutation67 A1=pass A2=fail A3=fail A4=pass A5=pass A6=pass A7=pass A8=fail identity=0xaa10f7f781ff5dd0
+BE_POLICY_FINDING name=mutation67 analysis=A2 code=a2-target-unreachable index=0 first=3 second=0
+BE_POLICY_FINDING name=mutation67 analysis=A3 code=a3-foreign-private-map index=7 first=2 second=5
+BE_POLICY_NOTE name=mutation67 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation67 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation67 analysis=A8 code=a8-unallowed index=0 first=2 second=0
+BE_POLICY_BINDING name=mutation67 result=ok
+BE_POLICY_VERDICT name=mutation68 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x9d1b49e0175f5f74
+BE_POLICY_NOTE name=mutation68 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation68 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation68 analysis=A8 code=a8-unallowed index=12 first=9 second=0
+BE_POLICY_BINDING name=mutation68 result=ok
+BE_POLICY_VERDICT name=mutation69 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=fail A8=pass identity=0x5571b552013e53e8
+BE_POLICY_NOTE name=mutation69 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation69 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation69 analysis=A7 code=a7-delegation index=5 first=6 second=0
+BE_POLICY_BINDING name=mutation69 result=ok
+BE_POLICY_VERDICT name=mutation70 A1=pass A2=pass A3=fail A4=pass A5=pass A6=pass A7=pass A8=pass identity=0xeb7529ba293cb6eb
+BE_POLICY_FINDING name=mutation70 analysis=A3 code=a3-foreign-private-map index=12 first=1 second=4
+BE_POLICY_FINDING name=mutation70 analysis=A3 code=a3-storage-without-channel index=4 first=1 second=4
+BE_POLICY_FINDING name=mutation70 analysis=A3 code=a3-storage-without-channel index=4 first=2 second=4
+BE_POLICY_NOTE name=mutation70 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation70 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_BINDING name=mutation70 result=ok
+BE_POLICY_VERDICT name=mutation71 A1=pass A2=pass A3=fail A4=pass A5=pass A6=pass A7=pass A8=pass identity=0xdb0d187118e4b841
+BE_POLICY_FINDING name=mutation71 analysis=A3 code=a3-foreign-private-map index=12 first=1 second=7
+BE_POLICY_FINDING name=mutation71 analysis=A3 code=a3-storage-without-channel index=7 first=1 second=7
+BE_POLICY_FINDING name=mutation71 analysis=A3 code=a3-storage-without-channel index=7 first=2 second=7
+BE_POLICY_NOTE name=mutation71 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation71 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_BINDING name=mutation71 result=ok
+BE_POLICY_VERDICT name=mutation72 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0xd6b60097e3299b04
+BE_POLICY_NOTE name=mutation72 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation72 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation72 analysis=A8 code=a8-unallowed index=5 first=3 second=0
+BE_POLICY_FINDING name=mutation72 analysis=A8 code=a8-unallowed index=5 first=0 second=0
+BE_POLICY_BINDING name=mutation72 result=ok
+BE_POLICY_VERDICT name=mutation73 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0xdc8ebdb8382b7dce
+BE_POLICY_NOTE name=mutation73 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation73 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation73 analysis=A8 code=a8-unallowed index=12 first=8 second=0
+BE_POLICY_BINDING name=mutation73 result=ok
+BE_POLICY_VERDICT name=mutation74 A1=pass A2=pass A3=fail A4=pass A5=pass A6=pass A7=pass A8=pass identity=0x407a35bcc6427f07
+BE_POLICY_FINDING name=mutation74 analysis=A3 code=a3-domain-target index=12 first=1 second=1
+BE_POLICY_NOTE name=mutation74 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation74 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_BINDING name=mutation74 result=ok
+BE_POLICY_VERDICT name=mutation75 A1=pass A2=fail A3=fail A4=pass A5=pass A6=pass A7=pass A8=pass identity=0xb1922fd6c798931d
+BE_POLICY_FINDING name=mutation75 analysis=A2 code=a2-target-unreachable index=12 first=5 second=0
+BE_POLICY_FINDING name=mutation75 analysis=A3 code=a3-domain-target index=12 first=1 second=5
+BE_POLICY_NOTE name=mutation75 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation75 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_BINDING name=mutation75 result=ok
+BE_POLICY_VERDICT name=mutation76 A1=pass A2=pass A3=pass A4=pass A5=fail A6=pass A7=pass A8=pass identity=0x9d362fda4fe9cc9b
+BE_POLICY_NOTE name=mutation76 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_FINDING name=mutation76 analysis=A5 code=a5-multiple-writers index=6 first=6 second=6
+BE_POLICY_BINDING name=mutation76 result=ok
+BE_POLICY_VERDICT name=mutation77 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x5b303c1b45d73c93
+BE_POLICY_FINDING name=mutation77 analysis=A1 code=a1-empty-permissions index=5 first=2 second=0
+BE_POLICY_BINDING name=mutation77 result=ok
+BE_POLICY_VERDICT name=mutation78 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x2ae1dac5fc24f8dd
+BE_POLICY_FINDING name=mutation78 analysis=A1 code=a1-duplicate-type index=9 first=7 second=0
+BE_POLICY_BINDING name=mutation78 result=ok
+BE_POLICY_VERDICT name=mutation79 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x20f34940d4ebd864
+BE_POLICY_FINDING name=mutation79 analysis=A1 code=a1-duplicate-class index=3 first=2 second=0
+BE_POLICY_BINDING name=mutation79 result=ok
+BE_POLICY_VERDICT name=mutation80 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x0d2181127ac865b2
+BE_POLICY_FINDING name=mutation80 analysis=A1 code=a1-doubly-labeled index=15 first=4 second=0
+BE_POLICY_BINDING name=mutation80 result=ok
+BE_POLICY_VERDICT name=mutation81 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x241e25cf6a791999
+BE_POLICY_FINDING name=mutation81 analysis=A1 code=a1-doubly-labeled index=15 first=5 second=0
+BE_POLICY_BINDING name=mutation81 result=ok
+BE_POLICY_VERDICT name=mutation82 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x734f64e80ce0cdd3
+BE_POLICY_FINDING name=mutation82 analysis=A1 code=a1-unlabeled index=11 first=11 second=0
+BE_POLICY_BINDING name=mutation82 result=ok
+BE_POLICY_VERDICT name=mutation83 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x25a1434b9b270cbf
+BE_POLICY_FINDING name=mutation83 analysis=A1 code=a1-unlabeled index=0 first=0 second=0
+BE_POLICY_BINDING name=mutation83 result=ok
+BE_POLICY_VERDICT name=mutation84 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x27fed76b9808ba9a
+BE_POLICY_FINDING name=mutation84 analysis=A1 code=a1-undeclared-type index=2 first=2 second=0
+BE_POLICY_BINDING name=mutation84 result=ok
+BE_POLICY_VERDICT name=mutation85 A1=fail A2=not-run A3=not-run A4=not-run A5=not-run A6=not-run A7=not-run A8=not-run identity=0x4207fbfa6f0c0639
+BE_POLICY_FINDING name=mutation85 analysis=A1 code=a1-unknown-permission index=2 first=1 second=0
+BE_POLICY_BINDING name=mutation85 result=ok
+BE_POLICY_VERDICT name=mutation86 A1=pass A2=pass A3=fail A4=pass A5=pass A6=pass A7=pass A8=pass identity=0x44ccc016cce92a52
+BE_POLICY_FINDING name=mutation86 analysis=A3 code=a3-monitor-memory index=12 first=1 second=8
+BE_POLICY_NOTE name=mutation86 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation86 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_BINDING name=mutation86 result=ok
+BE_POLICY_VERDICT name=mutation87 A1=pass A2=pass A3=pass A4=fail A5=pass A6=pass A7=pass A8=pass identity=0x735e5d85aea8ba73
+BE_POLICY_FINDING name=mutation87 analysis=A4 code=a4-no-need index=11 first=2 second=7
+BE_POLICY_NOTE name=mutation87 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation87 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_BINDING name=mutation87 result=ok
+BE_POLICY_VERDICT name=mutation88 A1=pass A2=pass A3=pass A4=fail A5=pass A6=pass A7=pass A8=pass identity=0x735e5d85aea8ba73
+BE_POLICY_FINDING name=mutation88 analysis=A4 code=a4-malformed-need index=0 first=1 second=3
+BE_POLICY_FINDING name=mutation88 analysis=A4 code=a4-no-need index=0 first=1 second=3
+BE_POLICY_NOTE name=mutation88 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation88 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_BINDING name=mutation88 result=ok
+BE_POLICY_VERDICT name=mutation89 A1=pass A2=pass A3=pass A4=pass A5=pass A6=pass A7=pass A8=fail identity=0x3016937086fd909c
+BE_POLICY_NOTE name=mutation89 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation89 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_FINDING name=mutation89 analysis=A8 code=a8-unallowed index=7 first=1 second=0
+BE_POLICY_BINDING name=mutation89 result=ok
+BE_POLICY_VERDICT name=mutation90 A1=pass A2=fail A3=pass A4=pass A5=pass A6=pass A7=pass A8=pass identity=0x13dd01c251ec2afc
+BE_POLICY_FINDING name=mutation90 analysis=A2 code=a2-target-unreachable index=12 first=9 second=0
+BE_POLICY_NOTE name=mutation90 analysis=A5 code=a5-static-single-writer target=req_t writer=host_t
+BE_POLICY_NOTE name=mutation90 analysis=A5 code=a5-static-single-writer target=resp_t writer=prot_t
+BE_POLICY_BINDING name=mutation90 result=ok
+BE_POLICY_RUN: PASS instances=4 mutations=91
+gcc -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Iinclude tools/model-report.c src/manifest.c src/state.c src/fixtures.c -o ../build/model/host/gcc/model-report
+clang -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Iinclude tools/model-report.c src/manifest.c src/state.c src/fixtures.c -o ../build/model/host/clang/model-report
+gcc -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Iinclude tools/policy-report.c src/policy.c src/manifest.c src/fixtures.c \
+	../build/model/policy/fixtures.c -o ../build/model/host/gcc/policy-report
+clang -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Iinclude tools/policy-report.c src/policy.c src/manifest.c src/fixtures.c \
+	../build/model/policy/fixtures.c -o ../build/model/host/clang/policy-report
+../build/model/host/gcc/policy-report >"../build/model/reports/policy.gcc.json"
+../build/model/host/clang/policy-report >"../build/model/reports/policy.clang.json"
+cmp "../build/model/reports/policy.gcc.json" \
+	"../build/model/reports/policy.clang.json"
+node tests/check-reports.mjs --policy "../build/model/reports/policy.json"
+Beryllium policy layer report: PASS
+Beryllium policy fixtures: deterministic across two runs
+node tests/check-reports.mjs \
+	../build/model/reports/source-a.json \
+	../build/model/reports/source-b.json
+Beryllium Architecture Model 0.2 reports: PASS
+tests/run-proofs.sh
+Beryllium security model v1 policy and hart binding proofs: PASS instances=generated
+Beryllium Architecture Model 0.2 proofs: PASS
+tests/differential.sh
+BE_MODEL_DIFFERENTIAL: PASS instances=4 mutations=91 three_way=73 two_way=22 comparisons=241
+tests/generate-evidence.sh
+Beryllium Architecture Model 0.2 evidence: PASS
+make: Leaving directory '/work/model'

@@ -1,0 +1,31 @@
+schema=be-mvp-k3-staging-v1
+partition_label=beryllium
+images=19
+image name=be-mvp-probe-platform-gcc.img bytes=2748416 sha256=b803f7a383368b82ab0148fd48728c4cb3e0b4ae99c0d3bff4b67e8cfb8ea00a md5=d8575d9cf49129fbff65c6519cf4bca1 crc32=a2505929 source=build/mvp/probes/gcc/probe-platform/be-mvp-boot.img
+image name=be-mvp-probe-vmid-distinct-gcc.img bytes=2748416 sha256=513424fbb3683273a89a196fb07e9223e962cad3211d7b6aa9e39dd991ce852d md5=8a99a21be06b6ee514cfadf1b26ce8f5 crc32=d2c40b66 source=build/mvp/probes/gcc/probe-vmid-distinct/be-mvp-boot.img
+image name=be-mvp-probe-vmid-shared-gcc.img bytes=2748416 sha256=96c07651cefa6fb704f526738f02f3cf12c0a2a5567701497e69958f75dc985e md5=d310ba544e43070cb678110a2218d5a8 crc32=2e1d76b3 source=build/mvp/probes/gcc/probe-vmid-shared/be-mvp-boot.img
+image name=be-mvp-probe-console-input-gcc.img bytes=2748416 sha256=f612a43845a4acf3bda3ce6dde2bcd29733781c60a7ecd53ed5b890946836dc4 md5=80135cab15fe9ba3f1712b2eb83cd1e8 crc32=d3f46449 source=build/mvp/probes/gcc/probe-console-input/be-mvp-boot.img
+image name=be-mvp-two-guests-gcc.img bytes=2748416 sha256=3c836649f66e7070fd28b403b2f439989ca19cc136b9cfe6d3a9642b51c56ab0 md5=df05ba5588d94c402ed97a6d977c5bf8 crc32=23747250 source=build/mvp/gcc/be-mvp-boot.img
+image name=be-mvp-two-guests-clang.img bytes=2748416 sha256=c5a9a4b9c9e75a55e8cdd65858f4f5791821ebebc05f8a9cb09f7f5f2e568f37 md5=2adcbb449a58804bceeb86fae9fcd1e5 crc32=0ea352a8 source=build/mvp/clang/be-mvp-boot.img
+image name=be-mvp-te-poc-gcc.img bytes=2748416 sha256=d1550afacc992ad47729d28dfa573fef48d129b9b1de1571320aa444cddc7911 md5=1d2a0fc2fe52142d705a76aeccfcb50f crc32=606263ec source=build/mvp/gcc/te-poc/be-mvp-boot.img
+image name=be-mvp-te-poc-clang.img bytes=2748416 sha256=f1e41aec0b9b7c7728f5340e7245344e90ee638ae9db0cdb95cd58022f476878 md5=68bceb46c39e90f103e7da3557176447 crc32=a78fa5d0 source=build/mvp/clang/te-poc/be-mvp-boot.img
+image name=be-mvp-anchor-gcc.img bytes=2748416 sha256=35e44b00dcddf05adc82bafdfb2933d0f867f622f524a112aedcaa20ea19a371 md5=df5ac74cc54c1cb81241c457d9077322 crc32=5f7de6cd source=build/mvp/gcc/anchor/be-mvp-boot.img
+image name=be-mvp-anchor-clang.img bytes=2748416 sha256=42d466e9451e76572153f4f7dc1f5eb2b2697f7eb858a0aa8a98ac788079e376 md5=7f1f5662349fceb8c05100083eb2317c crc32=ff4cda88 source=build/mvp/clang/anchor/be-mvp-boot.img
+image name=be-mvp-two-guests-payload-gcc.img bytes=2748416 sha256=32224b96136d98d80f9508822d9007352d6053acef738bb29033e7aa5d98dc44 md5=4efe3a9649ba1449003b76a817f828b8 crc32=b45f0dfc source=build/mvp/variants/gcc/payload/be-mvp-boot.img
+image name=be-mvp-te-poc-reader-write-gcc.img bytes=2748416 sha256=bc68e3486c26bcd90dda6ee90a7c6e4e758f30974fce515075cff4869a38eb35 md5=cbefbd4524ce4ca4cdec2c4f56f69288 crc32=c9d87add source=build/mvp/variants/gcc/reader-write/be-mvp-boot.img
+image name=be-mvp-te-poc-no-inject-gcc.img bytes=2748416 sha256=9a2b747c0cd1a93b232fdf295d66b5a394b2dd774a51a622998acc267e11b87c md5=0bb1aab96d23fff7d47f80defe9ad3f5 crc32=7d339f76 source=build/mvp/variants/gcc/no-inject/be-mvp-boot.img
+image name=be-mvp-anchor-wrong-measurement-gcc.img bytes=2748416 sha256=5c689aa4dc4e78eabfe9cf12dce8d08377c74d161904ccd7423f7638ade8e52d md5=1521274c7208466270538bbf9f3109e0 crc32=29f9707f source=build/mvp/variants/gcc/wrong-measurement/be-mvp-boot.img
+image name=be-mvp-anchor-no-grant-check-gcc.img bytes=2748416 sha256=6b9c4c54217b5da1d610a7ad8f5eea56b12cf2d3242aa415001725434f19cd4b md5=51df6ccb5df91c358a41a9903889a3b7 crc32=5fe94fb4 source=build/mvp/variants/gcc/no-grant-check/be-mvp-boot.img
+image name=be-mvp-anchor-self-report-flip-gcc.img bytes=2748416 sha256=53ce4275430d1877b21dc10ea558fdeea7b57a1a3e9f9f07e6c9fee9bdfd18a1 md5=29c45989a63816b0c7949e5351a12f41 crc32=b01f3ff6 source=build/mvp/variants/gcc/self-report-flip/be-mvp-boot.img
+image name=be-mvp-two-guests-shell-gcc.img bytes=2748416 sha256=7ba49d981dc8e9e46222214f48e84eecbdd51437d324535cd9c02b213ff9ac79 md5=fa834878590a484dfcc850490bda69f9 crc32=53c4e6b4 source=build/mvp/variants/gcc/two-guests-shell/be-mvp-boot.img
+image name=be-mvp-te-poc-shell-gcc.img bytes=2748416 sha256=f5582dbe7cfee207569b98eb36826d88ca79fb05b87bb48ab9c1637d72d418ef md5=bafbf2eace3e792899e6206d533ecf11 crc32=1b9a7c1b source=build/mvp/variants/gcc/te-poc-shell/be-mvp-boot.img
+image name=be-mvp-anchor-shell-gcc.img bytes=2748416 sha256=ba76a7f078d052ffb484e6aa0a969effaed9041b9beff0c2b9b6e615270e0359 md5=a9424e676ce0d683077216fb709307e5 crc32=9054313c source=build/mvp/variants/gcc/anchor-shell/be-mvp-boot.img
+md5_distinct=yes
+crc32_distinct=yes
+partition_uuid_sha256=607fded67dd234740a7bc982215be764668bee51811db80bbcf87c5e4d84f0dc
+device=/dev/nvme0n1p6
+mount_options=rw,nosuid,nodev,noexec,nosymfollow
+verified=rw
+verified=ro
+files=be-mvp-anchor-clang.img be-mvp-anchor-gcc.img be-mvp-anchor-no-grant-check-gcc.img be-mvp-anchor-self-report-flip-gcc.img be-mvp-anchor-shell-gcc.img be-mvp-anchor-wrong-measurement-gcc.img be-mvp-probe-console-input-gcc.img be-mvp-probe-platform-gcc.img be-mvp-probe-vmid-distinct-gcc.img be-mvp-probe-vmid-shared-gcc.img be-mvp-te-poc-clang.img be-mvp-te-poc-gcc.img be-mvp-te-poc-no-inject-gcc.img be-mvp-te-poc-reader-write-gcc.img be-mvp-te-poc-shell-gcc.img be-mvp-two-guests-clang.img be-mvp-two-guests-gcc.img be-mvp-two-guests-payload-gcc.img be-mvp-two-guests-shell-gcc.img CRC32SUMS lost+found MD5SUMS SHA256SUMS
+verdict=PASS

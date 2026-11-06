@@ -1,0 +1,10 @@
++5.564 2026-11-02T05:44:13.916Z ready-boot line_end=588160 Starting kernel ...
++5.739 2026-11-02T05:44:14.091Z ready-window line_end=589649 BE_MVP:PROBE console-input window_ticks=0x20000000 prefix=none
++5.768 2026-11-02T05:44:14.120Z rep=1 start pacing=0.01s offset=589649
++6.517 2026-11-02T05:44:14.869Z rep=1 end keys=64 offset=589649
++7.054 2026-11-02T05:44:15.406Z rep=2 start pacing=0.01s offset=589819
++7.806 2026-11-02T05:44:16.157Z rep=2 end keys=64 offset=589819
++8.333 2026-11-02T05:44:16.684Z rep=3 start pacing=0.01s offset=589990
++9.085 2026-11-02T05:44:17.437Z rep=3 end keys=64 offset=589990
++10.121 2026-11-02T05:44:18.473Z rep=4 start pacing=0.001s offset=590161
++10.294 2026-11-02T05:44:18.646Z rep=4 end keys=64 offset=590161

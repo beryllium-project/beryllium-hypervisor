@@ -1,0 +1,9 @@
+attempt_utc=2026-10-30T08:00:21Z
+verdict=STOP stop=12 a second missed s
+attempt_utc=2026-10-30T08:09:22Z
+be_image=be-mvp-two-guests-clang.img
+printenv_be_image=be_image=be-mvp-two-guests-clang.img
+select-04-check_sha256=d28dd15176da91c089701a1d5b5782bef57fed681c754cd9e46008202878f0bc
+select_check=PASS
+saveenv=OK
+verdict=PASS

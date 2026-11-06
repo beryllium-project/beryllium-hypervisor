@@ -1,0 +1,2 @@
+2584576 bytes read in 2 ms (1.2 GiB/s)
+[  12.098] md5 for 140000000 ... 140276fff ==> fc5b0d7327a8676bffdcbf6462f3f2a3

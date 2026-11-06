@@ -1,0 +1,20 @@
+label=te-poc/clang
+kind=scenario
+file=te-poc-clang.img
+stage=done
+error=-
+qemu_exit=0
+seconds=9.8
+sbi_version=2.0
+boot_hart=5
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2584576
+crc32=a2e55de2
+fdt=0xff7383d0
+fdt_end=0xff73edd8
+rule_hart=5
+shim_fdt=0xff7383d0
+terminal=BE_MVP:14 SHUTDOWN type=0 reason=0
+console_bytes=18716
+console_sha256=f4eadb135872149063e963a3d0dfd5fef8ef7d765a2b0618a4f324004650bbd5
+BE_MVP_UBOOT_SESSION[te-poc/clang]: PASS boot_hart=5 qemu_exit=0 fdt=0xff7383d0 crc32=a2e55de2 seconds=9.8

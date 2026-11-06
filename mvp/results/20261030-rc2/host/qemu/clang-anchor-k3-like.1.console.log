@@ -1,0 +1,266 @@
+
+OpenSBI v1.6
+   ____                    _____ ____ _____
+  / __ \                  / ____|  _ \_   _|
+ | |  | |_ __   ___ _ __ | (___ | |_) || |
+ | |  | | '_ \ / _ \ '_ \ \___ \|  _ < | |
+ | |__| | |_) |  __/ | | |____) | |_) || |_
+  \____/| .__/ \___|_| |_|_____/|____/_____|
+        | |
+        |_|
+
+Platform Name               : riscv-virtio,qemu
+Platform Features           : medeleg
+Platform HART Count         : 8
+Platform IPI Device         : aia-imsic
+Platform Timer Device       : aclint-mtimer @ 10000000Hz
+Platform Console Device     : uart8250
+Platform HSM Device         : ---
+Platform PMU Device         : ---
+Platform Reboot Device      : syscon-reboot
+Platform Shutdown Device    : syscon-poweroff
+Platform Suspend Device     : ---
+Platform CPPC Device        : ---
+Firmware Base               : 0x80000000
+Firmware Size               : 411 KB
+Firmware RW Offset          : 0x40000
+Firmware RW Size            : 155 KB
+Firmware Heap Offset        : 0x56000
+Firmware Heap Size          : 67 KB (total), 4 KB (reserved), 14 KB (used), 48 KB (free)
+Firmware Scratch Size       : 4096 B (total), 448 B (used), 3648 B (free)
+Runtime SBI Version         : 2.0
+Standard SBI Extensions     : time,rfnc,ipi,base,hsm,srst,pmu,dbcn,legacy
+Experimental SBI Extensions : fwft,dbtr,sse
+
+Domain0 Name                : root
+Domain0 Boot HART           : 7
+Domain0 HARTs               : 0*,1*,2*,3*,4*,5*,6*,7*
+Domain0 Region00            : 0x0000000000100000-0x0000000000100fff M: (I,R,W) S/U: (R,W)
+Domain0 Region01            : 0x0000000010000000-0x0000000010000fff M: (I,R,W) S/U: (R,W)
+Domain0 Region02            : 0x000000000c000000-0x000000000c007fff M: (I,R,W) S/U: ()
+Domain0 Region03            : 0x0000000024000000-0x0000000024007fff M: (I,R,W) S/U: ()
+Domain0 Region04            : 0x0000000002000000-0x000000000200ffff M: (I,R,W) S/U: ()
+Domain0 Region05            : 0x0000000080000000-0x000000008003ffff M: (R,X) S/U: ()
+Domain0 Region06            : 0x0000000080040000-0x000000008007ffff M: (R,W) S/U: ()
+Domain0 Region07            : 0x0000000000000000-0xffffffffffffffff M: () S/U: (R,W,X)
+Domain0 Next Address        : 0x0000000108000000
+Domain0 Next Arg1           : 0x000000027fe00000
+Domain0 Next Mode           : S-mode
+Domain0 SysReset            : yes
+Domain0 SysSuspend          : yes
+
+Boot HART ID                : 7
+Boot HART Domain            : root
+Boot HART Priv Version      : v1.12
+Boot HART Base ISA          : rv64imafdch
+Boot HART ISA Extensions    : smaia,smstateen,sstc,zicntr,zihpm,zicboz,zicbom,sdtrig,svade
+Boot HART PMP Count         : 16
+Boot HART PMP Granularity   : 2 bits
+Boot HART PMP Address Bits  : 54
+Boot HART MHPM Info         : 16 (0x0007fff8)
+Boot HART Debug Triggers    : 2 triggers
+Boot HART MIDELEG           : 0x0000000000001666
+Boot HART MEDELEG           : 0x0000000000f4b509
+BE_MVP_SHIM: boot_hart=0x7 starting hart 0
+BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x000000027fe00000 dest=0x0000000102000000 bytes=0x00000000000a4000
+BE_R3:01 BOOT_VALIDATED
+BE_R3:02 R1_DERIVED
+BE_R3:03 R2_BUILT_REWALKED
+BE_R3:04 HS_VS_STATE_VERIFIED
+BE_R3:05 BINDING_PREPARED
+BE_R3:06 HGATP_FENCED_PUBLISHED
+BE_MVP:01 SCENARIO name=anchor domains=2 harts=0,1,2 of=8 ring_bytes=0x8000 mvp_region=0x102064000 mvp_bytes=0x40000 image_bytes=0xa4000
+BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status=1:1,2:1,3:1,4:1,5:1,6:1,7:0 started=7
+BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 hart=1 gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 root=0x102034000 vmid=1
+BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 hart=2 gpa=0x80000000 hpa=0x114000000 size=0x4000000 leaves=32 root=0x10203c000 vmid=2
+BE_MVP:03 PAGE_CHECKED page=0 kind=channel writer=0 reader=1 gpa=0x84000000 hpa=0x118000000 bytes=0x1000 level0=0x102039000,0x102041000 writer_pte=0x460000d7 reader_pte=0x46000053 config=336bfddc743280ab5b845ccf197c6d35f29e5945450ce77c0ec0745eb2e5430e
+BE_MVP:03 PAGE_CHECKED page=1 kind=channel writer=1 reader=0 gpa=0x84001000 hpa=0x118001000 bytes=0x1000 level0=0x102039000,0x102041000 writer_pte=0x460004d7 reader_pte=0x46000453 config=336bfddc743280ab5b845ccf197c6d35f29e5945450ce77c0ec0745eb2e5430e
+BE_MVP:03 PAGE_CHECKED page=2 kind=secret reader=1 gpa=0x84002000 hpa=0x118002000 bytes=0x1000 level0=0x102039000,0x102041000 reader_pte=0x46000853 config=336bfddc743280ab5b845ccf197c6d35f29e5945450ce77c0ec0745eb2e5430e
+BE_MVP:04 PAYLOAD_CHECKED kernel_bytes=0x1cfcc4 image_size=0x203fb0
+BE_MVP:05 DOMAIN_RAM_CLEARED domain=0 gpa=0x80000000 size=0x4000000 ticks=0x32306
+BE_MVP:05 DOMAIN_RAM_CLEARED domain=1 gpa=0x80000000 size=0x4000000 ticks=0x32623
+BE_MVP:05 PAGE_CLEARED page=0 hpa=0x118000000 bytes=0x1000 ticks=0x5dd
+BE_MVP:05 PAGE_CLEARED page=1 hpa=0x118001000 bytes=0x1000 ticks=0x85
+BE_MVP:05 SECRET_PLACED page=2 hpa=0x118002000 bytes=0x20 ticks=0x10c
+BE_MVP:06 PAYLOAD_PLACED domain=0 kernel=0x80200000 kernel_bytes=0x1cfcc4 image_size=0x203fb0 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x20e1
+BE_MVP:06 PAYLOAD_PLACED domain=1 kernel=0x80200000 kernel_bytes=0x1cfcc4 image_size=0x203fb0 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x1ba7
+BE_MVP:06 MEASURED domain=1 hart=2 bytes=1907940 sha256=e0c6bd23670e980c4a491b622205ea0c33a3417da27c3cb4a36630ddef9e936b expected=match ticks=0x53aed
+BE_MVP:07 BLOCKS_PUBLISHED region=0x102044000 bytes=0x20000 generation=1 budget_ticks=0x100000000
+BE_MVP:08 HART_STARTED hart=1 domain=0 result=0 status=0 ticks=0x1bf4
+BE_MVP:08 HART_STARTED hart=2 domain=1 result=0 status=0 ticks=0x18f8
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x4e89
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x4ead
+BE_MVP_G1: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP_G0: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP_G1: [    0.000000] Machine model: Beryllium MVP guest
+BE_MVP_G0: [    0.000000] Machine model: Beryllium MVP guest
+BE_MVP_G1: [    0.000000] SBI specification v2.0 detected
+BE_MVP_G0: [    0.000000] SBI specification v2.0 detected
+BE_MVP_G1: [    0.000000] SBI implementation ID=0x4245 Version=0x4
+BE_MVP_G0: [    0.000000] SBI implementation ID=0x4245 Version=0x4
+BE_MVP_G1: [    0.000000] SBI TIME extension detected
+BE_MVP_G0: [    0.000000] SBI TIME extension detected
+BE_MVP_G1: [    0.000000] SBI SRST extension detected
+BE_MVP_G0: [    0.000000] SBI SRST extension detected
+BE_MVP_G1: [    0.000000] SBI DBCN extension detected
+BE_MVP_G0: [    0.000000] SBI DBCN extension detected
+BE_MVP_G1: [    0.000000] earlycon: sbi0 at I/O port 0x0 (options '')
+BE_MVP_G0: [    0.000000] earlycon: sbi0 at I/O port 0x0 (options '')
+BE_MVP_G1: [    0.000000] printk: legacy bootconsole [sbi0] enabled
+BE_MVP_G0: [    0.000000] printk: legacy bootconsole [sbi0] enabled
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0x1e2b6 received=0x1e6d0 answered=0x1e81d spv=1
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x1ff85 received=0x2018d answered=0x201e5 spv=1
+BE_MVP_G1: [    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+BE_MVP_G0: [    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+BE_MVP_G1: [    0.000000] riscv: base ISA extensions acim
+BE_MVP_G1: [    0.000000] riscv: ELF capabilities acim
+BE_MVP_G1: [    0.000000] Ticket spinlock: enabled
+BE_MVP_G1: [    0.000000] Zone ranges:
+BE_MVP_G1: [    0.000000]   DMA32    [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G1: [    0.000000]   Normal   empty
+BE_MVP_G1: [    0.000000] Movable zone start for each node
+BE_MVP_G1: [    0.000000] Early memory node ranges
+BE_MVP_G1: [    0.000000]   node   0: [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G1: [    0.000000] Initmem setup node 0 [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G0: [    0.000000] riscv: base ISA extensions acim
+BE_MVP_G0: [    0.000000] riscv: ELF capabilities acim
+BE_MVP_G0: [    0.000000] Ticket spinlock: enabled
+BE_MVP_G0: [    0.000000] Zone ranges:
+BE_MVP_G1: [    0.000000] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=1 be.role=prot be.pages=0x84000000,0x84001000,0x84002000 be.deny=store@0x84000ff8
+BE_MVP_G0: [    0.000000]   DMA32    [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G0: [    0.000000]   Normal   empty
+BE_MVP_G0: [    0.000000] Movable zone start for each node
+BE_MVP_G0: [    0.000000] Early memory node ranges
+BE_MVP_G0: [    0.000000]   node   0: [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G0: [    0.000000] Initmem setup node 0 [mem 0x0000000080000000-0x0000000083ffffff]
+BE_MVP_G1: [    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes
+BE_MVP_G1: [    0.000000] Dentry cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+BE_MVP_G1: [    0.000000] Inode-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+BE_MVP_G1: [    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 16384
+BE_MVP_G1: [    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+BE_MVP_G0: [    0.000000] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=0 be.role=host be.pages=0x84000000,0x84001000,0x84002000 be.deny=store@0x84001ff8,load@0x84002000,load@0x114000000,load@0x102064000
+BE_MVP_G1: [    0.000000] SLUB: HWalign=64, Order=0-1, MinObjects=0, CPUs=1, Nodes=1
+BE_MVP_G0: [    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes
+BE_MVP_G0: [    0.000000] Dentry cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+BE_MVP_G0: [    0.000000] Inode-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+BE_MVP_G0: [    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 16384
+BE_MVP_G0: [    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+BE_MVP_G1: [    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+BE_MVP_G1: [    0.000000] riscv-intc: 64 local interrupts mapped
+BE_MVP_G1: [    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+BE_MVP_G0: [    0.000000] SLUB: HWalign=64, Order=0-1, MinObjects=0, CPUs=1, Nodes=1
+BE_MVP_G1: [    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+BE_MVP_G1: [    0.000029] sched_clock: 64 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+BE_MVP_G1: [    0.000233] riscv-timer: Timer interrupt in S-mode is available via sstc extension
+BE_MVP_G1: [    0.000848] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+BE_MVP_G1: [    0.000899] pid_max: default: 32768 minimum: 301
+BE_MVP_G1: [    0.001472] Mount-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_MVP_G1: [    0.001503] Mountpoint-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_MVP_G0: [    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+BE_MVP_G0: [    0.000000] riscv-intc: 64 local interrupts mapped
+BE_MVP_G0: [    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+BE_MVP_G1: [    0.003493] VFS: Finished mounting rootfs on nullfs
+BE_MVP_G0: [    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+BE_MVP_G0: [    0.000017] sched_clock: 64 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+BE_MVP_G0: [    0.000209] riscv-timer: Timer interrupt in S-mode is available via sstc extension
+BE_MVP_G0: [    0.000843] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+BE_MVP_G0: [    0.000891] pid_max: default: 32768 minimum: 301
+BE_MVP_G0: [    0.001445] Mount-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_MVP_G0: [    0.001475] Mountpoint-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_MVP_G0: [    0.003139] VFS: Finished mounting rootfs on nullfs
+BE_MVP_G1: [    0.008575] ASID allocator using 16 bits (65536 entries)
+BE_MVP_G1: [    0.010178] Memory: 61664K/65536K available (870K kernel code, 548K rwdata, 270K rodata, 161K init, 207K bss, 3236K reserved, 0K cma-reserved)
+BE_MVP_G0: [    0.007589] ASID allocator using 16 bits (65536 entries)
+BE_MVP_G0: [    0.008677] Memory: 61688K/65536K available (870K kernel code, 548K rwdata, 270K rodata, 161K init, 207K bss, 3236K reserved, 0K cma-reserved)
+BE_MVP_G1: [    0.012685] clocksource: Switched to clocksource riscv_clocksource
+BE_MVP_G0: [    0.011482] clocksource: Switched to clocksource riscv_clocksource
+BE_MVP_G1: [    0.029345] cpu0: scalar unaligned word access speed is 85.71x byte access speed (fast)
+BE_MVP_G0: [    0.028130] cpu0: scalar unaligned word access speed is 78.42x byte access speed (fast)
+BE_MVP_G1: [    0.032742] workingset: timestamp_bits=62 (anon: 57) max_order=14 bucket_order=0 (anon: 0)
+BE_MVP_G1: [    0.033506] printk: legacy console [hvc0] enabled
+BE_MVP_G1: [    0.033506] printk: legacy console [hvc0] enabled
+BE_MVP_G1: [    0.033765] printk: legacy bootconsole [sbi0] disabled
+BE_MVP_G1: [    0.033765] printk: legacy bootconsole [sbi0] disabled
+BE_MVP_G0: [    0.031554] workingset: timestamp_bits=62 (anon: 57) max_order=14 bucket_order=0 (anon: 0)
+BE_MVP_G0: [    0.032325] printk: legacy console [hvc0] enabled
+BE_MVP_G0: [    0.032325] printk: legacy console [hvc0] enabled
+BE_MVP_G0: [    0.032461] printk: legacy bootconsole [sbi0] disabled
+BE_MVP_G0: [    0.032461] printk: legacy bootconsole [sbi0] disabled
+BE_MVP_G1: [    0.037103] clk: Disabling unused clocks
+BE_MVP_G0: [    0.035895] clk: Disabling unused clocks
+BE_MVP_G1: [    0.054547] Freeing unused kernel image (initmem) memory: 160K
+BE_MVP_G1: [    0.054638] Kernel memory protection not selected by kernel config.
+BE_MVP_G1: [    0.054852] Run /init as init process
+BE_MVP_G0: [    0.053305] Freeing unused kernel image (initmem) memory: 160K
+BE_MVP_G0: [    0.053383] Kernel memory protection not selected by kernel config.
+BE_MVP_G0: [    0.053504] Run /init as init process
+BE_MVP_G1: MVPINIT 01 START guest=1 pid=1
+BE_MVP_G1: MVPINIT 02 UNAME release=7.2.0 machine=riscv64
+BE_MVP_G1: [    0.061211] be_mgmt: loading out-of-tree module taints kernel.
+BE_MVP_G0: MVPINIT 01 START guest=0 pid=1
+BE_MVP_G0: MVPINIT 02 UNAME release=7.2.0 machine=riscv64
+BE_MVP_G1: MVPINIT 07 PAGES role=prot count=3
+BE_MVP_G0: [    0.059672] be_mgmt: loading out-of-tree module taints kernel.
+BE_MVP:DENY hart=2 domain=1 seq=1 kind=read-only cause=0x17 injected=0x7 gpa=0x84000ff8 htval=0x210003fe htinst=0x3023 stval=0x3f9d77eff8 sepc=0x11a2c vsstatus=0x200000022 vstvec=0xffffffff800da8fc ticks=0x1d5645 service=0x747
+BE_MVP_G1: MVPINIT 08 DENIED n=1 kind=store gpa=0x84000ff8 va=0x3f9d77eff8 pc=0x11a2c signo=11 code=2 observed=1 unchanged=1
+BE_MVP_G0: MVPINIT 07 PAGES role=host count=2
+BE_MVP:MGMT hart=2 domain=1 seq=1 fid=terminate target=0 result=-4 target_state=- ticks=0x1e3e0d service=0x7d4
+BE_MVP:DENY hart=1 domain=0 seq=1 kind=read-only cause=0x17 injected=0x7 gpa=0x84001ff8 htval=0x210007fe htinst=0x3023 stval=0x3f925e0ff8 sepc=0x11a2c vsstatus=0x200000022 vstvec=0xffffffff800da8fc ticks=0x1e59b3 service=0x7e
+BE_MVP_G1: MVPINIT 10 MGMT fid=terminate target=0 result=-4
+BE_MVP:MGMT hart=2 domain=1 seq=2 fid=pause target=0 result=-4 target_state=- ticks=0x1e77a8 service=0xfb
+BE_MVP_G1: MVPINIT 10 MGMT fid=pause target=0 result=-4
+BE_MVP_G0: MVPINIT 08 DENIED n=1 kind=store gpa=0x84001ff8 va=0x3f925e0ff8 pc=0x11a2c signo=11 code=2 observed=1 unchanged=1
+BE_MVP:DENY hart=1 domain=0 seq=2 kind=unmapped cause=0x15 injected=0x5 gpa=0x84002000 htval=0x21000800 htinst=0x3303 stval=0x3f925df000 sepc=0x11a20 vsstatus=0x200000022 vstvec=0xffffffff800da8fc ticks=0x1eb703 service=0x130
+BE_MVP_G0: MVPINIT 08 DENIED n=2 kind=load gpa=0x84002000 va=0x3f925df000 pc=0x11a20 signo=11 code=2 observed=1
+BE_MVP:DENY hart=1 domain=0 seq=3 kind=unmapped cause=0x15 injected=0x5 gpa=0x114000000 htval=0x45000000 htinst=0x3303 stval=0x3f925de000 sepc=0x11a20 vsstatus=0x200000022 vstvec=0xffffffff800da8fc ticks=0x1ed2d7 service=0x22
+BE_MVP_G0: MVPINIT 08 DENIED n=3 kind=load gpa=0x114000000 va=0x3f925de000 pc=0x11a20 signo=11 code=2 observed=1
+BE_MVP:DENY hart=1 domain=0 seq=4 kind=unmapped cause=0x15 injected=0x5 gpa=0x102064000 htval=0x40819000 htinst=0x3303 stval=0x3f925dd000 sepc=0x11a20 vsstatus=0x200000022 vstvec=0xffffffff800da8fc ticks=0x1eecb5 service=0x25
+BE_MVP_G0: MVPINIT 08 DENIED n=4 kind=load gpa=0x102064000 va=0x3f925dd000 pc=0x11a20 signo=11 code=2 observed=1
+BE_MVP_G1: MVPINIT 09 RESPONSE n=1 digest=cfa178e1a716ea360e7828e40d6d23fb0df925efc7d64693424ddfe8a0770251
+BE_MVP_G0: MVPINIT 09 REQUEST n=1 digest=cfa178e1a716ea360e7828e40d6d23fb0df925efc7d64693424ddfe8a0770251
+BE_MVP_G1: MVPINIT 09 RESPONSE n=2 digest=42c71c0db59009c19a93706addf15eff8c69c4452ed73c3abfea90b761b0aafc
+BE_MVP_G0: MVPINIT 09 REQUEST n=2 digest=42c71c0db59009c19a93706addf15eff8c69c4452ed73c3abfea90b761b0aafc
+BE_MVP_G1: MVPINIT 09 RESPONSE n=3 digest=6c3197da22d3a0797ae901b5b72d996e562b6a96bad43cd0173efa1e4767ea97
+BE_MVP_G0: MVPINIT 09 REQUEST n=3 digest=6c3197da22d3a0797ae901b5b72d996e562b6a96bad43cd0173efa1e4767ea97
+BE_MVP_G1: MVPINIT 09 RESPONSE n=4 digest=7ab0b990238029fe6b09d19e7d2c60090327da81450136ac0a11caf89b34e12b
+BE_MVP_G0: MVPINIT 09 REQUEST n=4 digest=7ab0b990238029fe6b09d19e7d2c60090327da81450136ac0a11caf89b34e12b
+BE_MVP:MGMT hart=1 domain=0 seq=1 fid=pause target=0 result=-4 target_state=- ticks=0x25dbfb service=0x38f
+BE_MVP_G0: MVPINIT 10 MGMT fid=pause target=0 result=-4
+BE_MVP:MGMT hart=1 domain=0 seq=2 fid=terminate target=0 result=-4 target_state=- ticks=0x25f292 service=0x134
+BE_MVP_G0: MVPINIT 10 MGMT fid=terminate target=0 result=-4
+BE_MVP:MGMT hart=1 domain=0 seq=3 fid=pause target=2 result=-3 target_state=- ticks=0x25ff08 service=0x2ee
+BE_MVP_G0: MVPINIT 10 MGMT fid=pause target=2 result=-3
+BE_MVP_G0: MVPINIT 10 MGMT fid=7 target=1 result=-2
+BE_MVP:MGMT hart=1 domain=0 seq=4 fid=terminate target=0 result=-4 target_state=- ticks=0x261743 service=0x37b
+BE_MVP:MGMT hart=1 domain=0 seq=5 fid=terminate target=0 result=-4 target_state=- ticks=0x261f40 service=0x2d4
+BE_MVP:MGMT hart=1 domain=0 seq=6 fid=terminate target=0 result=-4 target_state=- ticks=0x2626c7 service=0x1a6
+BE_MVP:MGMT hart=1 domain=0 seq=7 fid=terminate target=0 result=-4 target_state=- ticks=0x262b75 service=0x3b5
+BE_MVP:MGMT hart=1 domain=0 seq=8 fid=terminate target=0 result=-4 target_state=- ticks=0x2635c0 service=0x93
+BE_MVP:MGMT hart=1 domain=0 seq=9 fid=terminate target=0 result=-4 target_state=- ticks=0x263d08 service=0x461
+BE_MVP:MGMT hart=1 domain=0 seq=10 fid=terminate target=0 result=-4 target_state=- ticks=0x264bf0 service=0xdb
+BE_MVP:MGMT hart=1 domain=0 seq=11 fid=terminate target=0 result=-4 target_state=- ticks=0x2656a5 service=0xbd
+BE_MVP_G0: MVPINIT 10 MGMT burst=8 fid=terminate target=0 results=-4x8
+BE_MVP:12 DOMAIN_PAUSED hart=2 domain=1 by=0 exits=124 ticks=0x267258
+BE_MVP:MGMT hart=1 domain=0 seq=12 fid=pause target=1 result=0 target_state=paused ticks=0x266bf9 service=0xfaf
+BE_MVP_G0: MVPINIT 10 MGMT fid=pause target=1 result=0
+BE_MVP_G0: MVPINIT 09 REQUEST n=5 timeout=1
+BE_MVP:12 DOMAIN_TERMINATED hart=2 domain=1 by=0 exits=124 sha256=e0c6bd23670e980c4a491b622205ea0c33a3417da27c3cb4a36630ddef9e936b ticks=0x19589d2
+BE_MVP:MGMT hart=1 domain=0 seq=13 fid=terminate target=1 result=0 target_state=terminated ticks=0x195825f service=0x1a01
+BE_MVP_G0: MVPINIT 10 MGMT fid=terminate target=1 result=0
+BE_MVP_G0: MVPINIT 03 STEP n=1/8 rounds=5543 t_ms=1109
+BE_MVP_G0: MVPINIT 03 STEP n=2/8 rounds=6652 t_ms=1185
+BE_MVP_G0: MVPINIT 03 STEP n=3/8 rounds=6936 t_ms=1261
+BE_MVP_G0: MVPINIT 03 STEP n=4/8 rounds=7353 t_ms=1337
+BE_MVP_G0: MVPINIT 03 STEP n=5/8 rounds=7336 t_ms=1413
+BE_MVP_G0: MVPINIT 03 STEP n=6/8 rounds=7704 t_ms=1489
+BE_MVP_G0: MVPINIT 03 STEP n=7/8 rounds=6488 t_ms=1565
+BE_MVP_G0: MVPINIT 03 STEP n=8/8 rounds=7521 t_ms=1641
+BE_MVP_G0: MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=1000 ok=1
+BE_MVP_G0: MVPINIT 05 RESULT pass
+BE_MVP_G0: MVPINIT 06 POWER_OFF
+BE_MVP_G0: [    2.698867] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=238 sbi=233 ipi=1 base=14 time=0 dbcn_write=137 dbcn_read=67 dbcn_byte=0 srst=1 refused=1 lines=83 ring_peak=0x2f8 entered=0x4ead ticks=0x3e3fa59
+BE_MVP:13 RUN_COMPLETE domains=2 records=174 wakes=146 idle_ticks=0x3de913e overlap_ticks=0x1953b25 ticks=0x3e4d87d
+BE_MVP:14 SHUTDOWN type=0 reason=0

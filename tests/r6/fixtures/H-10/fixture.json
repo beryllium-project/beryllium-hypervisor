@@ -1,0 +1,51 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "H-10",
+  "partition": "host",
+  "base": "virt/be/r5.c",
+  "defect_file": null,
+  "base_sha256": null,
+  "declared_delta": null,
+  "declared_layer": "L11",
+  "outcome": "rejected-by-host-mechanism",
+  "driver": "tests/r6/r6-check.c",
+  "api": "be_r5_publish_target",
+  "argument": "entry",
+  "field": "vstvec|vsepc|vscause|vstval",
+  "accepted_value": "0",
+  "malformed_value": "0x40011000",
+  "world": "protected-fenced",
+  "world_source": "be_r5_phase_name(state.phase) read before the call",
+  "class_source": "be_r5_error_name(the enum be_r5_error the call returned)",
+  "cases": 4,
+  "coverage": [
+    {
+      "class": "target-reset",
+      "role": "primary"
+    }
+  ],
+  "expected_first_error": "target-reset",
+  "rejection": {
+    "sticky": true,
+    "terminal": true,
+    "transactional": true,
+    "transactional_source": "caller output parameters and saved page measured unchanged after the call"
+  },
+  "self_test": {
+    "restored_expectation": "accepted",
+    "forged_class": "import",
+    "forged_class_rejection": "wrong-error-class:H-10",
+    "forged_secondary_class": null,
+    "forged_secondary_class_rejection": null,
+    "forged_world": "fresh",
+    "forged_world_rejection": "wrong-world:H-10",
+    "forged_layer": "L6",
+    "forged_layer_rejection": "wrong-layer:H-10"
+  },
+  "builds": false,
+  "qemu": false,
+  "runs": 0,
+  "notes": "target-reset is produced only by validate_entry_state when one of the four reset CSRs is non-zero. A non-zero GPR does not produce it, which keeps H-10 disjoint from H-08 and H-09."
+}

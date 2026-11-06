@@ -1,0 +1,31 @@
+run=20261105T223640Z
+image=<repo>/build/mvp/variants/gcc/te-poc-shell/be-mvp-boot.img
+image_sha256=f5582dbe7cfee207569b98eb36826d88ca79fb05b87bb48ab9c1637d72d418ef
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/variants/gcc/te-poc-shell/be-mvp-boot.img bytes=0x29f000 sha256=f5582dbe7cfee207569b98eb36826d88ca79fb05b87bb48ab9c1637d72d418ef flat_sha256=163e96262f21c3503167f80bed8c4535bc1563317072feb2f8f0c8b864773167 kexec_fdt=0x108400000 variant=te-poc-shell dtb0=0x29d000 scenario=te-poc
+toolchain=gcc
+expect=te-poc-shell.json expect_sha256=7fcee4bb91f718d3e4e846f505a1bac5efd41d07bf2135b5dd45053e8c5de22a
+report=authority-report.json report_sha256=a7b2a39acdcc1b078951ab8bbe4726ffc41415208f9e03cbbb8ee097ea826963
+variant=te-poc-shell
+guest_session=shell.json guest_session_sha256=2bf9c5d12055158d6c9c6d177d42abc72c335892c83777e863dbf392d93b4bad
+launcher=uboot-autoboot-nvme
+loader=uboot-autoboot-nvme be_image=be-mvp-te-poc-shell-gcc.img load=0x140000000 booti=0x140000000 fdt=${fdtcontroladdr}
+be_image=be-mvp-te-poc-shell-gcc.img
+remote_image_sha256=f5582dbe7cfee207569b98eb36826d88ca79fb05b87bb48ab9c1637d72d418ef
+staged_bytes=2748416 staged_md5=bafbf2eace3e792899e6206d533ecf11
+selected_be_image=be-mvp-te-poc-shell-gcc.img
+serial_source=log:<home>/src/spacemit-k3/logs/boot-8.log
+staged_sha256=yes
+boot_id_before=reset-44@3017215
+reset_utc=2026-11-05T22:36:41.795Z
+serial_range=3017215-3040287
+outcome=terminal-marker
+typist=session typist_status=0 BE_MVP_K3_CONSOLE: PASS guest-type steps=22 keys=193
+terminal_marker_utc=2026-11-05T22:37:04Z
+spl_banner=U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)
+uboot_banner=U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395
+board_kernel=none (boot from system reset)
+check_status=0
+BE_MVP_RESULT: PASS terminal=shutdown-requested
+attribution_lines=bytes_read=2748416 digest=md5:bafbf2eace3e792899e6206d533ecf11 autoboot_lines=1
+attribution=PASS selected=yes staged_sha256=yes size_md5=yes check=yes
+banner_audit=PASS

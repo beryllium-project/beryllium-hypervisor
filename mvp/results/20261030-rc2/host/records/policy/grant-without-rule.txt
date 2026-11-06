@@ -1,0 +1,4 @@
+BE_MVP_POLICY: FAIL A8: G1 shared_page memory { map read write }: write allowed by no rule
+BE_MVP_POLICY: FAIL grant G1 shared_page memory { map read write }: source none
+BE_MVP_POLICY: FAIL flow G1 -> G0 via shared_page: declared no
+BE_MVP_POLICY_NEGATIVE: PASS name=grant-without-rule fails=A8 source_none=1 undeclared=1

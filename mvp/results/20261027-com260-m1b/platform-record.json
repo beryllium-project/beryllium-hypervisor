@@ -1,0 +1,2603 @@
+{
+ "campaign": "20261027-com260-m1b",
+ "channel": {
+  "checked": [
+   {
+    "differ": [],
+    "image": "te-poc",
+    "line": {
+     "bytes": "0x1000",
+     "channel": "0",
+     "config": "9cf028073e08e0d3fe8f9f0e92f05c78e5af3e571c129748618b1c76883d457d",
+     "gpa": "0x84000000",
+     "hpa": "0x118000000",
+     "level0": "0x102039000,0x102041000",
+     "reader": "1",
+     "reader_pte": "0x46000053",
+     "writer": "0",
+     "writer_pte": "0x460000d7"
+    },
+    "report": "mvp/scenario/te-poc/authority-report.json",
+    "run": "20261027T175315Z"
+   },
+   {
+    "differ": [],
+    "image": "te-poc",
+    "line": {
+     "bytes": "0x1000",
+     "channel": "0",
+     "config": "9cf028073e08e0d3fe8f9f0e92f05c78e5af3e571c129748618b1c76883d457d",
+     "gpa": "0x84000000",
+     "hpa": "0x118000000",
+     "level0": "0x102039000,0x102041000",
+     "reader": "1",
+     "reader_pte": "0x46000053",
+     "writer": "0",
+     "writer_pte": "0x460000d7"
+    },
+    "report": "mvp/scenario/te-poc/authority-report.json",
+    "run": "20261027T175447Z"
+   },
+   {
+    "differ": [],
+    "image": "te-poc",
+    "line": {
+     "bytes": "0x1000",
+     "channel": "0",
+     "config": "9cf028073e08e0d3fe8f9f0e92f05c78e5af3e571c129748618b1c76883d457d",
+     "gpa": "0x84000000",
+     "hpa": "0x118000000",
+     "level0": "0x102039000,0x102041000",
+     "reader": "1",
+     "reader_pte": "0x46000053",
+     "writer": "0",
+     "writer_pte": "0x460000d7"
+    },
+    "report": "mvp/scenario/te-poc/authority-report.json",
+    "run": "20261027T175609Z"
+   },
+   {
+    "differ": [],
+    "image": "te-poc",
+    "line": {
+     "bytes": "0x1000",
+     "channel": "0",
+     "config": "9cf028073e08e0d3fe8f9f0e92f05c78e5af3e571c129748618b1c76883d457d",
+     "gpa": "0x84000000",
+     "hpa": "0x118000000",
+     "level0": "0x102039000,0x102041000",
+     "reader": "1",
+     "reader_pte": "0x46000053",
+     "writer": "0",
+     "writer_pte": "0x460000d7"
+    },
+    "report": "mvp/scenario/te-poc/authority-report.json",
+    "run": "20261027T175803Z"
+   },
+   {
+    "differ": null,
+    "image": "reader-write",
+    "line": null,
+    "report": "mvp/scenario/te-poc/authority-report.json",
+    "run": "20261027T175944Z"
+   },
+   {
+    "differ": [],
+    "image": "no-inject",
+    "line": {
+     "bytes": "0x1000",
+     "channel": "0",
+     "config": "9cf028073e08e0d3fe8f9f0e92f05c78e5af3e571c129748618b1c76883d457d",
+     "gpa": "0x84000000",
+     "hpa": "0x118000000",
+     "level0": "0x102039000,0x102041000",
+     "reader": "1",
+     "reader_pte": "0x46000053",
+     "writer": "0",
+     "writer_pte": "0x460000d7"
+    },
+    "report": "mvp/scenario/te-poc/authority-report.json",
+    "run": "20261027T180124Z"
+   }
+  ],
+  "cleared": [
+   [
+    "20261027T175315Z",
+    "te-poc",
+    "0",
+    "0x118000000",
+    "0x1000",
+    "0x17"
+   ],
+   [
+    "20261027T175447Z",
+    "te-poc",
+    "0",
+    "0x118000000",
+    "0x1000",
+    "0x18"
+   ],
+   [
+    "20261027T175609Z",
+    "te-poc",
+    "0",
+    "0x118000000",
+    "0x1000",
+    "0x17"
+   ],
+   [
+    "20261027T175803Z",
+    "te-poc",
+    "0",
+    "0x118000000",
+    "0x1000",
+    "0x1d"
+   ],
+   [
+    "20261027T175944Z",
+    "reader-write",
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    "20261027T180124Z",
+    "no-inject",
+    "0",
+    "0x118000000",
+    "0x1000",
+    "0x12"
+   ]
+  ],
+  "guests": [
+   [
+    "20261027T175315Z",
+    0,
+    "writer",
+    "0x84000000",
+    "4088",
+    "0xeacaea8433f5c641",
+    "0x42454d314348414e",
+    null,
+    null,
+    "equal"
+   ],
+   [
+    "20261027T175315Z",
+    1,
+    "reader",
+    "0x84000000",
+    "4088",
+    "0xeacaea8433f5c641",
+    null,
+    "1",
+    "1",
+    "equal"
+   ],
+   [
+    "20261027T175447Z",
+    0,
+    "writer",
+    "0x84000000",
+    "4088",
+    "0xeacaea8433f5c641",
+    "0x42454d314348414e",
+    null,
+    null,
+    "equal"
+   ],
+   [
+    "20261027T175447Z",
+    1,
+    "reader",
+    "0x84000000",
+    "4088",
+    "0xeacaea8433f5c641",
+    null,
+    "1",
+    "1",
+    "equal"
+   ],
+   [
+    "20261027T175609Z",
+    0,
+    "writer",
+    "0x84000000",
+    "4088",
+    "0xeacaea8433f5c641",
+    "0x42454d314348414e",
+    null,
+    null,
+    "equal"
+   ],
+   [
+    "20261027T175609Z",
+    1,
+    "reader",
+    "0x84000000",
+    "4088",
+    "0xeacaea8433f5c641",
+    null,
+    "1",
+    "1",
+    "equal"
+   ],
+   [
+    "20261027T175803Z",
+    0,
+    "writer",
+    "0x84000000",
+    "4088",
+    "0xeacaea8433f5c641",
+    "0x42454d314348414e",
+    null,
+    null,
+    "equal"
+   ],
+   [
+    "20261027T175803Z",
+    1,
+    "reader",
+    "0x84000000",
+    "4088",
+    "0xeacaea8433f5c641",
+    null,
+    "1",
+    "1",
+    "equal"
+   ],
+   [
+    "20261027T175944Z",
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    "20261027T180124Z",
+    0,
+    "writer",
+    "0x84000000",
+    "4088",
+    "0xeacaea8433f5c641",
+    "0x42454d314348414e",
+    null,
+    null,
+    "equal"
+   ],
+   [
+    "20261027T180124Z",
+    1,
+    "reader",
+    "0x84000000",
+    "4088",
+    "0xeacaea8433f5c641",
+    null,
+    "1",
+    "1",
+    "equal"
+   ]
+  ],
+  "reports": [
+   {
+    "bytes": "0x1000",
+    "channel": "channel0",
+    "config": "9cf028073e08e0d3fe8f9f0e92f05c78e5af3e571c129748618b1c76883d457d",
+    "gpa": "0x84000000",
+    "hpa": "0x118000000",
+    "reader": "1",
+    "reader_pte": "0x46000053",
+    "report": "mvp/scenario/te-poc/authority-report.json",
+    "writer": "0",
+    "writer_pte": "0x460000d7"
+   }
+  ]
+ },
+ "denials": [
+  {
+   "denials": [
+    {
+     "deny": {
+      "cause": "0x15",
+      "domain": "0",
+      "gpa": "0x84001000",
+      "hart": "1",
+      "htinst": "0x3303",
+      "htval": "0x21000400",
+      "injected": "0x5",
+      "kind": "unmapped",
+      "sepc": "0x112bc",
+      "seq": "1",
+      "service": "0x24",
+      "stval": "0x3fb9b55000",
+      "ticks": "0x81111",
+      "vsstatus": "0x200000022",
+      "vstvec": "0xffffffff800af0b8"
+     },
+     "differ": [],
+     "domain": 0,
+     "equal": [
+      "gpa",
+      "htval",
+      "stval=va",
+      "sepc=pc"
+     ],
+     "expected": {
+      "access": "load",
+      "gpa": "0x84001000",
+      "kind": "unmapped"
+     },
+     "report": {
+      "code": "2",
+      "gpa": "0x84001000",
+      "kind": "load",
+      "n": "1",
+      "observed": "1",
+      "pc": "0x112bc",
+      "signo": "11",
+      "va": "0x3fb9b55000"
+     }
+    },
+    {
+     "deny": {
+      "cause": "0x17",
+      "domain": "1",
+      "gpa": "0x84000ff8",
+      "hart": "2",
+      "htinst": "0x3023",
+      "htval": "0x210003fe",
+      "injected": "0x7",
+      "kind": "read-only",
+      "sepc": "0x112c8",
+      "seq": "1",
+      "service": "0x13",
+      "stval": "0x3f941a4ff8",
+      "ticks": "0xa64b3",
+      "vsstatus": "0x200000022",
+      "vstvec": "0xffffffff800af0b8"
+     },
+     "differ": [],
+     "domain": 1,
+     "equal": [
+      "gpa",
+      "htval",
+      "stval=va",
+      "sepc=pc"
+     ],
+     "expected": {
+      "access": "store",
+      "gpa": "0x84000ff8",
+      "kind": "read-only"
+     },
+     "report": {
+      "code": "2",
+      "gpa": "0x84000ff8",
+      "kind": "store",
+      "n": "1",
+      "observed": "1",
+      "pc": "0x112c8",
+      "signo": "11",
+      "unchanged": "1",
+      "va": "0x3f941a4ff8"
+     }
+    },
+    {
+     "deny": {
+      "cause": "0x15",
+      "domain": "1",
+      "gpa": "0x90000000",
+      "hart": "2",
+      "htinst": "0x3303",
+      "htval": "0x24000000",
+      "injected": "0x5",
+      "kind": "unmapped",
+      "sepc": "0x112bc",
+      "seq": "2",
+      "service": "0xe",
+      "stval": "0x3f941a3000",
+      "ticks": "0xa6867",
+      "vsstatus": "0x200000022",
+      "vstvec": "0xffffffff800af0b8"
+     },
+     "differ": [],
+     "domain": 1,
+     "equal": [
+      "gpa",
+      "htval",
+      "stval=va",
+      "sepc=pc"
+     ],
+     "expected": {
+      "access": "load",
+      "gpa": "0x90000000",
+      "kind": "unmapped"
+     },
+     "report": {
+      "code": "2",
+      "gpa": "0x90000000",
+      "kind": "load",
+      "n": "2",
+      "observed": "1",
+      "pc": "0x112bc",
+      "signo": "11",
+      "va": "0x3f941a3000"
+     }
+    }
+   ],
+   "expect": "mvp/scenario/te-poc/expect/te-poc.json",
+   "run": "20261027T175315Z",
+   "toolchain": "gcc",
+   "verdict": "PASS"
+  },
+  {
+   "denials": [
+    {
+     "deny": {
+      "cause": "0x15",
+      "domain": "0",
+      "gpa": "0x84001000",
+      "hart": "1",
+      "htinst": "0x3303",
+      "htval": "0x21000400",
+      "injected": "0x5",
+      "kind": "unmapped",
+      "sepc": "0x112bc",
+      "seq": "1",
+      "service": "0x22",
+      "stval": "0x3fa69ff000",
+      "ticks": "0x811ac",
+      "vsstatus": "0x200000022",
+      "vstvec": "0xffffffff800af0b8"
+     },
+     "differ": [],
+     "domain": 0,
+     "equal": [
+      "gpa",
+      "htval",
+      "stval=va",
+      "sepc=pc"
+     ],
+     "expected": {
+      "access": "load",
+      "gpa": "0x84001000",
+      "kind": "unmapped"
+     },
+     "report": {
+      "code": "2",
+      "gpa": "0x84001000",
+      "kind": "load",
+      "n": "1",
+      "observed": "1",
+      "pc": "0x112bc",
+      "signo": "11",
+      "va": "0x3fa69ff000"
+     }
+    },
+    {
+     "deny": {
+      "cause": "0x17",
+      "domain": "1",
+      "gpa": "0x84000ff8",
+      "hart": "2",
+      "htinst": "0x3023",
+      "htval": "0x210003fe",
+      "injected": "0x7",
+      "kind": "read-only",
+      "sepc": "0x112c8",
+      "seq": "1",
+      "service": "0x18",
+      "stval": "0x3fb8b75ff8",
+      "ticks": "0xa62da",
+      "vsstatus": "0x200000022",
+      "vstvec": "0xffffffff800af0b8"
+     },
+     "differ": [],
+     "domain": 1,
+     "equal": [
+      "gpa",
+      "htval",
+      "stval=va",
+      "sepc=pc"
+     ],
+     "expected": {
+      "access": "store",
+      "gpa": "0x84000ff8",
+      "kind": "read-only"
+     },
+     "report": {
+      "code": "2",
+      "gpa": "0x84000ff8",
+      "kind": "store",
+      "n": "1",
+      "observed": "1",
+      "pc": "0x112c8",
+      "signo": "11",
+      "unchanged": "1",
+      "va": "0x3fb8b75ff8"
+     }
+    },
+    {
+     "deny": {
+      "cause": "0x15",
+      "domain": "1",
+      "gpa": "0x90000000",
+      "hart": "2",
+      "htinst": "0x3303",
+      "htval": "0x24000000",
+      "injected": "0x5",
+      "kind": "unmapped",
+      "sepc": "0x112bc",
+      "seq": "2",
+      "service": "0xd",
+      "stval": "0x3fb8b74000",
+      "ticks": "0xa6699",
+      "vsstatus": "0x200000022",
+      "vstvec": "0xffffffff800af0b8"
+     },
+     "differ": [],
+     "domain": 1,
+     "equal": [
+      "gpa",
+      "htval",
+      "stval=va",
+      "sepc=pc"
+     ],
+     "expected": {
+      "access": "load",
+      "gpa": "0x90000000",
+      "kind": "unmapped"
+     },
+     "report": {
+      "code": "2",
+      "gpa": "0x90000000",
+      "kind": "load",
+      "n": "2",
+      "observed": "1",
+      "pc": "0x112bc",
+      "signo": "11",
+      "va": "0x3fb8b74000"
+     }
+    }
+   ],
+   "expect": "mvp/scenario/te-poc/expect/te-poc.json",
+   "run": "20261027T175447Z",
+   "toolchain": "gcc",
+   "verdict": "PASS"
+  },
+  {
+   "denials": [
+    {
+     "deny": {
+      "cause": "0x15",
+      "domain": "0",
+      "gpa": "0x84001000",
+      "hart": "1",
+      "htinst": "0x3303",
+      "htval": "0x21000400",
+      "injected": "0x5",
+      "kind": "unmapped",
+      "sepc": "0x112bc",
+      "seq": "1",
+      "service": "0x25",
+      "stval": "0x3fb43c4000",
+      "ticks": "0x81137",
+      "vsstatus": "0x200000022",
+      "vstvec": "0xffffffff800af0b8"
+     },
+     "differ": [],
+     "domain": 0,
+     "equal": [
+      "gpa",
+      "htval",
+      "stval=va",
+      "sepc=pc"
+     ],
+     "expected": {
+      "access": "load",
+      "gpa": "0x84001000",
+      "kind": "unmapped"
+     },
+     "report": {
+      "code": "2",
+      "gpa": "0x84001000",
+      "kind": "load",
+      "n": "1",
+      "observed": "1",
+      "pc": "0x112bc",
+      "signo": "11",
+      "va": "0x3fb43c4000"
+     }
+    },
+    {
+     "deny": {
+      "cause": "0x17",
+      "domain": "1",
+      "gpa": "0x84000ff8",
+      "hart": "2",
+      "htinst": "0x3023",
+      "htval": "0x210003fe",
+      "injected": "0x7",
+      "kind": "read-only",
+      "sepc": "0x112c8",
+      "seq": "1",
+      "service": "0x13",
+      "stval": "0x3fa912aff8",
+      "ticks": "0xa640c",
+      "vsstatus": "0x200000022",
+      "vstvec": "0xffffffff800af0b8"
+     },
+     "differ": [],
+     "domain": 1,
+     "equal": [
+      "gpa",
+      "htval",
+      "stval=va",
+      "sepc=pc"
+     ],
+     "expected": {
+      "access": "store",
+      "gpa": "0x84000ff8",
+      "kind": "read-only"
+     },
+     "report": {
+      "code": "2",
+      "gpa": "0x84000ff8",
+      "kind": "store",
+      "n": "1",
+      "observed": "1",
+      "pc": "0x112c8",
+      "signo": "11",
+      "unchanged": "1",
+      "va": "0x3fa912aff8"
+     }
+    },
+    {
+     "deny": {
+      "cause": "0x15",
+      "domain": "1",
+      "gpa": "0x90000000",
+      "hart": "2",
+      "htinst": "0x3303",
+      "htval": "0x24000000",
+      "injected": "0x5",
+      "kind": "unmapped",
+      "sepc": "0x112bc",
+      "seq": "2",
+      "service": "0x10",
+      "stval": "0x3fa9129000",
+      "ticks": "0xa67f4",
+      "vsstatus": "0x200000022",
+      "vstvec": "0xffffffff800af0b8"
+     },
+     "differ": [],
+     "domain": 1,
+     "equal": [
+      "gpa",
+      "htval",
+      "stval=va",
+      "sepc=pc"
+     ],
+     "expected": {
+      "access": "load",
+      "gpa": "0x90000000",
+      "kind": "unmapped"
+     },
+     "report": {
+      "code": "2",
+      "gpa": "0x90000000",
+      "kind": "load",
+      "n": "2",
+      "observed": "1",
+      "pc": "0x112bc",
+      "signo": "11",
+      "va": "0x3fa9129000"
+     }
+    }
+   ],
+   "expect": "mvp/scenario/te-poc/expect/te-poc.json",
+   "run": "20261027T175609Z",
+   "toolchain": "gcc",
+   "verdict": "PASS"
+  },
+  {
+   "denials": [
+    {
+     "deny": {
+      "cause": "0x15",
+      "domain": "0",
+      "gpa": "0x84001000",
+      "hart": "1",
+      "htinst": "0x3303",
+      "htval": "0x21000400",
+      "injected": "0x5",
+      "kind": "unmapped",
+      "sepc": "0x112bc",
+      "seq": "1",
+      "service": "0x1c",
+      "stval": "0x3f9ca7e000",
+      "ticks": "0x810a1",
+      "vsstatus": "0x200000022",
+      "vstvec": "0xffffffff800af0b8"
+     },
+     "differ": [],
+     "domain": 0,
+     "equal": [
+      "gpa",
+      "htval",
+      "stval=va",
+      "sepc=pc"
+     ],
+     "expected": {
+      "access": "load",
+      "gpa": "0x84001000",
+      "kind": "unmapped"
+     },
+     "report": {
+      "code": "2",
+      "gpa": "0x84001000",
+      "kind": "load",
+      "n": "1",
+      "observed": "1",
+      "pc": "0x112bc",
+      "signo": "11",
+      "va": "0x3f9ca7e000"
+     }
+    },
+    {
+     "deny": {
+      "cause": "0x17",
+      "domain": "1",
+      "gpa": "0x84000ff8",
+      "hart": "2",
+      "htinst": "0x3023",
+      "htval": "0x210003fe",
+      "injected": "0x7",
+      "kind": "read-only",
+      "sepc": "0x112c8",
+      "seq": "1",
+      "service": "0x13",
+      "stval": "0x3fafff9ff8",
+      "ticks": "0xa62e6",
+      "vsstatus": "0x200000022",
+      "vstvec": "0xffffffff800af0b8"
+     },
+     "differ": [],
+     "domain": 1,
+     "equal": [
+      "gpa",
+      "htval",
+      "stval=va",
+      "sepc=pc"
+     ],
+     "expected": {
+      "access": "store",
+      "gpa": "0x84000ff8",
+      "kind": "read-only"
+     },
+     "report": {
+      "code": "2",
+      "gpa": "0x84000ff8",
+      "kind": "store",
+      "n": "1",
+      "observed": "1",
+      "pc": "0x112c8",
+      "signo": "11",
+      "unchanged": "1",
+      "va": "0x3fafff9ff8"
+     }
+    },
+    {
+     "deny": {
+      "cause": "0x15",
+      "domain": "1",
+      "gpa": "0x90000000",
+      "hart": "2",
+      "htinst": "0x3303",
+      "htval": "0x24000000",
+      "injected": "0x5",
+      "kind": "unmapped",
+      "sepc": "0x112bc",
+      "seq": "2",
+      "service": "0xd",
+      "stval": "0x3fafff8000",
+      "ticks": "0xa6685",
+      "vsstatus": "0x200000022",
+      "vstvec": "0xffffffff800af0b8"
+     },
+     "differ": [],
+     "domain": 1,
+     "equal": [
+      "gpa",
+      "htval",
+      "stval=va",
+      "sepc=pc"
+     ],
+     "expected": {
+      "access": "load",
+      "gpa": "0x90000000",
+      "kind": "unmapped"
+     },
+     "report": {
+      "code": "2",
+      "gpa": "0x90000000",
+      "kind": "load",
+      "n": "2",
+      "observed": "1",
+      "pc": "0x112bc",
+      "signo": "11",
+      "va": "0x3fafff8000"
+     }
+    }
+   ],
+   "expect": "mvp/scenario/te-poc/expect/te-poc.json",
+   "run": "20261027T175803Z",
+   "toolchain": "clang",
+   "verdict": "PASS"
+  }
+ ],
+ "failures": [
+  [
+   "20261027T175944Z",
+   "reader-write",
+   1,
+   1,
+   "BE_MVP:FAIL gstage",
+   "BE_MVP:DETAIL channel=0 domain=1 hart=2 walked=0x460000d7 declared=0x46000053",
+   "0",
+   "0",
+   0
+  ],
+  [
+   "20261027T180124Z",
+   "no-inject",
+   1,
+   1,
+   "BE_MVP:FAIL guest-page-fault",
+   "BE_MVP:DETAIL domain=0 hart=1 cause=0x15 pc=0x112bc tval=0x3faf605000 htval=0x21000400 htinst=0x3303 spvp=0 vsatp=0x80002000000804de exits=94",
+   "54",
+   "54",
+   0
+  ]
+ ],
+ "other_runs": [
+  [
+   "20261027T175944Z",
+   "reader-write",
+   "gcc",
+   "c575bc03d456",
+   "PASS",
+   "none",
+   "PASS terminal=fail-marker",
+   "BE_MVP:FAIL gstage / BE_MVP:DETAIL channel=0 domain=1 hart=2 walked=0x460000d7 declared=0x46000053"
+  ],
+  [
+   "20261027T180124Z",
+   "no-inject",
+   "gcc",
+   "4cb0df81bcdb",
+   "PASS",
+   "none",
+   "PASS terminal=fail-marker",
+   "BE_MVP:FAIL guest-page-fault / BE_MVP:DETAIL domain=0 hart=1 cause=0x15 pc=0x112bc tval=0x3faf605000 htval=0x21000400 htinst=0x3303 spvp=0 vsatp=0x80002000000804de exits=94"
+  ]
+ ],
+ "preflight": {
+  "baseline": {
+   "board_kernels": [
+    [
+     "7.3.0-65.1.riscv64.omni.fc45.riscv64",
+     6
+    ]
+   ],
+   "firmware_lines": [
+    [
+     "firmware_identity",
+     "ID=0x1 Version=0x10006"
+    ],
+    [
+     "firmware_expected",
+     "ID=0x1 Version=0x10006"
+    ]
+   ],
+   "m0": "<repo>/mvp/results/20261025-com260/preflight.txt",
+   "rows": [
+    [
+     "SBI implementation",
+     "ID=0x1 Version=0x10006",
+     "ID=0x1 Version=0x10006",
+     "equal"
+    ],
+    [
+     "SBI specification",
+     "v2.0",
+     "v2.0",
+     "equal"
+    ],
+    [
+     "Fedora kernel release",
+     "7.3.0-65.1.riscv64.omni.fc45.riscv64",
+     "7.3.0-65.1.riscv64.omni.fc45.riscv64",
+     "equal"
+    ]
+   ]
+  },
+  "caches": [],
+  "channel_page": "region channel-page=0x118000000-0x118001000 result=free",
+  "cpu_map": {
+   "10": "cluster1/core3/cpu",
+   "3": "cluster0/core0/cpu",
+   "4": "cluster0/core1/cpu",
+   "5": "cluster0/core2/cpu",
+   "6": "cluster0/core3/cpu",
+   "7": "cluster1/core0/cpu",
+   "8": "cluster1/core1/cpu",
+   "9": "cluster1/core2/cpu"
+  },
+  "cpuinfo": {
+   "0": {
+    "h": "yes",
+    "hart": "0",
+    "isa": "rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt",
+    "marchid": "0x8000000058000002",
+    "mimpid": "0x33d8a600",
+    "mmu": "sv39",
+    "mvendorid": "0x710",
+    "sstc": "yes",
+    "uarch": "spacemit,x100"
+   },
+   "1": {
+    "h": "yes",
+    "hart": "1",
+    "isa": "rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt",
+    "marchid": "0x8000000058000002",
+    "mimpid": "0x33d8a600",
+    "mmu": "sv39",
+    "mvendorid": "0x710",
+    "sstc": "yes",
+    "uarch": "spacemit,x100"
+   },
+   "2": {
+    "h": "yes",
+    "hart": "2",
+    "isa": "rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt",
+    "marchid": "0x8000000058000002",
+    "mimpid": "0x33d8a600",
+    "mmu": "sv39",
+    "mvendorid": "0x710",
+    "sstc": "yes",
+    "uarch": "spacemit,x100"
+   },
+   "3": {
+    "h": "yes",
+    "hart": "3",
+    "isa": "rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt",
+    "marchid": "0x8000000058000002",
+    "mimpid": "0x33d8a600",
+    "mmu": "sv39",
+    "mvendorid": "0x710",
+    "sstc": "yes",
+    "uarch": "spacemit,x100"
+   },
+   "4": {
+    "h": "yes",
+    "hart": "4",
+    "isa": "rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt",
+    "marchid": "0x8000000058000002",
+    "mimpid": "0x33d8a600",
+    "mmu": "sv39",
+    "mvendorid": "0x710",
+    "sstc": "yes",
+    "uarch": "spacemit,x100"
+   },
+   "5": {
+    "h": "yes",
+    "hart": "5",
+    "isa": "rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt",
+    "marchid": "0x8000000058000002",
+    "mimpid": "0x33d8a600",
+    "mmu": "sv39",
+    "mvendorid": "0x710",
+    "sstc": "yes",
+    "uarch": "spacemit,x100"
+   },
+   "6": {
+    "h": "yes",
+    "hart": "6",
+    "isa": "rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt",
+    "marchid": "0x8000000058000002",
+    "mimpid": "0x33d8a600",
+    "mmu": "sv39",
+    "mvendorid": "0x710",
+    "sstc": "yes",
+    "uarch": "spacemit,x100"
+   },
+   "7": {
+    "h": "yes",
+    "hart": "7",
+    "isa": "rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt",
+    "marchid": "0x8000000058000002",
+    "mimpid": "0x33d8a600",
+    "mmu": "sv39",
+    "mvendorid": "0x710",
+    "sstc": "yes",
+    "uarch": "spacemit,x100"
+   }
+  },
+  "dt_cpus": [
+   {
+    "compatible": "spacemit,x100,riscv",
+    "h": "yes",
+    "node": "cpu@0",
+    "reg": "0",
+    "sstc": "yes",
+    "status": "absent"
+   },
+   {
+    "compatible": "spacemit,x100,riscv",
+    "h": "yes",
+    "node": "cpu@1",
+    "reg": "1",
+    "sstc": "yes",
+    "status": "absent"
+   },
+   {
+    "compatible": "spacemit,x100,riscv",
+    "h": "yes",
+    "node": "cpu@2",
+    "reg": "2",
+    "sstc": "yes",
+    "status": "absent"
+   },
+   {
+    "compatible": "spacemit,x100,riscv",
+    "h": "yes",
+    "node": "cpu@3",
+    "reg": "3",
+    "sstc": "yes",
+    "status": "absent"
+   },
+   {
+    "compatible": "spacemit,x100,riscv",
+    "h": "yes",
+    "node": "cpu@4",
+    "reg": "4",
+    "sstc": "yes",
+    "status": "absent"
+   },
+   {
+    "compatible": "spacemit,x100,riscv",
+    "h": "yes",
+    "node": "cpu@5",
+    "reg": "5",
+    "sstc": "yes",
+    "status": "absent"
+   },
+   {
+    "compatible": "spacemit,x100,riscv",
+    "h": "yes",
+    "node": "cpu@6",
+    "reg": "6",
+    "sstc": "yes",
+    "status": "absent"
+   },
+   {
+    "compatible": "spacemit,x100,riscv",
+    "h": "yes",
+    "node": "cpu@7",
+    "reg": "7",
+    "sstc": "yes",
+    "status": "absent"
+   }
+  ],
+  "extensions": {
+   "cpu@0": "i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt",
+   "cpu@1": "i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt",
+   "cpu@2": "i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt",
+   "cpu@3": "i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt",
+   "cpu@4": "i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt",
+   "cpu@5": "i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt",
+   "cpu@6": "i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt",
+   "cpu@7": "i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt"
+  },
+  "facts": [
+   [
+    "captured_utc",
+    "2026-10-27T17:45:56Z"
+   ],
+   [
+    "hostname",
+    "localhost.localdomain"
+   ],
+   [
+    "kernel",
+    "7.3.0-65.1.riscv64.omni.fc45.riscv64"
+   ],
+   [
+    "boot_id",
+    "24f9233e-08cd-4b04-b523-99cf900fd4b7"
+   ],
+   [
+    "online_cpus",
+    "0-7"
+   ],
+   [
+    "timebase_frequency",
+    "24000000"
+   ],
+   [
+    "machine",
+    "riscv64"
+   ],
+   [
+    "cmdline",
+    "root=UUID=<redacted> rootflags=subvol=root clk_ignore_unused console=ttyS0,115200n8 boot_mode=nor clk_ignore_unused"
+   ],
+   [
+    "lockdown",
+    "[none] integrity confidentiality"
+   ],
+   [
+    "kexec_loaded",
+    "0"
+   ],
+   [
+    "kexec_tool",
+    "absent"
+   ],
+   [
+    "python3",
+    "/usr/bin/python3"
+   ],
+   [
+    "sudo_noninteractive",
+    "yes"
+   ],
+   [
+    "tmp_fstype",
+    "tmpfs"
+   ],
+   [
+    "CONFIG_KEXEC",
+    "y"
+   ],
+   [
+    "CONFIG_KEXEC_FILE",
+    "y"
+   ],
+   [
+    "CONFIG_RISCV_SBI",
+    "y"
+   ],
+   [
+    "CONFIG_HOTPLUG_CPU",
+    "y"
+   ],
+   [
+    "CONFIG_SECURITY_LOCKDOWN_LSM",
+    "y"
+   ],
+   [
+    "hsm_detected",
+    "1"
+   ],
+   [
+    "kernel",
+    "/lib/modules/7.3.0-65.1.riscv64.omni.fc45.riscv64/vmlinuz"
+   ],
+   [
+    "container",
+    "efi-zboot-zstd"
+   ],
+   [
+    "purgatory",
+    "present"
+   ],
+   [
+    "pcrel_lo12_i",
+    "13"
+   ],
+   [
+    "adjacent",
+    "13"
+   ],
+   [
+    "separated",
+    "0"
+   ],
+   [
+    "pcrel_lo12_s",
+    "0"
+   ],
+   [
+    "kexec_file_purgatory",
+    "safe"
+   ],
+   [
+    "kexec_load",
+    "available"
+   ],
+   [
+    "kexec_file_load",
+    "available"
+   ],
+   [
+    "kexec_load_disabled",
+    "0"
+   ],
+   [
+    "kexec_loaded",
+    "0"
+   ],
+   [
+    "fdt_reserved",
+    "0x2f8a84000-0x2fbd6e60e,0x2fe000000-0x300000000,0x100000000-0x100100000,0x100600000-0x100700000,0x100c00000-0x100d00000,0x100f00000-0x101000000,0x100200000-0x100400000,0x100400000-0x100600000,0x101000000-0x101200000,0x100800000-0x100c00000,0x100000000-0x102000000"
+   ],
+   [
+    "viable",
+    "kexec_load"
+   ],
+   [
+    "firmware_identity",
+    "ID=0x1 Version=0x10006"
+   ],
+   [
+    "firmware_expected",
+    "ID=0x1 Version=0x10006"
+   ],
+   [
+    "workstation_k3_reset",
+    "k3ctl"
+   ],
+   [
+    "workstation_k3ctl_pin_sha256",
+    "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec"
+   ],
+   [
+    "workstation_k3ctl_client_sha256",
+    "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec"
+   ],
+   [
+    "workstation_k3ctl_client",
+    "matches-pin"
+   ]
+  ],
+  "iomem": [
+   "102000000-2ffffffff : System RAM",
+   "  102200000-102201fff : Reserved",
+   "  102202000-105e6ce77 : Kernel image",
+   "    102202000-1035d4e19 : Kernel code",
+   "    104400000-1053fffff : Kernel rodata",
+   "    105600000-105cd47ff : Kernel data",
+   "    105cd5000-105e6ce77 : Kernel bss",
+   "  105e6ce78-105ffffff : Reserved",
+   "  2ef448000-2f89fffff : Reserved",
+   "  2f8a2d000-2f8a74fff : Reserved",
+   "  2f8a75000-2f8a81fff : Reserved",
+   "  2f8a84000-2fbd6efff : Reserved",
+   "  2fbd8f000-2fbda6fff : Reserved",
+   "  2fbda7000-2fbda7fff : Reserved",
+   "  2fbda8000-2fbda8fff : Reserved",
+   "  2fbda9000-2fbda9fff : Reserved",
+   "  2fbdab000-2fbdadfff : Reserved",
+   "  2fbdae000-2fddb2fff : Reserved",
+   "  2fddb3000-2fddf5fff : Reserved",
+   "  2fddf6000-2fdffffff : Reserved",
+   "  2fe000000-2ffffffff : Reserved"
+  ],
+  "links": {
+   "cpu@0": {
+    "next_level_cache": "1",
+    "node": "cpu@0",
+    "phandle": "3"
+   },
+   "cpu@1": {
+    "next_level_cache": "1",
+    "node": "cpu@1",
+    "phandle": "4"
+   },
+   "cpu@2": {
+    "next_level_cache": "1",
+    "node": "cpu@2",
+    "phandle": "5"
+   },
+   "cpu@3": {
+    "next_level_cache": "1",
+    "node": "cpu@3",
+    "phandle": "6"
+   },
+   "cpu@4": {
+    "next_level_cache": "2",
+    "node": "cpu@4",
+    "phandle": "7"
+   },
+   "cpu@5": {
+    "next_level_cache": "2",
+    "node": "cpu@5",
+    "phandle": "8"
+   },
+   "cpu@6": {
+    "next_level_cache": "2",
+    "node": "cpu@6",
+    "phandle": "9"
+   },
+   "cpu@7": {
+    "next_level_cache": "2",
+    "node": "cpu@7",
+    "phandle": "10"
+   }
+  },
+  "log": [
+   "[    0.000000] Booting Linux on hartid 0",
+   "[    0.000000] Linux version 7.3.0-65.1.riscv64.omni.fc45.riscv64 (mockbuild@9e95520716824c3b80d205212ec87d94) (gcc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2), GNU ld version 2.47.20260726) #1 SMP PREEMPT_DYNAMIC Tue Oct 20 16:12:15 UTC 2026",
+   "[    0.000000] SBI specification v2.0 detected",
+   "[    0.000000] SBI implementation ID=0x1 Version=0x10006",
+   "[    0.000000] SBI TIME extension detected",
+   "[    0.000000] SBI IPI extension detected",
+   "[    0.000000] SBI RFENCE extension detected",
+   "[    0.000000] SBI SRST extension detected",
+   "[    0.000000] SBI DBCN extension detected",
+   "[    0.000000] SBI HSM extension detected",
+   "[    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 1911260446275000 ns",
+   "[    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns",
+   "[    0.000019] riscv-timer: Timer interrupt in S-mode is available via sstc extension",
+   "[    0.014348] smp: Bringing up secondary CPUs ...",
+   "[    0.018054] smp: Brought up 1 node, 8 CPUs",
+   "[    0.055552] suspend: SBI SUSP extension detected",
+   "[    0.083195] clocksource: Switched to clocksource riscv_clocksource",
+   "[    0.114383] cpu5: scalar unaligned word access speed is 1.74x byte access speed (fast)",
+   "[    0.114384] cpu7: scalar unaligned word access speed is 2.40x byte access speed (fast)",
+   "[    0.114384] cpu0: scalar unaligned word access speed is 1.74x byte access speed (fast)",
+   "[    0.114384] cpu3: scalar unaligned word access speed is 1.97x byte access speed (fast)",
+   "[    0.114385] cpu2: scalar unaligned word access speed is 3.06x byte access speed (fast)",
+   "[    0.114383] cpu1: scalar unaligned word access speed is 2.87x byte access speed (fast)",
+   "[    0.114387] cpu4: scalar unaligned word access speed is 2.69x byte access speed (fast)",
+   "[    0.114387] cpu6: scalar unaligned word access speed is 1.64x byte access speed (fast)",
+   "[    0.132263] cpu1: vector unaligned word access speed is 4.15x byte access speed (fast)",
+   "[    0.132269] cpu3: vector unaligned word access speed is 4.15x byte access speed (fast)",
+   "[    0.132276] cpu4: vector unaligned word access speed is 4.15x byte access speed (fast)",
+   "[    0.132277] cpu5: vector unaligned word access speed is 4.15x byte access speed (fast)",
+   "[    0.132281] cpu0: vector unaligned word access speed is 4.14x byte access speed (fast)",
+   "[    0.132281] cpu6: vector unaligned word access speed is 4.15x byte access speed (fast)",
+   "[    0.132286] cpu7: vector unaligned word access speed is 4.15x byte access speed (fast)",
+   "[    0.133230] cpu2: vector unaligned word access speed is 4.12x byte access speed (fast)",
+   "[    0.133750] kvm [1]: hypervisor extension available",
+   "[    0.133756] kvm [1]: highest G-stage page table mode is Sv39x4",
+   "[    0.133759] kvm [1]: VMID 14 bits available",
+   "[    0.135336] kvm [1]: AIA available with 7 guest external interrupts",
+   "[    0.200861] riscv-pmu-sbi: SBI PMU extension is available",
+   "[    0.200893] riscv-pmu-sbi: 16 firmware and 18 hardware counters",
+   "[   14.107160] spacemit-dwmac cac82000.ethernet: Enable RX Mitigation via HW Watchdog Timer"
+  ],
+  "region_check": [
+   "region accepted-image=0x102000000-0x102034000 result=free",
+   "region pool=0x102034000-0x102044000 result=free",
+   "region hart-region=0x102044000-0x102064000 result=free",
+   "region mvp-region=0x102064000-0x1020a4000 result=free",
+   "region staging=0x108000000-0x108600000 result=free",
+   "region g0-window=0x110000000-0x114000000 result=free",
+   "region g1-window=0x114000000-0x118000000 result=free",
+   "region channel-page=0x118000000-0x118001000 result=free",
+   "system_ram_children=20 fdt_reservations=11",
+   "region_check=PASS"
+  ],
+  "reservations": [
+   [
+    "0x2f8a84000-0x2fbd6e60e",
+    "inside System RAM"
+   ],
+   [
+    "0x2fe000000-0x300000000",
+    "inside System RAM"
+   ],
+   [
+    "0x100000000-0x100100000",
+    "outside every System RAM range"
+   ],
+   [
+    "0x100600000-0x100700000",
+    "outside every System RAM range"
+   ],
+   [
+    "0x100c00000-0x100d00000",
+    "outside every System RAM range"
+   ],
+   [
+    "0x100f00000-0x101000000",
+    "outside every System RAM range"
+   ],
+   [
+    "0x100200000-0x100400000",
+    "outside every System RAM range"
+   ],
+   [
+    "0x100400000-0x100600000",
+    "outside every System RAM range"
+   ],
+   [
+    "0x101000000-0x101200000",
+    "outside every System RAM range"
+   ],
+   [
+    "0x100800000-0x100c00000",
+    "outside every System RAM range"
+   ],
+   [
+    "0x100000000-0x102000000",
+    "outside every System RAM range"
+   ]
+  ],
+  "topology": [
+   {
+    "cluster_cpus_list": "0-3",
+    "cluster_id": "0",
+    "core_cpus_list": "0",
+    "core_id": "0",
+    "cpu": "0",
+    "package_cpus_list": "0-7",
+    "physical_package_id": "0"
+   },
+   {
+    "cluster_cpus_list": "0-3",
+    "cluster_id": "0",
+    "core_cpus_list": "1",
+    "core_id": "1",
+    "cpu": "1",
+    "package_cpus_list": "0-7",
+    "physical_package_id": "0"
+   },
+   {
+    "cluster_cpus_list": "0-3",
+    "cluster_id": "0",
+    "core_cpus_list": "2",
+    "core_id": "2",
+    "cpu": "2",
+    "package_cpus_list": "0-7",
+    "physical_package_id": "0"
+   },
+   {
+    "cluster_cpus_list": "0-3",
+    "cluster_id": "0",
+    "core_cpus_list": "3",
+    "core_id": "3",
+    "cpu": "3",
+    "package_cpus_list": "0-7",
+    "physical_package_id": "0"
+   },
+   {
+    "cluster_cpus_list": "4-7",
+    "cluster_id": "1",
+    "core_cpus_list": "4",
+    "core_id": "0",
+    "cpu": "4",
+    "package_cpus_list": "0-7",
+    "physical_package_id": "0"
+   },
+   {
+    "cluster_cpus_list": "4-7",
+    "cluster_id": "1",
+    "core_cpus_list": "5",
+    "core_id": "1",
+    "cpu": "5",
+    "package_cpus_list": "0-7",
+    "physical_package_id": "0"
+   },
+   {
+    "cluster_cpus_list": "4-7",
+    "cluster_id": "1",
+    "core_cpus_list": "6",
+    "core_id": "2",
+    "cpu": "6",
+    "package_cpus_list": "0-7",
+    "physical_package_id": "0"
+   },
+   {
+    "cluster_cpus_list": "4-7",
+    "cluster_id": "1",
+    "core_cpus_list": "7",
+    "core_id": "3",
+    "cpu": "7",
+    "package_cpus_list": "0-7",
+    "physical_package_id": "0"
+   }
+  ]
+ },
+ "probe_runs": [],
+ "probes": [],
+ "resets": {
+  "records": {
+   "20261027T175315Z": {
+    "boot_id_after": "0485b932-d1c2-4f2c-bb15-29ad5945148f",
+    "boot_id_before": "42cc2284-9b93-4e19-8064-8eaa3ce7850f",
+    "client_pin": "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "client_sha256": "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "device": "/dev/ttyACM0",
+    "fedora_returned_utc": "2026-10-27T17:54:16Z",
+    "method": "k3ctl",
+    "outcome": "reset",
+    "probe": "down",
+    "probe_detail": "ssh: connect to host 192.168.2.7 port 22: Connection timed out",
+    "probe_utc": "2026-10-27T17:53:28Z",
+    "reset_exit": "0",
+    "reset_reply": "OK reset",
+    "reset_utc": "2026-10-27T17:53:33Z",
+    "seconds_to_new_boot_id": "43",
+    "settle_seconds": "30",
+    "status_after": "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75692595 ver=1.0",
+    "status_after_exit": "0",
+    "status_after_fields": {
+     "fcrec": "0",
+     "k3": "n/a",
+     "pwr": "0",
+     "rst": "0",
+     "up": "75692595",
+     "ver": "1.0"
+    },
+    "status_after_utc": "2026-10-27T17:53:33Z",
+    "status_before": "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75692291 ver=1.0",
+    "status_before_exit": "0",
+    "status_before_fields": {
+     "fcrec": "0",
+     "k3": "n/a",
+     "pwr": "0",
+     "rst": "0",
+     "up": "75692291",
+     "ver": "1.0"
+    },
+    "status_before_utc": "2026-10-27T17:53:33Z",
+    "tail_wait": "ended",
+    "terminal_after_handoff": "hart=0 line=BE_MVP:14 SHUTDOWN type=0 reason=0",
+    "terminal_within_wait": "yes",
+    "verdict": "PASS"
+   },
+   "20261027T175447Z": {
+    "boot_id_after": "2e3e66da-c0cf-48ad-bfa9-5dae86f8c427",
+    "boot_id_before": "0485b932-d1c2-4f2c-bb15-29ad5945148f",
+    "client_pin": "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "client_sha256": "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "device": "/dev/ttyACM0",
+    "fedora_returned_utc": "2026-10-27T17:55:38Z",
+    "method": "k3ctl",
+    "outcome": "reset",
+    "probe": "down",
+    "probe_detail": "ssh: connect to host 192.168.2.7 port 22: Connection timed out",
+    "probe_utc": "2026-10-27T17:54:59Z",
+    "reset_exit": "0",
+    "reset_reply": "OK reset",
+    "reset_utc": "2026-10-27T17:55:04Z",
+    "seconds_to_new_boot_id": "34",
+    "settle_seconds": "30",
+    "status_after": "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75783881 ver=1.0",
+    "status_after_exit": "0",
+    "status_after_fields": {
+     "fcrec": "0",
+     "k3": "n/a",
+     "pwr": "0",
+     "rst": "0",
+     "up": "75783881",
+     "ver": "1.0"
+    },
+    "status_after_utc": "2026-10-27T17:55:04Z",
+    "status_before": "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75783572 ver=1.0",
+    "status_before_exit": "0",
+    "status_before_fields": {
+     "fcrec": "0",
+     "k3": "n/a",
+     "pwr": "0",
+     "rst": "0",
+     "up": "75783572",
+     "ver": "1.0"
+    },
+    "status_before_utc": "2026-10-27T17:55:04Z",
+    "tail_wait": "ended",
+    "terminal_after_handoff": "hart=0 line=BE_MVP:14 SHUTDOWN type=0 reason=0",
+    "terminal_within_wait": "yes",
+    "verdict": "PASS"
+   },
+   "20261027T175609Z": {
+    "boot_id_after": "6d736976-b029-4196-9155-b7ae285433ba",
+    "boot_id_before": "2e3e66da-c0cf-48ad-bfa9-5dae86f8c427",
+    "client_pin": "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "client_sha256": "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "device": "/dev/ttyACM0",
+    "fedora_returned_utc": "2026-10-27T17:57:13Z",
+    "method": "k3ctl",
+    "outcome": "reset",
+    "probe": "down",
+    "probe_detail": "ssh: connect to host 192.168.2.7 port 22: Connection timed out",
+    "probe_utc": "2026-10-27T17:56:21Z",
+    "reset_exit": "0",
+    "reset_reply": "OK reset",
+    "reset_utc": "2026-10-27T17:56:26Z",
+    "seconds_to_new_boot_id": "47",
+    "settle_seconds": "30",
+    "status_after": "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75866061 ver=1.0",
+    "status_after_exit": "0",
+    "status_after_fields": {
+     "fcrec": "0",
+     "k3": "n/a",
+     "pwr": "0",
+     "rst": "0",
+     "up": "75866061",
+     "ver": "1.0"
+    },
+    "status_after_utc": "2026-10-27T17:56:27Z",
+    "status_before": "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75865764 ver=1.0",
+    "status_before_exit": "0",
+    "status_before_fields": {
+     "fcrec": "0",
+     "k3": "n/a",
+     "pwr": "0",
+     "rst": "0",
+     "up": "75865764",
+     "ver": "1.0"
+    },
+    "status_before_utc": "2026-10-27T17:56:26Z",
+    "tail_wait": "ended",
+    "terminal_after_handoff": "hart=0 line=BE_MVP:14 SHUTDOWN type=0 reason=0",
+    "terminal_within_wait": "yes",
+    "verdict": "PASS"
+   },
+   "20261027T175803Z": {
+    "boot_id_after": "ce55db02-0d3b-4b73-88d1-178ccbbd046b",
+    "boot_id_before": "6d736976-b029-4196-9155-b7ae285433ba",
+    "client_pin": "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "client_sha256": "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "device": "/dev/ttyACM0",
+    "fedora_returned_utc": "2026-10-27T17:58:54Z",
+    "method": "k3ctl",
+    "outcome": "reset",
+    "probe": "down",
+    "probe_detail": "ssh: connect to host 192.168.2.7 port 22: Connection timed out",
+    "probe_utc": "2026-10-27T17:58:15Z",
+    "reset_exit": "0",
+    "reset_reply": "OK reset",
+    "reset_utc": "2026-10-27T17:58:20Z",
+    "seconds_to_new_boot_id": "34",
+    "settle_seconds": "30",
+    "status_after": "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75979912 ver=1.0",
+    "status_after_exit": "0",
+    "status_after_fields": {
+     "fcrec": "0",
+     "k3": "n/a",
+     "pwr": "0",
+     "rst": "0",
+     "up": "75979912",
+     "ver": "1.0"
+    },
+    "status_after_utc": "2026-10-27T17:58:20Z",
+    "status_before": "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75979603 ver=1.0",
+    "status_before_exit": "0",
+    "status_before_fields": {
+     "fcrec": "0",
+     "k3": "n/a",
+     "pwr": "0",
+     "rst": "0",
+     "up": "75979603",
+     "ver": "1.0"
+    },
+    "status_before_utc": "2026-10-27T17:58:20Z",
+    "tail_wait": "ended",
+    "terminal_after_handoff": "hart=0 line=BE_MVP:14 SHUTDOWN type=0 reason=0",
+    "terminal_within_wait": "yes",
+    "verdict": "PASS"
+   },
+   "20261027T175944Z": {
+    "boot_id_after": "7f9d0663-788d-4d38-86e6-98e3a20c5d4b",
+    "boot_id_before": "ce55db02-0d3b-4b73-88d1-178ccbbd046b",
+    "client_pin": "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "client_sha256": "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "device": "/dev/ttyACM0",
+    "fedora_returned_utc": "2026-10-27T18:00:33Z",
+    "method": "k3ctl",
+    "outcome": "reset",
+    "probe": "down",
+    "probe_detail": "ssh: connect to host 192.168.2.7 port 22: Connection timed out",
+    "probe_utc": "2026-10-27T17:59:55Z",
+    "reset_exit": "0",
+    "reset_reply": "OK reset",
+    "reset_utc": "2026-10-27T18:00:00Z",
+    "seconds_to_new_boot_id": "33",
+    "settle_seconds": "30",
+    "status_after": "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=76079641 ver=1.0",
+    "status_after_exit": "0",
+    "status_after_fields": {
+     "fcrec": "0",
+     "k3": "n/a",
+     "pwr": "0",
+     "rst": "0",
+     "up": "76079641",
+     "ver": "1.0"
+    },
+    "status_after_utc": "2026-10-27T18:00:00Z",
+    "status_before": "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=76079326 ver=1.0",
+    "status_before_exit": "0",
+    "status_before_fields": {
+     "fcrec": "0",
+     "k3": "n/a",
+     "pwr": "0",
+     "rst": "0",
+     "up": "76079326",
+     "ver": "1.0"
+    },
+    "status_before_utc": "2026-10-27T18:00:00Z",
+    "tail_wait": "ended",
+    "terminal_after_handoff": "hart=0 line=BE_MVP:FAIL gstage",
+    "terminal_within_wait": "yes",
+    "verdict": "PASS"
+   },
+   "20261027T180124Z": {
+    "boot_id_after": "899a90c8-8c98-4e12-8c26-9f04414238d9",
+    "boot_id_before": "7f9d0663-788d-4d38-86e6-98e3a20c5d4b",
+    "client_pin": "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "client_sha256": "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "device": "/dev/ttyACM0",
+    "fedora_returned_utc": "2026-10-27T18:02:23Z",
+    "method": "k3ctl",
+    "outcome": "reset",
+    "probe": "down",
+    "probe_detail": "ssh: connect to host 192.168.2.7 port 22: Connection timed out",
+    "probe_utc": "2026-10-27T18:01:35Z",
+    "reset_exit": "0",
+    "reset_reply": "OK reset",
+    "reset_utc": "2026-10-27T18:01:40Z",
+    "seconds_to_new_boot_id": "43",
+    "settle_seconds": "30",
+    "status_after": "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=76180302 ver=1.0",
+    "status_after_exit": "0",
+    "status_after_fields": {
+     "fcrec": "0",
+     "k3": "n/a",
+     "pwr": "0",
+     "rst": "0",
+     "up": "76180302",
+     "ver": "1.0"
+    },
+    "status_after_utc": "2026-10-27T18:01:41Z",
+    "status_before": "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=76180003 ver=1.0",
+    "status_before_exit": "0",
+    "status_before_fields": {
+     "fcrec": "0",
+     "k3": "n/a",
+     "pwr": "0",
+     "rst": "0",
+     "up": "76180003",
+     "ver": "1.0"
+    },
+    "status_before_utc": "2026-10-27T18:01:40Z",
+    "tail_wait": "ended",
+    "terminal_after_handoff": "hart=0 line=BE_MVP:FAIL guest-page-fault",
+    "terminal_within_wait": "yes",
+    "verdict": "PASS"
+   }
+  },
+  "rows": [
+   [
+    "20261027T175315Z",
+    "k3ctl",
+    "reset",
+    "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "down",
+    "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75692291 ver=1.0",
+    "OK reset",
+    "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75692595 ver=1.0",
+    "2026-10-27T17:53:33Z",
+    "2026-10-27T17:54:16Z",
+    "42cc2284-9b93-4e19-8064-8eaa3ce7850f",
+    "0485b932-d1c2-4f2c-bb15-29ad5945148f",
+    "43"
+   ],
+   [
+    "20261027T175447Z",
+    "k3ctl",
+    "reset",
+    "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "down",
+    "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75783572 ver=1.0",
+    "OK reset",
+    "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75783881 ver=1.0",
+    "2026-10-27T17:55:04Z",
+    "2026-10-27T17:55:38Z",
+    "0485b932-d1c2-4f2c-bb15-29ad5945148f",
+    "2e3e66da-c0cf-48ad-bfa9-5dae86f8c427",
+    "34"
+   ],
+   [
+    "20261027T175609Z",
+    "k3ctl",
+    "reset",
+    "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "down",
+    "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75865764 ver=1.0",
+    "OK reset",
+    "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75866061 ver=1.0",
+    "2026-10-27T17:56:26Z",
+    "2026-10-27T17:57:13Z",
+    "2e3e66da-c0cf-48ad-bfa9-5dae86f8c427",
+    "6d736976-b029-4196-9155-b7ae285433ba",
+    "47"
+   ],
+   [
+    "20261027T175803Z",
+    "k3ctl",
+    "reset",
+    "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "down",
+    "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75979603 ver=1.0",
+    "OK reset",
+    "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=75979912 ver=1.0",
+    "2026-10-27T17:58:20Z",
+    "2026-10-27T17:58:54Z",
+    "6d736976-b029-4196-9155-b7ae285433ba",
+    "ce55db02-0d3b-4b73-88d1-178ccbbd046b",
+    "34"
+   ],
+   [
+    "20261027T175944Z",
+    "k3ctl",
+    "reset",
+    "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "down",
+    "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=76079326 ver=1.0",
+    "OK reset",
+    "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=76079641 ver=1.0",
+    "2026-10-27T18:00:00Z",
+    "2026-10-27T18:00:33Z",
+    "ce55db02-0d3b-4b73-88d1-178ccbbd046b",
+    "7f9d0663-788d-4d38-86e6-98e3a20c5d4b",
+    "33"
+   ],
+   [
+    "20261027T180124Z",
+    "k3ctl",
+    "reset",
+    "7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec",
+    "down",
+    "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=76180003 ver=1.0",
+    "OK reset",
+    "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=76180302 ver=1.0",
+    "2026-10-27T18:01:40Z",
+    "2026-10-27T18:02:23Z",
+    "7f9d0663-788d-4d38-86e6-98e3a20c5d4b",
+    "899a90c8-8c98-4e12-8c26-9f04414238d9",
+    "43"
+   ]
+  ],
+  "versions": [
+   "1.0"
+  ]
+ },
+ "runs": [
+  [
+   "20261027T175315Z",
+   "te-poc",
+   "gcc",
+   "a55a5791b4b4",
+   "PASS",
+   "none",
+   "fedora@k3-f45",
+   "log:<home>/src/spacemit-k3/logs/boot-7.log",
+   "42cc2284-9b93-4e19-8064-8eaa3ce7850f",
+   "7.3.0-65.1.riscv64.omni.fc45.riscv64",
+   "2026-10-27T17:53:18Z",
+   "2026-10-27T17:53:28Z"
+  ],
+  [
+   "20261027T175447Z",
+   "te-poc",
+   "gcc",
+   "a55a5791b4b4",
+   "PASS",
+   "none",
+   "fedora@k3-f45",
+   "log:<home>/src/spacemit-k3/logs/boot-7.log",
+   "0485b932-d1c2-4f2c-bb15-29ad5945148f",
+   "7.3.0-65.1.riscv64.omni.fc45.riscv64",
+   "2026-10-27T17:54:49Z",
+   "2026-10-27T17:54:59Z"
+  ],
+  [
+   "20261027T175609Z",
+   "te-poc",
+   "gcc",
+   "a55a5791b4b4",
+   "PASS",
+   "none",
+   "fedora@k3-f45",
+   "log:<home>/src/spacemit-k3/logs/boot-7.log",
+   "2e3e66da-c0cf-48ad-bfa9-5dae86f8c427",
+   "7.3.0-65.1.riscv64.omni.fc45.riscv64",
+   "2026-10-27T17:56:11Z",
+   "2026-10-27T17:56:21Z"
+  ],
+  [
+   "20261027T175803Z",
+   "te-poc",
+   "clang",
+   "e32de2439ef0",
+   "PASS",
+   "none",
+   "fedora@k3-f45",
+   "log:<home>/src/spacemit-k3/logs/boot-7.log",
+   "6d736976-b029-4196-9155-b7ae285433ba",
+   "7.3.0-65.1.riscv64.omni.fc45.riscv64",
+   "2026-10-27T17:58:05Z",
+   "2026-10-27T17:58:15Z"
+  ],
+  [
+   "20261027T175944Z",
+   "reader-write",
+   "gcc",
+   "c575bc03d456",
+   "PASS",
+   "none",
+   "fedora@k3-f45",
+   "log:<home>/src/spacemit-k3/logs/boot-7.log",
+   "ce55db02-0d3b-4b73-88d1-178ccbbd046b",
+   "7.3.0-65.1.riscv64.omni.fc45.riscv64",
+   "2026-10-27T17:59:47Z",
+   "2026-10-27T17:59:55Z"
+  ],
+  [
+   "20261027T180124Z",
+   "no-inject",
+   "gcc",
+   "4cb0df81bcdb",
+   "PASS",
+   "none",
+   "fedora@k3-f45",
+   "log:<home>/src/spacemit-k3/logs/boot-7.log",
+   "7f9d0663-788d-4d38-86e6-98e3a20c5d4b",
+   "7.3.0-65.1.riscv64.omni.fc45.riscv64",
+   "2026-10-27T18:01:26Z",
+   "2026-10-27T18:01:35Z"
+  ]
+ ],
+ "scenario": {
+  "budgets": [],
+  "costs": {},
+  "domains": [],
+  "identical": {},
+  "passing": 0,
+  "runs": [],
+  "varied": {}
+ },
+ "schema": "be-mvp-platform-record-v2",
+ "serial_log": "Serial log (written by hand on 2026-10-27 from the operator's picocom log, which is outside the repository and is not retained): the operator's session, `picocom -b 115200 /dev/ttyUSB0 --logfile <home>/src/spacemit-k3/logs/boot-7.log` on the workstation `l1`, had been running since before the first M1 campaign, and automation read the log output-only and never wrote to the serial port. The segment of this campaign, `20261027-com260-m1b`, runs from the first `te-poc` run's `BE_MVP:01` line (log line 85,536) to the end of the log as read (line 94,579; 17:53 to 18:02 UTC). For each of the six runs it holds Fedora's shutdown through `systemd-kexec.service`, the kexec handoff, the shim line, and the monitor's lines through the run's terminal marker, `BE_MVP:14 SHUTDOWN type=0 reason=0` four times (`te-poc`, three GCC and one Clang), `BE_MVP:FAIL gstage` once (`reader-write`) and `BE_MVP:FAIL guest-page-fault` once (`no-inject`, hart 0's one FAIL and DETAIL pair, after both domains' `MVPINIT 07 CHANNEL` lines, and nothing from a domain hart); then, after each `k3ctl reset`, two NUL bytes and the boot ROM's terse lines (`sys: 0x10000200`, `try sd...`, `bm:3`, `ERROR: CMD8`, `ERROR: sd f! l:90`, `bm:4`, `nor m:0xc8 d:0x6017`, `j...`), `U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)` with its DDR line (MT62F1G32D2DS, 4096MB, 6400MT/s), `U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395` with its device probes, `Starting kernel ...`, and Fedora Linux 45 (Server) with kernel `7.3.0-65.1.riscv64.omni.fc45.riscv64` to its login prompt: six such reboots, each legible and complete. No line with `OpenSBI`, `Platform Name`, `Domain0`, `PMP`, `Firmware Base`, or `Runtime SBI` appears in the segment, as in M0's campaign (mvp/README.md open item 40): the firmware is identified only by Fedora's log, `SBI implementation ID=0x1 Version=0x10006`, which the preflight records. Earlier in the same log are the first M1 campaign (`20261027-com260`, 09:32 to 09:41 UTC), whose `no-inject` run ended in both domain harts' own FAIL and DETAIL lines and a halt with no further output until the `k3ctl reset` at 17:45 UTC that preceded this campaign's preflight, and, between that reset and this segment, the preflight, two `two-guests` load checks, three unplanned `two-guests` kexec runs with this campaign's images (made by an invocation without `SCENARIO=te-poc`, set aside and not part of this record), and the two `te-poc` load checks.",
+ "sources": {
+  "preflight": {
+   "<repo>/mvp/results/20261025-com260/preflight.txt": "6f6eb0b850d658e7859e662eae24dc6a6fc9e36162db583a2bfe1625377c639f",
+   "<repo>/mvp/src/mvp-layout.h": "7e6a0a190bcf61a39b10209f3a35eb8cd589578ccd43dddd0aca3009cd1dbe42",
+   "preflight.txt": "d205b70d7045aae317fca05a7d5b4f59be1b567a28641cf047f7ca558d9e6446"
+  },
+  "resets": {
+   "mvp/resets/20261027T175315Z.txt": "8fed3f40fbb2ab27a6197dd76d0a13b7eea59202dc241551b155d0b027f41e9e",
+   "mvp/resets/20261027T175447Z.txt": "e411ee3ca26da62dad414010e88ec185c50ee9235888231693431566435832bc",
+   "mvp/resets/20261027T175609Z.txt": "dc157c7239b0d8c2a0a069772ee695c042315c2449ef52a83100ed1b8734136b",
+   "mvp/resets/20261027T175803Z.txt": "80d56551bf7311f4de70eb79a5b9295a154d7871ac601bf75fb268378bade4e4",
+   "mvp/resets/20261027T175944Z.txt": "070b7c4c4b23b7d165cc0a7aa6cdffeb253e6fae3502c2ef6af479fd62c73b38",
+   "mvp/resets/20261027T180124Z.txt": "6235c64bac420d6af348a5a22ba6d1b626ac0c744f8411b99a7368a411cb8f64"
+  },
+  "runs": {
+   "20261027T175315Z/check.txt": "3e23b81af00e0726964c21cacaa0f134a2f04ca0a2234546384a1f28af7ca58d",
+   "20261027T175315Z/handoff-excerpt.log": "0a884f5623dfb8dc4261861b4b5a5f51283140801b287f3db40a7075abc98f51",
+   "20261027T175315Z/result.json": "bc18e186b9a486d82d4b51cdfc351906e5754f91abf55f6e0d1346ddb52e7bfa",
+   "20261027T175315Z/run.txt": "0c25261887a81e9cae79b0d8554a78189e67641222691c985aa3d9c1fb242c4b",
+   "20261027T175447Z/check.txt": "350f1fbb5bd2c7d1698c06aee04bf3d38ebab438784e1e0336a6d6e0b7dbda2a",
+   "20261027T175447Z/handoff-excerpt.log": "b54424b68f5c785c0b7653d0a9fa3d61983fec2b65e256e84abe74844153b6d8",
+   "20261027T175447Z/result.json": "778061644c2a212d3e7fa59d6d61486968acad2abc290f95f424a877a942005b",
+   "20261027T175447Z/run.txt": "65a895df7a709acf28d543753d57fb3e28cf08850fcc8c7535a5587233ea1100",
+   "20261027T175609Z/check.txt": "79ce055e96391031e1e9c6ba84ebdd46463e57fa2998ea0fbee9b7585b06d6fa",
+   "20261027T175609Z/handoff-excerpt.log": "72d15c0f66c587b2a7212b968b5380c5ef04ee972d3f27cd0399c35dfbb68ed0",
+   "20261027T175609Z/result.json": "134430ec03fe2e937abc9447ece655b5e5e67099ac1111c448e52e0429795944",
+   "20261027T175609Z/run.txt": "7f27afe93c442078488587b490bd95b9f99e1a1e037a1501e40ab1564fe3644c",
+   "20261027T175803Z/check.txt": "3e0f9d1fa874a258019a9009122e6185e068e613e95885873cbe0ae7bd1a010a",
+   "20261027T175803Z/handoff-excerpt.log": "8d006c6e638047208b086ee725a0b3872d9df0ccb7b3f17c30f789911dac66ae",
+   "20261027T175803Z/result.json": "4d9a1ccdb8429e785bca58e28c2e063e3a09e5438099413ab4fa77bf8754e380",
+   "20261027T175803Z/run.txt": "b953bce46446522f9cce1a7246c4e72a6d514dd4e2a45ee846443989e95ab814",
+   "20261027T175944Z/check.txt": "81cb1003820451da54fd9a3436d8288c0fb7db3443bbb68fb6abfdb0230e1d16",
+   "20261027T175944Z/handoff-excerpt.log": "f86324f7adc2ec575116aae7c2e5734ff8a13cc60bee1d6582531240b923f89c",
+   "20261027T175944Z/result.json": "e8476f7683025e548c99b9d131bbec6d2fc1f0756ce4dffdd910e18404fddbb5",
+   "20261027T175944Z/run.txt": "2dc32a526297b4fd5fd6d3580e1940cdd80c723420088c33df845e2106029163",
+   "20261027T180124Z/check.txt": "b670265844ccf0b1bc03393668daded6f11838a773ada9ee3056d8d0088a5419",
+   "20261027T180124Z/handoff-excerpt.log": "87be116577ac7ac26fc8b43d8b8ec4a318fc551561fa9b459e47f39f026511ae",
+   "20261027T180124Z/result.json": "4c1a18e5f846107b368e740924f13021e566eeaf1797d6e669d9fcd68de692ad",
+   "20261027T180124Z/run.txt": "410279118ba96dcf29da9cda2acb711079614b3a66415162d7d6ba91adb95372",
+   "mvp/bundle.txt": "18b439feace052d49e04ac82dee060fdaa7d6785d163d733a6597fb20906ffc9",
+   "mvp/images.sha256": "3d2f99ae97e9bab39fc3a0059e53126e78dba4d35ce0402a718049838b52b8f0",
+   "mvp/runs.tsv": "a7bb8f6cb38d676b6a0b6950f05f537b52a1d167712f732bac67ab0ebe4dc7a2"
+  },
+  "scenario": {
+   "mvp/scenario/te-poc/authority-report.json": "fcbf210072d30c0d865c5219cc13a1d47ff17825bdd178e463e2c34d4beafdae",
+   "mvp/scenario/te-poc/expect/no-inject.json": "ccc747e606a2e387628d13ef16a46e844e1dc7b03122d193db7d817bb5cd0ae8",
+   "mvp/scenario/te-poc/expect/reader-write.json": "4ef6dffd7f95189ee2c8357196967477b9c8e9450c85e27dff34b6dc3401f820",
+   "mvp/scenario/te-poc/expect/te-poc.json": "4aeedbbb6b653a1970446eb6c6af4239ab94258925577d38908c01e5d7207362"
+  },
+  "serial": {
+   "mvp/serial-log-note.txt": "0b2e6a00a5fd2e94d9b3992f5cea8440fd930e2f7f54926b5e84b1ca954b64a5"
+  }
+ },
+ "te_poc": {
+  "budgets": [
+   "`ring_peak` 0x1420..0x1558 against half the 0x8000-byte outbound ring, 0x4000 (BE_MVP:12, BE_MVP:01)",
+   "run ticks 0x26d35f4..0x26d36c5, the longest 1.696 s at 24000000 Hz, against the budget 0x100000000 (178.957 s) (BE_MVP:13 `ticks`, BE_MVP:07 `budget_ticks`)"
+  ],
+  "costs": {
+   "20261027T175315Z": [
+    [
+     "g0_denial1_service_ticks",
+     "36"
+    ],
+    [
+     "g0_ping_to_receipt_ticks",
+     "77"
+    ],
+    [
+     "g0_receipt_to_pong_ticks",
+     "7"
+    ],
+    [
+     "g0_run_ticks",
+     "39206558"
+    ],
+    [
+     "g0_run_ticks_per_exit",
+     "240531"
+    ],
+    [
+     "g1_denial1_service_ticks",
+     "19"
+    ],
+    [
+     "g1_denial2_service_ticks",
+     "14"
+    ],
+    [
+     "g1_ping_to_receipt_ticks",
+     "46"
+    ],
+    [
+     "g1_receipt_to_pong_ticks",
+     "8"
+    ],
+    [
+     "g1_run_ticks",
+     "39213974"
+    ],
+    [
+     "g1_run_ticks_per_exit",
+     "234814"
+    ],
+    [
+     "hart0_idle_permille",
+     "360"
+    ],
+    [
+     "hart0_idle_ticks",
+     "14674073"
+    ],
+    [
+     "hart0_records",
+     "146"
+    ],
+    [
+     "hart0_run_ticks",
+     "40711671"
+    ],
+    [
+     "hart0_wakes",
+     "2"
+    ]
+   ],
+   "20261027T175447Z": [
+    [
+     "g0_denial1_service_ticks",
+     "34"
+    ],
+    [
+     "g0_ping_to_receipt_ticks",
+     "77"
+    ],
+    [
+     "g0_receipt_to_pong_ticks",
+     "7"
+    ],
+    [
+     "g0_run_ticks",
+     "39206614"
+    ],
+    [
+     "g0_run_ticks_per_exit",
+     "240531"
+    ],
+    [
+     "g1_denial1_service_ticks",
+     "24"
+    ],
+    [
+     "g1_denial2_service_ticks",
+     "13"
+    ],
+    [
+     "g1_ping_to_receipt_ticks",
+     "45"
+    ],
+    [
+     "g1_receipt_to_pong_ticks",
+     "8"
+    ],
+    [
+     "g1_run_ticks",
+     "39213561"
+    ],
+    [
+     "g1_run_ticks_per_exit",
+     "234811"
+    ],
+    [
+     "hart0_idle_permille",
+     "360"
+    ],
+    [
+     "hart0_idle_ticks",
+     "14674104"
+    ],
+    [
+     "hart0_records",
+     "146"
+    ],
+    [
+     "hart0_run_ticks",
+     "40711877"
+    ],
+    [
+     "hart0_wakes",
+     "2"
+    ]
+   ],
+   "20261027T175609Z": [
+    [
+     "g0_denial1_service_ticks",
+     "37"
+    ],
+    [
+     "g0_ping_to_receipt_ticks",
+     "73"
+    ],
+    [
+     "g0_receipt_to_pong_ticks",
+     "7"
+    ],
+    [
+     "g0_run_ticks",
+     "39206516"
+    ],
+    [
+     "g0_run_ticks_per_exit",
+     "240530"
+    ],
+    [
+     "g1_denial1_service_ticks",
+     "19"
+    ],
+    [
+     "g1_denial2_service_ticks",
+     "16"
+    ],
+    [
+     "g1_ping_to_receipt_ticks",
+     "47"
+    ],
+    [
+     "g1_receipt_to_pong_ticks",
+     "7"
+    ],
+    [
+     "g1_run_ticks",
+     "39213739"
+    ],
+    [
+     "g1_run_ticks_per_exit",
+     "234812"
+    ],
+    [
+     "hart0_idle_permille",
+     "360"
+    ],
+    [
+     "hart0_idle_ticks",
+     "14671962"
+    ],
+    [
+     "hart0_records",
+     "146"
+    ],
+    [
+     "hart0_run_ticks",
+     "40711668"
+    ],
+    [
+     "hart0_wakes",
+     "2"
+    ]
+   ],
+   "20261027T175803Z": [
+    [
+     "g0_denial1_service_ticks",
+     "28"
+    ],
+    [
+     "g0_ping_to_receipt_ticks",
+     "71"
+    ],
+    [
+     "g0_receipt_to_pong_ticks",
+     "7"
+    ],
+    [
+     "g0_run_ticks",
+     "39206494"
+    ],
+    [
+     "g0_run_ticks_per_exit",
+     "240530"
+    ],
+    [
+     "g1_denial1_service_ticks",
+     "19"
+    ],
+    [
+     "g1_denial2_service_ticks",
+     "13"
+    ],
+    [
+     "g1_ping_to_receipt_ticks",
+     "45"
+    ],
+    [
+     "g1_receipt_to_pong_ticks",
+     "7"
+    ],
+    [
+     "g1_run_ticks",
+     "39213449"
+    ],
+    [
+     "g1_run_ticks_per_exit",
+     "234811"
+    ],
+    [
+     "hart0_idle_permille",
+     "360"
+    ],
+    [
+     "hart0_idle_ticks",
+     "14673995"
+    ],
+    [
+     "hart0_records",
+     "146"
+    ],
+    [
+     "hart0_run_ticks",
+     "40711668"
+    ],
+    [
+     "hart0_wakes",
+     "2"
+    ]
+   ]
+  },
+  "domains": [
+   [
+    "20261027T175315Z",
+    "1",
+    "0",
+    "163",
+    "161",
+    "1",
+    "14",
+    "0",
+    "102",
+    "44",
+    "0",
+    "1",
+    "0",
+    "67",
+    "0x1420",
+    "0x58b",
+    "0x2564429",
+    "1004",
+    "0x1ce578, 0x1ce5c5, 0x1ce5cc"
+   ],
+   [
+    "20261027T175315Z",
+    "2",
+    "1",
+    "167",
+    "164",
+    "1",
+    "14",
+    "0",
+    "104",
+    "45",
+    "0",
+    "1",
+    "0",
+    "68",
+    "0x1558",
+    "0x23e26",
+    "0x25899bc",
+    "1004",
+    "0x23598a, 0x2359b8, 0x2359c0"
+   ],
+   [
+    "20261027T175447Z",
+    "1",
+    "0",
+    "163",
+    "161",
+    "1",
+    "14",
+    "0",
+    "102",
+    "44",
+    "0",
+    "1",
+    "0",
+    "67",
+    "0x1420",
+    "0x574",
+    "0x256444a",
+    "1004",
+    "0x1ce577, 0x1ce5c4, 0x1ce5cb"
+   ],
+   [
+    "20261027T175447Z",
+    "2",
+    "1",
+    "167",
+    "164",
+    "1",
+    "14",
+    "0",
+    "104",
+    "45",
+    "0",
+    "1",
+    "0",
+    "68",
+    "0x1558",
+    "0x23e35",
+    "0x258982e",
+    "1004",
+    "0x235989, 0x2359b6, 0x2359be"
+   ],
+   [
+    "20261027T175609Z",
+    "1",
+    "0",
+    "163",
+    "161",
+    "1",
+    "14",
+    "0",
+    "102",
+    "44",
+    "0",
+    "1",
+    "0",
+    "67",
+    "0x1420",
+    "0x58b",
+    "0x25643ff",
+    "1004",
+    "0x1ce577, 0x1ce5c0, 0x1ce5c7"
+   ],
+   [
+    "20261027T175609Z",
+    "2",
+    "1",
+    "167",
+    "164",
+    "1",
+    "14",
+    "0",
+    "104",
+    "45",
+    "0",
+    "1",
+    "0",
+    "68",
+    "0x1558",
+    "0x23e29",
+    "0x25898d4",
+    "1004",
+    "0x235988, 0x2359b7, 0x2359be"
+   ],
+   [
+    "20261027T175803Z",
+    "1",
+    "0",
+    "163",
+    "161",
+    "1",
+    "14",
+    "0",
+    "102",
+    "44",
+    "0",
+    "1",
+    "0",
+    "67",
+    "0x1420",
+    "0x579",
+    "0x25643d7",
+    "1004",
+    "0x1ce577, 0x1ce5be, 0x1ce5c5"
+   ],
+   [
+    "20261027T175803Z",
+    "2",
+    "1",
+    "167",
+    "164",
+    "1",
+    "14",
+    "0",
+    "104",
+    "45",
+    "0",
+    "1",
+    "0",
+    "68",
+    "0x1558",
+    "0x23e30",
+    "0x25897b9",
+    "1004",
+    "0x235987, 0x2359b4, 0x2359bb"
+   ]
+  ],
+  "identical": {
+   "alternations": "127",
+   "complete_domains": "2",
+   "complete_records": "146",
+   "complete_wakes": "2",
+   "denials_g0": "1",
+   "denials_g1": "2",
+   "exits_g0": "163",
+   "exits_g1": "167",
+   "g0": "67",
+   "g0_base": "14",
+   "g0_dbcn_byte": "0",
+   "g0_dbcn_read": "44",
+   "g0_dbcn_write": "102",
+   "g0_domain": "0",
+   "g0_elapsed_ms": "1004",
+   "g0_exits": "163",
+   "g0_hart": "1",
+   "g0_ipi": "1",
+   "g0_lines": "67",
+   "g0_receipt_to_pong_ticks": "7",
+   "g0_refused": "0",
+   "g0_ring_peak": "0x1420",
+   "g0_sbi": "161",
+   "g0_srst": "1",
+   "g0_time": "0",
+   "g1": "68",
+   "g1_base": "14",
+   "g1_dbcn_byte": "0",
+   "g1_dbcn_read": "45",
+   "g1_dbcn_write": "104",
+   "g1_domain": "1",
+   "g1_elapsed_ms": "1004",
+   "g1_exits": "167",
+   "g1_hart": "2",
+   "g1_ipi": "1",
+   "g1_lines": "68",
+   "g1_refused": "0",
+   "g1_ring_peak": "0x1558",
+   "g1_sbi": "164",
+   "g1_srst": "1",
+   "g1_time": "0",
+   "hart0_idle_permille": "360",
+   "hart0_records": "146",
+   "hart0_wakes": "2",
+   "kexec_hart": "0",
+   "records": "146",
+   "started": "none",
+   "wakes": "2"
+  },
+  "passing": 4,
+  "runs": [
+   [
+    "20261027T175315Z",
+    "gcc",
+    "PASS",
+    "0",
+    "146",
+    "2",
+    "127",
+    "0x2540603",
+    "0x2563e9e",
+    "1",
+    "2",
+    "0x26d35f7",
+    "0xdfe899"
+   ],
+   [
+    "20261027T175447Z",
+    "gcc",
+    "PASS",
+    "0",
+    "146",
+    "2",
+    "127",
+    "0x2540615",
+    "0x2563ed6",
+    "1",
+    "2",
+    "0x26d36c5",
+    "0xdfe8b8"
+   ],
+   [
+    "20261027T175609Z",
+    "gcc",
+    "PASS",
+    "0",
+    "146",
+    "2",
+    "127",
+    "0x25405d6",
+    "0x2563e74",
+    "1",
+    "2",
+    "0x26d35f4",
+    "0xdfe05a"
+   ],
+   [
+    "20261027T175803Z",
+    "clang",
+    "PASS",
+    "0",
+    "146",
+    "2",
+    "127",
+    "0x25405a7",
+    "0x2563e5e",
+    "1",
+    "2",
+    "0x26d35f4",
+    "0xdfe84b"
+   ]
+  ],
+  "varied": {
+   "complete_idle_ticks": "0xdfe05a..0xdfe8b8",
+   "complete_overlap_ticks": "0x25405a7..0x2540615",
+   "complete_ticks": "0x26d35f4..0x26d36c5",
+   "g0_denial1_service_ticks": "28..37",
+   "g0_entered": "0x574..0x58b",
+   "g0_ping_to_receipt_ticks": "71..77",
+   "g0_run_ticks": "39206494..39206614",
+   "g0_run_ticks_per_exit": "240530..240531",
+   "g0_ticks": "0x25643d7..0x256444a",
+   "g1_denial1_service_ticks": "19..24",
+   "g1_denial2_service_ticks": "13..16",
+   "g1_entered": "0x23e26..0x23e35",
+   "g1_ping_to_receipt_ticks": "45..47",
+   "g1_receipt_to_pong_ticks": "7..8",
+   "g1_run_ticks": "39213449..39213974",
+   "g1_run_ticks_per_exit": "234811..234814",
+   "g1_ticks": "0x25897b9..0x25899bc",
+   "hart0_idle_ticks": "14671962..14674104",
+   "hart0_run_ticks": "40711668..40711877",
+   "overlap_ticks": "0x25405a7..0x2540615",
+   "shorter_ticks": "0x2563e5e..0x2563ed6"
+  }
+ }
+}

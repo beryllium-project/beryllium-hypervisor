@@ -1,0 +1,20 @@
+label=two-guests/clang
+kind=scenario
+file=two-guests-clang.img
+stage=done
+error=-
+qemu_exit=0
+seconds=9.8
+sbi_version=2.0
+boot_hart=5
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2584576
+crc32=de60ac10
+fdt=0xff7383d0
+fdt_end=0xff73edd8
+rule_hart=5
+shim_fdt=0xff7383d0
+terminal=BE_MVP:14 SHUTDOWN type=0 reason=0
+console_bytes=17004
+console_sha256=0b61f60dc668640c3031619ac1fa185df09975a55f922b510567d9526ae67d9e
+BE_MVP_UBOOT_SESSION[two-guests/clang]: PASS boot_hart=5 qemu_exit=0 fdt=0xff7383d0 crc32=de60ac10 seconds=9.8

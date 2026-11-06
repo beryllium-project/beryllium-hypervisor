@@ -1,0 +1,1 @@
+# session-typist.py's keys: seconds after QEMU's start, UTC, the session step, the byte

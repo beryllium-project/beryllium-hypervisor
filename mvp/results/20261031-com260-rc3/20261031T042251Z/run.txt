@@ -1,0 +1,27 @@
+run=20261031T042251Z
+image=<repo>/build/mvp/variants/gcc/payload/be-mvp-boot.img
+image_sha256=1ea783a9490d9f3edd2869132a9b8dd5658e5ae06346a22a87b4175429675c05
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/variants/gcc/payload/be-mvp-boot.img bytes=0x277000 sha256=1ea783a9490d9f3edd2869132a9b8dd5658e5ae06346a22a87b4175429675c05 flat_sha256=9efcde66cc2c0e02e76e0c6350bb00eb9d3d9a49a246d9d1fcb81a2fa90de1fc kexec_fdt=0x108400000 variant=payload dtb0=0x275000
+toolchain=gcc
+expect=payload.json expect_sha256=1cf15a3f19cc14b2a8a1b97600574da85d5c0f917eb3e74cb8105972e3ac4d0d
+variant=payload
+launcher=uboot-autoboot-nvme
+loader=uboot-autoboot-nvme be_image=be-mvp-two-guests-payload-gcc.img load=0x140000000 booti=0x140000000 fdt=${fdtcontroladdr}
+be_image=be-mvp-two-guests-payload-gcc.img
+remote_image_sha256=1ea783a9490d9f3edd2869132a9b8dd5658e5ae06346a22a87b4175429675c05
+staged_bytes=2584576 staged_md5=02851de14111363847a717348f2e344e
+selected_be_image=be-mvp-two-guests-payload-gcc.img
+serial_source=log:<home>/src/spacemit-k3/logs/boot-7.log
+boot_id_before=reset-28@15492562
+reset_utc=2026-10-31T04:22:52.955Z
+serial_range=15492562-15497431
+outcome=terminal-marker
+terminal_marker_utc=2026-10-31T04:23:04Z
+spl_banner=U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)
+uboot_banner=U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395
+board_kernel=none (boot from system reset)
+check_status=0
+BE_MVP_RESULT: PASS terminal=fail-marker
+attribution_lines=bytes_read=2584576 digest=md5:02851de14111363847a717348f2e344e
+attribution=PASS selected=yes staged_sha256=yes size_md5=yes check=yes
+banner_audit=PASS

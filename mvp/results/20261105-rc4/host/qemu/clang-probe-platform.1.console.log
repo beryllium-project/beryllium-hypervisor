@@ -1,0 +1,98 @@
+
+OpenSBI v1.6
+   ____                    _____ ____ _____
+  / __ \                  / ____|  _ \_   _|
+ | |  | |_ __   ___ _ __ | (___ | |_) || |
+ | |  | | '_ \ / _ \ '_ \ \___ \|  _ < | |
+ | |__| | |_) |  __/ | | |____) | |_) || |_
+  \____/| .__/ \___|_| |_|_____/|____/_____|
+        | |
+        |_|
+
+Platform Name               : riscv-virtio,qemu
+Platform Features           : medeleg
+Platform HART Count         : 8
+Platform IPI Device         : aia-imsic
+Platform Timer Device       : aclint-mtimer @ 10000000Hz
+Platform Console Device     : uart8250
+Platform HSM Device         : ---
+Platform PMU Device         : ---
+Platform Reboot Device      : syscon-reboot
+Platform Shutdown Device    : syscon-poweroff
+Platform Suspend Device     : ---
+Platform CPPC Device        : ---
+Firmware Base               : 0x80000000
+Firmware Size               : 411 KB
+Firmware RW Offset          : 0x40000
+Firmware RW Size            : 155 KB
+Firmware Heap Offset        : 0x56000
+Firmware Heap Size          : 67 KB (total), 4 KB (reserved), 14 KB (used), 48 KB (free)
+Firmware Scratch Size       : 4096 B (total), 448 B (used), 3648 B (free)
+Runtime SBI Version         : 2.0
+Standard SBI Extensions     : time,rfnc,ipi,base,hsm,srst,pmu,dbcn,legacy
+Experimental SBI Extensions : fwft,dbtr,sse
+
+Domain0 Name                : root
+Domain0 Boot HART           : 0
+Domain0 HARTs               : 0*,1*,2*,3*,4*,5*,6*,7*
+Domain0 Region00            : 0x0000000000100000-0x0000000000100fff M: (I,R,W) S/U: (R,W)
+Domain0 Region01            : 0x0000000010000000-0x0000000010000fff M: (I,R,W) S/U: (R,W)
+Domain0 Region02            : 0x000000000c000000-0x000000000c007fff M: (I,R,W) S/U: ()
+Domain0 Region03            : 0x0000000024000000-0x0000000024007fff M: (I,R,W) S/U: ()
+Domain0 Region04            : 0x0000000002000000-0x000000000200ffff M: (I,R,W) S/U: ()
+Domain0 Region05            : 0x0000000080000000-0x000000008003ffff M: (R,X) S/U: ()
+Domain0 Region06            : 0x0000000080040000-0x000000008007ffff M: (R,W) S/U: ()
+Domain0 Region07            : 0x0000000000000000-0xffffffffffffffff M: () S/U: (R,W,X)
+Domain0 Next Address        : 0x0000000108000000
+Domain0 Next Arg1           : 0x000000027fe00000
+Domain0 Next Mode           : S-mode
+Domain0 SysReset            : yes
+Domain0 SysSuspend          : yes
+
+Boot HART ID                : 0
+Boot HART Domain            : root
+Boot HART Priv Version      : v1.12
+Boot HART Base ISA          : rv64imafdch
+Boot HART ISA Extensions    : smaia,smstateen,sstc,zicntr,zihpm,zicboz,zicbom,sdtrig,svade
+Boot HART PMP Count         : 16
+Boot HART PMP Granularity   : 2 bits
+Boot HART PMP Address Bits  : 54
+Boot HART MHPM Info         : 16 (0x0007fff8)
+Boot HART Debug Triggers    : 2 triggers
+Boot HART MIDELEG           : 0x0000000000001666
+Boot HART MEDELEG           : 0x0000000000f4b509
+BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x000000027fe00000 dest=0x0000000102000000 bytes=0x00000000000a4000
+BE_MVP:00 BOOT_VALIDATED
+BE_MVP:00 CONFIG_SEALED inventory=14 authorities=2 roots=2 harts=0,1,2 identity=16bd3ebb3796bb68
+BE_MVP:01 SCENARIO name=probe-platform domains=1 harts=0,1 of=8 ring_bytes=0x8000 mvp_region=0x102064000 mvp_bytes=0x40000 image_bytes=0xa4000
+BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status=1:1,2:1,3:1,4:1,5:1,6:1,7:1 started=none
+BE_MVP:PROBE hsm status=1:1,2:1,3:1,4:1,5:1,6:1,7:1
+BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 hart=1 gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 root=0x102034000 vmid=1
+BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 hart=2 gpa=0x80000000 hpa=0x114000000 size=0x4000000 leaves=32 root=0x10203c000 vmid=2
+BE_MVP:PROBE hgatp vmid=0x3fff sv48x4=0x0 sv57x4=0x0 sv39x4=0x83fff00000102014 vmid_bits=14 restored=0x8000000000102014
+BE_MVP:05 DOMAIN_RAM_CLEARED domain=0 gpa=0x80000000 size=0x4000000 ticks=0x30f13
+BE_MVP:05 DOMAIN_RAM_CLEARED domain=1 gpa=0x80000000 size=0x4000000 ticks=0x304d3
+BE_MVP:19 LOG header magic=BEMVPLOG version=1 hlen=128 rlen=96 capacity=41 count=9 state=closed alg=0x000b scenario=87c6f18b6a18f99cad8604c796f88b9cab63c9c86f307f338a395894d9d3cc34 config=0000000000000000000000000000000000000000000000000000000000000000
+BE_MVP:19 LOG record seq=0 producer=0 type=measured stream=0 object=monitor-text repr=as-placed outcome=recorded base=0x0000000102000000 length=0x0000000000002ff0 dlen=32 srec=0 expected=0 digest=3c415a8367d122fa5dcd54c875b22383639c9c5c3912f9ec130e169ffbf0bb48
+BE_MVP:19 LOG record seq=1 producer=0 type=measured stream=0 object=monitor-rodata repr=as-placed outcome=recorded base=0x0000000102008820 length=0x000000000000021c dlen=32 srec=1 expected=0 digest=393e519da6b8132d4673bd867bb8586a9eafc790afbfd4025c6865bc85f64fce
+BE_MVP:19 LOG record seq=2 producer=0 type=measured stream=0 object=monitor-input repr=as-placed outcome=recorded base=0x0000000102008000 length=0x0000000000000820 dlen=32 srec=2 expected=0 digest=90504c42b08c1acc48521d4c1975a9b79dd78d8cbdafcc37dc11ea61c251f010
+BE_MVP:19 LOG record seq=3 producer=0 type=measured stream=0 object=mvp-text repr=as-placed outcome=recorded base=0x0000000102064000 length=0x0000000000005b20 dlen=32 srec=3 expected=0 digest=e08bc32b15a41dd4cb6a23c4062132316acf6f24ce31256c69f69903cc6e12c2
+BE_MVP:19 LOG record seq=4 producer=0 type=measured stream=0 object=mvp-rodata repr=as-placed outcome=recorded base=0x0000000102069b20 length=0x0000000000001340 dlen=32 srec=4 expected=0 digest=0acc64f4f2307f6fd75abbab8ceafbd8540323954b56c99a0a1c7de35f2d6296
+BE_MVP:19 LOG record seq=5 producer=0 type=measured stream=1 object=core-identity repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=0 digest=16bd3ebb3796bb68a787f511d32162a9a0d7a665f1712fbf56a96d09f96c8167
+BE_MVP:19 LOG record seq=6 producer=0 type=measured stream=1 object=console-grants repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=1 expected=0 digest=96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7
+BE_MVP:19 LOG record seq=7 producer=0 type=informational stream=1 object=policy-absent repr=build-recorded outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=2 expected=0 digest=0000000000000000000000000000000000000000000000000000000000000000
+BE_MVP:19 LOG record seq=8 producer=0 type=close stream=255 object=close repr=none outcome=none base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=9 digest=0000000000000000000000000000000000000000000000000000000000000000
+BE_MVP:20 REGISTERS at=barrier r0=caaeacad98a84c75685a724542c1a178cf8d17e351bc5019bc9adbd13ef2bcdb r1=d8a23ef65f85d1c1c5071e53d01c555c94d96848dfdff096cb9d09c6c3e7eb87 r2=0000000000000000000000000000000000000000000000000000000000000000 r3=0000000000000000000000000000000000000000000000000000000000000000 ticks=0x2b83
+BE_MVP:07 BLOCKS_PUBLISHED region=0x102044000 bytes=0x20000 generation=1 budget_ticks=0x100000000
+BE_MVP:08 HART_STARTED hart=1 domain=0 result=0 status=0 ticks=0x29af
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x0 ticks=0x437a
+BE_MVP:PROBE gpf access=load gpa=0x90000000 scause=0x15 stval=0x90000000 htval=0x24000000 htinst=0x3303 sepc=0x80200040 gva=1
+BE_MVP:PROBE gpf access=store gpa=0x90000000 scause=0x17 stval=0x90000000 htval=0x24000000 htinst=0x3023 sepc=0x80200052 gva=1
+BE_MVP:PROBE gpf access=fetch gpa=0x90000000 scause=0x14 stval=0x90000000 htval=0x24000000 htinst=0x0 sepc=0x90000000 gva=1
+BE_MVP:PROBE ipi mode=hs sent=100 delivered=100 min=0x33 median=0x3d max=0x136 spv=100
+BE_MVP:PROBE ipi mode=vs sent=100 delivered=100 min=0x7a median=0x88 max=0xb8 spv=100
+BE_MVP:PROBE order mode=unfenced iterations=10000 stale=0
+BE_MVP:PROBE order mode=fenced iterations=10000 stale=0
+BE_MVP:20 REGISTERS at=terminal r0=caaeacad98a84c75685a724542c1a178cf8d17e351bc5019bc9adbd13ef2bcdb r1=d8a23ef65f85d1c1c5071e53d01c555c94d96848dfdff096cb9d09c6c3e7eb87 r2=0000000000000000000000000000000000000000000000000000000000000000 r3=0000000000000000000000000000000000000000000000000000000000000000
+BE_MVP:14 SHUTDOWN type=0 reason=0

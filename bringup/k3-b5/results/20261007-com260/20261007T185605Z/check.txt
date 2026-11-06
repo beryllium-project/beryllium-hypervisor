@@ -1,0 +1,35 @@
+uboot_banner=U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395
+uboot_watchdog=WDT:   Started watchdog@d4014000 with servicing (60s timeout)
+command=loady 0x140000000 && booti 0x140000000 - ${fdtcontroladdr}[  13.952] loady 0x140000000 && booti 0x140000000 - ${fdtcontroladdr}
+ymodem_load=0x140000000
+ymodem_total=217088
+ymodem_start=0x140000000
+uboot_load=0x140000000
+uboot_moved=0x102200000
+uboot_end=0x102235000
+uboot_fdt=0x2fbd6b000
+BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000102200000 fdt=0x00000002fbd6b000 dest=0x0000000102000000 bytes=0x0000000000034000
+BE_R3:01 BOOT_VALIDATED
+BE_R3:02 R1_DERIVED
+BE_R3:03 R2_BUILT_REWALKED
+BE_R3:04 HS_VS_STATE_VERIFIED
+BE_R3:05 BINDING_PREPARED
+BE_R3:06 HGATP_FENCED_PUBLISHED
+BE_R3:07 ENTER_MANAGEMENT_VS pc=0x40010000
+BE_B5:01 SSTC_STCE_READBACK henvcfg=0x8000000000000000
+BE_B5:02 GUEST_CONTROLS_CHECKED hstatus_controls=0x300180 hideleg=0x40 hcounteren=0x2 vstimecmp=0xffffffffffffffff
+BE_B5:03 GUEST_RAM_CLEARED private=0x40000000 shared=0x40002000
+BE_B5:04 ENTER_GUEST pc=0x40010000 sp=0x40001000
+BE_B5_GUEST: 01 START hart=0x0 dtb=0x0
+BE_B5_GUEST: 02 BASE spec=0x2000000 impl=0x4245 version=0x1 mvendorid=0x0 marchid=0x0 mimpid=0x0
+BE_B5_GUEST: 03 PROBE base=1 time=1 dbcn=1 srst=1 hsm=0 ipi=0 rfence=0 legacy=0
+BE_B5_GUEST: 04 UNSUPPORTED eid=-2 fid=-2 legacy_putchar=-2
+BE_B5_GUEST: 05 DBCN_REFUSED unmapped=-3 cross=-3 high=-3 wrap=-3 read=-4
+BE_B5_GUEST: 06 WRITE_BYTE ok
+BE_B5_GUEST: 07 SRST_REFUSED type=-3 reason=-3 reboot=-2
+BE_B5_GUEST: 08 TIMER cause=0x8000000000000005 after_deadline=1 cleared=1
+BE_B5_GUEST: 09 RESULT pass
+BE_B5:05 GUEST_SHUTDOWN type=0 reason=0 exits=53
+BE_B5:06 SHUTDOWN type=0 reason=0
+BE_B5_RESULT: PASS terminal=shutdown-requested
+BE_B5_CAPTURE[pass]: PASS

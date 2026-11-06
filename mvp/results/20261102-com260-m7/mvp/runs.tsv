@@ -1,0 +1,3 @@
+run	toolchain	image	image_sha256	expect	variant	verdict	stop	reset	be_image	attribution
+20261102T054405Z	gcc	probes/gcc/probe-console-input/be-mvp-boot-pic.img	6e9decc06560d0f82b0b72c7f0d06034f65a9f508b3e726debcd39d01290d715	probe-console-input.json	none	PASS	none	k3ctl	be-mvp-probe-console-input-gcc.img	PASS
+20261102T054456Z	gcc	variants/gcc/two-guests-shell/be-mvp-boot-pic.img	4dea323ad0eafe91396be04e28e43da89dd090bb3bdf672329157a7d3b719f6d	two-guests-shell.json	two-guests-shell	PASS	none	k3ctl	be-mvp-two-guests-shell-gcc.img	PASS

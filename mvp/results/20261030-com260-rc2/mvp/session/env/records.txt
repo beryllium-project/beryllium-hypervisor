@@ -1,0 +1,11 @@
+attempt_utc=2026-10-30T07:54:21Z
+be_part=6
+env_k3=PASS
+fedora_shutdown=clean-halt
+record1_sha256=72443954604e4903b371fa64b0bec384b2abd616b582c529fbfcc519047f9932
+record2_sha256=72443954604e4903b371fa64b0bec384b2abd616b582c529fbfcc519047f9932
+variance=none
+variance_accepted=none
+bootcmd_sha256=0404ae42737d7f700d11876fe3835ff594e8509729af1ad14a4b3b09e951f84b bootdelay=3 preboot=absent
+precondition_check=PASS
+verdict=PASS

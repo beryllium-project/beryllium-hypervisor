@@ -1,0 +1,12 @@
+probe-platform gcc: text_end=0x102004580 data_end=0x1020088b0 mvp_end=0x10206ac30 functions=174 words=11580 bin_sha256=e79e905e3d5f457c3ed08a428f96f9100b1120aabcfc30627d3d9f1cdbdcd604 boot_sha256=80f633adf14bc7f776ed9e1efc2e95ca2c0e2c99ca7a3055413b1a1cf4cb3621
+probe-vmid-distinct gcc: text_end=0x102004590 data_end=0x1020088b0 mvp_end=0x10206a2b0 functions=170 words=11039 bin_sha256=ace87831d7885d358c519a7c2088a1b3a02c159747ee0ed3237002d69deb8f60 boot_sha256=e5994e071ddfd261911dfff0b10e64dd33a6bdffd97d10c2b9d7e20df330eb00
+probe-vmid-shared gcc: text_end=0x102004590 data_end=0x1020088b0 mvp_end=0x10206a2a0 functions=170 words=11039 bin_sha256=994675f5f7d56f36a72c0312dfd053ea2c956f7d5ee55e8c308b8f258ea6d03f boot_sha256=67744a6b822dad9f3beae9ea3274d6bbd9070353e26745979c6b509e4660c8ab
+probe-platform clang: text_end=0x1020047b0 data_end=0x102008860 mvp_end=0x10206af00 functions=185 words=12176 bin_sha256=2b38e14e2582504d7f001039cd00112b0d83ec2e9a069b0050dc76682285cf81 boot_sha256=5a44b0b3c6ceb086342cb153062a8a4b38e46802e341d2789608b4ecc49fbbf0
+probe-vmid-distinct clang: text_end=0x1020047c0 data_end=0x102008860 mvp_end=0x10206a5b0 functions=183 words=11647 bin_sha256=b87eb656189c187db6fa878f0fe19c5ba9922a099024bcfc5c203568b5394c2b boot_sha256=0e12513f6cee353463465d4300903aaeb0220ec4fca48e947ca6abdec037ed25
+probe-vmid-shared clang: text_end=0x1020047c0 data_end=0x102008860 mvp_end=0x10206a5a0 functions=183 words=11647 bin_sha256=2e53cf6378cd3d4302807b70304c020b5f2b97852fc50b0071bad9e2cb8057e0 boot_sha256=7c28de3b49a5108ee1260cf3ec863e1513dacafc6e1a9a6348fef1750bfc3f12
+BE_MVP_IMAGE_CHECK: PASS probe-platform-gcc probe-vmid-distinct-gcc probe-vmid-shared-gcc probe-platform-clang probe-vmid-distinct-clang probe-vmid-shared-clang
+probe-platform gcc: mutations rejected: 4
+probe-vmid-distinct gcc: mutations rejected: 4
+probe-platform clang: mutations rejected: 4
+probe-vmid-distinct clang: mutations rejected: 4
+BE_MVP_IMAGE_CHECK: PASS probe-platform-gcc-mutations=4 probe-vmid-distinct-gcc-mutations=4 probe-platform-clang-mutations=4 probe-vmid-distinct-clang-mutations=4

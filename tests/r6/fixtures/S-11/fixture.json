@@ -1,0 +1,73 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "S-11",
+  "partition": "static",
+  "declared_delta": null,
+  "base": "arch/riscv/be/r5-guest.S",
+  "base_sha256": "cd1a0d719418b4a5b07b7fcace5b432be210a425ea4f7bfa8dff6f89d2cc764b",
+  "defect_file": "r5-guest.S.defect",
+  "defect_sha256": "ed2553900381050f8638c2e03eea8298592c6bb763d4e1792687ce7c0247c455",
+  "defect": {
+    "kind": "assembly-directive",
+    "summary": ".option norvc removed",
+    "accepted": null,
+    "malformed": null,
+    "source_path": "arch/riscv/be/r5-guest.S",
+    "target": {
+      "line": 13,
+      "line_anchor": ".option norvc",
+      "symbol": null,
+      "slot": null
+    },
+    "anchor": "\n\t.option norvc\n",
+    "replacement": "\n"
+  },
+  "diff": {
+    "sha256": "b6f57b738c16ba7d39a71fb70fedc13e6ccd5d3cb99c80f00170377401888a0d",
+    "added": 0,
+    "removed": 1,
+    "budget": {
+      "added": 6,
+      "removed": 6
+    },
+    "unified": "--- a/arch/riscv/be/r5-guest.S\n+++ b/arch/riscv/be/r5-guest.S\n@@ -10,7 +10,6 @@\n  *          the linked terminal self-loops, and no monitor interface exists.\n  */\n \n-\t.option norvc\n \n \t.section .guest.r5.management, \"ax\"\n \t.align 4\n"
+  },
+  "expected": {
+    "first_rejection_layer": "L3",
+    "outcome": "rejected-at-source-inventory",
+    "message_completeness": "complete",
+    "primary_message": "R5 source inventory: guest fixtures do not pin non-compressed encodings",
+    "placeholders": {},
+    "stages": {
+      "l3": "reject"
+    },
+    "absent_stages": [
+      "gcc-link",
+      "clang-link",
+      "gcc-image-check",
+      "clang-image-check"
+    ],
+    "messages": {
+      "l3": [
+        "R5 source inventory: guest fixtures do not pin non-compressed encodings"
+      ]
+    },
+    "prohibited_layers": [
+      "L4",
+      "L5",
+      "L6",
+      "L7",
+      "L8",
+      "L9",
+      "L10",
+      "L11"
+    ],
+    "qemu": "forbidden",
+    "artifacts": {
+      "quarantined": [],
+      "scratch_elf": false
+    }
+  }
+}

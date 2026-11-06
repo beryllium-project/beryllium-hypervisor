@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The target digests of the pilot's leaves (planning/mvp-m8-plan.md, D-2,
+# D-5, D-7 item 3), written by mvp/verify/tools/digests.py --write and
+# checked by digests.py --check in ./mvp/mvp verify: the translation units,
+# every header each includes, the compile's flags as mvp/Makefile states
+# them, and the pins. A proved result holds for these bytes only; a merge
+# that changes one of them without the re-proof rule run first is stop (i)
+# (D-2). Re-written only on the responsible human's direction.
+# Target commit: c43ba773dd405c8db0a4d47a626fdd7120a595aa (its mvp/src and mvp/Makefile equal this tree's)
+unit leaf=A file=mvp/src/mvp-sbi.c sha256=0e6ad87a0ac5aa631cafcab26c1ae90021b0a262d4ad5ad61bcc6035cfb1be82
+unit leaf=B file=mvp/src/mvp-ring.c sha256=432dbc511397da4b051da37f3860b1f8d078ef87fa175ea47d7b3c7a1bc267ba
+header file=build/mvp/port/include/be/manifest.h sha256=f3aeb609348850d3c5051d6ffdcb2ef68f0c7a03ce5034fbf0aa655448d7b57d included_by=A,B port=rewrite
+header file=build/mvp/port/include/be/r2.h sha256=348ec6ba84d978e06c0c2c1c0b9a78cabd90a16348e3e58878ffa635de932e07 included_by=A,B port=equal-to:include/be/r2.h
+header file=build/mvp/port/include/be/r3.h sha256=861be3f6f7c8eec1dc4cc4c2fa80f019b4fe025424a6335509f281c2532cf536 included_by=A,B port=rewrite
+header file=build/mvp/port/include/be/r4.h sha256=61265a300d734dd0066692f2e31adf92f4031222df785f7959dbab4adf6e906d included_by=A,B port=equal-to:include/be/r4.h
+header file=build/mvp/port/include/be/state.h sha256=206a5e1df4abfab7177a7ee04b63c2f4747e379cc57ff617c144f37d9c9370a7 included_by=A,B port=equal-to:include/be/state.h
+header file=build/mvp/port/include/be/types.h sha256=9977f54f8dd0cfb119c9eedbb03105f53b9d1a6f249caa8ad94ea4b13754597c included_by=A,B port=equal-to:include/be/types.h
+header file=mvp/src/mvp-gstage.h sha256=24fd5681ec63a839dcf05596f553a9cbc8d6d1adae1a71b70115103a8fce3634 included_by=A,B
+header file=mvp/src/mvp-layout.h sha256=c50da8ad3b06ca3e44d954eaaaaf9244a6b6f121a7a21b4ad8a3466d8e9721b3 included_by=A,B
+header file=mvp/src/mvp-ring.h sha256=0db53a2d1484244bad033c0963ad9ac619c36c24ec90c0b4eb79ba4024533148 included_by=A,B
+header file=mvp/src/mvp-sbi.h sha256=12f02187a9b07b135ab44c9954c633c995b2184db97ef37bf7dff3cab128f594 included_by=A
+header file=mvp/src/mvp.h sha256=03c59bc93a410c9c421a26ba6bb2f7795e7400b2b75bab44bf1bc4078c9303e9 included_by=A,B
+flag recipe=$$(CC_$(2)) $$(TARGET_FLAGS) $$(MVP_OPT) -c $$< -o $$@
+flag make WARNINGS=-Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef
+flag make MARCH=rv64imac_zicsr_zifencei
+flag make TARGET_FLAGS=-std=gnu11 -march=$(MARCH) -mabi=lp64 -mcmodel=medany -mno-relax -msmall-data-limit=0 -ffreestanding -fno-builtin -fno-common -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -ffunction-sections -fdata-sections -g3 -gdwarf-4 -O2 $(WARNINGS) -I$(PORT)/include -I$(PORT)/arch/riscv/be -I$(MVP_DIR)/src -I$(GEN)
+flag make MVP_OPT=-Os
+flag make HOST_FLAGS=-std=gnu11 -O2 -g3 $(WARNINGS) -I$(PORT)/include -I$(PORT)/arch/riscv/be -I$(MVP_DIR)/src -I$(GEN)
+flag make CROSS_COMPILE=riscv64-linux-gnu-
+flag make CC_gcc=$(CROSS_COMPILE)gcc -B/usr/bin/$(CROSS_COMPILE)
+flag make CC_clang=clang --target=riscv64-linux-gnu --gcc-toolchain=/usr
+flag make HOST_CC_gcc=gcc -B/usr/bin/
+flag make HOST_CC_clang=clang --ld-path=/usr/bin/ld
+flag compile_flags=-std=gnu11 -march=rv64imac_zicsr_zifencei -mabi=lp64 -mcmodel=medany -mno-relax -msmall-data-limit=0 -ffreestanding -fno-builtin -fno-common -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -ffunction-sections -fdata-sections -g3 -gdwarf-4 -O2 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen -Os
+flag defines=none
+flag include_dirs=build/mvp/port/include build/mvp/port/arch/riscv/be mvp/src build/mvp/gen
+flag host_test_flags=-std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen
+pin specification file=planning/mvp-m8-specifications.md commit=93a8d136d38547a8c581197315f7607b5eef7bad sha256=aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b
+pin verifier_closure file=mvp/tools/verifier/closure.txt sha256=ce7ca11cb75564200c528833f77b76e1fec8ef9ba8aa96957262eda503d18571
+pin verifier_sources file=mvp/tools/verifier/sources.txt sha256=36eaf6d2362b9532d61390c1b4fed451463cbec0aed3b7886d7928e2a1e1fde0
+files=13

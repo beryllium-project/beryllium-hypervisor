@@ -1,0 +1,109 @@
+
+OpenSBI v1.6
+   ____                    _____ ____ _____
+  / __ \                  / ____|  _ \_   _|
+ | |  | |_ __   ___ _ __ | (___ | |_) || |
+ | |  | | '_ \ / _ \ '_ \ \___ \|  _ < | |
+ | |__| | |_) |  __/ | | |____) | |_) || |_
+  \____/| .__/ \___|_| |_|_____/|____/_____|
+        | |
+        |_|
+
+Platform Name               : riscv-virtio,qemu
+Platform Features           : medeleg
+Platform HART Count         : 8
+Platform IPI Device         : aia-imsic
+Platform Timer Device       : aclint-mtimer @ 10000000Hz
+Platform Console Device     : uart8250
+Platform HSM Device         : ---
+Platform PMU Device         : ---
+Platform Reboot Device      : syscon-reboot
+Platform Shutdown Device    : syscon-poweroff
+Platform Suspend Device     : ---
+Platform CPPC Device        : ---
+Firmware Base               : 0x80000000
+Firmware Size               : 411 KB
+Firmware RW Offset          : 0x40000
+Firmware RW Size            : 155 KB
+Firmware Heap Offset        : 0x56000
+Firmware Heap Size          : 67 KB (total), 4 KB (reserved), 14 KB (used), 48 KB (free)
+Firmware Scratch Size       : 4096 B (total), 448 B (used), 3648 B (free)
+Runtime SBI Version         : 2.0
+Standard SBI Extensions     : time,rfnc,ipi,base,hsm,srst,pmu,dbcn,legacy
+Experimental SBI Extensions : fwft,dbtr,sse
+
+Domain0 Name                : root
+Domain0 Boot HART           : 2
+Domain0 HARTs               : 0*,1*,2*,3*,4*,5*,6*,7*
+Domain0 Region00            : 0x0000000000100000-0x0000000000100fff M: (I,R,W) S/U: (R,W)
+Domain0 Region01            : 0x0000000010000000-0x0000000010000fff M: (I,R,W) S/U: (R,W)
+Domain0 Region02            : 0x000000000c000000-0x000000000c007fff M: (I,R,W) S/U: ()
+Domain0 Region03            : 0x0000000024000000-0x0000000024007fff M: (I,R,W) S/U: ()
+Domain0 Region04            : 0x0000000002000000-0x000000000200ffff M: (I,R,W) S/U: ()
+Domain0 Region05            : 0x0000000080000000-0x000000008003ffff M: (R,X) S/U: ()
+Domain0 Region06            : 0x0000000080040000-0x000000008007ffff M: (R,W) S/U: ()
+Domain0 Region07            : 0x0000000000000000-0xffffffffffffffff M: () S/U: (R,W,X)
+Domain0 Next Address        : 0x0000000080200000
+Domain0 Next Arg1           : 0x000000027fe00000
+Domain0 Next Mode           : S-mode
+Domain0 SysReset            : yes
+Domain0 SysSuspend          : yes
+
+Boot HART ID                : 2
+Boot HART Domain            : root
+Boot HART Priv Version      : v1.12
+Boot HART Base ISA          : rv64imafdch
+Boot HART ISA Extensions    : smaia,smstateen,sstc,zicntr,zihpm,zicboz,zicbom,sdtrig,svade
+Boot HART PMP Count         : 16
+Boot HART PMP Granularity   : 2 bits
+Boot HART PMP Address Bits  : 54
+Boot HART MHPM Info         : 16 (0x0007fff8)
+Boot HART Debug Triggers    : 2 triggers
+Boot HART MIDELEG           : 0x0000000000001666
+Boot HART MEDELEG           : 0x0000000000f4b509
+[    0.000000] Booting Linux on hartid 2
+[    0.000000] Linux version 7.3.0-rc4-gc1c7e254143f (<build-user>@<build-host>) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 SMP PREEMPT Tue Oct  6 06:36:03 CEST 2026
+[    0.000000] random: crng init done
+[    0.000000] Machine model: riscv-virtio,qemu
+[    0.000000] SBI specification v2.0 detected
+[    0.000000] SBI implementation ID=0x1 Version=0x10006
+[    0.000000] SBI TIME extension detected
+[    0.000000] SBI IPI extension detected
+[    0.000000] SBI RFENCE extension detected
+[    0.000000] SBI SRST extension detected
+[    0.000000] SBI DBCN extension detected
+[    0.000000] earlycon: sbi0 I/O:0x0 (options '')
+[    0.000000] printk: legacy bootconsole [sbi0] enabled
+[    0.000000] Kernel command line: console=ttyS0 earlycon=sbi rdinit=/init panic=-1 loglevel=6
+[    0.098977] audit: type=2000 audit(0.092:1): state=initialized audit_enabled=0 res=1
+[    0.126583] SCSI subsystem initialized
+[    0.220692] NFS: Registering the id_resolver key type
+[    0.221011] Key type id_resolver registered
+[    0.221098] Key type id_legacy registered
+[    0.423620] Bridge firewalling registered
+[    0.426005] Key type dns_resolver registered
+[    0.456149] pci-host-generic 30000000.pci: Memory resource size exceeds max for 32 bits
+BE_MVP_KEXEC: init
+BE_MVP_KEXEC: loaded raw entry=0x0000000108000000 fdt=0x0000000108400000; rebooting into it
+[    0.726114] kexec_core: Starting new kernel
+[    0.756320] CPU1: off
+[    0.791546] CPU2: off
+[    0.815516] CPU3: off
+[    0.835173] CPU4: off
+[    0.855627] CPU5: off
+[    0.875131] CPU6: off
+[    0.895467] CPU7: off
+[    0.896601] Will call new kernel at 108000000 from hart id 2
+[    0.896819] FDT image at 108400000
+[    0.897074] Bye...
+BE_MVP_SHIM: boot_hart=0x2 starting hart 0
+BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x0000000108400000 dest=0x0000000102000000 bytes=0x00000000000a4000
+BE_R3:01 BOOT_VALIDATED
+BE_R3:02 R1_DERIVED
+BE_R3:03 R2_BUILT_REWALKED
+BE_R3:04 HS_VS_STATE_VERIFIED
+BE_R3:05 BINDING_PREPARED
+BE_R3:06 HGATP_FENCED_PUBLISHED
+BE_MVP:01 SCENARIO name=te-poc domains=2 harts=0,1,2 of=8 ring_bytes=0x8000 mvp_region=0x102064000 mvp_bytes=0x40000 image_bytes=0xa4000
+BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status=1:1,2:0,3:1,4:1,5:1,6:1,7:1 started=2
+BE_MVP:FAIL firmware

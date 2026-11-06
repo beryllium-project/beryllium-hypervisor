@@ -1,0 +1,10 @@
+PASS fdt_reservations_are_collected
+PASS corrupt_fdt_is_rejected
+PASS layout_comes_from_the_header
+PASS recorded_map_leaves_every_extent_free
+PASS recorded_preflight_passes_the_region_check
+PASS region_check_stops_on_any_overlap
+PASS preflight_record_is_read
+PASS shared_pages_are_an_mvp_extent
+PASS probe_reports_the_fdt_reservations
+platform-probe self-test: 9/9 PASS

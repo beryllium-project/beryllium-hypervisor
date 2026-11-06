@@ -1,0 +1,77 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "S-09",
+  "partition": "static",
+  "declared_delta": null,
+  "base": "arch/riscv/be/r5-trap.S",
+  "base_sha256": "4721da5693b3bde3e91ca1dc36aa8042693d858f198ef06986881171f1216841",
+  "defect_file": "r5-trap.S.defect",
+  "defect_sha256": "94f93d7bb94b7a1a0bd2ec3a7fed13189d4a55824f9b8871111b622f6d31290e",
+  "defect": {
+    "kind": "assembly-instruction",
+    "summary": "be_r5_switch_tail gains an outbound call",
+    "accepted": null,
+    "malformed": null,
+    "source_path": "arch/riscv/be/r5-trap.S",
+    "target": {
+      "line": 726,
+      "line_anchor": "j be_r5_enter_guest_tail",
+      "symbol": "be_r5_switch_tail",
+      "slot": null
+    },
+    "anchor": "\t.option pop\n\tj be_r5_enter_guest_tail\n\t.size be_r5_switch_tail, . - be_r5_switch_tail\n",
+    "replacement": "\t.option pop\n\tcall be_r5_arch_halt\n\tj be_r5_enter_guest_tail\n\t.size be_r5_switch_tail, . - be_r5_switch_tail\n"
+  },
+  "diff": {
+    "sha256": "d4178cbaab961dd37464d46830cf844949a58891e5ddfedcc227da7335e4c70a",
+    "added": 1,
+    "removed": 0,
+    "budget": {
+      "added": 6,
+      "removed": 6
+    },
+    "unified": "--- a/arch/riscv/be/r5-trap.S\n+++ b/arch/riscv/be/r5-trap.S\n@@ -723,6 +723,7 @@\n \tld t0, FR_HTVAL(t6)\n \tcsrw htval, t0\n \t.option pop\n+\tcall be_r5_arch_halt\n \tj be_r5_enter_guest_tail\n \t.size be_r5_switch_tail, . - be_r5_switch_tail\n \n"
+  },
+  "expected": {
+    "first_rejection_layer": "L6",
+    "outcome": "rejected-by-image-check",
+    "message_completeness": "complete",
+    "primary_message": "{toolchain}: be_r5_switch_tail calls out",
+    "placeholders": {},
+    "stages": {
+      "l3": "pass",
+      "gcc-link": "pass",
+      "clang-link": "pass",
+      "gcc-image-check": "reject",
+      "clang-image-check": "reject"
+    },
+    "absent_stages": [],
+    "messages": {
+      "gcc-image-check": [
+        "gcc: be_r5_switch_tail calls out"
+      ],
+      "clang-image-check": [
+        "clang: be_r5_switch_tail calls out"
+      ]
+    },
+    "prohibited_layers": [
+      "L7",
+      "L8",
+      "L9",
+      "L10",
+      "L11"
+    ],
+    "qemu": "forbidden",
+    "artifacts": {
+      "quarantined": [
+        "clang-beryllium.bin",
+        "clang-beryllium.elf",
+        "gcc-beryllium.bin",
+        "gcc-beryllium.elf"
+      ],
+      "scratch_elf": true
+    }
+  }
+}

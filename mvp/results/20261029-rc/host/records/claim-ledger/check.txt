@@ -1,0 +1,10 @@
+claim ledger schema: PASS
+claim ledger methods: PASS
+claim ledger evidence: PASS artifacts=66 records=3
+claim ledger commits: PASS commits=4
+claim ledger rendering: PASS
+claim ledger guide commands: PASS commands=39
+claim ledger phrasing: PASS surfaces=4 literals=35 conditionals=3 review_items=2
+claim ledger privacy: PASS files=4
+claim ledger headers: PASS surfaces=4
+BE_MVP_CLAIM_LEDGER: PASS checks=9 claims=28 boundary=12

@@ -1,0 +1,30 @@
+ok   the ledger and the surfaces as they are: passed
+ok   a wrong hash (C-36 evidence 1): failed evidence
+ok   a missing path (C-29 evidence 1): failed evidence
+ok   a record cited by its directory (C-32 evidence 1): failed evidence
+ok   an unknown method (C-03): failed methods
+ok   hardware validation as a method (C-38): failed methods
+ok   not run beside evidence (C-14): failed methods
+ok   a tree named as a commit (C-31 evidence 2): failed commits
+ok   a stale rendered table: failed rendering
+ok   a forbidden literal, "full isolation": failed phrasing
+ok   a conditional phrase without its condition: failed phrasing
+ok   a hyphen and space variant: failed phrasing
+ok   a case variant: failed phrasing
+ok   a home path: failed privacy
+ok   an IPv4 address: failed privacy
+ok   an ssh user and host: failed privacy
+ok   a guide command the wrapper lacks: failed guide commands
+ok   an extra key (C-03): failed schema
+ok   review items unlike claim.md's: failed schema
+ok   a surface without its header: failed headers
+ok   reproduction and certified-free (word boundaries): passed
+ok   a conditional phrase with its condition: passed
+ok   an image digest and a package version (not an ssh target or an address): passed
+ok   an ssh target with a path: failed privacy
+ok   an address after a space: failed privacy
+ok   a MAC address: failed privacy
+ok   a serial# value: failed privacy
+ok   a time, a MAC's code name, and serial#'s (not a MAC or a serial number): passed
+ok   a guide of wrapper commands and kernel-repro: passed
+claim ledger self-test: PASS mutations=23 variants=6

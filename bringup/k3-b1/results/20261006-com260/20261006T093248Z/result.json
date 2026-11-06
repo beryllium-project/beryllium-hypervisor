@@ -1,0 +1,24 @@
+{
+  "boot_marker": "PASS",
+  "capture": "<repo>/build/k3-b1/k3-campaigns/20261006-com260/20261006T093248Z/serial.log",
+  "expect": "pass",
+  "fields": {
+    "denied_load": "pc=0x40010014 resume=0x40010018",
+    "private_event": "pc=0x40010030 resume=0x40010034"
+  },
+  "findings": [],
+  "markers": [
+    "BE_R3:01 BOOT_VALIDATED",
+    "BE_R3:02 R1_DERIVED",
+    "BE_R3:03 R2_BUILT_REWALKED",
+    "BE_R3:04 HS_VS_STATE_VERIFIED",
+    "BE_R3:05 BINDING_PREPARED",
+    "BE_R3:06 HGATP_FENCED_PUBLISHED",
+    "BE_R3:07 ENTER_MANAGEMENT_VS pc=0x40010000",
+    "BE_R4:01 ENTRY_ARMED_IMPORTED",
+    "BE_R4:02 EXPECTED_DENIED_LOAD pc=0x40010014 resume=0x40010018",
+    "BE_R4:03 PRIVATE_EVENT pc=0x40010030 resume=0x40010034"
+  ],
+  "result": "PASS",
+  "terminal": "guest-spinning"
+}

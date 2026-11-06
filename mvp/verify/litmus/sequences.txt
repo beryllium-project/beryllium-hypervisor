@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The compiled sequences the ordering premises' litmus tests mirror
+# (planning/mvp-m8-plan.md, D-3, D-9, work package M8-4; specification
+# SHA-256 ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d),
+# written by mvp/verify/tools/litmus.py --write and checked by litmus.py
+# --check-sequences in ./mvp/mvp verify: the MVP tool lock's objdump and
+# objcopy; each toolchain's monitor ELF, the two-guests scenario's (its
+# make rule, build/mvp/TOOLCHAIN/be-mvp.elf), with its SHA-256 as built
+# here (reported, not compared: its DWARF names the tree's absolute path)
+# and without its debug sections (objcopy --strip-debug; compared); and
+# each symbol the tests cite, with its binding, section, address, size,
+# the SHA-256 of its bytes, and its excerpt of the lines the tests mirror,
+# each compared with the disassembly. A changed compile fails the check,
+# naming the first symbol that differs, until the re-proof rule (D-2)
+# re-derives this record and the tests. Re-written only on the responsible
+# human's direction.
+# Bound: this record covers the two-guests monitors only; te-poc's and anchor's own call sites (deny's DENIAL publish in both; anchor's wait_serve, mgmt_call's MGMT_REQUEST publish, and post_inbound's MGMT_RESULT, PAUSE, and TERMINATE posts), scanned read-only in their ELFs when it was written, have the same fence shapes and are not recorded.
+# Target commit: b58425202d37a12bbfe86ac3e65c366c1f370554 (its mvp/src, mvp/Makefile, mvp/scenarios, mvp/tools/gen-scenario.py, mvp/tools/gen-dts.py, mvp/tools/policy-check.py, mvp/tools/port.py, mvp/tools/lock, mvp/guest, bringup/k3-b2 equal this tree's)
+tool role=cross_objdump command=/usr/bin/riscv64-linux-gnu-objdump sha256=851a82b6a61625d642f506ea23b400a9f72b1d944b356e7948b6f395df76a22e
+tool role=cross_objcopy command=/usr/bin/riscv64-linux-gnu-objcopy sha256=bbfe70dc506ead2d094d148935b522356ae4b69b8388815f47dcba2926cbba43
+elf toolchain=gcc file=build/mvp/gcc/be-mvp.elf file_sha256=8d2d0733367f55ac9f16769be713f0c0af2f8c66abc94f2b7dd5dda778bb14d7 nodebug_sha256=d374889aaa6f2aa16ad37681f80e8b19de01c1be2afd36b3d9b98d6432c2427f
+symbol toolchain=gcc name=be_mvp_arch_fence_r_r bind=global section=.monitor.text address=0x102002a18 size=0x8 sha256=a173287af103bb3df9e7a542c380e51560c7777708cf7ac49430094df5ce713b excerpt=mvp/verify/litmus/sequences/be_mvp_arch_fence_r_r-gcc.s lines=1
+symbol toolchain=gcc name=be_mvp_arch_fence_r_w bind=global section=.monitor.text address=0x102002a20 size=0x8 sha256=83318464bfc0ed2e0a2c4703a9be95feb7f5abc1a3eacbc8809ce349b8199410 excerpt=mvp/verify/litmus/sequences/be_mvp_arch_fence_r_w-gcc.s lines=1
+symbol toolchain=gcc name=be_mvp_arch_fence_w_w bind=global section=.monitor.text address=0x102002a10 size=0x8 sha256=4a9c49b5aeb97cd559e75906fa16144d0b05bd33affb259ae823429b7fb89d2b excerpt=mvp/verify/litmus/sequences/be_mvp_arch_fence_w_w-gcc.s lines=1
+symbol toolchain=gcc name=be_mvp_block_check bind=global section=.mvp.text address=0x102067740 size=0xfc sha256=1dae2e4489eff6606d6da62b376d7ccbfdc7258155678923a6c232f4ca17e1ff excerpt=mvp/verify/litmus/sequences/be_mvp_block_check-gcc.s lines=2
+symbol toolchain=gcc name=be_mvp_block_fill bind=global section=.mvp.text address=0x10206767a size=0xc6 sha256=0595a9126e441a8aa62580ea013e3ca1c77c0220afb20ef8e046eddf31d8d005 excerpt=mvp/verify/litmus/sequences/be_mvp_block_fill-gcc.s lines=2
+symbol toolchain=gcc name=be_mvp_dispatch bind=global section=.mvp.text address=0x10206629a size=0x1fa sha256=19454e6ddfa6715f43ed56ac7bbb8c7734eb0ab16dac77fb7fba820ff57dabf8 excerpt=mvp/verify/litmus/sequences/be_mvp_dispatch-gcc.s lines=15
+symbol toolchain=gcc name=be_mvp_exec_fence_r_r bind=global section=.mvp.text address=0x10206a022 size=0x8 sha256=d2af5007185244ecff68554a5dba4d5b9d680932e87437fb430399451331246f excerpt=mvp/verify/litmus/sequences/be_mvp_exec_fence_r_r-gcc.s lines=2
+symbol toolchain=gcc name=be_mvp_exec_fence_r_w bind=global section=.mvp.text address=0x10206a02a size=0x8 sha256=d2af5007185244ecff68554a5dba4d5b9d680932e87437fb430399451331246f excerpt=mvp/verify/litmus/sequences/be_mvp_exec_fence_r_w-gcc.s lines=2
+symbol toolchain=gcc name=be_mvp_exec_fence_w_w bind=global section=.mvp.text address=0x10206a01a size=0x8 sha256=d2af5007185244ecff68554a5dba4d5b9d680932e87437fb430399451331246f excerpt=mvp/verify/litmus/sequences/be_mvp_exec_fence_w_w-gcc.s lines=2
+symbol toolchain=gcc name=be_mvp_hart_main bind=global section=.mvp.text address=0x102066494 size=0x21a sha256=2754ae74c2b48f495a2e6c4009609da42973854664a950b6bb39ba5f405a9e2c excerpt=mvp/verify/litmus/sequences/be_mvp_hart_main-gcc.s lines=9
+symbol toolchain=gcc name=be_mvp_input_flush bind=global section=.mvp.text address=0x10206a2a4 size=0xf0 sha256=8592e8dbfa2e07ee7c83d3f64e4252bfd5d54ad8c10e8b231271d54fe6eac44b excerpt=mvp/verify/litmus/sequences/be_mvp_input_flush-gcc.s lines=6
+symbol toolchain=gcc name=be_mvp_input_serve bind=global section=.mvp.text address=0x10206a424 size=0xda sha256=846eaf79a301e4592b7e10a55660a67a69dec70fe2806941b4b4e7185a74a9e4 excerpt=mvp/verify/litmus/sequences/be_mvp_input_serve-gcc.s lines=1
+symbol toolchain=gcc name=be_mvp_ipi_serve bind=global section=.mvp.text address=0x10206718a size=0x72 sha256=c2c3c03eb06a168199a8857e201ed78895bef00561499aa045d151b60a629913 excerpt=mvp/verify/litmus/sequences/be_mvp_ipi_serve-gcc.s lines=1
+symbol toolchain=gcc name=be_mvp_ring_acquire bind=global section=.mvp.text address=0x1020686ac size=0x4c sha256=eef51e43a0c46bf53374713121bf4e0689155ee51f05ae9ca8163f27fa09b7fe excerpt=mvp/verify/litmus/sequences/be_mvp_ring_acquire-gcc.s lines=1
+symbol toolchain=gcc name=be_mvp_ring_post bind=global section=.mvp.text address=0x102068452 size=0x158 sha256=ee8afa602949d8d119a9d3e218852a01d9602a7536c0baed60145c21ef94fee0 excerpt=mvp/verify/litmus/sequences/be_mvp_ring_post-gcc.s lines=12
+symbol toolchain=gcc name=be_mvp_ring_publish bind=global section=.mvp.text address=0x102068688 size=0x24 sha256=d6bc6d9bd556d6d600e6a4781c2a44262bf09e30c7ce18fda5bf8a346b0a4499 excerpt=mvp/verify/litmus/sequences/be_mvp_ring_publish-gcc.s lines=1
+symbol toolchain=gcc name=be_mvp_ring_release bind=global section=.mvp.text address=0x10206885e size=0x22 sha256=d974df60630c0167af53ae7413b1cbdaeae420ffd2a7d5b8f9c24292716b5e51 excerpt=mvp/verify/litmus/sequences/be_mvp_ring_release-gcc.s lines=1
+symbol toolchain=gcc name=be_mvp_ring_room bind=global section=.mvp.text address=0x1020685aa size=0x5e sha256=b28351a074d045cb01925be5f3aca16222974f3fd6ed289103dba128a8b5abd5 excerpt=mvp/verify/litmus/sequences/be_mvp_ring_room-gcc.s lines=10
+symbol toolchain=gcc name=be_mvp_ring_take bind=global section=.mvp.text address=0x1020686f8 size=0x166 sha256=86f0abb4ffc514a17b3fc622bb891bd2f3c0ba17730ada7d510b59ea68aa9810 excerpt=mvp/verify/litmus/sequences/be_mvp_ring_take-gcc.s lines=2
+symbol toolchain=gcc name=be_mvp_runtime_main bind=global section=.mvp.text address=0x102064ec0 size=0x1094 sha256=6f9914debedfe11c76a51000ee26a265e7128529cfe813fddcf60ebba2c86f56 excerpt=mvp/verify/litmus/sequences/be_mvp_runtime_main-gcc.s lines=4
+symbol toolchain=gcc name=console bind=local:mvp-hartmain.c section=.mvp.text address=0x1020661f0 size=0x7e sha256=fc1d10eaf33faea4f333c79507c7dd0ccd6ce235c5c8e819776afdd21ada7004 excerpt=mvp/verify/litmus/sequences/console-gcc.s lines=3
+symbol toolchain=gcc name=drain bind=local:mvp-runtime.c section=.mvp.text address=0x102064a48 size=0x478 sha256=0abb8c3c24bb7045baef384ee9d178229ce382231a4382078e45ab24ef696283 excerpt=mvp/verify/litmus/sequences/drain-gcc.s lines=11
+symbol toolchain=gcc name=drop.part.0 bind=local:mvp-input.c section=.mvp.text address=0x10206a06e size=0x30 sha256=d63db8aaf39ce434ddea681efcfaae6ea7293b3bc1fc6ca9fb699ab1dd2110f4 excerpt=mvp/verify/litmus/sequences/drop.part.0-gcc.s lines=1
+symbol toolchain=gcc name=hart_fail bind=local:mvp-hartmain.c section=.mvp.text address=0x102065fd8 size=0x1c0 sha256=00007a9e29a080abdef9be2bec01391be529b39f6d32eff0881fd896b71bb5e9 excerpt=mvp/verify/litmus/sequences/hart_fail-gcc.s lines=6
+symbol toolchain=gcc name=load_le bind=local:mvp-ring.c section=.mvp.text address=0x1020682fc size=0x28 sha256=fa2e7528e095f314d97b9ddbcd0307a21e446b0bb01fe89831c5603840775c33 excerpt=mvp/verify/litmus/sequences/load_le-gcc.s lines=1
+symbol toolchain=gcc name=poll_input bind=local:mvp-runtime.c section=.mvp.text address=0x1020648dc size=0x14e sha256=8030b4ed86233bbf882983ac5d99d3ebdff00b3a75ed2241e328c4ea811f28ad excerpt=mvp/verify/litmus/sequences/poll_input-gcc.s lines=3
+symbol toolchain=gcc name=serve bind=local:mvp-sbi.c section=.mvp.text address=0x102066fc2 size=0x1c8 sha256=0ed3543fedda5411ff4c2a43f6e6e7851bd634ccd103fbedcb075ddc312aef54 excerpt=mvp/verify/litmus/sequences/serve-gcc.s lines=1
+symbol toolchain=gcc name=store_le bind=local:mvp-ring.c section=.mvp.text address=0x1020682d8 size=0x24 sha256=09c6c11d7a6aba36468fd816e04f7d964b6e9b437daaa8aea394e8197c14c5c1 excerpt=mvp/verify/litmus/sequences/store_le-gcc.s lines=1
+elf toolchain=clang file=build/mvp/clang/be-mvp.elf file_sha256=e08d2b4cb895e454f25eb6430317b4c9acdf350807d0d54e969953a25d634274 nodebug_sha256=60f8120af2c30b29936965be66b8e40d5237b4d78738be332d0f3c881ccca52f
+symbol toolchain=clang name=be_mvp_arch_fence_r_r bind=global section=.monitor.text address=0x102002bfc size=0x8 sha256=a173287af103bb3df9e7a542c380e51560c7777708cf7ac49430094df5ce713b excerpt=mvp/verify/litmus/sequences/be_mvp_arch_fence_r_r-clang.s lines=1
+symbol toolchain=clang name=be_mvp_arch_fence_r_w bind=global section=.monitor.text address=0x102002c04 size=0x8 sha256=83318464bfc0ed2e0a2c4703a9be95feb7f5abc1a3eacbc8809ce349b8199410 excerpt=mvp/verify/litmus/sequences/be_mvp_arch_fence_r_w-clang.s lines=1
+symbol toolchain=clang name=be_mvp_arch_fence_w_w bind=global section=.monitor.text address=0x102002bf4 size=0x8 sha256=4a9c49b5aeb97cd559e75906fa16144d0b05bd33affb259ae823429b7fb89d2b excerpt=mvp/verify/litmus/sequences/be_mvp_arch_fence_w_w-clang.s lines=1
+symbol toolchain=clang name=be_mvp_block_check bind=global section=.mvp.text address=0x102067c46 size=0x164 sha256=66590436b99d0c23a61b2c5b659ca6eba6607f60de2e730193e0633739520273 excerpt=mvp/verify/litmus/sequences/be_mvp_block_check-clang.s lines=2
+symbol toolchain=clang name=be_mvp_block_fill bind=global section=.mvp.text address=0x102067b3c size=0x10a sha256=cc2feb6261be2f59a6995bbfef3b2533dfec9c0142e66284d4c38fc457b2c364 excerpt=mvp/verify/litmus/sequences/be_mvp_block_fill-clang.s lines=2
+symbol toolchain=clang name=be_mvp_dispatch bind=global section=.mvp.text address=0x102066324 size=0x1ba sha256=585fd111563c0a5bb2bba9e18c3d22ff562f68b134273a46de0030efe0f0b44a excerpt=mvp/verify/litmus/sequences/be_mvp_dispatch-clang.s lines=13
+symbol toolchain=clang name=be_mvp_exec_fence_r_r bind=global section=.mvp.text address=0x10206a7ea size=0x8 sha256=8e7211664d0945b560dd409a522e5b3267c3c6443146ecb502f8c84051f21975 excerpt=mvp/verify/litmus/sequences/be_mvp_exec_fence_r_r-clang.s lines=2
+symbol toolchain=clang name=be_mvp_exec_fence_r_w bind=global section=.mvp.text address=0x10206a7f2 size=0x8 sha256=8e7211664d0945b560dd409a522e5b3267c3c6443146ecb502f8c84051f21975 excerpt=mvp/verify/litmus/sequences/be_mvp_exec_fence_r_w-clang.s lines=2
+symbol toolchain=clang name=be_mvp_exec_fence_w_w bind=global section=.mvp.text address=0x10206a7e2 size=0x8 sha256=8e7211664d0945b560dd409a522e5b3267c3c6443146ecb502f8c84051f21975 excerpt=mvp/verify/litmus/sequences/be_mvp_exec_fence_w_w-clang.s lines=2
+symbol toolchain=clang name=be_mvp_hart_main bind=global section=.mvp.text address=0x1020665f0 size=0x1e4 sha256=eb0618c2c2216fafab4777cacd749b5ee51521573c33cab80a2755ea4f5236f9 excerpt=mvp/verify/litmus/sequences/be_mvp_hart_main-clang.s lines=9
+symbol toolchain=clang name=be_mvp_input_flush bind=global section=.mvp.text address=0x10206aafc size=0x12a sha256=219bd89c0898b15aa36825e6ce1eeb024905e502e99dbae7904eff2580ba6153 excerpt=mvp/verify/litmus/sequences/be_mvp_input_flush-clang.s lines=8
+symbol toolchain=clang name=be_mvp_input_serve bind=global section=.mvp.text address=0x10206acba size=0x100 sha256=f8e68ba77121089f15fbda135183492059ffd23ab41ac00a780cc9d4f7f3b29e excerpt=mvp/verify/litmus/sequences/be_mvp_input_serve-clang.s lines=1
+symbol toolchain=clang name=be_mvp_ipi_serve bind=global section=.mvp.text address=0x1020671dc size=0x62 sha256=0afb935f5a4a3a0ceb65abee6e6803664a72a260d6fd7675f38631b356e88048 excerpt=mvp/verify/litmus/sequences/be_mvp_ipi_serve-clang.s lines=1
+symbol toolchain=clang name=be_mvp_ring_acquire bind=global section=.mvp.text address=0x102068c2e size=0x44 sha256=a994f23057b4f865722f8e59fef642e6480bef64d06abf711a618ae0dfd2a211 excerpt=mvp/verify/litmus/sequences/be_mvp_ring_acquire-clang.s lines=1
+symbol toolchain=clang name=be_mvp_ring_post bind=global section=.mvp.text address=0x1020689f8 size=0x148 sha256=eee8be5c51bad1a916fa45b7650581b7da8f1aaf2e55a6870456548eef9fc6cf excerpt=mvp/verify/litmus/sequences/be_mvp_ring_post-clang.s lines=11
+symbol toolchain=clang name=be_mvp_ring_publish bind=global section=.mvp.text address=0x102068c0c size=0x22 sha256=b711c6231b4fd53b0c441d9e3a992a064d56587e1764cd58a94d66a31d140f96 excerpt=mvp/verify/litmus/sequences/be_mvp_ring_publish-clang.s lines=1
+symbol toolchain=clang name=be_mvp_ring_release bind=global section=.mvp.text address=0x102068dfe size=0x26 sha256=e2559f03ccf88e388f5eeab7cf336f8405b2f62b8737749d97b67ce88cb0dc02 excerpt=mvp/verify/litmus/sequences/be_mvp_ring_release-clang.s lines=1
+symbol toolchain=clang name=be_mvp_ring_room bind=global section=.mvp.text address=0x102068b40 size=0x58 sha256=56c673a9a552158372d3d36fc204cedde017d148761e64e19fdb080d250e24d0 excerpt=mvp/verify/litmus/sequences/be_mvp_ring_room-clang.s lines=10
+symbol toolchain=clang name=be_mvp_ring_take bind=global section=.mvp.text address=0x102068c72 size=0x18c sha256=b28cc06163a851112fd3feefb4375ea195eef77dc34eac8f28dee5cccd793324 excerpt=mvp/verify/litmus/sequences/be_mvp_ring_take-clang.s lines=2
+symbol toolchain=clang name=console bind=local:mvp-hartmain.c section=.mvp.text address=0x1020664de size=0x94 sha256=d54a3492ab3213daa8826606cf4dcd18c5c156d2604ac6e8e66bdf5de3d0f674 excerpt=mvp/verify/litmus/sequences/console-clang.s lines=3
+symbol toolchain=clang name=domain_failed bind=local:mvp-runtime.c section=.mvp.text address=0x10206602c size=0xce sha256=e67ee03624371a13a623a406ba7dc9df6a15e0e5e849626143af00820d9f5f83 excerpt=mvp/verify/litmus/sequences/domain_failed-clang.s lines=3
+symbol toolchain=clang name=drain bind=local:mvp-runtime.c section=.mvp.text address=0x102065b7c size=0x270 sha256=e676ca4159e5b163f42b52d5cee25859f6de86be997c34a2532335c7a8f1ba04 excerpt=mvp/verify/litmus/sequences/drain-clang.s lines=8
+symbol toolchain=clang name=hart_fail bind=local:mvp-hartmain.c section=.mvp.text address=0x102066832 size=0x1ae sha256=6b23d163a972cfeebb98a9dcc278ba121c4cb31818041fc8e6016344882733fa excerpt=mvp/verify/litmus/sequences/hart_fail-clang.s lines=6
+symbol toolchain=clang name=poll_input bind=local:mvp-runtime.c section=.mvp.text address=0x10206569a size=0x140 sha256=c7fd06c998affa32ddabb328379f2a9951e459a8954408c9e38a0e02f0545b54 excerpt=mvp/verify/litmus/sequences/poll_input-clang.s lines=3
+symbol toolchain=clang name=publish_blocks bind=local:mvp-runtime.c section=.mvp.text address=0x102064f1c size=0x20a sha256=92bf89df1f156a4fd320a0dc459b88c1886803be168c79ad5441c67b3a34ee92 excerpt=mvp/verify/litmus/sequences/publish_blocks-clang.s lines=5
+symbol toolchain=clang name=serve bind=local:mvp-sbi.c section=.mvp.text address=0x10206723e size=0x20c sha256=bef68167fd63168d608aa0b0cd4af75a7f7828c5a852d25d5eefe21cba61afb7 excerpt=mvp/verify/litmus/sequences/serve-clang.s lines=1
+symbol toolchain=clang name=stopped bind=local:mvp-hartmain.c section=.mvp.text address=0x102066572 size=0x7e sha256=d2e8f42530f83cc9bdc0ee2dcd83a370bd45c3ddaab141e57b385e8be2f1a42d excerpt=mvp/verify/litmus/sequences/stopped-clang.s lines=3
+symbols=55 lines=206

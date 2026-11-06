@@ -1,0 +1,1 @@
+BE_MVP_POLICY: PASS scenario=anchor grants=12 flows=2 checks=8 config=336bfddc743280ab5b845ccf197c6d35f29e5945450ce77c0ec0745eb2e5430e measurement=e0c6bd23670e980c4a491b622205ea0c33a3417da27c3cb4a36630ddef9e936b

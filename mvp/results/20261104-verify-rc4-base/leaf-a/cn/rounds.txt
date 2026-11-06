@@ -1,0 +1,5 @@
+# planning/mvp-m8-plan.md D-7, M8-6; specification planning/mvp-m8-specifications.md Revision 1, sections 4 and 6, SHA-256 aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b, accepted at 93a8d136
+# CN arm: one line per annotation round (D-7 item 5); each goal one run per solver, 60 s each
+round=0 goals=55 proved=5 open=50 cvc5_fail=50 cvc5_pass=5 z3_fail=50 z3_pass=5 seconds=59 open_goals=D_E1,D_E2,D_E3,D_E4,D_E5,D_E6,D_E7,D_cause,D_complete,D_frame,D_gpa,D_htinst,D_htval,D_inject_vscause,D_inject_vsepc,D_inject_vsstatus_rest,D_inject_vsstatus_sie,D_inject_vsstatus_spie,D_inject_vsstatus_spp,D_inject_vstval,D_kind_read_only,D_kind_unmapped,D_result,D_resume_pc,D_sepc,D_stval,D_time,D_vsstatus,D_vstvec,D_zero_cause,D_zero_gpa,D_zero_htinst,D_zero_htval,D_zero_inject_vscause,D_zero_inject_vsepc,D_zero_inject_vsstatus,D_zero_inject_vstval,D_zero_kind,D_zero_resume_pc,D_zero_sepc,D_zero_stval,D_zero_time,D_zero_vsstatus,D_zero_vstvec,HI_iff,LA_frame,LA_none,LA_page_0,LA_page_1,LA_page_2
+rounds_used=0 of at most 4
+wall_seconds=80

@@ -1,0 +1,896 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/*
+ * Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+ *
+ * Purpose: transactional R5 import, pending construction, fence/readback and
+ *          publication acceptance, exit classification, and sticky failure for
+ *          the fixed management -> protected -> management checked switch.
+ * Trust:   restricted-C mechanism only. It accesses no CSR, issues no fence,
+ *          writes no root or PTE, allocates nothing, and enters no guest.
+ * Scope:   R5 only. No rollback, restart, alternate target, dynamic binding,
+ *          guest SBI, policy, multicore, or R6+ behavior.
+ */
+#include <be/r5.h>
+
+#define BE_R5_HTVAL_SHIFT_MAX	BE_U64_C(0x3fffffffffffffff)
+
+static int binding_equal(const struct be_r3_binding *left,
+			 const struct be_r3_binding *right)
+{
+	return left->domain == right->domain &&
+	       left->vcpu_id == right->vcpu_id &&
+	       left->root_id == right->root_id &&
+	       left->vmid == right->vmid &&
+	       left->hgatp == right->hgatp &&
+	       left->guest_pc == right->guest_pc &&
+	       left->guest_sp == right->guest_sp &&
+	       left->trusted_sp == right->trusted_sp &&
+	       left->saved_state_id == right->saved_state_id &&
+	       left->saved_state_pa == right->saved_state_pa &&
+	       left->vsatp == right->vsatp &&
+	       left->published == right->published;
+}
+
+static struct be_r3_binding management_binding(be_u32 published)
+{
+	return (struct be_r3_binding) {
+		.domain = BE_DOMAIN_MANAGEMENT,
+		.vcpu_id = 1U,
+		.root_id = 101U,
+		.vmid = 0U,
+		.hgatp = BE_R3_MANAGEMENT_HGATP,
+		.guest_pc = BE_R3_INITIAL_GUEST_PC,
+		.guest_sp = BE_R3_INITIAL_GUEST_SP,
+		.trusted_sp = BE_R3_INITIAL_TRUSTED_SP,
+		.saved_state_id = 1U,
+		.saved_state_pa = BE_R3_MANAGEMENT_SAVED_PA,
+		.vsatp = 0U,
+		.published = published,
+	};
+}
+
+static struct be_r3_binding protected_binding(be_u32 published)
+{
+	return (struct be_r3_binding) {
+		.domain = BE_DOMAIN_PROTECTED,
+		.vcpu_id = BE_R5_PROTECTED_VCPU_ID,
+		.root_id = BE_R5_PROTECTED_ROOT_ID,
+		.vmid = 0U,
+		.hgatp = BE_R3_PROTECTED_HGATP,
+		.guest_pc = BE_R5_PROTECTED_ENTRY_PC,
+		.guest_sp = BE_R5_PROTECTED_GUEST_SP,
+		.trusted_sp = BE_R5_PROTECTED_TRUSTED_SP,
+		.saved_state_id = BE_R5_PROTECTED_SAVED_STATE_ID,
+		.saved_state_pa = BE_R5_PROTECTED_SAVED_PA,
+		.vsatp = 0U,
+		.published = published,
+	};
+}
+
+static int exact_management_binding(const struct be_r3_binding *binding,
+				    be_u32 published)
+{
+	struct be_r3_binding expected = management_binding(published);
+
+	return binding_equal(binding, &expected);
+}
+
+static int exact_protected_binding(const struct be_r3_binding *binding,
+				   be_u32 published)
+{
+	struct be_r3_binding expected = protected_binding(published);
+
+	return binding_equal(binding, &expected);
+}
+
+static int frame_equal(const struct be_r4_frame *left,
+		       const struct be_r4_frame *right)
+{
+	be_size index;
+
+	for (index = 0U; index < BE_ARRAY_SIZE(left->gpr); ++index) {
+		if (left->gpr[index] != right->gpr[index])
+			return 0;
+	}
+	return left->vstvec == right->vstvec &&
+	       left->vsepc == right->vsepc &&
+	       left->vscause == right->vscause &&
+	       left->vstval == right->vstval &&
+	       left->scause == right->scause &&
+	       left->sepc == right->sepc &&
+	       left->stval == right->stval &&
+	       left->htval == right->htval &&
+	       left->reserved == right->reserved;
+}
+
+static struct be_r4_frame initial_protected_frame(void)
+{
+	struct be_r4_frame frame = { 0 };
+
+	frame.gpr[BE_R5_GPR_SP] = BE_R5_PROTECTED_GUEST_SP;
+	frame.sepc = BE_R5_PROTECTED_ENTRY_PC;
+	return frame;
+}
+
+static int pending_clear(const struct be_r5_pending *pending)
+{
+	struct be_r3_binding zero = { 0 };
+
+	return pending->direction == BE_R5_DIRECTION_NONE &&
+	       pending->frame_mode == BE_R5_FRAME_MODE_NONE &&
+	       binding_equal(&pending->source, &zero) &&
+	       binding_equal(&pending->target, &zero);
+}
+
+static int pending_exact(const struct be_r5_pending *pending,
+			 enum be_r5_direction direction)
+{
+	if (pending->direction != direction)
+		return 0;
+	if (direction == BE_R5_DIRECTION_MANAGEMENT_TO_PROTECTED)
+		return pending->frame_mode == BE_R5_FRAME_MODE_INITIAL &&
+		       exact_management_binding(&pending->source, 1U) &&
+		       exact_protected_binding(&pending->target, 0U);
+	if (direction == BE_R5_DIRECTION_PROTECTED_TO_MANAGEMENT)
+		return pending->frame_mode == BE_R5_FRAME_MODE_SAVED &&
+		       exact_protected_binding(&pending->source, 1U) &&
+		       exact_management_binding(&pending->target, 0U);
+	return 0;
+}
+
+static int identities_intact(const struct be_r5_state *state)
+{
+	return state->configuration_id == BE_R3_CONFIGURATION_ID &&
+	       state->management_hgatp == BE_R3_MANAGEMENT_HGATP &&
+	       state->protected_hgatp == BE_R3_PROTECTED_HGATP;
+}
+
+enum be_r5_error be_r5_fail(struct be_r5_state *state, enum be_r5_error error)
+{
+	if (state != (struct be_r5_state *)0 &&
+	    state->phase == BE_R5_PHASE_FAILED)
+		return state->error;
+	if (error == BE_R5_ERROR_NONE)
+		error = BE_R5_ERROR_INVALID_PHASE;
+	if (state != (struct be_r5_state *)0) {
+		state->active = (struct be_r3_binding){ 0 };
+		state->pending = (struct be_r5_pending){ 0 };
+		state->management_frame = (struct be_r4_frame){ 0 };
+		state->configuration_id = 0U;
+		state->management_hgatp = 0U;
+		state->protected_hgatp = 0U;
+		state->protected_saved_pc = 0U;
+		state->switch_requested = 0U;
+		state->exit_count = 0U;
+		state->switch_count = 0U;
+		state->shutdown_detail = BE_R3_ERROR_NONE;
+		state->action = BE_R5_ACTION_TERMINAL;
+		state->phase = BE_R5_PHASE_FAILED;
+		state->error = error;
+	}
+	return error;
+}
+
+static enum be_r5_error
+validate_observation(const struct be_r3_binding *active,
+		     const struct be_r5_observation *observation)
+{
+	if (observation->hart_id != BE_CONFIGURATION_HART_ID)
+		return BE_R5_ERROR_HART;
+	if (!binding_equal(active, &observation->active))
+		return BE_R5_ERROR_BINDING;
+	if (observation->current_hgatp != active->hgatp)
+		return BE_R5_ERROR_HGATP;
+	if ((observation->hstatus & BE_R3_HSTATUS_CONTROL_MASK) !=
+	    BE_R3_HSTATUS_CONTROL_VALUE)
+		return BE_R5_ERROR_VS_ORIGIN;
+	if (observation->vsatp != 0U)
+		return BE_R5_ERROR_VSATP;
+	if (observation->trusted_sp != active->trusted_sp)
+		return BE_R5_ERROR_TRUSTED_STACK;
+	if (observation->saved_state_pa != active->saved_state_pa)
+		return BE_R5_ERROR_SAVED_PAGE;
+	return BE_R5_ERROR_NONE;
+}
+
+static enum be_r5_error
+validate_backing(const struct be_r5_observation *observation,
+		 be_u64 protected_private_value)
+{
+	if (observation->management_private_value != BE_R4_PRIVATE_VALUE ||
+	    observation->protected_private_value != protected_private_value ||
+	    observation->shared_value != BE_R4_SHARED_VALUE)
+		return BE_R5_ERROR_BACKING;
+	return BE_R5_ERROR_NONE;
+}
+
+/*
+ * The imported R4 frame is the only accepted management restore state, so its
+ * exact content is revalidated before every use rather than trusted once.
+ */
+static enum be_r5_error
+validate_management_frame(const struct be_r4_frame *frame)
+{
+	if (frame->reserved != 0U)
+		return BE_R5_ERROR_FRAME_RESERVED;
+	if ((frame->scause & BE_R4_INTERRUPT_BIT) != 0U)
+		return BE_R5_ERROR_INTERRUPT;
+	if (frame->scause != BE_R4_SCAUSE_VS_ECALL)
+		return BE_R5_ERROR_CAUSE;
+	if (frame->sepc != BE_R5_MANAGEMENT_RESTORE_PC)
+		return BE_R5_ERROR_PC;
+	if (frame->stval != 0U || frame->htval != 0U)
+		return BE_R5_ERROR_TRAP_METADATA;
+	if (frame->gpr[BE_R4_GPR_A7] != BE_R4_EVENT_ID ||
+	    frame->gpr[BE_R4_GPR_A6] != BE_R4_EVENT_VERSION_FUNCTION ||
+	    frame->gpr[BE_R4_GPR_A0] != BE_R4_PRIVATE_VALUE ||
+	    frame->gpr[BE_R4_GPR_A1] != BE_R4_SHARED_VALUE ||
+	    frame->gpr[BE_R5_GPR_S0] != BE_R4_PRIVATE_VALUE)
+		return BE_R5_ERROR_EVENT_ARGS;
+	return BE_R5_ERROR_NONE;
+}
+
+static int exact_r4_complete(const struct be_r4_state *r4)
+{
+	return r4->phase == BE_R4_PHASE_COMPLETE &&
+	       r4->error == BE_R4_ERROR_NONE &&
+	       r4->decision ==
+		       BE_R4_DECISION_RESUME_SAME_MANAGEMENT_FULL_FRAME &&
+	       r4->configuration_id == BE_R3_CONFIGURATION_ID &&
+	       r4->management_hgatp == BE_R3_MANAGEMENT_HGATP &&
+	       r4->protected_hgatp == BE_R3_PROTECTED_HGATP &&
+	       r4->fault_seen == 1U &&
+	       r4->event_seen == 1U &&
+	       r4->trap_count == 2U &&
+	       exact_management_binding(&r4->active, 1U);
+}
+
+enum be_r5_error
+be_r5_import_r4_complete(struct be_r5_state *state,
+			 const struct be_r4_state *r4,
+			 const struct be_r4_frame *frame,
+			 const struct be_r5_observation *observation)
+{
+	enum be_r5_error error;
+
+	if (state == (struct be_r5_state *)0)
+		return BE_R5_ERROR_NULL;
+	if (state->phase == BE_R5_PHASE_FAILED)
+		return state->error;
+	if (state->phase != BE_R5_PHASE_FRESH)
+		return be_r5_fail(state, BE_R5_ERROR_INVALID_PHASE);
+	if (r4 == (const struct be_r4_state *)0 ||
+	    frame == (const struct be_r4_frame *)0 ||
+	    observation == (const struct be_r5_observation *)0)
+		return be_r5_fail(state, BE_R5_ERROR_NULL);
+	if (!exact_r4_complete(r4))
+		return be_r5_fail(state, BE_R5_ERROR_IMPORT);
+	error = validate_observation(&r4->active, observation);
+	if (error != BE_R5_ERROR_NONE)
+		return be_r5_fail(state, error);
+	error = validate_management_frame(frame);
+	if (error != BE_R5_ERROR_NONE)
+		return be_r5_fail(state, error);
+	error = validate_backing(observation, 0U);
+	if (error != BE_R5_ERROR_NONE)
+		return be_r5_fail(state, error);
+
+	state->active = r4->active;
+	state->pending = (struct be_r5_pending){ 0 };
+	state->management_frame = *frame;
+	state->configuration_id = r4->configuration_id;
+	state->management_hgatp = r4->management_hgatp;
+	state->protected_hgatp = r4->protected_hgatp;
+	state->protected_saved_pc = 0U;
+	state->switch_requested = 0U;
+	state->exit_count = 0U;
+	state->switch_count = 0U;
+	state->shutdown_detail = BE_R3_ERROR_NONE;
+	state->error = BE_R5_ERROR_NONE;
+	state->action = BE_R5_ACTION_NONE;
+	state->phase = BE_R5_PHASE_IMPORT_R4_COMPLETE;
+	return BE_R5_ERROR_NONE;
+}
+
+enum be_r5_error
+be_r5_prepare_pending(struct be_r5_state *state,
+		      enum be_r5_direction direction,
+		      struct be_r5_pending *pending)
+{
+	struct be_r5_pending next = { 0 };
+	enum be_r5_phase next_phase;
+
+	if (state == (struct be_r5_state *)0)
+		return BE_R5_ERROR_NULL;
+	if (state->phase == BE_R5_PHASE_FAILED)
+		return state->error;
+	if (state->phase != BE_R5_PHASE_IMPORT_R4_COMPLETE &&
+	    state->phase != BE_R5_PHASE_PROTECTED_EXPECT_SWITCH_EVENT)
+		return be_r5_fail(state, BE_R5_ERROR_INVALID_PHASE);
+	if (pending == (struct be_r5_pending *)0)
+		return be_r5_fail(state, BE_R5_ERROR_NULL);
+	if (!identities_intact(state))
+		return be_r5_fail(state, BE_R5_ERROR_IMPORT);
+	if (!pending_clear(&state->pending))
+		return be_r5_fail(state, BE_R5_ERROR_PENDING);
+
+	if (state->phase == BE_R5_PHASE_IMPORT_R4_COMPLETE) {
+		if (direction != BE_R5_DIRECTION_MANAGEMENT_TO_PROTECTED ||
+		    state->switch_requested != 0U ||
+		    state->exit_count != 0U || state->switch_count != 0U ||
+		    state->protected_saved_pc != 0U)
+			return be_r5_fail(state, BE_R5_ERROR_INVALID_PHASE);
+		if (!exact_management_binding(&state->active, 1U))
+			return be_r5_fail(state, BE_R5_ERROR_BINDING);
+		next.direction = BE_R5_DIRECTION_MANAGEMENT_TO_PROTECTED;
+		next.frame_mode = BE_R5_FRAME_MODE_INITIAL;
+		next.target = protected_binding(0U);
+		next_phase = BE_R5_PHASE_PENDING_PROTECTED;
+	} else {
+		if (direction != BE_R5_DIRECTION_PROTECTED_TO_MANAGEMENT ||
+		    state->switch_requested != 1U ||
+		    state->exit_count != 3U || state->switch_count != 1U ||
+		    state->protected_saved_pc != BE_R5_PROTECTED_SAVED_PC)
+			return be_r5_fail(state, BE_R5_ERROR_INVALID_PHASE);
+		if (!exact_protected_binding(&state->active, 1U))
+			return be_r5_fail(state, BE_R5_ERROR_BINDING);
+		if (validate_management_frame(&state->management_frame) !=
+		    BE_R5_ERROR_NONE)
+			return be_r5_fail(state, BE_R5_ERROR_FRAME_STATE);
+		next.direction = BE_R5_DIRECTION_PROTECTED_TO_MANAGEMENT;
+		next.frame_mode = BE_R5_FRAME_MODE_SAVED;
+		next.target = management_binding(0U);
+		next_phase = BE_R5_PHASE_PENDING_MANAGEMENT;
+	}
+	next.source = state->active;
+	if (!pending_exact(&next, next.direction))
+		return be_r5_fail(state, BE_R5_ERROR_PENDING);
+
+	state->pending = next;
+	state->action = BE_R5_ACTION_NONE;
+	state->phase = next_phase;
+	*pending = next;
+	return BE_R5_ERROR_NONE;
+}
+
+enum be_r5_error
+be_r5_note_target_fenced(struct be_r5_state *state,
+			 const struct be_r5_fence_ack *ack)
+{
+	enum be_r5_direction direction;
+	enum be_r5_phase next_phase;
+
+	if (state == (struct be_r5_state *)0)
+		return BE_R5_ERROR_NULL;
+	if (state->phase == BE_R5_PHASE_FAILED)
+		return state->error;
+	if (state->phase == BE_R5_PHASE_PENDING_PROTECTED) {
+		direction = BE_R5_DIRECTION_MANAGEMENT_TO_PROTECTED;
+		next_phase = BE_R5_PHASE_PROTECTED_FENCED;
+	} else if (state->phase == BE_R5_PHASE_PENDING_MANAGEMENT) {
+		direction = BE_R5_DIRECTION_PROTECTED_TO_MANAGEMENT;
+		next_phase = BE_R5_PHASE_MANAGEMENT_FENCED;
+	} else {
+		return be_r5_fail(state, BE_R5_ERROR_INVALID_PHASE);
+	}
+	if (ack == (const struct be_r5_fence_ack *)0)
+		return be_r5_fail(state, BE_R5_ERROR_NULL);
+	if (!identities_intact(state))
+		return be_r5_fail(state, BE_R5_ERROR_IMPORT);
+	if (!pending_exact(&state->pending, direction))
+		return be_r5_fail(state, BE_R5_ERROR_PENDING);
+	if (!binding_equal(&state->pending.source, &state->active))
+		return be_r5_fail(state, BE_R5_ERROR_BINDING);
+	if (ack->source_hgatp != state->active.hgatp)
+		return be_r5_fail(state, BE_R5_ERROR_HGATP);
+	if (ack->virtualization_off != 1U || ack->fence_completed != 1U)
+		return be_r5_fail(state, BE_R5_ERROR_FENCE);
+	if (ack->hgatp_written != state->pending.target.hgatp ||
+	    ack->hgatp_readback != state->pending.target.hgatp)
+		return be_r5_fail(state, BE_R5_ERROR_TARGET_READBACK);
+
+	state->phase = next_phase;
+	return BE_R5_ERROR_NONE;
+}
+
+static enum be_r5_error
+validate_entry_state(const struct be_r5_state *state,
+		     const struct be_r5_entry_state *entry)
+{
+	const struct be_r3_binding *target = &state->pending.target;
+
+	if (entry->hgatp != target->hgatp)
+		return BE_R5_ERROR_TARGET_READBACK;
+	if ((entry->hstatus & BE_R3_HSTATUS_CONTROL_MASK) !=
+		    BE_R3_HSTATUS_CONTROL_VALUE ||
+	    (entry->sstatus & BE_R3_SSTATUS_CONTROL_MASK) !=
+		    BE_R3_SSTATUS_SPP)
+		return BE_R5_ERROR_ENTRY_CONTROLS;
+	if (entry->vsatp != 0U)
+		return BE_R5_ERROR_VSATP;
+	if (entry->vstvec != 0U || entry->vsepc != 0U ||
+	    entry->vscause != 0U || entry->vstval != 0U)
+		return BE_R5_ERROR_TARGET_RESET;
+	if (entry->trusted_sp != target->trusted_sp)
+		return BE_R5_ERROR_TRUSTED_STACK;
+	if (entry->saved_state_pa != target->saved_state_pa)
+		return BE_R5_ERROR_SAVED_PAGE;
+	return BE_R5_ERROR_NONE;
+}
+
+enum be_r5_error
+be_r5_publish_target(struct be_r5_state *state,
+		     const struct be_r5_entry_state *entry,
+		     struct be_r4_frame *target_frame,
+		     struct be_r5_transition *transition)
+{
+	struct be_r4_frame prepared;
+	struct be_r5_transition next;
+	enum be_r5_direction direction;
+	enum be_r5_frame_mode frame_mode;
+	enum be_r5_phase next_phase;
+	enum be_r5_error error;
+	be_u64 expected_pc;
+
+	if (state == (struct be_r5_state *)0)
+		return BE_R5_ERROR_NULL;
+	if (state->phase == BE_R5_PHASE_FAILED)
+		return state->error;
+	if (state->phase == BE_R5_PHASE_PROTECTED_FENCED) {
+		direction = BE_R5_DIRECTION_MANAGEMENT_TO_PROTECTED;
+		frame_mode = BE_R5_FRAME_MODE_INITIAL;
+		next_phase =
+			BE_R5_PHASE_PROTECTED_PUBLISHED_EXPECT_LOAD_FAULT;
+		expected_pc = BE_R5_PROTECTED_ENTRY_PC;
+	} else if (state->phase == BE_R5_PHASE_MANAGEMENT_FENCED) {
+		direction = BE_R5_DIRECTION_PROTECTED_TO_MANAGEMENT;
+		frame_mode = BE_R5_FRAME_MODE_SAVED;
+		next_phase =
+			BE_R5_PHASE_MANAGEMENT_PUBLISHED_EXPECT_FINAL_EVENT;
+		expected_pc = BE_R5_MANAGEMENT_RESTORE_PC;
+	} else {
+		return be_r5_fail(state, BE_R5_ERROR_INVALID_PHASE);
+	}
+	if (entry == (const struct be_r5_entry_state *)0 ||
+	    target_frame == (struct be_r4_frame *)0 ||
+	    transition == (struct be_r5_transition *)0)
+		return be_r5_fail(state, BE_R5_ERROR_NULL);
+	if (!identities_intact(state))
+		return be_r5_fail(state, BE_R5_ERROR_IMPORT);
+	if (!pending_exact(&state->pending, direction) ||
+	    state->pending.frame_mode != frame_mode)
+		return be_r5_fail(state, BE_R5_ERROR_PENDING);
+	if (!binding_equal(&state->pending.source, &state->active))
+		return be_r5_fail(state, BE_R5_ERROR_BINDING);
+	if (state->active.published != 1U ||
+	    state->pending.target.published != 0U ||
+	    state->switch_count !=
+		    (direction == BE_R5_DIRECTION_MANAGEMENT_TO_PROTECTED ?
+			     0U : 1U))
+		return be_r5_fail(state, BE_R5_ERROR_PUBLICATION);
+	error = validate_entry_state(state, entry);
+	if (error != BE_R5_ERROR_NONE)
+		return be_r5_fail(state, error);
+
+	if (frame_mode == BE_R5_FRAME_MODE_INITIAL) {
+		prepared = initial_protected_frame();
+	} else {
+		error = validate_management_frame(&state->management_frame);
+		if (error != BE_R5_ERROR_NONE)
+			return be_r5_fail(state, BE_R5_ERROR_FRAME_STATE);
+		prepared = state->management_frame;
+		if (!frame_equal(target_frame, &prepared))
+			return be_r5_fail(state, BE_R5_ERROR_FRAME_STATE);
+	}
+	if (prepared.sepc != expected_pc || prepared.reserved != 0U)
+		return be_r5_fail(state, BE_R5_ERROR_FRAME_STATE);
+
+	next = (struct be_r5_transition) {
+		.action = BE_R5_ACTION_ENTER_TARGET,
+		.direction = direction,
+		.frame_mode = frame_mode,
+		.active = state->pending.target,
+		.entry_pc = prepared.sepc,
+		.entry_sp = prepared.gpr[BE_R5_GPR_SP],
+		.trusted_sp = state->pending.target.trusted_sp,
+		.saved_state_pa = state->pending.target.saved_state_pa,
+	};
+	next.active.published = 1U;
+
+	if (frame_mode == BE_R5_FRAME_MODE_INITIAL)
+		*target_frame = prepared;
+	state->active = next.active;
+	state->pending = (struct be_r5_pending){ 0 };
+	++state->switch_count;
+	state->action = BE_R5_ACTION_ENTER_TARGET;
+	state->phase = next_phase;
+	*transition = next;
+	return BE_R5_ERROR_NONE;
+}
+
+static enum be_r5_error
+validate_denied_access(const struct be_r4_frame *frame, be_u64 cause,
+		       be_u64 fault_pc, be_u64 denied_gva, be_u64 denied_gpa)
+{
+	be_u64 reconstructed;
+	be_u64 low_bits;
+
+	if (frame->scause != cause)
+		return BE_R5_ERROR_CAUSE;
+	if (frame->sepc != fault_pc)
+		return BE_R5_ERROR_PC;
+	if (frame->stval != denied_gva)
+		return BE_R5_ERROR_GVA;
+	if (frame->htval != 0U) {
+		if (frame->htval > BE_R5_HTVAL_SHIFT_MAX)
+			return BE_R5_ERROR_HTVAL_OVERFLOW;
+		reconstructed = frame->htval << 2;
+		low_bits = frame->stval & BE_U64_C(3);
+		if (reconstructed > (~BE_U64_C(0)) - low_bits)
+			return BE_R5_ERROR_HTVAL_OVERFLOW;
+		reconstructed += low_bits;
+		if (reconstructed != denied_gpa)
+			return BE_R5_ERROR_GPA;
+	}
+	return BE_R5_ERROR_NONE;
+}
+
+static enum be_r5_error
+validate_event(const struct be_r4_frame *frame, be_u64 event_pc,
+	       be_u64 event_id, be_u64 reported_a0)
+{
+	if (frame->scause != BE_R4_SCAUSE_VS_ECALL)
+		return BE_R5_ERROR_CAUSE;
+	if (frame->sepc != event_pc)
+		return BE_R5_ERROR_PC;
+	if (frame->stval != 0U || frame->htval != 0U)
+		return BE_R5_ERROR_TRAP_METADATA;
+	if (frame->gpr[BE_R4_GPR_A7] != event_id ||
+	    frame->gpr[BE_R4_GPR_A6] != BE_R4_EVENT_VERSION_FUNCTION ||
+	    frame->gpr[BE_R4_GPR_A0] != reported_a0 ||
+	    frame->gpr[BE_R4_GPR_A1] != BE_R4_SHARED_VALUE)
+		return BE_R5_ERROR_EVENT_ARGS;
+	return BE_R5_ERROR_NONE;
+}
+
+static int exit_witness(const struct be_r5_state *state, be_u32 exit_count,
+			be_u32 switch_count, be_u32 switch_requested)
+{
+	return state->exit_count == exit_count &&
+	       state->switch_count == switch_count &&
+	       state->switch_requested == switch_requested;
+}
+
+enum be_r5_error
+be_r5_handle_exit(struct be_r5_state *state, struct be_r4_frame *frame,
+		  const struct be_r5_observation *observation,
+		  struct be_r5_result *result)
+{
+	struct be_r5_result next_result = { 0 };
+	enum be_r5_exit_class exit_class;
+	enum be_r5_action action;
+	enum be_r5_phase next_phase;
+	enum be_r5_error error;
+	be_u64 advanced_pc;
+	be_u64 expected_pc;
+	int protected_domain;
+
+	if (state == (struct be_r5_state *)0)
+		return BE_R5_ERROR_NULL;
+	if (state->phase == BE_R5_PHASE_FAILED)
+		return state->error;
+	switch (state->phase) {
+	case BE_R5_PHASE_PROTECTED_PUBLISHED_EXPECT_LOAD_FAULT:
+	case BE_R5_PHASE_PROTECTED_EXPECT_SHARED_STORE_FAULT:
+	case BE_R5_PHASE_PROTECTED_EXPECT_SWITCH_EVENT:
+		protected_domain = 1;
+		break;
+	case BE_R5_PHASE_MANAGEMENT_PUBLISHED_EXPECT_FINAL_EVENT:
+		protected_domain = 0;
+		break;
+	default:
+		return be_r5_fail(state, BE_R5_ERROR_INVALID_PHASE);
+	}
+	if (frame == (struct be_r4_frame *)0 ||
+	    observation == (const struct be_r5_observation *)0 ||
+	    result == (struct be_r5_result *)0)
+		return be_r5_fail(state, BE_R5_ERROR_NULL);
+	if (!identities_intact(state))
+		return be_r5_fail(state, BE_R5_ERROR_IMPORT);
+	if (!pending_clear(&state->pending))
+		return be_r5_fail(state, BE_R5_ERROR_PENDING);
+	if (protected_domain != 0) {
+		if (!exact_protected_binding(&state->active, 1U))
+			return be_r5_fail(state, BE_R5_ERROR_BINDING);
+	} else if (!exact_management_binding(&state->active, 1U)) {
+		return be_r5_fail(state, BE_R5_ERROR_BINDING);
+	}
+	if (frame->reserved != 0U)
+		return be_r5_fail(state, BE_R5_ERROR_FRAME_RESERVED);
+	error = validate_observation(&state->active, observation);
+	if (error != BE_R5_ERROR_NONE)
+		return be_r5_fail(state, error);
+	if ((frame->scause & BE_R4_INTERRUPT_BIT) != 0U)
+		return be_r5_fail(state, BE_R5_ERROR_INTERRUPT);
+	error = validate_backing(observation, BE_R5_PROTECTED_PRIVATE_VALUE);
+	if (error != BE_R5_ERROR_NONE)
+		return be_r5_fail(state, error);
+
+	switch (state->phase) {
+	case BE_R5_PHASE_PROTECTED_PUBLISHED_EXPECT_LOAD_FAULT:
+		if (!exit_witness(state, 0U, 1U, 0U))
+			return be_r5_fail(state, BE_R5_ERROR_INVALID_PHASE);
+		error = validate_denied_access(
+			frame, BE_R4_SCAUSE_LOAD_GUEST_PAGE_FAULT,
+			BE_R5_PROTECTED_LOAD_FAULT_PC,
+			BE_R5_PROTECTED_LOAD_DENIED_GVA,
+			BE_R5_PROTECTED_LOAD_DENIED_GPA);
+		exit_class = BE_R5_EXIT_PROTECTED_DENIED_LOAD;
+		action = BE_R5_ACTION_RESUME_SAME_DOMAIN_FULL_FRAME;
+		expected_pc = BE_R5_PROTECTED_LOAD_RESUME_PC;
+		next_phase = BE_R5_PHASE_PROTECTED_EXPECT_SHARED_STORE_FAULT;
+		break;
+	case BE_R5_PHASE_PROTECTED_EXPECT_SHARED_STORE_FAULT:
+		if (!exit_witness(state, 1U, 1U, 0U))
+			return be_r5_fail(state, BE_R5_ERROR_INVALID_PHASE);
+		error = validate_denied_access(
+			frame, BE_R5_SCAUSE_STORE_GUEST_PAGE_FAULT,
+			BE_R5_PROTECTED_STORE_FAULT_PC,
+			BE_R5_SHARED_STORE_DENIED_GVA,
+			BE_R5_SHARED_STORE_DENIED_GPA);
+		exit_class = BE_R5_EXIT_PROTECTED_DENIED_SHARED_STORE;
+		action = BE_R5_ACTION_RESUME_SAME_DOMAIN_FULL_FRAME;
+		expected_pc = BE_R5_PROTECTED_STORE_RESUME_PC;
+		next_phase = BE_R5_PHASE_PROTECTED_EXPECT_SWITCH_EVENT;
+		break;
+	case BE_R5_PHASE_PROTECTED_EXPECT_SWITCH_EVENT:
+		if (!exit_witness(state, 2U, 1U, 0U))
+			return be_r5_fail(state, BE_R5_ERROR_INVALID_PHASE);
+		error = validate_event(frame, BE_R5_PROTECTED_EVENT_PC,
+				       BE_R5_PROTECTED_EVENT_ID,
+				       BE_R5_PROTECTED_PRIVATE_VALUE);
+		exit_class = BE_R5_EXIT_PROTECTED_SWITCH_EVENT;
+		action = BE_R5_ACTION_SWITCH_TO_MANAGEMENT;
+		expected_pc = BE_R5_PROTECTED_SAVED_PC;
+		next_phase = BE_R5_PHASE_PROTECTED_EXPECT_SWITCH_EVENT;
+		break;
+	default:
+		if (!exit_witness(state, 3U, 2U, 1U))
+			return be_r5_fail(state, BE_R5_ERROR_INVALID_PHASE);
+		error = validate_event(frame, BE_R5_MANAGEMENT_FINAL_EVENT_PC,
+				       BE_R5_FINAL_EVENT_ID,
+				       BE_R4_PRIVATE_VALUE);
+		if (error == BE_R5_ERROR_NONE &&
+		    frame->gpr[BE_R5_GPR_S0] != BE_R4_PRIVATE_VALUE)
+			error = BE_R5_ERROR_EVENT_ARGS;
+		exit_class = BE_R5_EXIT_MANAGEMENT_FINAL_EVENT;
+		action = BE_R5_ACTION_SHUTDOWN;
+		expected_pc = 0U;
+		next_phase = BE_R5_PHASE_COMPLETE;
+		break;
+	}
+	if (error != BE_R5_ERROR_NONE)
+		return be_r5_fail(state, error);
+	if (frame->sepc > (~BE_U64_C(0)) - BE_R4_INSTRUCTION_SIZE)
+		return be_r5_fail(state, BE_R5_ERROR_PC);
+	advanced_pc = frame->sepc + BE_R4_INSTRUCTION_SIZE;
+	if (action != BE_R5_ACTION_SHUTDOWN && advanced_pc != expected_pc)
+		return be_r5_fail(state, BE_R5_ERROR_PC);
+
+	next_result = (struct be_r5_result) {
+		.action = action,
+		.exit_class = exit_class,
+		.advanced_pc = action == BE_R5_ACTION_SHUTDOWN ? 0U :
+								advanced_pc,
+		.shutdown_type = action == BE_R5_ACTION_SHUTDOWN ?
+					 BE_R5_SHUTDOWN_TYPE : 0U,
+		.shutdown_reason = action == BE_R5_ACTION_SHUTDOWN ?
+					   BE_R5_SHUTDOWN_REASON : 0U,
+		.active = state->active,
+	};
+
+	/*
+	 * The completion event is followed by no guest entry, so its frame is
+	 * deliberately left untouched.
+	 */
+	if (action != BE_R5_ACTION_SHUTDOWN)
+		frame->sepc = advanced_pc;
+	if (action == BE_R5_ACTION_SWITCH_TO_MANAGEMENT) {
+		state->switch_requested = 1U;
+		state->protected_saved_pc = advanced_pc;
+	}
+	++state->exit_count;
+	state->action = action;
+	state->phase = next_phase;
+	*result = next_result;
+	return BE_R5_ERROR_NONE;
+}
+
+enum be_r5_error
+be_r5_note_shutdown_returned(struct be_r5_state *state, long sbi_error)
+{
+	enum be_r3_error detail;
+	enum be_r5_error error;
+
+	if (state == (struct be_r5_state *)0)
+		return BE_R5_ERROR_NULL;
+	if (state->phase == BE_R5_PHASE_FAILED)
+		return state->error;
+	if (state->phase != BE_R5_PHASE_COMPLETE ||
+	    state->action != BE_R5_ACTION_SHUTDOWN)
+		return be_r5_fail(state, BE_R5_ERROR_INVALID_PHASE);
+
+	detail = be_r3_srst_result(sbi_error);
+	error = detail == BE_R3_ERROR_SRST_RETURNED ?
+			BE_R5_ERROR_SHUTDOWN_RETURNED :
+			BE_R5_ERROR_SHUTDOWN_REJECTED;
+	(void)be_r5_fail(state, error);
+	state->shutdown_detail = detail;
+	return error;
+}
+
+const char *be_r5_phase_name(enum be_r5_phase phase)
+{
+	switch (phase) {
+	case BE_R5_PHASE_FRESH:
+		return "fresh";
+	case BE_R5_PHASE_IMPORT_R4_COMPLETE:
+		return "import-r4-complete";
+	case BE_R5_PHASE_PENDING_PROTECTED:
+		return "pending-protected";
+	case BE_R5_PHASE_PROTECTED_FENCED:
+		return "protected-fenced";
+	case BE_R5_PHASE_PROTECTED_PUBLISHED_EXPECT_LOAD_FAULT:
+		return "protected-published-expect-load-fault";
+	case BE_R5_PHASE_PROTECTED_EXPECT_SHARED_STORE_FAULT:
+		return "protected-expect-shared-store-fault";
+	case BE_R5_PHASE_PROTECTED_EXPECT_SWITCH_EVENT:
+		return "protected-expect-switch-event";
+	case BE_R5_PHASE_PENDING_MANAGEMENT:
+		return "pending-management";
+	case BE_R5_PHASE_MANAGEMENT_FENCED:
+		return "management-fenced";
+	case BE_R5_PHASE_MANAGEMENT_PUBLISHED_EXPECT_FINAL_EVENT:
+		return "management-published-expect-final-event";
+	case BE_R5_PHASE_COMPLETE:
+		return "complete";
+	case BE_R5_PHASE_FAILED:
+		return "failed";
+	default:
+		return "invalid";
+	}
+}
+
+const char *be_r5_error_name(enum be_r5_error error)
+{
+	switch (error) {
+	case BE_R5_ERROR_NONE:
+		return "none";
+	case BE_R5_ERROR_NULL:
+		return "null";
+	case BE_R5_ERROR_INVALID_PHASE:
+		return "invalid-phase";
+	case BE_R5_ERROR_IMPORT:
+		return "import";
+	case BE_R5_ERROR_BINDING:
+		return "binding";
+	case BE_R5_ERROR_PENDING:
+		return "pending";
+	case BE_R5_ERROR_TRUSTED_STACK:
+		return "trusted-stack";
+	case BE_R5_ERROR_SAVED_PAGE:
+		return "saved-page";
+	case BE_R5_ERROR_HGATP:
+		return "hgatp";
+	case BE_R5_ERROR_VS_ORIGIN:
+		return "vs-origin";
+	case BE_R5_ERROR_VSATP:
+		return "vsatp";
+	case BE_R5_ERROR_FRAME_RESERVED:
+		return "frame-reserved";
+	case BE_R5_ERROR_FRAME_STATE:
+		return "frame-state";
+	case BE_R5_ERROR_FENCE:
+		return "fence";
+	case BE_R5_ERROR_TARGET_READBACK:
+		return "target-readback";
+	case BE_R5_ERROR_TARGET_RESET:
+		return "target-reset";
+	case BE_R5_ERROR_ENTRY_CONTROLS:
+		return "entry-controls";
+	case BE_R5_ERROR_PUBLICATION:
+		return "publication";
+	case BE_R5_ERROR_HART:
+		return "hart";
+	case BE_R5_ERROR_INTERRUPT:
+		return "interrupt";
+	case BE_R5_ERROR_CAUSE:
+		return "cause";
+	case BE_R5_ERROR_PC:
+		return "pc";
+	case BE_R5_ERROR_GVA:
+		return "gva";
+	case BE_R5_ERROR_HTVAL_OVERFLOW:
+		return "htval-overflow";
+	case BE_R5_ERROR_GPA:
+		return "gpa";
+	case BE_R5_ERROR_TRAP_METADATA:
+		return "trap-metadata";
+	case BE_R5_ERROR_EVENT_ARGS:
+		return "event-args";
+	case BE_R5_ERROR_BACKING:
+		return "backing";
+	case BE_R5_ERROR_SHUTDOWN_RETURNED:
+		return "shutdown-returned";
+	case BE_R5_ERROR_SHUTDOWN_REJECTED:
+		return "shutdown-rejected";
+	default:
+		return "invalid";
+	}
+}
+
+const char *be_r5_direction_name(enum be_r5_direction direction)
+{
+	switch (direction) {
+	case BE_R5_DIRECTION_NONE:
+		return "none";
+	case BE_R5_DIRECTION_MANAGEMENT_TO_PROTECTED:
+		return "management-to-protected";
+	case BE_R5_DIRECTION_PROTECTED_TO_MANAGEMENT:
+		return "protected-to-management";
+	default:
+		return "invalid";
+	}
+}
+
+const char *be_r5_frame_mode_name(enum be_r5_frame_mode frame_mode)
+{
+	switch (frame_mode) {
+	case BE_R5_FRAME_MODE_NONE:
+		return "none";
+	case BE_R5_FRAME_MODE_INITIAL:
+		return "initial";
+	case BE_R5_FRAME_MODE_SAVED:
+		return "saved";
+	default:
+		return "invalid";
+	}
+}
+
+const char *be_r5_exit_class_name(enum be_r5_exit_class exit_class)
+{
+	switch (exit_class) {
+	case BE_R5_EXIT_NONE:
+		return "none";
+	case BE_R5_EXIT_PROTECTED_DENIED_LOAD:
+		return "protected-denied-load";
+	case BE_R5_EXIT_PROTECTED_DENIED_SHARED_STORE:
+		return "protected-denied-shared-store";
+	case BE_R5_EXIT_PROTECTED_SWITCH_EVENT:
+		return "protected-switch-event";
+	case BE_R5_EXIT_MANAGEMENT_FINAL_EVENT:
+		return "management-final-event";
+	default:
+		return "invalid";
+	}
+}
+
+const char *be_r5_action_name(enum be_r5_action action)
+{
+	switch (action) {
+	case BE_R5_ACTION_NONE:
+		return "none";
+	case BE_R5_ACTION_RESUME_SAME_DOMAIN_FULL_FRAME:
+		return "resume-same-domain-full-frame";
+	case BE_R5_ACTION_SWITCH_TO_MANAGEMENT:
+		return "switch-to-management";
+	case BE_R5_ACTION_ENTER_TARGET:
+		return "enter-target";
+	case BE_R5_ACTION_SHUTDOWN:
+		return "shutdown";
+	case BE_R5_ACTION_TERMINAL:
+		return "terminal";
+	default:
+		return "invalid";
+	}
+}

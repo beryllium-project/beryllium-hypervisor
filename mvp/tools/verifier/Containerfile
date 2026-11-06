@@ -1,0 +1,121 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Purpose: the MVP verifier image (planning/mvp-m8-plan.md, D-7 item 1,
+#          D-9, D-10, Q3, Q9, Q10): a Fedora base named by digest, the one
+#          the MVP evaluator uses, with exactly the package closure of
+#          tools/verifier/closure.txt (the pilot's tools: Frama-C, Why3,
+#          Alt-Ergo, Z3, cvc5, CBMC, Rocq; OCaml, dune, and the libraries
+#          the source builds need), installed from the verified local
+#          cache with every repository disabled, and the source-built tools
+#          of tools/verifier/sources.txt built here with no network:
+#          herdtools7 (herd7 and its RISC-V model riscv.cat) into
+#          /opt/verifier/herdtools7, and CN (rems-project/cn with
+#          cerberus-lib and monomorphic, one dune workspace) into
+#          /opt/verifier/cerberus. It records its installed packages as
+#          /etc/mvp-verifier-rpms.txt, the source pins and their checks as
+#          /etc/mvp-verifier-sources.txt and /etc/mvp-verifier-sources.sha256,
+#          each tool's version line as /etc/mvp-verifier-tools.txt, and the
+#          provers Why3 detects as /etc/mvp-verifier-why3.conf (its
+#          configuration, WHY3CONFIG) and /etc/mvp-verifier-why3-detect.txt.
+# Trust:   only the base image's pull uses the network: build-image.sh runs
+#          podman build --network=none with the RPM cache at /rpms and the
+#          source cache at /sources, both read-only. Every closure RPM's
+#          SHA-256 must equal the closure's and every archive's the line's
+#          in sources.txt before either is used; dnf sees no repository and
+#          must install every closure NEVRA exactly, with no
+#          --allowerasing, --skip-unavailable, --skip-broken, or --nobest
+#          (the closure was resolved in this base, so the transaction
+#          upgrades the base packages it names and removes none). dnf skips
+#          OpenPGP checks for local files; the SHA-256 check against
+#          digests recorded from signature-verified files stands in for
+#          them, as in the MVP evaluator. The sources are built unmodified;
+#          Lem's library is found by LEMLIB, Cerberus's runtime by
+#          CERB_INSTALL_PREFIX, and dune's cache is off.
+# Scope:   the verifier only; the MVP evaluator (tools/evaluator/) and its
+#          closure and lock are separate and unchanged. Nothing here is
+#          proprietary, from opam, or from ~/.local.
+#
+# Build context: mvp/tools (tools/verifier/build-image.sh runs podman build
+#   -v RPMS:/rpms:ro -v SOURCES:/sources:ro -f verifier/Containerfile
+#   mvp/tools).
+
+FROM registry.fedoraproject.org/fedora@sha256:daf897befd7a78a52f11db5ca2229a4923991bb30709932770cb493f7a000cf0
+
+COPY verifier/closure.txt /etc/mvp-verifier-closure.txt
+COPY verifier/sources.txt /etc/mvp-verifier-sources.txt
+
+# The closure, each RPM checked, in one transaction with no repository.
+RUN set -eu; \
+    closure=/etc/mvp-verifier-closure.txt; \
+    sums=/etc/mvp-verifier-closure.sha256; \
+    awk '!/^#/ { f = $1; sub(/-[0-9]+:/, "-", f); \
+        print $2 "  /rpms/" f ".rpm" }' "$closure" >"$sums"; \
+    sha256sum --check --quiet --strict "$sums"; \
+    dnf5 -y --disablerepo='*' --setopt=install_weak_deps=False \
+        install $(cut -d' ' -f3 "$sums"); \
+    awk '!/^#/ { print $1 }' "$closure" | xargs rpm -q >/dev/null; \
+    dnf5 clean all; \
+    rpm -qa | sort >/etc/mvp-verifier-rpms.txt
+
+# The source archives, each checked against its line.
+RUN set -eu; \
+    awk '!/^#/ && NF == 6 { print $5 "  /sources/" $4 }' \
+        /etc/mvp-verifier-sources.txt >/etc/mvp-verifier-sources.sha256; \
+    test -s /etc/mvp-verifier-sources.sha256; \
+    sha256sum --check --strict /etc/mvp-verifier-sources.sha256
+
+ENV DUNE_CACHE=disabled \
+    LEMLIB=/usr/share/lem/library \
+    CERB_INSTALL_PREFIX=/opt/verifier/cerberus \
+    WHY3CONFIG=/etc/mvp-verifier-why3.conf \
+    PATH=/opt/verifier/herdtools7/bin:/opt/verifier/cerberus/bin:/usr/bin
+
+# herdtools7, from its release archive, with Fedora's OCaml, dune, menhir,
+# and zarith; its libdir (riscv.cat) is fixed at /opt/verifier/herdtools7.
+RUN set -eu; \
+    file=$(awk '!/^#/ && $1 == "herdtools7" { print $4 }' \
+        /etc/mvp-verifier-sources.txt); \
+    work=/var/tmp/herdtools7; mkdir "$work"; \
+    tar -xzf "/sources/$file" -C "$work"; cd "$work"/*/; \
+    make build PREFIX=/opt/verifier/herdtools7; \
+    make install PREFIX=/opt/verifier/herdtools7; \
+    cd /; rm -rf "$work"; \
+    test -f /opt/verifier/herdtools7/share/herdtools7/herd/riscv.cat
+
+# CN: monomorphic, cerberus-lib (its Lem-generated sources first), and cn
+# in one dune workspace, with Fedora's Lem and OCaml libraries.
+RUN set -eu; \
+    work=/var/tmp/cn; mkdir "$work"; cd "$work"; \
+    for name in monomorphic cerberus cn; do \
+        file=$(awk -v name="$name" '!/^#/ && $1 == name { print $4 }' \
+            /etc/mvp-verifier-sources.txt); \
+        mkdir "$name.unpack"; tar -xzf "/sources/$file" -C "$name.unpack"; \
+        mv "$name.unpack"/*/ "$name"; rmdir "$name.unpack"; \
+    done; \
+    printf '(lang dune 3.21)\n' >dune-workspace; \
+    make -C cerberus prelude-src; \
+    dune build -p monomorphic,cerberus-lib,cn @install; \
+    dune install --prefix /opt/verifier/cerberus monomorphic cerberus-lib cn; \
+    cd /; rm -rf "$work"; \
+    test -x /opt/verifier/cerberus/bin/cn
+
+# Why3's provers, detected once; the tools' version lines.
+RUN set -eu; \
+    why3 config detect >/etc/mvp-verifier-why3-detect.txt 2>&1; \
+    why3 config list-provers >>/etc/mvp-verifier-why3-detect.txt 2>&1; \
+    { \
+    printf 'frama-c: %s\n' "$(frama-c -version)"; \
+    printf 'why3: %s\n' "$(why3 --version)"; \
+    printf 'alt-ergo: %s\n' "$(alt-ergo --version)"; \
+    printf 'z3: %s\n' "$(z3 --version)"; \
+    printf 'cvc5: %s\n' "$(cvc5 --version | head -n 1)"; \
+    printf 'cbmc: %s\n' "$(cbmc --version)"; \
+    printf 'rocq: %s\n' "$(rocq --version | head -n 1)"; \
+    printf 'ocaml: %s\n' "$(ocaml -version)"; \
+    printf 'herd7: %s\n' "$(herd7 -version)"; \
+    printf 'cn: %s\n' "$(cn --version)"; \
+    awk '!/^#/ && NF == 6 { print "source " $1 ": " $2 " " $4 " " $5 }' \
+        /etc/mvp-verifier-sources.txt; \
+    } >/etc/mvp-verifier-tools.txt; \
+    cat /etc/mvp-verifier-tools.txt

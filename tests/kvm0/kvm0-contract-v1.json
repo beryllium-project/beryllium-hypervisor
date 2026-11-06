@@ -1,0 +1,1314 @@
+{
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "schema": "be-k3-kvm0-contract-v1",
+  "version": 1,
+  "authority": {
+    "accepted_plan_target": "5227266ceddb664a1595e22e5a92da57a013652f",
+    "implementation_base": "e4e0209f19596e0cbccbb6bb4de84c50bbd11f92",
+    "implementation_gate": "K0-I",
+    "scope": "offline-import-contract-report-tooling-only",
+    "network": "forbidden",
+    "ssh": "forbidden",
+    "serial": "forbidden",
+    "k3_access": "forbidden",
+    "private_source_access": "forbidden",
+    "root_integration": "forbidden",
+    "publication": "blocked"
+  },
+  "launcher": {
+    "targets": [
+      "kvm0-toolcheck",
+      "kvm0-contract-check",
+      "kvm0-rejection-test",
+      "kvm0-self-test",
+      "kvm0-check",
+      "kvm0-clean"
+    ],
+    "node_minimum_major": 18,
+    "stdin": "/dev/null",
+    "path": "/usr/bin",
+    "locale": "C",
+    "home": "build/kvm0/home",
+    "tmpdir": "build/kvm0/tmp",
+    "cache": "build/kvm0/cache",
+    "write_root": "build/kvm0"
+  },
+  "input": {
+    "kind": "directory-tree-only",
+    "archive_inputs": "rejected",
+    "evidence_routes": [
+      "exact-git-target",
+      "approved-bundle"
+    ],
+    "synthetic_routes": [
+      "synthetic-not-run",
+      "synthetic-captured"
+    ],
+    "synthetic_route_use": "test-rejections-only",
+    "test_only_profiles": [
+      "none",
+      "synthetic-not-run",
+      "synthetic-captured",
+      "eligible-route-validation"
+    ],
+    "external_record_schema": "be-k3-kvm0-external-import-v1",
+    "external_record_keys": [
+      "schema",
+      "approval_state",
+      "bundle_id",
+      "archive_sha256",
+      "archive_byte_size",
+      "checksums_sha256",
+      "source_commit",
+      "source_tree",
+      "members"
+    ]
+  },
+  "members": {
+    "mandatory_top_level": [
+      "bundle-manifest-v1.json",
+      "source-manifest-v1.json",
+      "patch-manifest-v1.json",
+      "tool-manifest-v1.json",
+      "firmware-manifest-v1.json",
+      "artifact-manifest-v1.json",
+      "command-manifest-v1.json",
+      "board-manifest-v1.json",
+      "capture-manifest-v1.json",
+      "selftest-manifest-v1.json",
+      "provenance-manifest-v1.json",
+      "matrix-manifest-v1.json",
+      "result-manifest-v1.json",
+      "recovery-manifest-v1.json",
+      "checksums.sha256"
+    ],
+    "fixed_report": "results/kvm0-qualification-report-v1.json",
+    "fixed_checksum": "checksums.sha256",
+    "allowed_prefixes": [
+      "artifacts/",
+      "captures/",
+      "logs/",
+      "results/"
+    ],
+    "allowed_regular_modes": [
+      "0600",
+      "0644",
+      "0755"
+    ],
+    "top_level_mode": "0644",
+    "report_mode": "0644",
+    "directory_modes": [
+      "0700",
+      "0755"
+    ],
+    "allowed_executable_prefixes": [
+      "artifacts/"
+    ],
+    "member_type": "regular",
+    "path_order": "raw-utf8-byte"
+  },
+  "limits": {
+    "total_expanded_bytes": 4294967296,
+    "raw_serial_bytes": 134217728,
+    "canonical_serial_bytes": 536870912,
+    "command_log_bytes": 33554432,
+    "manifest_or_report_bytes": 4194304,
+    "member_count": 4096,
+    "path_bytes": 512
+  },
+  "checksums": {
+    "algorithm": "sha256",
+    "hash_pattern": "^[0-9a-f]{64}$",
+    "separator": "two-ascii-spaces",
+    "line_ending": "LF",
+    "order": "raw-utf8-byte",
+    "coverage": "every-retained-regular-member-except-checksums.sha256",
+    "report_included": true,
+    "checksum_self_entry": "forbidden",
+    "archive_digest_member": "forbidden",
+    "report_digest_field": "forbidden",
+    "checksum_digest_field": "forbidden",
+    "external_archive_digest": "external-record-only"
+  },
+  "manifest_schemas": [
+    {
+      "path": "bundle-manifest-v1.json",
+      "schema": "be-k3-kvm0-bundle-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "evidence_route",
+        "synthetic_fixture",
+        "test_only",
+        "creation_date",
+        "board_profile_id",
+        "source_commit",
+        "source_tree",
+        "external_archive_record_required",
+        "report_digest_manifest",
+        "report_digest_entry",
+        "payload_members"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "evidence_route": "string",
+        "synthetic_fixture": "boolean",
+        "test_only": "object",
+        "creation_date": "string",
+        "board_profile_id": "string",
+        "source_commit": "string",
+        "source_tree": "string",
+        "external_archive_record_required": "boolean",
+        "report_digest_manifest": "string",
+        "report_digest_entry": "string",
+        "payload_members": "array"
+      }
+    },
+    {
+      "path": "source-manifest-v1.json",
+      "schema": "be-k3-kvm0-source-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "repository_id",
+        "branch_label",
+        "commit",
+        "tree",
+        "parents",
+        "clean_state",
+        "relation",
+        "changed_paths",
+        "source_owner_statement",
+        "source_evidence_state"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "repository_id": "string",
+        "branch_label": "string",
+        "commit": "string",
+        "tree": "string",
+        "parents": "array",
+        "clean_state": "object",
+        "relation": "object",
+        "changed_paths": "array",
+        "source_owner_statement": "string",
+        "source_evidence_state": "string"
+      }
+    },
+    {
+      "path": "patch-manifest-v1.json",
+      "schema": "be-k3-kvm0-patch-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "base",
+        "candidate",
+        "patch_count",
+        "patches"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "base": "string",
+        "candidate": "string",
+        "patch_count": "integer",
+        "patches": "array"
+      }
+    },
+    {
+      "path": "tool-manifest-v1.json",
+      "schema": "be-k3-kvm0-tool-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "tools"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "tools": "array"
+      }
+    },
+    {
+      "path": "firmware-manifest-v1.json",
+      "schema": "be-k3-kvm0-firmware-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "firmware_set_id",
+        "rom_availability",
+        "components",
+        "readiness"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "firmware_set_id": "string",
+        "rom_availability": "string",
+        "components": "array",
+        "readiness": "string"
+      }
+    },
+    {
+      "path": "artifact-manifest-v1.json",
+      "schema": "be-k3-kvm0-artifact-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "artifact_set_id",
+        "artifacts",
+        "guest_images",
+        "readiness"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "artifact_set_id": "string",
+        "artifacts": "array",
+        "guest_images": "array",
+        "readiness": "string"
+      }
+    },
+    {
+      "path": "command-manifest-v1.json",
+      "schema": "be-k3-kvm0-command-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "command_profile_id",
+        "network_policy",
+        "profile_complete",
+        "commands"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "command_profile_id": "string",
+        "network_policy": "string",
+        "profile_complete": "boolean",
+        "commands": "array"
+      }
+    },
+    {
+      "path": "board-manifest-v1.json",
+      "schema": "be-k3-kvm0-board-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "board_profile_id",
+        "board_identity",
+        "boot",
+        "host_release",
+        "firmware_set_id",
+        "artifact_set_id",
+        "command_profile_id",
+        "sessions",
+        "profile_state"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "board_profile_id": "string",
+        "board_identity": "object",
+        "boot": "object",
+        "host_release": "string",
+        "firmware_set_id": "string",
+        "artifact_set_id": "string",
+        "command_profile_id": "string",
+        "sessions": "array",
+        "profile_state": "string"
+      }
+    },
+    {
+      "path": "capture-manifest-v1.json",
+      "schema": "be-k3-kvm0-capture-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "capture_profile_id",
+        "sessions"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "capture_profile_id": "string",
+        "sessions": "array"
+      }
+    },
+    {
+      "path": "selftest-manifest-v1.json",
+      "schema": "be-k3-kvm0-selftest-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "definitions",
+        "runs"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "definitions": "array",
+        "runs": "array"
+      }
+    },
+    {
+      "path": "provenance-manifest-v1.json",
+      "schema": "be-k3-kvm0-provenance-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "identifier_algorithm",
+        "restricted_map_size",
+        "restricted_map_sha256",
+        "mapping_coverage",
+        "entries",
+        "publication_export"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "identifier_algorithm": "string",
+        "restricted_map_size": "integer",
+        "restricted_map_sha256": "string",
+        "mapping_coverage": "string",
+        "entries": "array",
+        "publication_export": "string"
+      }
+    },
+    {
+      "path": "matrix-manifest-v1.json",
+      "schema": "be-k3-kvm0-matrix-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "compatibility_profile_id",
+        "native_profile_id",
+        "cpu_profiles",
+        "cases"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "compatibility_profile_id": "string",
+        "native_profile_id": "string",
+        "cpu_profiles": "array",
+        "cases": "array"
+      }
+    },
+    {
+      "path": "result-manifest-v1.json",
+      "schema": "be-k3-kvm0-result-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "profile_state",
+        "sessions",
+        "guest_image_results",
+        "failures"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "profile_state": "string",
+        "sessions": "array",
+        "guest_image_results": "array",
+        "failures": "array"
+      }
+    },
+    {
+      "path": "recovery-manifest-v1.json",
+      "schema": "be-k3-kvm0-recovery-manifest-v1",
+      "keys": [
+        "schema",
+        "bundle_id",
+        "retry_policy",
+        "safety_only",
+        "events"
+      ],
+      "types": {
+        "schema": "string",
+        "bundle_id": "string",
+        "retry_policy": "string",
+        "safety_only": "boolean",
+        "events": "array"
+      }
+    }
+  ],
+  "record_schemas": {
+    "test_only": [
+      "enabled",
+      "profile",
+      "forced_failure_reason"
+    ],
+    "payload_member": [
+      "path",
+      "type",
+      "mode",
+      "size",
+      "sha256"
+    ],
+    "clean_state": [
+      "index",
+      "worktree",
+      "untracked_result_inputs",
+      "proof"
+    ],
+    "source_relation": [
+      "kvm_base",
+      "prepared_candidate_commit",
+      "prepared_candidate_tree",
+      "board_enablement_patch_count",
+      "host_release"
+    ],
+    "changed_path": [
+      "path",
+      "mode",
+      "sha256"
+    ],
+    "patch": [
+      "order",
+      "id",
+      "subject",
+      "author_provenance_id",
+      "commit",
+      "patch_id",
+      "touched_paths",
+      "sha256"
+    ],
+    "tool": [
+      "id",
+      "absolute_command",
+      "resolved_path",
+      "version",
+      "byte_size",
+      "sha256",
+      "package",
+      "license",
+      "configuration",
+      "environment",
+      "independent_cross_check",
+      "status"
+    ],
+    "firmware_component": [
+      "id",
+      "role",
+      "source_commit",
+      "config_sha256",
+      "provenance_id",
+      "artifact_id",
+      "artifact_role",
+      "binary_type",
+      "binary_path",
+      "binary_mode",
+      "binary_size",
+      "binary_sha256",
+      "immutable",
+      "status"
+    ],
+    "artifact": [
+      "id",
+      "role",
+      "type",
+      "path",
+      "mode",
+      "size",
+      "sha256",
+      "expected_profile_sha256",
+      "immutable",
+      "source_commit",
+      "provenance_id",
+      "status"
+    ],
+    "guest_image_identity": [
+      "id",
+      "kind",
+      "format",
+      "path",
+      "mode",
+      "size",
+      "sha256",
+      "immutable",
+      "source_reference",
+      "purpose",
+      "matrix_binding",
+      "qualification_status"
+    ],
+    "command": [
+      "id",
+      "phase",
+      "absolute_executable",
+      "argv",
+      "semantic_profile",
+      "cwd_relative_to_immutable_root",
+      "environment_allowlist",
+      "stdin_policy",
+      "stdout_artifact",
+      "stderr_artifact",
+      "console_artifact",
+      "timeout_seconds",
+      "expected_exit_codes",
+      "required_markers",
+      "forbidden_markers",
+      "produced_artifacts"
+    ],
+    "forbidden_marker_hit": [
+      "marker",
+      "stream",
+      "path",
+      "member_sha256",
+      "byte_offset"
+    ],
+    "canonical_view": [
+      "transformation",
+      "raw_path",
+      "raw_byte_count",
+      "raw_sha256",
+      "path",
+      "mode",
+      "byte_count",
+      "sha256"
+    ],
+    "board_session": [
+      "id",
+      "attended_boot",
+      "boot_action_id",
+      "boot_id",
+      "start_time",
+      "end_time",
+      "board_profile_id",
+      "board_identity_id",
+      "uname_a",
+      "kernel_release",
+      "kernel_build_id",
+      "proc_version",
+      "os_release",
+      "cmdline",
+      "capture_relation",
+      "live_fdt",
+      "kvm",
+      "qemu",
+      "cpu",
+      "journal",
+      "host_facts_path",
+      "host_facts_sha256"
+    ],
+    "capture_relation": [
+      "capture_id",
+      "boot_id",
+      "started_before_boot",
+      "ended_after_session",
+      "bounded",
+      "current_boot_only"
+    ],
+    "live_fdt": [
+      "disposition",
+      "byte_count",
+      "sha256",
+      "path",
+      "static_dtb_sha256",
+      "distinct_from_static"
+    ],
+    "kvm_extensions": [
+      "h_extension",
+      "gstage_mode",
+      "vmid_bits",
+      "aia",
+      "guest_external_interrupts"
+    ],
+    "kvm_fact": [
+      "availability",
+      "device_path",
+      "device_type",
+      "owner_class",
+      "mode",
+      "openable",
+      "acceleration_available",
+      "api_version",
+      "extensions",
+      "module_id",
+      "module_parameters",
+      "module_source_target",
+      "evidence_path",
+      "evidence_sha256"
+    ],
+    "qemu_fact": [
+      "tool_id",
+      "version",
+      "binary_sha256",
+      "accelerator",
+      "accelerator_available",
+      "accelerator_query_path",
+      "accelerator_query_sha256",
+      "host_cpu_profile_id",
+      "host_cpu_model",
+      "host_cpu_properties",
+      "host_cpu_query_path",
+      "host_cpu_query_sha256"
+    ],
+    "cpu_fact": [
+      "present",
+      "possible",
+      "online",
+      "participating_cpu_ids",
+      "participating_hart_ids",
+      "isa",
+      "h_extension"
+    ],
+    "journal_fact": [
+      "status",
+      "path",
+      "sha256",
+      "boot_id",
+      "bounded",
+      "current_boot_only",
+      "start_time",
+      "end_time",
+      "time_bounded",
+      "filter",
+      "byte_limit",
+      "byte_count",
+      "canonical",
+      "warning_markers",
+      "forbidden_marker_hits",
+      "h_extension",
+      "gstage_mode",
+      "vmid_bits",
+      "aia",
+      "guest_external_interrupts"
+    ],
+    "capture_session": [
+      "id",
+      "capture_id",
+      "boot_action_id",
+      "boot_id",
+      "state",
+      "path",
+      "raw",
+      "output_only",
+      "start_time",
+      "end_time",
+      "started_before_boot",
+      "ended_after_session",
+      "current_boot_only",
+      "byte_limit",
+      "byte_count",
+      "sha256",
+      "canonical",
+      "forbidden_marker_hits",
+      "appended",
+      "truncated",
+      "tool_id"
+    ],
+    "selftest_definition": [
+      "id",
+      "command_id",
+      "approved_outcome",
+      "skip_marker",
+      "skip_reason"
+    ],
+    "selftest_observation": [
+      "test_id",
+      "command_id",
+      "executed",
+      "exit_code",
+      "timed_out",
+      "markers",
+      "forbidden_marker_hits",
+      "stdout_path",
+      "stdout_sha256",
+      "stderr_path",
+      "stderr_sha256",
+      "evidence_path",
+      "evidence_sha256",
+      "duration_ms"
+    ],
+    "selftest_run": [
+      "id",
+      "session_id",
+      "observations"
+    ],
+    "cpu_profile": [
+      "id",
+      "kind",
+      "model",
+      "properties"
+    ],
+    "command_semantics": [
+      "case_id",
+      "cpu_profile_id",
+      "cpu_model",
+      "cpu_properties",
+      "vcpus",
+      "interrupt_model",
+      "machine_type",
+      "machine_properties",
+      "memory_mib",
+      "kernel_path",
+      "initramfs_path",
+      "append",
+      "console_artifact",
+      "block_mode",
+      "block_seed_path",
+      "overlay_artifact",
+      "network_mode",
+      "netdev_id",
+      "restrict_external"
+    ],
+    "case_requirements": [
+      "online_vcpu_ids",
+      "irq_topology_marker",
+      "block_marker",
+      "internal_network_marker",
+      "external_denial_marker"
+    ],
+    "case_definition": [
+      "id",
+      "command_id",
+      "cpu_profile",
+      "cpu_profile_id",
+      "vcpus",
+      "interrupt_model",
+      "machine_type",
+      "machine_properties",
+      "block",
+      "network",
+      "requirements"
+    ],
+    "case_result": [
+      "case_id",
+      "command_id",
+      "executed",
+      "exit_code",
+      "timed_out",
+      "markers",
+      "forbidden_marker_hits",
+      "accelerator",
+      "tcg_fallback",
+      "guest_h_present",
+      "host_error_markers",
+      "cpu_profile_id",
+      "cpu_model",
+      "cpu_properties",
+      "online_vcpu_count",
+      "online_vcpu_ids",
+      "interrupt_model",
+      "irq_topology_marker",
+      "block_marker",
+      "network_link_marker",
+      "external_denial_marker",
+      "block_seed_before",
+      "block_seed_after",
+      "overlay_path",
+      "overlay_pre_size",
+      "overlay_pre_sha256",
+      "overlay_post_size",
+      "overlay_post_sha256",
+      "overlay_reused",
+      "external_network_access",
+      "marker_time_ms",
+      "duration_ms",
+      "stdout_path",
+      "stdout_sha256",
+      "stderr_path",
+      "stderr_sha256",
+      "console_path",
+      "console_sha256",
+      "evidence_path",
+      "evidence_sha256",
+      "topology_evidence_path",
+      "topology_evidence_sha256",
+      "block_evidence_path",
+      "block_evidence_sha256",
+      "network_evidence_path",
+      "network_evidence_sha256"
+    ],
+    "result_session": [
+      "id",
+      "attended_boot",
+      "host_ready_marker",
+      "session_marker",
+      "source_commit",
+      "source_tree",
+      "host_release",
+      "board_profile_id",
+      "firmware_set_id",
+      "artifact_set_id",
+      "artifact_pre_hashes",
+      "artifact_post_hashes",
+      "command_profile_id",
+      "capture_id",
+      "selftest_run_id",
+      "cases",
+      "journal",
+      "recovery_event_ids"
+    ],
+    "failure_record": [
+      "id",
+      "session_id",
+      "case_id",
+      "stage",
+      "reason_code",
+      "subject",
+      "disposition"
+    ],
+    "guest_image_result": [
+      "id",
+      "guest_image_id",
+      "session_id",
+      "case_id",
+      "command_id",
+      "executed",
+      "outcome",
+      "exit_code",
+      "timed_out",
+      "evidence_path",
+      "evidence_sha256",
+      "scope"
+    ],
+    "host_facts_evidence": [
+      "schema",
+      "session_id",
+      "facts"
+    ],
+    "selftest_evidence": [
+      "schema",
+      "session_id",
+      "test_id",
+      "command_id",
+      "executed",
+      "exit_code",
+      "timed_out",
+      "markers",
+      "forbidden_marker_hits",
+      "duration_ms",
+      "stdout_path",
+      "stdout_sha256",
+      "stderr_path",
+      "stderr_sha256"
+    ],
+    "case_evidence": [
+      "schema",
+      "session_id",
+      "case_id",
+      "command_id",
+      "executed",
+      "exit_code",
+      "timed_out",
+      "markers",
+      "forbidden_marker_hits",
+      "accelerator",
+      "tcg_fallback",
+      "guest_h_present",
+      "host_error_markers",
+      "cpu_profile_id",
+      "cpu_model",
+      "cpu_properties",
+      "online_vcpu_count",
+      "online_vcpu_ids",
+      "interrupt_model",
+      "irq_topology_marker",
+      "block_marker",
+      "network_link_marker",
+      "external_denial_marker",
+      "external_network_access",
+      "marker_time_ms",
+      "duration_ms",
+      "stdout_path",
+      "stdout_sha256",
+      "stderr_path",
+      "stderr_sha256",
+      "console_path",
+      "console_sha256",
+      "topology_evidence_path",
+      "topology_evidence_sha256",
+      "block_evidence_path",
+      "block_evidence_sha256",
+      "network_evidence_path",
+      "network_evidence_sha256",
+      "block_seed_before",
+      "block_seed_after",
+      "overlay_path",
+      "overlay_pre_size",
+      "overlay_pre_sha256",
+      "overlay_post_size",
+      "overlay_post_sha256",
+      "overlay_reused"
+    ],
+    "topology_evidence": [
+      "schema",
+      "session_id",
+      "case_id",
+      "online_vcpu_count",
+      "online_vcpu_ids",
+      "interrupt_model",
+      "irq_topology_marker"
+    ],
+    "block_evidence": [
+      "schema",
+      "session_id",
+      "case_id",
+      "seed_path",
+      "seed_before_sha256",
+      "seed_after_sha256",
+      "overlay_path",
+      "overlay_pre_size",
+      "overlay_pre_sha256",
+      "overlay_post_size",
+      "overlay_post_sha256",
+      "overlay_reused",
+      "block_marker"
+    ],
+    "network_evidence": [
+      "schema",
+      "session_id",
+      "case_id",
+      "mode",
+      "netdev_id",
+      "restrict_external",
+      "internal_network_marker",
+      "external_denial_marker",
+      "external_network_access"
+    ],
+    "recovery_event": [
+      "id",
+      "session_id",
+      "reason",
+      "action",
+      "attended_human_action",
+      "start_time",
+      "end_time",
+      "safety_only",
+      "resumed_qualification"
+    ],
+    "provenance_entry": [
+      "id",
+      "role",
+      "source_object",
+      "patch_ids",
+      "signature_reference",
+      "redaction"
+    ]
+  },
+  "shape": {
+    "session_ids": [
+      "boot-session-1",
+      "boot-session-2",
+      "boot-session-3"
+    ],
+    "selftest_ids": [
+      "ST01",
+      "ST02",
+      "ST03",
+      "ST04",
+      "ST05",
+      "ST06",
+      "ST07",
+      "ST08",
+      "ST09",
+      "ST10",
+      "ST11",
+      "ST12",
+      "ST13",
+      "ST14",
+      "ST15",
+      "ST16"
+    ],
+    "approved_skip_id": "ST16",
+    "completed_selftest_counts": {
+      "PASS": 15,
+      "FAIL": 0,
+      "SKIP": 1,
+      "NOT-RUN": 0,
+      "UNKNOWN": 0,
+      "NOT-APPLICABLE": 0
+    },
+    "case_ids": [
+      "C01",
+      "C02",
+      "C03",
+      "C04",
+      "C05",
+      "C06",
+      "C07",
+      "C08",
+      "N01",
+      "N02",
+      "N03",
+      "N04",
+      "N05",
+      "N06",
+      "N07",
+      "N08"
+    ],
+    "selftest_suite_runs": 3,
+    "guest_cases_per_session": 16,
+    "total_guest_cases": 48
+  },
+  "outcomes": [
+    "PASS",
+    "FAIL",
+    "SKIP",
+    "NOT-RUN",
+    "UNKNOWN",
+    "NOT-APPLICABLE"
+  ],
+  "execution": {
+    "qemu_version": "10.2.2",
+    "acceleration": "kvm",
+    "fallback": "forbidden",
+    "guest_h": "absent",
+    "nested_virtualization": "not-tested",
+    "selftest_timeout_seconds": 120,
+    "selftest_suite_timeout_seconds": 1800,
+    "guest_marker_timeout_seconds": 240,
+    "guest_exit_timeout_seconds": 300,
+    "machine_type": "virt",
+    "memory_mib": 512,
+    "guest_kernel_path": "artifacts/guest/Image",
+    "guest_initramfs_path": "artifacts/guest/initramfs.img",
+    "block_seed_path": "artifacts/guest/block-seed.img",
+    "guest_append": "console=ttyS0 panic=-1 kvm0.session={session} kvm0.case={case}",
+    "journal_filter": "kvm-riscv-current-boot",
+    "journal_byte_limit": 1048576,
+    "canonical_text_transformation": "be-kvm0-byte-canonical-v1",
+    "canonical_max_expansion": 4,
+    "host_facts_schema": "be-k3-kvm0-host-facts-v1",
+    "selftest_evidence_schema": "be-k3-kvm0-selftest-evidence-v1",
+    "case_evidence_schema": "be-k3-kvm0-case-evidence-v1",
+    "topology_evidence_schema": "be-k3-kvm0-topology-evidence-v1",
+    "block_evidence_schema": "be-k3-kvm0-block-evidence-v1",
+    "network_evidence_schema": "be-k3-kvm0-network-evidence-v1",
+    "network": "restricted-user-no-forwarding-no-external-route",
+    "block_seed": "immutable-read-only",
+    "overlay": "fresh-per-case-never-reused",
+    "retry": "forbidden",
+    "recovery": "safety-only"
+  },
+  "markers": {
+    "host_ready": "^KVM0:HOST:READY session=(1|2|3) kernel=7\\.3\\.0-rc4-k3-kvm-host-a1$",
+    "selftest_pass": "^KVM0:SELFTEST:PASS session=(1|2|3) pass=15 skip=1 fail=0$",
+    "guest_pass": "^KVM0:GUEST:PASS session=(1|2|3) case=(C0[1-8]|N0[1-8]) cpu=(compat|native) irq=(plic|aia) vcpus=(1|2|8) block=(none|overlay) net=(none|restricted)$",
+    "case_pass": "^KVM0:CASE:PASS session=(1|2|3) case=(C0[1-8]|N0[1-8]) qemu_exit=0$",
+    "session_pass": "^KVM0:SESSION:PASS session=(1|2|3) cases=16$",
+    "forbidden": [
+      "KVM initialization failed",
+      "TCG fallback",
+      "kernel panic",
+      "Oops:",
+      "BUG:",
+      "QEMU fatal",
+      "guest panic",
+      "timeout",
+      "unexpected reboot",
+      "unexpected host shutdown",
+      "nested virtualization enabled",
+      "external network success"
+    ],
+    "forbidden_matching": {
+      "encoding": "exact-ascii-marker-bytes",
+      "algorithm": "exact-byte-substring",
+      "case_sensitivity": "sensitive",
+      "stream_boundary": "independent-members-no-cross-stream-match",
+      "offset": "zero-based-member-byte",
+      "duplicate_hits": "retained",
+      "stream_order": [
+        "stdout",
+        "stderr",
+        "console",
+        "raw-serial",
+        "kvm-journal"
+      ],
+      "designated_text_evidence": []
+    }
+  },
+  "privacy": {
+    "forbidden_keys": [
+      "password",
+      "secret",
+      "token",
+      "private_key",
+      "email",
+      "username",
+      "hostname",
+      "mac_address",
+      "serial_number",
+      "filesystem_uuid",
+      "private_remote",
+      "private_url",
+      "profile_key_hex"
+    ],
+    "forbidden_value_patterns": [
+      "(^|/)home/",
+      "(^|/)Users/",
+      "git@",
+      "ssh://",
+      "https?://[^/]*(private|internal)",
+      "profile_key_hex",
+      "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b",
+      "\\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\\b",
+      "\\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\b"
+    ],
+    "restricted_map_access": "forbidden",
+    "ordinary_identity_fields": "opaque-only"
+  },
+  "report": {
+    "schema": "be-k3-kvm0-qualification-v1",
+    "generated_by": "tests/kvm0/generate-report.mjs",
+    "top_level_keys": [
+      "schema",
+      "generated_by",
+      "outcome",
+      "identity",
+      "source",
+      "firmware",
+      "artifacts",
+      "qemu_guest",
+      "guest_images",
+      "host",
+      "capture",
+      "selftests",
+      "cases",
+      "journal",
+      "failures",
+      "recovery",
+      "claims",
+      "non_claims"
+    ],
+    "group_keys": {
+      "identity": [
+        "bundle_id",
+        "evidence_route",
+        "source_target",
+        "source_tree",
+        "board_profile_id",
+        "boot_session_ids",
+        "report_digest_manifest",
+        "report_digest_entry",
+        "external_archive"
+      ],
+      "source": [
+        "repository_id",
+        "branch_label",
+        "base",
+        "candidate_commit",
+        "candidate_tree",
+        "parents",
+        "patch_count",
+        "patch_order",
+        "clean_state",
+        "source_evidence_state"
+      ],
+      "firmware": [
+        "firmware_set_id",
+        "rom_availability",
+        "components",
+        "readiness"
+      ],
+      "artifacts": [
+        "artifact_set_id",
+        "entries",
+        "profile_match",
+        "readiness"
+      ],
+      "qemu_guest": [
+        "qemu_tool_id",
+        "qemu_version",
+        "qemu_binary_sha256",
+        "guest_kernel_sha256",
+        "guest_initramfs_sha256",
+        "block_seed_sha256",
+        "launcher_sha256",
+        "guest_h",
+        "nested_virtualization",
+        "acceleration",
+        "fallback"
+      ],
+      "guest_images": [
+        "identities",
+        "results",
+        "qualification"
+      ],
+      "host": [
+        "host_release",
+        "sessions"
+      ],
+      "capture": [
+        "sessions"
+      ],
+      "selftests": [
+        "definitions",
+        "sessions",
+        "expected_per_completed_session"
+      ],
+      "cases": [
+        "definitions",
+        "results",
+        "total",
+        "cross_session"
+      ],
+      "journal": [
+        "sessions"
+      ],
+      "failures": [
+        "count",
+        "entries"
+      ],
+      "recovery": [
+        "events",
+        "retry_allowed"
+      ],
+      "claims": [
+        "result_status",
+        "supportable_claim",
+        "required_limit",
+        "kvm0",
+        "beryllium_k3_hardware",
+        "r8_k3_hardware",
+        "r8_h0_row_resolution",
+        "development_kernel_bsp",
+        "publication"
+      ],
+      "non_claims": [
+        "items"
+      ]
+    },
+    "encoding": "UTF-8",
+    "line_endings": "LF",
+    "object_key_order": "contract-order",
+    "nonsemantic_array_order": "raw-utf8-byte",
+    "current_clock": "forbidden",
+    "randomness": "forbidden",
+    "ambient_identity": "forbidden",
+    "report_digest": "omitted",
+    "checksum_digest": "omitted",
+    "archive_digest": "omitted"
+  },
+  "claims": {
+    "not_run_claim": "No KVM0 qualification result is claimed.",
+    "future_pass_claim": "On one exact K3 CoM260 board and exact retained firmware, U-Boot/OpenSBI, Linux host, QEMU 10.2.2, minimal guest, and tool profile, three attended native boot sessions each completed the exact 16-test KVM selftest set with 15 PASS and one approved SKIP, then completed all compatibility and native CPU-profile guest cases C01-C08 and N01-N08 using KVM acceleration, the fixed PLIC and AIA/APLIC/IMSIC configurations, 1/2/8 vCPUs, deterministic block checks, restricted user networking where selected, exact pass markers, and expected zero exits.",
+    "required_limit": "This is a bounded Linux/KVM qualification result for one exact board and profile. It is not Beryllium execution or hardware validation, not retained R8 evidence, not H0 row resolution, not H1-H4 authorization, not a development-kernel/BSP selection, and not evidence for nested virtualization, endurance, performance, thermal behavior, VFIO, DMA, libvirt, UEFI, a persistent Fedora guest, general K3 support, KVM correctness, production readiness, formal verification, publication, or release.",
+    "non_claims": [
+      "beryllium-execution",
+      "beryllium-k3-hardware-validation",
+      "r8-hardware-evidence",
+      "r8-h0-row-resolution",
+      "r8-h1-h4-authorization",
+      "development-kernel-bsp-selection",
+      "nested-virtualization-or-guest-h",
+      "endurance-reliability-or-availability",
+      "performance-latency-or-throughput",
+      "thermal-power-or-side-channel-behavior",
+      "vfio-iommu-iopmp-or-dma",
+      "libvirt-or-uefi",
+      "persistent-fedora-guest",
+      "general-k3-support",
+      "kvm-linux-qemu-firmware-hardware-or-guest-correctness",
+      "production-readiness",
+      "formal-verification-or-certification",
+      "push-tag-publication-release-or-migration"
+    ]
+  }
+}

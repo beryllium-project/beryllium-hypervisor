@@ -1,0 +1,37 @@
+schema=be-mvp-evidence-v1
+kind=board
+campaign=20261030-com260-rc2
+launcher=uboot-autoboot-nvme
+source_commit=6dd81ee39dd620a1815605c50c9c916894c9974c
+source_tree=clean
+lock_sha256=2f1b732dcf2415c7a4b25c5008ab06bae4c9af0fc3804028772f16a693e47d70
+lock_check_status=0
+closure_sha256=2875ddd675b49c390159d55ac2847a9eb1990061bfe972693bd8260b2d123009
+scenario=two-guests scenario_sha256=9978db42902d36734e70ec43e62c5682ddb558f62ce01f4a5cca862be3f1d8b2
+scenario=te-poc scenario_sha256=4fe5164591ab64846d3b3a6a9ef4a0b2986d111c5b2e4df353c4e7a853699c17 authority-report.json=fcbf210072d30c0d865c5219cc13a1d47ff17825bdd178e463e2c34d4beafdae policy.te=4a1fac2bdea04cbcf4f3248c21cb41cf2823625b46d284c45d9c69b6a25b8b2d
+scenario=anchor scenario_sha256=533183f4f60503531e7c2b3fbc9be1c10c4a63f7bd329403dab481d655e61f4d authority-report.json=418797a29bf59a3c2ed0f2df81c95b7eeb21ae98f8d542e73bffefdae4df0ac6 policy.te=bfecfa923eaa64782cca2f662091de1329eba2c969408a59f04a8c0234fc79aa
+policy_check=BE_MVP_POLICY: PASS scenario=te-poc grants=6 flows=1 checks=8 config=9cf028073e08e0d3fe8f9f0e92f05c78e5af3e571c129748618b1c76883d457d
+policy_check_anchor=BE_MVP_POLICY: PASS scenario=anchor grants=12 flows=2 checks=8 config=336bfddc743280ab5b845ccf197c6d35f29e5945450ce77c0ec0745eb2e5430e measurement=e0c6bd23670e980c4a491b622205ea0c33a3417da27c3cb4a36630ddef9e936b
+images=253
+staging=PASS
+env_install=PASS
+env_records=PASS
+env_resets=none
+env_restore=PASS
+env_select_01=PASS
+env_select_02=PASS
+env_select_03=PASS
+env_select_04=PASS
+env_select_05=PASS
+env_select_06=PASS
+env_select_07=PASS
+env_select_08=PASS
+env_select_09=PASS
+env_select_10=PASS
+env_select_11=PASS
+env_select_12=PASS
+env_select_13=PASS
+unplanned_boots=2
+runs=20 pass=20 fail=0 refused=0 stop=0
+attribution=PASS=20 FAIL=0
+resets=human=0 k3ctl=20

@@ -1,0 +1,92 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+//
+// Purpose: the WP arm's round 1 on Leaf A (planning/mvp-m8-plan.md, D-7
+//          item 5; specification planning/mvp-m8-specifications.md section
+//          4 as its Revision 1 states it, SHA-256
+//          aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b,
+//          accepted at 93a8d136), imported after mvp-sbi-leaf.acsl, for the
+//          true goals round 0 leaves open: the postconditions on the leaf's
+//          tail (the first run's five that Alt-Ergo did not finish in 60 s,
+//          D_inject_vsstatus_spp, _spie, _sie, _rest, and D_resume_pc; and
+//          D_E3, D_E6, D_E7, D_stval, D_inject_vstval when the host is
+//          loaded). On every accepting path each such goal carries the
+//          leaf's fifteen stores to *out after the compound literal's
+//          copy, and each store's value, and the values inject_vsstatus
+//          and resume_pc are computed from, are read from the record after
+//          some of them: Alt-Ergo must carry the record's separation from
+//          out through the chain. Added, each a goal: a ladder of
+//          assertions D_reads_N, each saying the record's nine words the
+//          stores read are their entry values, before the first store and
+//          after every few, so that each rung needs only the stores since
+//          the one before and the reads after a rung are their entry
+//          values (Qed then substitutes them and discharges most paths).
+// Trust:   no requires is added; every clause is proved or recorded open.
+//          `at N:` is the ACSL importer's placement before the function's
+//          statement N in its own numbering; the line before each says
+//          which statement (`// anchor:`, its first line as Frama-C prints
+//          the normalized code), and tools/wp-arm.py resolves N from it for
+//          the leaf and each mutant (whose numbering a change of control
+//          flow moves), refusing a committed N the leaf's statement does
+//          not have. The leaf never writes the record, so every rung holds
+//          wherever it is placed.
+// Scope:   Leaf A only.
+// wp-options: -wp-split
+// wp-lemma-options: -wp-auto=wp:split,wp:bitwised,wp:bitrange,wp:bittestrange,wp:bitshift,wp:range
+
+function be_mvp_denial_decide:
+  // anchor: before out->cause = frame->scause;
+  at 74:
+    assert D_reads_74: record->frame.scause == \at(record->frame.scause, Pre) &&
+      record->frame.htval == \at(record->frame.htval, Pre) &&
+      record->htinst == \at(record->htinst, Pre) &&
+      record->frame.stval == \at(record->frame.stval, Pre) &&
+      record->frame.sepc == \at(record->frame.sepc, Pre) &&
+      record->vsstatus == \at(record->vsstatus, Pre) &&
+      record->frame.vstvec == \at(record->frame.vstvec, Pre) &&
+      record->time == \at(record->time, Pre) &&
+      record->hstatus == \at(record->hstatus, Pre);
+  // anchor: before out->htinst = record->htinst;
+  at 78:
+    assert D_reads_78: record->frame.scause == \at(record->frame.scause, Pre) &&
+      record->frame.htval == \at(record->frame.htval, Pre) &&
+      record->htinst == \at(record->htinst, Pre) &&
+      record->frame.stval == \at(record->frame.stval, Pre) &&
+      record->frame.sepc == \at(record->frame.sepc, Pre) &&
+      record->vsstatus == \at(record->vsstatus, Pre) &&
+      record->frame.vstvec == \at(record->frame.vstvec, Pre) &&
+      record->time == \at(record->time, Pre) &&
+      record->hstatus == \at(record->hstatus, Pre);
+  // anchor: before out->vstvec = frame->vstvec;
+  at 82:
+    assert D_reads_82: record->frame.scause == \at(record->frame.scause, Pre) &&
+      record->frame.htval == \at(record->frame.htval, Pre) &&
+      record->htinst == \at(record->htinst, Pre) &&
+      record->frame.stval == \at(record->frame.stval, Pre) &&
+      record->frame.sepc == \at(record->frame.sepc, Pre) &&
+      record->vsstatus == \at(record->vsstatus, Pre) &&
+      record->frame.vstvec == \at(record->frame.vstvec, Pre) &&
+      record->time == \at(record->time, Pre) &&
+      record->hstatus == \at(record->hstatus, Pre);
+  // anchor: after out->inject_vsepc = frame->sepc;
+  at 87:
+    assert D_reads_87: record->frame.scause == \at(record->frame.scause, Pre) &&
+      record->frame.htval == \at(record->frame.htval, Pre) &&
+      record->htinst == \at(record->htinst, Pre) &&
+      record->frame.stval == \at(record->frame.stval, Pre) &&
+      record->frame.sepc == \at(record->frame.sepc, Pre) &&
+      record->vsstatus == \at(record->vsstatus, Pre) &&
+      record->frame.vstvec == \at(record->frame.vstvec, Pre) &&
+      record->time == \at(record->time, Pre) &&
+      record->hstatus == \at(record->hstatus, Pre);
+  // anchor: before out->resume_pc = frame->vstvec & ~ 3UL;
+  at 97:
+    assert D_reads_97: record->frame.scause == \at(record->frame.scause, Pre) &&
+      record->frame.htval == \at(record->frame.htval, Pre) &&
+      record->htinst == \at(record->htinst, Pre) &&
+      record->frame.stval == \at(record->frame.stval, Pre) &&
+      record->frame.sepc == \at(record->frame.sepc, Pre) &&
+      record->vsstatus == \at(record->vsstatus, Pre) &&
+      record->frame.vstvec == \at(record->frame.vstvec, Pre) &&
+      record->time == \at(record->time, Pre) &&
+      record->hstatus == \at(record->hstatus, Pre);

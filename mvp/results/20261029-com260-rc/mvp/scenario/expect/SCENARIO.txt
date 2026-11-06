@@ -1,0 +1,16 @@
+scenario two-guests sha256=9978db42902d36734e70ec43e62c5682ddb558f62ce01f4a5cca862be3f1d8b2
+expect exit-budget.json
+expect hart-start.json
+expect init-exit.json
+expect no-sstc.json
+expect payload.json
+expect probe-platform.json
+expect probe-vmid-distinct.json
+expect probe-vmid-shared.json
+expect rdcycle.json
+expect ring-full.json
+expect run-timeout.json
+expect sbi-3.0.json
+expect sbi-time.json
+expect shim-rule.json
+expect two-guests.json

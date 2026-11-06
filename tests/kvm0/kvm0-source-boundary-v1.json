@@ -1,0 +1,139 @@
+{
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "schema": "be-k3-kvm0-source-boundary-v1",
+  "accepted_plan": {
+    "target": "5227266ceddb664a1595e22e5a92da57a013652f",
+    "status": "accepted",
+    "gate": "K0-P"
+  },
+  "implementation": {
+    "base": "e4e0209f19596e0cbccbb6bb4de84c50bbd11f92",
+    "head_at_authorization": "e4e0209f19596e0cbccbb6bb4de84c50bbd11f92",
+    "gate": "K0-I",
+    "authorization": "offline-tooling-only",
+    "paths": [
+      {
+        "path": "tests/kvm0/Makefile",
+        "mode": "100644"
+      },
+      {
+        "path": "tests/kvm0/README.md",
+        "mode": "100644"
+      },
+      {
+        "path": "tests/kvm0/check-bundle.mjs",
+        "mode": "100644"
+      },
+      {
+        "path": "tests/kvm0/check-contract.mjs",
+        "mode": "100644"
+      },
+      {
+        "path": "tests/kvm0/check-report.mjs",
+        "mode": "100644"
+      },
+      {
+        "path": "tests/kvm0/generate-report.mjs",
+        "mode": "100644"
+      },
+      {
+        "path": "tests/kvm0/kvm0-contract-v1.json",
+        "mode": "100644"
+      },
+      {
+        "path": "tests/kvm0/kvm0-source-boundary-v1.json",
+        "mode": "100644"
+      },
+      {
+        "path": "tests/kvm0/run-make.sh",
+        "mode": "100755"
+      },
+      {
+        "path": "tests/kvm0/test-rejections.mjs",
+        "mode": "100644"
+      }
+    ]
+  },
+  "source_relation": {
+    "kvm_base": "a5f72fd298f6bd02e6d30599dafb43cfa16576b6",
+    "prepared_candidate_commit": "c1c7e254143f99d4ad3cdbf25021a76364d6d75a",
+    "prepared_candidate_tree": "a5f77b5acef26d8975fe756512edbd2413fa1239",
+    "board_enablement_patch_count": 14,
+    "host_release": "7.3.0-rc4-k3-kvm-host-a1",
+    "required_patch_order": "1-through-14-contiguous",
+    "replacement_rule": "explicit-responsible-human-review-required"
+  },
+  "eligibility": {
+    "routes": [
+      "exact-git-target",
+      "approved-bundle"
+    ],
+    "exact_git_target": {
+      "full_commit": true,
+      "full_tree": true,
+      "clean_index": true,
+      "clean_worktree": true,
+      "untracked_result_inputs": 0,
+      "exact_changed_path_mode_inventory": true,
+      "transport_archive_binding": true,
+      "source_owner_statement": "decision-neutral"
+    },
+    "approved_bundle": {
+      "external_archive_sha256": true,
+      "external_archive_byte_size": true,
+      "external_member_manifest": true,
+      "source_commit_and_tree": true,
+      "restricted_map_coverage": true,
+      "responsible_human_approval": true
+    }
+  },
+  "provenance": {
+    "ordinary_identifier_pattern": "^kvm0-prov-v1-[0-9a-f]{32}$",
+    "restricted_map_path": "restricted/provenance-map-v1.json",
+    "restricted_map_mode": "0600",
+    "mapping_hash_bound": true,
+    "mapping_retained_through": "K0-R",
+    "ordinary_bundle_human_identity": "forbidden",
+    "publication_export": "excluded"
+  },
+  "missing_inputs": [
+    "immutable-source-owner-target-or-approved-bundle",
+    "exact-16-command-selftest-set",
+    "approved-single-skip-identity-marker-and-reason",
+    "complete-restricted-provenance-map",
+    "exact-live-fdt-sha256",
+    "exact-live-initramfs-sha256",
+    "complete-rom-uboot-opensbi-firmware-provenance",
+    "complete-qemu-10.2.2-source-build-dependency-provenance",
+    "complete-host-rootfs-package-closure",
+    "exact-command-manifest-sha256",
+    "k0-x-execution-authorization"
+  ],
+  "state": {
+    "k0p": "satisfied",
+    "k0i": "authorized-offline-tooling-only",
+    "k0s": "blocked-source-evidence-not-ready",
+    "k0x": "blocked-not-authorized",
+    "k0r": "blocked-no-result",
+    "kvm0": "NOT-RUN",
+    "beryllium_k3_hardware": "NOT-RUN",
+    "r8_k3_hardware": "NOT-RUN",
+    "r8_h0_row_resolution": "none",
+    "development_kernel_bsp": "UNDECIDED",
+    "publication": "blocked"
+  },
+  "non_claims": [
+    "no-k0-s-source-readiness",
+    "no-k0-x-native-execution",
+    "no-k0-r-result-acceptance",
+    "no-k3-or-private-source-access",
+    "no-beryllium-hardware-result",
+    "no-r8-hardware-result",
+    "no-h0-row-resolution",
+    "no-development-kernel-or-bsp-selection",
+    "no-persistent-fedora-guest-qualification",
+    "no-root-integration-or-pin-change",
+    "no-publication-or-release-authority"
+  ]
+}

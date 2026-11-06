@@ -1,0 +1,7 @@
+attempt_utc=2026-10-31T04:23:05Z
+be_image=be-mvp-te-poc-reader-write-gcc.img
+printenv_be_image=be_image=be-mvp-te-poc-reader-write-gcc.img
+select-10-check_sha256=708d428cb00fa8bc9c166633186b6f13a5befe0bcd20c3247aa98126e531d971
+select_check=PASS
+saveenv=OK
+verdict=PASS

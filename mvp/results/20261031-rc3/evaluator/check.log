@@ -1,0 +1,541 @@
+/usr/bin/python3 -B <repo>/mvp/tools/lock/tool-lock.py --self-test
+BE_MVP_LOCK_SELF_TEST: PASS cases=50
+/usr/bin/python3 -B <repo>/mvp/tools/evaluator/fetch-closure.py --self-test
+BE_MVP_FETCH_SELF_TEST: PASS cases=39
+/usr/bin/python3 -B <repo>/mvp/tools/lock/tool-lock.py check
+BE_MVP_LOCK: PASS roles=26 host_only_skipped=6 closure=259 lock_sha256=2f1b732dcf24
+set -e; for script in <repo>/mvp/mvp <repo>/mvp/tools/build-guest.sh <repo>/mvp/tools/k3-campaign.sh <repo>/mvp/tools/k3-console.sh <repo>/mvp/tools/k3-env.sh <repo>/mvp/tools/k3-make-partition.sh <repo>/mvp/tools/k3-preflight.sh <repo>/mvp/tools/k3-run.sh <repo>/mvp/tools/k3-stage.sh <repo>/mvp/tools/run-reference-boot.sh <repo>/mvp/tools/evaluator/evaluate.sh <repo>/mvp/tests/run-qemu.sh <repo>/mvp/tests/run-tool-dry-run.sh <repo>/mvp/tests/test-k3-make-partition.sh <repo>/mvp/tests/uboot-rehearsal.sh; do bash -n "$script"; done
+shellcheck <repo>/mvp/mvp <repo>/mvp/tools/build-guest.sh <repo>/mvp/tools/k3-campaign.sh <repo>/mvp/tools/k3-console.sh <repo>/mvp/tools/k3-env.sh <repo>/mvp/tools/k3-make-partition.sh <repo>/mvp/tools/k3-preflight.sh <repo>/mvp/tools/k3-run.sh <repo>/mvp/tools/k3-stage.sh <repo>/mvp/tools/run-reference-boot.sh <repo>/mvp/tools/evaluator/evaluate.sh <repo>/mvp/tests/run-qemu.sh <repo>/mvp/tests/run-tool-dry-run.sh <repo>/mvp/tests/test-k3-make-partition.sh <repo>/mvp/tests/uboot-rehearsal.sh
+/usr/bin/python3 -B -c 'import ast, sys; [ast.parse(open(f).read(), f) for f in sys.argv[1:]]' \
+	<repo>/mvp/tools/budgets.py <repo>/mvp/tools/claim-ledger.py <repo>/mvp/tools/evidence.py <repo>/mvp/tools/gen-dts.py <repo>/mvp/tools/gen-payload.py <repo>/mvp/tools/gen-scenario.py <repo>/mvp/tools/guest-pins.py <repo>/mvp/tools/guest-reference-check.py <repo>/mvp/tools/k3-uboot.py <repo>/mvp/tools/make-control.py <repo>/mvp/tools/platform-probe.py <repo>/mvp/tools/platform-record.py <repo>/mvp/tools/policy-check.py <repo>/mvp/tools/port.py <repo>/mvp/tools/rc-record.py <repo>/mvp/tools/lock/tool-lock.py <repo>/mvp/tools/evaluator/fetch-closure.py <repo>/mvp/tests/check-capture.py <repo>/mvp/tests/check-image.py <repo>/mvp/tests/fake-board.py <repo>/mvp/tests/fake-k3ctl.py <repo>/mvp/tests/fake-uboot.py <repo>/mvp/tests/test-platform-probe.py
+/usr/bin/python3 -B <repo>/mvp/tools/make-control.py --self-test
+BE_MVP_MAKE_CONTROL_SELF_TEST: PASS cases=59
+mkdir -p <repo>/build/mvp/records/policy
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tools/policy-check.py --self-test | \
+	tee <repo>/build/mvp/records/policy/self-test.txt
+BE_MVP_POLICY_SELF_TEST: PASS cases=45
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tools/policy-check.py --mutation-test | \
+	tee <repo>/build/mvp/records/policy/mutation-test.txt
+ok te-poc A1: a rule naming an undeclared type: rejected by A1
+ok te-poc A1: an object left unlabeled (hart_region): rejected by A1
+ok te-poc A2: a rule whose target labels no object: rejected by A2
+ok te-poc A3 alone: allow writer_t reader_mem_t : memory { map };, need included: rejected by A3
+ok te-poc A4 alone: the writer's channel rule widened to { send receive }: rejected by A4
+ok te-poc A5 and A6: a reader write rule on shared_wr_t, need included: rejected by A5,A6
+ok te-poc A8 alone: the manifest granting G0 execute on shared_page: rejected by A8
+ok anchor A3 alone: a domain rule on its own type, need included: rejected by A3
+ok anchor A2 and A3: a domain rule on a type that labels no domain: rejected by A2,A3
+ok anchor A8 alone: a management grant without a rule (G1 pauses G0): rejected by A8
+ok anchor A3 alone: the secret readable by the host, need included: rejected by A3
+ok anchor A3, A6, and A8: a channel rule without memory (prot_t on req_t): rejected by A3,A6,A8
+ok anchor A5 alone: a second writer on the response page, need included: rejected by A5
+ok anchor A7 alone: a domain permission beyond pause and terminate: rejected by A7
+BE_MVP_POLICY_MUTATIONS: PASS mutations=14 rejected=14
+mkdir -p <repo>/build/mvp/records/policy
+/usr/bin/python3 -B <repo>/mvp/tools/policy-check.py --scenario <repo>/mvp/scenarios/te-poc --layout <repo>/mvp/src/mvp-layout.h  --report <repo>/build/mvp/records/policy/te-poc.json > <repo>/build/mvp/records/policy/te-poc.txt || { cat <repo>/build/mvp/records/policy/te-poc.txt; exit 1; }
+cmp <repo>/build/mvp/records/policy/te-poc.json <repo>/build/mvp/gen/te-poc/authority-report.json
+tail -n 1 <repo>/build/mvp/records/policy/te-poc.txt
+BE_MVP_POLICY: PASS scenario=te-poc grants=6 flows=1 checks=8 config=5c9678f15a7e9906b5822b7e1fe4642c7b16d53970a3e82a18f6f167af7ac551
+set -e; for negative in undeclared-flow grant-without-rule; do record=<repo>/build/mvp/records/policy/$negative; out=<repo>/build/mvp/policy-negatives/$negative; rm -rf -- "$out"; /usr/bin/python3 -B <repo>/mvp/tools/policy-check.py --scenario <repo>/mvp/scenarios/te-poc --layout <repo>/mvp/src/mvp-layout.h  --report "$record.json" --negative "$negative" > "$record.txt" || { cat "$record.txt"; exit 1; }; if /usr/bin/python3 -B <repo>/mvp/tools/gen-scenario.py --scenario <repo>/mvp/scenarios/te-poc/scenario.json --layout <repo>/mvp/src/mvp-layout.h --dts-tool <repo>/mvp/tools/gen-dts.py --policy-tool <repo>/mvp/tools/policy-check.py  --negative "$negative" --out "$out" > "$record-gen.txt"; then echo "BE_MVP_POLICY_NEGATIVES: FAIL te-poc $negative: generated"; exit 1; fi; grep -q '^BE_MVP_SCENARIO: FAIL the policy check fails, so no header: ' "$record-gen.txt" || { cat "$record-gen.txt"; exit 1; }; test ! -e "$out" || { echo "BE_MVP_POLICY_NEGATIVES: FAIL te-poc $negative: wrote $out"; exit 1; }; tail -n 1 "$record.txt"; done
+BE_MVP_POLICY_NEGATIVE: PASS name=undeclared-flow fails=A4,A5,A6 source_none=0 undeclared=0
+BE_MVP_POLICY_NEGATIVE: PASS name=grant-without-rule fails=A8 source_none=1 undeclared=1
+/usr/bin/python3 -B <repo>/mvp/tools/policy-check.py --scenario <repo>/mvp/scenarios/anchor --layout <repo>/mvp/src/mvp-layout.h --kernel <repo>/build/mvp/guest/Image --dtb <repo>/build/mvp/guest/mvp-guest-g1-anchor.dtb --report <repo>/build/mvp/records/policy/anchor.json > <repo>/build/mvp/records/policy/anchor.txt || { cat <repo>/build/mvp/records/policy/anchor.txt; exit 1; }
+cmp <repo>/build/mvp/records/policy/anchor.json <repo>/build/mvp/gen/anchor/authority-report.json
+tail -n 1 <repo>/build/mvp/records/policy/anchor.txt
+BE_MVP_POLICY: PASS scenario=anchor grants=12 flows=2 checks=8 config=769c374673a977e477e42d164274102052c2006ba0d4a6a1b03c40d932c610f4 measurement=f5c39b63dcd6b0a6ced0873dc6cbb34ba3cda16d7fc95436cfa7bdd6abe93ee0
+set -e; for negative in grant-without-rule secret-flow; do record=<repo>/build/mvp/records/policy/anchor-$negative; out=<repo>/build/mvp/policy-negatives/anchor-$negative; rm -rf -- "$out"; /usr/bin/python3 -B <repo>/mvp/tools/policy-check.py --scenario <repo>/mvp/scenarios/anchor --layout <repo>/mvp/src/mvp-layout.h --kernel <repo>/build/mvp/guest/Image --dtb <repo>/build/mvp/guest/mvp-guest-g1-anchor.dtb --report "$record.json" --negative "$negative" > "$record.txt" || { cat "$record.txt"; exit 1; }; if /usr/bin/python3 -B <repo>/mvp/tools/gen-scenario.py --scenario <repo>/mvp/scenarios/anchor/scenario.json --layout <repo>/mvp/src/mvp-layout.h --dts-tool <repo>/mvp/tools/gen-dts.py --policy-tool <repo>/mvp/tools/policy-check.py --kernel <repo>/build/mvp/guest/Image --dtb <repo>/build/mvp/guest/mvp-guest-g1-anchor.dtb --negative "$negative" --out "$out" > "$record-gen.txt"; then echo "BE_MVP_POLICY_NEGATIVES: FAIL anchor $negative: generated"; exit 1; fi; grep -q '^BE_MVP_SCENARIO: FAIL the policy check fails, so no header: ' "$record-gen.txt" || { cat "$record-gen.txt"; exit 1; }; test ! -e "$out" || { echo "BE_MVP_POLICY_NEGATIVES: FAIL anchor $negative: wrote $out"; exit 1; }; tail -n 1 "$record.txt"; done
+BE_MVP_POLICY_NEGATIVE: PASS name=grant-without-rule fails=A8 source_none=1 undeclared=0
+BE_MVP_POLICY_NEGATIVE: PASS name=secret-flow fails=A3 source_none=0 undeclared=0
+BE_MVP_POLICY_NEGATIVES: PASS negatives=4
+/usr/bin/make --no-print-directory -C <repo>/bringup/k3-b2 port
+make[1]: Nothing to be done for 'port'.
+/usr/bin/python3 -B <repo>/mvp/tools/port.py --check <repo> <repo>/build/k3-b2/port \
+	<repo>/build/mvp/port
+BE_MVP_PORT: CHECK PASS files=32 changed=5 rules=55 substitutions=59 b2_manifest=7c43e75b2066
+/usr/bin/python3 -B <repo>/mvp/tools/gen-dts.py --layout <repo>/mvp/src/mvp-layout.h \
+	--template <repo>/mvp/guest/mvp-guest.dts.in --self-test \
+	--plan <repo>/planning/mvp-m0-plan.md \
+	--b6-plan <repo>/planning/k3-b6-plan.md
+BE_MVP_DTS_SELF_TEST: PASS cases=79 dtbs=12 variants=7
+/usr/bin/python3 -B <repo>/mvp/tools/guest-pins.py --self-test \
+	--layout <repo>/mvp/src/mvp-layout.h
+BE_MVP_GUEST_PINS_SELF_TEST: PASS cases=60
+/usr/bin/python3 -B <repo>/mvp/tools/guest-reference-check.py --self-test
+BE_MVP_REFERENCE_SELF_TEST: PASS cases=71
+test "$(/usr/bin/python3 -B <repo>/mvp/tools/gen-dts.py --layout <repo>/mvp/src/mvp-layout.h --query dtbs | cut -d' ' -f1 | sort)" = \
+	"$(printf '%s\n' mvp-guest-g0.dtb mvp-guest-g1.dtb mvp-guest-g1-init-exit.dtb mvp-guest-g0-rdcycle.dtb mvp-guest-g0-sbi-time.dtb mvp-guest-g1-sbi-time.dtb mvp-guest-g0-reference.dtb mvp-guest-g1-reference.dtb mvp-guest-g0-te-poc.dtb mvp-guest-g1-te-poc.dtb mvp-guest-g0-anchor.dtb mvp-guest-g1-anchor.dtb | sort)"
+mkdir -p <repo>/build/mvp/guest/host
+gcc -B/usr/bin/ -std=gnu11 -O2 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -o <repo>/build/mvp/guest/host/mvp-guest-id-test-gcc <repo>/mvp/guest/mvp-guest-id-test.c && <repo>/build/mvp/guest/host/mvp-guest-id-test-gcc ><repo>/build/mvp/guest/host/mvp-guest-id-test-gcc.txt && clang --ld-path=/usr/bin/ld -std=gnu11 -O2 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -o <repo>/build/mvp/guest/host/mvp-guest-id-test-clang <repo>/mvp/guest/mvp-guest-id-test.c && <repo>/build/mvp/guest/host/mvp-guest-id-test-clang ><repo>/build/mvp/guest/host/mvp-guest-id-test-clang.txt && true
+cmp -- <repo>/build/mvp/guest/host/mvp-guest-id-test-gcc.txt <repo>/build/mvp/guest/host/mvp-guest-id-test-clang.txt
+test "$(cat -- <repo>/build/mvp/guest/host/mvp-guest-id-test-gcc.txt)" = 'BE_MVP_GUEST_ID_TEST: PASS cases=103'
+BE_MVP_GUEST_ID_TEST: PASS cases=103 gcc=clang
+/usr/bin/python3 -B <repo>/mvp/tools/guest-pins.py --check \
+	--pins <repo>/mvp/guest/pins.txt --dir <repo>/build/mvp/guest \
+	--layout <repo>/mvp/src/mvp-layout.h --gcc riscv64-linux-gnu-gcc
+BE_MVP_GUEST_PINS: PASS files=15 image_bytes=1899716 image_size=0x203fb0 text_offset=0x200000 init_bytes=11408 module_bytes=5736 dtb_bytes=4096
+BE_MVP_GUEST_PINS: banner=Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+set -e;  <repo>/build/mvp/host/gcc/ring-test  > <repo>/build/mvp/host/ring-gcc.out; <repo>/build/mvp/host/clang/ring-test  > <repo>/build/mvp/host/ring-clang.out; cmp <repo>/build/mvp/host/ring-gcc.out <repo>/build/mvp/host/ring-clang.out; test "$(wc -l < <repo>/build/mvp/host/ring-gcc.out)" = 3; grep -qx 'BE_MVP_RING_CHECK: PASS' <repo>/build/mvp/host/ring-gcc.out; grep -qx 'BE_MVP_RING_CHECK: scenarios=160' <repo>/build/mvp/host/ring-gcc.out; grep -qx 'BE_MVP_RING_CHECK: assertions=409414' <repo>/build/mvp/host/ring-gcc.out; echo "BE_MVP_HOST: PASS ring scenarios=160 assertions=409414 gcc=clang";  <repo>/build/mvp/host/gcc/hart-test  > <repo>/build/mvp/host/hart-gcc.out; <repo>/build/mvp/host/clang/hart-test  > <repo>/build/mvp/host/hart-clang.out; cmp <repo>/build/mvp/host/hart-gcc.out <repo>/build/mvp/host/hart-clang.out; test "$(wc -l < <repo>/build/mvp/host/hart-gcc.out)" = 3; grep -qx 'BE_MVP_HART_CHECK: PASS' <repo>/build/mvp/host/hart-gcc.out; grep -qx 'BE_MVP_HART_CHECK: scenarios=843' <repo>/build/mvp/host/hart-gcc.out; grep -qx 'BE_MVP_HART_CHECK: assertions=176870' <repo>/build/mvp/host/hart-gcc.out; echo "BE_MVP_HOST: PASS hart scenarios=843 assertions=176870 gcc=clang";  <repo>/build/mvp/host/gcc/sbi-test  > <repo>/build/mvp/host/sbi-gcc.out; <repo>/build/mvp/host/clang/sbi-test  > <repo>/build/mvp/host/sbi-clang.out; cmp <repo>/build/mvp/host/sbi-gcc.out <repo>/build/mvp/host/sbi-clang.out; test "$(wc -l < <repo>/build/mvp/host/sbi-gcc.out)" = 3; grep -qx 'BE_MVP_SBI_CHECK: PASS' <repo>/build/mvp/host/sbi-gcc.out; grep -qx 'BE_MVP_SBI_CHECK: scenarios=130' <repo>/build/mvp/host/sbi-gcc.out; grep -qx 'BE_MVP_SBI_CHECK: assertions=16208' <repo>/build/mvp/host/sbi-gcc.out; echo "BE_MVP_HOST: PASS sbi scenarios=130 assertions=16208 gcc=clang";  <repo>/build/mvp/host/gcc/gstage-test  > <repo>/build/mvp/host/gstage-gcc.out; <repo>/build/mvp/host/clang/gstage-test  > <repo>/build/mvp/host/gstage-clang.out; cmp <repo>/build/mvp/host/gstage-gcc.out <repo>/build/mvp/host/gstage-clang.out; test "$(wc -l < <repo>/build/mvp/host/gstage-gcc.out)" = 3; grep -qx 'BE_MVP_GSTAGE_CHECK: PASS' <repo>/build/mvp/host/gstage-gcc.out; grep -qx 'BE_MVP_GSTAGE_CHECK: scenarios=44' <repo>/build/mvp/host/gstage-gcc.out; grep -qx 'BE_MVP_GSTAGE_CHECK: assertions=39647' <repo>/build/mvp/host/gstage-gcc.out; echo "BE_MVP_HOST: PASS gstage scenarios=44 assertions=39647 gcc=clang";  <repo>/build/mvp/host/gcc/payload-test <repo>/build/mvp/guest/Image <repo>/build/mvp/guest/mvp-guest-g0.dtb <repo>/build/mvp/guest/mvp-guest-g1.dtb <repo>/build/mvp/guest/mvp-guest-g0-rdcycle.dtb <repo>/build/mvp/guest/mvp-guest-g0-sbi-time.dtb <repo>/build/mvp/guest/mvp-guest-g1-init-exit.dtb <repo>/build/mvp/guest/mvp-guest-g1-sbi-time.dtb <repo>/build/mvp/guest/mvp-guest-g0-te-poc.dtb <repo>/build/mvp/guest/mvp-guest-g1-te-poc.dtb <repo>/build/mvp/guest/mvp-guest-g0-anchor.dtb <repo>/build/mvp/guest/mvp-guest-g1-anchor.dtb > <repo>/build/mvp/host/payload-gcc.out; <repo>/build/mvp/host/clang/payload-test <repo>/build/mvp/guest/Image <repo>/build/mvp/guest/mvp-guest-g0.dtb <repo>/build/mvp/guest/mvp-guest-g1.dtb <repo>/build/mvp/guest/mvp-guest-g0-rdcycle.dtb <repo>/build/mvp/guest/mvp-guest-g0-sbi-time.dtb <repo>/build/mvp/guest/mvp-guest-g1-init-exit.dtb <repo>/build/mvp/guest/mvp-guest-g1-sbi-time.dtb <repo>/build/mvp/guest/mvp-guest-g0-te-poc.dtb <repo>/build/mvp/guest/mvp-guest-g1-te-poc.dtb <repo>/build/mvp/guest/mvp-guest-g0-anchor.dtb <repo>/build/mvp/guest/mvp-guest-g1-anchor.dtb > <repo>/build/mvp/host/payload-clang.out; cmp <repo>/build/mvp/host/payload-gcc.out <repo>/build/mvp/host/payload-clang.out; test "$(wc -l < <repo>/build/mvp/host/payload-gcc.out)" = 3; grep -qx 'BE_MVP_PAYLOAD_CHECK: PASS' <repo>/build/mvp/host/payload-gcc.out; grep -qx 'BE_MVP_PAYLOAD_CHECK: scenarios=8' <repo>/build/mvp/host/payload-gcc.out; grep -qx 'BE_MVP_PAYLOAD_CHECK: assertions=646' <repo>/build/mvp/host/payload-gcc.out; echo "BE_MVP_HOST: PASS payload scenarios=8 assertions=646 gcc=clang";  <repo>/build/mvp/host/gcc/deny-test  > <repo>/build/mvp/host/deny-gcc.out; <repo>/build/mvp/host/clang/deny-test  > <repo>/build/mvp/host/deny-clang.out; cmp <repo>/build/mvp/host/deny-gcc.out <repo>/build/mvp/host/deny-clang.out; test "$(wc -l < <repo>/build/mvp/host/deny-gcc.out)" = 3; grep -qx 'BE_MVP_DENY_CHECK: PASS' <repo>/build/mvp/host/deny-gcc.out; grep -qx 'BE_MVP_DENY_CHECK: scenarios=38' <repo>/build/mvp/host/deny-gcc.out; grep -qx 'BE_MVP_DENY_CHECK: assertions=2933' <repo>/build/mvp/host/deny-gcc.out; echo "BE_MVP_HOST: PASS deny scenarios=38 assertions=2933 gcc=clang";  <repo>/build/mvp/host/gcc/sha256-test  > <repo>/build/mvp/host/sha256-gcc.out; <repo>/build/mvp/host/clang/sha256-test  > <repo>/build/mvp/host/sha256-clang.out; cmp <repo>/build/mvp/host/sha256-gcc.out <repo>/build/mvp/host/sha256-clang.out; test "$(wc -l < <repo>/build/mvp/host/sha256-gcc.out)" = 3; grep -qx 'BE_MVP_SHA256_CHECK: PASS' <repo>/build/mvp/host/sha256-gcc.out; grep -qx 'BE_MVP_SHA256_CHECK: scenarios=16' <repo>/build/mvp/host/sha256-gcc.out; grep -qx 'BE_MVP_SHA256_CHECK: assertions=626' <repo>/build/mvp/host/sha256-gcc.out; echo "BE_MVP_HOST: PASS sha256 scenarios=16 assertions=626 gcc=clang";  <repo>/build/mvp/host/gcc/config-test  > <repo>/build/mvp/host/config-gcc.out; <repo>/build/mvp/host/clang/config-test  > <repo>/build/mvp/host/config-clang.out; cmp <repo>/build/mvp/host/config-gcc.out <repo>/build/mvp/host/config-clang.out; test "$(wc -l < <repo>/build/mvp/host/config-gcc.out)" = 3; grep -qx 'BE_MVP_CONFIG_CHECK: PASS' <repo>/build/mvp/host/config-gcc.out; grep -qx 'BE_MVP_CONFIG_CHECK: scenarios=36' <repo>/build/mvp/host/config-gcc.out; grep -qx 'BE_MVP_CONFIG_CHECK: assertions=139' <repo>/build/mvp/host/config-gcc.out; echo "BE_MVP_HOST: PASS config scenarios=36 assertions=139 gcc=clang";
+BE_MVP_HOST: PASS ring scenarios=160 assertions=409414 gcc=clang
+BE_MVP_HOST: PASS hart scenarios=843 assertions=176870 gcc=clang
+BE_MVP_HOST: PASS sbi scenarios=130 assertions=16208 gcc=clang
+BE_MVP_HOST: PASS gstage scenarios=44 assertions=39647 gcc=clang
+BE_MVP_HOST: PASS payload scenarios=8 assertions=646 gcc=clang
+BE_MVP_HOST: PASS deny scenarios=38 assertions=2933 gcc=clang
+BE_MVP_HOST: PASS sha256 scenarios=16 assertions=626 gcc=clang
+BE_MVP_HOST: PASS config scenarios=36 assertions=139 gcc=clang
+BE_MVP_TARGET: PASS objects=14 gcc clang
+set -e; for guest in 0 1; do \
+	case $guest in 0) dtb=<repo>/build/mvp/guest/mvp-guest-g0-reference.dtb ;; *) dtb=<repo>/build/mvp/guest/mvp-guest-g1-reference.dtb ;; esac; \
+	QEMU='/usr/bin/qemu-system-riscv64' PYTHON='/usr/bin/python3' \
+		<repo>/mvp/tools/run-reference-boot.sh $guest \
+		<repo>/build/mvp/guest/Image $dtb <repo>/build/mvp/guest/ref-stub.elf <repo>/build/k3-b1/opensbi-build/platform/generic/firmware/fw_dynamic.bin \
+		<repo>/mvp/guest/pins.txt <repo>/build/mvp/guest/reference-boot/g$guest; \
+done
+[    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+[    0.000000] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=0
+[    0.000189] riscv-timer: Timer interrupt in S-mode is available via sstc extension
+[    0.007019] Memory: 61624K/65536K available (870K kernel code, 548K rwdata, 270K rodata, 161K init, 207K bss, 3300K reserved, 0K cma-reserved)
+[    0.033799] Run /init as init process
+MVPINIT 01 START guest=0 pid=1
+MVPINIT 02 UNAME release=7.2.0 machine=riscv64
+MVPINIT 03 STEP n=1/8 rounds=11781 t_ms=61
+MVPINIT 03 STEP n=2/8 rounds=11681 t_ms=137
+MVPINIT 03 STEP n=3/8 rounds=12169 t_ms=213
+MVPINIT 03 STEP n=4/8 rounds=12209 t_ms=289
+MVPINIT 03 STEP n=5/8 rounds=12119 t_ms=365
+MVPINIT 03 STEP n=6/8 rounds=12163 t_ms=441
+MVPINIT 03 STEP n=7/8 rounds=12156 t_ms=517
+MVPINIT 03 STEP n=8/8 rounds=12215 t_ms=593
+MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=1004 ok=1
+MVPINIT 05 RESULT pass
+MVPINIT 06 POWER_OFF
+[    1.649683] reboot: Power down
+BE_MVP_REFERENCE: PASS guest=0 lines=19 elapsed_ms=1004
+BE_MVP_REFERENCE: PASS guest=0 qemu_exit=0 wall_ms=4036 (<repo>/build/mvp/guest/reference-boot/g0)
+[    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+[    0.000000] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=1
+[    0.000183] riscv-timer: Timer interrupt in S-mode is available via sstc extension
+[    0.006839] Memory: 61624K/65536K available (870K kernel code, 548K rwdata, 270K rodata, 161K init, 207K bss, 3300K reserved, 0K cma-reserved)
+[    0.033559] Run /init as init process
+MVPINIT 01 START guest=1 pid=1
+MVPINIT 02 UNAME release=7.2.0 machine=riscv64
+MVPINIT 03 STEP n=1/8 rounds=11807 t_ms=61
+MVPINIT 03 STEP n=2/8 rounds=12203 t_ms=137
+MVPINIT 03 STEP n=3/8 rounds=12197 t_ms=213
+MVPINIT 03 STEP n=4/8 rounds=12218 t_ms=289
+MVPINIT 03 STEP n=5/8 rounds=12248 t_ms=365
+MVPINIT 03 STEP n=6/8 rounds=12199 t_ms=441
+MVPINIT 03 STEP n=7/8 rounds=12199 t_ms=517
+MVPINIT 03 STEP n=8/8 rounds=12200 t_ms=593
+MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=1003 ok=1
+MVPINIT 05 RESULT pass
+MVPINIT 06 POWER_OFF
+[    1.649331] reboot: Power down
+BE_MVP_REFERENCE: PASS guest=1 lines=19 elapsed_ms=1003
+BE_MVP_REFERENCE: PASS guest=1 qemu_exit=0 wall_ms=4031 (<repo>/build/mvp/guest/reference-boot/g1)
+BE_MVP_REFERENCE: PASS guests=2 (<repo>/build/mvp/guest/reference-boot)
+mkdir -p <repo>/build/mvp/records
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1.dtb \
+	--qemu-image <repo>/build/mvp/gcc/be-mvp-boot-qemu.img --board-image <repo>/build/mvp/gcc/be-mvp-boot.img --qemu-image <repo>/build/mvp/gcc/te-poc/be-mvp-boot-qemu.img --board-image <repo>/build/mvp/gcc/te-poc/be-mvp-boot.img --qemu-image <repo>/build/mvp/gcc/anchor/be-mvp-boot-qemu.img --board-image <repo>/build/mvp/gcc/anchor/be-mvp-boot.img --qemu-image <repo>/build/mvp/clang/be-mvp-boot-qemu.img --board-image <repo>/build/mvp/clang/be-mvp-boot.img --qemu-image <repo>/build/mvp/clang/te-poc/be-mvp-boot-qemu.img --board-image <repo>/build/mvp/clang/te-poc/be-mvp-boot.img --qemu-image <repo>/build/mvp/clang/anchor/be-mvp-boot-qemu.img --board-image <repo>/build/mvp/clang/anchor/be-mvp-boot.img \
+	2>&1 | tee <repo>/build/mvp/records/qemu-image-check.txt
+BE_MVP_QEMU_IMAGE[gcc]: PASS <repo>/build/mvp/gcc/be-mvp-boot-qemu.img bytes=0x277000 sha256=1049f9755804821d566f7f3e1bacd7a31e9608b5415c4cea1fde640bf0955c09 text_offset=0x88000000 board=<repo>/build/mvp/gcc/be-mvp-boot.img board_sha256=60327082446db913c0c51d3ac29cb05ab6ede5af594aa0d16db0db58ec267635 board_text_offset=0x6000000 mutations=6
+BE_MVP_QEMU_IMAGE[gcc/te-poc]: PASS <repo>/build/mvp/gcc/te-poc/be-mvp-boot-qemu.img bytes=0x277000 sha256=20337aec42da70e818a23f0e5ec95a9027e1e6e983754a0d28dfba1a7f29dde2 text_offset=0x88000000 board=<repo>/build/mvp/gcc/te-poc/be-mvp-boot.img board_sha256=92d70770fa05ab57283d9f3291a641111249f76324b2e57f276a0fd92c5a5bbb board_text_offset=0x6000000 mutations=6
+BE_MVP_QEMU_IMAGE[gcc/anchor]: PASS <repo>/build/mvp/gcc/anchor/be-mvp-boot-qemu.img bytes=0x277000 sha256=a321e0b3270e28f4e80e3d04a8d0cb8bde4e0d72180e47af3505148464829876 text_offset=0x88000000 board=<repo>/build/mvp/gcc/anchor/be-mvp-boot.img board_sha256=72de23d21cd387c61958819dbd975eb5fcf31e899651e7e469b28aa56601e857 board_text_offset=0x6000000 mutations=6
+BE_MVP_QEMU_IMAGE[clang]: PASS <repo>/build/mvp/clang/be-mvp-boot-qemu.img bytes=0x277000 sha256=f9badc03e260b7d6955ead066207073b76a5ea48d62ffc81ff37720c57175c67 text_offset=0x88000000 board=<repo>/build/mvp/clang/be-mvp-boot.img board_sha256=f4eb7cbfa89c69fa41fde0a04fd7eebd7088be1bbbd624dec52c6ab3ef8820e1 board_text_offset=0x6000000 mutations=6
+BE_MVP_QEMU_IMAGE[clang/te-poc]: PASS <repo>/build/mvp/clang/te-poc/be-mvp-boot-qemu.img bytes=0x277000 sha256=895d5dd9604ed45bada2f5b17ea47e1dc23ccacf950f89837f5c67d0987512dd text_offset=0x88000000 board=<repo>/build/mvp/clang/te-poc/be-mvp-boot.img board_sha256=f0d40f23c818f212cd2d225d4027aeb7f6710123b7db0b84fe99620306308334 board_text_offset=0x6000000 mutations=6
+BE_MVP_QEMU_IMAGE[clang/anchor]: PASS <repo>/build/mvp/clang/anchor/be-mvp-boot-qemu.img bytes=0x277000 sha256=0d5c8257a68ec1e0e4a44dd1cd6507844e6780ffccda2ecba696e41e2aed9d03 text_offset=0x88000000 board=<repo>/build/mvp/clang/anchor/be-mvp-boot.img board_sha256=02daf06eea21537bb0d8ad1f5af648817d02db570da22b16db21e3e8bd97d692 board_text_offset=0x6000000 mutations=6
+BE_MVP_IMAGE_CHECK: PASS qemu-gcc qemu-gcc-te-poc qemu-gcc-anchor qemu-clang qemu-clang-te-poc qemu-clang-anchor
+mkdir -p <repo>/build/mvp/records
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --base 0x102000000 --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1.dtb \
+	--expect <repo>/build/mvp/gen/expect/two-guests.json \
+	--image gcc:<repo>/build/mvp/gcc/be-mvp.elf:<repo>/build/mvp/gcc/be-mvp.bin:<repo>/build/mvp/gcc/be-mvp-boot.elf:<repo>/build/mvp/gcc/be-mvp-boot.img --image clang:<repo>/build/mvp/clang/be-mvp.elf:<repo>/build/mvp/clang/be-mvp.bin:<repo>/build/mvp/clang/be-mvp-boot.elf:<repo>/build/mvp/clang/be-mvp-boot.img \
+	2>&1 | tee <repo>/build/mvp/records/image-check.txt
+gcc: text_end=0x102002d10 data_end=0x1020088a0 mvp_text_end=0x1020694d0 mvp_end=0x10206c088 functions=203 words=11386 asserts=29 flat_bytes=0xa4000 boot_bytes=0x277000 dtb0_offset=0x275000 dtb1_offset=0x276000 bin_sha256=9efcde66cc2c0e02e76e0c6350bb00eb9d3d9a49a246d9d1fcb81a2fa90de1fc boot_sha256=60327082446db913c0c51d3ac29cb05ab6ede5af594aa0d16db0db58ec267635
+clang: text_end=0x102002f90 data_end=0x102008900 mvp_text_end=0x102069b40 mvp_end=0x10206c6d8 functions=212 words=12252 asserts=29 flat_bytes=0xa4000 boot_bytes=0x277000 dtb0_offset=0x275000 dtb1_offset=0x276000 bin_sha256=8aa009ac531768469e297714d0a97ae96ca393fc01fc5bb63a4f0762b3b4ff0c boot_sha256=f4eb7cbfa89c69fa41fde0a04fd7eebd7088be1bbbd624dec52c6ab3ef8820e1
+BE_MVP_IMAGE_CHECK: PASS gcc clang
+set -o pipefail; { /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1.dtb --mutation-test gcc:<repo>/build/mvp/gcc/be-mvp.elf:<repo>/build/mvp/gcc/be-mvp.bin:<repo>/build/mvp/gcc/be-mvp-boot.elf:<repo>/build/mvp/gcc/be-mvp-boot.img && /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1.dtb --mutation-test clang:<repo>/build/mvp/clang/be-mvp.elf:<repo>/build/mvp/clang/be-mvp.bin:<repo>/build/mvp/clang/be-mvp-boot.elf:<repo>/build/mvp/clang/be-mvp-boot.img && \
+	true; } 2>&1 | tee -a <repo>/build/mvp/records/image-check.txt
+gcc: mutations rejected: 100
+BE_MVP_IMAGE_CHECK: PASS mutations=100
+clang: mutations rejected: 100
+BE_MVP_IMAGE_CHECK: PASS mutations=100
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --base 0x102000000 --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0-te-poc.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1-te-poc.dtb --expect <repo>/build/mvp/gen/te-poc/expect/te-poc.json --report <repo>/build/mvp/gen/te-poc/authority-report.json \
+	--image gcc:<repo>/build/mvp/gcc/te-poc/be-mvp.elf:<repo>/build/mvp/gcc/te-poc/be-mvp.bin:<repo>/build/mvp/gcc/te-poc/be-mvp-boot.elf:<repo>/build/mvp/gcc/te-poc/be-mvp-boot.img --image clang:<repo>/build/mvp/clang/te-poc/be-mvp.elf:<repo>/build/mvp/clang/te-poc/be-mvp.bin:<repo>/build/mvp/clang/te-poc/be-mvp-boot.elf:<repo>/build/mvp/clang/te-poc/be-mvp-boot.img \
+	2>&1 | tee -a <repo>/build/mvp/records/image-check.txt
+te-poc gcc: text_end=0x102002d10 data_end=0x1020088a0 mvp_text_end=0x1020699f0 mvp_end=0x10206c798 functions=213 words=11835 asserts=29 flat_bytes=0xa4000 boot_bytes=0x277000 dtb0_offset=0x275000 dtb1_offset=0x276000 bin_sha256=b5f58024b96bfb13677e72f10df0c3a6923e99cf2fc2ef401f968ba8573ac8ee boot_sha256=92d70770fa05ab57283d9f3291a641111249f76324b2e57f276a0fd92c5a5bbb
+te-poc clang: text_end=0x102002f90 data_end=0x102008900 mvp_text_end=0x10206a050 mvp_end=0x10206cdb8 functions=219 words=12713 asserts=29 flat_bytes=0xa4000 boot_bytes=0x277000 dtb0_offset=0x275000 dtb1_offset=0x276000 bin_sha256=c4aa153c714b19a90dfabcc50e822a482c6c4d2a758b402ad46b76d11cf902c0 boot_sha256=f0d40f23c818f212cd2d225d4027aeb7f6710123b7db0b84fe99620306308334
+BE_MVP_IMAGE_CHECK: PASS te-poc-gcc te-poc-clang
+set -o pipefail; { /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0-te-poc.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1-te-poc.dtb --expect <repo>/build/mvp/gen/te-poc/expect/te-poc.json --report <repo>/build/mvp/gen/te-poc/authority-report.json --mutation-test gcc:<repo>/build/mvp/gcc/te-poc/be-mvp.elf:<repo>/build/mvp/gcc/te-poc/be-mvp.bin:<repo>/build/mvp/gcc/te-poc/be-mvp-boot.elf:<repo>/build/mvp/gcc/te-poc/be-mvp-boot.img && /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0-te-poc.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1-te-poc.dtb --expect <repo>/build/mvp/gen/te-poc/expect/te-poc.json --report <repo>/build/mvp/gen/te-poc/authority-report.json --mutation-test clang:<repo>/build/mvp/clang/te-poc/be-mvp.elf:<repo>/build/mvp/clang/te-poc/be-mvp.bin:<repo>/build/mvp/clang/te-poc/be-mvp-boot.elf:<repo>/build/mvp/clang/te-poc/be-mvp-boot.img && \
+	true; } 2>&1 | tee -a <repo>/build/mvp/records/image-check.txt
+te-poc gcc: mutations rejected: 103
+BE_MVP_IMAGE_CHECK: PASS mutations=103
+te-poc clang: mutations rejected: 103
+BE_MVP_IMAGE_CHECK: PASS mutations=103
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --base 0x102000000 --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0-anchor.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1-anchor.dtb --expect <repo>/build/mvp/gen/anchor/expect/anchor.json --report <repo>/build/mvp/gen/anchor/authority-report.json \
+	--image gcc:<repo>/build/mvp/gcc/anchor/be-mvp.elf:<repo>/build/mvp/gcc/anchor/be-mvp.bin:<repo>/build/mvp/gcc/anchor/be-mvp-boot.elf:<repo>/build/mvp/gcc/anchor/be-mvp-boot.img --image clang:<repo>/build/mvp/clang/anchor/be-mvp.elf:<repo>/build/mvp/clang/anchor/be-mvp.bin:<repo>/build/mvp/clang/anchor/be-mvp-boot.elf:<repo>/build/mvp/clang/anchor/be-mvp-boot.img \
+	2>&1 | tee -a <repo>/build/mvp/records/image-check.txt
+anchor gcc: text_end=0x102002d10 data_end=0x1020088a0 mvp_text_end=0x10206a330 mvp_end=0x10206d4e8 functions=221 words=12626 asserts=29 flat_bytes=0xa4000 boot_bytes=0x277000 dtb0_offset=0x275000 dtb1_offset=0x276000 bin_sha256=4622c28c2d335d3b0fccf7ea7d90f67d9545154251932c63698ed84ca4f727c6 boot_sha256=72de23d21cd387c61958819dbd975eb5fcf31e899651e7e469b28aa56601e857
+anchor clang: text_end=0x102002f90 data_end=0x102008900 mvp_text_end=0x10206a990 mvp_end=0x10206da88 functions=227 words=13556 asserts=29 flat_bytes=0xa4000 boot_bytes=0x277000 dtb0_offset=0x275000 dtb1_offset=0x276000 bin_sha256=d042c6b4c0be7f7b5f3a85885b441b23ae4d8ad306354687fdf1ee92d1973b02 boot_sha256=02daf06eea21537bb0d8ad1f5af648817d02db570da22b16db21e3e8bd97d692
+BE_MVP_IMAGE_CHECK: PASS anchor-gcc anchor-clang
+set -o pipefail; { /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0-anchor.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1-anchor.dtb --expect <repo>/build/mvp/gen/anchor/expect/anchor.json --report <repo>/build/mvp/gen/anchor/authority-report.json --mutation-test gcc:<repo>/build/mvp/gcc/anchor/be-mvp.elf:<repo>/build/mvp/gcc/anchor/be-mvp.bin:<repo>/build/mvp/gcc/anchor/be-mvp-boot.elf:<repo>/build/mvp/gcc/anchor/be-mvp-boot.img && /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0-anchor.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1-anchor.dtb --expect <repo>/build/mvp/gen/anchor/expect/anchor.json --report <repo>/build/mvp/gen/anchor/authority-report.json --mutation-test clang:<repo>/build/mvp/clang/anchor/be-mvp.elf:<repo>/build/mvp/clang/anchor/be-mvp.bin:<repo>/build/mvp/clang/anchor/be-mvp-boot.elf:<repo>/build/mvp/clang/anchor/be-mvp-boot.img && \
+	true; } 2>&1 | tee -a <repo>/build/mvp/records/image-check.txt
+anchor gcc: mutations rejected: 114
+BE_MVP_IMAGE_CHECK: PASS mutations=114
+anchor clang: mutations rejected: 114
+BE_MVP_IMAGE_CHECK: PASS mutations=114
+mkdir -p <repo>/build/mvp/records
+set -o pipefail; { /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --base 0x102000000 --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1.dtb --expect <repo>/build/mvp/gen/expect/two-guests.json --reference gcc:<repo>/build/mvp/gcc/be-mvp.elf:<repo>/build/mvp/gcc/be-mvp.bin:<repo>/build/mvp/gcc/be-mvp-boot.elf:<repo>/build/mvp/gcc/be-mvp-boot.img --variant-dtbs init-exit:<repo>/build/mvp/guest/mvp-guest-g0.dtb:<repo>/build/mvp/guest/mvp-guest-g1-init-exit.dtb --variant-dtbs rdcycle:<repo>/build/mvp/guest/mvp-guest-g0-rdcycle.dtb:<repo>/build/mvp/guest/mvp-guest-g1.dtb --variant-dtbs sbi-time:<repo>/build/mvp/guest/mvp-guest-g0-sbi-time.dtb:<repo>/build/mvp/guest/mvp-guest-g1-sbi-time.dtb --variant payload:<repo>/build/mvp/variants/gcc/payload/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/payload/be-mvp-boot.img --variant init-exit:<repo>/build/mvp/variants/gcc/init-exit/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/init-exit/be-mvp-boot.img --variant rdcycle:<repo>/build/mvp/variants/gcc/rdcycle/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/rdcycle/be-mvp-boot.img --variant sbi-time:<repo>/build/mvp/variants/gcc/sbi-time/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/sbi-time/be-mvp-boot.img --variant shim-rule:<repo>/build/mvp/variants/gcc/shim-rule/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/shim-rule/be-mvp-boot.img --variant exit-budget:<repo>/build/mvp/variants/gcc/exit-budget/be-mvp.elf:<repo>/build/mvp/variants/gcc/exit-budget/be-mvp.bin:<repo>/build/mvp/variants/gcc/exit-budget/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/exit-budget/be-mvp-boot.img --variant run-timeout:<repo>/build/mvp/variants/gcc/run-timeout/be-mvp.elf:<repo>/build/mvp/variants/gcc/run-timeout/be-mvp.bin:<repo>/build/mvp/variants/gcc/run-timeout/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/run-timeout/be-mvp-boot.img --variant ring-full:<repo>/build/mvp/variants/gcc/ring-full/be-mvp.elf:<repo>/build/mvp/variants/gcc/ring-full/be-mvp.bin:<repo>/build/mvp/variants/gcc/ring-full/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/ring-full/be-mvp-boot.img --variant hart-start:<repo>/build/mvp/variants/gcc/hart-start/be-mvp.elf:<repo>/build/mvp/variants/gcc/hart-start/be-mvp.bin:<repo>/build/mvp/variants/gcc/hart-start/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/hart-start/be-mvp-boot.img && /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --base 0x102000000 --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1.dtb --expect <repo>/build/mvp/gen/expect/two-guests.json --reference clang:<repo>/build/mvp/clang/be-mvp.elf:<repo>/build/mvp/clang/be-mvp.bin:<repo>/build/mvp/clang/be-mvp-boot.elf:<repo>/build/mvp/clang/be-mvp-boot.img --variant-dtbs init-exit:<repo>/build/mvp/guest/mvp-guest-g0.dtb:<repo>/build/mvp/guest/mvp-guest-g1-init-exit.dtb --variant-dtbs rdcycle:<repo>/build/mvp/guest/mvp-guest-g0-rdcycle.dtb:<repo>/build/mvp/guest/mvp-guest-g1.dtb --variant-dtbs sbi-time:<repo>/build/mvp/guest/mvp-guest-g0-sbi-time.dtb:<repo>/build/mvp/guest/mvp-guest-g1-sbi-time.dtb --variant payload:<repo>/build/mvp/variants/clang/payload/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/payload/be-mvp-boot.img --variant init-exit:<repo>/build/mvp/variants/clang/init-exit/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/init-exit/be-mvp-boot.img --variant rdcycle:<repo>/build/mvp/variants/clang/rdcycle/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/rdcycle/be-mvp-boot.img --variant sbi-time:<repo>/build/mvp/variants/clang/sbi-time/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/sbi-time/be-mvp-boot.img --variant shim-rule:<repo>/build/mvp/variants/clang/shim-rule/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/shim-rule/be-mvp-boot.img --variant exit-budget:<repo>/build/mvp/variants/clang/exit-budget/be-mvp.elf:<repo>/build/mvp/variants/clang/exit-budget/be-mvp.bin:<repo>/build/mvp/variants/clang/exit-budget/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/exit-budget/be-mvp-boot.img --variant run-timeout:<repo>/build/mvp/variants/clang/run-timeout/be-mvp.elf:<repo>/build/mvp/variants/clang/run-timeout/be-mvp.bin:<repo>/build/mvp/variants/clang/run-timeout/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/run-timeout/be-mvp-boot.img --variant ring-full:<repo>/build/mvp/variants/clang/ring-full/be-mvp.elf:<repo>/build/mvp/variants/clang/ring-full/be-mvp.bin:<repo>/build/mvp/variants/clang/ring-full/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/ring-full/be-mvp-boot.img --variant hart-start:<repo>/build/mvp/variants/clang/hart-start/be-mvp.elf:<repo>/build/mvp/variants/clang/hart-start/be-mvp.bin:<repo>/build/mvp/variants/clang/hart-start/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/hart-start/be-mvp-boot.img && true; } 2>&1 | \
+	tee <repo>/build/mvp/records/variants.txt
+variant payload: boot_sha256=1ea783a9490d9f3edd2869132a9b8dd5658e5ae06346a22a87b4175429675c05
+variant init-exit: boot_sha256=bf3f780991d87d8f1312f5ef0d96d21aee0e7e4af12d74f7022519b0e674a18b
+variant rdcycle: boot_sha256=2254b0c534e5ee13baafbb1f21fae44d46027fe869fafa7ebebca27962a84254
+variant sbi-time: boot_sha256=6a7690b19c72dff52dd410e8d78585787587fc8cbabd10a49948b5af4e53953d
+variant shim-rule: boot_sha256=d216363fcd487362d326ea95932f4e2821cd027ceccb3d0ad5fa73fa3e0f2657
+variant exit-budget: boot_sha256=b5fbf0ea5165721ff496ace95708c9263157bb94873fd2d6182104e8b4128193
+variant run-timeout: boot_sha256=3a5d761e4091470f39dc13e9328685226cca04b7b51206cd1c68c95c0042d8a6
+variant ring-full: boot_sha256=9d30dc67fb816e846cf7d79718d52ea5c7f9bbf36de5e212f8b3d29dcc06112d
+variant hart-start: boot_sha256=cc9bdc62439288913be64c9ec2e5a4e5349e5f652111ec1fd54e453c9d5590d5
+BE_MVP_IMAGE_CHECK: PASS dtb-init-exit dtb-rdcycle dtb-sbi-time variant-payload variant-init-exit variant-rdcycle variant-sbi-time variant-shim-rule variant-exit-budget variant-run-timeout variant-ring-full variant-hart-start
+variant payload: boot_sha256=2ef2dc0387450af29d267e40da86809263aa1f753e325b7d9127b99765f8b6da
+variant init-exit: boot_sha256=a6396017f5ebf7e7a65f7e1c6de7fdb333947b5e0a958c285d2b19c8e1403ac2
+variant rdcycle: boot_sha256=1aba630b49b0c0b4fe4f769c577ff31686a02ae699bd351d6dd33036fd1109f8
+variant sbi-time: boot_sha256=97cf384183b797fbd2a64f1bf6e02393d67da43f32573ba0b8edb06588be0c9f
+variant shim-rule: boot_sha256=4bada36d664427dd2e4d815c731cd8b60ebfc2c22be6efbd9f0c3926714c3bcf
+variant exit-budget: boot_sha256=fd778a09e893301ded6d40e008679106d8c0315bc0b2b67c702ae591c850af54
+variant run-timeout: boot_sha256=29b5c4b3e70d267f0ed435673096fab4dbd29c04d76a51b5bcef9638a704ebc0
+variant ring-full: boot_sha256=8cfd70314a60ddb44c34cd3ac454ec6f5bc0e2af2e4d0630033237f4dcbeb3d9
+variant hart-start: boot_sha256=0d8cfa72aeea65b5828b37bdebfdd575fb0f347a1013cd7bbeca28b8978d844e
+BE_MVP_IMAGE_CHECK: PASS dtb-init-exit dtb-rdcycle dtb-sbi-time variant-payload variant-init-exit variant-rdcycle variant-sbi-time variant-shim-rule variant-exit-budget variant-run-timeout variant-ring-full variant-hart-start
+set -o pipefail; { /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --base 0x102000000 --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0-te-poc.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1-te-poc.dtb --expect <repo>/build/mvp/gen/te-poc/expect/te-poc.json --report <repo>/build/mvp/gen/te-poc/authority-report.json --reference gcc:<repo>/build/mvp/gcc/te-poc/be-mvp.elf:<repo>/build/mvp/gcc/te-poc/be-mvp.bin:<repo>/build/mvp/gcc/te-poc/be-mvp-boot.elf:<repo>/build/mvp/gcc/te-poc/be-mvp-boot.img --variant reader-write:<repo>/build/mvp/variants/gcc/reader-write/be-mvp.elf:<repo>/build/mvp/variants/gcc/reader-write/be-mvp.bin:<repo>/build/mvp/variants/gcc/reader-write/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/reader-write/be-mvp-boot.img --variant no-inject:<repo>/build/mvp/variants/gcc/no-inject/be-mvp.elf:<repo>/build/mvp/variants/gcc/no-inject/be-mvp.bin:<repo>/build/mvp/variants/gcc/no-inject/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/no-inject/be-mvp-boot.img && /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --base 0x102000000 --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0-te-poc.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1-te-poc.dtb --expect <repo>/build/mvp/gen/te-poc/expect/te-poc.json --report <repo>/build/mvp/gen/te-poc/authority-report.json --reference clang:<repo>/build/mvp/clang/te-poc/be-mvp.elf:<repo>/build/mvp/clang/te-poc/be-mvp.bin:<repo>/build/mvp/clang/te-poc/be-mvp-boot.elf:<repo>/build/mvp/clang/te-poc/be-mvp-boot.img --variant reader-write:<repo>/build/mvp/variants/clang/reader-write/be-mvp.elf:<repo>/build/mvp/variants/clang/reader-write/be-mvp.bin:<repo>/build/mvp/variants/clang/reader-write/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/reader-write/be-mvp-boot.img --variant no-inject:<repo>/build/mvp/variants/clang/no-inject/be-mvp.elf:<repo>/build/mvp/variants/clang/no-inject/be-mvp.bin:<repo>/build/mvp/variants/clang/no-inject/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/no-inject/be-mvp-boot.img && true; } 2>&1 | \
+	tee -a <repo>/build/mvp/records/variants.txt
+variant reader-write: boot_sha256=bea0997344a07a180574e25391a5add3193ddbf4713cf1c93c15e628ffb327f8
+variant no-inject: boot_sha256=939b1825f347ac17684d6f5c366b00bead4389e8fb4789e6ba93496bb71ad848
+BE_MVP_IMAGE_CHECK: PASS variant-reader-write variant-no-inject
+variant reader-write: boot_sha256=28254f7ea28a869e46771b16d9dbd6b229f321e188cb9bfee5acc9efda3fd2bd
+variant no-inject: boot_sha256=af7669d13bb19094b440ad6c41d92860d5c333fc4591e9fd45995ebb4b3d2aaa
+BE_MVP_IMAGE_CHECK: PASS variant-reader-write variant-no-inject
+set -o pipefail; { /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --base 0x102000000 --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0-anchor.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1-anchor.dtb --expect <repo>/build/mvp/gen/anchor/expect/anchor.json --report <repo>/build/mvp/gen/anchor/authority-report.json --reference gcc:<repo>/build/mvp/gcc/anchor/be-mvp.elf:<repo>/build/mvp/gcc/anchor/be-mvp.bin:<repo>/build/mvp/gcc/anchor/be-mvp-boot.elf:<repo>/build/mvp/gcc/anchor/be-mvp-boot.img --variant secret-shared:<repo>/build/mvp/variants/gcc/secret-shared/be-mvp.elf:<repo>/build/mvp/variants/gcc/secret-shared/be-mvp.bin:<repo>/build/mvp/variants/gcc/secret-shared/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/secret-shared/be-mvp-boot.img --variant response-writable:<repo>/build/mvp/variants/gcc/response-writable/be-mvp.elf:<repo>/build/mvp/variants/gcc/response-writable/be-mvp.bin:<repo>/build/mvp/variants/gcc/response-writable/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/response-writable/be-mvp-boot.img --variant wrong-measurement:<repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp.elf:<repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp.bin:<repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp-boot.img --variant no-grant-check:<repo>/build/mvp/variants/gcc/no-grant-check/be-mvp.elf:<repo>/build/mvp/variants/gcc/no-grant-check/be-mvp.bin:<repo>/build/mvp/variants/gcc/no-grant-check/be-mvp-boot.elf:<repo>/build/mvp/variants/gcc/no-grant-check/be-mvp-boot.img && /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --base 0x102000000 --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0-anchor.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1-anchor.dtb --expect <repo>/build/mvp/gen/anchor/expect/anchor.json --report <repo>/build/mvp/gen/anchor/authority-report.json --reference clang:<repo>/build/mvp/clang/anchor/be-mvp.elf:<repo>/build/mvp/clang/anchor/be-mvp.bin:<repo>/build/mvp/clang/anchor/be-mvp-boot.elf:<repo>/build/mvp/clang/anchor/be-mvp-boot.img --variant secret-shared:<repo>/build/mvp/variants/clang/secret-shared/be-mvp.elf:<repo>/build/mvp/variants/clang/secret-shared/be-mvp.bin:<repo>/build/mvp/variants/clang/secret-shared/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/secret-shared/be-mvp-boot.img --variant response-writable:<repo>/build/mvp/variants/clang/response-writable/be-mvp.elf:<repo>/build/mvp/variants/clang/response-writable/be-mvp.bin:<repo>/build/mvp/variants/clang/response-writable/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/response-writable/be-mvp-boot.img --variant wrong-measurement:<repo>/build/mvp/variants/clang/wrong-measurement/be-mvp.elf:<repo>/build/mvp/variants/clang/wrong-measurement/be-mvp.bin:<repo>/build/mvp/variants/clang/wrong-measurement/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/wrong-measurement/be-mvp-boot.img --variant no-grant-check:<repo>/build/mvp/variants/clang/no-grant-check/be-mvp.elf:<repo>/build/mvp/variants/clang/no-grant-check/be-mvp.bin:<repo>/build/mvp/variants/clang/no-grant-check/be-mvp-boot.elf:<repo>/build/mvp/variants/clang/no-grant-check/be-mvp-boot.img && true; } 2>&1 | \
+	tee -a <repo>/build/mvp/records/variants.txt
+variant secret-shared: boot_sha256=1ec68fa457dd623cfeb840ae60dda3ea20ac8be6ee00eca7ccd7106ea57db1ad
+variant response-writable: boot_sha256=f06d0001bed578c5c2121ba6a9a87eaff63a851dc7b272cb78a4106e8f5c3a47
+variant wrong-measurement: boot_sha256=63892c7c140846fbf90ed6db82a8516f3ce0d47222d1fa96dc95eb6b255d2bb5
+variant no-grant-check: boot_sha256=44eb344ad61bfb2de2b90b56f15414436877e221871a4599ba29692c2e62bf02
+BE_MVP_IMAGE_CHECK: PASS variant-secret-shared variant-response-writable variant-wrong-measurement variant-no-grant-check
+variant secret-shared: boot_sha256=7f76428395477b999e111bc6f45039a1eedf8d272b30621a3e68c199fa6509d4
+variant response-writable: boot_sha256=d6f8049810f54b9bcbc50dd3db84b284bc14dec290f79c89cd43caa1f4dd2195
+variant wrong-measurement: boot_sha256=fb07fbca76fe83367af12e1f9beb1d8e7f3d9ca337efe732ce0b023451bda9d8
+variant no-grant-check: boot_sha256=638e579ea6e0182ec402c858659cd7dd6d3db3f47358062ba9c4e7102245f916
+BE_MVP_IMAGE_CHECK: PASS variant-secret-shared variant-response-writable variant-wrong-measurement variant-no-grant-check
+mkdir -p <repo>/build/mvp/records
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --base 0x102000000 --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1.dtb \
+	--probe probe-platform:gcc:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp.elf:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp.bin:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp-boot.elf:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp-boot.img --probe probe-vmid-distinct:gcc:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp.elf:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp.bin:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp-boot.elf:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp-boot.img --probe probe-vmid-shared:gcc:<repo>/build/mvp/probes/gcc/probe-vmid-shared/be-mvp.elf:<repo>/build/mvp/probes/gcc/probe-vmid-shared/be-mvp.bin:<repo>/build/mvp/probes/gcc/probe-vmid-shared/be-mvp-boot.elf:<repo>/build/mvp/probes/gcc/probe-vmid-shared/be-mvp-boot.img --probe probe-platform:clang:<repo>/build/mvp/probes/clang/probe-platform/be-mvp.elf:<repo>/build/mvp/probes/clang/probe-platform/be-mvp.bin:<repo>/build/mvp/probes/clang/probe-platform/be-mvp-boot.elf:<repo>/build/mvp/probes/clang/probe-platform/be-mvp-boot.img --probe probe-vmid-distinct:clang:<repo>/build/mvp/probes/clang/probe-vmid-distinct/be-mvp.elf:<repo>/build/mvp/probes/clang/probe-vmid-distinct/be-mvp.bin:<repo>/build/mvp/probes/clang/probe-vmid-distinct/be-mvp-boot.elf:<repo>/build/mvp/probes/clang/probe-vmid-distinct/be-mvp-boot.img --probe probe-vmid-shared:clang:<repo>/build/mvp/probes/clang/probe-vmid-shared/be-mvp.elf:<repo>/build/mvp/probes/clang/probe-vmid-shared/be-mvp.bin:<repo>/build/mvp/probes/clang/probe-vmid-shared/be-mvp-boot.elf:<repo>/build/mvp/probes/clang/probe-vmid-shared/be-mvp-boot.img \
+	2>&1 | tee <repo>/build/mvp/records/probes.txt
+probe-platform gcc: text_end=0x102002d10 data_end=0x102008a00 mvp_end=0x10206bc20 functions=191 words=10305 bin_sha256=1176face7dfa50e069d9c7e20b95619ccb6f71aa183228e2a405813b0d527e45 boot_sha256=8024dc9776f3c5a0980e31054b1f9fe4b758e53822af92a202c0db49ee1e6ab0
+probe-vmid-distinct gcc: text_end=0x102002d20 data_end=0x102008a00 mvp_end=0x10206b290 functions=186 words=9765 bin_sha256=f78b636f030e2ded3d82bbfa617f7067e75b99e675174a7656dc44ba8cccfe66 boot_sha256=00903897bbd3e769e4b74015fa1933d33085915a39288ae51ad74ca72da74318
+probe-vmid-shared gcc: text_end=0x102002d20 data_end=0x102008a00 mvp_end=0x10206b280 functions=186 words=9765 bin_sha256=75fe4d7a6876c50d50085b36311ce3bf29a0e5cc45683834ef824e1485bf7d87 boot_sha256=6938bc4c489d5da0c8aa795364fffb26d3d290fbf4c2876a132c72fd94782a1b
+probe-platform clang: text_end=0x102002f90 data_end=0x102008a40 mvp_end=0x10206bee0 functions=198 words=10874 bin_sha256=8edff79117eb6f8b897e964c6e9e921e3d0b983a625ac48a4bb26712c50cb8e0 boot_sha256=3f7c6a0b734bf4c7c0f6458030296e433a422304c5a1e517160727f8d1f5b5e4
+probe-vmid-distinct clang: text_end=0x102002fa0 data_end=0x102008a40 mvp_end=0x10206b580 functions=195 words=10337 bin_sha256=50af5eeb199adad20784ba72ec61724a3b8131f74f60f436c04c6585d8501781 boot_sha256=5462616923aa964c031fc668a902118fa90b118ef8d3d0095b68bdd01018f2f6
+probe-vmid-shared clang: text_end=0x102002fa0 data_end=0x102008a40 mvp_end=0x10206b580 functions=195 words=10337 bin_sha256=73fdea3c623fc8d5374d3370073ca7be007741048a74c0e91cd1746fe3e0d288 boot_sha256=9813ea2e4c5fdaa741a70e1c873b3899c9f43629567ce8afa086d83e0f7cdae8
+BE_MVP_IMAGE_CHECK: PASS probe-platform-gcc probe-vmid-distinct-gcc probe-vmid-shared-gcc probe-platform-clang probe-vmid-distinct-clang probe-vmid-shared-clang
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tests/check-image.py --pins <repo>/mvp/guest/pins.txt --kernel <repo>/build/mvp/guest/Image --dtb0 <repo>/build/mvp/guest/mvp-guest-g0.dtb --dtb1 <repo>/build/mvp/guest/mvp-guest-g1.dtb \
+	--mutation-probe probe-platform:gcc:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp.elf:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp.bin:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp-boot.elf:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp-boot.img --mutation-probe probe-vmid-distinct:gcc:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp.elf:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp.bin:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp-boot.elf:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp-boot.img --mutation-probe probe-platform:clang:<repo>/build/mvp/probes/clang/probe-platform/be-mvp.elf:<repo>/build/mvp/probes/clang/probe-platform/be-mvp.bin:<repo>/build/mvp/probes/clang/probe-platform/be-mvp-boot.elf:<repo>/build/mvp/probes/clang/probe-platform/be-mvp-boot.img --mutation-probe probe-vmid-distinct:clang:<repo>/build/mvp/probes/clang/probe-vmid-distinct/be-mvp.elf:<repo>/build/mvp/probes/clang/probe-vmid-distinct/be-mvp.bin:<repo>/build/mvp/probes/clang/probe-vmid-distinct/be-mvp-boot.elf:<repo>/build/mvp/probes/clang/probe-vmid-distinct/be-mvp-boot.img \
+	2>&1 | tee -a <repo>/build/mvp/records/probes.txt
+probe-platform gcc: mutations rejected: 4
+probe-vmid-distinct gcc: mutations rejected: 4
+probe-platform clang: mutations rejected: 4
+probe-vmid-distinct clang: mutations rejected: 4
+BE_MVP_IMAGE_CHECK: PASS probe-platform-gcc-mutations=4 probe-vmid-distinct-gcc-mutations=4 probe-platform-clang-mutations=4 probe-vmid-distinct-clang-mutations=4
+mkdir -p <repo>/build/mvp/capture
+set -e; for test in self-test mutation-test; do \
+	/usr/bin/python3 -B <repo>/mvp/tests/check-capture.py --$test --expect-dir <repo>/build/mvp/gen/expect \
+		--expect-dir <repo>/build/mvp/gen/te-poc/expect --report <repo>/build/mvp/gen/te-poc/authority-report.json \
+		--expect-dir <repo>/build/mvp/gen/anchor/expect --report <repo>/build/mvp/gen/anchor/authority-report.json \
+		--kernel <repo>/build/mvp/guest/Image --dtb <repo>/build/mvp/guest/mvp-guest-g1-anchor.dtb \
+		--pins <repo>/mvp/guest/pins.txt > <repo>/build/mvp/capture/$test.txt || \
+		{ grep -v '^ok ' <repo>/build/mvp/capture/$test.txt; exit 1; }; \
+	tail -n 1 <repo>/build/mvp/capture/$test.txt; \
+done
+BE_MVP_CAPTURE_SELF_TEST: PASS cases=129 failed=0
+BE_MVP_CAPTURE_MUTATIONS: PASS mutations=317 rejected=317 seed=0x4d30
+mkdir -p <repo>/build/mvp/records
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tests/test-platform-probe.py \
+	2>&1 | tee <repo>/build/mvp/records/platform-probe.txt
+PASS fdt_reservations_are_collected
+PASS corrupt_fdt_is_rejected
+PASS layout_comes_from_the_header
+PASS recorded_map_leaves_every_extent_free
+PASS recorded_preflight_passes_the_region_check
+PASS region_check_stops_on_any_overlap
+PASS preflight_record_is_read
+PASS shared_pages_are_an_mvp_extent
+PASS probe_reports_the_fdt_reservations
+platform-probe self-test: 9/9 PASS
+mkdir -p <repo>/build/mvp/records
+set -o pipefail; PYTHON=/usr/bin/python3 \
+	<repo>/mvp/tests/test-k3-make-partition.sh \
+	<repo>/build/mvp/test-k3-make-partition 2>&1 | \
+	tee <repo>/build/mvp/records/partition-tool.txt
+k3-make-partition self-test: SKIPPED (root inside the clean evaluator; the tool refuses its test-only hooks as root; run the self-test on the host as a user)
+/usr/bin/python3 -B <repo>/mvp/tools/evidence.py --self-test --scratch <repo>/build/mvp/tmp/evidence-self-test
+ok   two bundles of one input set are byte-identical
+ok   the bundle holds every part
+ok   te-poc's scenario, policy, report, records, run, and rehearsal
+ok   anchor's scenario, policy, report, records, run, rehearsal, and guest module
+ok   recorded paths are rewritten to <repo> and <home>
+ok   a record's ssh target and address are code names in the bundle
+ok   refusals count the refused attempt and its boot hart
+ok   costs come from passing runs only
+ok   a rehearsal case on another image is left out as stale, and so is the summary
+ok   a rehearsal case's refused attempt and boot harts
+ok   the bundle verifies
+ok   with every case current, the rehearsal's summary is kept
+ok   a changed, an unlisted, and a missing file fail verification
+ok   an attempt whose image changed refuses the bundle
+ok   a recorded image path outside its form refuses the bundle
+ok   a missing record refuses the bundle
+ok   a missing policy record refuses the bundle
+ok   a report that is not the one SCENARIO.txt names refuses the bundle
+ok   an existing directory that is not a bundle is never replaced
+ok   identical image manifests compare equal
+ok   a differing and a missing image fail the comparison
+ok   a board run is bound to its image, and a refused one is stop 6
+ok   a board run's expectation path is never followed
+ok   a board run on an image not built now is refused
+ok   a te-poc run's expectation and report are te-poc's (gen/te-poc)
+ok   an expectation that is not the one the run recorded is refused
+ok   a te-poc run without its authority report's SHA-256 is refused
+ok   a run without reset.txt, with another method, or with a reset.txt its SHA256SUMS does not list is refused
+ok   a passing run whose reset stopped is stop 10 in its row
+ok   an anchor run's report and measured inputs are anchor's and BUILD/guest's, as its expectation and run name them
+ok   an anchor run without its measured= line, or with a measured input that is not its expectation's, is refused
+ok   a run record's ssh target is k3_ssh=<board-ssh> in the record
+ok   a reset record's address and ssh target are <ip> and <board-ssh>
+ok   versions, an image digest, the guest's banner, a DT node, a deny specification, and an e-mail address are kept; nothing written is identifying
+ok   a device-tree node with its unit address before a colon is kept; an ssh target before a colon is <board-ssh> unless its host is hexadecimal with a digit
+ok   U-Boot's MAC addresses and serial# values are <mac> and <serial>; a time, five octets, and the be_ lines are kept
+ok   a host in brackets, a URL of the ssh scheme without a user, and an address, a MAC address, and a serial# under the prefixes alone (rc-record's rewriting) are refused
+ok   PRIVATE is claim-ledger.py's privacy rule's IPv4, ssh, MAC, and serial# patterns
+BE_MVP_EVIDENCE_SELF_TEST: PASS cases=38/38
+/usr/bin/python3 -B <repo>/mvp/tools/rc-record.py --self-test \
+	--scratch <repo>/build/mvp/tmp/rc-record-self-test
+ok   a synthetic input set's record: BE_MVP_RC_RECORD: PASS <scratch>/base-out commit=e3ff7370b571f66acf388d2ba418eb25d2539c62 files=44
+ok   a banner's user@host is rewritten, the guest's pinned one kept, and HOME is <home>
+ok   a wrong source_commit: refused: the host bundle <scratch>/case/bundle is not of a clean tree at e3ff7370b571f66acf388d2ba418eb25d2539c62: source_commit=0000000000000000000000000000000000000000 source_tree=clean
+ok   a dirty tree: refused: the host bundle <scratch>/case/bundle is not of a clean tree at e3ff7370b571f66acf388d2ba418eb25d2539c62: source_commit=e3ff7370b571f66acf388d2ba418eb25d2539c62 source_tree=dirty changed=1
+ok   a bundle that does not verify: refused: the host bundle <scratch>/case/bundle does not verify: gone.txt is listed but missing
+ok   an evaluator closure_sha256 not X's: refused: the evaluator record <scratch>/case/record/20261029T000100Z does not match e3ff7370b571f66acf388d2ba418eb25d2539c62: image identity (stop 4)
+ok   an evaluator record not the evaluate gate's: refused: the evaluator record <scratch>/case/record/20261029T000100Z is not the evaluate gate's: its evaluate.txt lines are not all in the gate's log
+ok   an evaluator record of other images: refused: the evaluator record <scratch>/case/record/20261029T000100Z's host-images.sha256 is not the bundle's images.sha256
+ok   an input named latest: refused: <scratch>/case/record/latest is a symlink, is named latest, or is missing
+ok   a symlink as an input: refused: <scratch>/case/link is a symlink, is named latest, or is missing
+ok   a symlink in an input: refused: <scratch>/case/model-host holds a symlink or a special file
+ok   a gate log without its PASS line: refused: gate check: <scratch>/case/gates/check.log does not end in its PASS line, or ends before it starts
+ok   a gate log without its times: refused: gate check: <scratch>/case/gates/check.log lacks its first start_utc= line or its last end_utc= line
+ok   a home path the rewriting does not cover: refused: the record <scratch>/case-out is removed: evaluator/check.log: identifying data; evaluator/check.log line 1: home path
+ok   an IPv4 address: refused: the record <scratch>/case-out is removed: evaluator/check.log: identifying data; evaluator/check.log line 1: IPv4 address
+ok   an existing --out: refused: <scratch>/case-out exists, has no parent, or is in an input: a record is never overwritten
+ok   a rehearsal of an image not in the manifest: refused: the rehearsal case <scratch>/case/rehearsal/te-poc-gcc is missing, not of the bundle's gcc/te-poc/be-mvp-boot.img, or did not pass
+ok   a rehearsal case missing: refused: the rehearsal case <scratch>/case/rehearsal/anchor-clang is missing, not of the bundle's clang/anchor/be-mvp-boot.img, or did not pass
+ok   a rehearsal that did not pass: refused: the rehearsal <scratch>/case/rehearsal has no passing summary.txt
+ok   a kernel-repro pin that differs: refused: the kernel-repro record <scratch>/case/repro/out/MVP-GUEST-BUILD.txt is not pins=match with each pin the bundle's guest input
+ok   model evidence of a dirty tree: refused: the model evidence <scratch>/case/model-evaluator is incomplete, not of a clean tree at e3ff7370b571f66acf388d2ba418eb25d2539c62, or not made in gate model-evaluate
+ok   model evidence made outside its gate: refused: the model evidence <scratch>/case/model-host is incomplete, not of a clean tree at e3ff7370b571f66acf388d2ba418eb25d2539c62, or not made in gate model-check
+ok   a model image other than the one built: refused: the model evaluator's logs <scratch>/case/model-logs are not of an image built FROM X's model/Containerfile base with rootless-image.txt's ID, or its validation failed
+ok   rc-record not run from a clean tree at X: refused: rc-record runs from e3ff7370b571f66acf388d2ba418eb25d2539c62 (dirty changed=1), not a clean tree at e3ff7370b571f66acf388d2ba418eb25d2539c62
+rc-record self-test: PASS mutations=22
+mkdir -p <repo>/build/mvp/records
+set -o pipefail; PYTHON=/usr/bin/python3 K3_SELECTOR_PLAN='be-mvp-probe-platform-gcc.img:1:gcc:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp-boot.img:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp.bin:<repo>/build/mvp/gen/expect/probe-platform.json:: be-mvp-probe-vmid-distinct-gcc.img:1:gcc:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp-boot.img:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp.bin:<repo>/build/mvp/gen/expect/probe-vmid-distinct.json:: be-mvp-probe-vmid-shared-gcc.img:1:gcc:<repo>/build/mvp/probes/gcc/probe-vmid-shared/be-mvp-boot.img:<repo>/build/mvp/probes/gcc/probe-vmid-shared/be-mvp.bin:<repo>/build/mvp/gen/expect/probe-vmid-shared.json:: be-mvp-two-guests-gcc.img:3:gcc:<repo>/build/mvp/gcc/be-mvp-boot.img:<repo>/build/mvp/gcc/be-mvp.bin:<repo>/build/mvp/gen/expect/two-guests.json:: be-mvp-two-guests-clang.img:1:clang:<repo>/build/mvp/clang/be-mvp-boot.img:<repo>/build/mvp/clang/be-mvp.bin:<repo>/build/mvp/gen/expect/two-guests.json:: be-mvp-te-poc-gcc.img:3:gcc:<repo>/build/mvp/gcc/te-poc/be-mvp-boot.img:<repo>/build/mvp/gcc/te-poc/be-mvp.bin:<repo>/build/mvp/gen/te-poc/expect/te-poc.json:<repo>/build/mvp/gen/te-poc/authority-report.json: be-mvp-te-poc-clang.img:1:clang:<repo>/build/mvp/clang/te-poc/be-mvp-boot.img:<repo>/build/mvp/clang/te-poc/be-mvp.bin:<repo>/build/mvp/gen/te-poc/expect/te-poc.json:<repo>/build/mvp/gen/te-poc/authority-report.json: be-mvp-anchor-gcc.img:3:gcc:<repo>/build/mvp/gcc/anchor/be-mvp-boot.img:<repo>/build/mvp/gcc/anchor/be-mvp.bin:<repo>/build/mvp/gen/anchor/expect/anchor.json:<repo>/build/mvp/gen/anchor/authority-report.json: be-mvp-anchor-clang.img:1:clang:<repo>/build/mvp/clang/anchor/be-mvp-boot.img:<repo>/build/mvp/clang/anchor/be-mvp.bin:<repo>/build/mvp/gen/anchor/expect/anchor.json:<repo>/build/mvp/gen/anchor/authority-report.json: be-mvp-two-guests-payload-gcc.img:1:gcc:<repo>/build/mvp/variants/gcc/payload/be-mvp-boot.img:<repo>/build/mvp/gcc/be-mvp.bin:<repo>/build/mvp/gen/expect/payload.json::payload be-mvp-te-poc-reader-write-gcc.img:1:gcc:<repo>/build/mvp/variants/gcc/reader-write/be-mvp-boot.img:<repo>/build/mvp/variants/gcc/reader-write/be-mvp.bin:<repo>/build/mvp/gen/te-poc/expect/reader-write.json:<repo>/build/mvp/gen/te-poc/authority-report.json:reader-write be-mvp-te-poc-no-inject-gcc.img:1:gcc:<repo>/build/mvp/variants/gcc/no-inject/be-mvp-boot.img:<repo>/build/mvp/variants/gcc/no-inject/be-mvp.bin:<repo>/build/mvp/gen/te-poc/expect/no-inject.json:<repo>/build/mvp/gen/te-poc/authority-report.json:no-inject be-mvp-anchor-wrong-measurement-gcc.img:1:gcc:<repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp-boot.img:<repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp.bin:<repo>/build/mvp/gen/anchor/expect/wrong-measurement.json:<repo>/build/mvp/gen/anchor/authority-report.json:wrong-measurement be-mvp-anchor-no-grant-check-gcc.img:1:gcc:<repo>/build/mvp/variants/gcc/no-grant-check/be-mvp-boot.img:<repo>/build/mvp/variants/gcc/no-grant-check/be-mvp.bin:<repo>/build/mvp/gen/anchor/expect/no-grant-check.json:<repo>/build/mvp/gen/anchor/authority-report.json:no-grant-check' \
+	K3_SELECTOR_STAGE='be-mvp-probe-platform-gcc.img=<repo>/build/mvp/probes/gcc/probe-platform/be-mvp-boot.img be-mvp-probe-vmid-distinct-gcc.img=<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp-boot.img be-mvp-probe-vmid-shared-gcc.img=<repo>/build/mvp/probes/gcc/probe-vmid-shared/be-mvp-boot.img be-mvp-two-guests-gcc.img=<repo>/build/mvp/gcc/be-mvp-boot.img be-mvp-two-guests-clang.img=<repo>/build/mvp/clang/be-mvp-boot.img be-mvp-te-poc-gcc.img=<repo>/build/mvp/gcc/te-poc/be-mvp-boot.img be-mvp-te-poc-clang.img=<repo>/build/mvp/clang/te-poc/be-mvp-boot.img be-mvp-anchor-gcc.img=<repo>/build/mvp/gcc/anchor/be-mvp-boot.img be-mvp-anchor-clang.img=<repo>/build/mvp/clang/anchor/be-mvp-boot.img be-mvp-two-guests-payload-gcc.img=<repo>/build/mvp/variants/gcc/payload/be-mvp-boot.img be-mvp-te-poc-reader-write-gcc.img=<repo>/build/mvp/variants/gcc/reader-write/be-mvp-boot.img be-mvp-te-poc-no-inject-gcc.img=<repo>/build/mvp/variants/gcc/no-inject/be-mvp-boot.img be-mvp-anchor-wrong-measurement-gcc.img=<repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp-boot.img be-mvp-anchor-no-grant-check-gcc.img=<repo>/build/mvp/variants/gcc/no-grant-check/be-mvp-boot.img' \
+	<repo>/mvp/tests/run-tool-dry-run.sh \
+	<repo>/build/mvp <repo>/build/mvp/run-tool-check 2>&1 | \
+	tee <repo>/build/mvp/records/run-tool-check.txt
+BE_MVP_RUN_TOOL[preflight-pass]: PASS (recorded COM260 facts, every extent free, M0's firmware, the partition, env_k3.txt, the UUID private)
+BE_MVP_RUN_TOOL[preflight-stops]: PASS (g0-window-child g1-window-child hart-region-child staging-reservation mvp-region-reservation channel-child no-sstc no-h no-hsm firmware firmware-absent no-partition env-k3-bootcmd)
+BE_MVP_RUN_TOOL[preflight-k3ctl]: PASS (k3ctl client recorded against the pin, no dongle contact)
+BE_MVP_RUN_TOOL[stage]: PASS (14 images verified rw and ro with MD5SUMS, the stale one removed; an MD5 collision, a CRC-32 collision, and a corrupted copy stop)
+BE_MVP_RUN_TOOL[console-check]: PASS (the session, picocom, and its log; three stops)
+BE_MVP_RUN_TOOL[template-refusal]: PASS (10 lines refused, none typed)
+BE_MVP_RUN_TOOL[env-session]: PASS (record, install, select, restore: PASS; record 3 is record 1; the saved environment the human's again, with U-Boot's fdtcontroladdr; 3 saveenvs, each after a printenv at a fresh prompt)
+BE_MVP_RUN_TOOL[preconditions]: PASS (a bootcount and a bootcmd with a quote: stop 3, no saveenv)
+BE_MVP_RUN_TOOL[missed-s]: PASS (one missed s: a second s stops the autoboot; two: an unplanned boot recorded, Fedora shut down, one more reset; four: stop 12; a pane in copy mode is cancelled first)
+BE_MVP_RUN_TOOL[echo-mismatch]: PASS (Ctrl-C and the line again; a second mismatch: stop 12, no saveenv)
+BE_MVP_RUN_TOOL[restore-mismatch]: PASS (the record after the restore differs: stop 2)
+BE_MVP_RUN_TOOL[unexplained-banner]: PASS (a boot no reset explains: stop 12)
+BE_MVP_RUN_TOOL[bad-environment-crc]: PASS (U-Boot's bad CRC at the second record's boot: stop 2, the board at the prompt)
+BE_MVP_RUN_TOOL[saveenv-fresh]: PASS (saveenv after nvme scan, or not after a printenv: refused, not typed)
+BE_MVP_RUN_TOOL[port-open-rule]: PASS (no reset while Fedora is up or while a saveenv runs; no dongle command; a new session's first reset on the prior halt or prompt, and only the first; a poweroff is not woken by a reset)
+BE_MVP_RUN_TOOL[mvp-hang]: PASS (a timeout after Starting kernel: the reset of a hang, a fresh prompt, stop 4)
+BE_MVP_RUN_TOOL[fall-through]: PASS (a missing image: bootcmd falls through to Fedora, the run ends at once, stop 3)
+BE_MVP_RUN_TOOL[reset]: PASS (fcrec, ver 1.1, ERR, a device error, a reset ERR, rst=1 after, a client not the pin's: each stop 1)
+BE_MVP_RUN_TOOL[run-from-reset]: PASS (PASS in uboot mode, the five attribution conditions, its records)
+BE_MVP_RUN_TOOL[campaign]: PASS (install, 3 groups with 2 selects, restore, preflight after; the record verified, nothing private)
+BE_MVP_RUN_TOOL[characterize]: PASS (the characterization set, two records, the copy test, the typed boot; no saveenv)
+BE_MVP_RUN_TOOL[selectors]: PASS (tools.mk's plan and staging list are the dry run's: 14 groups, 20 runs)
+BE_MVP_RUN_TOOL[fake-k3ctl-refuses]: PASS (recovery, power, press, and an argument refused and logged; no other device)
+BE_MVP_RUN_TOOL[fakes]: PASS (27 dongles received only ping, status, and reset; 164 lines typed, each a template; no tmux command refused)
+BE_MVP_RUN_TOOL_DRY_RUN: PASS
+mkdir -p <repo>/build/mvp/records
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tests/uboot-rehearsal/run-qemu-uboot.py self-test | \
+	tee <repo>/build/mvp/records/uboot-rehearsal-self-test.txt
+BE_MVP_UBOOT_REHEARSAL_SELF_TEST: PASS cases=49
+BE_MVP_TOOLS_CHECK: PASS
+QEMU=/usr/bin/qemu-system-riscv64 PYTHON=/usr/bin/python3 <repo>/mvp/tests/run-qemu.sh <repo>/build/mvp \
+	<repo>/build/k3-b1/opensbi-build/platform/generic/firmware/fw_dynamic.bin <repo>/build/mvp/qemu/suite
+BE_MVP_QEMU[gcc/k3-like]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[gcc/rva23]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[gcc/plic]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[gcc/no-sstc]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct no-sstc]: PASS)
+BE_MVP_QEMU[gcc/sbi-3.0]: PASS attempts=1 refused=0 boot_harts=2 qemu_exit=0 (BE_MVP_CAPTURE[direct sbi-3.0]: PASS)
+BE_MVP_QEMU[clang/k3-like]: PASS attempts=2 refused=1 boot_harts=2,5 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[clang/rva23]: PASS attempts=1 refused=0 boot_harts=7 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[clang/plic]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[clang/no-sstc]: PASS attempts=2 refused=1 boot_harts=1,0 qemu_exit=0 (BE_MVP_CAPTURE[direct no-sstc]: PASS)
+BE_MVP_QEMU[clang/sbi-3.0]: PASS attempts=1 refused=0 boot_harts=7 qemu_exit=0 (BE_MVP_CAPTURE[direct sbi-3.0]: PASS)
+BE_MVP_QEMU[gcc/payload]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct payload]: PASS)
+BE_MVP_QEMU[gcc/exit-budget]: PASS attempts=1 refused=0 boot_harts=3 qemu_exit=0 (BE_MVP_CAPTURE[direct exit-budget]: PASS)
+BE_MVP_QEMU[gcc/run-timeout]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct run-timeout]: PASS)
+BE_MVP_QEMU[gcc/ring-full]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct ring-full]: PASS)
+BE_MVP_QEMU[gcc/hart-start]: PASS attempts=1 refused=0 boot_harts=7 qemu_exit=0 (BE_MVP_CAPTURE[direct hart-start]: PASS)
+BE_MVP_QEMU[gcc/init-exit]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct init-exit]: PASS)
+BE_MVP_QEMU[gcc/rdcycle]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct rdcycle]: PASS)
+BE_MVP_QEMU[gcc/sbi-time]: PASS attempts=2 refused=1 boot_harts=2,6 qemu_exit=0 (BE_MVP_CAPTURE[direct sbi-time]: PASS)
+BE_MVP_QEMU[gcc/shim-rule]: PASS attempts=1 refused=0 boot_harts=4 qemu_exit=0 (BE_MVP_CAPTURE[direct shim-rule]: PASS)
+BE_MVP_QEMU[clang/payload]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct payload]: PASS)
+BE_MVP_QEMU[clang/exit-budget]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct exit-budget]: PASS)
+BE_MVP_QEMU[clang/run-timeout]: PASS attempts=2 refused=1 boot_harts=2,5 qemu_exit=0 (BE_MVP_CAPTURE[direct run-timeout]: PASS)
+BE_MVP_QEMU[clang/ring-full]: PASS attempts=2 refused=1 boot_harts=2,3 qemu_exit=0 (BE_MVP_CAPTURE[direct ring-full]: PASS)
+BE_MVP_QEMU[clang/hart-start]: PASS attempts=2 refused=1 boot_harts=1,0 qemu_exit=0 (BE_MVP_CAPTURE[direct hart-start]: PASS)
+BE_MVP_QEMU[clang/init-exit]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct init-exit]: PASS)
+BE_MVP_QEMU[clang/rdcycle]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct rdcycle]: PASS)
+BE_MVP_QEMU[clang/sbi-time]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct sbi-time]: PASS)
+BE_MVP_QEMU[clang/shim-rule]: PASS attempts=1 refused=0 boot_harts=1 qemu_exit=0 (BE_MVP_CAPTURE[direct shim-rule]: PASS)
+BE_MVP_QEMU[gcc/probe-platform]: PASS attempts=3 refused=2 boot_harts=1,1,4 qemu_exit=0 (BE_MVP_CAPTURE[direct probe-platform]: PASS)
+BE_MVP_QEMU[gcc/probe-vmid-distinct]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct probe-vmid-distinct]: PASS)
+BE_MVP_QEMU[gcc/probe-vmid-shared]: PASS attempts=1 refused=0 boot_harts=7 qemu_exit=0 (BE_MVP_CAPTURE[direct probe-vmid-shared]: PASS)
+BE_MVP_QEMU[clang/probe-platform]: PASS attempts=2 refused=1 boot_harts=1,6 qemu_exit=0 (BE_MVP_CAPTURE[direct probe-platform]: PASS)
+BE_MVP_QEMU[clang/probe-vmid-distinct]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct probe-vmid-distinct]: PASS)
+BE_MVP_QEMU[clang/probe-vmid-shared]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct probe-vmid-shared]: PASS)
+BE_MVP_QEMU[gcc/te-poc-k3-like]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[gcc/te-poc-rva23]: PASS attempts=1 refused=0 boot_harts=7 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[gcc/te-poc-plic]: PASS attempts=4 refused=3 boot_harts=1,2,1,3 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[clang/te-poc-k3-like]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[clang/te-poc-rva23]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[clang/te-poc-plic]: PASS attempts=1 refused=0 boot_harts=4 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[gcc/reader-write]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct reader-write]: PASS)
+BE_MVP_QEMU[gcc/no-inject]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct no-inject]: PASS)
+BE_MVP_QEMU[clang/reader-write]: PASS attempts=2 refused=1 boot_harts=2,0 qemu_exit=0 (BE_MVP_CAPTURE[direct reader-write]: PASS)
+BE_MVP_QEMU[clang/no-inject]: PASS attempts=1 refused=0 boot_harts=3 qemu_exit=0 (BE_MVP_CAPTURE[direct no-inject]: PASS)
+BE_MVP_QEMU[gcc/anchor-k3-like]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU[gcc/anchor-rva23]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU[gcc/anchor-plic]: PASS attempts=1 refused=0 boot_harts=7 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU[clang/anchor-k3-like]: PASS attempts=2 refused=1 boot_harts=2,7 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU[clang/anchor-rva23]: PASS attempts=1 refused=0 boot_harts=4 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU[clang/anchor-plic]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU[gcc/secret-shared]: PASS attempts=1 refused=0 boot_harts=4 qemu_exit=0 (BE_MVP_CAPTURE[direct secret-shared]: PASS)
+BE_MVP_QEMU[gcc/response-writable]: PASS attempts=2 refused=1 boot_harts=2,0 qemu_exit=0 (BE_MVP_CAPTURE[direct response-writable]: PASS)
+BE_MVP_QEMU[gcc/wrong-measurement]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct wrong-measurement]: PASS)
+BE_MVP_QEMU[gcc/no-grant-check]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct no-grant-check]: PASS)
+BE_MVP_QEMU[clang/secret-shared]: PASS attempts=1 refused=0 boot_harts=3 qemu_exit=0 (BE_MVP_CAPTURE[direct secret-shared]: PASS)
+BE_MVP_QEMU[clang/response-writable]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct response-writable]: PASS)
+BE_MVP_QEMU[clang/wrong-measurement]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct wrong-measurement]: PASS)
+BE_MVP_QEMU[clang/no-grant-check]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct no-grant-check]: PASS)
+BE_MVP_QEMU_TOOLCHAIN[gcc]: runs=29 attempts=36 refused=7
+BE_MVP_QEMU_TOOLCHAIN[clang]: runs=29 attempts=37 refused=8
+BE_MVP_QEMU: PASS runs=58 attempts=73 refused=15
+mkdir -p <repo>/build/mvp/records
+/usr/bin/python3 -B <repo>/mvp/tools/budgets.py --self-test
+BE_MVP_BUDGETS: PASS self-test cases=12
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tools/budgets.py \
+	--image gcc:<repo>/build/mvp/gcc/be-mvp.elf:<repo>/build/mvp/gcc/be-mvp.bin:<repo>/build/mvp/gcc/be-mvp-boot.img --image clang:<repo>/build/mvp/clang/be-mvp.elf:<repo>/build/mvp/clang/be-mvp.bin:<repo>/build/mvp/clang/be-mvp-boot.img \
+	--image gcc/te-poc:<repo>/build/mvp/gcc/te-poc/be-mvp.elf:<repo>/build/mvp/gcc/te-poc/be-mvp.bin:<repo>/build/mvp/gcc/te-poc/be-mvp-boot.img --image clang/te-poc:<repo>/build/mvp/clang/te-poc/be-mvp.elf:<repo>/build/mvp/clang/te-poc/be-mvp.bin:<repo>/build/mvp/clang/te-poc/be-mvp-boot.img \
+	--image gcc/anchor:<repo>/build/mvp/gcc/anchor/be-mvp.elf:<repo>/build/mvp/gcc/anchor/be-mvp.bin:<repo>/build/mvp/gcc/anchor/be-mvp-boot.img --image clang/anchor:<repo>/build/mvp/clang/anchor/be-mvp.elf:<repo>/build/mvp/clang/anchor/be-mvp.bin:<repo>/build/mvp/clang/anchor/be-mvp-boot.img \
+	--image gcc/variant/exit-budget:<repo>/build/mvp/variants/gcc/exit-budget/be-mvp.elf:<repo>/build/mvp/variants/gcc/exit-budget/be-mvp.bin:<repo>/build/mvp/variants/gcc/exit-budget/be-mvp-boot.img --image gcc/variant/run-timeout:<repo>/build/mvp/variants/gcc/run-timeout/be-mvp.elf:<repo>/build/mvp/variants/gcc/run-timeout/be-mvp.bin:<repo>/build/mvp/variants/gcc/run-timeout/be-mvp-boot.img --image gcc/variant/ring-full:<repo>/build/mvp/variants/gcc/ring-full/be-mvp.elf:<repo>/build/mvp/variants/gcc/ring-full/be-mvp.bin:<repo>/build/mvp/variants/gcc/ring-full/be-mvp-boot.img --image gcc/variant/hart-start:<repo>/build/mvp/variants/gcc/hart-start/be-mvp.elf:<repo>/build/mvp/variants/gcc/hart-start/be-mvp.bin:<repo>/build/mvp/variants/gcc/hart-start/be-mvp-boot.img --image gcc/variant/reader-write:<repo>/build/mvp/variants/gcc/reader-write/be-mvp.elf:<repo>/build/mvp/variants/gcc/reader-write/be-mvp.bin:<repo>/build/mvp/variants/gcc/reader-write/be-mvp-boot.img --image gcc/variant/no-inject:<repo>/build/mvp/variants/gcc/no-inject/be-mvp.elf:<repo>/build/mvp/variants/gcc/no-inject/be-mvp.bin:<repo>/build/mvp/variants/gcc/no-inject/be-mvp-boot.img --image gcc/variant/secret-shared:<repo>/build/mvp/variants/gcc/secret-shared/be-mvp.elf:<repo>/build/mvp/variants/gcc/secret-shared/be-mvp.bin:<repo>/build/mvp/variants/gcc/secret-shared/be-mvp-boot.img --image gcc/variant/response-writable:<repo>/build/mvp/variants/gcc/response-writable/be-mvp.elf:<repo>/build/mvp/variants/gcc/response-writable/be-mvp.bin:<repo>/build/mvp/variants/gcc/response-writable/be-mvp-boot.img --image gcc/variant/wrong-measurement:<repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp.elf:<repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp.bin:<repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp-boot.img --image gcc/variant/no-grant-check:<repo>/build/mvp/variants/gcc/no-grant-check/be-mvp.elf:<repo>/build/mvp/variants/gcc/no-grant-check/be-mvp.bin:<repo>/build/mvp/variants/gcc/no-grant-check/be-mvp-boot.img --image clang/variant/exit-budget:<repo>/build/mvp/variants/clang/exit-budget/be-mvp.elf:<repo>/build/mvp/variants/clang/exit-budget/be-mvp.bin:<repo>/build/mvp/variants/clang/exit-budget/be-mvp-boot.img --image clang/variant/run-timeout:<repo>/build/mvp/variants/clang/run-timeout/be-mvp.elf:<repo>/build/mvp/variants/clang/run-timeout/be-mvp.bin:<repo>/build/mvp/variants/clang/run-timeout/be-mvp-boot.img --image clang/variant/ring-full:<repo>/build/mvp/variants/clang/ring-full/be-mvp.elf:<repo>/build/mvp/variants/clang/ring-full/be-mvp.bin:<repo>/build/mvp/variants/clang/ring-full/be-mvp-boot.img --image clang/variant/hart-start:<repo>/build/mvp/variants/clang/hart-start/be-mvp.elf:<repo>/build/mvp/variants/clang/hart-start/be-mvp.bin:<repo>/build/mvp/variants/clang/hart-start/be-mvp-boot.img --image clang/variant/reader-write:<repo>/build/mvp/variants/clang/reader-write/be-mvp.elf:<repo>/build/mvp/variants/clang/reader-write/be-mvp.bin:<repo>/build/mvp/variants/clang/reader-write/be-mvp-boot.img --image clang/variant/no-inject:<repo>/build/mvp/variants/clang/no-inject/be-mvp.elf:<repo>/build/mvp/variants/clang/no-inject/be-mvp.bin:<repo>/build/mvp/variants/clang/no-inject/be-mvp-boot.img --image clang/variant/secret-shared:<repo>/build/mvp/variants/clang/secret-shared/be-mvp.elf:<repo>/build/mvp/variants/clang/secret-shared/be-mvp.bin:<repo>/build/mvp/variants/clang/secret-shared/be-mvp-boot.img --image clang/variant/response-writable:<repo>/build/mvp/variants/clang/response-writable/be-mvp.elf:<repo>/build/mvp/variants/clang/response-writable/be-mvp.bin:<repo>/build/mvp/variants/clang/response-writable/be-mvp-boot.img --image clang/variant/wrong-measurement:<repo>/build/mvp/variants/clang/wrong-measurement/be-mvp.elf:<repo>/build/mvp/variants/clang/wrong-measurement/be-mvp.bin:<repo>/build/mvp/variants/clang/wrong-measurement/be-mvp-boot.img --image clang/variant/no-grant-check:<repo>/build/mvp/variants/clang/no-grant-check/be-mvp.elf:<repo>/build/mvp/variants/clang/no-grant-check/be-mvp.bin:<repo>/build/mvp/variants/clang/no-grant-check/be-mvp-boot.img \
+	--image gcc/probe-platform:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp.elf:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp.bin:<repo>/build/mvp/probes/gcc/probe-platform/be-mvp-boot.img --image gcc/probe-vmid-distinct:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp.elf:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp.bin:<repo>/build/mvp/probes/gcc/probe-vmid-distinct/be-mvp-boot.img --image gcc/probe-vmid-shared:<repo>/build/mvp/probes/gcc/probe-vmid-shared/be-mvp.elf:<repo>/build/mvp/probes/gcc/probe-vmid-shared/be-mvp.bin:<repo>/build/mvp/probes/gcc/probe-vmid-shared/be-mvp-boot.img --image clang/probe-platform:<repo>/build/mvp/probes/clang/probe-platform/be-mvp.elf:<repo>/build/mvp/probes/clang/probe-platform/be-mvp.bin:<repo>/build/mvp/probes/clang/probe-platform/be-mvp-boot.img --image clang/probe-vmid-distinct:<repo>/build/mvp/probes/clang/probe-vmid-distinct/be-mvp.elf:<repo>/build/mvp/probes/clang/probe-vmid-distinct/be-mvp.bin:<repo>/build/mvp/probes/clang/probe-vmid-distinct/be-mvp-boot.img --image clang/probe-vmid-shared:<repo>/build/mvp/probes/clang/probe-vmid-shared/be-mvp.elf:<repo>/build/mvp/probes/clang/probe-vmid-shared/be-mvp.bin:<repo>/build/mvp/probes/clang/probe-vmid-shared/be-mvp-boot.img \
+	 \
+	2>&1 | tee <repo>/build/mvp/records/budgets.txt
+BE_MVP_BUDGET: gcc text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x54d0 mvp_rodata=0xe50 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x8088 limit=0x40000 spare=0x37f78 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x5b40 mvp_rodata=0xe28 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x86d8 limit=0x40000 spare=0x37928 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/te-poc text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x59f0 mvp_rodata=0x1040 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x8798 limit=0x40000 spare=0x37868 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/te-poc text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x6050 mvp_rodata=0xff8 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x8db8 limit=0x40000 spare=0x37248 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/anchor text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x6330 mvp_rodata=0x1448 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x94e8 limit=0x40000 spare=0x36b18 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/anchor text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x6990 mvp_rodata=0x1390 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x9a88 limit=0x40000 spare=0x36578 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/variant/exit-budget text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x54d0 mvp_rodata=0xe50 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x8088 limit=0x40000 spare=0x37f78 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/variant/run-timeout text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x54d0 mvp_rodata=0xe50 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x8088 limit=0x40000 spare=0x37f78 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/variant/ring-full text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x5540 mvp_rodata=0xe50 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x80f8 limit=0x40000 spare=0x37f08 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/variant/hart-start text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x54d0 mvp_rodata=0xe50 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x8088 limit=0x40000 spare=0x37f78 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/variant/reader-write text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x59e0 mvp_rodata=0x1040 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x8788 limit=0x40000 spare=0x37878 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/variant/no-inject text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x55d0 mvp_rodata=0xf68 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x82a8 limit=0x40000 spare=0x37d58 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/variant/secret-shared text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x6340 mvp_rodata=0x1448 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x94f8 limit=0x40000 spare=0x36b08 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/variant/response-writable text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x6350 mvp_rodata=0x1448 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x9508 limit=0x40000 spare=0x36af8 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/variant/wrong-measurement text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x6340 mvp_rodata=0x1448 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x94f8 limit=0x40000 spare=0x36b08 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/variant/no-grant-check text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x1020088a0 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x6330 mvp_rodata=0x1448 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x94e8 limit=0x40000 spare=0x36b18 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/variant/exit-budget text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x5b40 mvp_rodata=0xe28 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x86d8 limit=0x40000 spare=0x37928 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/variant/run-timeout text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x5b40 mvp_rodata=0xe28 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x86d8 limit=0x40000 spare=0x37928 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/variant/ring-full text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x5b80 mvp_rodata=0xe28 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x8718 limit=0x40000 spare=0x378e8 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/variant/hart-start text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x5b40 mvp_rodata=0xe28 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x86d8 limit=0x40000 spare=0x37928 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/variant/reader-write text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x6040 mvp_rodata=0xff8 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x8da8 limit=0x40000 spare=0x37258 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/variant/no-inject text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x5c80 mvp_rodata=0xf38 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x8928 limit=0x40000 spare=0x376d8 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/variant/secret-shared text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x69b0 mvp_rodata=0x1390 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x9aa8 limit=0x40000 spare=0x36558 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/variant/response-writable text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x69b0 mvp_rodata=0x1390 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x9aa8 limit=0x40000 spare=0x36558 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/variant/wrong-measurement text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x69a0 mvp_rodata=0x1390 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x9a98 limit=0x40000 spare=0x36568 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/variant/no-grant-check text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008900 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x6990 mvp_rodata=0x1390 mvp_data=0xeb8 mvp_bss=0xeb0 mvp_bytes=0x9a88 limit=0x40000 spare=0x36578 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/probe-platform text_end=0x102002d10 limit=0x102008000 spare=0x52f0 data_end=0x102008a00 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x4960 mvp_rodata=0xf18 mvp_data=0xeb8 mvp_bss=0x14e8 mvp_bytes=0x7c20 limit=0x40000 spare=0x383e0 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/probe-vmid-distinct text_end=0x102002d20 limit=0x102008000 spare=0x52e0 data_end=0x102008a00 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x42f0 mvp_rodata=0xbf8 mvp_data=0xeb8 mvp_bss=0x14e8 mvp_bytes=0x7290 limit=0x40000 spare=0x38d70 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: gcc/probe-vmid-shared text_end=0x102002d20 limit=0x102008000 spare=0x52e0 data_end=0x102008a00 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x42f0 mvp_rodata=0xbf0 mvp_data=0xeb8 mvp_bss=0x14e8 mvp_bytes=0x7280 limit=0x40000 spare=0x38d80 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/probe-platform text_end=0x102002f90 limit=0x102008000 spare=0x5070 data_end=0x102008a40 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x4cc0 mvp_rodata=0xe7c mvp_data=0xeb8 mvp_bss=0x14e8 mvp_bytes=0x7ee0 limit=0x40000 spare=0x38120 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/probe-vmid-distinct text_end=0x102002fa0 limit=0x102008000 spare=0x5060 data_end=0x102008a40 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x4670 mvp_rodata=0xb70 mvp_data=0xeb8 mvp_bss=0x14e8 mvp_bytes=0x7580 limit=0x40000 spare=0x38a80 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGET: clang/probe-vmid-shared text_end=0x102002fa0 limit=0x102008000 spare=0x5060 data_end=0x102008a40 limit=0x10200f000 pool=0x10000 hart_region=0x20000 mvp_text=0x4670 mvp_rodata=0xb68 mvp_data=0xeb8 mvp_bss=0x14e8 mvp_bytes=0x7580 limit=0x40000 spare=0x38a80 flat=0xa4000 boot=0x277000 limit=0x400000 two_links=identical: PASS
+BE_MVP_BUDGETS: PASS measured=32
+/usr/bin/python3 -B <repo>/mvp/tools/evidence.py --build <repo>/build/mvp --out <repo>/build/mvp/evidence/check
+BE_MVP_EVIDENCE: PASS development <repo>/build/mvp/evidence/check files=288 images=253 qemu_attempts=73 rehearsals=0
+mkdir -p <repo>/build/mvp/records/claim-ledger
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tools/claim-ledger.py --self-test \
+	--scratch <repo>/build/mvp/tmp/claim-ledger-self-test | \
+	tee <repo>/build/mvp/records/claim-ledger/self-test.txt
+ok   the ledger and the surfaces as they are: passed
+ok   a wrong hash (C-36 evidence 1): failed evidence
+ok   a missing path (C-29 evidence 1): failed evidence
+ok   a record cited by its directory (C-32 evidence 1): failed evidence
+ok   an unknown method (C-03): failed methods
+ok   hardware validation as a method (C-38): failed methods
+ok   not run beside evidence (C-14): failed methods
+ok   a tree named as a commit (C-31 evidence 2): failed commits
+ok   a stale rendered table: failed rendering
+ok   a forbidden literal, "full isolation": failed phrasing
+ok   a conditional phrase without its condition: failed phrasing
+ok   a hyphen and space variant: failed phrasing
+ok   a case variant: failed phrasing
+ok   a home path: failed privacy
+ok   an IPv4 address: failed privacy
+ok   an ssh user and host: failed privacy
+ok   a guide command the wrapper lacks: failed guide commands
+ok   an extra key (C-03): failed schema
+ok   review items unlike claim.md's: failed schema
+ok   a surface without its header: failed headers
+ok   reproduction and certified-free (word boundaries): passed
+ok   a conditional phrase with its condition: passed
+ok   an image digest and a package version (not an ssh target or an address): passed
+ok   an ssh target with a path: failed privacy
+ok   an address after a space: failed privacy
+ok   a MAC address: failed privacy
+ok   a serial# value: failed privacy
+ok   a time, a MAC's code name, and serial#'s (not a MAC or a serial number): passed
+ok   a guide of wrapper commands and kernel-repro: passed
+claim ledger self-test: PASS mutations=23 variants=6
+set -o pipefail; /usr/bin/python3 -B <repo>/mvp/tools/claim-ledger.py check | \
+	tee <repo>/build/mvp/records/claim-ledger/check.txt
+claim ledger schema: PASS
+claim ledger methods: PASS
+claim ledger evidence: PASS artifacts=89 records=7
+claim ledger commits: PASS commits=13
+claim ledger rendering: PASS
+claim ledger guide commands: PASS commands=35
+claim ledger phrasing: PASS surfaces=4 literals=35 conditionals=3 review_items=2
+claim ledger privacy: PASS files=549
+claim ledger headers: PASS surfaces=4
+BE_MVP_CLAIM_LEDGER: PASS checks=9 claims=41 boundary=13
+/usr/bin/python3 -B <repo>/mvp/tools/claim-ledger.py join --bundle <repo>/build/mvp/evidence/check \
+	<repo>/build/mvp/records/claim-ledger/self-test.txt \
+	<repo>/build/mvp/records/claim-ledger/check.txt
+claim ledger join: PASS records/claim-ledger records=2 files=290
+BE_MVP_CHECK: PASS

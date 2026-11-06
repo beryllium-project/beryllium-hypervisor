@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The K3 B7 guest pins (planning/k3-b7-plan.md, Guest software, Budgets, and
+# Tests and evidence; B6's guest/pins.txt with B7's outputs): the SHA-256
+# and size of the nolibc init, the Image, and every DTB that
+# scripts/build-guest.sh makes, the Image header facts, and the kernel
+# banner, which both QEMU reference boots printed. They hold for the cross
+# toolchain named on the last line. scripts/guest-pins.py checks them;
+# `build-guest.sh --unpinned` prints the lines for a deliberate update.
+file init sha256=dabaabb579e0d226a50724659fbab63d36c0bf403d535144eac51f51ee3dd1f2 bytes=4168
+file Image sha256=65145f694e458ca1b43ff24521b186a5520b959d8175fd7cf8defa10963add65 bytes=1553332
+file b7-guest-g0.dtb sha256=d89653aba7d40523c3e31d9282aa80a461c8950c88674d49b17d036453c05919 bytes=4096
+file b7-guest-g1.dtb sha256=4680801c49e888a27507e54095cd71bbe60a54f4e6c9f3ab94b3d61180ab7bed bytes=4096
+file b7-guest-g1-init-exit.dtb sha256=4bbc0f3b41e32a35830f7c4ec61aca661d49c66808725eb8256375d18679bec6 bytes=4096
+file b7-guest-g0-rdcycle.dtb sha256=fe038fac0cc7ca4a657973e1d11440eea5dd50f0b3e3e2323e784c016d38ce09 bytes=4096
+file b7-guest-g0-sbi-time.dtb sha256=f9ade3408fe9001d659f0aa325c3d9fb122acc9657006d1a57a559fd8eafd34b bytes=4096
+file b7-guest-g1-sbi-time.dtb sha256=3fa2f6230b28315319cf8b47940cec71a7fd56d6857c872df02a32fbb6733655 bytes=4096
+file b7-guest-g0-reference.dtb sha256=998c736c846de8197b86b7462db6fe22dd5af7af3e39c4d81dcf3d9db3550a2e bytes=4096
+file b7-guest-g1-reference.dtb sha256=cd7427610cac2bcc0fef6d65002dbb4b68d36b21abb3f41c9974fdced29964f6 bytes=4096
+kernel image_size=0x1af628
+kernel text_offset=0x200000
+kernel banner=Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+toolchain gcc=riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1)

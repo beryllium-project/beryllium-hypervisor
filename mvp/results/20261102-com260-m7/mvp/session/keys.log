@@ -1,0 +1,594 @@
+2026-11-02T05:34:14.934Z	stop	stop=1 the k3ctl client's SHA-256 9c11b4f8467b3da311cf8cc2c41c3a03a15661a6372f4fcae1693b5c0275bd6f differs from the pin 7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+2026-11-02T05:35:40.127Z	start	session=20261102-com260-m7 offset=497562
+2026-11-02T05:36:02.145Z	reset	seq=1 method=k3ctl reason=fedora-down offset=521742
+2026-11-02T05:36:03.171Z	banner	seq=1 spl=521850 uboot=522011
+2026-11-02T05:36:03.205Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:36:04.188Z	key	s offset=524686
+2026-11-02T05:36:04.566Z	prompt	fresh offset=524690
+2026-11-02T05:36:04.624Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:36:05.648Z	line	first template=printenv
+2026-11-02T05:36:05.655Z	send	piece=1/1 offset=524690 text=printenv
+2026-11-02T05:36:05.684Z	echo	ok offset=524690-524709
+2026-11-02T05:36:05.686Z	key	Enter template=printenv
+2026-11-02T05:36:07.123Z	prompt	template=printenv output_bytes=12306 output_sha256=22a652506c46848415485d06ad4ad2aa9ed8997ce707fd5bb8739d67b6dd4c74
+2026-11-02T05:36:08.523Z	reset	seq=2 method=k3ctl reason=idle-prompt offset=537020
+2026-11-02T05:36:09.555Z	banner	seq=2 spl=537128 uboot=537289
+2026-11-02T05:36:09.585Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:36:10.621Z	key	s offset=539964
+2026-11-02T05:36:10.999Z	prompt	fresh offset=539968
+2026-11-02T05:36:11.050Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:36:12.076Z	line	first template=printenv
+2026-11-02T05:36:12.083Z	send	piece=1/1 offset=539968 text=printenv
+2026-11-02T05:36:12.106Z	echo	ok offset=539968-539987
+2026-11-02T05:36:12.109Z	key	Enter template=printenv
+2026-11-02T05:36:13.544Z	prompt	template=printenv output_bytes=12306 output_sha256=22a652506c46848415485d06ad4ad2aa9ed8997ce707fd5bb8739d67b6dd4c74
+2026-11-02T05:42:18.989Z	stop	stop=1 the port-open rule holds no reason to reset now (no idle prompt, no terminal marker or Fedora halted with 5 s quiet, and no prior halt or terminal marker before a session's first reset); no reset was made
+2026-11-02T05:43:08.324Z	reset	seq=3 method=k3ctl reason=idle-prompt offset=552350
+2026-11-02T05:43:09.351Z	banner	seq=3 spl=552458 uboot=552619
+2026-11-02T05:43:09.385Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:43:10.424Z	key	s offset=555308
+2026-11-02T05:43:10.807Z	prompt	fresh offset=555312
+2026-11-02T05:43:10.859Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:43:11.883Z	line	first template=save-bootcmd
+2026-11-02T05:43:11.890Z	send	piece=1/1 offset=555312 text=setenv be_orig_bootcmd "${bootcmd}"
+2026-11-02T05:43:11.911Z	echo	ok offset=555312-555358
+2026-11-02T05:43:11.913Z	key	Enter template=save-bootcmd
+2026-11-02T05:43:12.239Z	prompt	template=save-bootcmd output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:43:12.298Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:43:13.331Z	line	first template=be_part
+2026-11-02T05:43:13.338Z	send	piece=1/1 offset=555363 text=setenv be_part 6
+2026-11-02T05:43:13.362Z	echo	ok offset=555363-555379
+2026-11-02T05:43:13.365Z	key	Enter template=be_part
+2026-11-02T05:43:13.693Z	prompt	template=be_part output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:43:13.750Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:43:14.776Z	line	first template=be_image
+2026-11-02T05:43:14.783Z	send	piece=1/1 offset=555384 text=setenv be_image be-mvp-probe-platform-gcc.img
+2026-11-02T05:43:14.807Z	echo	ok offset=555384-555429
+2026-11-02T05:43:14.810Z	key	Enter template=be_image
+2026-11-02T05:43:15.138Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:43:15.194Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:43:16.225Z	line	first template=be_ld
+2026-11-02T05:43:16.232Z	send	piece=1/2 offset=555434 text=setenv be_ld 'load nvme 0:${be_part} 0x140000000 /${be_image
+2026-11-02T05:43:16.463Z	send	piece=2/2 offset=555434 text=} && md5sum 0x140000000 ${filesize}'
+2026-11-02T05:43:16.489Z	echo	ok offset=555434-555530
+2026-11-02T05:43:16.492Z	key	Enter template=be_ld
+2026-11-02T05:43:16.815Z	prompt	template=be_ld output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:43:16.872Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:43:17.895Z	line	first template=be_go
+2026-11-02T05:43:17.902Z	send	piece=1/1 offset=555535 text=setenv be_go 'booti 0x140000000 - ${fdtcontroladdr}'
+2026-11-02T05:43:17.925Z	echo	ok offset=555535-555587
+2026-11-02T05:43:17.928Z	key	Enter template=be_go
+2026-11-02T05:43:18.255Z	prompt	template=be_go output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:43:18.309Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:43:19.333Z	line	first template=be_boot
+2026-11-02T05:43:19.340Z	send	piece=1/1 offset=555592 text=setenv be_boot 'nvme scan; if run be_ld; then run be_go; fi'
+2026-11-02T05:43:19.369Z	echo	ok offset=555592-555652
+2026-11-02T05:43:19.372Z	key	Enter template=be_boot
+2026-11-02T05:43:19.702Z	prompt	template=be_boot output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:43:19.761Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:43:20.784Z	line	first template=install-bootcmd
+2026-11-02T05:43:20.791Z	send	piece=1/1 offset=555657 text=setenv bootcmd 'run be_boot; run be_orig_bootcmd'
+2026-11-02T05:43:20.819Z	echo	ok offset=555657-555706
+2026-11-02T05:43:20.822Z	key	Enter template=install-bootcmd
+2026-11-02T05:43:21.146Z	prompt	template=install-bootcmd output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:43:21.194Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:43:22.216Z	line	first template=printenv
+2026-11-02T05:43:22.223Z	send	piece=1/1 offset=555711 text=printenv
+2026-11-02T05:43:22.249Z	echo	ok offset=555711-555719
+2026-11-02T05:43:22.252Z	key	Enter template=printenv
+2026-11-02T05:43:23.684Z	prompt	template=printenv output_bytes=12594 output_sha256=1955a6a2cdccca5cff4e74f811cb48de3ef198f59702c9a3984d123311e58cfa
+2026-11-02T05:43:23.802Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:43:24.823Z	line	first template=saveenv
+2026-11-02T05:43:24.831Z	send	piece=1/1 offset=568318 text=saveenv
+2026-11-02T05:43:24.855Z	echo	ok offset=568318-568325
+2026-11-02T05:43:24.857Z	key	Enter template=saveenv
+2026-11-02T05:43:25.336Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-11-02T05:43:56.193Z	reset	seq=4 method=k3ctl reason=idle-prompt offset=568366
+2026-11-02T05:43:57.212Z	banner	seq=4 spl=568474 uboot=568635
+2026-11-02T05:43:57.240Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:43:58.274Z	key	s offset=571324
+2026-11-02T05:43:58.650Z	prompt	fresh offset=571328
+2026-11-02T05:43:58.711Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:43:59.732Z	line	first template=be_image
+2026-11-02T05:43:59.740Z	send	piece=1/1 offset=571328 text=setenv be_image be-mvp-probe-console-input-gcc.img
+2026-11-02T05:43:59.769Z	echo	ok offset=571328-571389
+2026-11-02T05:43:59.771Z	key	Enter template=be_image
+2026-11-02T05:44:00.099Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:44:00.150Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:44:01.173Z	line	first template=printenv-name
+2026-11-02T05:44:01.180Z	send	piece=1/1 offset=571394 text=printenv be_image
+2026-11-02T05:44:01.203Z	echo	ok offset=571394-571411
+2026-11-02T05:44:01.205Z	key	Enter template=printenv-name
+2026-11-02T05:44:01.580Z	prompt	template=printenv-name output_bytes=45 output_sha256=7f46fdff46d359d35512357b345b491f0b13f726fb05fcbc36c088f1b5fe03d8
+2026-11-02T05:44:01.644Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:44:02.666Z	line	first template=printenv
+2026-11-02T05:44:02.672Z	send	piece=1/1 offset=571461 text=printenv
+2026-11-02T05:44:02.703Z	echo	ok offset=571461-571480
+2026-11-02T05:44:02.706Z	key	Enter template=printenv
+2026-11-02T05:44:04.141Z	prompt	template=printenv output_bytes=12599 output_sha256=a5fd35e49000a856d5338585352236d7d0caa52b9cb952f5899b279061d60aab
+2026-11-02T05:44:04.266Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:44:05.289Z	line	first template=saveenv
+2026-11-02T05:44:05.296Z	send	piece=1/1 offset=584084 text=saveenv
+2026-11-02T05:44:05.320Z	echo	ok offset=584084-584091
+2026-11-02T05:44:05.322Z	key	Enter template=saveenv
+2026-11-02T05:44:05.796Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-11-02T05:44:07.297Z	reset	seq=5 method=k3ctl reason=idle-prompt offset=584132
+2026-11-02T05:44:08.317Z	banner	seq=5 spl=584240 uboot=584401
+2026-11-02T05:44:08.351Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:44:14.120Z	probe-text rep=1	pacing=0.01s offset=589649 text=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-=
+2026-11-02T05:44:14.122Z	probe-text rep=1	key=0x30
+2026-11-02T05:44:14.134Z	probe-text rep=1	key=0x31
+2026-11-02T05:44:14.146Z	probe-text rep=1	key=0x32
+2026-11-02T05:44:14.158Z	probe-text rep=1	key=0x33
+2026-11-02T05:44:14.170Z	probe-text rep=1	key=0x34
+2026-11-02T05:44:14.181Z	probe-text rep=1	key=0x35
+2026-11-02T05:44:14.193Z	probe-text rep=1	key=0x36
+2026-11-02T05:44:14.205Z	probe-text rep=1	key=0x37
+2026-11-02T05:44:14.217Z	probe-text rep=1	key=0x38
+2026-11-02T05:44:14.229Z	probe-text rep=1	key=0x39
+2026-11-02T05:44:14.240Z	probe-text rep=1	key=0x61
+2026-11-02T05:44:14.252Z	probe-text rep=1	key=0x62
+2026-11-02T05:44:14.264Z	probe-text rep=1	key=0x63
+2026-11-02T05:44:14.275Z	probe-text rep=1	key=0x64
+2026-11-02T05:44:14.287Z	probe-text rep=1	key=0x65
+2026-11-02T05:44:14.299Z	probe-text rep=1	key=0x66
+2026-11-02T05:44:14.310Z	probe-text rep=1	key=0x67
+2026-11-02T05:44:14.322Z	probe-text rep=1	key=0x68
+2026-11-02T05:44:14.333Z	probe-text rep=1	key=0x69
+2026-11-02T05:44:14.345Z	probe-text rep=1	key=0x6a
+2026-11-02T05:44:14.357Z	probe-text rep=1	key=0x6b
+2026-11-02T05:44:14.368Z	probe-text rep=1	key=0x6c
+2026-11-02T05:44:14.380Z	probe-text rep=1	key=0x6d
+2026-11-02T05:44:14.392Z	probe-text rep=1	key=0x6e
+2026-11-02T05:44:14.404Z	probe-text rep=1	key=0x6f
+2026-11-02T05:44:14.415Z	probe-text rep=1	key=0x70
+2026-11-02T05:44:14.427Z	probe-text rep=1	key=0x71
+2026-11-02T05:44:14.438Z	probe-text rep=1	key=0x72
+2026-11-02T05:44:14.450Z	probe-text rep=1	key=0x73
+2026-11-02T05:44:14.461Z	probe-text rep=1	key=0x74
+2026-11-02T05:44:14.473Z	probe-text rep=1	key=0x75
+2026-11-02T05:44:14.484Z	probe-text rep=1	key=0x76
+2026-11-02T05:44:14.496Z	probe-text rep=1	key=0x77
+2026-11-02T05:44:14.508Z	probe-text rep=1	key=0x78
+2026-11-02T05:44:14.520Z	probe-text rep=1	key=0x79
+2026-11-02T05:44:14.531Z	probe-text rep=1	key=0x7a
+2026-11-02T05:44:14.543Z	probe-text rep=1	key=0x41
+2026-11-02T05:44:14.554Z	probe-text rep=1	key=0x42
+2026-11-02T05:44:14.566Z	probe-text rep=1	key=0x43
+2026-11-02T05:44:14.577Z	probe-text rep=1	key=0x44
+2026-11-02T05:44:14.589Z	probe-text rep=1	key=0x45
+2026-11-02T05:44:14.600Z	probe-text rep=1	key=0x46
+2026-11-02T05:44:14.612Z	probe-text rep=1	key=0x47
+2026-11-02T05:44:14.624Z	probe-text rep=1	key=0x48
+2026-11-02T05:44:14.636Z	probe-text rep=1	key=0x49
+2026-11-02T05:44:14.647Z	probe-text rep=1	key=0x4a
+2026-11-02T05:44:14.659Z	probe-text rep=1	key=0x4b
+2026-11-02T05:44:14.671Z	probe-text rep=1	key=0x4c
+2026-11-02T05:44:14.682Z	probe-text rep=1	key=0x4d
+2026-11-02T05:44:14.694Z	probe-text rep=1	key=0x4e
+2026-11-02T05:44:14.706Z	probe-text rep=1	key=0x4f
+2026-11-02T05:44:14.718Z	probe-text rep=1	key=0x50
+2026-11-02T05:44:14.729Z	probe-text rep=1	key=0x51
+2026-11-02T05:44:14.740Z	probe-text rep=1	key=0x52
+2026-11-02T05:44:14.752Z	probe-text rep=1	key=0x53
+2026-11-02T05:44:14.764Z	probe-text rep=1	key=0x54
+2026-11-02T05:44:14.775Z	probe-text rep=1	key=0x55
+2026-11-02T05:44:14.787Z	probe-text rep=1	key=0x56
+2026-11-02T05:44:14.799Z	probe-text rep=1	key=0x57
+2026-11-02T05:44:14.810Z	probe-text rep=1	key=0x58
+2026-11-02T05:44:14.822Z	probe-text rep=1	key=0x59
+2026-11-02T05:44:14.834Z	probe-text rep=1	key=0x5a
+2026-11-02T05:44:14.845Z	probe-text rep=1	key=0x2d
+2026-11-02T05:44:14.857Z	probe-text rep=1	key=0x3d
+2026-11-02T05:44:15.406Z	probe-text rep=2	pacing=0.01s offset=589819 text=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-=
+2026-11-02T05:44:15.408Z	probe-text rep=2	key=0x30
+2026-11-02T05:44:15.420Z	probe-text rep=2	key=0x31
+2026-11-02T05:44:15.432Z	probe-text rep=2	key=0x32
+2026-11-02T05:44:15.444Z	probe-text rep=2	key=0x33
+2026-11-02T05:44:15.455Z	probe-text rep=2	key=0x34
+2026-11-02T05:44:15.467Z	probe-text rep=2	key=0x35
+2026-11-02T05:44:15.479Z	probe-text rep=2	key=0x36
+2026-11-02T05:44:15.491Z	probe-text rep=2	key=0x37
+2026-11-02T05:44:15.503Z	probe-text rep=2	key=0x38
+2026-11-02T05:44:15.515Z	probe-text rep=2	key=0x39
+2026-11-02T05:44:15.527Z	probe-text rep=2	key=0x61
+2026-11-02T05:44:15.539Z	probe-text rep=2	key=0x62
+2026-11-02T05:44:15.551Z	probe-text rep=2	key=0x63
+2026-11-02T05:44:15.563Z	probe-text rep=2	key=0x64
+2026-11-02T05:44:15.574Z	probe-text rep=2	key=0x65
+2026-11-02T05:44:15.586Z	probe-text rep=2	key=0x66
+2026-11-02T05:44:15.598Z	probe-text rep=2	key=0x67
+2026-11-02T05:44:15.610Z	probe-text rep=2	key=0x68
+2026-11-02T05:44:15.621Z	probe-text rep=2	key=0x69
+2026-11-02T05:44:15.634Z	probe-text rep=2	key=0x6a
+2026-11-02T05:44:15.645Z	probe-text rep=2	key=0x6b
+2026-11-02T05:44:15.657Z	probe-text rep=2	key=0x6c
+2026-11-02T05:44:15.669Z	probe-text rep=2	key=0x6d
+2026-11-02T05:44:15.681Z	probe-text rep=2	key=0x6e
+2026-11-02T05:44:15.692Z	probe-text rep=2	key=0x6f
+2026-11-02T05:44:15.704Z	probe-text rep=2	key=0x70
+2026-11-02T05:44:15.716Z	probe-text rep=2	key=0x71
+2026-11-02T05:44:15.728Z	probe-text rep=2	key=0x72
+2026-11-02T05:44:15.739Z	probe-text rep=2	key=0x73
+2026-11-02T05:44:15.751Z	probe-text rep=2	key=0x74
+2026-11-02T05:44:15.762Z	probe-text rep=2	key=0x75
+2026-11-02T05:44:15.774Z	probe-text rep=2	key=0x76
+2026-11-02T05:44:15.785Z	probe-text rep=2	key=0x77
+2026-11-02T05:44:15.797Z	probe-text rep=2	key=0x78
+2026-11-02T05:44:15.808Z	probe-text rep=2	key=0x79
+2026-11-02T05:44:15.820Z	probe-text rep=2	key=0x7a
+2026-11-02T05:44:15.831Z	probe-text rep=2	key=0x41
+2026-11-02T05:44:15.843Z	probe-text rep=2	key=0x42
+2026-11-02T05:44:15.855Z	probe-text rep=2	key=0x43
+2026-11-02T05:44:15.867Z	probe-text rep=2	key=0x44
+2026-11-02T05:44:15.879Z	probe-text rep=2	key=0x45
+2026-11-02T05:44:15.890Z	probe-text rep=2	key=0x46
+2026-11-02T05:44:15.902Z	probe-text rep=2	key=0x47
+2026-11-02T05:44:15.913Z	probe-text rep=2	key=0x48
+2026-11-02T05:44:15.925Z	probe-text rep=2	key=0x49
+2026-11-02T05:44:15.937Z	probe-text rep=2	key=0x4a
+2026-11-02T05:44:15.949Z	probe-text rep=2	key=0x4b
+2026-11-02T05:44:15.960Z	probe-text rep=2	key=0x4c
+2026-11-02T05:44:15.972Z	probe-text rep=2	key=0x4d
+2026-11-02T05:44:15.983Z	probe-text rep=2	key=0x4e
+2026-11-02T05:44:15.995Z	probe-text rep=2	key=0x4f
+2026-11-02T05:44:16.006Z	probe-text rep=2	key=0x50
+2026-11-02T05:44:16.018Z	probe-text rep=2	key=0x51
+2026-11-02T05:44:16.030Z	probe-text rep=2	key=0x52
+2026-11-02T05:44:16.041Z	probe-text rep=2	key=0x53
+2026-11-02T05:44:16.053Z	probe-text rep=2	key=0x54
+2026-11-02T05:44:16.065Z	probe-text rep=2	key=0x55
+2026-11-02T05:44:16.076Z	probe-text rep=2	key=0x56
+2026-11-02T05:44:16.088Z	probe-text rep=2	key=0x57
+2026-11-02T05:44:16.100Z	probe-text rep=2	key=0x58
+2026-11-02T05:44:16.111Z	probe-text rep=2	key=0x59
+2026-11-02T05:44:16.123Z	probe-text rep=2	key=0x5a
+2026-11-02T05:44:16.135Z	probe-text rep=2	key=0x2d
+2026-11-02T05:44:16.146Z	probe-text rep=2	key=0x3d
+2026-11-02T05:44:16.684Z	probe-text rep=3	pacing=0.01s offset=589990 text=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-=
+2026-11-02T05:44:16.687Z	probe-text rep=3	key=0x30
+2026-11-02T05:44:16.699Z	probe-text rep=3	key=0x31
+2026-11-02T05:44:16.710Z	probe-text rep=3	key=0x32
+2026-11-02T05:44:16.722Z	probe-text rep=3	key=0x33
+2026-11-02T05:44:16.734Z	probe-text rep=3	key=0x34
+2026-11-02T05:44:16.746Z	probe-text rep=3	key=0x35
+2026-11-02T05:44:16.758Z	probe-text rep=3	key=0x36
+2026-11-02T05:44:16.770Z	probe-text rep=3	key=0x37
+2026-11-02T05:44:16.782Z	probe-text rep=3	key=0x38
+2026-11-02T05:44:16.794Z	probe-text rep=3	key=0x39
+2026-11-02T05:44:16.806Z	probe-text rep=3	key=0x61
+2026-11-02T05:44:16.817Z	probe-text rep=3	key=0x62
+2026-11-02T05:44:16.829Z	probe-text rep=3	key=0x63
+2026-11-02T05:44:16.841Z	probe-text rep=3	key=0x64
+2026-11-02T05:44:16.853Z	probe-text rep=3	key=0x65
+2026-11-02T05:44:16.865Z	probe-text rep=3	key=0x66
+2026-11-02T05:44:16.876Z	probe-text rep=3	key=0x67
+2026-11-02T05:44:16.888Z	probe-text rep=3	key=0x68
+2026-11-02T05:44:16.900Z	probe-text rep=3	key=0x69
+2026-11-02T05:44:16.911Z	probe-text rep=3	key=0x6a
+2026-11-02T05:44:16.923Z	probe-text rep=3	key=0x6b
+2026-11-02T05:44:16.935Z	probe-text rep=3	key=0x6c
+2026-11-02T05:44:16.946Z	probe-text rep=3	key=0x6d
+2026-11-02T05:44:16.958Z	probe-text rep=3	key=0x6e
+2026-11-02T05:44:16.970Z	probe-text rep=3	key=0x6f
+2026-11-02T05:44:16.981Z	probe-text rep=3	key=0x70
+2026-11-02T05:44:16.993Z	probe-text rep=3	key=0x71
+2026-11-02T05:44:17.005Z	probe-text rep=3	key=0x72
+2026-11-02T05:44:17.017Z	probe-text rep=3	key=0x73
+2026-11-02T05:44:17.029Z	probe-text rep=3	key=0x74
+2026-11-02T05:44:17.040Z	probe-text rep=3	key=0x75
+2026-11-02T05:44:17.052Z	probe-text rep=3	key=0x76
+2026-11-02T05:44:17.064Z	probe-text rep=3	key=0x77
+2026-11-02T05:44:17.076Z	probe-text rep=3	key=0x78
+2026-11-02T05:44:17.087Z	probe-text rep=3	key=0x79
+2026-11-02T05:44:17.099Z	probe-text rep=3	key=0x7a
+2026-11-02T05:44:17.111Z	probe-text rep=3	key=0x41
+2026-11-02T05:44:17.122Z	probe-text rep=3	key=0x42
+2026-11-02T05:44:17.134Z	probe-text rep=3	key=0x43
+2026-11-02T05:44:17.145Z	probe-text rep=3	key=0x44
+2026-11-02T05:44:17.157Z	probe-text rep=3	key=0x45
+2026-11-02T05:44:17.169Z	probe-text rep=3	key=0x46
+2026-11-02T05:44:17.180Z	probe-text rep=3	key=0x47
+2026-11-02T05:44:17.192Z	probe-text rep=3	key=0x48
+2026-11-02T05:44:17.204Z	probe-text rep=3	key=0x49
+2026-11-02T05:44:17.216Z	probe-text rep=3	key=0x4a
+2026-11-02T05:44:17.227Z	probe-text rep=3	key=0x4b
+2026-11-02T05:44:17.239Z	probe-text rep=3	key=0x4c
+2026-11-02T05:44:17.251Z	probe-text rep=3	key=0x4d
+2026-11-02T05:44:17.262Z	probe-text rep=3	key=0x4e
+2026-11-02T05:44:17.274Z	probe-text rep=3	key=0x4f
+2026-11-02T05:44:17.285Z	probe-text rep=3	key=0x50
+2026-11-02T05:44:17.297Z	probe-text rep=3	key=0x51
+2026-11-02T05:44:17.308Z	probe-text rep=3	key=0x52
+2026-11-02T05:44:17.320Z	probe-text rep=3	key=0x53
+2026-11-02T05:44:17.332Z	probe-text rep=3	key=0x54
+2026-11-02T05:44:17.343Z	probe-text rep=3	key=0x55
+2026-11-02T05:44:17.355Z	probe-text rep=3	key=0x56
+2026-11-02T05:44:17.367Z	probe-text rep=3	key=0x57
+2026-11-02T05:44:17.378Z	probe-text rep=3	key=0x58
+2026-11-02T05:44:17.390Z	probe-text rep=3	key=0x59
+2026-11-02T05:44:17.402Z	probe-text rep=3	key=0x5a
+2026-11-02T05:44:17.414Z	probe-text rep=3	key=0x2d
+2026-11-02T05:44:17.425Z	probe-text rep=3	key=0x3d
+2026-11-02T05:44:18.473Z	probe-text rep=4	pacing=0.001s offset=590161 text=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-=
+2026-11-02T05:44:18.475Z	probe-text rep=4	key=0x30
+2026-11-02T05:44:18.478Z	probe-text rep=4	key=0x31
+2026-11-02T05:44:18.481Z	probe-text rep=4	key=0x32
+2026-11-02T05:44:18.485Z	probe-text rep=4	key=0x33
+2026-11-02T05:44:18.487Z	probe-text rep=4	key=0x34
+2026-11-02T05:44:18.490Z	probe-text rep=4	key=0x35
+2026-11-02T05:44:18.493Z	probe-text rep=4	key=0x36
+2026-11-02T05:44:18.496Z	probe-text rep=4	key=0x37
+2026-11-02T05:44:18.499Z	probe-text rep=4	key=0x38
+2026-11-02T05:44:18.501Z	probe-text rep=4	key=0x39
+2026-11-02T05:44:18.504Z	probe-text rep=4	key=0x61
+2026-11-02T05:44:18.506Z	probe-text rep=4	key=0x62
+2026-11-02T05:44:18.509Z	probe-text rep=4	key=0x63
+2026-11-02T05:44:18.512Z	probe-text rep=4	key=0x64
+2026-11-02T05:44:18.515Z	probe-text rep=4	key=0x65
+2026-11-02T05:44:18.517Z	probe-text rep=4	key=0x66
+2026-11-02T05:44:18.520Z	probe-text rep=4	key=0x67
+2026-11-02T05:44:18.523Z	probe-text rep=4	key=0x68
+2026-11-02T05:44:18.525Z	probe-text rep=4	key=0x69
+2026-11-02T05:44:18.528Z	probe-text rep=4	key=0x6a
+2026-11-02T05:44:18.531Z	probe-text rep=4	key=0x6b
+2026-11-02T05:44:18.534Z	probe-text rep=4	key=0x6c
+2026-11-02T05:44:18.536Z	probe-text rep=4	key=0x6d
+2026-11-02T05:44:18.539Z	probe-text rep=4	key=0x6e
+2026-11-02T05:44:18.542Z	probe-text rep=4	key=0x6f
+2026-11-02T05:44:18.546Z	probe-text rep=4	key=0x70
+2026-11-02T05:44:18.549Z	probe-text rep=4	key=0x71
+2026-11-02T05:44:18.552Z	probe-text rep=4	key=0x72
+2026-11-02T05:44:18.555Z	probe-text rep=4	key=0x73
+2026-11-02T05:44:18.557Z	probe-text rep=4	key=0x74
+2026-11-02T05:44:18.560Z	probe-text rep=4	key=0x75
+2026-11-02T05:44:18.563Z	probe-text rep=4	key=0x76
+2026-11-02T05:44:18.565Z	probe-text rep=4	key=0x77
+2026-11-02T05:44:18.568Z	probe-text rep=4	key=0x78
+2026-11-02T05:44:18.571Z	probe-text rep=4	key=0x79
+2026-11-02T05:44:18.573Z	probe-text rep=4	key=0x7a
+2026-11-02T05:44:18.576Z	probe-text rep=4	key=0x41
+2026-11-02T05:44:18.578Z	probe-text rep=4	key=0x42
+2026-11-02T05:44:18.581Z	probe-text rep=4	key=0x43
+2026-11-02T05:44:18.584Z	probe-text rep=4	key=0x44
+2026-11-02T05:44:18.586Z	probe-text rep=4	key=0x45
+2026-11-02T05:44:18.589Z	probe-text rep=4	key=0x46
+2026-11-02T05:44:18.591Z	probe-text rep=4	key=0x47
+2026-11-02T05:44:18.594Z	probe-text rep=4	key=0x48
+2026-11-02T05:44:18.596Z	probe-text rep=4	key=0x49
+2026-11-02T05:44:18.599Z	probe-text rep=4	key=0x4a
+2026-11-02T05:44:18.601Z	probe-text rep=4	key=0x4b
+2026-11-02T05:44:18.604Z	probe-text rep=4	key=0x4c
+2026-11-02T05:44:18.607Z	probe-text rep=4	key=0x4d
+2026-11-02T05:44:18.609Z	probe-text rep=4	key=0x4e
+2026-11-02T05:44:18.612Z	probe-text rep=4	key=0x4f
+2026-11-02T05:44:18.614Z	probe-text rep=4	key=0x50
+2026-11-02T05:44:18.617Z	probe-text rep=4	key=0x51
+2026-11-02T05:44:18.619Z	probe-text rep=4	key=0x52
+2026-11-02T05:44:18.622Z	probe-text rep=4	key=0x53
+2026-11-02T05:44:18.624Z	probe-text rep=4	key=0x54
+2026-11-02T05:44:18.627Z	probe-text rep=4	key=0x55
+2026-11-02T05:44:18.629Z	probe-text rep=4	key=0x56
+2026-11-02T05:44:18.632Z	probe-text rep=4	key=0x57
+2026-11-02T05:44:18.634Z	probe-text rep=4	key=0x58
+2026-11-02T05:44:18.637Z	probe-text rep=4	key=0x59
+2026-11-02T05:44:18.639Z	probe-text rep=4	key=0x5a
+2026-11-02T05:44:18.641Z	probe-text rep=4	key=0x2d
+2026-11-02T05:44:18.644Z	probe-text rep=4	key=0x3d
+2026-11-02T05:44:47.039Z	reset	seq=6 method=k3ctl reason=terminal-marker offset=590483
+2026-11-02T05:44:48.069Z	banner	seq=6 spl=590591 uboot=590752
+2026-11-02T05:44:48.101Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:44:49.142Z	key	s offset=593427
+2026-11-02T05:44:49.476Z	prompt	fresh offset=593431
+2026-11-02T05:44:49.538Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:44:50.561Z	line	first template=be_image
+2026-11-02T05:44:50.567Z	send	piece=1/1 offset=593431 text=setenv be_image be-mvp-two-guests-shell-gcc.img
+2026-11-02T05:44:50.596Z	echo	ok offset=593431-593489
+2026-11-02T05:44:50.598Z	key	Enter template=be_image
+2026-11-02T05:44:50.927Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:44:50.987Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:44:52.010Z	line	first template=printenv-name
+2026-11-02T05:44:52.018Z	send	piece=1/1 offset=593494 text=printenv be_image
+2026-11-02T05:44:52.046Z	echo	ok offset=593494-593511
+2026-11-02T05:44:52.049Z	key	Enter template=printenv-name
+2026-11-02T05:44:52.376Z	prompt	template=printenv-name output_bytes=42 output_sha256=6b2c9153bb4c3f7f5dd00b03928100469dc861d51987849f2bdf6ec8bd91c255
+2026-11-02T05:44:52.429Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:44:53.452Z	line	first template=printenv
+2026-11-02T05:44:53.459Z	send	piece=1/1 offset=593558 text=printenv
+2026-11-02T05:44:53.489Z	echo	ok offset=593558-593577
+2026-11-02T05:44:53.492Z	key	Enter template=printenv
+2026-11-02T05:44:54.925Z	prompt	template=printenv output_bytes=12596 output_sha256=2cb3cd8c4e4fd544c184c4b78609718d233e243709102e2b4ae8bd6881a40e3b
+2026-11-02T05:44:55.045Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:44:56.066Z	line	first template=saveenv
+2026-11-02T05:44:56.073Z	send	piece=1/1 offset=606178 text=saveenv
+2026-11-02T05:44:56.103Z	echo	ok offset=606178-606185
+2026-11-02T05:44:56.106Z	key	Enter template=saveenv
+2026-11-02T05:44:56.588Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-11-02T05:44:58.086Z	reset	seq=7 method=k3ctl reason=idle-prompt offset=606226
+2026-11-02T05:44:59.117Z	banner	seq=7 spl=606334 uboot=606495
+2026-11-02T05:44:59.154Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:44:59.201Z	guest-session	session=<repo>/mvp/scenarios/two-guests/sessions/shell.json sha256=06ccc1f53a0eed19d3f4c28eb62ef213bc5cb1926cef8459c30f1df132cd4f63 nonce=a95d14ec1c364221
+2026-11-02T05:45:05.833Z	guest-focus g0	piece=1/1 offset=621404 text=~0
+2026-11-02T05:45:05.836Z	guest-focus g0	key=0x7e
+2026-11-02T05:45:05.848Z	guest-focus g0	key=0x30
+2026-11-02T05:45:06.409Z	guest-line 1	piece=1/1 offset=621424 text=echo a95d14ec1c364221\r
+2026-11-02T05:45:06.411Z	guest-line 1	key=0x65
+2026-11-02T05:45:06.423Z	guest-line 1	key=0x63
+2026-11-02T05:45:06.436Z	guest-line 1	key=0x68
+2026-11-02T05:45:06.448Z	guest-line 1	key=0x6f
+2026-11-02T05:45:06.459Z	guest-line 1	key=0x20
+2026-11-02T05:45:06.471Z	guest-line 1	key=0x61
+2026-11-02T05:45:06.483Z	guest-line 1	key=0x39
+2026-11-02T05:45:06.495Z	guest-line 1	key=0x35
+2026-11-02T05:45:06.506Z	guest-line 1	key=0x64
+2026-11-02T05:45:06.519Z	guest-line 1	key=0x31
+2026-11-02T05:45:06.531Z	guest-line 1	key=0x34
+2026-11-02T05:45:06.542Z	guest-line 1	key=0x65
+2026-11-02T05:45:06.554Z	guest-line 1	key=0x63
+2026-11-02T05:45:06.565Z	guest-line 1	key=0x31
+2026-11-02T05:45:06.577Z	guest-line 1	key=0x63
+2026-11-02T05:45:06.589Z	guest-line 1	key=0x33
+2026-11-02T05:45:06.600Z	guest-line 1	key=0x36
+2026-11-02T05:45:06.612Z	guest-line 1	key=0x34
+2026-11-02T05:45:06.623Z	guest-line 1	key=0x32
+2026-11-02T05:45:06.635Z	guest-line 1	key=0x32
+2026-11-02T05:45:06.646Z	guest-line 1	key=0x31
+2026-11-02T05:45:06.658Z	guest-line 1	key=0x0d
+2026-11-02T05:45:07.299Z	guest-line 3	piece=1/1 offset=621489 text=ls /bin | wc -l\r
+2026-11-02T05:45:07.302Z	guest-line 3	key=0x6c
+2026-11-02T05:45:07.314Z	guest-line 3	key=0x73
+2026-11-02T05:45:07.326Z	guest-line 3	key=0x20
+2026-11-02T05:45:07.337Z	guest-line 3	key=0x2f
+2026-11-02T05:45:07.349Z	guest-line 3	key=0x62
+2026-11-02T05:45:07.361Z	guest-line 3	key=0x69
+2026-11-02T05:45:07.373Z	guest-line 3	key=0x6e
+2026-11-02T05:45:07.385Z	guest-line 3	key=0x20
+2026-11-02T05:45:07.396Z	guest-line 3	key=0x7c
+2026-11-02T05:45:07.408Z	guest-line 3	key=0x20
+2026-11-02T05:45:07.420Z	guest-line 3	key=0x77
+2026-11-02T05:45:07.432Z	guest-line 3	key=0x63
+2026-11-02T05:45:07.444Z	guest-line 3	key=0x20
+2026-11-02T05:45:07.455Z	guest-line 3	key=0x2d
+2026-11-02T05:45:07.467Z	guest-line 3	key=0x6c
+2026-11-02T05:45:07.478Z	guest-line 3	key=0x0d
+2026-11-02T05:45:07.608Z	guest-focus g1	piece=1/1 offset=621534 text=~1
+2026-11-02T05:45:07.610Z	guest-focus g1	key=0x7e
+2026-11-02T05:45:07.623Z	guest-focus g1	key=0x31
+2026-11-02T05:45:08.182Z	guest-line 6	piece=1/1 offset=621554 text=echo a95d14ec1c364221\r
+2026-11-02T05:45:08.184Z	guest-line 6	key=0x65
+2026-11-02T05:45:08.197Z	guest-line 6	key=0x63
+2026-11-02T05:45:08.209Z	guest-line 6	key=0x68
+2026-11-02T05:45:08.221Z	guest-line 6	key=0x6f
+2026-11-02T05:45:08.233Z	guest-line 6	key=0x20
+2026-11-02T05:45:08.245Z	guest-line 6	key=0x61
+2026-11-02T05:45:08.257Z	guest-line 6	key=0x39
+2026-11-02T05:45:08.269Z	guest-line 6	key=0x35
+2026-11-02T05:45:08.281Z	guest-line 6	key=0x64
+2026-11-02T05:45:08.292Z	guest-line 6	key=0x31
+2026-11-02T05:45:08.304Z	guest-line 6	key=0x34
+2026-11-02T05:45:08.316Z	guest-line 6	key=0x65
+2026-11-02T05:45:08.327Z	guest-line 6	key=0x63
+2026-11-02T05:45:08.339Z	guest-line 6	key=0x31
+2026-11-02T05:45:08.351Z	guest-line 6	key=0x63
+2026-11-02T05:45:08.362Z	guest-line 6	key=0x33
+2026-11-02T05:45:08.374Z	guest-line 6	key=0x36
+2026-11-02T05:45:08.386Z	guest-line 6	key=0x34
+2026-11-02T05:45:08.397Z	guest-line 6	key=0x32
+2026-11-02T05:45:08.409Z	guest-line 6	key=0x32
+2026-11-02T05:45:08.421Z	guest-line 6	key=0x31
+2026-11-02T05:45:08.432Z	guest-line 6	key=0x0d
+2026-11-02T05:45:09.066Z	guest-line 8	piece=1/1 offset=621619 text=~x
+2026-11-02T05:45:09.068Z	guest-line 8	key=0x7e
+2026-11-02T05:45:09.080Z	guest-line 8	key=0x78
+2026-11-02T05:45:09.650Z	guest-line 9	piece=1/1 offset=621654 text=~~/bin/echo literal\r
+2026-11-02T05:45:09.652Z	guest-line 9	key=0x7e
+2026-11-02T05:45:09.664Z	guest-line 9	key=0x7e
+2026-11-02T05:45:09.676Z	guest-line 9	key=0x2f
+2026-11-02T05:45:09.687Z	guest-line 9	key=0x62
+2026-11-02T05:45:09.700Z	guest-line 9	key=0x69
+2026-11-02T05:45:09.711Z	guest-line 9	key=0x6e
+2026-11-02T05:45:09.723Z	guest-line 9	key=0x2f
+2026-11-02T05:45:09.734Z	guest-line 9	key=0x65
+2026-11-02T05:45:09.746Z	guest-line 9	key=0x63
+2026-11-02T05:45:09.758Z	guest-line 9	key=0x68
+2026-11-02T05:45:09.770Z	guest-line 9	key=0x6f
+2026-11-02T05:45:09.782Z	guest-line 9	key=0x20
+2026-11-02T05:45:09.793Z	guest-line 9	key=0x6c
+2026-11-02T05:45:09.805Z	guest-line 9	key=0x69
+2026-11-02T05:45:09.817Z	guest-line 9	key=0x74
+2026-11-02T05:45:09.828Z	guest-line 9	key=0x65
+2026-11-02T05:45:09.840Z	guest-line 9	key=0x72
+2026-11-02T05:45:09.852Z	guest-line 9	key=0x61
+2026-11-02T05:45:09.863Z	guest-line 9	key=0x6c
+2026-11-02T05:45:09.875Z	guest-line 9	key=0x0d
+2026-11-02T05:45:09.961Z	guest-focus g0	piece=1/1 offset=621707 text=~0
+2026-11-02T05:45:09.963Z	guest-focus g0	key=0x7e
+2026-11-02T05:45:09.975Z	guest-focus g0	key=0x30
+2026-11-02T05:45:10.539Z	guest-line 11	piece=1/1 offset=621727 text=exit\r
+2026-11-02T05:45:10.542Z	guest-line 11	key=0x65
+2026-11-02T05:45:10.554Z	guest-line 11	key=0x78
+2026-11-02T05:45:10.567Z	guest-line 11	key=0x69
+2026-11-02T05:45:10.579Z	guest-line 11	key=0x74
+2026-11-02T05:45:10.590Z	guest-line 11	key=0x0d
+2026-11-02T05:45:10.721Z	guest-focus g1	piece=1/1 offset=622090 text=~1
+2026-11-02T05:45:10.723Z	guest-focus g1	key=0x7e
+2026-11-02T05:45:10.736Z	guest-focus g1	key=0x31
+2026-11-02T05:45:11.294Z	guest-line 14	piece=1/1 offset=622110 text=exit\r
+2026-11-02T05:45:11.296Z	guest-line 14	key=0x65
+2026-11-02T05:45:11.308Z	guest-line 14	key=0x78
+2026-11-02T05:45:11.320Z	guest-line 14	key=0x69
+2026-11-02T05:45:11.332Z	guest-line 14	key=0x74
+2026-11-02T05:45:11.343Z	guest-line 14	key=0x0d
+2026-11-02T05:45:11.450Z	guest-session	typed steps=16
+2026-11-02T05:46:00.458Z	reset	seq=8 method=k3ctl reason=terminal-marker offset=622723
+2026-11-02T05:46:01.482Z	banner	seq=8 spl=622831 uboot=622992
+2026-11-02T05:46:01.512Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:46:02.546Z	key	s offset=625667
+2026-11-02T05:46:02.920Z	prompt	fresh offset=625671
+2026-11-02T05:46:02.971Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:46:03.996Z	line	first template=restore-bootcmd
+2026-11-02T05:46:04.003Z	send	piece=1/1 offset=625671 text=setenv bootcmd "${be_orig_bootcmd}"
+2026-11-02T05:46:04.026Z	echo	ok offset=625671-625717
+2026-11-02T05:46:04.029Z	key	Enter template=restore-bootcmd
+2026-11-02T05:46:04.353Z	prompt	template=restore-bootcmd output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:46:04.408Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:46:05.430Z	line	first template=delete
+2026-11-02T05:46:05.438Z	send	piece=1/1 offset=625722 text=setenv be_boot
+2026-11-02T05:46:05.469Z	echo	ok offset=625722-625736
+2026-11-02T05:46:05.472Z	key	Enter template=delete
+2026-11-02T05:46:05.800Z	prompt	template=delete output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:46:05.853Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:46:06.876Z	line	first template=delete
+2026-11-02T05:46:06.883Z	send	piece=1/1 offset=625741 text=setenv be_ld
+2026-11-02T05:46:06.914Z	echo	ok offset=625741-625753
+2026-11-02T05:46:06.917Z	key	Enter template=delete
+2026-11-02T05:46:07.251Z	prompt	template=delete output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:46:07.302Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:46:08.327Z	line	first template=delete
+2026-11-02T05:46:08.334Z	send	piece=1/1 offset=625758 text=setenv be_go
+2026-11-02T05:46:08.358Z	echo	ok offset=625758-625770
+2026-11-02T05:46:08.360Z	key	Enter template=delete
+2026-11-02T05:46:08.688Z	prompt	template=delete output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:46:08.739Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:46:09.762Z	line	first template=delete
+2026-11-02T05:46:09.769Z	send	piece=1/1 offset=625775 text=setenv be_part
+2026-11-02T05:46:09.790Z	echo	ok offset=625775-625789
+2026-11-02T05:46:09.793Z	key	Enter template=delete
+2026-11-02T05:46:10.116Z	prompt	template=delete output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:46:10.168Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:46:11.194Z	line	first template=delete
+2026-11-02T05:46:11.201Z	send	piece=1/1 offset=625794 text=setenv be_image
+2026-11-02T05:46:11.226Z	echo	ok offset=625794-625809
+2026-11-02T05:46:11.229Z	key	Enter template=delete
+2026-11-02T05:46:11.553Z	prompt	template=delete output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:46:11.616Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:46:12.638Z	line	first template=delete
+2026-11-02T05:46:12.645Z	send	piece=1/1 offset=625814 text=setenv be_orig_bootcmd
+2026-11-02T05:46:12.668Z	echo	ok offset=625814-625836
+2026-11-02T05:46:12.671Z	key	Enter template=delete
+2026-11-02T05:46:12.994Z	prompt	template=delete output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-11-02T05:46:13.047Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:46:14.071Z	line	first template=printenv
+2026-11-02T05:46:14.078Z	send	piece=1/1 offset=625841 text=printenv
+2026-11-02T05:46:14.110Z	echo	ok offset=625841-625849
+2026-11-02T05:46:14.112Z	key	Enter template=printenv
+2026-11-02T05:46:15.548Z	prompt	template=printenv output_bytes=12306 output_sha256=22a652506c46848415485d06ad4ad2aa9ed8997ce707fd5bb8739d67b6dd4c74
+2026-11-02T05:46:15.667Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:46:16.692Z	line	first template=saveenv
+2026-11-02T05:46:16.699Z	send	piece=1/1 offset=638160 text=saveenv
+2026-11-02T05:46:16.729Z	echo	ok offset=638160-638167
+2026-11-02T05:46:16.731Z	key	Enter template=saveenv
+2026-11-02T05:46:17.209Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-11-02T05:46:18.578Z	reset	seq=9 method=k3ctl reason=idle-prompt offset=638208
+2026-11-02T05:46:19.609Z	banner	seq=9 spl=638316 uboot=638477
+2026-11-02T05:46:19.639Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:46:20.672Z	key	s offset=641152
+2026-11-02T05:46:21.046Z	prompt	fresh offset=641156
+2026-11-02T05:46:21.100Z	tmux	pane=%2 command=picocom log_writer=2768157
+2026-11-02T05:46:22.122Z	line	first template=printenv
+2026-11-02T05:46:22.129Z	send	piece=1/1 offset=641156 text=printenv
+2026-11-02T05:46:22.161Z	echo	ok offset=641156-641175
+2026-11-02T05:46:22.163Z	key	Enter template=printenv
+2026-11-02T05:46:23.552Z	prompt	template=printenv output_bytes=12306 output_sha256=22a652506c46848415485d06ad4ad2aa9ed8997ce707fd5bb8739d67b6dd4c74
+2026-11-02T05:46:24.959Z	reset	seq=10 method=k3ctl reason=idle-prompt offset=653486
+2026-11-02T05:46:25.979Z	banner	seq=10 spl=653594 uboot=653755

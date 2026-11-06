@@ -1,0 +1,22 @@
+run=20261007T190247Z
+image=<repo>/build/k3-b5/clang/be-k3-b5.img
+image_sha256=4191023ebdf21346bb39bf6eade4f35b20fa98c6e65bfdb0f54a3d284eff5153
+image_bytes=217088
+image_check=BE_B5_UIMAGE[clang]: PASS <repo>/build/k3-b5/clang/be-k3-b5.img bytes=0x35000 sha256=4191023ebdf21346bb39bf6eade4f35b20fa98c6e65bfdb0f54a3d284eff5153 crc32=10b072e1 payload_sha256=1ece5fd2d176cc57684eb2774e54719de836b0d3beab46c4fa228713c978f1fb
+toolchain=clang
+launcher=uboot-booti
+loader=uboot-booti loady=0x140000000 booti=0x140000000 fdt=${fdtcontroladdr}
+load_address=0x140000000
+expected_ram_base=0x102000000
+serial_source=log:<spacemit-k3>/logs/boot-6.log
+serial_offset=1485278
+start_utc=2026-10-07T19:02:47Z
+terminal_marker_utc=2026-10-07T19:04:21Z
+outcome=terminal-marker
+capture_bytes=5063
+check_status=0
+BE_B5_RESULT: PASS terminal=shutdown-requested
+after_watch_seconds=75
+after_bytes=0
+after_first_output_seconds=none
+after_reset=no

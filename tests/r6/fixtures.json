@@ -1,0 +1,2207 @@
+{
+  "schema": "be-r6-fixture-catalogue-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "accepted_r5_commit": "165f4d001a2b59b582b397bdea79ec4826168fdb",
+  "layers": [
+    {
+      "failureEvidence": "acceptance-pin reverts",
+      "id": "L1",
+      "mechanism": "tests/r6/check-baseline.sh over tests/r5/check-acceptance.sh --require",
+      "owner": "r6",
+      "role": "pass-through gate",
+      "stage": "baseline immutability"
+    },
+    {
+      "failureEvidence": "manifest mutations",
+      "id": "L2",
+      "mechanism": "tests/r6/check-fixtures.mjs",
+      "owner": "r6",
+      "role": "pass-through gate",
+      "stage": "catalogue integrity"
+    },
+    {
+      "failureEvidence": "catalogue fixtures",
+      "id": "L3",
+      "mechanism": "accepted tests/r5/check-sources.mjs in the scratch tree",
+      "owner": "accepted-r5",
+      "role": "rejection layer",
+      "stage": "source inventory and generation"
+    },
+    {
+      "failureEvidence": "compile-stage mutation",
+      "id": "L4",
+      "mechanism": "pinned riscv64-linux-gnu-gcc / clang --target=riscv64",
+      "owner": "pinned-toolchains",
+      "role": "pass-through invariant",
+      "stage": "compile"
+    },
+    {
+      "failureEvidence": "catalogue fixtures",
+      "id": "L5",
+      "mechanism": "pinned GNU ld / lld with arch/riscv/be/r5-beryllium.lds ASSERTs",
+      "owner": "accepted-r5",
+      "role": "rejection layer",
+      "stage": "link"
+    },
+    {
+      "failureEvidence": "catalogue fixtures",
+      "id": "L6",
+      "mechanism": "accepted tests/r5/check-image.mjs",
+      "owner": "accepted-r5",
+      "role": "rejection layer",
+      "stage": "static image semantics"
+    },
+    {
+      "failureEvidence": "parity-stage mutation",
+      "id": "L7",
+      "mechanism": "accepted tests/r5/check-image-parity.mjs",
+      "owner": "accepted-r5",
+      "role": "pass-through invariant",
+      "stage": "toolchain parity"
+    },
+    {
+      "failureEvidence": "differential-stage mutation",
+      "id": "L8",
+      "mechanism": "tests/r6/check-fixture-image.mjs",
+      "owner": "r6",
+      "role": "rejection layer",
+      "stage": "single-delta differential"
+    },
+    {
+      "failureEvidence": "QEMU executable gate",
+      "id": "L9",
+      "mechanism": "tests/r6/run-qemu.sh",
+      "owner": "r6",
+      "role": "execution stage",
+      "stage": "QEMU artifact production"
+    },
+    {
+      "failureEvidence": "catalogue fixtures",
+      "id": "L10",
+      "mechanism": "tests/r6/check-dynamic.mjs",
+      "owner": "r6",
+      "role": "rejection layer",
+      "stage": "dynamic semantics"
+    },
+    {
+      "failureEvidence": "catalogue fixtures",
+      "id": "L11",
+      "mechanism": "tests/r6/r6-check.c over accepted virt/be/r5.c",
+      "owner": "r6-driver-accepted-mechanism",
+      "role": "rejection layer",
+      "stage": "host mechanism"
+    }
+  ],
+  "expected_counts": {
+    "build_attempts": 52,
+    "components_per_tree": 16,
+    "control_elfs": 2,
+    "control_fixtures": 1,
+    "defect_fixtures": 46,
+    "differential_invocations": 32,
+    "dynamic_elfs": 30,
+    "dynamic_fixtures": 15,
+    "entries": 47,
+    "host_binaries": 2,
+    "host_class_outcomes": 18,
+    "host_executions": 68,
+    "host_fixtures": 17,
+    "host_self_tests": 17,
+    "image_check_invocations": 44,
+    "l6_declared_passes": 14,
+    "l6_declared_rejections": 18,
+    "l6_static_rejections": 12,
+    "link_failures": 8,
+    "parity_invocations": 7,
+    "qemu_runs": 64,
+    "qemu_runs_static_or_host": 0,
+    "scratch_trees": 30,
+    "source_components": 5,
+    "source_inventory_without_build": 4,
+    "static_elfs_quarantined": 12,
+    "static_fixtures": 14,
+    "successful_links": 44,
+    "toolchains": 2
+  },
+  "expected_coverage": {
+    "classes": 29,
+    "dynamic_primary": 12,
+    "host_primary": 17,
+    "host_primary_fixtures": 16,
+    "secondary": 4,
+    "uncovered": 0
+  },
+  "counts": {
+    "build_attempts": 52,
+    "components_per_tree": 16,
+    "control_elfs": 2,
+    "control_fixtures": 1,
+    "defect_fixtures": 46,
+    "differential_invocations": 32,
+    "dynamic_elfs": 30,
+    "dynamic_fixtures": 15,
+    "entries": 47,
+    "host_binaries": 2,
+    "host_class_outcomes": 18,
+    "host_executions": 68,
+    "host_fixtures": 17,
+    "host_self_tests": 17,
+    "image_check_invocations": 44,
+    "l6_declared_passes": 14,
+    "l6_declared_rejections": 18,
+    "l6_static_rejections": 12,
+    "link_failures": 8,
+    "parity_invocations": 7,
+    "qemu_runs": 64,
+    "qemu_runs_static_or_host": 0,
+    "scratch_trees": 30,
+    "source_components": 5,
+    "source_inventory_without_build": 4,
+    "static_elfs_quarantined": 12,
+    "static_fixtures": 14,
+    "successful_links": 44,
+    "toolchains": 2
+  },
+  "coverage": {
+    "classes": 29,
+    "dynamic_primary": 12,
+    "host_primary": 17,
+    "host_primary_fixtures": 16,
+    "primary_by_class": {
+      "backing": "D-02",
+      "binding": "H-03",
+      "cause": "D-04",
+      "entry-controls": "H-11",
+      "event-args": "D-01",
+      "fence": "D-11",
+      "frame-reserved": "H-08",
+      "frame-state": "H-09",
+      "gpa": "H-15",
+      "gva": "D-03",
+      "hart": "H-13",
+      "hgatp": "D-12",
+      "htval-overflow": "H-14",
+      "import": "D-08",
+      "interrupt": "D-15",
+      "invalid-phase": "D-13",
+      "null": "H-01",
+      "pc": "D-07",
+      "pending": "H-02",
+      "publication": "H-12",
+      "saved-page": "D-14",
+      "shutdown-rejected": "H-17",
+      "shutdown-returned": "H-17",
+      "target-readback": "D-10",
+      "target-reset": "H-10",
+      "trap-metadata": "H-16",
+      "trusted-stack": "H-04",
+      "vs-origin": "H-06",
+      "vsatp": "H-07"
+    },
+    "secondary": 4,
+    "uncovered": 0
+  },
+  "entries": [
+    {
+      "accepted_image_check": null,
+      "base": "arch/riscv/be/r5-beryllium.lds",
+      "builds": true,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L5",
+      "defect": {
+        "accepted": "0x8021c000",
+        "kind": "linker-script-origin",
+        "malformed": "0x80220000",
+        "summary": "protected root pool origin 0x8021c000 -> 0x80220000"
+      },
+      "expected_link": "fail",
+      "expected_messages": [
+        "R5 protected root moved"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-01",
+      "last_marker": null,
+      "message_completeness": "primary-only",
+      "notes": "Several ASSERTs observe this origin, so the fixture manifest records the complete expected assertion set; the primary one is named here.",
+      "outcome": "rejected-at-link",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed image/layout"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "arch/riscv/be/r5-beryllium.lds",
+      "builds": true,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L5",
+      "defect": {
+        "accepted": "0x80233000",
+        "kind": "linker-script-origin",
+        "malformed": "0x80234000",
+        "summary": ".guest.code.protected origin 0x80233000 -> 0x80234000"
+      },
+      "expected_link": "fail",
+      "expected_messages": [
+        "R5 protected guest moved"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-02",
+      "last_marker": null,
+      "message_completeness": "primary-only",
+      "notes": "Complete assertion set recorded in the fixture manifest.",
+      "outcome": "rejected-at-link",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed image/layout"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "arch/riscv/be/r5-beryllium.lds",
+      "builds": true,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L5",
+      "defect": {
+        "accepted": "0x1000",
+        "kind": "linker-script-extent",
+        "malformed": "0x2000",
+        "summary": ".saved.protected extent 0x1000 -> 0x2000"
+      },
+      "expected_link": "fail",
+      "expected_messages": [
+        "R5 protected saved moved"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-03",
+      "last_marker": null,
+      "message_completeness": "primary-only",
+      "notes": "Complete assertion set recorded in the fixture manifest.",
+      "outcome": "rejected-at-link",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed image/layout"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "arch/riscv/be/r5-trap.S",
+      "builds": false,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L3",
+      "defect": {
+        "kind": "assembly-instruction",
+        "summary": "second sret added to the guest-return tail"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "R5 source inventory: r5-trap.S does not contain exactly one sret"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-04",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Produces no object and no ELF.",
+      "outcome": "rejected-at-source-inventory",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed image/layout"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: HGATP writes and fences are not paired: be_r3_arch_install_management,be_r3_arch_reset_state,be_r5_arch_reset_state"
+        ]
+      },
+      "base": "arch/riscv/be/r5-trap.S",
+      "builds": true,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L6",
+      "defect": {
+        "kind": "assembly-instruction",
+        "summary": "hfence.gvma removed from be_r5_arch_install_root"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: HGATP writes and fences are not paired: be_r3_arch_install_management,be_r3_arch_reset_state,be_r5_arch_reset_state"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-05",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "The static skipped-fence probe. Never executed; R6 makes no claim about hardware behaviour under a genuinely skipped fence.",
+      "outcome": "rejected-by-image-check",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "skipped fence"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: expected 4 HGATP writes in the image, found 5"
+        ]
+      },
+      "base": "arch/riscv/be/r5-trap.S",
+      "builds": true,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L6",
+      "defect": {
+        "kind": "assembly-instruction",
+        "summary": "second csrw hgatp in be_r5_arch_install_root"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: expected 4 HGATP writes in the image, found 5"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-06",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Duplicate root write.",
+      "outcome": "rejected-by-image-check",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "skipped fence"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: switch transaction emits unexpected markers: marker_final_event,marker_management_fenced,marker_management_verified,marker_pending_management,marker_pending_protected,marker_protected_fenced,marker_protected_verified"
+        ]
+      },
+      "base": "arch/riscv/be/r5-runtime.c",
+      "builds": true,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L6",
+      "defect": {
+        "kind": "c-statement",
+        "summary": "marker_final_event emitted inside switch_domain after be_r5_publish_target"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: switch transaction emits unexpected markers: marker_final_event,marker_management_fenced,marker_management_verified,marker_pending_management,marker_pending_protected,marker_protected_fenced,marker_protected_verified"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-07",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "marker_final_event already exists, so the fixture adds a call rather than a symbol.",
+      "outcome": "rejected-by-image-check",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "partial publication"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: be_r5_switch_tail has more than one call site in the switch transaction"
+        ]
+      },
+      "base": "arch/riscv/be/r5-runtime.c",
+      "builds": true,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L6",
+      "defect": {
+        "kind": "c-statement",
+        "summary": "second reachable be_r5_switch_tail call site with distinct argument setup"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: be_r5_switch_tail has more than one call site in the switch transaction"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-08",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "be_r5_switch_tail is noreturn, so a dead second call would be removed at -O2. Two reachable arms with textually distinct argument setup defeat tail merging and cross-jumping. check-fixtures.mjs requires two disassembled references before L6 runs, so a future optimiser change is reported as no-defect rather than a false negative.",
+      "outcome": "rejected-by-image-check",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "partial publication"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: be_r5_switch_tail calls out"
+        ]
+      },
+      "base": "arch/riscv/be/r5-trap.S",
+      "builds": true,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L6",
+      "defect": {
+        "kind": "assembly-instruction",
+        "summary": "be_r5_switch_tail gains an outbound call"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: be_r5_switch_tail calls out"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-09",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Calling publication tail.",
+      "outcome": "rejected-by-image-check",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "partial publication"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: unexpected G-stage root pool reference: be_r5_arch_restore_active,be_r5_runtime_main"
+        ]
+      },
+      "base": "arch/riscv/be/r5-trap.S",
+      "builds": true,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L6",
+      "defect": {
+        "kind": "assembly-instruction",
+        "summary": "be_r5_arch_restore_active references __be_root_protected_start"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: unexpected G-stage root pool reference: be_r5_arch_restore_active,be_r5_runtime_main"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-10",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "The reference must sit in a block whose name begins with be_r5 so the sorted rootWriters assertion fires first and deterministically.",
+      "outcome": "rejected-by-image-check",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed image/layout"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "arch/riscv/be/r5-guest.S",
+      "builds": false,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L3",
+      "defect": {
+        "kind": "assembly-directive",
+        "summary": ".option norvc removed"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "R5 source inventory: guest fixtures do not pin non-compressed encodings"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-11",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Produces no object and no ELF.",
+      "outcome": "rejected-at-source-inventory",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "arch/riscv/be/r5-guest.S",
+      "builds": true,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L5",
+      "defect": {
+        "kind": "assembly-instruction",
+        "summary": "nop inserted at protected +0x10"
+      },
+      "expected_link": "fail",
+      "expected_messages": [
+        "R5 protected fixture slot count changed"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-12",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Produces exactly one assertion.",
+      "outcome": "rejected-at-link",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L3",
+      "defect": {
+        "kind": "c-statement",
+        "summary": "inline asm volatile CSR read added to the neutral core"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "R5 source inventory: virt/be/r5.c embeds assembly in neutral core"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-13",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Produces no object and no ELF.",
+      "outcome": "rejected-at-source-inventory",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "tests/r5/Makefile",
+      "builds": false,
+      "coverage": [],
+      "declared_delta": null,
+      "declared_layer": "L3",
+      "defect": {
+        "kind": "build-input",
+        "summary": "an undeclared translation unit is added to the image"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "R5 source inventory: Makefile declares unlisted input {path}"
+      ],
+      "forbidden_markers": [],
+      "handler": "static",
+      "id": "S-14",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "The {path} placeholder is resolved by the fixture manifest.",
+      "outcome": "rejected-at-source-inventory",
+      "partition": "static",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "null",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_handle_exit",
+        "field": "one of state, frame, observation, result is NULL",
+        "kind": "host-argument-field",
+        "summary": "be_r5_handle_exit: one of state, frame, observation, result is NULL"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "null"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-01",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "be_r5_handle_exit takes exactly four pointers. There is no transition parameter; that name belongs to be_r5_publish_target. The restored self-test cycles all four.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "pending",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_handle_exit",
+        "field": "state->pending.direction BE_R5_DIRECTION_NONE -> BE_R5_DIRECTION_PROTECTED_TO_MANAGEMENT, rest of pending cleared",
+        "kind": "host-argument-field",
+        "summary": "be_r5_handle_exit: state->pending.direction BE_R5_DIRECTION_NONE -> BE_R5_DIRECTION_PROTECTED_TO_MANAGEMENT, rest of pending cleared"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "pending"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-02",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "struct be_r5_pending has direction, frame_mode, source, and target only; there is no valid member. pending_clear is evaluated after the phase switch, the three remaining null checks, and identities_intact, and strictly before the active-binding check.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "binding",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_handle_exit",
+        "field": "observation->active.vcpu_id = 3",
+        "kind": "host-argument-field",
+        "summary": "be_r5_handle_exit: observation->active.vcpu_id = 3"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "binding"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-03",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Wrong active binding.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input",
+        "wrong binding"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "trusted-stack",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_publish_target",
+        "field": "entry->trusted_sp = 0x80227000 for the protected target",
+        "kind": "host-argument-field",
+        "summary": "be_r5_publish_target: entry->trusted_sp = 0x80227000 for the protected target"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "trusted-stack"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-04",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "validate_entry_state checks hgatp, entry controls, vsatp, the reset CSRs, trusted_sp, then saved_state_pa, so this is the first failure.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input",
+        "wrong binding"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "saved-page",
+          "role": "secondary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_publish_target",
+        "field": "entry->saved_state_pa = 0x8022d000",
+        "kind": "host-argument-field",
+        "summary": "be_r5_publish_target: entry->saved_state_pa = 0x8022d000"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "saved-page"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-05",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Deliberate secondary coverage of validate_entry_state; D-14 is the primary saved-page fixture at the switch_domain check.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input",
+        "wrong binding"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "vs-origin",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_handle_exit",
+        "field": "observation->hstatus clears the VS-origin bit (V=0 exit)",
+        "kind": "host-argument-field",
+        "summary": "be_r5_handle_exit: observation->hstatus clears the VS-origin bit (V=0 exit)"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "vs-origin"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-06",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Exit did not originate in VS mode.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "vsatp",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_handle_exit",
+        "field": "observation->vsatp = 0x8000000000080000",
+        "kind": "host-argument-field",
+        "summary": "be_r5_handle_exit: observation->vsatp = 0x8000000000080000"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "vsatp"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-07",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Non-bare VS address translation.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "frame-reserved",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_handle_exit",
+        "field": "frame->reserved = 1",
+        "kind": "host-argument-field",
+        "summary": "be_r5_handle_exit: frame->reserved = 1"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "frame-reserved"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-08",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "struct be_r4_frame carries gpr[31], vstvec, vsepc, vscause, vstval, scause, sepc, stval, htval, and reserved in 320 bytes, and deliberately has no htinst.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "frame-state",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_publish_target",
+        "field": "state->management_frame.gpr[BE_R4_GPR_A1] 34 -> 35 at MANAGEMENT_FENCED",
+        "kind": "host-argument-field",
+        "summary": "be_r5_publish_target: state->management_frame.gpr[BE_R4_GPR_A1] 34 -> 35 at MANAGEMENT_FENCED"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "frame-state"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-09",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "frame-state is not produced by be_r5_handle_exit at all. validate_management_frame returns BE_R5_ERROR_EVENT_ARGS internally and be_r5_publish_target rewrites every internal frame verdict to BE_R5_ERROR_FRAME_STATE before returning. state->management_frame is examined by none of the earlier checks.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "target-reset",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_publish_target",
+        "field": "one of entry->vstvec, entry->vsepc, entry->vscause, entry->vstval = 0x40011000",
+        "kind": "host-argument-field",
+        "summary": "be_r5_publish_target: one of entry->vstvec, entry->vsepc, entry->vscause, entry->vstval = 0x40011000"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "target-reset"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-10",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "target-reset is produced only by validate_entry_state when one of the four reset CSRs is non-zero. A non-zero GPR does not produce it, which keeps H-10 disjoint from H-08 and H-09.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "entry-controls",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_publish_target",
+        "field": "entry->sstatus clears SPP, or entry->hstatus clears SPV",
+        "kind": "host-argument-field",
+        "summary": "be_r5_publish_target: entry->sstatus clears SPP, or entry->hstatus clears SPV"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "entry-controls"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-11",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Entry controls precede vsatp and the reset CSRs in validate_entry_state.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "publication",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_publish_target",
+        "field": "state->switch_count 0 -> 1 at PROTECTED_FENCED",
+        "kind": "host-argument-field",
+        "summary": "be_r5_publish_target: state->switch_count 0 -> 1 at PROTECTED_FENCED"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "publication"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-12",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "publication has exactly one producer. Of the three fields its guard reads, only switch_count is reachable by a single mutation: active.published = 0 yields binding and pending.target.published = 1 yields pending through earlier checks.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input",
+        "partial publication"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "hart",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_handle_exit",
+        "field": "observation->hart_id = 1",
+        "kind": "host-argument-field",
+        "summary": "be_r5_handle_exit: observation->hart_id = 1"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "hart"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-13",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Single-hart profile.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input",
+        "wrong binding"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "htval-overflow",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_handle_exit",
+        "field": "frame->htval = 0x4000000000000000",
+        "kind": "host-argument-field",
+        "summary": "be_r5_handle_exit: frame->htval = 0x4000000000000000"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "htval-overflow"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-14",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Trap metadata belongs to struct be_r4_frame, not struct be_r5_observation.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input",
+        "denied access"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "gpa",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_handle_exit",
+        "field": "correct frame->stval, frame->htval = 0x10000c00 (reconstructs 0x40003000)",
+        "kind": "host-argument-field",
+        "summary": "be_r5_handle_exit: correct frame->stval, frame->htval = 0x10000c00 (reconstructs 0x40003000)"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "gpa"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-15",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "validate_denied_access checks scause, then sepc, then stval, then the htval reconstruction, so stval must stay correct or gva fires first.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input",
+        "denied access"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "trap-metadata",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_handle_exit",
+        "field": "ecall exit with frame->stval = 4",
+        "kind": "host-argument-field",
+        "summary": "be_r5_handle_exit: ecall exit with frame->stval = 4"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "trap-metadata"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-16",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Event path metadata.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input",
+        "unexpected trap/event"
+      ]
+    },
+    {
+      "accepted_image_check": null,
+      "base": "virt/be/r5.c",
+      "builds": false,
+      "coverage": [
+        {
+          "class": "shutdown-returned",
+          "role": "primary"
+        },
+        {
+          "class": "shutdown-rejected",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": null,
+      "declared_layer": "L11",
+      "defect": {
+        "call": "be_r5_note_shutdown_returned",
+        "field": "SRST returns BE_R3_ERROR_SRST_RETURNED, then returns any other SBI error",
+        "kind": "host-argument-field",
+        "summary": "be_r5_note_shutdown_returned: SRST returns BE_R3_ERROR_SRST_RETURNED, then returns any other SBI error"
+      },
+      "expected_link": null,
+      "expected_messages": [
+        "shutdown-returned",
+        "shutdown-rejected"
+      ],
+      "forbidden_markers": [],
+      "handler": "host",
+      "id": "H-17",
+      "last_marker": null,
+      "message_completeness": "complete",
+      "notes": "Two outcomes from one fixture. Producing these under QEMU would require forging the digest-pinned OpenSBI firmware, which R6 forbids, so R6 explicitly claims no dynamic coverage of the two shutdown classes.",
+      "outcome": "rejected-by-host-mechanism",
+      "partition": "host",
+      "qemu": false,
+      "runs": 0,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: protected fixture slot 4001102c is 00900893, expected 00200893"
+        ]
+      },
+      "base": "arch/riscv/be/r5-guest.S",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "event-args",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": {
+        "base_word": "00200893",
+        "bytes": 4,
+        "defect_word": "00900893",
+        "domain": "protected",
+        "file_offset": 208940,
+        "kind": "guest-word",
+        "slot": 1073811500
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "effect": "addi a7,zero,9; ecall at 0x40011030, cause 10, a7=9",
+        "kind": "guest-word",
+        "summary": "protected 4001102c: 00200893 -> 00900893"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: protected fixture slot 4001102c is 00900893, expected 00200893",
+        "BE_R5:FAIL event-args"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-01",
+      "last_marker": "BE_R5:06",
+      "message_completeness": "complete",
+      "notes": "Wrong event identifier on the protected switch ecall.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: protected fixture slot 40011004 is 03400313, expected 03300313"
+        ]
+      },
+      "base": "arch/riscv/be/r5-guest.S",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "backing",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": {
+        "base_word": "03300313",
+        "bytes": 4,
+        "defect_word": "03400313",
+        "domain": "protected",
+        "file_offset": 208900,
+        "kind": "guest-word",
+        "slot": 1073811460
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "effect": "protected private page holds 52 at the first protected exit",
+        "kind": "guest-word",
+        "summary": "protected 40011004: 03300313 -> 03400313"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: protected fixture slot 40011004 is 03400313, expected 03300313",
+        "BE_R5:FAIL backing"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-02",
+      "last_marker": "BE_R5:04",
+      "message_completeness": "complete",
+      "notes": "Private-page backing value diverges from the accepted expectation.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: protected fixture slot 40011010 is 400033b7, expected 400003b7"
+        ]
+      },
+      "base": "arch/riscv/be/r5-guest.S",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "gva",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": {
+        "base_word": "400003b7",
+        "bytes": 4,
+        "defect_word": "400033b7",
+        "domain": "protected",
+        "file_offset": 208912,
+        "kind": "guest-word",
+        "slot": 1073811472
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "effect": "cause 21 at 0x40011014, stval=0x40003000, htval=0x10000c00",
+        "kind": "guest-word",
+        "summary": "protected 40011010: 400003b7 -> 400033b7"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: protected fixture slot 40011010 is 400033b7, expected 400003b7",
+        "BE_R5:FAIL gva"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-03",
+      "last_marker": "BE_R5:04",
+      "message_completeness": "complete",
+      "notes": "Denied load moves to an unmapped guest virtual address.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "malformed input",
+        "denied access"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: protected fixture slot 40011014 is 0093a023, expected 0003a483"
+        ]
+      },
+      "base": "arch/riscv/be/r5-guest.S",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "cause",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": {
+        "base_word": "0003a483",
+        "bytes": 4,
+        "defect_word": "0093a023",
+        "domain": "protected",
+        "file_offset": 208916,
+        "kind": "guest-word",
+        "slot": 1073811476
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "effect": "sw s1,0(t2); cause 23 where 21 is expected, stval=0x40000000",
+        "kind": "guest-word",
+        "summary": "protected 40011014: 0003a483 -> 0093a023"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: protected fixture slot 40011014 is 0093a023, expected 0003a483",
+        "BE_R5:FAIL cause"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-04",
+      "last_marker": "BE_R5:04",
+      "message_completeness": "complete",
+      "notes": "Mutates the denied-load slot itself; D-07 mutates the lui that establishes t2 for it.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "malformed input",
+        "unexpected trap/event"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: protected fixture slot 40011028 is 00038067, expected 00040513"
+        ]
+      },
+      "base": "arch/riscv/be/r5-guest.S",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "cause",
+          "role": "secondary"
+        }
+      ],
+      "declared_delta": {
+        "base_word": "00040513",
+        "bytes": 4,
+        "defect_word": "00038067",
+        "domain": "protected",
+        "file_offset": 208936,
+        "kind": "guest-word",
+        "slot": 1073811496
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "effect": "jr t2 into read-only shared 0x40002000, cause 20",
+        "kind": "guest-word",
+        "summary": "protected 40011028: 00040513 -> 00038067"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: protected fixture slot 40011028 is 00038067, expected 00040513",
+        "BE_R5:FAIL cause"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-05",
+      "last_marker": "BE_R5:06",
+      "message_completeness": "complete",
+      "notes": "Deliberate secondary coverage of cause; D-04 is the primary.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "malformed input",
+        "unexpected trap/event"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: protected fixture slot 40011028 is 68002573, expected 00040513"
+        ]
+      },
+      "base": "arch/riscv/be/r5-guest.S",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "cause",
+          "role": "secondary"
+        }
+      ],
+      "declared_delta": {
+        "base_word": "00040513",
+        "bytes": 4,
+        "defect_word": "68002573",
+        "domain": "protected",
+        "file_offset": 208936,
+        "kind": "guest-word",
+        "slot": 1073811496
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "effect": "csrr a0,hgatp from VS, cause 22 at 0x40011028",
+        "kind": "guest-word",
+        "summary": "protected 40011028: 00040513 -> 68002573"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: protected fixture slot 40011028 is 68002573, expected 00040513",
+        "BE_R5:FAIL cause"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-06",
+      "last_marker": "BE_R5:06",
+      "message_completeness": "complete",
+      "notes": "First measurement. The plan asserts cause 22 (virtual instruction). If QEMU reports cause 2 instead, the expected class is still cause, but the recorded architectural justification is then false and the plan must be revised. The harness must not relax the expectation at run time.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "malformed input",
+        "unexpected trap/event"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: protected fixture slot 40011010 is 0003a483, expected 400003b7"
+        ]
+      },
+      "base": "arch/riscv/be/r5-guest.S",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "pc",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": {
+        "base_word": "400003b7",
+        "bytes": 4,
+        "defect_word": "0003a483",
+        "domain": "protected",
+        "file_offset": 208912,
+        "kind": "guest-word",
+        "slot": 1073811472
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "effect": "t2=0 at entry, cause 21 at 0x40011010, stval=0, htval=0",
+        "kind": "guest-word",
+        "summary": "protected 40011010: 400003b7 -> 0003a483"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: protected fixture slot 40011010 is 0003a483, expected 400003b7",
+        "BE_R5:FAIL pc"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-07",
+      "last_marker": "BE_R5:04",
+      "message_completeness": "complete",
+      "notes": "Fault program counter diverges from the accepted expectation.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "malformed input",
+        "denied access"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: management fixture slot 40010028 is 00000513, expected 00040513"
+        ]
+      },
+      "base": "arch/riscv/be/r5-guest.S",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "import",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": {
+        "base_word": "00040513",
+        "bytes": 4,
+        "defect_word": "00000513",
+        "domain": "management",
+        "file_offset": 204840,
+        "kind": "guest-word",
+        "slot": 1073807400
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "effect": "R4 private event reports a0=0, so be_r4_handle_trap returns event-args and the R5 runtime terminates with import",
+        "kind": "guest-word",
+        "summary": "management 40010028: 00040513 -> 00000513"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: management fixture slot 40010028 is 00000513, expected 00040513",
+        "BE_R5:FAIL import"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-08",
+      "last_marker": "BE_R4:02",
+      "message_completeness": "complete",
+      "notes": "The only fixture whose terminal class is produced by the R4 import boundary rather than an R5 check.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "reject-with",
+        "messages": [
+          "{toolchain}: management fixture slot 40010034 is 00400893, expected 00300893"
+        ]
+      },
+      "base": "arch/riscv/be/r5-guest.S",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "event-args",
+          "role": "secondary"
+        }
+      ],
+      "declared_delta": {
+        "base_word": "00300893",
+        "bytes": 4,
+        "defect_word": "00400893",
+        "domain": "management",
+        "file_offset": 204852,
+        "kind": "guest-word",
+        "slot": 1073807412
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "effect": "final ecall carries event id 4",
+        "kind": "guest-word",
+        "summary": "management 40010034: 00300893 -> 00400893"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "{toolchain}: management fixture slot 40010034 is 00400893, expected 00300893",
+        "BE_R5:FAIL event-args"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-09",
+      "last_marker": "BE_R5:10",
+      "message_completeness": "complete",
+      "notes": "Deliberate secondary coverage of event-args; D-01 is the primary.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "malformed input"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "pass",
+        "messages": null
+      },
+      "base": "arch/riscv/be/r5-runtime.c",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "target-readback",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": {
+        "bytes": null,
+        "kind": "monitor-range",
+        "sections": [
+          ".monitor.text",
+          ".monitor.rodata",
+          ".monitor.data"
+        ]
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "kind": "c-argument",
+        "summary": "switch_domain passes BE_R3_MANAGEMENT_HGATP to be_r5_arch_install_root instead of pending.target.hgatp"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "BE_R5:FAIL target-readback"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-10",
+      "last_marker": "BE_R5:02",
+      "message_completeness": "complete",
+      "notes": "Guest is never entered.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "wrong binding"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "pass",
+        "messages": null
+      },
+      "base": "arch/riscv/be/r5-runtime.c",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "fence",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": {
+        "bytes": null,
+        "kind": "monitor-range",
+        "sections": [
+          ".monitor.text",
+          ".monitor.rodata",
+          ".monitor.data"
+        ]
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "kind": "c-statement",
+        "summary": "one added line after be_r5_arch_install_root sets ack.fence_completed = 0U"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "BE_R5:FAIL fence"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-11",
+      "last_marker": "BE_R5:02",
+      "message_completeness": "complete",
+      "notes": "The safe dynamic skipped-fence probe. The fence is still executed, so no unfenced guest ever runs; only the acknowledgement is withheld. Not placed in r5-trap.S, whose instruction order the accepted image checker pins.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "skipped fence"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "pass",
+        "messages": null
+      },
+      "base": "arch/riscv/be/r5-runtime.c",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "hgatp",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": {
+        "bytes": null,
+        "kind": "monitor-range",
+        "sections": [
+          ".monitor.text",
+          ".monitor.rodata",
+          ".monitor.data"
+        ]
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "kind": "c-statement",
+        "summary": "one added line after be_r5_arch_install_root sets ack.source_hgatp = ack.hgatp_written"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "BE_R5:FAIL hgatp"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-12",
+      "last_marker": "BE_R5:02",
+      "message_completeness": "complete",
+      "notes": "Not placed in r5-trap.S, for the same reason as D-11.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "skipped fence"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "pass",
+        "messages": null
+      },
+      "base": "arch/riscv/be/r5-runtime.c",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "invalid-phase",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": {
+        "bytes": null,
+        "kind": "monitor-range",
+        "sections": [
+          ".monitor.text",
+          ".monitor.rodata",
+          ".monitor.data"
+        ]
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "kind": "c-control-flow",
+        "summary": "the single be_r5_publish_target call site is placed in a bounded loop whose trip count is 2"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "BE_R5:FAIL invalid-phase"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-13",
+      "last_marker": "BE_R5:04",
+      "message_completeness": "complete",
+      "notes": "A static volatile int trip counter initialised to 2 guards a while loop around the existing call, so neither GCC nor Clang can prove the trip count at -O2 or unroll it into two references. check-fixtures.mjs asserts exactly one <be_r5_publish_target> reference in the built image, so an optimiser change is reported rather than silently turned into a different fixture.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "partial publication"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "pass",
+        "messages": null
+      },
+      "base": "arch/riscv/be/r5-runtime.c",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "saved-page",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": {
+        "bytes": null,
+        "kind": "monitor-range",
+        "sections": [
+          ".monitor.text",
+          ".monitor.rodata",
+          ".monitor.data"
+        ]
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "kind": "c-argument",
+        "summary": "be_r5_arch_reset_target is passed the management trusted SP 0x80227000"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "BE_R5:FAIL saved-page"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-14",
+      "last_marker": "BE_R5:03",
+      "message_completeness": "complete",
+      "notes": "Primary saved-page fixture at the switch_domain check; H-05 is the secondary at validate_entry_state.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "wrong binding"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "pass",
+        "messages": null
+      },
+      "base": "arch/riscv/be/r5-trap.S",
+      "builds": true,
+      "coverage": [
+        {
+          "class": "interrupt",
+          "role": "primary"
+        }
+      ],
+      "declared_delta": {
+        "bytes": null,
+        "kind": "monitor-range",
+        "layout": {
+          "clang": {
+            "bytes": 10,
+            "monitor_text_size": 30272,
+            "runs": [
+              {
+                "length": 9,
+                "start": 30080
+              },
+              {
+                "length": 1,
+                "start": 30090
+              }
+            ]
+          },
+          "gcc": {
+            "bytes": 10,
+            "monitor_text_size": 30224,
+            "runs": [
+              {
+                "length": 9,
+                "start": 30032
+              },
+              {
+                "length": 1,
+                "start": 30042
+              }
+            ]
+          }
+        },
+        "sections": [
+          ".monitor.text",
+          ".monitor.rodata",
+          ".monitor.data"
+        ],
+        "symbol_sizes": {
+          "be_r5_switch_tail": {
+            "control": 212,
+            "fixture": 220
+          }
+        }
+      },
+      "declared_layer": "L10",
+      "defect": {
+        "kind": "asm-insertion",
+        "summary": "be_r5_switch_tail arms hvip[2] then hie[2] with csrsi, after every entry-control readback and the last frame restore, immediately before .option pop and the jump to be_r5_enter_guest_tail"
+      },
+      "expected_link": "pass",
+      "expected_messages": [
+        "BE_R5:FAIL interrupt"
+      ],
+      "forbidden_markers": [
+        "BE_R5:12",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "dynamic",
+      "id": "D-15",
+      "last_marker": "BE_R5:04",
+      "message_completeness": "complete",
+      "notes": "Plan revision R6-A. The only dynamic fixture that enters the guest, preempted at 0x40011000 before any protected instruction retires, so the trace holds the two management VS entries only. Asserts scause=0x8000000000000002; a different observed cause is wrong-error-class and requires a plan revision, not a run-time relaxation. It cannot live in r5-runtime.c: the accepted be_r5_switch_tail re-reads hie and hvip and rejects a non-zero value before SRET, so any arming inside switch_domain terminates as entry-controls. The two csrsi instructions take a 5-bit immediate, read and write no GPR, add no call, no HGATP write, and no fence, and sit after the pinned readback order and after the eighth frame restore pair, so the accepted image checker still passes unchanged. Plan revision R6-B pins the resulting image exactly: ten differing flat-image bytes in two runs per toolchain, an unchanged .monitor.text allocated size, and unchanged addresses for every symbol L8 fixes or requires, with be_r5_switch_tail's symbol-table size the only permitted recorded difference. Non-allocated debug and symbol-table content is out of scope for L8 by construction and is never pinned.",
+      "outcome": "terminated-fail-closed",
+      "partition": "dynamic",
+      "qemu": true,
+      "runs": 2,
+      "families": [
+        "unexpected trap/event"
+      ]
+    },
+    {
+      "accepted_image_check": {
+        "disposition": "pass",
+        "messages": null
+      },
+      "base": "tests/r5",
+      "builds": true,
+      "coverage": [],
+      "declared_delta": {
+        "bytes": 0,
+        "kind": "identity"
+      },
+      "declared_layer": "L10",
+      "defect": null,
+      "expected_link": "pass",
+      "expected_messages": [
+        "BE_R3:01 BOOT_VALIDATED",
+        "BE_R3:02 R1_DERIVED",
+        "BE_R3:03 R2_BUILT_REWALKED",
+        "BE_R3:04 HS_VS_STATE_VERIFIED",
+        "BE_R3:05 BINDING_PREPARED",
+        "BE_R3:06 HGATP_FENCED_PUBLISHED",
+        "BE_R3:07 ENTER_MANAGEMENT_VS pc=0x40010000",
+        "BE_R4:01 ENTRY_ARMED_IMPORTED",
+        "BE_R4:02 EXPECTED_DENIED_LOAD pc=0x40010014 resume=0x40010018",
+        "BE_R4:03 PRIVATE_EVENT pc=0x40010030 resume=0x40010034",
+        "BE_R5:01 R4_COMPLETE_IMPORTED sepc=0x40010034",
+        "BE_R5:02 PENDING_PROTECTED direction=management-to-protected",
+        "BE_R5:03 PROTECTED_HGATP_WRITTEN_FENCED_READBACK",
+        "BE_R5:04 PROTECTED_TARGET_VERIFIED pc=0x40011000",
+        "BE_R5:05 EXPECTED_DENIED_LOAD pc=0x40011014 resume=0x40011018",
+        "BE_R5:06 EXPECTED_DENIED_SHARED_STORE pc=0x40011024 resume=0x40011028",
+        "BE_R5:07 SWITCH_EVENT pc=0x40011030 saved=0x40011034",
+        "BE_R5:08 PENDING_MANAGEMENT direction=protected-to-management",
+        "BE_R5:09 MANAGEMENT_HGATP_WRITTEN_FENCED_READBACK",
+        "BE_R5:10 MANAGEMENT_TARGET_VERIFIED pc=0x40010034",
+        "BE_R5:11 FINAL_EVENT pc=0x40010038 s0=17 a0=17 a1=34 shared=34 protected=51",
+        "BE_R5:12 SHUTDOWN type=0 reason=0"
+      ],
+      "forbidden_markers": [
+        "BE_R3:FAIL",
+        "BE_R4:FAIL",
+        "BE_R5:FAIL",
+        "BE_R5:SRST_RETURNED",
+        "GENERAL_GUEST_SBI",
+        "HGATP_WRITE_AFTER_ENTRY",
+        "HFENCE_AFTER_ENTRY",
+        "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+        "SHARED_STORE_BY_PROTECTED"
+      ],
+      "handler": "control",
+      "id": "C-01",
+      "last_marker": "BE_R5:12",
+      "message_completeness": "complete",
+      "notes": "Unmutated accepted sources built and run through the R6 path. Must reproduce the exact 22-line accepted sequence with QEMU status 0.",
+      "outcome": "control-accepted",
+      "partition": "control",
+      "qemu": true,
+      "runs": 2,
+      "families": []
+    }
+  ]
+}

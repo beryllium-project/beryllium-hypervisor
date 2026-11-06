@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# gen_init_cpio list for the K3 B6 guest's embedded initramfs
+# (planning/k3-b6-plan.md, Guest software). scripts/build-guest.sh puts the
+# path of the built init in the /init line. Linux execs rdinit= with
+# argv[0] set to the name it was given, so the two links select the init's
+# QEMU-only variants (guest/init.c). Kbuild sets every mtime to
+# KBUILD_BUILD_TIMESTAMP (usr/Makefile:62-68@v7.2).
+dir /dev 0755 0 0
+nod /dev/console 0600 0 0 c 5 1
+file /init @B6_GUEST_INIT@ 0755 0 0
+slink /init-exit /init 0777 0 0
+slink /init-rdcycle /init 0777 0 0

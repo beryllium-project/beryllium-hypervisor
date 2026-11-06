@@ -1,0 +1,19 @@
+run=20261008T111913Z
+image=<repo>/build/k3-b6/clang/be-k3-b6-boot.img
+image_sha256=e7f096dcea4da5fb664baecde2bb0dea3051077d26e0a7c6cfb408bd88d12915
+image_check=BE_B6_BOOT_IMAGE[clang]: PASS <repo>/build/k3-b6/clang/be-k3-b6-boot.img bytes=0x1b2000 sha256=e7f096dcea4da5fb664baecde2bb0dea3051077d26e0a7c6cfb408bd88d12915 crc32=627929b2 payload_sha256=09a41219561d340d1efe9393af88ce12e2c10ae1576c247e943a1c085a67aeb5 kexec_fdt=0x108200000
+toolchain=clang
+k3_ssh=fedora@k3e
+loader_mode=raw
+loader_sha256=5a960c53fe7565a429c1a8746e678c6f487be7f597821f27c6a23c6d1bde17fa
+layout_sha256=0869df29e783babe134b50fa3f6b53dd8fb024886315855a05638d9e34fdc50e
+serial_source=none:load-only
+boot_id_before=dde4e0d3-0b73-4aeb-9b08-8e2b448e773c
+board_kernel=7.1.5-201.0.riscv64.omni.fc44.riscv64
+board_lockdown=[none] integrity confidentiality
+board_tmp_fstype=tmpfs
+remote_image_sha256=e7f096dcea4da5fb664baecde2bb0dea3051077d26e0a7c6cfb408bd88d12915
+loader=kexec_load entry=0x108000000 fdt=0x108200000 image_memsz=0x1b2000 fdt_bytes=41088 kexec_loaded=1
+kexec_loaded=1
+kexec_loaded_after_unload=0
+outcome=load-only

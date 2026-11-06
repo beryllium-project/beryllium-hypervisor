@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+//
+// Question: when can canonical authority, roots, and a runnable domain exist?
+digraph be_model_02_state_machine {
+	graph [
+		label="Model 0.2 initialization, activation, and terminal failure"
+		tooltip="No domain runs before inventory binding, proposal validation, sealing, and root derivation complete."
+		labelloc=t
+		fontname="Inter,Arial"
+		fontsize=21
+		rankdir=LR
+		nodesep=0.42
+		ranksep=0.68
+		bgcolor="transparent"
+		pad=0.25
+	]
+	node [
+		shape=box
+		style="rounded,filled"
+		fontname="Inter,Arial"
+		fontsize=8
+		fontcolor="#0f172a"
+		color="#475569"
+		margin="0.13,0.08"
+	]
+	edge [
+		fontname="Inter,Arial"
+		fontsize=7
+		color="#475569"
+		fontcolor="#334155"
+		penwidth=1.2
+		arrowsize=0.65
+	]
+
+	empty [label="EMPTY\nno bound input" fillcolor="#e2e8f0"]
+	inventory [label="INVENTORY BOUND\nvalidated private copy" fillcolor="#ede9fe" color="#7c3aed"]
+	proposal [label="PROPOSAL COPIED\nuntrusted; no authority" fillcolor="#fee2e2" color="#dc2626"]
+	validated [label="VALIDATED\ncanonical candidate\nnot authoritative" fillcolor="#cffafe" color="#0891b2"]
+	sealed [label="SEALED\ncanonical authority immutable" fillcolor="#dbeafe" color="#2563eb"]
+	roots [label="ROOTS DERIVED\nre-checkable; no domain active" fillcolor="#fef3c7" color="#d97706"]
+	active [label="ACTIVE\none atomic domain binding" fillcolor="#dcfce7" color="#16a34a"]
+	switching [label="SWITCHING\ntarget selected\nentry blocked until fence" fillcolor="#ffedd5" color="#ea580c"]
+	failed [label="FAILED\nterminal; no runnable domain" fillcolor="#fee2e2" color="#dc2626" penwidth=2]
+
+	empty -> inventory [label="valid inventory"]
+	inventory -> proposal [label="bounded copy"]
+	proposal -> validated [label="canonical validation"]
+	validated -> sealed [label="integrity re-check + seal"]
+	sealed -> roots [label="derive + validate roots"]
+	roots -> active [label="atomic activation"]
+	active -> switching [label="save source + select target"]
+	switching -> active [label="global fence + restore"]
+
+	empty -> failed [label="invalid inventory" color="#dc2626"]
+	proposal -> failed [label="overlap / omission /\ndirect publication" color="#dc2626"]
+	validated -> failed [label="candidate mutation" color="#dc2626"]
+	sealed -> failed [label="direct root injection" color="#dc2626"]
+	roots -> failed [label="excess rights /\nwrong binding" color="#dc2626"]
+	active -> failed [label="invalid transition /\nstate corruption" color="#dc2626"]
+	switching -> failed [label="entry before fence" color="#dc2626"]
+	failed -> failed [label="all later transitions fail" color="#dc2626"]
+}

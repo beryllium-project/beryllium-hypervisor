@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+//
+// The K3 B6 guest device tree (planning/k3-b6-plan.md, Device tree): one
+// hart with its interrupt controller, the timebase, and one memory node,
+// and no other device. scripts/gen-dts.py fills each placeholder from
+// src/b6-layout.h and the selected variant, and the pinned kernel tree's
+// own dtc compiles the result with -S 4096.
+/dts-v1/;
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	compatible = "beryllium,k3-b6-guest";
+	model = "Beryllium K3 B6 guest";
+
+	chosen {
+		bootargs = "${BOOTARGS}";
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <${TIMEBASE_HZ}>;
+
+		cpu@0 {
+			device_type = "cpu";
+			reg = <0>;
+			compatible = "riscv";
+			mmu-type = "riscv,sv39";
+			riscv,isa-base = "rv64i";
+			riscv,isa-extensions = ${ISA_EXTENSIONS};
+
+			interrupt-controller {
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+				#interrupt-cells = <1>;
+			};
+		};
+	};
+
+	memory@${MEMORY_UNIT} {
+		device_type = "memory";
+		reg = <${MEMORY_REG}>;
+	};
+};

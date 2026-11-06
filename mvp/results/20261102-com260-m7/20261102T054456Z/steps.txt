@@ -1,0 +1,33 @@
++5.606 2026-11-02T05:45:04.761Z ready-boot line_end=610254 Starting kernel ...
++5.776 2026-11-02T05:45:04.931Z ready-armed line_end=611724 BE_MVP:15 INPUT_ARMED grants=g0,g1 prefix=0x7e
++5.799 2026-11-02T05:45:04.955Z ready-focus line_end=611746 BE_MVP:16 FOCUS none
++6.577 2026-11-02T05:45:05.732Z ready-shell g0 line_end=621165 BE_MVP_G0: MVPINIT 11 SHELL tty=/dev/hvc0 role=none
++6.609 2026-11-02T05:45:05.765Z ready-shell g1 line_end=621218 BE_MVP_G1: MVPINIT 11 SHELL tty=/dev/hvc0 role=none
++6.654 2026-11-02T05:45:05.809Z step=0 focus keys=2 offset=621404
++6.722 2026-11-02T05:45:05.877Z step=0 line_end=621424 BE_MVP:16 FOCUS g0
++7.225 2026-11-02T05:45:06.380Z step=1 send keys=22 offset=621424
++7.587 2026-11-02T05:45:06.743Z step=1 line_end=621460 BE_MVP_G0: # echo a95d14ec1c364221
++7.608 2026-11-02T05:45:06.763Z step=2 line_end=621489 BE_MVP_G0: a95d14ec1c364221
++8.110 2026-11-02T05:45:07.265Z step=3 send keys=16 offset=621489
++8.404 2026-11-02T05:45:07.559Z step=3 line_end=621519 BE_MVP_G0: # ls /bin | wc -l
++8.423 2026-11-02T05:45:07.579Z step=4 line_end=621534 BE_MVP_G0: 18
++8.425 2026-11-02T05:45:07.580Z step=5 focus keys=2 offset=621534
++8.497 2026-11-02T05:45:07.652Z step=5 line_end=621554 BE_MVP:16 FOCUS g1
++8.999 2026-11-02T05:45:08.155Z step=6 send keys=22 offset=621554
++9.360 2026-11-02T05:45:08.516Z step=6 line_end=621590 BE_MVP_G1: # echo a95d14ec1c364221
++9.383 2026-11-02T05:45:08.538Z step=7 line_end=621619 BE_MVP_G1: a95d14ec1c364221
++9.885 2026-11-02T05:45:09.041Z step=8 negative keys=2 offset=621619
++9.957 2026-11-02T05:45:09.113Z step=8 line_end=621654 BE_MVP:17 INPUT_DROP bad-sequence
++10.460 2026-11-02T05:45:09.615Z step=9 negative keys=20 offset=621654
++10.749 2026-11-02T05:45:09.904Z step=9 line_end=621687 BE_MVP_G1: # ~/bin/echo literal
++10.774 2026-11-02T05:45:09.929Z step=9 line_end=621707 BE_MVP_G1: literal
++10.775 2026-11-02T05:45:09.930Z step=10 focus keys=2 offset=621707
++10.856 2026-11-02T05:45:10.011Z step=10 line_end=621727 BE_MVP:16 FOCUS g0
++11.358 2026-11-02T05:45:10.513Z step=11 send keys=5 offset=621727
++11.517 2026-11-02T05:45:10.673Z step=11 line_end=621746 BE_MVP_G0: # exit
++11.541 2026-11-02T05:45:10.696Z step=12 line_end=621782 BE_MVP_G0: MVPINIT 11 SHELL exit=0
++11.542 2026-11-02T05:45:10.697Z step=13 focus keys=2 offset=622090
++11.610 2026-11-02T05:45:10.765Z step=13 line_end=622110 BE_MVP:16 FOCUS g1
++12.112 2026-11-02T05:45:11.268Z step=14 send keys=5 offset=622110
++12.221 2026-11-02T05:45:11.376Z step=14 line_end=622129 BE_MVP_G1: # exit
++12.294 2026-11-02T05:45:11.449Z step=15 line_end=622165 BE_MVP_G1: MVPINIT 11 SHELL exit=0

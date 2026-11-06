@@ -1,0 +1,4 @@
+U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395
+
+gcc (Bianbu 15.2.0-16ubuntu1bb3) 15.2.0
+GNU ld (GNU Binutils for Bianbu) 2.46

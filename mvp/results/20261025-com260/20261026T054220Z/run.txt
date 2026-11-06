@@ -1,0 +1,26 @@
+run=20261026T054220Z
+image=<repo>/build/mvp/clang/be-mvp-boot.img
+image_sha256=19a5f2d2e89df83770d60f1731eb6077ca25ec6eb6a2ffacf1d54b276b40925d
+image_check=BE_MVP_BOOT_IMAGE[clang]: PASS <repo>/build/mvp/clang/be-mvp-boot.img bytes=0x223000 sha256=19a5f2d2e89df83770d60f1731eb6077ca25ec6eb6a2ffacf1d54b276b40925d flat_sha256=db6325a13ee7e6045c7c1a7841c6097731d3e5eaf5c185c6c03f233fbca2c96c kexec_fdt=0x108400000 variant=none dtb0=0x221000
+toolchain=clang
+expect=two-guests.json expect_sha256=11fda6f84e5319cf112780cbc27b7131fd46af96c8e294f5669ab546b04eed47
+variant=none
+k3_ssh=fedora@k3-f45
+loader_mode=raw
+loader_sha256=7bd92e7992e5e76650cbc6d112c405b72b02bd716822de46fe9db42a5d927bbc
+layout_sha256=b4656b71df44133eb01985b43cc4c5b3af234d8dce9fdbdaabc9ea2b5784aee6
+serial_source=log:<home>/src/spacemit-k3/logs/boot-7.log
+boot_id_before=7a6bc297-b921-4e3d-87b0-d618c92f6062
+board_kernel=7.3.0-65.1.riscv64.omni.fc45.riscv64
+board_lockdown=[none] integrity confidentiality
+board_tmp_fstype=tmpfs
+remote_image_sha256=19a5f2d2e89df83770d60f1731eb6077ca25ec6eb6a2ffacf1d54b276b40925d
+loader=kexec_load entry=0x108000000 fdt=0x108400000 image_memsz=0x223000 fdt_bytes=49280 kexec_loaded=1
+kexec_loaded=1
+kexec_requested_utc=2026-10-26T05:42:22Z
+kexec_ssh_status=0
+outcome=terminal-marker
+terminal_marker_utc=2026-10-26T05:42:32Z
+expected_kexec_fdt=0x108400000
+check_status=0
+BE_MVP_RESULT: PASS terminal=shutdown-requested

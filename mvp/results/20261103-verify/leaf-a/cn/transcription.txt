@@ -1,0 +1,14 @@
+# planning/mvp-m8-plan.md D-7, M8-6; specification planning/mvp-m8-specifications.md sections 4 and 6, SHA-256 ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d, accepted at 004f31ae
+# CN arm: how each section 4 clause is transcribed (mvp/verify/cn/mvp-sbi-leaf.c)
+section 4.1 -> the copy's CN functions: BIT(v, n) = shift_right(v, n) & 1, SPV, SPVP, GVA as bits 7, 8, 6; GPA = shift_left(htval, 2) | (stval & 3); OPCODE = shift_right(i, 2) & 31; HTINST_OK as written; INSIDE; IN_PAGE, HAS_PAGE, MAPPED over pages 0 to 2; PAGE_IS (the lowest index); W_SET(pte) = BIT(pte, 2) == 1 (CN reserves W, its write-ownership resource); PAGE_READ_ONLY; ACCESS_FAULT; VSTVEC_MODE = v & 3
+section 4.2 -> E1 to E7, UNMAPPED, READ_ONLY, ENTRY over the struct values CN's ownership gives (S, M, L, R)
+section 4.3 -> be_mvp_denial_decide's requires: take RW of each input (CN's ownership: valid, initialised, pairwise disjoint by the separating conjunction), take W of out (valid, writable, disjoint from the inputs), the map's and each page's sum below 2^64; nothing else
+section 4.4 -> the same goals as the WP arm, by the same names: D_frame (every input unchanged: S2 == S and the others, CN's form of "writes *out and nothing else" for the inputs; ownership of out returned as RW), D_result, D_E1 to D_E7, D_complete and round 1's three cases, D_cause, D_kind_unmapped, D_kind_read_only, the eleven field goals, D_inject_vsstatus_spp, _spie, _sie, _rest, D_resume_pc, D_zero_* (fifteen)
+section 4.4 Runtime errors -> CN's own checks on every run: undefined behaviour, ownership of every access, and representability of every C integer value (CN's integer mode: C integers as mathematical integers with range constraints)
+section 4.5 -> access_fault: AF_cause (round 1: AF_other); htinst_accepted: HI_iff (round 1: HI_bool); inside: requires the sum below 2^64, IN_iff (round 1: IN_bool); leaf_at: take RW of leaves returned unchanged (LA_frame), LA_page_0 to LA_page_2 (PAGE_IS(i) implies ptr_eq(return, &leaves->page[i])), LA_none, and the loop's inv (ownership, index <= 3, no earlier page holds gpa)
+round 1 -> the same additions as the WP arm's round 1 (the helpers' 0-or-1 results and access_fault's 0 for other causes; D_complete as three exhaustive cases), each a goal
+D-5: the annotated-copy route, as the plan requires for CN; the copy passes the token gate
+token_gate=BE_MVP_TOKEN_EQUAL: PASS tokens=686 range=mvp/src/mvp-sbi.c:200-323 directives=3 functions=access_fault:200-209,htinst_accepted:217-233,inside:235-238,leaf_at:241-251,be_mvp_denial_decide:253-323
+file mvp/verify/cn/mvp-sbi-leaf.c sha256=f0a92b387f483d3917a4533612ca35d99a0010651536a5ae4bed511bb46dd2c1
+digests_before=BE_MVP_TARGET_DIGESTS: PASS files=13 record=mvp/verify/target-digests.txt
+digests_after=BE_MVP_TARGET_DIGESTS: PASS files=13 record=mvp/verify/target-digests.txt

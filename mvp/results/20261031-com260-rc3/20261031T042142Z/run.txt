@@ -1,0 +1,29 @@
+run=20261031T042142Z
+image=<repo>/build/mvp/gcc/anchor/be-mvp-boot.img
+image_sha256=72de23d21cd387c61958819dbd975eb5fcf31e899651e7e469b28aa56601e857
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/gcc/anchor/be-mvp-boot.img bytes=0x277000 sha256=72de23d21cd387c61958819dbd975eb5fcf31e899651e7e469b28aa56601e857 flat_sha256=4622c28c2d335d3b0fccf7ea7d90f67d9545154251932c63698ed84ca4f727c6 kexec_fdt=0x108400000 variant=none dtb0=0x275000 scenario=anchor
+toolchain=gcc
+expect=anchor.json expect_sha256=65212dd2ff7bda8959f4db9eee3e6b622f06b8321acd6be333661206c6bce4b2
+report=authority-report.json report_sha256=beb0189859a3d9e4565a301aaff3a665c46d9633225c2320cda53b94a1b56278
+measured=Image kernel_sha256=c7ae03e6b26e1433bb1cdcd995467b5df2dec61cb8ed1c38ede0d4458c4799ed mvp-guest-g1-anchor.dtb dtb_sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025
+variant=none
+launcher=uboot-autoboot-nvme
+loader=uboot-autoboot-nvme be_image=be-mvp-anchor-gcc.img load=0x140000000 booti=0x140000000 fdt=${fdtcontroladdr}
+be_image=be-mvp-anchor-gcc.img
+remote_image_sha256=72de23d21cd387c61958819dbd975eb5fcf31e899651e7e469b28aa56601e857
+staged_bytes=2584576 staged_md5=94a747dd366532df57b380fe4201704b
+selected_be_image=be-mvp-anchor-gcc.img
+serial_source=log:<home>/src/spacemit-k3/logs/boot-7.log
+boot_id_before=reset-24@15415918
+reset_utc=2026-10-31T04:21:48.134Z
+serial_range=15415918-15438501
+outcome=terminal-marker
+terminal_marker_utc=2026-10-31T04:22:04Z
+spl_banner=U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)
+uboot_banner=U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395
+board_kernel=none (boot from system reset)
+check_status=0
+BE_MVP_RESULT: PASS terminal=shutdown-requested
+attribution_lines=bytes_read=2584576 digest=md5:94a747dd366532df57b380fe4201704b
+attribution=PASS selected=yes staged_sha256=yes size_md5=yes check=yes
+banner_audit=PASS

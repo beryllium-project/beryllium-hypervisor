@@ -1,0 +1,41 @@
+# MVP M8 Leaf B: CBMC bounded model check of mvp-ring.c (planning/mvp-m8-plan.md, D-8): a bounded model check, never a proof
+specification=planning/mvp-m8-specifications.md revision=1 accepted=93a8d136 sha256=aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b
+leaf=mvp/src/mvp-ring.c sha256=432dbc511397da4b051da37f3860b1f8d078ef87fa175ea47d7b3c7a1bc267ba
+started=2026-11-03T22:27:13Z cbmc=6.8.0 (ad933aa-dirty) cvc5=cvc5 1.3.4
+seconds=7404
+vacuity function=post part=buffer capacity=4096 class=3960 solver=sat assert(0)_after_the_assumptions=fails seconds=23.3 assumptions_satisfiable=yes
+vacuity function=post_words part=buffer capacity=4096 class=3960 solver=sat assert(0)_after_the_assumptions=fails seconds=31.9 assumptions_satisfiable=yes
+vacuity function=take part=buffer capacity=4096 class=3960 solver=sat assert(0)_after_the_assumptions=fails seconds=32.2 assumptions_satisfiable=yes
+vacuity function=sequence part=window capacity=4096 class=3960 solver=sat assert(0)_after_the_assumptions=fails seconds=75.9 assumptions_satisfiable=yes
+vacuity function=post part=buffer capacity=512 class=376 solver=sat assert(0)_after_the_assumptions=fails seconds=1.8 assumptions_satisfiable=yes
+vacuity function=post_words part=buffer capacity=512 class=376 solver=sat assert(0)_after_the_assumptions=fails seconds=2.3 assumptions_satisfiable=yes
+vacuity function=take part=buffer capacity=512 class=376 solver=sat assert(0)_after_the_assumptions=fails seconds=6.3 assumptions_satisfiable=yes
+vacuity function=sequence part=window capacity=512 class=376 solver=sat assert(0)_after_the_assumptions=fails seconds=40.9 assumptions_satisfiable=yes
+vacuity function=reset part=all capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=init part=all capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=record_bytes part=all capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=post part=scalar capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.6 assumptions_satisfiable=yes
+vacuity function=room part=all capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=post_words part=scalar capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.6 assumptions_satisfiable=yes
+vacuity function=publish part=all capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.5 assumptions_satisfiable=yes
+vacuity function=acquire part=all capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=take part=scalar capacity=4096 solver=cvc5 sat=timeout@600.5s assert(0)_after_the_assumptions=fails seconds=7.9 assumptions_satisfiable=yes
+vacuity function=release part=all capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=peak part=all capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=taken part=all capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=published part=all capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=record_word part=all capacity=4096 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=reset part=all capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=init part=all capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=record_bytes part=all capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=post part=scalar capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=0.5 assumptions_satisfiable=yes
+vacuity function=room part=all capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=post_words part=scalar capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=0.6 assumptions_satisfiable=yes
+vacuity function=publish part=all capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=acquire part=all capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=95.6 assumptions_satisfiable=yes
+vacuity function=take part=scalar capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=80.9 assumptions_satisfiable=yes
+vacuity function=release part=all capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=69.6 assumptions_satisfiable=yes
+vacuity function=peak part=all capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=taken part=all capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=published part=all capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes
+vacuity function=record_word part=all capacity=512 solver=sat assert(0)_after_the_assumptions=fails seconds=0.1 assumptions_satisfiable=yes

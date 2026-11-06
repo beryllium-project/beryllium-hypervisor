@@ -1,0 +1,77 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "S-08",
+  "partition": "static",
+  "declared_delta": null,
+  "base": "arch/riscv/be/r5-runtime.c",
+  "base_sha256": "a221ce8ebb77e3feaa9d7799e3eb296fb8cd7aa9190e20f1970d7e9c95bcc6e4",
+  "defect_file": "r5-runtime.c.defect",
+  "defect_sha256": "b467c543b169547d5cce8b375a309d754b6823e0e3e0ba86524122e5aa414ce9",
+  "defect": {
+    "kind": "c-statement",
+    "summary": "second reachable be_r5_switch_tail call site with distinct argument setup",
+    "accepted": null,
+    "malformed": null,
+    "source_path": "arch/riscv/be/r5-runtime.c",
+    "target": {
+      "line": 383,
+      "line_anchor": "be_r5_switch_tail(target_frame, transition.active.hgatp,",
+      "symbol": "switch_domain",
+      "slot": null
+    },
+    "anchor": "\tbe_r5_switch_tail(target_frame, transition.active.hgatp,\n\t\t\t  transition.trusted_sp);\n",
+    "replacement": "\tif (outbound)\n\t\tbe_r5_switch_tail(target_frame, transition.active.hgatp,\n\t\t\t\t  transition.trusted_sp);\n\telse\n\t\tbe_r5_switch_tail(target_frame, transition.active.hgatp,\n\t\t\t\t  entry.trusted_sp);\n"
+  },
+  "diff": {
+    "sha256": "b9d272e3339f06303bf2d0acab7bb9da82b996603899741a054ece02590975c6",
+    "added": 6,
+    "removed": 2,
+    "budget": {
+      "added": 6,
+      "removed": 6
+    },
+    "unified": "--- a/arch/riscv/be/r5-runtime.c\n+++ b/arch/riscv/be/r5-runtime.c\n@@ -380,8 +380,12 @@\n \tif (transition.action != BE_R5_ACTION_ENTER_TARGET ||\n \t    transition.direction != direction)\n \t\tbe_r5_runtime_terminal(BE_R5_ERROR_PUBLICATION);\n-\tbe_r5_switch_tail(target_frame, transition.active.hgatp,\n-\t\t\t  transition.trusted_sp);\n+\tif (outbound)\n+\t\tbe_r5_switch_tail(target_frame, transition.active.hgatp,\n+\t\t\t\t  transition.trusted_sp);\n+\telse\n+\t\tbe_r5_switch_tail(target_frame, transition.active.hgatp,\n+\t\t\t\t  entry.trusted_sp);\n }\n \n static void request_shutdown(const struct be_r5_result *result)\n"
+  },
+  "expected": {
+    "first_rejection_layer": "L6",
+    "outcome": "rejected-by-image-check",
+    "message_completeness": "complete",
+    "primary_message": "{toolchain}: be_r5_switch_tail has more than one call site in the switch transaction",
+    "placeholders": {},
+    "stages": {
+      "l3": "pass",
+      "gcc-link": "pass",
+      "clang-link": "pass",
+      "gcc-image-check": "reject",
+      "clang-image-check": "reject"
+    },
+    "absent_stages": [],
+    "messages": {
+      "gcc-image-check": [
+        "gcc: be_r5_switch_tail has more than one call site in the switch transaction"
+      ],
+      "clang-image-check": [
+        "clang: be_r5_switch_tail has more than one call site in the switch transaction"
+      ]
+    },
+    "prohibited_layers": [
+      "L7",
+      "L8",
+      "L9",
+      "L10",
+      "L11"
+    ],
+    "qemu": "forbidden",
+    "artifacts": {
+      "quarantined": [
+        "clang-beryllium.bin",
+        "clang-beryllium.elf",
+        "gcc-beryllium.bin",
+        "gcc-beryllium.elf"
+      ],
+      "scratch_elf": true
+    }
+  }
+}

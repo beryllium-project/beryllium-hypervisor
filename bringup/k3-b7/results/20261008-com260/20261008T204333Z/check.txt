@@ -1,0 +1,159 @@
+kexec_entry=0x108000000
+kexec_hart=0
+kexec_fdt=0x108200000
+BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x0000000108200000 dest=0x0000000102000000 bytes=0x0000000000034000
+BE_R3:01 BOOT_VALIDATED
+BE_R3:02 R1_DERIVED
+BE_R3:03 R2_BUILT_REWALKED
+BE_R3:04 HS_VS_STATE_VERIFIED
+BE_R3:05 BINDING_PREPARED
+BE_R3:06 HGATP_FENCED_PUBLISHED
+BE_B7:01 GSTAGE_BUILT_REWALKED guest=0 gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 root=0x102034000
+BE_B7:01 GSTAGE_BUILT_REWALKED guest=1 gpa=0x80000000 hpa=0x114000000 size=0x4000000 leaves=32 root=0x10203c000
+BE_B7:02 HGATP_INSTALLED g1=0x800020000010203c g0=0x8000100000102034
+BE_B7:03 SSTC_STCE_READBACK henvcfg=0x8000000000000000
+BE_B7:04 GUEST_CONTROLS_CHECKED hstatus_controls=0x200180 hedeleg=0xb15c hideleg=0x40 hcounteren=0x2 sie=0x20 fs=0x0 vs=0x0 vstimecmp=0xffffffffffffffff
+BE_B7:05 GUEST_RAM_CLEARED guest=0 gpa=0x80000000 size=0x4000000 ticks=0x777bc
+BE_B7:05 GUEST_RAM_CLEARED guest=1 gpa=0x80000000 size=0x4000000 ticks=0x77b2e
+BE_B7:06 PAYLOAD_PLACED guest=0 kernel=0x80200000 kernel_bytes=0x17b3b4 image_size=0x1af628 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x4470
+BE_B7:06 PAYLOAD_PLACED guest=1 kernel=0x80200000 kernel_bytes=0x17b3b4 image_size=0x1af628 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x42f4
+BE_B7:07 SCHEDULER_ARMED guests=2 slice_ticks=0x3a980 first=0
+BE_B7:08 ENTER_GUEST guest=0 pc=0x80200000 a0=0x0 a1=0x83e00000
+BE_B7_G0: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_B7:08 ENTER_GUEST guest=1 pc=0x80200000 a0=0x0 a1=0x83e00000
+BE_B7_G1: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_B7_G0: [    0.000000] Machine model: Beryllium K3 B7 guest
+BE_B7_G0: [    0.000000] SBI specification v2.0 detected
+BE_B7_G1: [    0.000000] Machine model: Beryllium K3 B7 guest
+BE_B7_G1: [    0.000000] SBI specification v2.0 detected
+BE_B7_G0: [    0.000000] SBI implementation ID=0x4245 Version=0x3
+BE_B7_G0: [    0.000000] SBI TIME extension detected
+BE_B7_G1: [    0.000000] SBI implementation ID=0x4245 Version=0x3
+BE_B7_G1: [    0.000000] SBI TIME extension detected
+BE_B7_G0: [    0.000000] SBI SRST extension detected
+BE_B7_G0: [    0.000000] SBI DBCN extension detected
+BE_B7_G0: [    0.000000] earlycon: sbi0 at I/O port 0x0 (options '')
+BE_B7_G1: [    0.000000] SBI SRST extension detected
+BE_B7_G1: [    0.000000] SBI DBCN extension detected
+BE_B7_G1: [    0.000000] earlycon: sbi0 at I/O port 0x0 (options '')
+BE_B7_G0: [    0.000000] printk: legacy bootconsole [sbi0] enabled
+BE_B7_G0: [    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+BE_B7_G1: [    0.000000] printk: legacy bootconsole [sbi0] enabled
+BE_B7_G1: [    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+BE_B7_G0: [    0.000000] riscv: base ISA extensions acim
+BE_B7_G0: [    0.000000] riscv: ELF capabilities acim
+BE_B7_G0: [    0.000000] Ticket spinlock: enabled
+BE_B7_G1: [    0.000000] riscv: base ISA extensions acim
+BE_B7_G1: [    0.000000] riscv: ELF capabilities acim
+BE_B7_G1: [    0.000000] Ticket spinlock: enabled
+BE_B7_G0: [    0.000000] Zone ranges:
+BE_B7_G0: [    0.000000]   DMA32    [mem 0x0000000080000000-0x0000000083ffffff]
+BE_B7_G1: [    0.000000] Zone ranges:
+BE_B7_G1: [    0.000000]   DMA32    [mem 0x0000000080000000-0x0000000083ffffff]
+BE_B7_G0: [    0.000000]   Normal   empty
+BE_B7_G0: [    0.000000] Movable zone start for each node
+BE_B7_G0: [    0.000000] Early memory node ranges
+BE_B7_G1: [    0.000000]   Normal   empty
+BE_B7_G1: [    0.000000] Movable zone start for each node
+BE_B7_G1: [    0.000000] Early memory node ranges
+BE_B7_G0: [    0.000000]   node   0: [mem 0x0000000080000000-0x0000000083ffffff]
+BE_B7_G0: [    0.000000] Initmem setup node 0 [mem 0x0000000080000000-0x0000000083ffffff]
+BE_B7_G1: [    0.000000]   node   0: [mem 0x0000000080000000-0x0000000083ffffff]
+BE_B7_G1: [    0.000000] Initmem setup node 0 [mem 0x0000000080000000-0x0000000083ffffff]
+BE_B7_G0: [    0.000000] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=0
+BE_B7_G1: [    0.000000] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=1
+BE_B7_G0: [    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes
+BE_B7_G0: [    0.000000] Dentry cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+BE_B7_G1: [    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes
+BE_B7_G1: [    0.000000] Dentry cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+BE_B7_G0: [    0.000000] Inode-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+BE_B7_G0: [    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 16384
+BE_B7_G1: [    0.000000] Inode-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+BE_B7_G1: [    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 16384
+BE_B7_G0: [    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+BE_B7_G0: [    0.000000] SLUB: HWalign=64, Order=0-1, MinObjects=0, CPUs=1, Nodes=1
+BE_B7_G1: [    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+BE_B7_G1: [    0.000000] SLUB: HWalign=64, Order=0-1, MinObjects=0, CPUs=1, Nodes=1
+BE_B7_G0: [    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+BE_B7_G0: [    0.000000] riscv-intc: 64 local interrupts mapped
+BE_B7_G1: [    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+BE_B7_G1: [    0.000000] riscv-intc: 64 local interrupts mapped
+BE_B7_G0: [    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+BE_B7_G1: [    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+BE_B7_G0: [    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+BE_B7_G1: [    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+BE_B7_G0: [    0.000000] sched_clock: 64 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+BE_B7_G0: [    0.008853] riscv-timer: Timer interrupt in S-mode is available via sstc extension
+BE_B7_G1: [    0.000000] sched_clock: 64 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+BE_B7_G1: [    0.008853] riscv-timer: Timer interrupt in S-mode is available via sstc extension
+BE_B7_G0: [    0.034562] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+BE_B7_G1: [    0.028398] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+BE_B7_G0: [    0.056780] pid_max: default: 32768 minimum: 301
+BE_B7_G0: [    0.062287] Mount-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_B7_G1: [    0.053049] pid_max: default: 32768 minimum: 301
+BE_B7_G1: [    0.058553] Mount-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_B7_G0: [    0.083857] Mountpoint-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_B7_G0: [    0.092399] VFS: Finished mounting rootfs on nullfs
+BE_B7_G1: [    0.080819] Mountpoint-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+BE_B7_G1: [    0.089358] VFS: Finished mounting rootfs on nullfs
+BE_B7_G0: [    0.112524] ASID allocator using 16 bits (65536 entries)
+BE_B7_G0: [    0.118540] Memory: 62032K/65536K available (694K kernel code, 549K rwdata, 119K rodata, 149K init, 205K bss, 2900K reserved, 0K cma-reserved)
+BE_B7_G1: [    0.115043] ASID allocator using 16 bits (65536 entries)
+BE_B7_G1: [    0.121057] Memory: 62032K/65536K available (694K kernel code, 549K rwdata, 119K rodata, 149K init, 205K bss, 2900K reserved, 0K cma-reserved)
+BE_B7_G0: [    0.152106] clocksource: Switched to clocksource riscv_clocksource
+BE_B7_G1: [    0.144827] clocksource: Switched to clocksource riscv_clocksource
+BE_B7_G0: [    0.179916] cpu0: scalar unaligned word access speed is 4.94x byte access speed (fast)
+BE_B7_G1: [    0.176485] cpu0: scalar unaligned word access speed is 4.94x byte access speed (fast)
+BE_B7_G0: [    0.199735] workingset: timestamp_bits=62 (anon: 57) max_order=14 bucket_order=0 (anon: 0)
+BE_B7_G0: [    0.208807] printk: legacy console [hvc0] enabled
+BE_B7_G1: [    0.197129] workingset: timestamp_bits=62 (anon: 57) max_order=14 bucket_order=0 (anon: 0)
+BE_B7_G1: [    0.206201] printk: legacy console [hvc0] enabled
+BE_B7_G0: [    0.208807] printk: legacy console [hvc0] enabled
+BE_B7_G0: [    0.234489] printk: legacy bootconsole [sbi0] disabled
+BE_B7_G1: [    0.206201] printk: legacy console [hvc0] enabled
+BE_B7_G1: [    0.228759] printk: legacy bootconsole [sbi0] disabled
+BE_B7_G0: [    0.234489] printk: legacy bootconsole [sbi0] disabled
+BE_B7_G1: [    0.228759] printk: legacy bootconsole [sbi0] disabled
+BE_B7_G0: [    0.264030] clk: Disabling unused clocks
+BE_B7_G0: [    0.268822] Freeing unused kernel image (initmem) memory: 148K
+BE_B7_G0: [    0.275480] Kernel memory protection not selected by kernel config.
+BE_B7_G1: [    0.265332] clk: Disabling unused clocks
+BE_B7_G1: [    0.270123] Freeing unused kernel image (initmem) memory: 148K
+BE_B7_G0: [    0.294042] Run /init as init process
+BE_B7_G0: B7INIT 01 START guest=0 pid=1
+BE_B7_G0: B7INIT 02 UNAME release=7.2.0 machine=riscv64
+BE_B7_G1: [    0.289792] Kernel memory protection not selected by kernel config.
+BE_B7_G1: [    0.296899] Run /init as init process
+BE_B7_G1: B7INIT 01 START guest=1 pid=1
+BE_B7_G1: B7INIT 02 UNAME release=7.2.0 machine=riscv64
+BE_B7_G0: B7INIT 03 STEP n=1/8 rounds=1313 t_ms=219
+BE_B7_G1: B7INIT 03 STEP n=1/8 rounds=1600 t_ms=225
+BE_B7_G0: B7INIT 03 STEP n=2/8 rounds=1573 t_ms=300
+BE_B7_G1: B7INIT 03 STEP n=2/8 rounds=2040 t_ms=305
+BE_B7_G0: B7INIT 03 STEP n=3/8 rounds=1573 t_ms=380
+BE_B7_G1: B7INIT 03 STEP n=3/8 rounds=2040 t_ms=385
+BE_B7_G0: B7INIT 03 STEP n=4/8 rounds=1573 t_ms=460
+BE_B7_G1: B7INIT 03 STEP n=4/8 rounds=2041 t_ms=465
+BE_B7_G0: B7INIT 03 STEP n=5/8 rounds=1573 t_ms=540
+BE_B7_G1: B7INIT 03 STEP n=5/8 rounds=2041 t_ms=545
+BE_B7_G0: B7INIT 03 STEP n=6/8 rounds=1573 t_ms=620
+BE_B7_G1: B7INIT 03 STEP n=6/8 rounds=2041 t_ms=625
+BE_B7_G0: B7INIT 03 STEP n=7/8 rounds=1573 t_ms=700
+BE_B7_G1: B7INIT 03 STEP n=7/8 rounds=2041 t_ms=705
+BE_B7_G0: B7INIT 03 STEP n=8/8 rounds=1573 t_ms=780
+BE_B7_G1: B7INIT 03 STEP n=8/8 rounds=2040 t_ms=785
+BE_B7_G0: B7INIT 04 SLEEP requested_ms=1000 elapsed_ms=1003 ok=1
+BE_B7_G0: B7INIT 05 RESULT pass
+BE_B7_G0: B7INIT 06 POWER_OFF
+BE_B7_G0: [    1.968480] reboot: Power down
+BE_B7:09 GUEST_SHUTDOWN guest=0 exits=583 sbi=160 wfi=356 slice=67 base=14 time=0 dbcn_write=98 dbcn_read=47 dbcn_byte=0 srst=1 refused=0 ticks=0x370c703
+BE_B7_G1: B7INIT 04 SLEEP requested_ms=1000 elapsed_ms=1011 ok=1
+BE_B7_G1: B7INIT 05 RESULT pass
+BE_B7_G1: B7INIT 06 POWER_OFF
+BE_B7_G1: [    1.979838] reboot: Power down
+BE_B7:09 GUEST_SHUTDOWN guest=1 exits=594 sbi=162 wfi=363 slice=69 base=14 time=0 dbcn_write=98 dbcn_read=49 dbcn_byte=0 srst=1 refused=0 ticks=0x37b43c1
+BE_B7:10 RUN_COMPLETE switches=847 wfi_switches=711 slice_switches=135 stop_switches=1 idle_waits=646 idle_ticks=0x1d5de74 ticks=0x38030c3
+BE_B7:11 SHUTDOWN type=0 reason=0
+BE_B7_COUNTS: g0_exits=583 g0_sbi=160 g0_wfi=356 g0_slice=67 g1_exits=594 g1_sbi=162 g1_wfi=363 g1_slice=69 switches=847 wfi_switches=711 slice_switches=135 stop_switches=1 idle_waits=646 alternations=73
+BE_B7_RESULT: PASS terminal=shutdown-requested
+BE_B7_CAPTURE[kexec]: PASS

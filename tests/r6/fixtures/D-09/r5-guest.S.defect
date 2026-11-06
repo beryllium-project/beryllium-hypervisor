@@ -1,0 +1,72 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/*
+ * Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+ *
+ * Purpose: frozen R5 management and protected instruction-slot fixtures.
+ * Trust:   untrusted VS instructions. The monitor validates every exit, every
+ *          denied access, and every backing observation; neither fixture has
+ *          authority beyond its own immutable G-stage map.
+ * Scope:   the accepted fixed sequence only. No SBI call, no loop other than
+ *          the linked terminal self-loops, and no monitor interface exists.
+ */
+
+	.option norvc
+
+	.section .guest.r5.management, "ax"
+	.align 4
+	.globl be_r5_management_fixture
+	.type be_r5_management_fixture, @function
+be_r5_management_fixture:
+	/*
+	 * Slots +0x00..+0x34 are the accepted R4 management prelude, replayed
+	 * unchanged from the initial entry.  Each listed slot is deliberately
+	 * one non-compressed four-byte opcode, so no checked PC can move.
+	 */
+	lui	t0, 0x40000			/* +0x00 management private */
+	addi	t1, zero, 17			/* +0x04 */
+	sw	t1, 0(t0)			/* +0x08 */
+	lw	s0, 0(t0)			/* +0x0c */
+	lui	t2, 0x40001			/* +0x10 protected private */
+	lw	s1, 0(t2)			/* +0x14 denied: 0x40001000 */
+	lui	t2, 0x40002			/* +0x18 shared */
+	addi	t1, zero, 34			/* +0x1c */
+	sw	t1, 0(t2)			/* +0x20 */
+	lw	a1, 0(t2)			/* +0x24 */
+	addi	a0, s0, 0			/* +0x28 */
+	addi	a7, zero, 1			/* +0x2c; a6 stays zero */
+	ecall					/* +0x30 R4 private event */
+	/*
+	 * The return switch restores the saved R4 frame here, so s0/a0/a1 still
+	 * report 17/17/34 and only the event identifier is advanced.
+	 */
+	addi	a7, zero, 4			/* +0x34 defect: wrong completion event */
+	ecall					/* +0x38 */
+1:
+	j	1b				/* +0x3c must not execute */
+	.globl be_r5_management_fixture_end
+be_r5_management_fixture_end:
+	.size be_r5_management_fixture, . - be_r5_management_fixture
+
+	.section .guest.r5.protected, "ax"
+	.align 4
+	.globl be_r5_protected_fixture
+	.type be_r5_protected_fixture, @function
+be_r5_protected_fixture:
+	lui	t0, 0x40001			/* +0x00 protected private */
+	addi	t1, zero, 51			/* +0x04 */
+	sw	t1, 0(t0)			/* +0x08 */
+	lw	s0, 0(t0)			/* +0x0c */
+	lui	t2, 0x40000			/* +0x10 management private */
+	lw	s1, 0(t2)			/* +0x14 denied: 0x40000000 */
+	lui	t2, 0x40002			/* +0x18 shared */
+	lw	a1, 0(t2)			/* +0x1c reads 34 */
+	addi	t1, zero, 68			/* +0x20 denied candidate */
+	sw	t1, 0(t2)			/* +0x24 denied: read-only */
+	addi	a0, s0, 0			/* +0x28 reports 51 */
+	addi	a7, zero, 2			/* +0x2c; a6 stays zero */
+	ecall					/* +0x30 switch event */
+2:
+	j	2b				/* +0x34 saved, not executed */
+	.globl be_r5_protected_fixture_end
+be_r5_protected_fixture_end:
+	.size be_r5_protected_fixture, . - be_r5_protected_fixture

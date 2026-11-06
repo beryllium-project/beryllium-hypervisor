@@ -1,0 +1,16 @@
+44a69cea8b99b0c0644d003a6d48e5043eac4090c29194cf831e05cdf2ecdfac  be-mvp-probe-platform-gcc.img
+e06951878aeabcb43e2deaeb24b919d7e1b0704028d3fbb0b502ed2a928ba660  be-mvp-probe-vmid-distinct-gcc.img
+6ccfab6007fdd5606d20c6a842a47a008133c66f185e6dd6c0f9e5745890c476  be-mvp-probe-vmid-shared-gcc.img
+6e9decc06560d0f82b0b72c7f0d06034f65a9f508b3e726debcd39d01290d715  be-mvp-probe-console-input-gcc.img
+36381ba22aaac01f72acbf22461603aadfe88779448ad1f6ae51720bc1280b77  be-mvp-two-guests-gcc.img
+d83780cf343117809e3bf76a42a66d3782228033b61209dfba944f6abcb54475  be-mvp-two-guests-clang.img
+44026dca7624c1a9c844c8416e0c076102f1e8b6cce3d5ffd64012f6eee847af  be-mvp-te-poc-gcc.img
+79f6ba2d01d6bd3f80837e0b0f9eeaeffb3f17cca4a03cf96ef5031ae794c019  be-mvp-te-poc-clang.img
+85c4f813fdc4129a7b61a6700fb7cfd03920c86b57b0392e8b869aabd1f06bf9  be-mvp-anchor-gcc.img
+ff7cff5d05bb2322383184af4475b475a8646062fa8f2047d068bf218cc09009  be-mvp-anchor-clang.img
+dbd1a7774df8304b29461fb445400070ee489c073f5a65fe1b43728325b8fe5e  be-mvp-two-guests-payload-gcc.img
+9a594b7292a62df10ff5a400577b99bda4e5338595cd7cdb999a93596e692d56  be-mvp-te-poc-reader-write-gcc.img
+1c92c1ec71cf165f5063f6e203fb71ffbdea5a4e31186c0754b2c5a85e9fa7b4  be-mvp-te-poc-no-inject-gcc.img
+db5be226e87eb67ae85f326018fcf12b7b52861ed9ebc0adb7877a4aeda826b3  be-mvp-anchor-wrong-measurement-gcc.img
+b585442e5c058aa2c06c095935179b79b37d77cc8c841bcaeb6a20075790cb7d  be-mvp-anchor-no-grant-check-gcc.img
+4dea323ad0eafe91396be04e28e43da89dd090bb3bdf672329157a7d3b719f6d  be-mvp-two-guests-shell-gcc.img

@@ -1,0 +1,19 @@
+run=20261006T061306Z
+image=<repo>/build/k3-b0/be-k3-b0.bin
+image_sha256=fc6e12daca1cd8381463b2b93341c93699ba4bb08e29295e6271a04c3e7d36d3
+k3_ssh=fedora@k3e
+loader_mode=auto
+serial_source=log:<spacemit-k3>/logs/boot-6.log
+boot_id_before=6009d52b-e743-4057-ae6e-73cdc44edf49
+board_kernel=7.1.5-201.0.riscv64.omni.fc44.riscv64
+board_lockdown=[none] integrity confidentiality
+remote_image_sha256=fc6e12daca1cd8381463b2b93341c93699ba4bb08e29295e6271a04c3e7d36d3
+loader=kexec_load entry=0x102000000 fdt=0x102007000 image_memsz=0x7000 fdt_bytes=41088 kexec_loaded=1
+kexec_loaded=1
+kexec_requested_utc=2026-10-06T06:13:07Z
+kexec_ssh_status=0
+outcome=terminal-marker
+terminal_marker_utc=2026-10-06T06:13:16Z
+expected_base=0x102000000
+check_status=0
+BE_B0_BOOT_MARKER: PASS terminal=srst-shutdown-requested

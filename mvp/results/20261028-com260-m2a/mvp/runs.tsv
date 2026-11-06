@@ -1,0 +1,7 @@
+run	toolchain	image	image_sha256	expect	variant	verdict	stop	reset
+20261028T033233Z	gcc	gcc/anchor/be-mvp-boot-pic.img	3b554f2cd0c6ce01226488b4363de6554aa4b6f2e671ff9663a0066b911e24dd	anchor.json	none	PASS	10	k3ctl
+20261028T060802Z	gcc	gcc/anchor/be-mvp-boot-pic.img	3b554f2cd0c6ce01226488b4363de6554aa4b6f2e671ff9663a0066b911e24dd	anchor.json	none	PASS	none	k3ctl
+20261028T060936Z	gcc	gcc/anchor/be-mvp-boot-pic.img	3b554f2cd0c6ce01226488b4363de6554aa4b6f2e671ff9663a0066b911e24dd	anchor.json	none	PASS	none	k3ctl
+20261028T061147Z	clang	clang/anchor/be-mvp-boot-pic.img	37cdfd7064b04a366bbcf8ffc907ffb3ceff09d5e68e8fce99fe6a539f8d26ee	anchor.json	none	PASS	none	k3ctl
+20261028T061356Z	gcc	variants/gcc/wrong-measurement/be-mvp-boot-pic.img	61a3cd8a3c48630bbcd601e6d0cdc79e5e1f5b139435fd966529915698834b38	wrong-measurement.json	wrong-measurement	PASS	none	k3ctl
+20261028T061549Z	gcc	variants/gcc/no-grant-check/be-mvp-boot-pic.img	9b0aca48af15baea55913c0ef1515c2d52a16faabb3e8d3a8a11a6581da6ee76	no-grant-check.json	no-grant-check	PASS	none	k3ctl

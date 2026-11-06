@@ -1,0 +1,7 @@
+attempt_utc=2026-11-05T22:32:45Z
+be_image=be-mvp-two-guests-payload-gcc.img
+printenv_be_image=be_image=be-mvp-two-guests-payload-gcc.img
+select-10-check_sha256=17e8dce3b99c16ca69bc648d44534c6baf656838aa3486736882b823f7338878
+select_check=PASS
+saveenv=OK
+verdict=PASS

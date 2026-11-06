@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The build-time negative image undeclared-flow (planning/mvp-m1-plan.md,
+# Scenarios and the harness, Negative images; undeclared-flow.json):
+# tools/policy-check.py appends this file to te-poc's policy.te, so the
+# reader may write the shared page.
+
+allow reader_t shared_wr_t : memory { write };

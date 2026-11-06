@@ -1,0 +1,3 @@
+BE_MVP_COUNTS: boot_hart=4 rule_hart=4 started=4 g0=41 g1=41
+BE_MVP_RESULT: PASS terminal=fail-marker
+BE_MVP_CAPTURE[direct run-timeout]: PASS

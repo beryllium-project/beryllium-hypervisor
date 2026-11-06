@@ -1,0 +1,22 @@
+run=20261006T193201Z
+image=<repo>/build/k3-b3/gcc/be-k3-b3.img
+image_sha256=20e264d70ecb20eef8185954b7ecdeee4d082783dcb2022630161e177bf69f2f
+image_bytes=217088
+image_check=BE_B3_IMAGES: PASS images=1 variants=0
+toolchain=gcc
+launcher=uboot-booti
+loader=uboot-booti loady=0x140000000 booti=0x140000000 fdt=${fdtcontroladdr}
+load_address=0x140000000
+expected_ram_base=0x102000000
+serial_source=log:<spacemit-k3>/logs/boot-6.log
+serial_offset=1204150
+start_utc=2026-10-06T19:32:01Z
+terminal_marker_utc=2026-10-06T19:35:40Z
+outcome=terminal-marker
+capture_bytes=5751
+check_status=0
+BE_B3_RESULT: PASS terminal=shutdown-requested
+after_watch_seconds=75
+after_bytes=0
+after_first_output_seconds=none
+after_reset=no

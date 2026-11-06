@@ -1,0 +1,8 @@
+Autoboot in 3 seconds
+2584576 bytes read in 2 ms (1.2 GiB/s)
+md5 for 140000000 ... 140276fff ==> 8a2140c6a705c93fb791812bd0bb6246
+Moving Image from 0x140000000 to 0x108000000, end=108277000
+## Flattened Device Tree blob at 2fbe8aa50
+   Booting using the fdt blob at 0x2fbe8aa50
+   Loading Device Tree to 00000002fbd5d000, end 00000002fbd6f2ef ... OK
+Starting kernel ...

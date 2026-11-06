@@ -1,0 +1,105 @@
+
+OpenSBI v1.6
+   ____                    _____ ____ _____
+  / __ \                  / ____|  _ \_   _|
+ | |  | |_ __   ___ _ __ | (___ | |_) || |
+ | |  | | '_ \ / _ \ '_ \ \___ \|  _ < | |
+ | |__| | |_) |  __/ | | |____) | |_) || |_
+  \____/| .__/ \___|_| |_|_____/|____/_____|
+        | |
+        |_|
+
+Platform Name               : riscv-virtio,qemu
+Platform Features           : medeleg
+Platform HART Count         : 8
+Platform IPI Device         : aia-imsic
+Platform Timer Device       : aclint-mtimer @ 10000000Hz
+Platform Console Device     : uart8250
+Platform HSM Device         : ---
+Platform PMU Device         : ---
+Platform Reboot Device      : syscon-reboot
+Platform Shutdown Device    : syscon-poweroff
+Platform Suspend Device     : ---
+Platform CPPC Device        : ---
+Firmware Base               : 0x80000000
+Firmware Size               : 411 KB
+Firmware RW Offset          : 0x40000
+Firmware RW Size            : 155 KB
+Firmware Heap Offset        : 0x56000
+Firmware Heap Size          : 67 KB (total), 4 KB (reserved), 14 KB (used), 48 KB (free)
+Firmware Scratch Size       : 4096 B (total), 448 B (used), 3648 B (free)
+Runtime SBI Version         : 2.0
+Standard SBI Extensions     : time,rfnc,ipi,base,hsm,srst,pmu,dbcn,legacy
+Experimental SBI Extensions : fwft,dbtr,sse
+
+Domain0 Name                : root
+Domain0 Boot HART           : 2
+Domain0 HARTs               : 0*,1*,2*,3*,4*,5*,6*,7*
+Domain0 Region00            : 0x0000000000100000-0x0000000000100fff M: (I,R,W) S/U: (R,W)
+Domain0 Region01            : 0x0000000010000000-0x0000000010000fff M: (I,R,W) S/U: (R,W)
+Domain0 Region02            : 0x000000000c000000-0x000000000c007fff M: (I,R,W) S/U: ()
+Domain0 Region03            : 0x0000000024000000-0x0000000024007fff M: (I,R,W) S/U: ()
+Domain0 Region04            : 0x0000000002000000-0x000000000200ffff M: (I,R,W) S/U: ()
+Domain0 Region05            : 0x0000000080000000-0x000000008003ffff M: (R,X) S/U: ()
+Domain0 Region06            : 0x0000000080040000-0x000000008007ffff M: (R,W) S/U: ()
+Domain0 Region07            : 0x0000000000000000-0xffffffffffffffff M: () S/U: (R,W,X)
+Domain0 Next Address        : 0x0000000080200000
+Domain0 Next Arg1           : 0x000000027fe00000
+Domain0 Next Mode           : S-mode
+Domain0 SysReset            : yes
+Domain0 SysSuspend          : yes
+
+Boot HART ID                : 2
+Boot HART Domain            : root
+Boot HART Priv Version      : v1.12
+Boot HART Base ISA          : rv64imafdch
+Boot HART ISA Extensions    : smaia,smstateen,sstc,zicntr,zihpm,zicboz,zicbom,sdtrig,svade
+Boot HART PMP Count         : 16
+Boot HART PMP Granularity   : 2 bits
+Boot HART PMP Address Bits  : 54
+Boot HART MHPM Info         : 16 (0x0007fff8)
+Boot HART Debug Triggers    : 2 triggers
+Boot HART MIDELEG           : 0x0000000000001666
+Boot HART MEDELEG           : 0x0000000000f4b509
+
+
+U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+
+CPU:   rv64imafdch_zic64b_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zmmul_za64rs_zaamo_zalrsc_zawrs_zfa_zca_zcd_zba_zbb_zbc_zbs_sdtrig_shcounterenw_sha_shgatpa_shtvala_shvsatpa_shvstvala_shvstvecd_smaia_smstateen_sModel: riscv-virtio,qemu
+DRAM:  8 GiB
+Core:  33 devices, 13 uclasses, devicetree: board
+Flash: 32 MiB
+Loading Environment from nowhere... OK
+In:    serial@10000000
+Out:   serial@10000000
+Err:   serial@10000000
+Net:   No ethernet found.
+Hit any key to stop autoboot:  2  0
+=> setenv be_part 1
+=> setenv be_image te-poc-gcc.img
+=> setenv be_ld 'load virtio 0:${be_part} 0x140000000 /${be_image} && crc32 0x140000000 ${filesize}'
+=> setenv be_go 'booti 0x140000000 - ${fdtcontroladdr}'
+=> setenv be_boot 'if run be_ld; then run be_go; fi'
+=> setenv be_orig_bootcmd 'echo BE_UBOOT_REHEARSAL: FALLTHROUGH; sleep 1'
+=> setenv bootcmd 'run be_boot; run be_orig_bootcmd'
+=> boot
+2584576 bytes read in 3 ms (821.6 MiB/s)
+crc32 for 140000000 ... 140276fff ==> 7786049f
+Moving Image from 0x140000000 to 0x108000000, end=108277000
+## Flattened Device Tree blob at ff7383d0
+   Booting using the fdt blob at 0xff7383d0
+   Using Device Tree in place at 00000000ff7383d0, end 00000000ff73edd8
+
+Starting kernel ...
+
+BE_MVP_SHIM: boot_hart=0x2 starting hart 0
+BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x00000000ff7383d0 dest=0x0000000102000000 bytes=0x00000000000a4000
+BE_R3:01 BOOT_VALIDATED
+BE_R3:02 R1_DERIVED
+BE_R3:03 R2_BUILT_REWALKED
+BE_R3:04 HS_VS_STATE_VERIFIED
+BE_R3:05 BINDING_PREPARED
+BE_R3:06 HGATP_FENCED_PUBLISHED
+BE_MVP:01 SCENARIO name=te-poc domains=2 harts=0,1,2 of=8 ring_bytes=0x8000 mvp_region=0x102064000 mvp_bytes=0x40000 image_bytes=0xa4000
+BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status=1:1,2:0,3:1,4:1,5:1,6:1,7:1 started=2
+BE_MVP:FAIL firmware

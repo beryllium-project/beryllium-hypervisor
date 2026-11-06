@@ -1,0 +1,126 @@
+{
+ "append_uuid": "11111111-2222-4333-8444-000000000006",
+ "backup_on": "5",
+ "disk": {
+  "by_id": [
+   "nvme-WD_Red_SN700_500GB_FAKE0000SERIAL",
+   "nvme-WD_Red_SN700_500GB_FAKE0000SERIAL_1",
+   "nvme-eui.fa4e0000c0ffee01"
+  ],
+  "controller": "nvme0",
+  "first_lba": 34,
+  "label_id": "0F0E0D0C-0B0A-4908-8706-050403020100",
+  "last_lba": 976773134,
+  "model": "WD Red SN700 500GB                      ",
+  "name": "nvme0n1",
+  "sector_size": 512,
+  "serial": "FAKE0000SERIAL      ",
+  "size_bytes": 500107862016
+ },
+ "fail": [],
+ "filesystems": {
+  "1": {
+   "label": "EFI",
+   "type": "vfat",
+   "uuid": "ABCD-0001"
+  },
+  "2": {
+   "block_size": 4096,
+   "features": "has_journal ext_attr resize_inode dir_index orphan_file filetype extent 64bit flex_bg metadata_csum_seed sparse_super large_file huge_file dir_nlink extra_isize metadata_csum",
+   "inode_size": 256,
+   "label": "BOOT",
+   "type": "ext4",
+   "uuid": "22222222-3333-4444-8555-000000000002"
+  },
+  "3": {
+   "bytes_used": 8246853632,
+   "devices": 1,
+   "devid": 1,
+   "label": "fedora",
+   "size": 425544646656,
+   "type": "btrfs",
+   "used": 14892924928,
+   "uuid": "33333333-4444-4555-8666-000000000003"
+  },
+  "4": {
+   "block_size": 4096,
+   "features": "has_journal ext_attr resize_inode dir_index orphan_file filetype needs_recovery extent 64bit flex_bg metadata_csum_seed sparse_super large_file huge_file dir_nlink extra_isize metadata_csum orphan_present",
+   "inode_size": 256,
+   "label": "F45BOOT",
+   "type": "ext4",
+   "uuid": "44444444-5555-4666-8777-000000000004"
+  },
+  "5": {
+   "bytes_used": 7516192768,
+   "devices": 1,
+   "devid": 1,
+   "label": "fedora45",
+   "size": 68719476736,
+   "type": "btrfs",
+   "used": 9663676416,
+   "uuid": "55555555-6666-4777-8888-000000000005"
+  }
+ },
+ "holders": {},
+ "kernel": {
+  "1": 1024000,
+  "2": 4096000,
+  "3": 831141888,
+  "4": 6291456,
+  "5": 134217728
+ },
+ "kernel_stale": false,
+ "mkfs": {
+  "block_size": 4096,
+  "features": "has_journal ext_attr resize_inode dir_index orphan_file filetype extent 64bit flex_bg metadata_csum_seed sparse_super large_file huge_file dir_nlink extra_isize metadata_csum",
+  "inode_size": 256,
+  "uuid": "66666666-7777-4888-8999-000000000006"
+ },
+ "mounts": {
+  "4": [
+   "/boot"
+  ],
+  "5": [
+   "/",
+   "/var",
+   "/home"
+  ]
+ },
+ "table": {
+  "1": {
+   "name": "p.UEFI",
+   "size": 1024000,
+   "start": 2048,
+   "type": "C12A7328-F81F-11D2-BA4B-00A0C93EC93B",
+   "uuid": "11111111-2222-4333-8444-000000000001"
+  },
+  "2": {
+   "name": "p.lxboot",
+   "size": 4096000,
+   "start": 1026048,
+   "type": "0FC63DAF-8483-4772-8E79-3D69D8477DE4",
+   "uuid": "11111111-2222-4333-8444-000000000002"
+  },
+  "3": {
+   "name": "p.lxroot",
+   "size": 831141888,
+   "start": 5122048,
+   "type": "0FC63DAF-8483-4772-8E79-3D69D8477DE4",
+   "uuid": "11111111-2222-4333-8444-000000000003"
+  },
+  "4": {
+   "name": "f45-boot",
+   "size": 6291456,
+   "start": 836263936,
+   "type": "0FC63DAF-8483-4772-8E79-3D69D8477DE4",
+   "uuid": "11111111-2222-4333-8444-000000000004"
+  },
+  "5": {
+   "name": "f45-root",
+   "size": 134217728,
+   "start": 842555392,
+   "type": "0FC63DAF-8483-4772-8E79-3D69D8477DE4",
+   "uuid": "11111111-2222-4333-8444-000000000005"
+  }
+ }
+}

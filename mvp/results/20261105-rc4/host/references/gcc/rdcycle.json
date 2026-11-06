@@ -1,0 +1,415 @@
+{
+ "authority_report_sha256": null,
+ "boot_image_sha256": "a547742132eca165c34ba25595b6382fce56f5bd69695920f79a0df8e449e143",
+ "contract": {
+  "run": "post-launch-failure",
+  "sequence": "v1"
+ },
+ "elf_sha256": "3af28399bb2aec7549e3d1314c9fe90dd9d3c91508a71f4f9e56e89f0acd1be9",
+ "expected": {
+  "header": {
+   "capacity": 41,
+   "configuration_identity": "0000000000000000000000000000000000000000000000000000000000000000",
+   "count": 13,
+   "hashAlg": "sha256",
+   "header_length": 128,
+   "magic": "BEMVPLOG",
+   "record_length": 96,
+   "scenario_sha256": "87c6f18b6a18f99cad8604c796f88b9cab63c9c86f307f338a395894d9d3cc34",
+   "state": "closed",
+   "version": 1
+  },
+  "records": [
+   {
+    "content": {
+     "base": "0x0000000102000000",
+     "expected": 0,
+     "length": "0x0000000000002e10",
+     "object": "monitor-text",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "558351fcc3b50cfd2b4f5bfb894d9cda06d8756333607423395d88ae43440f01",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 0,
+    "register": 0,
+    "srec": 0
+   },
+   {
+    "content": {
+     "base": "0x0000000102008820",
+     "expected": 0,
+     "length": "0x0000000000000080",
+     "object": "monitor-rodata",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "d40b48a062859d0b0e080f3aed9adc6de90ee26ceb778419046e9834adaa4000",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 1,
+    "register": 0,
+    "srec": 1
+   },
+   {
+    "content": {
+     "base": "0x0000000102008000",
+     "expected": 0,
+     "length": "0x0000000000000820",
+     "object": "monitor-input",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "7b301981c915df94de90329fd42e4544ee7ca5bea39448291f61afa89451fc03",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 2,
+    "register": 0,
+    "srec": 2
+   },
+   {
+    "content": {
+     "base": "0x0000000102064000",
+     "expected": 0,
+     "length": "0x0000000000007060",
+     "object": "mvp-text",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "50f414a34089298bef7b97a3d94418f6858b5eb25ed44f3948fa6f5f894892c0",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 3,
+    "register": 0,
+    "srec": 3
+   },
+   {
+    "content": {
+     "base": "0x000000010206b060",
+     "expected": 0,
+     "length": "0x0000000000001670",
+     "object": "mvp-rodata",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "bce3cbc72db6b27ced164fe1892aa70b655edc5baef80ed7e051dead52880832",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 4,
+    "register": 0,
+    "srec": 4
+   },
+   {
+    "content": {
+     "base": "0x0000000000000000",
+     "expected": 0,
+     "length": "0x0000000000000000",
+     "object": "core-identity",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-computed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "16bd3ebb3796bb68a787f511d32162a9a0d7a665f1712fbf56a96d09f96c8167",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 5,
+    "register": 1,
+    "srec": 0
+   },
+   {
+    "content": {
+     "base": "0x0000000000000000",
+     "expected": 0,
+     "length": "0x0000000000000000",
+     "object": "console-grants",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-computed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 6,
+    "register": 1,
+    "srec": 1
+   },
+   {
+    "content": {
+     "base": "0x0000000000000000",
+     "expected": 0,
+     "length": "0x0000000000000000",
+     "object": "policy-absent",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "build-recorded",
+     "type": "informational"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 7,
+    "register": 1,
+    "srec": 2
+   },
+   {
+    "content": {
+     "base": "0x0000000110200000",
+     "expected": 0,
+     "length": "0x00000000001f7cc4",
+     "object": "kernel-image",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 8,
+    "register": 2,
+    "srec": 0
+   },
+   {
+    "content": {
+     "base": "0x0000000113e00000",
+     "expected": 0,
+     "length": "0x0000000000001000",
+     "object": "device-tree",
+     "outcome": "gated-pass",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "4043572a9cbcdaee41c51d91ed83ebc0b622352167173f7ced97bbcc15c6de66",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 9,
+    "register": 2,
+    "srec": 1
+   },
+   {
+    "content": {
+     "base": "0x0000000114200000",
+     "expected": 0,
+     "length": "0x00000000001f7cc4",
+     "object": "kernel-image",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 10,
+    "register": 3,
+    "srec": 0
+   },
+   {
+    "content": {
+     "base": "0x0000000117e00000",
+     "expected": 0,
+     "length": "0x0000000000001000",
+     "object": "device-tree",
+     "outcome": "gated-pass",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 11,
+    "register": 3,
+    "srec": 1
+   },
+   {
+    "content": {
+     "base": "0x0000000000000000",
+     "expected": 13,
+     "length": "0x0000000000000000",
+     "object": "close",
+     "outcome": "none",
+     "producer": 0,
+     "representation": "none",
+     "type": "close"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 12,
+    "register": null,
+    "srec": 0
+   }
+  ],
+  "registers": [
+   "6c852d639a4bcf41fa29b1d76ec4f50be8c4769fb2b38ce68ef45b97d0a1ec86",
+   "d8a23ef65f85d1c1c5071e53d01c555c94d96848dfdff096cb9d09c6c3e7eb87",
+   "3dbc0cdb79531dc70d3f5099a55b8eb786745e794c8682652f4e6cfa93afd90a",
+   "f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b"
+  ]
+ },
+ "image": "rdcycle",
+ "launch_expected": [
+  "3dbc0cdb79531dc70d3f5099a55b8eb786745e794c8682652f4e6cfa93afd90a",
+  "f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b"
+ ],
+ "mutated_image_sha256": null,
+ "r2": "kept",
+ "ranges": [
+  {
+   "base": "0x0000000102000000",
+   "digest": "558351fcc3b50cfd2b4f5bfb894d9cda06d8756333607423395d88ae43440f01",
+   "domain": null,
+   "image_offset": "0x0000000000001000",
+   "length": "0x0000000000002e10",
+   "object": "monitor-text",
+   "source": "boot-image"
+  },
+  {
+   "base": "0x0000000102008820",
+   "digest": "d40b48a062859d0b0e080f3aed9adc6de90ee26ceb778419046e9834adaa4000",
+   "domain": null,
+   "image_offset": "0x0000000000009820",
+   "length": "0x0000000000000080",
+   "object": "monitor-rodata",
+   "source": "boot-image"
+  },
+  {
+   "base": "0x0000000102008000",
+   "digest": "7b301981c915df94de90329fd42e4544ee7ca5bea39448291f61afa89451fc03",
+   "domain": null,
+   "image_offset": "0x0000000000009000",
+   "length": "0x0000000000000820",
+   "object": "monitor-input",
+   "source": "boot-image"
+  },
+  {
+   "base": "0x0000000102064000",
+   "digest": "50f414a34089298bef7b97a3d94418f6858b5eb25ed44f3948fa6f5f894892c0",
+   "domain": null,
+   "image_offset": "0x0000000000065000",
+   "length": "0x0000000000007060",
+   "object": "mvp-text",
+   "source": "boot-image"
+  },
+  {
+   "base": "0x000000010206b060",
+   "digest": "bce3cbc72db6b27ced164fe1892aa70b655edc5baef80ed7e051dead52880832",
+   "domain": null,
+   "image_offset": "0x000000000006c060",
+   "length": "0x0000000000001670",
+   "object": "mvp-rodata",
+   "source": "boot-image"
+  },
+  {
+   "base": "0x0000000110200000",
+   "digest": "ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+   "domain": 0,
+   "image_offset": null,
+   "length": "0x00000000001f7cc4",
+   "object": "kernel-image",
+   "source": "guest/Image"
+  },
+  {
+   "base": "0x0000000113e00000",
+   "digest": "4043572a9cbcdaee41c51d91ed83ebc0b622352167173f7ced97bbcc15c6de66",
+   "domain": 0,
+   "image_offset": null,
+   "length": "0x0000000000001000",
+   "object": "device-tree",
+   "source": "guest/mvp-guest-g0-rdcycle.dtb"
+  },
+  {
+   "base": "0x0000000114200000",
+   "digest": "ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+   "domain": 1,
+   "image_offset": null,
+   "length": "0x00000000001f7cc4",
+   "object": "kernel-image",
+   "source": "guest/Image"
+  },
+  {
+   "base": "0x0000000117e00000",
+   "digest": "ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea",
+   "domain": 1,
+   "image_offset": null,
+   "length": "0x0000000000001000",
+   "object": "device-tree",
+   "source": "guest/mvp-guest-g1.dtb"
+  }
+ ],
+ "scenario": "two-guests",
+ "schema": "be-mvp-log-reference-v1",
+ "source": {
+  "commit": "a6eaa88501b1d08b9e83c734d692c82376117e77",
+  "tree_state": "clean"
+ },
+ "toolchain": "gcc",
+ "variant": "rdcycle"
+}

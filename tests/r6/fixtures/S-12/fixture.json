@@ -1,0 +1,74 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "S-12",
+  "partition": "static",
+  "declared_delta": null,
+  "base": "arch/riscv/be/r5-guest.S",
+  "base_sha256": "cd1a0d719418b4a5b07b7fcace5b432be210a425ea4f7bfa8dff6f89d2cc764b",
+  "defect_file": "r5-guest.S.defect",
+  "defect_sha256": "8957885290c01334ffd21ff4af4c864f9303740fed63d28a5c3af8e314a6ba67",
+  "defect": {
+    "kind": "assembly-instruction",
+    "summary": "nop inserted at protected +0x10",
+    "accepted": null,
+    "malformed": null,
+    "source_path": "arch/riscv/be/r5-guest.S",
+    "target": {
+      "line": 59,
+      "line_anchor": "lui\tt2, 0x40000\t\t\t/* +0x10 management private */",
+      "symbol": "be_r5_protected_fixture",
+      "slot": "0x40011010"
+    },
+    "anchor": "\tlui\tt2, 0x40000\t\t\t/* +0x10 management private */\n",
+    "replacement": "\tnop\n\tlui\tt2, 0x40000\t\t\t/* +0x10 management private */\n"
+  },
+  "diff": {
+    "sha256": "2fbab1da0b263acb626666aecf57be0c791e06e47b13b062c856175ddabcc838",
+    "added": 1,
+    "removed": 0,
+    "budget": {
+      "added": 6,
+      "removed": 6
+    },
+    "unified": "--- a/arch/riscv/be/r5-guest.S\n+++ b/arch/riscv/be/r5-guest.S\n@@ -56,6 +56,7 @@\n \taddi\tt1, zero, 51\t\t\t/* +0x04 */\n \tsw\tt1, 0(t0)\t\t\t/* +0x08 */\n \tlw\ts0, 0(t0)\t\t\t/* +0x0c */\n+\tnop\n \tlui\tt2, 0x40000\t\t\t/* +0x10 management private */\n \tlw\ts1, 0(t2)\t\t\t/* +0x14 denied: 0x40000000 */\n \tlui\tt2, 0x40002\t\t\t/* +0x18 shared */\n"
+  },
+  "expected": {
+    "first_rejection_layer": "L5",
+    "outcome": "rejected-at-link",
+    "message_completeness": "complete",
+    "primary_message": "R5 protected fixture slot count changed",
+    "placeholders": {},
+    "stages": {
+      "l3": "pass",
+      "gcc-link": "reject",
+      "clang-link": "reject"
+    },
+    "absent_stages": [
+      "gcc-image-check",
+      "clang-image-check"
+    ],
+    "messages": {
+      "gcc-link": [
+        "R5 protected fixture slot count changed"
+      ],
+      "clang-link": [
+        "R5 protected fixture slot count changed"
+      ]
+    },
+    "prohibited_layers": [
+      "L6",
+      "L7",
+      "L8",
+      "L9",
+      "L10",
+      "L11"
+    ],
+    "qemu": "forbidden",
+    "artifacts": {
+      "quarantined": [],
+      "scratch_elf": false
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "H-17",
+  "partition": "host",
+  "base": "virt/be/r5.c",
+  "defect_file": null,
+  "base_sha256": null,
+  "declared_delta": null,
+  "declared_layer": "L11",
+  "outcome": "rejected-by-host-mechanism",
+  "driver": "tests/r6/r6-check.c",
+  "api": "be_r5_note_shutdown_returned",
+  "argument": "sbi_error",
+  "field": "returned firmware result",
+  "accepted_value": "never returns",
+  "malformed_value": "0|-1|-2|-3|-4|-5|-6",
+  "world": "complete",
+  "world_source": "be_r5_phase_name(state.phase) read before the call",
+  "class_source": "be_r5_error_name(the enum be_r5_error the call returned)",
+  "cases": 7,
+  "coverage": [
+    {
+      "class": "shutdown-returned",
+      "role": "primary"
+    },
+    {
+      "class": "shutdown-rejected",
+      "role": "primary"
+    }
+  ],
+  "expected_first_error": "shutdown-returned",
+  "rejection": {
+    "sticky": true,
+    "terminal": true,
+    "transactional": true,
+    "transactional_source": "whole-state scrub measured on the state the call was made against"
+  },
+  "self_test": {
+    "restored_expectation": "accepted",
+    "forged_class": "import",
+    "forged_class_rejection": "wrong-error-class:H-17",
+    "forged_secondary_class": "import",
+    "forged_secondary_class_rejection": "wrong-error-class:H-17",
+    "forged_world": "fresh",
+    "forged_world_rejection": "wrong-world:H-17",
+    "forged_layer": "L6",
+    "forged_layer_rejection": "wrong-layer:H-17"
+  },
+  "builds": false,
+  "qemu": false,
+  "runs": 0,
+  "notes": "Two outcomes from one fixture. Producing these under QEMU would require forging the digest-pinned OpenSBI firmware, which R6 forbids, so R6 explicitly claims no dynamic coverage of the two shutdown classes."
+}

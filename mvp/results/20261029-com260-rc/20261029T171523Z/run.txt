@@ -1,0 +1,28 @@
+run=20261029T171523Z
+image=<repo>/build/mvp/gcc/be-mvp-boot.img
+image_sha256=80ac8e33415156c5b9da4d0df4bb0bdfe6401c8de5ef8df0570a9c27a3ec1076
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/gcc/be-mvp-boot.img bytes=0x277000 sha256=80ac8e33415156c5b9da4d0df4bb0bdfe6401c8de5ef8df0570a9c27a3ec1076 flat_sha256=19bb58d3a2d1d39ced98c2690ebf2d90d725ab3fefbf2070e2b96bd627abcbc0 kexec_fdt=0x108400000 variant=none dtb0=0x275000
+toolchain=gcc
+expect=two-guests.json expect_sha256=11fda6f84e5319cf112780cbc27b7131fd46af96c8e294f5669ab546b04eed47
+variant=none
+k3_ssh=<board-ssh>
+loader_mode=raw
+loader_sha256=6d36be511cf4c6a2007e9d5b3ecf7d7f0fa56e070dfe2923ad0c2a05361dc4f1
+layout_sha256=7ba1ac4779d78a0d82df9404a6901c5275746ca952703537822e4a623ef391cf
+reset_method=k3ctl client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec device=/dev/ttyACM0
+serial_source=log:<home>/src/spacemit-k3/logs/boot-7.log
+boot_id_before=b6dd3f46-4912-49ce-aedb-dcfb8dc00846
+board_kernel=7.3.0-65.1.riscv64.omni.fc45.riscv64
+board_lockdown=[none] integrity confidentiality
+board_tmp_fstype=tmpfs
+remote_image_sha256=80ac8e33415156c5b9da4d0df4bb0bdfe6401c8de5ef8df0570a9c27a3ec1076
+loader=kexec_load entry=0x108000000 fdt=0x108400000 image_memsz=0x277000 fdt_bytes=49280 kexec_loaded=1
+kexec_loaded=1
+kexec_requested_utc=2026-10-29T17:15:26Z
+kexec_ssh_status=0
+outcome=terminal-marker
+terminal_marker_utc=2026-10-29T17:15:36Z
+expected_kexec_fdt=0x108400000
+check_status=0
+BE_MVP_RESULT: PASS terminal=shutdown-requested
+reset_outcome=reset

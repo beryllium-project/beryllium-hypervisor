@@ -1,0 +1,186 @@
+captured_utc=2026-11-05T22:44:55Z
+hostname=localhost.localdomain
+kernel=7.3.1-300.0.riscv64.omni.fc45.riscv64
+boot_id=660f4f8b-a470-4c9c-bce9-082ebf71aa88
+online_cpus=0-7
+timebase_frequency=24000000
+dt_cpu node=cpu@0 reg=0 status=absent compatible=spacemit,x100,riscv sstc=yes h=yes
+dt_cpu_extensions node=cpu@0 i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt
+dt_cpu_links node=cpu@0 phandle=3 next_level_cache=1
+dt_cpu node=cpu@1 reg=1 status=absent compatible=spacemit,x100,riscv sstc=yes h=yes
+dt_cpu_extensions node=cpu@1 i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt
+dt_cpu_links node=cpu@1 phandle=4 next_level_cache=1
+dt_cpu node=cpu@2 reg=2 status=absent compatible=spacemit,x100,riscv sstc=yes h=yes
+dt_cpu_extensions node=cpu@2 i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt
+dt_cpu_links node=cpu@2 phandle=5 next_level_cache=1
+dt_cpu node=cpu@3 reg=3 status=absent compatible=spacemit,x100,riscv sstc=yes h=yes
+dt_cpu_extensions node=cpu@3 i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt
+dt_cpu_links node=cpu@3 phandle=6 next_level_cache=1
+dt_cpu node=cpu@4 reg=4 status=absent compatible=spacemit,x100,riscv sstc=yes h=yes
+dt_cpu_extensions node=cpu@4 i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt
+dt_cpu_links node=cpu@4 phandle=7 next_level_cache=2
+dt_cpu node=cpu@5 reg=5 status=absent compatible=spacemit,x100,riscv sstc=yes h=yes
+dt_cpu_extensions node=cpu@5 i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt
+dt_cpu_links node=cpu@5 phandle=8 next_level_cache=2
+dt_cpu node=cpu@6 reg=6 status=absent compatible=spacemit,x100,riscv sstc=yes h=yes
+dt_cpu_extensions node=cpu@6 i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt
+dt_cpu_links node=cpu@6 phandle=9 next_level_cache=2
+dt_cpu node=cpu@7 reg=7 status=absent compatible=spacemit,x100,riscv sstc=yes h=yes
+dt_cpu_extensions node=cpu@7 i m a f d c b v h sha shcounterenw shgatpa shtvala shvsatpa shvstvala shvstvecd smaia smstateen ssaia ssccptr sscofpmf sscounterenw ssnpm ssstateen sstc sstvala sstvecd ssu64xl svade svinval svnapot svpbmt za64rs zawrs zba zbb zbc zbs zca zcb zcd zcmop zfa zfbfmin zfh zfhmin zicbom zicbop zicboz ziccamoa ziccif zicclsm ziccrse zicntr zicond zicsr zifencei zihintntl zihintpause zihpm zimop zkt zvbb zvbc zvfbfmin zvfbfwma zvfh zvfhmin zvkb zvkg zvkn zvknc zvkned zvkng zvknha zvknhb zvks zvksc zvksed zvksg zvksh zvkt
+dt_cpu_links node=cpu@7 phandle=10 next_level_cache=2
+dt_cpu_map path=cluster0/core0/cpu cpu_phandle=3
+dt_cpu_map path=cluster0/core1/cpu cpu_phandle=4
+dt_cpu_map path=cluster0/core2/cpu cpu_phandle=5
+dt_cpu_map path=cluster0/core3/cpu cpu_phandle=6
+dt_cpu_map path=cluster1/core0/cpu cpu_phandle=7
+dt_cpu_map path=cluster1/core1/cpu cpu_phandle=8
+dt_cpu_map path=cluster1/core2/cpu cpu_phandle=9
+dt_cpu_map path=cluster1/core3/cpu cpu_phandle=10
+cpu_topology cpu=0 physical_package_id=0 cluster_id=0 core_id=0 cluster_cpus_list=0-3 core_cpus_list=0 package_cpus_list=0-7
+cpu_topology cpu=1 physical_package_id=0 cluster_id=0 core_id=1 cluster_cpus_list=0-3 core_cpus_list=1 package_cpus_list=0-7
+cpu_topology cpu=2 physical_package_id=0 cluster_id=0 core_id=2 cluster_cpus_list=0-3 core_cpus_list=2 package_cpus_list=0-7
+cpu_topology cpu=3 physical_package_id=0 cluster_id=0 core_id=3 cluster_cpus_list=0-3 core_cpus_list=3 package_cpus_list=0-7
+cpu_topology cpu=4 physical_package_id=0 cluster_id=1 core_id=0 cluster_cpus_list=4-7 core_cpus_list=4 package_cpus_list=0-7
+cpu_topology cpu=5 physical_package_id=0 cluster_id=1 core_id=1 cluster_cpus_list=4-7 core_cpus_list=5 package_cpus_list=0-7
+cpu_topology cpu=6 physical_package_id=0 cluster_id=1 core_id=2 cluster_cpus_list=4-7 core_cpus_list=6 package_cpus_list=0-7
+cpu_topology cpu=7 physical_package_id=0 cluster_id=1 core_id=3 cluster_cpus_list=4-7 core_cpus_list=7 package_cpus_list=0-7
+cpuinfo processor=0 hart=0 sstc=yes h=yes isa=rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt
+cpuinfo processor=0 mmu		=sv39
+cpuinfo processor=0 uarch		=spacemit,x100
+cpuinfo processor=0 mvendorid	=0x710
+cpuinfo processor=0 marchid		=0x8000000058000002
+cpuinfo processor=0 mimpid		=0x33d8a600
+cpuinfo processor=1 hart=1 sstc=yes h=yes isa=rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt
+cpuinfo processor=1 mmu		=sv39
+cpuinfo processor=1 uarch		=spacemit,x100
+cpuinfo processor=1 mvendorid	=0x710
+cpuinfo processor=1 marchid		=0x8000000058000002
+cpuinfo processor=1 mimpid		=0x33d8a600
+cpuinfo processor=2 hart=2 sstc=yes h=yes isa=rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt
+cpuinfo processor=2 mmu		=sv39
+cpuinfo processor=2 uarch		=spacemit,x100
+cpuinfo processor=2 mvendorid	=0x710
+cpuinfo processor=2 marchid		=0x8000000058000002
+cpuinfo processor=2 mimpid		=0x33d8a600
+cpuinfo processor=3 hart=3 sstc=yes h=yes isa=rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt
+cpuinfo processor=3 mmu		=sv39
+cpuinfo processor=3 uarch		=spacemit,x100
+cpuinfo processor=3 mvendorid	=0x710
+cpuinfo processor=3 marchid		=0x8000000058000002
+cpuinfo processor=3 mimpid		=0x33d8a600
+cpuinfo processor=4 hart=4 sstc=yes h=yes isa=rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt
+cpuinfo processor=4 mmu		=sv39
+cpuinfo processor=4 uarch		=spacemit,x100
+cpuinfo processor=4 mvendorid	=0x710
+cpuinfo processor=4 marchid		=0x8000000058000002
+cpuinfo processor=4 mimpid		=0x33d8a600
+cpuinfo processor=5 hart=5 sstc=yes h=yes isa=rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt
+cpuinfo processor=5 mmu		=sv39
+cpuinfo processor=5 uarch		=spacemit,x100
+cpuinfo processor=5 mvendorid	=0x710
+cpuinfo processor=5 marchid		=0x8000000058000002
+cpuinfo processor=5 mimpid		=0x33d8a600
+cpuinfo processor=6 hart=6 sstc=yes h=yes isa=rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt
+cpuinfo processor=6 mmu		=sv39
+cpuinfo processor=6 uarch		=spacemit,x100
+cpuinfo processor=6 mvendorid	=0x710
+cpuinfo processor=6 marchid		=0x8000000058000002
+cpuinfo processor=6 mimpid		=0x33d8a600
+cpuinfo processor=7 hart=7 sstc=yes h=yes isa=rv64imafdcvh_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicond_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_za64rs_zaamo_zalrsc_zawrs_zfa_zfbfmin_zfh_zfhmin_zca_zcb_zcd_zcmop_zba_zbb_zbc_zbs_zkt_zvbb_zvbc_zve32f_zve32x_zve64d_zve64f_zve64x_zvfbfmin_zvfbfwma_zvfh_zvfhmin_zvkb_zvkg_zvkned_zvknha_zvknhb_zvksed_zvksh_zvkt_smaia_smstateen_ssaia_sscofpmf_ssnpm_sstc_svade_svinval_svnapot_svpbmt
+cpuinfo processor=7 mmu		=sv39
+cpuinfo processor=7 uarch		=spacemit,x100
+cpuinfo processor=7 mvendorid	=0x710
+cpuinfo processor=7 marchid		=0x8000000058000002
+cpuinfo processor=7 mimpid		=0x33d8a600
+machine=riscv64
+cmdline=root=UUID=<redacted> rootflags=subvol=root clk_ignore_unused console=ttyS0,115200n8 boot_mode=nor clk_ignore_unused
+lockdown=[none] integrity confidentiality
+python3=/usr/bin/python3
+sudo_noninteractive=yes
+CONFIG_RISCV_SBI=y
+CONFIG_HOTPLUG_CPU=y
+CONFIG_SECURITY_LOCKDOWN_LSM=y
+partition_label=beryllium
+partition_device=/dev/nvme0n1p6
+partition_number=6
+partition_fstype=ext4
+partition_bytes=1073741824
+partition_mounted=no
+env_k3_device=/dev/sda2
+env_k3_source=debugfs
+env_k3_bytes=227
+env_k3_sha256=9936c59b50f2e552fca32879e12208eb87532fda40cf053aa78e3c3f67b0b90a
+env_k3_sets=none
+iomem_system_ram_begin
+102000000-2ffffffff : System RAM
+  102200000-102201fff : Reserved
+  102202000-105e6ceb7 : Kernel image
+    102202000-1035d5551 : Kernel code
+    104400000-1053fffff : Kernel rodata
+    105600000-105cd47ff : Kernel data
+    105cd5000-105e6ceb7 : Kernel bss
+  105e6ceb8-105ffffff : Reserved
+  2ef448000-2f89fffff : Reserved
+  2f8a34000-2f8a7bfff : Reserved
+  2f8a7c000-2f8a88fff : Reserved
+  2f8a8b000-2fbd6cfff : Reserved
+  2fbd8f000-2fbda6fff : Reserved
+  2fbda7000-2fbda7fff : Reserved
+  2fbda8000-2fbda8fff : Reserved
+  2fbda9000-2fbda9fff : Reserved
+  2fbdab000-2fbdadfff : Reserved
+  2fbdae000-2fddb2fff : Reserved
+  2fddb3000-2fddf5fff : Reserved
+  2fddf6000-2fdffffff : Reserved
+  2fe000000-2ffffffff : Reserved
+iomem_system_ram_end
+hsm_detected=1
+[    0.000000] Booting Linux on hartid 0
+[    0.000000] Linux version 7.3.1-300.0.riscv64.omni.fc45.riscv64 (mockbuild@570be0289ba44f8d8e1fdaa10e28378d) (gcc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2), GNU ld version 2.47.20260726) #1 SMP PREEMPT_DYNAMIC Fri Oct 30 16:41:52 UTC 2026
+[    0.000000] SBI specification v2.0 detected
+[    0.000000] SBI implementation ID=0x1 Version=0x10006
+[    0.000000] SBI TIME extension detected
+[    0.000000] SBI IPI extension detected
+[    0.000000] SBI RFENCE extension detected
+[    0.000000] SBI SRST extension detected
+[    0.000000] SBI DBCN extension detected
+[    0.000000] SBI HSM extension detected
+[    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 1911260446275000 ns
+[    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+[    0.000019] riscv-timer: Timer interrupt in S-mode is available via sstc extension
+[    0.014498] smp: Bringing up secondary CPUs ...
+[    0.018222] smp: Brought up 1 node, 8 CPUs
+[    0.056166] suspend: SBI SUSP extension detected
+[    0.083369] clocksource: Switched to clocksource riscv_clocksource
+[    0.115081] cpu2: scalar unaligned word access speed is 2.40x byte access speed (fast)
+[    0.115081] cpu1: scalar unaligned word access speed is 3.06x byte access speed (fast)
+[    0.115082] cpu0: scalar unaligned word access speed is 1.89x byte access speed (fast)
+[    0.115082] cpu4: scalar unaligned word access speed is 1.93x byte access speed (fast)
+[    0.115081] cpu3: scalar unaligned word access speed is 1.78x byte access speed (fast)
+[    0.115083] cpu6: scalar unaligned word access speed is 1.93x byte access speed (fast)
+[    0.115084] cpu5: scalar unaligned word access speed is 2.47x byte access speed (fast)
+[    0.115085] cpu7: scalar unaligned word access speed is 4.04x byte access speed (fast)
+[    0.132445] cpu1: vector unaligned word access speed is 4.15x byte access speed (fast)
+[    0.132445] cpu0: vector unaligned word access speed is 4.15x byte access speed (fast)
+[    0.132457] cpu7: vector unaligned word access speed is 4.15x byte access speed (fast)
+[    0.132457] cpu5: vector unaligned word access speed is 4.15x byte access speed (fast)
+[    0.132462] cpu6: vector unaligned word access speed is 4.15x byte access speed (fast)
+[    0.132462] cpu4: vector unaligned word access speed is 4.15x byte access speed (fast)
+[    0.132468] cpu3: vector unaligned word access speed is 4.15x byte access speed (fast)
+[    0.133402] cpu2: vector unaligned word access speed is 4.14x byte access speed (fast)
+[    0.134417] kvm [1]: hypervisor extension available
+[    0.134423] kvm [1]: highest G-stage page table mode is Sv39x4
+[    0.134426] kvm [1]: VMID 14 bits available
+[    0.138400] kvm [1]: AIA available with 7 guest external interrupts
+[    0.204144] riscv-pmu-sbi: SBI PMU extension is available
+[    0.204164] riscv-pmu-sbi: 16 firmware and 18 hardware counters
+[   14.226612] spacemit-dwmac cac82000.ethernet: Enable RX Mitigation via HW Watchdog Timer
+fdt_reserved=0x2f8a8b000-0x2fbd6ca40,0x2fe000000-0x300000000,0x100000000-0x100100000,0x100600000-0x100700000,0x100c00000-0x100d00000,0x100f00000-0x101000000,0x100200000-0x100400000,0x100400000-0x100600000,0x101000000-0x101200000,0x100800000-0x100c00000,0x100000000-0x102000000
+partition_uuid_sha256=607fded67dd234740a7bc982215be764668bee51811db80bbcf87c5e4d84f0dc
+firmware_identity=ID=0x1 Version=0x10006
+firmware_expected=ID=0x1 Version=0x10006
+workstation_k3_reset=k3ctl
+workstation_k3ctl_pin_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+workstation_k3ctl_client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+workstation_k3ctl_client=matches-pin
+env_k3_check=PASS

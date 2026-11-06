@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Instance 1 of security model v1, the fixed two-domain profile
+# (planning/security-model-v1.md, Part 2, "Instance 1"), verbatim, in Part
+# 2's concrete syntax. model/tools/gen-policy-fixtures.mjs checks that the
+# lines after these comments are that block, then translates it with
+# instance.json into C data and Rocq terms at build time; no model binary
+# reads it. Its policy identity, as the MVP's checker computes one, is the
+# SHA-256 of this file's bytes, comments included.
+
+type monitor_t;        type mgmt_t;          type prot_t;
+type mgmt_private_t;   type prot_private_t;
+type mgmt_code_t;      type prot_code_t;
+type shared_mp_t;      type monitor_mem_t;
+
+class memory  { read write execute map }
+class channel { send receive }
+
+allow mgmt_t mgmt_private_t : memory { read write map };
+allow mgmt_t mgmt_code_t    : memory { read execute map };
+allow mgmt_t shared_mp_t    : memory { read write map };
+allow mgmt_t shared_mp_t    : channel { send };
+
+allow prot_t prot_private_t : memory { read write map };
+allow prot_t prot_code_t    : memory { read execute map };
+allow prot_t shared_mp_t    : memory { read map };
+allow prot_t shared_mp_t    : channel { receive };

@@ -1,0 +1,23 @@
+run=20261028T023241Z
+image=<repo>/build/mvp/clang/anchor/be-mvp-boot.img
+image_sha256=37cdfd7064b04a366bbcf8ffc907ffb3ceff09d5e68e8fce99fe6a539f8d26ee
+image_check=BE_MVP_BOOT_IMAGE[clang]: PASS <repo>/build/mvp/clang/anchor/be-mvp-boot.img bytes=0x277000 sha256=37cdfd7064b04a366bbcf8ffc907ffb3ceff09d5e68e8fce99fe6a539f8d26ee flat_sha256=58a19a83829198b886d23256d79399e83c8ea963e099007f3c008b8ed5d93ea5 kexec_fdt=0x108400000 variant=none dtb0=0x275000 scenario=anchor
+toolchain=clang
+expect=anchor.json expect_sha256=6b2e9a6b4a856dbf9d529ccfa78e319bff887d76e644c9f0c92a71d9c80a0082
+report=authority-report.json report_sha256=418797a29bf59a3c2ed0f2df81c95b7eeb21ae98f8d542e73bffefdae4df0ac6
+measured=Image kernel_sha256=c7ae03e6b26e1433bb1cdcd995467b5df2dec61cb8ed1c38ede0d4458c4799ed mvp-guest-g1-anchor.dtb dtb_sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025
+variant=none
+k3_ssh=fedora@k3-f45
+loader_mode=raw
+loader_sha256=6d36be511cf4c6a2007e9d5b3ecf7d7f0fa56e070dfe2923ad0c2a05361dc4f1
+layout_sha256=7ba1ac4779d78a0d82df9404a6901c5275746ca952703537822e4a623ef391cf
+serial_source=none:load-only
+boot_id_before=899a90c8-8c98-4e12-8c26-9f04414238d9
+board_kernel=7.3.0-65.1.riscv64.omni.fc45.riscv64
+board_lockdown=[none] integrity confidentiality
+board_tmp_fstype=tmpfs
+remote_image_sha256=37cdfd7064b04a366bbcf8ffc907ffb3ceff09d5e68e8fce99fe6a539f8d26ee
+loader=kexec_load entry=0x108000000 fdt=0x108400000 image_memsz=0x277000 fdt_bytes=49280 kexec_loaded=1
+kexec_loaded=1
+kexec_loaded_after_unload=0
+outcome=load-only

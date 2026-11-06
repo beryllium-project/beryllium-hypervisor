@@ -1,0 +1,14 @@
+kernel=/lib/modules/7.1.5-201.0.riscv64.omni.fc44.riscv64/vmlinuz
+container=efi-zboot-zstd
+purgatory=present
+pcrel_lo12_i=13
+adjacent=13
+separated=0
+pcrel_lo12_s=0
+kexec_file_purgatory=safe
+kexec_load=available
+kexec_file_load=available
+kexec_load_disabled=0
+kexec_loaded=0
+viable=kexec_load
+loader=kexec_load entry=0x102000000 fdt=0x102007000 image_memsz=0x7000 fdt_bytes=41088 kexec_loaded=1

@@ -1,0 +1,466 @@
+# MVP M8 Leaf B: CBMC bounded model check of mvp-ring.c (planning/mvp-m8-plan.md, D-8): a bounded model check, never a proof
+specification=planning/mvp-m8-specifications.md accepted=004f31ae sha256=ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d
+leaf=mvp/src/mvp-ring.c sha256=432dbc511397da4b051da37f3860b1f8d078ef87fa175ea47d7b3c7a1bc267ba
+started=2026-11-03T13:08:56Z cbmc=6.8.0 (ad933aa-dirty) cvc5=cvc5 1.3.4
+# The row's failures on the unmodified leaf, each a CBMC counterexample (SAT); the leaf is not changed (planning/mvp-m8-plan.md, stop condition 2: the human's).
+
+## main.assertion.2: acquire: an aligned head within C of the cursor: limit := h, h - cursor (the cursor past the released tail)
+part=all capacity=512
+reason=specification-mismatch
+reading: the row bounds the head by the cursor; be_mvp_ring_acquire bounds it by the released tail (h - tail <= C: mvp-ring.c, 'at most a capacity past the tail it released'), which differs once a record is taken and not released, the trace's state
+log=logs/acquire-all-512-sat-B-all-trace-main.assertion.2.log
+
+Trace for main.assertion.2:
+
+State 6 file mvp/verify/cbmc/ring/acquire.c function main line 25 thread 0
+----------------------------------------------------
+  buffer={ 16, 0, '\t', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } ({ 00010000, 00000000, 00001001, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000000, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000001, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000 })
+
+State 9 file mvp/verify/cbmc/ring/harness.h function any_side line 165 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=FALSE (00000000)
+
+State 10 file mvp/verify/cbmc/ring/harness.h function any_side line 165 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$any_side=/*enum*/BE_MVP_RING_READER (00000000 00000000 00000000 00000010)
+
+State 12 file mvp/verify/cbmc/ring/acquire.c function main line 32 thread 0
+----------------------------------------------------
+  return_value_any_side=/*enum*/BE_MVP_RING_READER (00000000 00000000 00000000 00000010)
+
+State 13 file mvp/verify/cbmc/ring/acquire.c function main line 32 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_READER (00000000 00000000 00000000 00000010)
+
+State 16 file mvp/verify/cbmc/ring/harness.h function own_index line 159 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=9943710482722521088ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000000)
+
+State 17 file mvp/verify/cbmc/ring/harness.h function own_index line 159 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$own_index=9943710482722521088ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000000)
+
+State 19 file mvp/verify/cbmc/ring/acquire.c function main line 36 thread 0
+----------------------------------------------------
+  return_value_own_index=9943710482722521088ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000000)
+
+State 22 file mvp/verify/cbmc/ring/acquire.c function main line 36 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_READER (00000000 00000000 00000000 00000010)
+
+State 23 file mvp/verify/cbmc/ring/acquire.c function main line 36 thread 0
+----------------------------------------------------
+  own=9943710482722521088ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000000)
+
+State 24 file mvp/verify/cbmc/ring/harness.h function build line 179 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=9943710482722521096ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00001000)
+
+State 25 file mvp/verify/cbmc/ring/harness.h function build line 179 thread 0
+----------------------------------------------------
+  peer=9943710482722521096ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00001000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/harness.h line 181 function build
+  (own & (unsigned long int)7u) == (unsigned long int)0u && (peer & (unsigned long int)7u) == (unsigned long int)0u
+
+State 33 file mvp/verify/cbmc/ring/harness.h function build line 182 thread 0
+----------------------------------------------------
+  head.value=9943710482722521096ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00001000)
+
+State 40 file mvp/verify/cbmc/ring/harness.h function build line 183 thread 0
+----------------------------------------------------
+  tail.value=9943710482722521088ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/harness.h line 184 function build
+  head->value - tail->value <= (be_u64)512
+
+State 54 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  return_value_nondet_u64$0=65536ul (00000000 00000000 00000000 00000000 00000000 00000001 00000000 00000000)
+
+State 55 file mvp/verify/cbmc/ring/harness.h function build line 186 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=0u (00000000 00000000 00000000 00000000)
+
+State 58 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  types=65536ul (00000000 00000000 00000000 00000000 00000000 00000001 00000000 00000000)
+
+State 59 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  domain=0u (00000000 00000000 00000000 00000000)
+
+State 60 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_READER (00000000 00000000 00000000 00000010)
+
+State 71 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  types=65536ul (00000000 00000000 00000000 00000000 00000000 00000001 00000000 00000000)
+
+State 72 file mvp/src/mvp-ring.c function types_valid line 92 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 74 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  return_value_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 75 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  tmp_if_expr=FALSE (0)
+
+State 83 file mvp/src/mvp-ring.c function be_mvp_ring_init line 125 thread 0
+----------------------------------------------------
+  head_value=9943710482722521096ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00001000)
+
+State 90 file mvp/src/mvp-ring.c function be_mvp_ring_init line 126 thread 0
+----------------------------------------------------
+  tail_value=9943710482722521088ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000000)
+
+State 122 file mvp/src/mvp-ring.c function be_mvp_ring_init line 135 thread 0
+----------------------------------------------------
+  view.types=65536ul (00000000 00000000 00000000 00000000 00000000 00000001 00000000 00000000)
+
+State 129 file mvp/src/mvp-ring.c function be_mvp_ring_init line 136 thread 0
+----------------------------------------------------
+  view.domain=0u (00000000 00000000 00000000 00000000)
+
+State 136 file mvp/src/mvp-ring.c function be_mvp_ring_init line 137 thread 0
+----------------------------------------------------
+  view.role=/*enum*/BE_MVP_RING_READER (00000000 00000000 00000000 00000010)
+
+State 143 file mvp/src/mvp-ring.c function be_mvp_ring_init line 138 thread 0
+----------------------------------------------------
+  view.cursor=9943710482722521088ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000000)
+
+State 156 file mvp/src/mvp-ring.c function be_mvp_ring_init line 139 thread 0
+----------------------------------------------------
+  view.limit=9943710482722521088ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000000)
+
+State 174 file mvp/verify/cbmc/ring/harness.h function reader_prefix line 230 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 176 file mvp/verify/cbmc/ring/harness.h function reader_prefix line 231 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=9943710482722521376ul (10001001 11111111 00101000 00000000 00000000 00000001 00000001 00100000)
+
+State 183 file mvp/verify/cbmc/ring/harness.h function reader_prefix line 231 thread 0
+----------------------------------------------------
+  head.value=9943710482722521376ul (10001001 11111111 00101000 00000000 00000000 00000001 00000001 00100000)
+
+State 204 file mvp/src/mvp-ring.c function be_mvp_ring_acquire line 254 thread 0
+----------------------------------------------------
+  return_value_usable=1 (00000000 00000000 00000000 00000001)
+
+State 218 file mvp/src/mvp-ring.c function be_mvp_ring_acquire line 258 thread 0
+----------------------------------------------------
+  head=9943710482722521376ul (10001001 11111111 00101000 00000000 00000000 00000001 00000001 00100000)
+
+State 231 file mvp/src/mvp-ring.c function be_mvp_ring_acquire line 259 thread 0
+----------------------------------------------------
+  released=9943710482722521088ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000000)
+
+State 251 file mvp/src/mvp-ring.c function be_mvp_ring_acquire line 265 thread 0
+----------------------------------------------------
+  view.limit=9943710482722521376ul (10001001 11111111 00101000 00000000 00000000 00000001 00000001 00100000)
+
+State 259 file mvp/verify/cbmc/ring/harness.h function reader_prefix line 234 thread 0
+----------------------------------------------------
+  return_value_nondet_bool$0=TRUE (00000001)
+
+State 288 file mvp/src/mvp-ring.c function be_mvp_ring_take line 284 thread 0
+----------------------------------------------------
+  return_value_usable=1 (00000000 00000000 00000000 00000001)
+
+State 315 file mvp/src/mvp-ring.c function be_mvp_ring_take line 288 thread 0
+----------------------------------------------------
+  available=288ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 00100000)
+
+State 322 file mvp/src/mvp-ring.c function be_mvp_ring_take line 289 thread 0
+----------------------------------------------------
+  mask=511ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11111111)
+
+State 338 file mvp/src/mvp-ring.c function be_mvp_ring_take line 294 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000011 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 339 file mvp/src/mvp-ring.c function be_mvp_ring_take line 294 thread 0
+----------------------------------------------------
+  mask=511ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11111111)
+
+State 340 file mvp/src/mvp-ring.c function be_mvp_ring_take line 294 thread 0
+----------------------------------------------------
+  position=9943710482722521088ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000000)
+
+State 350 file mvp/src/mvp-ring.c function load_le line 67 thread 0
+----------------------------------------------------
+  value=16ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00010000)
+
+State 353 file mvp/src/mvp-ring.c function load_le line 69 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$load_le=16ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00010000)
+
+State 355 file mvp/src/mvp-ring.c function be_mvp_ring_take line 294 thread 0
+----------------------------------------------------
+  type=16ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00010000)
+
+State 370 file mvp/src/mvp-ring.c function be_mvp_ring_take line 295 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000011 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 371 file mvp/src/mvp-ring.c function be_mvp_ring_take line 295 thread 0
+----------------------------------------------------
+  mask=511ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11111111)
+
+State 372 file mvp/src/mvp-ring.c function be_mvp_ring_take line 295 thread 0
+----------------------------------------------------
+  position=9943710482722521090ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000010)
+
+State 382 file mvp/src/mvp-ring.c function load_le line 67 thread 0
+----------------------------------------------------
+  value=9ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001001)
+
+State 393 file mvp/src/mvp-ring.c function load_le line 67 thread 0
+----------------------------------------------------
+  value=9ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001001)
+
+State 396 file mvp/src/mvp-ring.c function load_le line 69 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$load_le=9ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001001)
+
+State 398 file mvp/src/mvp-ring.c function be_mvp_ring_take line 295 thread 0
+----------------------------------------------------
+  return_value_load_le=9ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001001)
+
+State 405 file mvp/src/mvp-ring.c function be_mvp_ring_take line 295 thread 0
+----------------------------------------------------
+  scratch.length=9ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001001)
+
+State 414 file mvp/src/mvp-ring.c function be_mvp_ring_take line 297 thread 0
+----------------------------------------------------
+  length=9ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001001)
+
+State 416 file mvp/src/mvp-ring.c function be_mvp_ring_record_bytes line 149 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$be_mvp_ring_record_bytes=32ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00100000)
+
+State 418 file mvp/src/mvp-ring.c function be_mvp_ring_take line 297 thread 0
+----------------------------------------------------
+  size=32ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00100000)
+
+State 441 file mvp/src/mvp-ring.c function be_mvp_ring_take line 300 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000011 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 442 file mvp/src/mvp-ring.c function be_mvp_ring_take line 300 thread 0
+----------------------------------------------------
+  mask=511ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11111111)
+
+State 443 file mvp/src/mvp-ring.c function be_mvp_ring_take line 300 thread 0
+----------------------------------------------------
+  position=9943710482722521089ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000001)
+
+State 453 file mvp/src/mvp-ring.c function load_le line 67 thread 0
+----------------------------------------------------
+  value=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 456 file mvp/src/mvp-ring.c function load_le line 69 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$load_le=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 458 file mvp/src/mvp-ring.c function be_mvp_ring_take line 300 thread 0
+----------------------------------------------------
+  return_value_load_le$0=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 465 file mvp/src/mvp-ring.c function be_mvp_ring_take line 299 thread 0
+----------------------------------------------------
+  tmp_if_expr=FALSE (0)
+
+State 481 file mvp/src/mvp-ring.c function be_mvp_ring_take line 302 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000011 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 482 file mvp/src/mvp-ring.c function be_mvp_ring_take line 302 thread 0
+----------------------------------------------------
+  mask=511ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11111111)
+
+State 483 file mvp/src/mvp-ring.c function be_mvp_ring_take line 302 thread 0
+----------------------------------------------------
+  position=9943710482722521092ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000100)
+
+State 493 file mvp/src/mvp-ring.c function load_le line 67 thread 0
+----------------------------------------------------
+  value=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 504 file mvp/src/mvp-ring.c function load_le line 67 thread 0
+----------------------------------------------------
+  value=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 515 file mvp/src/mvp-ring.c function load_le line 67 thread 0
+----------------------------------------------------
+  value=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 526 file mvp/src/mvp-ring.c function load_le line 67 thread 0
+----------------------------------------------------
+  value=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 529 file mvp/src/mvp-ring.c function load_le line 69 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$load_le=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 531 file mvp/src/mvp-ring.c function be_mvp_ring_take line 302 thread 0
+----------------------------------------------------
+  return_value_load_le$1=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 532 file mvp/src/mvp-ring.c function be_mvp_ring_take line 301 thread 0
+----------------------------------------------------
+  tmp_if_expr$0=FALSE (0)
+
+State 554 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=1 (00000001)
+
+State 591 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=1 (00000001)
+
+State 628 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=1 (00000001)
+
+State 665 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=1 (00000001)
+
+State 702 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=1 (00000001)
+
+State 739 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=1 (00000001)
+
+State 776 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=1 (00000001)
+
+State 813 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=1 (00000001)
+
+State 850 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=0 (00000000)
+
+State 887 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=0 (00000000)
+
+State 917 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=0 (00000000)
+
+State 947 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=0 (00000000)
+
+State 977 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=0 (00000000)
+
+State 1007 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=0 (00000000)
+
+State 1037 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=0 (00000000)
+
+State 1067 file mvp/src/mvp-ring.c function be_mvp_ring_take line 310 thread 0
+----------------------------------------------------
+  byte=0 (00000000)
+
+State 1196 file mvp/src/mvp-ring.c function be_mvp_ring_take line 327 thread 0
+----------------------------------------------------
+  view.cursor=9943710482722521120ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00100000)
+
+State 1203 file mvp/verify/cbmc/ring/harness.h function fail_maybe line 246 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=FALSE (00000000)
+
+State 1208 file mvp/verify/cbmc/ring/acquire.c function main line 42 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_READER (00000000 00000000 00000000 00000010)
+
+State 1210 file mvp/verify/cbmc/ring/harness.h function havoc_peer line 258 thread 0
+----------------------------------------------------
+  return_value_nondet_u64$0=9943710482722521632ul (10001001 11111111 00101000 00000000 00000000 00000001 00000010 00100000)
+
+State 1217 file mvp/verify/cbmc/ring/harness.h function havoc_peer line 258 thread 0
+----------------------------------------------------
+  head.value=9943710482722521632ul (10001001 11111111 00101000 00000000 00000000 00000001 00000010 00100000)
+
+State 1219 file mvp/verify/cbmc/ring/acquire.c function main line 43 thread 0
+----------------------------------------------------
+  before.role=/*enum*/BE_MVP_RING_READER (00000000 00000000 00000000 00000010)
+
+State 1220 file mvp/verify/cbmc/ring/acquire.c function main line 43 thread 0
+----------------------------------------------------
+  before.failed=0u (00000000 00000000 00000000 00000000)
+
+State 1221 file mvp/verify/cbmc/ring/acquire.c function main line 43 thread 0
+----------------------------------------------------
+  before.cursor=9943710482722521120ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00100000)
+
+State 1222 file mvp/verify/cbmc/ring/acquire.c function main line 44 thread 0
+----------------------------------------------------
+  lines_tail=9943710482722521088ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000000)
+
+State 1223 file mvp/verify/cbmc/ring/acquire.c function main line 44 thread 0
+----------------------------------------------------
+  lines_at=48ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00110000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/acquire.c line 44 function main
+  lines_at < (unsigned long int)(64u - 8u)
+
+State 1228 file mvp/verify/cbmc/ring/acquire.c function main line 45 thread 0
+----------------------------------------------------
+  probe_at=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/acquire.c line 45 function main
+  probe_at < (be_u64)512
+
+State 1232 file mvp/verify/cbmc/ring/acquire.c function main line 46 thread 0
+----------------------------------------------------
+  h=9943710482722521632ul (10001001 11111111 00101000 00000000 00000000 00000001 00000010 00100000)
+
+State 1253 file mvp/src/mvp-ring.c function be_mvp_ring_acquire line 254 thread 0
+----------------------------------------------------
+  return_value_usable=1 (00000000 00000000 00000000 00000001)
+
+State 1267 file mvp/src/mvp-ring.c function be_mvp_ring_acquire line 258 thread 0
+----------------------------------------------------
+  head=9943710482722521632ul (10001001 11111111 00101000 00000000 00000000 00000001 00000010 00100000)
+
+State 1280 file mvp/src/mvp-ring.c function be_mvp_ring_acquire line 259 thread 0
+----------------------------------------------------
+  released=9943710482722521088ul (10001001 11111111 00101000 00000000 00000000 00000001 00000000 00000000)
+
+State 1305 file mvp/verify/cbmc/ring/acquire.c function main line 48 thread 0
+----------------------------------------------------
+  result=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Violated property:
+  file mvp/verify/cbmc/ring/acquire.c function main line 61 thread 0
+  acquire: an aligned head within C of the cursor: limit := h, h - cursor (the cursor past the released tail)
+  view.limit == h && result == h - before.cursor
+
+
+
+

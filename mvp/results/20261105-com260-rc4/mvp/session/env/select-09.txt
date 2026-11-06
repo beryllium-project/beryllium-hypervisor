@@ -1,0 +1,7 @@
+attempt_utc=2026-11-05T22:32:12Z
+be_image=be-mvp-anchor-clang.img
+printenv_be_image=be_image=be-mvp-anchor-clang.img
+select-09-check_sha256=04b372e32a512234f63dc1999b0cac2ffe4a04846e77237af683a2b798561c6c
+select_check=PASS
+saveenv=OK
+verdict=PASS

@@ -1,0 +1,4 @@
+BE_MVP_COUNTS: kexec_hart=5 rule_hart=5 started=5 exits_g0=157 exits_g1=157 records=138 wakes=102 overlap_ticks=0x26ae059 shorter_ticks=0x26ae059 alternations=57 g0=65 g1=65
+BE_MVP_COSTS: g0_ping_to_receipt_ticks=1095 g0_receipt_to_pong_ticks=32 g0_run_ticks=40592083 g0_run_ticks_per_exit=258548 g1_ping_to_receipt_ticks=533 g1_receipt_to_pong_ticks=520 g1_run_ticks=40558681 g1_run_ticks_per_exit=258335 hart0_idle_permille=994 hart0_idle_ticks=40387602 hart0_records=138 hart0_run_ticks=40606818 hart0_wakes=102
+BE_MVP_RESULT: PASS terminal=shutdown-requested
+BE_MVP_CAPTURE[kexec two-guests]: PASS

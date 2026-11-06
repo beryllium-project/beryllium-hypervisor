@@ -1,0 +1,21 @@
+label=two-guests/clang
+image=clang/be-mvp-boot.img
+image_sha256=c5a9a4b9c9e75a55e8cdd65858f4f5791821ebebc05f8a9cb09f7f5f2e568f37
+qemu_image_bytes=2748416
+qemu_image_sha256=939a00f2ceec324204ba36e75c37204d6d0dcf3013a75ef223cf5aff02c22a74
+qemu_image_crc32=518c795d
+qemu_text_offset=0x88000000
+qemu_image_source=built
+qemu_image=clang/be-mvp-boot-qemu.img
+disk_file=two-guests-clang.img
+be_image=two-guests-clang.img
+disk_sha256=23f4a03858f62476f1137d146e148aabb7ad4b0fc7e178d1b9b3b9d12e5eca37
+expect=gen/expect/two-guests.json
+expect_sha256=304e640883e44c54b7c00db51a9f6151597bbbb03dfa9d892e49b4d083f31e6a
+report=-
+measured_kernel=-
+measured_dtb=-
+attempt=1 session=REFUSED check=REFUSED check_exit=3 boot_hart=1 qemu_exit=0 disk=same console_sha256=99d2e5a854d55b1d695a5162e4f1c00594517da983adfe7d44e51810e44f2f61
+attempt=2 session=REFUSED check=REFUSED check_exit=3 boot_hart=1 qemu_exit=0 disk=same console_sha256=0ab58fab9b82691bde7507cd72d70576ed242fac597414d4b6f010e2e59dbdc9
+attempt=3 session=PASS check=PASS check_exit=0 boot_hart=0 qemu_exit=0 disk=same console_sha256=8de732da7344d8acea7fa25bb659a5a1976b1f41f13fde9ac1988a84d5cab1a0
+BE_MVP_UBOOT_REHEARSAL[two-guests/clang]: PASS attempts=3 refused=2 boot_harts=1,1,0 session=PASS check=PASS check_exit=0 qemu_exit=0 image=939a00f2ceec crc32=518c795d

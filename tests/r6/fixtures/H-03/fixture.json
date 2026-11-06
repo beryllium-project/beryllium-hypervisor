@@ -1,0 +1,51 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "H-03",
+  "partition": "host",
+  "base": "virt/be/r5.c",
+  "defect_file": null,
+  "base_sha256": null,
+  "declared_delta": null,
+  "declared_layer": "L11",
+  "outcome": "rejected-by-host-mechanism",
+  "driver": "tests/r6/r6-check.c",
+  "api": "be_r5_handle_exit",
+  "argument": "observation",
+  "field": "active.vcpu_id",
+  "accepted_value": "2",
+  "malformed_value": "3",
+  "world": "protected-published-expect-load-fault",
+  "world_source": "be_r5_phase_name(state.phase) read before the call",
+  "class_source": "be_r5_error_name(the enum be_r5_error the call returned)",
+  "cases": 1,
+  "coverage": [
+    {
+      "class": "binding",
+      "role": "primary"
+    }
+  ],
+  "expected_first_error": "binding",
+  "rejection": {
+    "sticky": true,
+    "terminal": true,
+    "transactional": true,
+    "transactional_source": "caller output parameters and saved page measured unchanged after the call"
+  },
+  "self_test": {
+    "restored_expectation": "accepted",
+    "forged_class": "import",
+    "forged_class_rejection": "wrong-error-class:H-03",
+    "forged_secondary_class": null,
+    "forged_secondary_class_rejection": null,
+    "forged_world": "fresh",
+    "forged_world_rejection": "wrong-world:H-03",
+    "forged_layer": "L6",
+    "forged_layer_rejection": "wrong-layer:H-03"
+  },
+  "builds": false,
+  "qemu": false,
+  "runs": 0,
+  "notes": "Wrong active binding."
+}

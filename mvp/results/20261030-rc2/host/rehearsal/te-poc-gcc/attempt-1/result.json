@@ -1,0 +1,60 @@
+{
+ "boot_marker": "FAIL",
+ "capture": {
+  "bytes": 4846,
+  "sha256": "2fdcf265efa5e05e685523be55e946677c89ddd17c00f905ad708c958583ce8f"
+ },
+ "costs": {},
+ "expect": {
+  "image": "te-poc",
+  "scenario_sha256": "4fe5164591ab64846d3b3a6a9ef4a0b2986d111c5b2e4df353c4e7a853699c17"
+ },
+ "fields": {
+  "base": "0x0000000108000000",
+  "boot_hart": "2",
+  "bytes": "0x00000000000a4000",
+  "dest": "0x0000000102000000",
+  "fdt": "0x00000000ff7383d0",
+  "fdt_blob": "0xff7383d0",
+  "fdt_end": "0xff73edd8",
+  "fdt_in_place": "true",
+  "fdt_loaded": "0xff7383d0",
+  "hart": "0x0000000000000000",
+  "image": "te-poc",
+  "launcher_mode": "uboot",
+  "load_bytes": "2584576",
+  "load_digest": "7786049f",
+  "load_digest_kind": "crc32",
+  "mode": "uboot",
+  "moving_end": "0x108277000",
+  "moving_from": "0x140000000",
+  "moving_to": "0x108000000",
+  "rule_hart": "2",
+  "sbi_version": "2.0",
+  "spl_banner": "none",
+  "uboot_banner": "U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)"
+ },
+ "findings": [],
+ "lines": {
+  "g0": 0,
+  "g1": 0
+ },
+ "markers": [
+  "BE_MVP_SHIM: boot_hart=0x2 starting hart 0",
+  "BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x00000000ff7383d0 dest=0x0000000102000000 bytes=0x00000000000a4000",
+  "BE_R3:01 BOOT_VALIDATED",
+  "BE_R3:02 R1_DERIVED",
+  "BE_R3:03 R2_BUILT_REWALKED",
+  "BE_R3:04 HS_VS_STATE_VERIFIED",
+  "BE_R3:05 BINDING_PREPARED",
+  "BE_R3:06 HGATP_FENCED_PUBLISHED",
+  "BE_MVP:01 SCENARIO name=te-poc domains=2 harts=0,1,2 of=8 ring_bytes=0x8000 mvp_region=0x102064000 mvp_bytes=0x40000 image_bytes=0xa4000",
+  "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status=1:1,2:0,3:1,4:1,5:1,6:1,7:1 started=2",
+  "BE_MVP:FAIL firmware"
+ ],
+ "probe_values": {},
+ "result": "REFUSED",
+ "stops": [],
+ "terminal": "fail-marker",
+ "toolchain": "gcc"
+}

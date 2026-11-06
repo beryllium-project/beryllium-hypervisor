@@ -1,0 +1,17 @@
+scenario two-guests sha256=9978db42902d36734e70ec43e62c5682ddb558f62ce01f4a5cca862be3f1d8b2
+config mvp-config.c sha256=b42e5d8c48a267a899f207ea6ab204b11d0faf9e2050b1845b6c1ac3ff5c4038 identity=16bd3ebb3796bb68a787f511d32162a9a0d7a665f1712fbf56a96d09f96c8167
+expect exit-budget.json
+expect hart-start.json
+expect init-exit.json
+expect no-sstc.json
+expect payload.json
+expect probe-platform.json
+expect probe-vmid-distinct.json
+expect probe-vmid-shared.json
+expect rdcycle.json
+expect ring-full.json
+expect run-timeout.json
+expect sbi-3.0.json
+expect sbi-time.json
+expect shim-rule.json
+expect two-guests.json

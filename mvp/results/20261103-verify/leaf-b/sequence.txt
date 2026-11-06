@@ -1,0 +1,36 @@
+# MVP M8 Leaf B: CBMC bounded model check of mvp-ring.c (planning/mvp-m8-plan.md, D-8): a bounded model check, never a proof
+specification=planning/mvp-m8-specifications.md accepted=004f31ae sha256=ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d
+leaf=mvp/src/mvp-ring.c sha256=432dbc511397da4b051da37f3860b1f8d078ef87fa175ea47d7b3c7a1bc267ba
+started=2026-11-03T13:08:56Z cbmc=6.8.0 (ad933aa-dirty) cvc5=cvc5 1.3.4
+seconds=7364
+row function=sequence part=window capacity=512 solver=sat configuration=A classes=3/64 properties=47 failed=15 seconds=122.6 verdicts=failed,successful checked=no failed_properties=be_mvp_ring_acquire.overflow.1;be_mvp_ring_acquire.overflow.3;be_mvp_ring_acquire.overflow.4;be_mvp_ring_post.overflow.10;be_mvp_ring_post.overflow.11;be_mvp_ring_post.overflow.13;be_mvp_ring_post.overflow.8;be_mvp_ring_room.overflow.1;be_mvp_ring_room.overflow.2;be_mvp_ring_room.overflow.3;be_mvp_ring_take.overflow.1;be_mvp_ring_take.overflow.10;be_mvp_ring_take.overflow.11;be_mvp_ring_take.overflow.7;be_mvp_ring_take.overflow.8
+row function=sequence part=window capacity=512 solver=cvc5 configuration=A classes=1/64 properties=0 failed=0 seconds=600.3 verdicts=timeout checked=no
+row function=sequence part=window capacity=512 solver=sat configuration=B classes=64/64 properties=692 failed=1 seconds=6763.5 verdicts=failed checked=no failed_properties=main.assertion.3
+row function=sequence part=window capacity=512 solver=cvc5 configuration=B classes=1/64 properties=0 failed=0 seconds=600.2 verdicts=timeout checked=no
+row function=sequence part=window capacity=4096 solver=sat configuration=A classes=3/64 properties=47 failed=15 seconds=289.8 verdicts=failed,successful checked=no failed_properties=be_mvp_ring_acquire.overflow.1;be_mvp_ring_acquire.overflow.3;be_mvp_ring_acquire.overflow.4;be_mvp_ring_post.overflow.10;be_mvp_ring_post.overflow.11;be_mvp_ring_post.overflow.13;be_mvp_ring_post.overflow.8;be_mvp_ring_room.overflow.1;be_mvp_ring_room.overflow.2;be_mvp_ring_room.overflow.3;be_mvp_ring_take.overflow.1;be_mvp_ring_take.overflow.10;be_mvp_ring_take.overflow.11;be_mvp_ring_take.overflow.7;be_mvp_ring_take.overflow.8
+row function=sequence part=window capacity=4096 solver=sat configuration=B classes=64/64 properties=692 failed=1 seconds=9684.8 verdicts=failed checked=no failed_properties=main.assertion.3
+row function=sequence part=window capacity=4096 solver=cvc5 configuration=B classes=1/64 properties=0 failed=0 seconds=600.2 verdicts=timeout checked=no
+open function=sequence part=window capacity=512 property=main.assertion.3 reason=specification-mismatch desc=sequence: after release the writer's room grows by the released size
+open function=sequence part=window capacity=512 property=be_mvp_ring_post.overflow.10 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + (unsigned long int)16u
+open function=sequence part=window capacity=512 property=be_mvp_ring_post.overflow.11 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + (unsigned long int)16u + index
+open function=sequence part=window capacity=512 property=be_mvp_ring_post.overflow.13 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + size
+open function=sequence part=window capacity=512 property=be_mvp_ring_post.overflow.8 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + (unsigned long int)8u
+open function=sequence part=window capacity=512 property=be_mvp_ring_take.overflow.10 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + (unsigned long int)8u
+open function=sequence part=window capacity=512 property=be_mvp_ring_take.overflow.11 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + size
+open function=sequence part=window capacity=512 property=be_mvp_ring_take.overflow.7 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + (unsigned long int)16u
+open function=sequence part=window capacity=512 property=be_mvp_ring_take.overflow.8 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + (unsigned long int)16u + index
+open function=sequence part=window capacity=4096 property=main.assertion.3 reason=specification-mismatch desc=sequence: after release the writer's room grows by the released size
+open function=sequence part=window capacity=4096 property=be_mvp_ring_post.overflow.10 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + (unsigned long int)16u
+open function=sequence part=window capacity=4096 property=be_mvp_ring_post.overflow.11 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + (unsigned long int)16u + index
+open function=sequence part=window capacity=4096 property=be_mvp_ring_post.overflow.13 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + size
+open function=sequence part=window capacity=4096 property=be_mvp_ring_post.overflow.8 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + (unsigned long int)8u
+open function=sequence part=window capacity=4096 property=be_mvp_ring_take.overflow.10 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + (unsigned long int)8u
+open function=sequence part=window capacity=4096 property=be_mvp_ring_take.overflow.11 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + size
+open function=sequence part=window capacity=4096 property=be_mvp_ring_take.overflow.7 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + (unsigned long int)16u
+open function=sequence part=window capacity=4096 property=be_mvp_ring_take.overflow.8 reason=wrap-finding-index-advance desc=arithmetic overflow on unsigned + in ring->cursor + (unsigned long int)16u + index
+cover function=sequence part=window capacity=4096 class=3960 solver=sat criterion=assertion covered=3/3 seconds=99.7 ok=yes
+cover-wraps function=sequence part=window capacity=4096 class=3960 solver=sat criterion=cover covered=2/2 seconds=89.9 ok=yes
+cover function=sequence part=window capacity=512 class=376 solver=sat criterion=assertion covered=3/3 seconds=66.7 ok=yes
+cover-wraps function=sequence part=window capacity=512 class=376 solver=sat criterion=cover covered=2/2 seconds=41.4 ok=yes
+vacuity function=sequence part=window capacity=4096 class=3960 solver=sat assert(0)_after_the_assumptions=fails seconds=90.6 assumptions_satisfiable=yes
+vacuity function=sequence part=window capacity=512 class=376 solver=sat assert(0)_after_the_assumptions=fails seconds=50.7 assumptions_satisfiable=yes

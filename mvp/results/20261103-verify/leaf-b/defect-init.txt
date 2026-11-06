@@ -1,0 +1,569 @@
+# MVP M8 Leaf B: CBMC bounded model check of mvp-ring.c (planning/mvp-m8-plan.md, D-8): a bounded model check, never a proof
+specification=planning/mvp-m8-specifications.md accepted=004f31ae sha256=ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d
+leaf=mvp/src/mvp-ring.c sha256=432dbc511397da4b051da37f3860b1f8d078ef87fa175ea47d7b3c7a1bc267ba
+started=2026-11-03T13:08:56Z cbmc=6.8.0 (ad933aa-dirty) cvc5=cvc5 1.3.4
+# The row's failures on the unmodified leaf, each a CBMC counterexample (SAT); the leaf is not changed (planning/mvp-m8-plan.md, stop condition 2: the human's).
+
+## main.assertion.2: init: returns 1 iff the row's conditions, else 0 (a domain of 2 or more)
+part=all capacity=512
+reason=specification-mismatch
+reading: the row's conditions omit the domain: be_mvp_ring_init also refuses a domain of 2 or more (mvp-ring.h: '@domain: 0 or 1'; ring-test.c refuses domains 2 and 0xffffffff)
+log=logs/init-all-512-sat-B-all-trace-main.assertion.2.log
+
+Trace for main.assertion.2:
+
+State 6 file mvp/verify/cbmc/ring/init.c function main line 32 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 7 file mvp/verify/cbmc/ring/init.c function main line 32 thread 0
+----------------------------------------------------
+  given=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 8 file mvp/verify/cbmc/ring/init.c function main line 33 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=32768ul (00000000 00000000 00000000 00000000 00000000 00000000 10000000 00000000)
+
+State 9 file mvp/verify/cbmc/ring/init.c function main line 33 thread 0
+----------------------------------------------------
+  capacity=32768ul (00000000 00000000 00000000 00000000 00000000 00000000 10000000 00000000)
+
+State 10 file mvp/verify/cbmc/ring/init.c function main line 34 thread 0
+----------------------------------------------------
+  return_value_nondet_u64$0=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 11 file mvp/verify/cbmc/ring/init.c function main line 34 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 12 file mvp/verify/cbmc/ring/init.c function main line 35 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=2147487738u (10000000 00000000 00001111 11111010)
+
+State 13 file mvp/verify/cbmc/ring/init.c function main line 35 thread 0
+----------------------------------------------------
+  domain=2147487738u (10000000 00000000 00001111 11111010)
+
+State 14 file mvp/verify/cbmc/ring/init.c function main line 36 thread 0
+----------------------------------------------------
+  return_value_nondet_u32$0=1u (00000000 00000000 00000000 00000001)
+
+State 15 file mvp/verify/cbmc/ring/init.c function main line 36 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 16 file mvp/verify/cbmc/ring/init.c function main line 41 thread 0
+----------------------------------------------------
+  lines_head=13708957265715822560ul (10111110 01000000 00000000 00000000 00000000 00000000 01111111 11100000)
+
+State 17 file mvp/verify/cbmc/ring/init.c function main line 41 thread 0
+----------------------------------------------------
+  lines_tail=13708957265715789888ul (10111110 01000000 00000000 00000000 00000000 00000000 00000000 01000000)
+
+State 18 file mvp/verify/cbmc/ring/init.c function main line 41 thread 0
+----------------------------------------------------
+  lines_at=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/init.c line 41 function main
+  lines_at < (unsigned long int)(64u - 8u)
+
+State 23 file mvp/verify/cbmc/ring/init.c function main line 42 thread 0
+----------------------------------------------------
+  probe_at=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/init.c line 42 function main
+  probe_at < (be_u64)512
+
+State 30 file mvp/verify/cbmc/ring/init.c function main line 45 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 31 file mvp/verify/cbmc/ring/harness.h function spec_types_valid line 109 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$spec_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 33 file mvp/verify/cbmc/ring/init.c function main line 45 thread 0
+----------------------------------------------------
+  return_value_spec_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 34 file mvp/verify/cbmc/ring/init.c function main line 44 thread 0
+----------------------------------------------------
+  tmp_if_expr=TRUE (1)
+
+State 36 file mvp/verify/cbmc/ring/init.c function main line 43 thread 0
+----------------------------------------------------
+  accepted=1 (00000000 00000000 00000000 00000001)
+
+State 39 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 40 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  capacity=32768ul (00000000 00000000 00000000 00000000 00000000 00000000 10000000 00000000)
+
+State 41 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 42 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  domain=2147487738u (10000000 00000000 00001111 11111010)
+
+State 43 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 54 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 55 file mvp/src/mvp-ring.c function types_valid line 92 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 57 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  return_value_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 58 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  tmp_if_expr=FALSE (0)
+
+State 62 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  result=0 (00000000 00000000 00000000 00000000)
+
+Violated property:
+  file mvp/verify/cbmc/ring/init.c function main line 59 thread 0
+  init: returns 1 iff the row's conditions, else 0 (a domain of 2 or more)
+  result == (accepted != 0 ? 1 : 0)
+
+
+
+
+
+## main.assertion.4: init: on 1 the limit is the peer's index's value
+part=all capacity=512
+reason=specification-mismatch
+reading: be_mvp_ring_init sets the limit to the view's own index (the cursor), not the peer's: a reader takes nothing before an acquire (mvp-ring.h: '@limit: the reader's acquired head'), a writer's limit is its published head; ring-test.c checks limit == cursor
+log=logs/init-all-512-sat-B-all-trace-main.assertion.4.log
+
+Trace for main.assertion.4:
+
+State 6 file mvp/verify/cbmc/ring/init.c function main line 32 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 7 file mvp/verify/cbmc/ring/init.c function main line 32 thread 0
+----------------------------------------------------
+  given=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 8 file mvp/verify/cbmc/ring/init.c function main line 33 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=32768ul (00000000 00000000 00000000 00000000 00000000 00000000 10000000 00000000)
+
+State 9 file mvp/verify/cbmc/ring/init.c function main line 33 thread 0
+----------------------------------------------------
+  capacity=32768ul (00000000 00000000 00000000 00000000 00000000 00000000 10000000 00000000)
+
+State 10 file mvp/verify/cbmc/ring/init.c function main line 34 thread 0
+----------------------------------------------------
+  return_value_nondet_u64$0=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 11 file mvp/verify/cbmc/ring/init.c function main line 34 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 12 file mvp/verify/cbmc/ring/init.c function main line 35 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=0u (00000000 00000000 00000000 00000000)
+
+State 13 file mvp/verify/cbmc/ring/init.c function main line 35 thread 0
+----------------------------------------------------
+  domain=0u (00000000 00000000 00000000 00000000)
+
+State 14 file mvp/verify/cbmc/ring/init.c function main line 36 thread 0
+----------------------------------------------------
+  return_value_nondet_u32$0=2u (00000000 00000000 00000000 00000010)
+
+State 15 file mvp/verify/cbmc/ring/init.c function main line 36 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_READER (00000000 00000000 00000000 00000010)
+
+State 16 file mvp/verify/cbmc/ring/init.c function main line 37 thread 0
+----------------------------------------------------
+  writer=0 (00000000 00000000 00000000 00000000)
+
+State 17 file mvp/verify/cbmc/ring/init.c function main line 41 thread 0
+----------------------------------------------------
+  lines_head=8ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001000)
+
+State 18 file mvp/verify/cbmc/ring/init.c function main line 41 thread 0
+----------------------------------------------------
+  lines_tail=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 19 file mvp/verify/cbmc/ring/init.c function main line 41 thread 0
+----------------------------------------------------
+  lines_at=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/init.c line 41 function main
+  lines_at < (unsigned long int)(64u - 8u)
+
+State 24 file mvp/verify/cbmc/ring/init.c function main line 42 thread 0
+----------------------------------------------------
+  probe_at=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/init.c line 42 function main
+  probe_at < (be_u64)512
+
+State 31 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 32 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  capacity=32768ul (00000000 00000000 00000000 00000000 00000000 00000000 10000000 00000000)
+
+State 33 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 34 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  domain=0u (00000000 00000000 00000000 00000000)
+
+State 35 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_READER (00000000 00000000 00000000 00000010)
+
+State 46 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 47 file mvp/src/mvp-ring.c function types_valid line 92 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 49 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  return_value_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 50 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  tmp_if_expr=FALSE (0)
+
+State 58 file mvp/src/mvp-ring.c function be_mvp_ring_init line 125 thread 0
+----------------------------------------------------
+  head_value=8ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001000)
+
+State 65 file mvp/src/mvp-ring.c function be_mvp_ring_init line 126 thread 0
+----------------------------------------------------
+  tail_value=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 115 file mvp/src/mvp-ring.c function be_mvp_ring_init line 138 thread 0
+----------------------------------------------------
+  view.cursor=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 128 file mvp/src/mvp-ring.c function be_mvp_ring_init line 139 thread 0
+----------------------------------------------------
+  view.limit=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 142 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  result=1 (00000000 00000000 00000000 00000001)
+
+Violated property:
+  file mvp/verify/cbmc/ring/init.c function main line 64 thread 0
+  init: on 1 the limit is the peer's index's value
+  view.limit == (writer != 0 ? lines_tail : lines_head)
+
+
+
+
+
+## main.assertion.2: init: returns 1 iff the row's conditions, else 0 (a domain of 2 or more)
+part=all capacity=4096
+reason=specification-mismatch
+reading: the row's conditions omit the domain: be_mvp_ring_init also refuses a domain of 2 or more (mvp-ring.h: '@domain: 0 or 1'; ring-test.c refuses domains 2 and 0xffffffff)
+log=logs/init-all-4096-sat-B-all-trace-main.assertion.2.log
+
+Trace for main.assertion.2:
+
+State 6 file mvp/verify/cbmc/ring/init.c function main line 32 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 7 file mvp/verify/cbmc/ring/init.c function main line 32 thread 0
+----------------------------------------------------
+  given=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 8 file mvp/verify/cbmc/ring/init.c function main line 33 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=32768ul (00000000 00000000 00000000 00000000 00000000 00000000 10000000 00000000)
+
+State 9 file mvp/verify/cbmc/ring/init.c function main line 33 thread 0
+----------------------------------------------------
+  capacity=32768ul (00000000 00000000 00000000 00000000 00000000 00000000 10000000 00000000)
+
+State 10 file mvp/verify/cbmc/ring/init.c function main line 34 thread 0
+----------------------------------------------------
+  return_value_nondet_u64$0=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 11 file mvp/verify/cbmc/ring/init.c function main line 34 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 12 file mvp/verify/cbmc/ring/init.c function main line 35 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=2147487738u (10000000 00000000 00001111 11111010)
+
+State 13 file mvp/verify/cbmc/ring/init.c function main line 35 thread 0
+----------------------------------------------------
+  domain=2147487738u (10000000 00000000 00001111 11111010)
+
+State 14 file mvp/verify/cbmc/ring/init.c function main line 36 thread 0
+----------------------------------------------------
+  return_value_nondet_u32$0=1u (00000000 00000000 00000000 00000001)
+
+State 15 file mvp/verify/cbmc/ring/init.c function main line 36 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 16 file mvp/verify/cbmc/ring/init.c function main line 41 thread 0
+----------------------------------------------------
+  lines_head=13708957265715822560ul (10111110 01000000 00000000 00000000 00000000 00000000 01111111 11100000)
+
+State 17 file mvp/verify/cbmc/ring/init.c function main line 41 thread 0
+----------------------------------------------------
+  lines_tail=13708957265715789888ul (10111110 01000000 00000000 00000000 00000000 00000000 00000000 01000000)
+
+State 18 file mvp/verify/cbmc/ring/init.c function main line 41 thread 0
+----------------------------------------------------
+  lines_at=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/init.c line 41 function main
+  lines_at < (unsigned long int)(64u - 8u)
+
+State 23 file mvp/verify/cbmc/ring/init.c function main line 42 thread 0
+----------------------------------------------------
+  probe_at=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/init.c line 42 function main
+  probe_at < (be_u64)4096
+
+State 30 file mvp/verify/cbmc/ring/init.c function main line 45 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 31 file mvp/verify/cbmc/ring/harness.h function spec_types_valid line 109 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$spec_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 33 file mvp/verify/cbmc/ring/init.c function main line 45 thread 0
+----------------------------------------------------
+  return_value_spec_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 34 file mvp/verify/cbmc/ring/init.c function main line 44 thread 0
+----------------------------------------------------
+  tmp_if_expr=TRUE (1)
+
+State 36 file mvp/verify/cbmc/ring/init.c function main line 43 thread 0
+----------------------------------------------------
+  accepted=1 (00000000 00000000 00000000 00000001)
+
+State 39 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 40 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  capacity=32768ul (00000000 00000000 00000000 00000000 00000000 00000000 10000000 00000000)
+
+State 41 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 42 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  domain=2147487738u (10000000 00000000 00001111 11111010)
+
+State 43 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 54 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 55 file mvp/src/mvp-ring.c function types_valid line 92 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 57 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  return_value_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 58 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  tmp_if_expr=FALSE (0)
+
+State 62 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  result=0 (00000000 00000000 00000000 00000000)
+
+Violated property:
+  file mvp/verify/cbmc/ring/init.c function main line 59 thread 0
+  init: returns 1 iff the row's conditions, else 0 (a domain of 2 or more)
+  result == (accepted != 0 ? 1 : 0)
+
+
+
+
+
+## main.assertion.4: init: on 1 the limit is the peer's index's value
+part=all capacity=4096
+reason=specification-mismatch
+reading: be_mvp_ring_init sets the limit to the view's own index (the cursor), not the peer's: a reader takes nothing before an acquire (mvp-ring.h: '@limit: the reader's acquired head'), a writer's limit is its published head; ring-test.c checks limit == cursor
+log=logs/init-all-4096-sat-B-all-trace-main.assertion.4.log
+
+Trace for main.assertion.4:
+
+State 6 file mvp/verify/cbmc/ring/init.c function main line 32 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 7 file mvp/verify/cbmc/ring/init.c function main line 32 thread 0
+----------------------------------------------------
+  given=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 8 file mvp/verify/cbmc/ring/init.c function main line 33 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=32768ul (00000000 00000000 00000000 00000000 00000000 00000000 10000000 00000000)
+
+State 9 file mvp/verify/cbmc/ring/init.c function main line 33 thread 0
+----------------------------------------------------
+  capacity=32768ul (00000000 00000000 00000000 00000000 00000000 00000000 10000000 00000000)
+
+State 10 file mvp/verify/cbmc/ring/init.c function main line 34 thread 0
+----------------------------------------------------
+  return_value_nondet_u64$0=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 11 file mvp/verify/cbmc/ring/init.c function main line 34 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 12 file mvp/verify/cbmc/ring/init.c function main line 35 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=0u (00000000 00000000 00000000 00000000)
+
+State 13 file mvp/verify/cbmc/ring/init.c function main line 35 thread 0
+----------------------------------------------------
+  domain=0u (00000000 00000000 00000000 00000000)
+
+State 14 file mvp/verify/cbmc/ring/init.c function main line 36 thread 0
+----------------------------------------------------
+  return_value_nondet_u32$0=2u (00000000 00000000 00000000 00000010)
+
+State 15 file mvp/verify/cbmc/ring/init.c function main line 36 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_READER (00000000 00000000 00000000 00000010)
+
+State 16 file mvp/verify/cbmc/ring/init.c function main line 37 thread 0
+----------------------------------------------------
+  writer=0 (00000000 00000000 00000000 00000000)
+
+State 17 file mvp/verify/cbmc/ring/init.c function main line 41 thread 0
+----------------------------------------------------
+  lines_head=8ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001000)
+
+State 18 file mvp/verify/cbmc/ring/init.c function main line 41 thread 0
+----------------------------------------------------
+  lines_tail=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 19 file mvp/verify/cbmc/ring/init.c function main line 41 thread 0
+----------------------------------------------------
+  lines_at=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/init.c line 41 function main
+  lines_at < (unsigned long int)(64u - 8u)
+
+State 24 file mvp/verify/cbmc/ring/init.c function main line 42 thread 0
+----------------------------------------------------
+  probe_at=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/init.c line 42 function main
+  probe_at < (be_u64)4096
+
+State 31 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 32 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  capacity=32768ul (00000000 00000000 00000000 00000000 00000000 00000000 10000000 00000000)
+
+State 33 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 34 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  domain=0u (00000000 00000000 00000000 00000000)
+
+State 35 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_READER (00000000 00000000 00000000 00000010)
+
+State 46 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  types=2ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000010)
+
+State 47 file mvp/src/mvp-ring.c function types_valid line 92 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 49 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  return_value_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 50 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  tmp_if_expr=FALSE (0)
+
+State 58 file mvp/src/mvp-ring.c function be_mvp_ring_init line 125 thread 0
+----------------------------------------------------
+  head_value=8ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001000)
+
+State 65 file mvp/src/mvp-ring.c function be_mvp_ring_init line 126 thread 0
+----------------------------------------------------
+  tail_value=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 115 file mvp/src/mvp-ring.c function be_mvp_ring_init line 138 thread 0
+----------------------------------------------------
+  view.cursor=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 128 file mvp/src/mvp-ring.c function be_mvp_ring_init line 139 thread 0
+----------------------------------------------------
+  view.limit=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 142 file mvp/verify/cbmc/ring/init.c function main line 50 thread 0
+----------------------------------------------------
+  result=1 (00000000 00000000 00000000 00000001)
+
+Violated property:
+  file mvp/verify/cbmc/ring/init.c function main line 64 thread 0
+  init: on 1 the limit is the peer's index's value
+  view.limit == (writer != 0 ? lines_tail : lines_head)
+
+
+
+

@@ -1,0 +1,27 @@
+run=20261030T081403Z
+image=<repo>/build/mvp/variants/gcc/reader-write/be-mvp-boot.img
+image_sha256=1e4e43ecf40eac7acabb6cafcacb66bfe0f3c52f698e5e85b077f3dbeed5d8d4
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/variants/gcc/reader-write/be-mvp-boot.img bytes=0x277000 sha256=1e4e43ecf40eac7acabb6cafcacb66bfe0f3c52f698e5e85b077f3dbeed5d8d4 flat_sha256=411165670d1fc71444ddea8bb347c7909dea7d6b176f5e0f10bc6940a2916fcd kexec_fdt=0x108400000 variant=reader-write dtb0=0x275000 scenario=te-poc
+toolchain=gcc
+expect=reader-write.json expect_sha256=4ef6dffd7f95189ee2c8357196967477b9c8e9450c85e27dff34b6dc3401f820
+report=authority-report.json report_sha256=fcbf210072d30c0d865c5219cc13a1d47ff17825bdd178e463e2c34d4beafdae
+variant=reader-write
+launcher=uboot-autoboot-nvme
+loader=uboot-autoboot-nvme be_image=be-mvp-te-poc-reader-write-gcc.img load=0x140000000 booti=0x140000000 fdt=${fdtcontroladdr}
+be_image=be-mvp-te-poc-reader-write-gcc.img
+remote_image_sha256=1e4e43ecf40eac7acabb6cafcacb66bfe0f3c52f698e5e85b077f3dbeed5d8d4
+staged_bytes=2584576 staged_md5=e0173612e8b335a2d19857ac3261d613
+selected_be_image=be-mvp-te-poc-reader-write-gcc.img
+serial_source=log:<home>/src/spacemit-k3/logs/boot-7.log
+boot_id_before=reset-32@14298860
+reset_utc=2026-10-30T08:14:04.272Z
+serial_range=14298860-14303844
+outcome=terminal-marker
+terminal_marker_utc=2026-10-30T08:14:16Z
+spl_banner=U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)
+uboot_banner=U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395
+check_status=0
+BE_MVP_RESULT: PASS terminal=fail-marker
+attribution_lines=bytes_read=2584576 digest=md5:e0173612e8b335a2d19857ac3261d613
+attribution=PASS selected=yes staged_sha256=yes size_md5=yes check=yes
+banner_audit=PASS

@@ -1,0 +1,235 @@
+{
+ "change": "block 1 names hart 9",
+ "concurrency": {
+  "alternations": 8,
+  "overlap": "half-of-shorter"
+ },
+ "control_lines": [
+  {
+   "regex": "^BE_K3_B3:\\ SHIM\\ hart=0x0000000000000000\\ shim=0x0000000108000000\\ fdt=0x[0-9a-f]{16}\\ dest=0x0000000102000000\\ bytes=0x00000000000a4000$",
+   "template": "BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x<f> dest=0x0000000102000000 bytes=0x00000000000a4000"
+  },
+  {
+   "regex": "^BE_MVP:00\\ BOOT_VALIDATED$",
+   "template": "BE_MVP:00 BOOT_VALIDATED"
+  },
+  {
+   "regex": "^BE_MVP:00\\ CONFIG_SEALED\\ inventory=14\\ authorities=2\\ roots=2\\ harts=0,1,9\\ identity=422647143fbf7ffc$",
+   "template": "BE_MVP:00 CONFIG_SEALED inventory=14 authorities=2 roots=2 harts=0,1,9 identity=422647143fbf7ffc"
+  },
+  {
+   "regex": "^BE_MVP:01\\ SCENARIO\\ name=two\\-guests\\ domains=2\\ harts=0,1,9\\ of=8\\ ring_bytes=0x8000\\ mvp_region=0x102064000\\ mvp_bytes=0x40000\\ image_bytes=0xa4000$",
+   "template": "BE_MVP:01 SCENARIO name=two-guests domains=2 harts=0,1,9 of=8 ring_bytes=0x8000 mvp_region=0x102064000 mvp_bytes=0x40000 image_bytes=0xa4000"
+  },
+  {
+   "regex": "^BE_MVP:02\\ FIRMWARE_PROBED\\ hsm=1\\ ipi=1\\ status=1:1,2:[01],3:[01],4:[01],5:[01],6:[01],7:[01]\\ started=(?:none|[0-9]+)$",
+   "template": "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status=1:1,2:<H>,3:<H>,4:<H>,5:<H>,6:<H>,7:<H> started=<W>"
+  },
+  {
+   "regex": "^BE_MVP:03\\ GSTAGE_BUILT_REWALKED\\ domain=0\\ hart=1\\ gpa=0x80000000\\ hpa=0x110000000\\ size=0x4000000\\ leaves=32\\ root=0x102034000\\ vmid=1$",
+   "template": "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 hart=1 gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 root=0x102034000 vmid=1"
+  },
+  {
+   "regex": "^BE_MVP:03\\ GSTAGE_BUILT_REWALKED\\ domain=1\\ hart=9\\ gpa=0x80000000\\ hpa=0x114000000\\ size=0x4000000\\ leaves=32\\ root=0x10203c000\\ vmid=2$",
+   "template": "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 hart=9 gpa=0x80000000 hpa=0x114000000 size=0x4000000 leaves=32 root=0x10203c000 vmid=2"
+  },
+  {
+   "regex": "^BE_MVP:04\\ PAYLOAD_CHECKED\\ kernel_bytes=0x[0-9a-f]+\\ image_size=0x[0-9a-f]+$",
+   "template": "BE_MVP:04 PAYLOAD_CHECKED kernel_bytes=<K> image_size=<S>"
+  },
+  {
+   "regex": "^BE_MVP:05\\ DOMAIN_RAM_CLEARED\\ domain=0\\ gpa=0x80000000\\ size=0x4000000\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:05 DOMAIN_RAM_CLEARED domain=0 gpa=0x80000000 size=0x4000000 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:05\\ DOMAIN_RAM_CLEARED\\ domain=1\\ gpa=0x80000000\\ size=0x4000000\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:05 DOMAIN_RAM_CLEARED domain=1 gpa=0x80000000 size=0x4000000 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:06\\ PAYLOAD_PLACED\\ domain=0\\ kernel=0x80200000\\ kernel_bytes=0x[0-9a-f]+\\ image_size=0x[0-9a-f]+\\ dtb=0x83e00000\\ dtb_bytes=0x1000\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:06 PAYLOAD_PLACED domain=0 kernel=0x80200000 kernel_bytes=<K> image_size=<S> dtb=0x83e00000 dtb_bytes=0x1000 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:06\\ PAYLOAD_PLACED\\ domain=1\\ kernel=0x80200000\\ kernel_bytes=0x[0-9a-f]+\\ image_size=0x[0-9a-f]+\\ dtb=0x83e00000\\ dtb_bytes=0x1000\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:06 PAYLOAD_PLACED domain=1 kernel=0x80200000 kernel_bytes=<K> image_size=<S> dtb=0x83e00000 dtb_bytes=0x1000 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:07\\ BLOCKS_PUBLISHED\\ region=0x102044000\\ bytes=0x20000\\ generation=1\\ budget_ticks=0x100000000$",
+   "template": "BE_MVP:07 BLOCKS_PUBLISHED region=0x102044000 bytes=0x20000 generation=1 budget_ticks=0x100000000"
+  },
+  {
+   "regex": "^BE_MVP:08\\ HART_STARTED\\ hart=1\\ domain=0\\ result=0\\ status=0\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:08 HART_STARTED hart=1 domain=0 result=0 status=0 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:08\\ HART_STARTED\\ hart=9\\ domain=1\\ result=0\\ status=0\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:08 HART_STARTED hart=9 domain=1 result=0 status=0 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:09\\ HART_READY\\ hart=1\\ domain=0\\ hgatp=0x8000100000102034\\ hstatus_controls=0x180\\ hedeleg=0x[0-9a-f]+\\ hideleg=0x40\\ hcounteren=0x2\\ sie=0x2\\ henvcfg=0x8000000000000000\\ vstimecmp=0xffffffffffffffff$",
+   "template": "BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=<h> hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff"
+  },
+  {
+   "regex": "^BE_MVP:09\\ HART_READY\\ hart=9\\ domain=1\\ hgatp=0x800020000010203c\\ hstatus_controls=0x180\\ hedeleg=0x[0-9a-f]+\\ hideleg=0x40\\ hcounteren=0x2\\ sie=0x2\\ henvcfg=0x8000000000000000\\ vstimecmp=0xffffffffffffffff$",
+   "template": "BE_MVP:09 HART_READY hart=9 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=<h> hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff"
+  },
+  {
+   "regex": "^BE_MVP:10\\ DOMAIN_ENTERED\\ hart=1\\ domain=0\\ pc=0x80200000\\ a0=0x0\\ a1=0x83e00000\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:10\\ DOMAIN_ENTERED\\ hart=9\\ domain=1\\ pc=0x80200000\\ a0=0x0\\ a1=0x83e00000\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:10 DOMAIN_ENTERED hart=9 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=<T>"
+  }
+ ],
+ "counters": {
+  "dbcn_byte": {
+   "exact": 0
+  },
+  "exits": {
+   "max": 1048576,
+   "min": 1
+  },
+  "ipi": {
+   "exact": 1
+  },
+  "refused": {
+   "exact": 0
+  },
+  "ring_peak": {
+   "max": 16384,
+   "min": 16
+  },
+  "srst": {
+   "exact": 1
+  },
+  "time": {
+   "exact": 0
+  }
+ },
+ "domain_control_lines": {
+  "0": [
+   {
+    "regex": "^BE_MVP:11\\ IPI_PROBE\\ hart=1\\ domain=0\\ sent=0x[0-9a-f]+\\ received=0x[0-9a-f]+\\ answered=0x[0-9a-f]+\\ spv=1$",
+    "template": "BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=<T> received=<T> answered=<T> spv=1"
+   },
+   {
+    "regex": "^BE_MVP:12\\ DOMAIN_SHUTDOWN\\ hart=1\\ domain=0\\ exits=[0-9]+\\ sbi=[0-9]+\\ ipi=1\\ base=[0-9]+\\ time=0\\ dbcn_write=[0-9]+\\ dbcn_read=[0-9]+\\ dbcn_byte=0\\ srst=1\\ refused=0\\ lines=[0-9]+\\ ring_peak=0x[0-9a-f]+\\ entered=0x[0-9a-f]+\\ ticks=0x[0-9a-f]+$",
+    "template": "BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=<N> sbi=<N> ipi=1 base=<N> time=0 dbcn_write=<N> dbcn_read=<N> dbcn_byte=0 srst=1 refused=0 lines=<N> ring_peak=<B> entered=<T> ticks=<T>"
+   }
+  ],
+  "1": [
+   {
+    "regex": "^BE_MVP:11\\ IPI_PROBE\\ hart=9\\ domain=1\\ sent=0x[0-9a-f]+\\ received=0x[0-9a-f]+\\ answered=0x[0-9a-f]+\\ spv=1$",
+    "template": "BE_MVP:11 IPI_PROBE hart=9 domain=1 sent=<T> received=<T> answered=<T> spv=1"
+   },
+   {
+    "regex": "^BE_MVP:12\\ DOMAIN_SHUTDOWN\\ hart=9\\ domain=1\\ exits=[0-9]+\\ sbi=[0-9]+\\ ipi=1\\ base=[0-9]+\\ time=0\\ dbcn_write=[0-9]+\\ dbcn_read=[0-9]+\\ dbcn_byte=0\\ srst=1\\ refused=0\\ lines=[0-9]+\\ ring_peak=0x[0-9a-f]+\\ entered=0x[0-9a-f]+\\ ticks=0x[0-9a-f]+$",
+    "template": "BE_MVP:12 DOMAIN_SHUTDOWN hart=9 domain=1 exits=<N> sbi=<N> ipi=1 base=<N> time=0 dbcn_write=<N> dbcn_read=<N> dbcn_byte=0 srst=1 refused=0 lines=<N> ring_peak=<B> entered=<T> ticks=<T>"
+   }
+  ]
+ },
+ "domain_lines": [
+  "[<s>] Linux version 7.2.0 <banner>",
+  "[<s>] SBI implementation ID=0x4245 Version=0x3",
+  "[<s>] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=<g>",
+  "[<s>] riscv-timer: Timer interrupt in S-mode is available via sstc extension",
+  "[<s>] Memory: <m>K/65536K available <rest>",
+  "[<s>] Run /init as init process",
+  "MVPINIT 01 START guest=<g> pid=1",
+  "MVPINIT 02 UNAME release=7.2.0 machine=riscv64",
+  "MVPINIT 03 STEP n=<i>/8 rounds=<r> t_ms=<t>",
+  "MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=<e> ok=1",
+  "MVPINIT 05 RESULT pass",
+  "MVPINIT 06 POWER_OFF",
+  "[<s>] reboot: Power down"
+ ],
+ "domains": [
+  {
+   "block": 4328800256,
+   "bootargs": "earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=0",
+   "bytes": 67108864,
+   "gpa": 2147483648,
+   "hart": 1,
+   "hgatp": 9223389629041877044,
+   "hpa": 4563402752,
+   "index": 0,
+   "prefix": "BE_MVP_G0: ",
+   "root": 4328734720,
+   "vmid": 1
+  },
+  {
+   "block": 4328865792,
+   "bootargs": "earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=1",
+   "bytes": 67108864,
+   "gpa": 2147483648,
+   "hart": 2,
+   "hgatp": 9223407221227921468,
+   "hpa": 4630511616,
+   "index": 1,
+   "prefix": "BE_MVP_G1: ",
+   "root": 4328767488,
+   "vmid": 2
+  }
+ ],
+ "exit_classes": [
+  "base",
+  "time",
+  "dbcn_write",
+  "dbcn_read",
+  "dbcn_byte",
+  "srst",
+  "refused",
+  "ipi"
+ ],
+ "final_lines": [
+  {
+   "regex": "^BE_MVP:13\\ RUN_COMPLETE\\ domains=2\\ records=[0-9]+\\ wakes=[0-9]+\\ idle_ticks=0x[0-9a-f]+\\ overlap_ticks=0x[0-9a-f]+\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:13 RUN_COMPLETE domains=2 records=<N> wakes=<N> idle_ticks=<T> overlap_ticks=<T> ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:14\\ SHUTDOWN\\ type=0\\ reason=0$",
+   "template": "BE_MVP:14 SHUTDOWN type=0 reason=0"
+  }
+ ],
+ "image": "hart-start",
+ "outcome": {
+  "after": "BE_MVP:07",
+  "detail": "domain",
+  "domain": 1,
+  "fail": "hart-start",
+  "hart": 9
+ },
+ "rejected": [
+  "panic",
+  "Oops",
+  "WARN",
+  "BUG:",
+  "kernel BUG",
+  "Attempted to kill init",
+  "cut here",
+  "Call Trace:",
+  "Unable to handle kernel",
+  "rcu: INFO:",
+  "soft lockup",
+  "blocked for more than",
+  "segfault",
+  "unhandled signal",
+  "extension is not available in SBI",
+  "sbi_srst_reset",
+  "No working init found",
+  "Failed to execute",
+  "Out of memory",
+  "RESULT fail"
+ ],
+ "scenario": "two-guests",
+ "scenario_sha256": "9978db42902d36734e70ec43e62c5682ddb558f62ce01f4a5cca862be3f1d8b2",
+ "schema": "be-mvp-expect-v1",
+ "terminal_regex": "BE_MVP:14 SHUTDOWN|BE_MVP:FAIL|BE_K3_B3: FAIL",
+ "toolchains": [
+  "gcc"
+ ],
+ "where": [
+  "qemu"
+ ]
+}

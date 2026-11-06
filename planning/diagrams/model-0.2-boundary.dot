@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+//
+// Question: where does untrusted proposal vocabulary stop carrying authority?
+digraph be_model_02_boundary {
+	graph [
+		label="Beryllium Architecture Model 0.2 authority boundary"
+		tooltip="Only validated and sealed canonical state carries authority; roots are derived internally."
+		labelloc=t
+		fontname="Inter,Arial"
+		fontsize=21
+		rankdir=LR
+		nodesep=0.5
+		ranksep=0.7
+		bgcolor="transparent"
+		pad=0.25
+	]
+	node [
+		shape=box
+		style="rounded,filled"
+		fontname="Inter,Arial"
+		fontsize=9
+		fontcolor="#0f172a"
+		color="#475569"
+		margin="0.16,0.09"
+	]
+	edge [
+		fontname="Inter,Arial"
+		fontsize=8
+		color="#475569"
+		fontcolor="#334155"
+		penwidth=1.3
+		arrowsize=0.7
+	]
+
+	inventory [
+		label="Normalized inventory\nextents + platform classes\nno domain authority"
+		fillcolor="#ede9fe"
+		color="#7c3aed"
+	]
+	proposal [
+		label="Untrusted copied proposal\nidentity + source vocabulary\nrequested ownership / channel / rights"
+		fillcolor="#fee2e2"
+		color="#dc2626"
+	]
+
+	subgraph cluster_hs {
+		label="Trusted abstract HS mechanism"
+		color="#0284c7"
+		style="rounded,dashed"
+
+		validator [
+			label="Canonical validator\nclosure / overlap / binding /\nrights / no direct publication"
+			fillcolor="#cffafe"
+			color="#0891b2"
+		]
+		canonical [
+			label="Sealed canonical state\nidentity excludes provenance\nsole authoritative state"
+			fillcolor="#dbeafe"
+			color="#2563eb"
+			penwidth=2
+		]
+		derived [
+			label="Derived enforcement\nroots + mappings + bindings\nno more permissive than canonical"
+			fillcolor="#fef3c7"
+			color="#d97706"
+		]
+		switch [
+			label="Active / pending binding\nsaved state + cache + fence"
+			fillcolor="#ffedd5"
+			color="#ea580c"
+		]
+	}
+
+	management [
+		label="Untrusted management domain\nprivate RW + channel RW"
+		fillcolor="#fee2e2"
+		color="#dc2626"
+	]
+	protected [
+		label="Untrusted protected domain\nprivate RW + channel R"
+		fillcolor="#fee2e2"
+		color="#dc2626"
+	]
+	channel [
+		label="Explicit shared frame\nmanagement RW -> protected R"
+		fillcolor="#dcfce7"
+		color="#16a34a"
+	]
+
+	inventory -> validator [label="bind + validate"]
+	proposal -> validator [label="copy; never authoritative"]
+	validator -> canonical [label="complete validation -> seal"]
+	canonical -> derived [label="internal deterministic derivation"]
+	derived -> switch [label="re-check before activation"]
+	switch -> management [label="checked sequential entry"]
+	switch -> protected [label="checked sequential entry"]
+	management -> channel [label="read + write" color="#16a34a"]
+	channel -> protected [label="read only" color="#16a34a"]
+	proposal -> derived [
+		label="direct publication rejected"
+		style=dashed
+		color="#dc2626"
+	]
+}

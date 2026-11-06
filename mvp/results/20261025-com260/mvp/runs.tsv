@@ -1,0 +1,9 @@
+run	toolchain	image	image_sha256	expect	variant	verdict	stop
+20261025T035453Z	gcc	probes/gcc/probe-platform/be-mvp-boot-pic.img	cede8006150de162d6d152f850ba7079a708a9cade7eaeb990d255b7b387aa2f	probe-platform.json	none	PASS	none
+20261025T072239Z	gcc	probes/gcc/probe-vmid-distinct/be-mvp-boot-pic.img	1f64375150a26e321d81059b5427f093ffad7ee79b83e497b3eddb46d25488bc	probe-vmid-distinct.json	none	PASS	none
+20261025T073053Z	gcc	probes/gcc/probe-vmid-shared/be-mvp-boot-pic.img	0c8de5d68db1f4717bb2a31d147553ee6fa02364fcf487895355fec77aae50dc	probe-vmid-shared.json	none	PASS	none
+20261025T073242Z	gcc	gcc/be-mvp-boot-pic.img	185396d1db7c1a774665342e3a086643a80d719686aaae2980857228a18498ba	two-guests.json	none	PASS	none
+20261026T022021Z	gcc	gcc/be-mvp-boot-pic.img	185396d1db7c1a774665342e3a086643a80d719686aaae2980857228a18498ba	two-guests.json	none	PASS	none
+20261026T052617Z	gcc	gcc/be-mvp-boot-pic.img	185396d1db7c1a774665342e3a086643a80d719686aaae2980857228a18498ba	two-guests.json	none	PASS	none
+20261026T054220Z	clang	clang/be-mvp-boot-pic.img	19a5f2d2e89df83770d60f1731eb6077ca25ec6eb6a2ffacf1d54b276b40925d	two-guests.json	none	PASS	none
+20261026T061327Z	gcc	variants/gcc/payload/be-mvp-boot-pic.img	f9c47dd08ac8e218be838c012ca1e0c613674a4471cbc63efbc9dfe7a2139d05	payload.json	payload	PASS	none

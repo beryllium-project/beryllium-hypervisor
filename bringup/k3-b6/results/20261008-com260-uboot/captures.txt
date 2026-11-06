@@ -1,0 +1,3 @@
+# Raw serial captures (not in the repository; retained privately).
+# run sha256 bytes lines
+20261008T113140Z 19b35b444e2d109be206297dc5e07cfd0607db2164348c3a3b876df8bdf0b390 9842 152

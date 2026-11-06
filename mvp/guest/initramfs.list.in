@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# gen_init_cpio list for the MVP guests' embedded initramfs
+# (planning/mvp-m0-plan.md, Guest software): B7's list with the MVP init,
+# /dev/mem for the init's roles (planning/mvp-m1-plan.md, Q2), and the
+# management module and its device node, misc major 10 at the module's
+# fixed minor, 243 (guest/mgmt/be-mgmt.c; planning/mvp-m2-plan.md, Q2).
+# M7's userland (planning/mvp-m7-plan.md, D-9): /dev/hvc0, the console's
+# tty (major 229, minor 0), for the shell; /dev/null; the static BusyBox
+# as /bin/busybox with one link per applet its applet table names
+# (tools/build-guest.sh requires the links to be exactly those); and the
+# init's shell variant and helper verbs as further links; M7-4's
+# QEMU-only hostile variant, /init-hostile (D-4), one more.
+# tools/build-guest.sh puts the path of the built init in the /init line,
+# of the built module in the /be-mgmt.ko line, and of the built BusyBox in
+# the /bin/busybox line. Linux execs rdinit= with argv[0] set to the name
+# it was given, so the /init-* links select the init's variants, and the
+# shell runs a verb with argv[0] its name (guest/mvp-init.c). Kbuild sets
+# every mtime to KBUILD_BUILD_TIMESTAMP (usr/Makefile:62-68@v7.2).
+dir /dev 0755 0 0
+nod /dev/console 0600 0 0 c 5 1
+nod /dev/mem 0600 0 0 c 1 1
+nod /dev/be-mgmt 0600 0 0 c 10 243
+nod /dev/hvc0 0600 0 0 c 229 0
+nod /dev/null 0666 0 0 c 1 3
+file /init @MVP_GUEST_INIT@ 0755 0 0
+file /be-mgmt.ko @MVP_GUEST_MODULE@ 0644 0 0
+slink /init-exit /init 0777 0 0
+slink /init-rdcycle /init 0777 0 0
+slink /init-shell /init 0777 0 0
+slink /init-hostile /init 0777 0 0
+dir /bin 0755 0 0
+file /bin/busybox @MVP_GUEST_BUSYBOX@ 0755 0 0
+slink /bin/[ busybox 0777 0 0
+slink /bin/ash busybox 0777 0 0
+slink /bin/cat busybox 0777 0 0
+slink /bin/echo busybox 0777 0 0
+slink /bin/false busybox 0777 0 0
+slink /bin/head busybox 0777 0 0
+slink /bin/hexdump busybox 0777 0 0
+slink /bin/ls busybox 0777 0 0
+slink /bin/printf busybox 0777 0 0
+slink /bin/sh busybox 0777 0 0
+slink /bin/sleep busybox 0777 0 0
+slink /bin/test busybox 0777 0 0
+slink /bin/true busybox 0777 0 0
+slink /bin/wc busybox 0777 0 0
+slink /bin/be-anchor /init 0777 0 0
+slink /bin/be-chan /init 0777 0 0
+slink /bin/be-deny /init 0777 0 0

@@ -1,0 +1,10 @@
+STEP 1/3: FROM registry.fedoraproject.org/fedora@sha256:daf897befd7a78a52f11db5ca2229a4923991bb30709932770cb493f7a000cf0
+STEP 2/3: RUN dnf install -y         clang         coreutils         findutils         gcc         git         make         nodejs         python3         rocq &&     dnf clean all
+--> Using cache 0dd29d99a25b79c075e2e48c8253c7768128ec4cc5da3b5ab83719357e7f4610
+--> 0dd29d99a25b
+STEP 3/3: WORKDIR /work
+--> Using cache 42e4671547dd344aa76ade5e6bbf30b00c084deb4dfe521a40c81bc3aabf20dd
+COMMIT localhost/beryllium-model-0.2:fedora44
+--> 42e4671547dd
+Successfully tagged localhost/beryllium-model-0.2:fedora44
+42e4671547dd344aa76ade5e6bbf30b00c084deb4dfe521a40c81bc3aabf20dd

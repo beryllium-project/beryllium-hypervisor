@@ -1,0 +1,247 @@
+{
+  "spdx": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "purpose": "M2's scenario (planning/mvp-m2-plan.md, Scenarios and the harness, Q12): Instance 3 of security model v1 on M0's two Linux domains, each on its own hart: G0, the untrusted host (host_t), and G1, the protected domain (prot_t); a request page the host writes and the protected domain reads, a response page the protected domain writes and the host reads, and a secret page that only the protected domain's root maps; the one management grant, which lets the host pause or terminate the protected domain; the secret; the measured domain; the denied accesses; the management calls with their results; the requests; and the expected outcomes of the scenario and its four runtime negative images. Its two build-time negative images are in negatives/.",
+  "trust": "Data only. tools/policy-check.py runs A1 to A6 and A8, with A7 vacuous, on policy.te with this labeling, these need sets, and this manifest (domains, monitor objects, pages, management grants, the secret, and the measurement's inputs), and writes the authority report; tools/gen-scenario.py writes no header unless that check passes, then checks the rest against src/mvp-layout.h and tools/gen-dts.py, computes the expected measurement over the build outputs, and emits the build header and the checkers' expectation files from it; a change is a rebuild, never a run-time selection. The secret is a public test value (Q5): the denied accesses and the results that depend on it show confidentiality, not its secrecy.",
+  "scope": "M2. Types, labels, domain indices, hart IDs, VMIDs, and GPAs are identifiers, not authority (S1 H03): only the sealed record, the leaves a hart installs, and the sealed management grants that hart 0 alone consults grant anything.",
+  "schema": "be-mvp-scenario-v3",
+  "name": "anchor",
+  "platform": {
+    "harts": 8,
+    "control_hart": 0,
+    "timebase_hz": 24000000
+  },
+  "rings": {
+    "inbound_bytes": 4096,
+    "outbound_bytes": 32768
+  },
+  "limits": {
+    "exit_ceiling": 1048576,
+    "run_budget_ticks": "0x100000000",
+    "hart_start_ticks": "0x1000000",
+    "ready_ticks": "0x4000000",
+    "fail_ack_ticks": "0x1000000"
+  },
+  "policy": "policy.te",
+  "labeling": {
+    "subjects": [
+      {"name": "monitor", "type": "monitor_t"},
+      {"name": "G0", "domain_index": 0, "type": "host_t"},
+      {"name": "G1", "domain_index": 1, "type": "prot_t"}
+    ],
+    "objects": [
+      {"name": "g0_window", "class": "memory", "hpa": "0x110000000", "bytes": "0x4000000", "type": "host_mem_t"},
+      {"name": "g1_window", "class": "memory", "hpa": "0x114000000", "bytes": "0x4000000", "type": "prot_mem_t"},
+      {"name": "request_page", "class": "memory", "hpa": "0x118000000", "bytes": "0x1000", "type": "req_t"},
+      {"name": "response_page", "class": "memory", "hpa": "0x118001000", "bytes": "0x1000", "type": "resp_t"},
+      {"name": "secret_page", "class": "memory", "hpa": "0x118002000", "bytes": "0x1000", "type": "secret_t"},
+      {"name": "request", "class": "channel", "object": "request_page", "type": "req_t"},
+      {"name": "response", "class": "channel", "object": "response_page", "type": "resp_t"},
+      {"name": "accepted_image", "class": "memory", "hpa": "0x102000000", "bytes": "0x34000", "type": "monitor_mem_t"},
+      {"name": "pool", "class": "memory", "hpa": "0x102034000", "bytes": "0x10000", "type": "monitor_mem_t"},
+      {"name": "hart_region", "class": "memory", "hpa": "0x102044000", "bytes": "0x20000", "type": "monitor_mem_t"},
+      {"name": "mvp_region", "class": "memory", "hpa": "0x102064000", "bytes": "0x40000", "type": "monitor_mem_t"},
+      {"name": "staging", "class": "memory", "hpa": "0x108000000", "bytes": "0x400000", "type": "monitor_mem_t"}
+    ]
+  },
+  "need": [
+    {"source": "host_t", "target": "host_mem_t", "class": "memory", "permissions": ["read", "write", "execute", "map"]},
+    {"source": "host_t", "target": "req_t", "class": "memory", "permissions": ["read", "write", "map"]},
+    {"source": "host_t", "target": "req_t", "class": "channel", "permissions": ["send"]},
+    {"source": "host_t", "target": "resp_t", "class": "memory", "permissions": ["read", "map"]},
+    {"source": "host_t", "target": "resp_t", "class": "channel", "permissions": ["receive"]},
+    {"source": "host_t", "target": "prot_t", "class": "domain", "permissions": ["pause", "terminate"]},
+    {"source": "prot_t", "target": "prot_mem_t", "class": "memory", "permissions": ["read", "write", "execute", "map"]},
+    {"source": "prot_t", "target": "req_t", "class": "memory", "permissions": ["read", "map"]},
+    {"source": "prot_t", "target": "req_t", "class": "channel", "permissions": ["receive"]},
+    {"source": "prot_t", "target": "resp_t", "class": "memory", "permissions": ["read", "write", "map"]},
+    {"source": "prot_t", "target": "resp_t", "class": "channel", "permissions": ["send"]},
+    {"source": "prot_t", "target": "secret_t", "class": "memory", "permissions": ["read", "map"]}
+  ],
+  "objects": [
+    {"name": "accepted_image", "class": "memory", "hpa": "0x102000000", "bytes": "0x34000", "owner": "monitor"},
+    {"name": "pool", "class": "memory", "hpa": "0x102034000", "bytes": "0x10000", "owner": "monitor"},
+    {"name": "hart_region", "class": "memory", "hpa": "0x102044000", "bytes": "0x20000", "owner": "monitor"},
+    {"name": "mvp_region", "class": "memory", "hpa": "0x102064000", "bytes": "0x40000", "owner": "monitor"},
+    {"name": "staging", "class": "memory", "hpa": "0x108000000", "bytes": "0x400000", "owner": "monitor"}
+  ],
+  "pages": [
+    {"index": 0, "name": "request_page", "kind": "channel", "channel": "request", "gpa": "0x84000000", "hpa": "0x118000000", "bytes": "0x1000", "writer": 0, "reader": 1, "rights": [["read", "write"], ["read"]]},
+    {"index": 1, "name": "response_page", "kind": "channel", "channel": "response", "gpa": "0x84001000", "hpa": "0x118001000", "bytes": "0x1000", "writer": 1, "reader": 0, "rights": [["read"], ["read", "write"]]},
+    {"index": 2, "name": "secret_page", "kind": "secret", "gpa": "0x84002000", "hpa": "0x118002000", "bytes": "0x1000", "reader": 1, "rights": [[], ["read"]]}
+  ],
+  "grants": [
+    {"from": 0, "to": 1, "permissions": ["pause", "terminate"]}
+  ],
+  "secret": {"page": 2, "bytes": "0x20", "hex": "42452d4d56502d4d322d544553542d5345435245542d30303030303030303030"},
+  "measurement": {"domain": 1, "inputs": ["kernel", "dtb", "secret_page", "configuration_identity"]},
+  "accepted_exits": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "ipi", "denial", "mgmt"],
+  "domains": [
+    {
+      "index": 0,
+      "name": "G0",
+      "prefix": "BE_MVP_G0: ",
+      "hart": 1,
+      "vmid": 1,
+      "root": "0x102034000",
+      "block": "0x102044000",
+      "window": {
+        "gpa": "0x80000000",
+        "hpa": "0x110000000",
+        "bytes": "0x4000000",
+        "rights": ["read", "write", "execute"]
+      },
+      "kernel": "Image",
+      "dtb": "mvp-guest-g0-anchor.dtb",
+      "bootargs": "earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=0 be.role=host be.pages=0x84000000,0x84001000,0x84002000 be.deny=store@0x84001ff8,load@0x84002000,load@0x114000000,load@0x102064000",
+      "program": "/init",
+      "console_input": false,
+      "role": "host",
+      "deny": [
+        {"access": "store", "gpa": "0x84001ff8"},
+        {"access": "load", "gpa": "0x84002000"},
+        {"access": "load", "gpa": "0x114000000"},
+        {"access": "load", "gpa": "0x102064000"}
+      ]
+    },
+    {
+      "index": 1,
+      "name": "G1",
+      "prefix": "BE_MVP_G1: ",
+      "hart": 2,
+      "vmid": 2,
+      "root": "0x10203c000",
+      "block": "0x102054000",
+      "window": {
+        "gpa": "0x80000000",
+        "hpa": "0x114000000",
+        "bytes": "0x4000000",
+        "rights": ["read", "write", "execute"]
+      },
+      "kernel": "Image",
+      "dtb": "mvp-guest-g1-anchor.dtb",
+      "bootargs": "earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=1 be.role=prot be.pages=0x84000000,0x84001000,0x84002000 be.deny=store@0x84000ff8",
+      "program": "/init",
+      "console_input": false,
+      "role": "prot",
+      "deny": [
+        {"access": "store", "gpa": "0x84000ff8"}
+      ]
+    }
+  ],
+  "expect": {
+    "domain_lines": {
+      "host": [
+        "[<s>] Linux version 7.2.0 <banner>",
+        "[<s>] SBI implementation ID=0x4245 Version=0x6",
+        "[<s>] Kernel command line: <bootargs>",
+        "[<s>] riscv-timer: Timer interrupt in S-mode is available via sstc extension",
+        "[<s>] Memory: <m>K/65536K available <rest>",
+        "[<s>] Run /init as init process",
+        "MVPINIT 01 START guest=<g> pid=1",
+        "MVPINIT 02 UNAME release=7.2.0 machine=riscv64",
+        "MVPINIT 03 STEP n=<i>/8 rounds=<r> t_ms=<t>",
+        "MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=<e> ok=1",
+        "MVPINIT 05 RESULT pass",
+        "MVPINIT 06 POWER_OFF",
+        "[<s>] reboot: Power down"
+      ],
+      "prot": [
+        "[<s>] Linux version 7.2.0 <banner>",
+        "[<s>] SBI implementation ID=0x4245 Version=0x6",
+        "[<s>] Kernel command line: <bootargs>",
+        "[<s>] riscv-timer: Timer interrupt in S-mode is available via sstc extension",
+        "[<s>] Memory: <m>K/65536K available <rest>",
+        "[<s>] Run /init as init process",
+        "MVPINIT 01 START guest=<g> pid=1",
+        "MVPINIT 02 UNAME release=7.2.0 machine=riscv64"
+      ]
+    },
+    "rejected": [
+      "panic",
+      "Oops",
+      "WARN",
+      "BUG:",
+      "kernel BUG",
+      "Attempted to kill init",
+      "cut here",
+      "Call Trace:",
+      "Unable to handle kernel",
+      "rcu: INFO:",
+      "soft lockup",
+      "blocked for more than",
+      "segfault",
+      "unhandled signal",
+      "extension is not available in SBI",
+      "sbi_srst_reset",
+      "No working init found",
+      "Failed to execute",
+      "Out of memory",
+      "RESULT fail"
+    ],
+    "counters": {
+      "ipi": {"exact": 1},
+      "time": {"exact": 0},
+      "dbcn_byte": {"exact": 0},
+      "srst": {"exact": 1},
+      "refused": {"exact": 1},
+      "exits": {"min": 1, "max": 1048576},
+      "ring_peak": {"min": 16, "max": 16384}
+    },
+    "exit_classes": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "ipi"],
+    "concurrency": {
+      "overlap": "half-of-shorter",
+      "alternations": 8
+    },
+    "denials": {
+      "0": [
+        {"seq": 1, "access": "store", "kind": "read-only", "gpa": "0x84001ff8"},
+        {"seq": 2, "access": "load", "kind": "unmapped", "gpa": "0x84002000"},
+        {"seq": 3, "access": "load", "kind": "unmapped", "gpa": "0x114000000"},
+        {"seq": 4, "access": "load", "kind": "unmapped", "gpa": "0x102064000"}
+      ],
+      "1": [
+        {"seq": 1, "access": "store", "kind": "read-only", "gpa": "0x84000ff8"}
+      ]
+    },
+    "mgmt": {
+      "0": [
+        {"fid": 0, "target": 0, "result": -4},
+        {"fid": 1, "target": 0, "result": -4},
+        {"fid": 0, "target": 2, "result": -3},
+        {"fid": 7, "target": 1, "result": -2},
+        {"fid": 1, "target": 0, "result": -4, "count": 8},
+        {"fid": 0, "target": 1, "result": 0},
+        {"fid": 1, "target": 1, "result": 0}
+      ],
+      "1": [
+        {"fid": 1, "target": 0, "result": -4},
+        {"fid": 0, "target": 0, "result": -4}
+      ]
+    },
+    "requests": [
+      {"n": 1, "message": "BE-MVP-M2-REQ-1"},
+      {"n": 2, "message": "BE-MVP-M2-REQ-2"},
+      {"n": 3, "message": "BE-MVP-M2-REQ-3"},
+      {"n": 4, "message": "BE-MVP-M2-REQ-4"},
+      {"n": 5, "message": "BE-MVP-M2-REQ-5", "timeout": true}
+    ],
+    "report": {
+      "grants": 12,
+      "flows": [
+        {"from_subject": "G0", "to_subject": "G1", "via_object": "request_page", "declared": "yes"},
+        {"from_subject": "G1", "to_subject": "G0", "via_object": "response_page", "declared": "yes"}
+      ],
+      "management": [
+        {"subject": "G0", "object": "G1", "permissions": ["pause", "terminate"], "source": "allow host_t prot_t : domain { pause terminate };"}
+      ]
+    }
+  },
+  "variants": [
+    {"name": "secret-shared", "toolchains": ["gcc", "clang"], "where": ["qemu"], "change": "the root builder maps the secret page into the host's root with the protected domain's leaf (a compile-time switch in src/mvp-gstage.c); the sealed record is unchanged", "fail": "gstage", "after": "BE_MVP:03", "detail": "page", "page": 2, "domain": 0, "hart": 1, "walked": "0x46000853", "declared": "0x0"},
+    {"name": "response-writable", "toolchains": ["gcc", "clang"], "where": ["qemu"], "change": "the root builder writes W and D into the host's response leaf (a compile-time switch in src/mvp-gstage.c); the sealed record is unchanged", "fail": "gstage", "after": "BE_MVP:03", "detail": "page", "page": 1, "domain": 0, "hart": 1, "walked": "0x460004d7", "declared": "0x46000453"},
+    {"name": "wrong-measurement", "toolchains": ["gcc", "clang"], "where": ["qemu", "board"], "change": "the image's expected measurement is the generator's value with bit 0 of its first byte flipped", "fail": "measurement", "after": "BE_MVP:06", "detail": "measurement", "domain": 1, "hart": 2},
+    {"name": "no-grant-check", "toolchains": ["gcc", "clang"], "where": ["qemu", "board"], "change": "hart 0 delivers every well-formed management request without consulting the grants, and the run budget is 2^27 ticks", "run_budget_ticks": "0x8000000", "fail": "run-timeout", "after": "BE_MVP:10", "detail": "ticks", "terminated": {"domain": 0, "by": 1}, "mgmt": {"0": [], "1": [{"fid": 1, "target": 0, "result": 0}, {"fid": 0, "target": 0, "result": -10}]}},
+    {"name": "anchor-shell", "toolchains": ["gcc", "clang"], "where": ["qemu"], "change": "the host's DTB has rdinit=/init-shell with its role's arguments and the sealed configuration grants it console input; the protected domain keeps its role and is granted none (planning/mvp-m7-plan.md, Q4, Q27); tests/session-typist.py types sessions/shell.json", "pass": true, "rdinit": ["/init-shell", null], "console_input": [true, false], "session": "sessions/shell.json"}
+  ]
+}

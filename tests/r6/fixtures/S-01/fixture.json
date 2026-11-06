@@ -1,0 +1,76 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "S-01",
+  "partition": "static",
+  "declared_delta": null,
+  "base": "arch/riscv/be/r5-beryllium.lds",
+  "base_sha256": "0df278b45d33500af08204b364a3f3e61178a7cd9981cb499025d95411baa56a",
+  "defect_file": "r5-beryllium.lds.defect",
+  "defect_sha256": "d2b1dda91ef7206c4556b5b2543ff4dfe0317ed626e0cfe04e7f1cd8981a2a2f",
+  "defect": {
+    "kind": "linker-script-origin",
+    "summary": "protected root pool origin 0x8021c000 -> 0x80220000",
+    "accepted": "0x8021c000",
+    "malformed": "0x80220000",
+    "source_path": "arch/riscv/be/r5-beryllium.lds",
+    "target": {
+      "line": 74,
+      "line_anchor": ".gstage.root.protected (NOLOAD) : ALIGN(0x4000)",
+      "symbol": "__be_root_protected_start",
+      "slot": null
+    },
+    "anchor": "\t.gstage.root.protected (NOLOAD) : ALIGN(0x4000)\n",
+    "replacement": "\t. = 0x80220000;\n\t.gstage.root.protected (NOLOAD) : ALIGN(0x4000)\n"
+  },
+  "diff": {
+    "sha256": "264c9d37b008fc070e6560f5011a6c31d97d8c3a5c5cdf8c84926fc218dccfb5",
+    "added": 1,
+    "removed": 0,
+    "budget": {
+      "added": 6,
+      "removed": 6
+    },
+    "unified": "--- a/arch/riscv/be/r5-beryllium.lds\n+++ b/arch/riscv/be/r5-beryllium.lds\n@@ -71,6 +71,7 @@\n \t\t__be_root_management_start = .; . += 0x8000;\n \t\t__be_root_management_end = .;\n \t} :reserved\n+\t. = 0x80220000;\n \t.gstage.root.protected (NOLOAD) : ALIGN(0x4000)\n \t{\n \t\t__be_root_protected_start = .; . += 0x8000;\n"
+  },
+  "expected": {
+    "first_rejection_layer": "L5",
+    "outcome": "rejected-at-link",
+    "message_completeness": "primary-only",
+    "primary_message": "R5 protected root moved",
+    "placeholders": {},
+    "stages": {
+      "l3": "pass",
+      "gcc-link": "reject",
+      "clang-link": "reject"
+    },
+    "absent_stages": [
+      "gcc-image-check",
+      "clang-image-check"
+    ],
+    "messages": {
+      "gcc-link": [
+        "R5 protected root moved",
+        "R5 root pools overlap management stack"
+      ],
+      "clang-link": [
+        "R5 protected root moved",
+        "R5 root pools overlap management stack"
+      ]
+    },
+    "prohibited_layers": [
+      "L6",
+      "L7",
+      "L8",
+      "L9",
+      "L10",
+      "L11"
+    ],
+    "qemu": "forbidden",
+    "artifacts": {
+      "quarantined": [],
+      "scratch_elf": false
+    }
+  }
+}

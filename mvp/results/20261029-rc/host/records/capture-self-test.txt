@@ -1,0 +1,71 @@
+ok   scenario, boot hart 0: PASS
+ok   scenario, CRLF: PASS
+ok   scenario, boot hart 6 and its start rule: PASS
+ok   shim-rule variant: PASS
+ok   a domain hart's boot, refused: REFUSED
+ok   ring-full, both fallbacks: PASS
+ok   ring-full, the second hart cut short: PASS
+ok   ring-full, the last DETAIL cut mid-line: PASS
+ok   rdcycle variant, cause 22: PASS
+ok   payload variant: PASS
+ok   exit-budget variant, synthetic: PASS
+ok   sbi-3.0 variant, synthetic: PASS
+ok   probe-platform: PASS
+ok   probe-vmid-distinct: PASS
+ok   probe-vmid-shared: PASS
+ok   probe-vmid-shared, A's value is a fact: PASS
+ok   probe stop: a stale translation under distinct VMIDs: STOP
+ok   probe stop: an IPI not delivered at V=1: STOP
+ok   probe stop: htval not GPA >> 2: STOP
+ok   probe stop: a stale read with fences: STOP
+ok   probe stop: a hart not STOPPED: STOP
+ok   probe: the unfenced stale count is a fact: PASS
+ok   kexec scenario, B7's recorded handoff: PASS
+ok   kexec scenario, the loader's FDT: PASS
+ok   kexec scenario, the image's FDT slot: PASS
+ok   kexec scenario from hart 6: PASS
+ok   kexec refusal from hart 1: REFUSED
+ok   kexec payload: PASS
+ok   kexec probe-platform: PASS
+ok   board run 1, hart 0's drain-batched order (stop 6): FAIL
+ok   te-poc: the channel and three denials: PASS
+ok   te-poc, B7's recorded handoff: PASS
+ok   reader-write: the channel check refuses the reader's W: PASS
+ok   no-inject: the first denied access ends the run: PASS
+ok   te-poc without its report: FAIL
+ok   the denials made by pid 1 (stop 6, Plan revision M1-A): FAIL
+ok   no-inject on the board, both domain harts' own FAIL lines (stop 6, Plan revision M1-B): FAIL
+ok   anchor: the pages, the measurement, four requests, fifteen requests on hart 0, the pause and the termination: PASS
+ok   anchor, B7's recorded handoff: PASS
+ok   secret-shared: the page check refuses the secret page in the host's root: PASS
+ok   response-writable: the page check refuses W in the host's response leaf: PASS
+ok   wrong-measurement: both values, before any hart starts: PASS
+ok   no-grant-check: the protected domain's terminate 0 ends the host, then run-timeout: PASS
+ok   anchor without its measured domain's kernel and DTB: FAIL
+ok   anchor on the board: hart 2's PONG spv=0 inside its request 1's wait (stop 6, Plan revision M2-A): PASS
+ok   anchor on the board, the PING received at its wait's first tick: PASS
+ok   anchor on the board, the PING received at its wait's last tick: PASS
+ok   anchor, a REQUEST's digest one digit off: FAIL
+ok   anchor, a BE_MVP:MGMT line removed: FAIL
+ok   anchor, a denied request's result -3 for -4: FAIL
+ok   anchor, FID 7's request on hart 0: FAIL
+ok   anchor, the host's refused=0: FAIL
+ok   anchor, MEASURED one digit off: FAIL
+ok   anchor, DOMAIN_TERMINATED's sha256 one digit off: FAIL
+ok   anchor, DOMAIN_TERMINATED after the host's shutdown: FAIL
+ok   anchor, a G0 line after the host's shutdown: FAIL
+ok   anchor, a RESULT line from the protected domain: FAIL
+ok   anchor, the protected domain's PONG spv=0 before its first request: FAIL
+ok   parse: both domains' lines
+ok   parse: hart 0's stream
+ok   parse: no line finding
+ok   parse: the loader's lines
+ok   parse: alternations
+ok   board stop 6: the alternation finding alone
+ok   pid 1's three handled faults, rejected 'unhandled signal' alone
+ok   board no-inject stop 6: both domain harts' fallback lines and the guest lines after the first FAIL, exactly
+ok   M0's capture fails the current pins on the kernel alone
+ok   M1's capture fails the current pins on the kernel alone
+ok   a domain line is never terminal
+ok   board anchor stop 6 (Plan revision M2-A): the probe in hart 2's request 1's wait among the costs, the counts as recorded
+BE_MVP_CAPTURE_SELF_TEST: PASS cases=70 failed=0

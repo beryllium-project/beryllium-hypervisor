@@ -1,0 +1,157 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "D-13",
+  "partition": "dynamic",
+  "base": "arch/riscv/be/r5-runtime.c",
+  "defect_file": "r5-runtime.c.defect",
+  "base_sha256": "a221ce8ebb77e3feaa9d7799e3eb296fb8cd7aa9190e20f1970d7e9c95bcc6e4",
+  "defect_sha256": "9b4dc3167f6a337c71b65fea7d55b8768a8035e0cdef536808485b2392ec7426",
+  "change": {
+    "added": 6,
+    "removed": 3,
+    "limit": 6,
+    "hunks": [
+      {
+        "line": 357,
+        "removed": [],
+        "added": [
+          "\tstatic volatile int publish_trips = 2;"
+        ]
+      },
+      {
+        "line": 377,
+        "removed": [
+          "\tif (be_r5_publish_target(&be_r5_control, &entry, target_frame,",
+          "\t\t\t\t &transition) != BE_R5_ERROR_NONE)",
+          "\t\tbe_r5_runtime_terminal(be_r5_control.error);"
+        ],
+        "added": [
+          "\twhile (publish_trips-- > 0) {",
+          "\t\tif (be_r5_publish_target(&be_r5_control, &entry, target_frame,",
+          "\t\t\t\t\t &transition) != BE_R5_ERROR_NONE)",
+          "\t\t\tbe_r5_runtime_terminal(be_r5_control.error);",
+          "\t}"
+        ]
+      }
+    ],
+    "sha256": "aa4d099d77db322307367c58cd9bdd15ac066475fc1df15f4de755ecd647000a"
+  },
+  "declared_delta": {
+    "kind": "monitor-range",
+    "sections": [
+      ".monitor.text",
+      ".monitor.rodata",
+      ".monitor.data"
+    ],
+    "bytes": null
+  },
+  "accepted_image_check": {
+    "disposition": "pass",
+    "messages": null
+  },
+  "expected": {
+    "outcome": "terminated-fail-closed",
+    "error_class": "invalid-phase",
+    "last_marker": "BE_R5:04",
+    "qemu_status": 0,
+    "shutdown": "monitor-issued-srst",
+    "guest_entered": false,
+    "preempted_entry": null,
+    "console": [
+      "BE_R3:01 BOOT_VALIDATED",
+      "BE_R3:02 R1_DERIVED",
+      "BE_R3:03 R2_BUILT_REWALKED",
+      "BE_R3:04 HS_VS_STATE_VERIFIED",
+      "BE_R3:05 BINDING_PREPARED",
+      "BE_R3:06 HGATP_FENCED_PUBLISHED",
+      "BE_R3:07 ENTER_MANAGEMENT_VS pc=0x40010000",
+      "BE_R4:01 ENTRY_ARMED_IMPORTED",
+      "BE_R4:02 EXPECTED_DENIED_LOAD pc=0x40010014 resume=0x40010018",
+      "BE_R4:03 PRIVATE_EVENT pc=0x40010030 resume=0x40010034",
+      "BE_R5:01 R4_COMPLETE_IMPORTED sepc=0x40010034",
+      "BE_R5:02 PENDING_PROTECTED direction=management-to-protected",
+      "BE_R5:03 PROTECTED_HGATP_WRITTEN_FENCED_READBACK",
+      "BE_R5:04 PROTECTED_TARGET_VERIFIED pc=0x40011000",
+      "BE_R5:FAIL invalid-phase"
+    ],
+    "forbidden_markers": [
+      "BE_R5:12",
+      "BE_R5:SRST_RETURNED",
+      "GENERAL_GUEST_SBI",
+      "HGATP_WRITE_AFTER_ENTRY",
+      "HFENCE_AFTER_ENTRY",
+      "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+      "SHARED_STORE_BY_PROTECTED"
+    ],
+    "guest_entries": [
+      {
+        "pc": "0000000040010000",
+        "hstatus": "0000000200700100",
+        "s0": "0000000000000000",
+        "a0": "0000000000000000",
+        "a1": "0000000000000000"
+      },
+      {
+        "pc": "0000000040010018",
+        "hstatus": "0000000200700140",
+        "s0": "0000000000000011",
+        "a0": "0000000000000000",
+        "a1": "0000000000000000"
+      }
+    ],
+    "guest_exits": [
+      {
+        "label": "management-denied-private-load",
+        "scause": "0000000000000015",
+        "sepc": "0000000040010014",
+        "stval": "0000000040001000",
+        "htval": "0000000010000400"
+      },
+      {
+        "label": "management-private-event",
+        "scause": "000000000000000a",
+        "sepc": "0000000040010030",
+        "stval": "0000000000000000",
+        "htval": "0000000000000000"
+      }
+    ],
+    "root_installs": [
+      "800000000008021c"
+    ],
+    "final_registers": {
+      "s0": "0000000000000011",
+      "s1": "0000000000000000",
+      "a0": "0000000000000011",
+      "a1": "0000000000000022",
+      "a6": "0000000000000000",
+      "a7": "0000000000000001"
+    },
+    "backing": {
+      "management_private": 17,
+      "protected_private": null,
+      "shared": 34,
+      "witnesses": [
+        {
+          "register": "s0",
+          "value": 17,
+          "source": "management_private"
+        },
+        {
+          "register": "a1",
+          "value": 34,
+          "source": "shared"
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "scause": "accepted",
+    "sepc": "accepted",
+    "stval": "accepted",
+    "htval": "accepted",
+    "registers": "accepted",
+    "class": "plan"
+  }
+}

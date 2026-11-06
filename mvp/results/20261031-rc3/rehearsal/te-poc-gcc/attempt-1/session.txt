@@ -1,0 +1,20 @@
+label=te-poc/gcc
+kind=scenario
+file=te-poc-gcc.img
+stage=done
+error=-
+qemu_exit=0
+seconds=9.7
+sbi_version=2.0
+boot_hart=3
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2584576
+crc32=3ebc6d92
+fdt=0xff7383d0
+fdt_end=0xff73edd8
+rule_hart=3
+shim_fdt=0xff7383d0
+terminal=BE_MVP:14 SHUTDOWN type=0 reason=0
+console_bytes=18679
+console_sha256=23739b03d05c92541622fd58182fba7269106616170ef8103b34b23101f2c30f
+BE_MVP_UBOOT_SESSION[te-poc/gcc]: PASS boot_hart=3 qemu_exit=0 fdt=0xff7383d0 crc32=3ebc6d92 seconds=9.7

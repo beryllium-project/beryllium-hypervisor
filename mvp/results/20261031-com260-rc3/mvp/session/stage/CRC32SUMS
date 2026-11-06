@@ -1,0 +1,14 @@
+f7498cb3  be-mvp-probe-platform-gcc.img
+512b4ad1  be-mvp-probe-vmid-distinct-gcc.img
+e958de6a  be-mvp-probe-vmid-shared-gcc.img
+41f70706  be-mvp-two-guests-gcc.img
+8596ee15  be-mvp-two-guests-clang.img
+bb510134  be-mvp-te-poc-gcc.img
+d20993fc  be-mvp-te-poc-clang.img
+5260c94b  be-mvp-anchor-gcc.img
+b590e597  be-mvp-anchor-clang.img
+6da63353  be-mvp-two-guests-payload-gcc.img
+e6b98d09  be-mvp-te-poc-reader-write-gcc.img
+e9c20373  be-mvp-te-poc-no-inject-gcc.img
+1b289a63  be-mvp-anchor-wrong-measurement-gcc.img
+4f54f7d1  be-mvp-anchor-no-grant-check-gcc.img

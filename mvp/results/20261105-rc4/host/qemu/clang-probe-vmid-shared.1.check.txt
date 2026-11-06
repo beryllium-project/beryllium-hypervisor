@@ -1,0 +1,18 @@
+BE_MVP_COUNTS: boot_hart=3 rule_hart=3 started=3 g0=0 g1=0
+BE_MVP_PROBE_VALUES: vmid-shared mode=shared gpa=0x80100000 hgatp_a=0x8000100000102034 hgatp_b=0x800010000010203c value_a=0xa5a5a5a5a5a5a5a5 value_b=0x5a5a5a5a5a5a5a5a reads=10 before=0xa5a5a5a5a5a5a5a5 after=0x5a5a5a5a5a5a5a5a
+BE_MVP_LOG: contract=probe/complete r2=kept state=closed count=9 lines=12 bytes=3220 boot_image=nominal reference=4dec27e362a490a9 export=cb3f891e5bda128b
+BE_MVP_LOG_REGISTERS: at=barrier r0=8b75e377f6c98a4a2a7a2a9cb409ae72109e1e9cb2728ecd47fa1c6b9052df98 r1=d8a23ef65f85d1c1c5071e53d01c555c94d96848dfdff096cb9d09c6c3e7eb87 r2=0000000000000000000000000000000000000000000000000000000000000000 r3=0000000000000000000000000000000000000000000000000000000000000000
+BE_MVP_LOG_REGISTERS: at=terminal r0=8b75e377f6c98a4a2a7a2a9cb409ae72109e1e9cb2728ecd47fa1c6b9052df98 r1=d8a23ef65f85d1c1c5071e53d01c555c94d96848dfdff096cb9d09c6c3e7eb87 r2=0000000000000000000000000000000000000000000000000000000000000000 r3=0000000000000000000000000000000000000000000000000000000000000000
+BE_MVP_LOG_REGISTERS: at=replayed r0=8b75e377f6c98a4a2a7a2a9cb409ae72109e1e9cb2728ecd47fa1c6b9052df98 r1=d8a23ef65f85d1c1c5071e53d01c555c94d96848dfdff096cb9d09c6c3e7eb87 r2=0000000000000000000000000000000000000000000000000000000000000000 r3=0000000000000000000000000000000000000000000000000000000000000000 (unprotected)
+BE_MVP_LOG_TICKS: barrier=0x2a1b
+BE_MVP_LOG_RECORD: seq=0 object=monitor-text stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=1 object=monitor-rodata stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=2 object=monitor-input stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=3 object=mvp-text stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=4 object=mvp-rodata stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=5 object=core-identity stream=1 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=6 object=console-grants stream=1 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=7 object=policy-absent stream=1 reference=equal recomputed=none
+BE_MVP_LOG_RECORD: seq=8 object=close stream=255 reference=equal recomputed=none
+BE_MVP_RESULT: PASS terminal=shutdown-requested
+BE_MVP_CAPTURE[direct probe-vmid-shared]: PASS

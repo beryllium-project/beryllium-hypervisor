@@ -1,0 +1,94 @@
+Serial log (written by hand on 2026-10-31 from the operator's picocom log,
+which is outside the repository and is not retained): the operator's
+session, `picocom -b 115200 /dev/ttyUSB0 --logfile
+<home>/src/spacemit-k3/logs/boot-7.log` in the tmux session `k3-console-1`
+on the workstation `l1`, had been running since before the M1 campaigns;
+since release candidate 2's session a second window had been opened in
+that tmux session, so the console tool's target was given as
+`k3-console-1:0`, its picocom window, after the tool's own check had
+stopped once (04:13 UTC, `the pane of k3-console-1 runs copilot, not
+picocom`; nothing was typed and no reset was made). For this session, as
+planning/mvp-m5-plan.md decides (decision 2), the console tool typed at
+U-Boot through that window: 74 sends making 73 lines, each echo-compared
+before its Enter, and 91 keystrokes in all, each logged with its time and
+log offset in the session's `keys.log`; the responsible human did not type
+during the session, confirmed the board free and the recorded `bootcmd`
+(`K3_ENV_CONFIRM`, the first 12 hexadecimal digits of its SHA-256, equal
+to release candidate 2's) before the session, and was present at the
+install and the restore. The segment of this campaign,
+`20261031-com260-rc3`, begins at log line 155,022 (04:14 UTC) with
+Fedora's clean shutdown over SSH (`systemctl reboot`, which halts this
+board at `reboot: Restarting system`) after the preflight (04:12 UTC) and
+the staging of the fourteen images on the `beryllium` partition, and runs
+to the end of the log as read (line 164,840, Fedora's login prompt after
+the restore, 04:37 UTC). It holds 39 `k3ctl` resets (`reset_reply=OK`
+each time; the first on Fedora down, 18 at an idle U-Boot prompt after a
+completed command, 20 after a run's terminal marker and its tail wait)
+and 39 boots, one per reset and none unexplained: the boot ROM's terse
+lines (`try sd...`, `ERROR:   CMD8`), `U-Boot SPL 2022.10 (May 21 2026 -
+07:43:32 +0000)` with its DDR line, `U-Boot 2022.10 (May 21 2026 -
+07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395` with its device
+probes, `WDT:   Started watchdog@d4014000 with servicing (60s timeout)`,
+the `227 bytes read` of `env_k3.txt`, and `Autoboot in 3 seconds`. Two
+boots (04:14 UTC) were the environment records, `s` then `printenv` at
+each fresh prompt (the two records equal to each other and to release
+candidate 2's records 1 and 3, SHA-256 `72443954…`; V empty); one (04:15
+UTC) the install, `s` then the seven `setenv` lines, `printenv`, and
+`saveenv` (`OK`); thirteen the thirteen selects (`s`, `setenv be_image
+<file>`, `printenv`, `saveenv`), each at a fresh prompt at the first
+attempt: no `s` was lost or retried, no unplanned boot occurred, and no
+tmux pane-mode cancel was needed. Twenty boots were the counted runs,
+each launched by its own reset with Fedora down, the saved `bootcmd`
+running `be_boot`: `nvme scan`, `2584576 bytes read in 2 ms`, `md5 for
+140000000 ... 140276fff ==> <the staged image's MD5>`, `Moving Image from
+0x140000000 to 0x108000000, end=108277000`, `## Flattened Device Tree
+blob at 2fbe8aa50`, `Loading Device Tree to 00000002fbd5d000, end
+00000002fbd6f2ef ... OK` (the same addresses in all twenty, and release
+candidate 2's), `fail to get alias node efuse_power`, `Starting kernel
+...`, `Removing MTD device #0 (nor0) with use count 1`, the shim line
+(`fdt=0x00000002fbd5d000`), the M6 prelude `BE_MVP:00 BOOT_VALIDATED` and
+`BE_MVP:00 CONFIG_SEALED inventory=<n> authorities=<n> roots=2
+harts=0,1,2 identity=<16 hex>` (two-guests and the three probes
+`inventory=14 authorities=2 … identity=16bd3ebb3796bb68`, te-poc `15`,
+`4`, `6b72438740dba149`, anchor `17`, `7`, `14bfd613098573f2`; no
+`BE_R3:` line appears in the segment), and the monitor's lines through
+the run's terminal marker 11 to 18 s after the reset: `BE_MVP:14 SHUTDOWN
+type=0 reason=0` fifteen times (the three GCC probes, `probe-platform`,
+`probe-vmid-distinct`, and `probe-vmid-shared`; `two-guests`, three GCC
+and one Clang, each with `exits=157` on both domain harts and
+`records=138 wakes=2`, M0's counts; `te-poc`, three GCC and one Clang,
+each with both `MVPINIT 07 CHANNEL` lines, the three `BE_MVP:DENY` lines
+(`unmapped cause=0x15 injected=0x5 gpa=0x84001000`, `read-only cause=0x17
+injected=0x7 gpa=0x84000ff8`, and the reader's second), `exits=163` and
+`exits=167`, and `records=146 wakes=2`, M1-B's counts; `anchor`, three
+GCC and one Clang, each with domain 1 `DOMAIN_PAUSED` and
+`DOMAIN_TERMINATED` at `exits=132`, domain 0 `exits=248 ... refused=1`,
+and `records=174 wakes=16`, M2-A's counts), `BE_MVP:FAIL payload` once
+(before any hart started), `BE_MVP:FAIL gstage` once (`reader-write`,
+with its `DETAIL` line, no domain run), `BE_MVP:FAIL guest-page-fault`
+once (`no-inject`), `BE_MVP:FAIL measurement` once
+(`wrong-measurement`), and `BE_MVP:FAIL run-timeout` once
+(`no-grant-check`, `DETAIL ticks=0x8000000`); every count equals release
+candidate 2's. The last three boots (04:36 UTC) were the restore: `s`,
+`setenv bootcmd "${be_orig_bootcmd}"`, the six `setenv be_*` deletions,
+`printenv`, `saveenv` (`OK`); then `s` and `printenv` at a fresh prompt
+(record 3, whose normalized text equals record 1's, SHA-256
+`72443954…`); then an untouched autoboot of the restored `bootcmd` into
+Fedora Linux 45 (Server) with kernel `7.3.0-65.1.riscv64.omni.fc45.riscv64`
+(the release the saved `f45_rel` names, as in release candidate 2) to its
+login prompt, the board's address in its `Web console` banner, and the
+board answered over SSH with its new boot ID before the preflight after
+the session (04:38 UTC). The preflight before the session had found
+Fedora on kernel `7.3.1-300.0.riscv64.omni.fc45.riscv64`: the log shows
+that boot (00:59 UTC, before this session) as a one-shot test typed by
+hand at the U-Boot prompt (`setenv testrel 7.3.1-300.0…`, three `load`
+lines, `booti`) with nothing saved, so the preflight pair differs in the
+kernel line and the kernel's reserved extents while the saved environment
+is unchanged; the facts the MVP depends on (the partition, the hart and
+extension lines, the firmware identity, the region check) are equal. No
+reset was made by hand and no hand recovery was needed. No line with
+`OpenSBI`, `Platform Name`, `Domain0`, `PMP`, `Firmware Base`, or
+`Runtime SBI` appears in the segment, as in the M0, M1, M2, RC1, and RC2
+campaigns (mvp/README.md open item 40): the firmware is identified only
+by Fedora's log, `SBI implementation ID=0x1 Version=0x10006`, which the
+preflights before and after record.

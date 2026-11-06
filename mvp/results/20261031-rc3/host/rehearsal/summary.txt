@@ -1,0 +1,23 @@
+uboot_bin_sha256=d96d1c22c67bfa613b51dc8b0b7e14e4c968b2499b4231091172af3e9a068696
+MVP_PIN_UBOOT_TAG=v2022.10
+MVP_PIN_UBOOT_COMMIT=4debc57a3da6c3f4d3f89a637e99206f4cea0a96
+MVP_PIN_UBOOT_DEFCONFIG=qemu-riscv64_smode_defconfig
+MVP_PIN_UBOOT_BUILD_SCRIPT=bringup/k3-b3/tests/build-uboot.sh
+MVP_PIN_UBOOT_BIN_SHA256=d96d1c22c67bfa613b51dc8b0b7e14e4c968b2499b4231091172af3e9a068696
+opensbi_fw_sha256=78f14d30c95181704b6163b4c114f88483cd6c2c89e642812cd3856d01c6a42b
+qemu=QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)
+machine=virt,aia=aplic-imsic,aia-guests=7
+cpu=rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true
+smp=8
+memory=8G
+disk=raw, GPT, one partition (start 2048, 131072 sectors, Linux filesystem, name beryllium), ext4 labelled beryllium, virtio-blk
+qemu_images=auto
+limits=be_ld loads virtio 0:${be_part} (1), not nvme; be_ld digests with crc32, not md5sum as on the board (the BSP crc32 prints nothing; upstream qemu-riscv64_smode_defconfig has no md5sum); be_boot has no nvme scan; be_orig_bootcmd is a stand-in; the be_* lines and bootcmd are set in RAM and run by a typed boot, as QEMU has no saveenv; the BSP saved-environment storage is not exercised
+BE_MVP_UBOOT_REHEARSAL[two-guests/gcc]: PASS attempts=1 refused=0 boot_harts=5 session=PASS check=PASS check_exit=0 qemu_exit=0 image=1049f9755804 crc32=c41a6ba0
+BE_MVP_UBOOT_REHEARSAL[te-poc/gcc]: PASS attempts=1 refused=0 boot_harts=3 session=PASS check=PASS check_exit=0 qemu_exit=0 image=20337aec42da crc32=3ebc6d92
+BE_MVP_UBOOT_REHEARSAL[anchor/gcc]: PASS attempts=1 refused=0 boot_harts=7 session=PASS check=PASS check_exit=0 qemu_exit=0 image=a321e0b3270e crc32=d78da5ed
+BE_MVP_UBOOT_REHEARSAL[two-guests/clang]: PASS attempts=1 refused=0 boot_harts=0 session=PASS check=PASS check_exit=0 qemu_exit=0 image=f9badc03e260 crc32=007b82b3
+BE_MVP_UBOOT_REHEARSAL[te-poc/clang]: PASS attempts=1 refused=0 boot_harts=7 session=PASS check=PASS check_exit=0 qemu_exit=0 image=895d5dd9604e crc32=57e4ff5a
+BE_MVP_UBOOT_REHEARSAL[anchor/clang]: PASS attempts=1 refused=0 boot_harts=0 session=PASS check=PASS check_exit=0 qemu_exit=0 image=0d5c8257a68e crc32=307d8931
+BE_MVP_UBOOT_REHEARSAL[fallthrough]: PASS attempts=1 refused=0 boot_harts=7 session=PASS check=- check_exit=- qemu_exit=killed:-9 image=1049f9755804 crc32=c41a6ba0 (FALLTHROUGH, no Starting kernel)
+BE_MVP_UBOOT_REHEARSAL: PASS cases=7 attempts=7 refused=0 uboot=d96d1c22c67b opensbi=78f14d30c951 qemu=10.2.2

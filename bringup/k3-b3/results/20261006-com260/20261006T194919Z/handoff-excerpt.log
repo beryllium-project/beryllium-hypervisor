@@ -1,0 +1,40 @@
+[   1.929] 227 bytes read in 0 ms
+[   1.932] ## Info: input data size = 228 = 0xE4
+[   1.936] load env_k3.txt from bootfs successful
+[   1.942] Autoboot in 3 seconds
+=> [  25.579] loady 0x140000000 && booti 0x140000000 - ${fdtcontroladdr}
+## Ready for binary (ymodem) download to 0x140000000 at 115200 bps...
+C[  71.849] ## Total Size      = 0x00035000 = 217088 Bytes
+[  71.851] ## Start Addr      = 0x140000000
+[  71.855] Moving Image from 0x140000000 to 0x102200000, end=102235000
+[  71.861] ## Flattened Device Tree blob at 2fbe8aa50
+[  71.866]    Booting using the fdt blob at 0x2fbe8aa50
+[  71.871]    Loading Device Tree to 00000002fbd6b000, end 00000002fbd7d2ef ... OK
+fail to get alias node efuse_power
+[  72.082] 
+Starting kernel ...
+
+[  72.083] Removing MTD device #0 (nor0) with use count 1
+BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000102200000 fdt=0x00000002fbd6b000 dest=0x0000000102000000 bytes=0x0000000000034000
+BE_R3:01 BOOT_VALIDATED
+BE_R3:02 R1_DERIVED
+BE_R3:03 R2_BUILT_REWALKED
+BE_R3:04 HS_VS_STATE_VERIFIED
+BE_R3:05 BINDING_PREPARED
+BE_R3:06 HGATP_FENCED_PUBLISHED
+BE_R3:07 ENTER_MANAGEMENT_VS pc=0x40010000
+BE_R4:01 ENTRY_ARMED_IMPORTED
+BE_R4:02 EXPECTED_DENIED_LOAD pc=0x40010014 resume=0x40010018
+BE_R4:03 PRIVATE_EVENT pc=0x40010030 resume=0x40010034
+BE_R5:01 R4_COMPLETE_IMPORTED sepc=0x40010034
+BE_R5:02 PENDING_PROTECTED direction=management-to-protected
+BE_R5:03 PROTECTED_HGATP_WRITTEN_FENCED_READBACK
+BE_R5:04 PROTECTED_TARGET_VERIFIED pc=0x40011000
+BE_R5:05 EXPECTED_DENIED_LOAD pc=0x40011014 resume=0x40011018
+BE_R5:06 EXPECTED_DENIED_SHARED_STORE pc=0x40011024 resume=0x40011028
+BE_R5:07 SWITCH_EVENT pc=0x40011030 saved=0x40011034
+BE_R5:08 PENDING_MANAGEMENT direction=protected-to-management
+BE_R5:09 MANAGEMENT_HGATP_WRITTEN_FENCED_READBACK
+BE_R5:10 MANAGEMENT_TARGET_VERIFIED pc=0x40010034
+BE_R5:11 FINAL_EVENT pc=0x40010038 s0=17 a0=17 a1=34 shared=34 protected=51
+BE_R5:12 SHUTDOWN type=0 reason=0

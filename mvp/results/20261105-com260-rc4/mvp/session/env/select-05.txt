@@ -1,0 +1,7 @@
+attempt_utc=2026-11-05T22:28:43Z
+be_image=be-mvp-two-guests-clang.img
+printenv_be_image=be_image=be-mvp-two-guests-clang.img
+select-05-check_sha256=530de479063f3f9f0f2499a14b70c0c238d898ad5a4aded3a83765fdc39378ae
+select_check=PASS
+saveenv=OK
+verdict=PASS

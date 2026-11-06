@@ -1,0 +1,14 @@
+run=20261006T061228Z
+image=<repo>/build/k3-b0/be-k3-b0.bin
+image_sha256=fc6e12daca1cd8381463b2b93341c93699ba4bb08e29295e6271a04c3e7d36d3
+k3_ssh=fedora@k3e
+loader_mode=auto
+serial_source=none:load-only
+boot_id_before=6009d52b-e743-4057-ae6e-73cdc44edf49
+board_kernel=7.1.5-201.0.riscv64.omni.fc44.riscv64
+board_lockdown=[none] integrity confidentiality
+remote_image_sha256=fc6e12daca1cd8381463b2b93341c93699ba4bb08e29295e6271a04c3e7d36d3
+loader=kexec_load entry=0x102000000 fdt=0x102007000 image_memsz=0x7000 fdt_bytes=41088 kexec_loaded=1
+kexec_loaded=1
+kexec_loaded_after_unload=0
+outcome=load-only

@@ -1,0 +1,190 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "D-05",
+  "partition": "dynamic",
+  "base": "arch/riscv/be/r5-guest.S",
+  "defect_file": "r5-guest.S.defect",
+  "base_sha256": "cd1a0d719418b4a5b07b7fcace5b432be210a425ea4f7bfa8dff6f89d2cc764b",
+  "defect_sha256": "a705a4cc6ab46da750164f50dd3dd27e132153d011037d0f40f59d83c5a74a11",
+  "change": {
+    "added": 1,
+    "removed": 1,
+    "limit": 6,
+    "hunks": [
+      {
+        "line": 65,
+        "removed": [
+          "\taddi\ta0, s0, 0\t\t\t/* +0x28 reports 51 */"
+        ],
+        "added": [
+          "\tjr\tt2\t\t\t\t/* +0x28 defect: fetch shared 0x40002000 */"
+        ]
+      }
+    ],
+    "sha256": "f61bd516a9e635f930c3acc6e43f1c0b52dc544097bb190afd1e22ebf1f21ca3"
+  },
+  "declared_delta": {
+    "kind": "guest-word",
+    "domain": "protected",
+    "slot": 1073811496,
+    "file_offset": 208936,
+    "base_word": "00040513",
+    "defect_word": "00038067",
+    "bytes": 4
+  },
+  "accepted_image_check": {
+    "disposition": "reject-with",
+    "messages": [
+      "{toolchain}: protected fixture slot 40011028 is 00038067, expected 00040513"
+    ]
+  },
+  "expected": {
+    "outcome": "terminated-fail-closed",
+    "error_class": "cause",
+    "last_marker": "BE_R5:06",
+    "qemu_status": 0,
+    "shutdown": "monitor-issued-srst",
+    "guest_entered": true,
+    "preempted_entry": null,
+    "console": [
+      "BE_R3:01 BOOT_VALIDATED",
+      "BE_R3:02 R1_DERIVED",
+      "BE_R3:03 R2_BUILT_REWALKED",
+      "BE_R3:04 HS_VS_STATE_VERIFIED",
+      "BE_R3:05 BINDING_PREPARED",
+      "BE_R3:06 HGATP_FENCED_PUBLISHED",
+      "BE_R3:07 ENTER_MANAGEMENT_VS pc=0x40010000",
+      "BE_R4:01 ENTRY_ARMED_IMPORTED",
+      "BE_R4:02 EXPECTED_DENIED_LOAD pc=0x40010014 resume=0x40010018",
+      "BE_R4:03 PRIVATE_EVENT pc=0x40010030 resume=0x40010034",
+      "BE_R5:01 R4_COMPLETE_IMPORTED sepc=0x40010034",
+      "BE_R5:02 PENDING_PROTECTED direction=management-to-protected",
+      "BE_R5:03 PROTECTED_HGATP_WRITTEN_FENCED_READBACK",
+      "BE_R5:04 PROTECTED_TARGET_VERIFIED pc=0x40011000",
+      "BE_R5:05 EXPECTED_DENIED_LOAD pc=0x40011014 resume=0x40011018",
+      "BE_R5:06 EXPECTED_DENIED_SHARED_STORE pc=0x40011024 resume=0x40011028",
+      "BE_R5:FAIL cause"
+    ],
+    "forbidden_markers": [
+      "BE_R5:12",
+      "BE_R5:SRST_RETURNED",
+      "GENERAL_GUEST_SBI",
+      "HGATP_WRITE_AFTER_ENTRY",
+      "HFENCE_AFTER_ENTRY",
+      "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+      "SHARED_STORE_BY_PROTECTED"
+    ],
+    "guest_entries": [
+      {
+        "pc": "0000000040010000",
+        "hstatus": "0000000200700100",
+        "s0": "0000000000000000",
+        "a0": "0000000000000000",
+        "a1": "0000000000000000"
+      },
+      {
+        "pc": "0000000040010018",
+        "hstatus": "0000000200700140",
+        "s0": "0000000000000011",
+        "a0": "0000000000000000",
+        "a1": "0000000000000000"
+      },
+      {
+        "pc": "0000000040011000",
+        "hstatus": "0000000200700100",
+        "s0": "0000000000000000",
+        "a0": "0000000000000000",
+        "a1": "0000000000000000"
+      },
+      {
+        "pc": "0000000040011018",
+        "hstatus": "0000000200700140",
+        "s0": "0000000000000033",
+        "a0": "0000000000000000",
+        "a1": "0000000000000000"
+      },
+      {
+        "pc": "0000000040011028",
+        "hstatus": "0000000200700140",
+        "s0": "0000000000000033",
+        "a0": "0000000000000000",
+        "a1": "0000000000000022"
+      }
+    ],
+    "guest_exits": [
+      {
+        "label": "management-denied-private-load",
+        "scause": "0000000000000015",
+        "sepc": "0000000040010014",
+        "stval": "0000000040001000",
+        "htval": "0000000010000400"
+      },
+      {
+        "label": "management-private-event",
+        "scause": "000000000000000a",
+        "sepc": "0000000040010030",
+        "stval": "0000000000000000",
+        "htval": "0000000000000000"
+      },
+      {
+        "label": "protected-denied-private-load",
+        "scause": "0000000000000015",
+        "sepc": "0000000040011014",
+        "stval": "0000000040000000",
+        "htval": "0000000010000000"
+      },
+      {
+        "label": "protected-denied-shared-store",
+        "scause": "0000000000000017",
+        "sepc": "0000000040011024",
+        "stval": "0000000040002000",
+        "htval": "0000000010000800"
+      },
+      {
+        "label": "cause20@40002000",
+        "scause": "0000000000000014",
+        "sepc": "0000000040002000",
+        "stval": "0000000040002000",
+        "htval": "0000000010000800"
+      }
+    ],
+    "root_installs": [
+      "800000000008021c"
+    ],
+    "final_registers": {
+      "s0": "0000000000000033",
+      "s1": "0000000000000000",
+      "a0": "0000000000000000",
+      "a1": "0000000000000022",
+      "a6": "0000000000000000",
+      "a7": "0000000000000000"
+    },
+    "backing": {
+      "management_private": 17,
+      "protected_private": 51,
+      "shared": 34,
+      "witnesses": [
+        {
+          "register": "s0",
+          "value": 51,
+          "source": "protected_private"
+        },
+        {
+          "register": "a1",
+          "value": 34,
+          "source": "shared"
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "scause": "plan",
+    "sepc": "plan",
+    "stval": "derived",
+    "htval": "derived",
+    "registers": "derived",
+    "class": "plan"
+  }
+}

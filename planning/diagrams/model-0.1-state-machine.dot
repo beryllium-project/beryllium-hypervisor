@@ -1,0 +1,70 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+//
+// Question: where are root selection, cached authority, and fence ordered?
+digraph be_model_01_state_machine {
+	graph [
+		label="Model 0.1 checked transition and terminal failure"
+		tooltip="Target entry remains blocked after root selection until HFENCE.GVMA clears cached translations."
+		labelloc=t
+		fontname="Inter,Arial"
+		fontsize=21
+		rankdir=LR
+		nodesep=0.48
+		ranksep=0.62
+		bgcolor="transparent"
+		pad=0.25
+	]
+	node [
+		shape=box
+		style="rounded,filled"
+		fontname="Inter,Arial"
+		fontsize=9
+		fontcolor="#0f172a"
+		color="#475569"
+		margin="0.15,0.09"
+	]
+	edge [
+		fontname="Inter,Arial"
+		fontsize=8
+		color="#475569"
+		fontcolor="#334155"
+		penwidth=1.3
+		arrowsize=0.7
+	]
+
+	reset [label="UNINITIALIZED\nentry forbidden" fillcolor="#e2e8f0"]
+	sealed [label="SEALED\ncomplete checked copy" fillcolor="#cffafe" color="#0891b2"]
+	management [label="RUNNING management\nroot 101 / own saved state" fillcolor="#dcfce7" color="#16a34a"]
+	selected [
+		label="SWITCHING target\nsave source\nwrite root / select stack\ncache still present"
+		fillcolor="#ffedd5"
+		color="#ea580c"
+	]
+	fenced [
+		label="SWITCHING target\nHFENCE.GVMA complete\ncache empty"
+		fillcolor="#fef3c7"
+		color="#d97706"
+	]
+	protected [label="RUNNING protected\nroot 102 / own saved state" fillcolor="#dcfce7" color="#16a34a"]
+	failed [
+		label="FAILED\nterminal default denial"
+		fillcolor="#fee2e2"
+		color="#dc2626"
+		penwidth=2
+	]
+
+	reset -> sealed [label="valid initialize + seal"]
+	sealed -> management [label="checked enter"]
+	management -> selected [label="begin switch"]
+	selected -> fenced [label="global fence clears cache"]
+	fenced -> protected [label="restore target + enter"]
+	protected -> selected [label="symmetric later switch" style=dashed]
+
+	reset -> failed [label="invalid / incomplete init" color="#dc2626"]
+	sealed -> failed [label="invalid entry" color="#dc2626"]
+	management -> failed [label="bad binding / switch" color="#dc2626"]
+	selected -> failed [label="entry before fence" color="#dc2626"]
+	fenced -> failed [label="bad target binding" color="#dc2626"]
+	failed -> failed [label="all later operations deny" color="#dc2626"]
+}

@@ -1,0 +1,20 @@
+BE_MVP_COUNTS: started=none g0=0 g1=0
+BE_MVP_PROBE_VALUES: console-input-total total=0 polls=2049 nonzero_polls=0 max_per_poll=0 errors=0 sha256=e3b0c44298fc1c14
+BE_MVP_PROBE_VALUES: console-input-window window_ticks=0x20000000 prefix=none
+BE_MVP_UBOOT: load_bytes=2748416 load_digest_kind=md5 load_digest=80135cab15fe9ba3f1712b2eb83cd1e8 moving_from=0x140000000 moving_to=0x108000000 moving_end=0x10829f000 fdt_blob=0x2fbe8aa50 fdt_loaded=0x2fbd5d000 fdt_end=0x2fbd6f2ef fdt_in_place=false
+BE_MVP_LOG: contract=probe/complete r2=kept state=closed count=9 lines=12 bytes=3220 boot_image=nominal reference=59736e2ae034cd13 export=ffceb6e9a91e12c8
+BE_MVP_LOG_REGISTERS: at=barrier r0=5d8b1f71fdaaf29c74034d9eb9a19a46ebf6ccec1c9647f6c04e00ee4e127dee r1=d8a23ef65f85d1c1c5071e53d01c555c94d96848dfdff096cb9d09c6c3e7eb87 r2=0000000000000000000000000000000000000000000000000000000000000000 r3=0000000000000000000000000000000000000000000000000000000000000000
+BE_MVP_LOG_REGISTERS: at=terminal r0=5d8b1f71fdaaf29c74034d9eb9a19a46ebf6ccec1c9647f6c04e00ee4e127dee r1=d8a23ef65f85d1c1c5071e53d01c555c94d96848dfdff096cb9d09c6c3e7eb87 r2=0000000000000000000000000000000000000000000000000000000000000000 r3=0000000000000000000000000000000000000000000000000000000000000000
+BE_MVP_LOG_REGISTERS: at=replayed r0=5d8b1f71fdaaf29c74034d9eb9a19a46ebf6ccec1c9647f6c04e00ee4e127dee r1=d8a23ef65f85d1c1c5071e53d01c555c94d96848dfdff096cb9d09c6c3e7eb87 r2=0000000000000000000000000000000000000000000000000000000000000000 r3=0000000000000000000000000000000000000000000000000000000000000000 (unprotected)
+BE_MVP_LOG_TICKS: barrier=0x489e
+BE_MVP_LOG_RECORD: seq=0 object=monitor-text stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=1 object=monitor-rodata stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=2 object=monitor-input stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=3 object=mvp-text stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=4 object=mvp-rodata stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=5 object=core-identity stream=1 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=6 object=console-grants stream=1 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=7 object=policy-absent stream=1 reference=equal recomputed=none
+BE_MVP_LOG_RECORD: seq=8 object=close stream=255 reference=equal recomputed=none
+BE_MVP_RESULT: PASS terminal=shutdown-requested
+BE_MVP_CAPTURE[uboot probe-console-input]: PASS

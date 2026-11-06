@@ -1,0 +1,51 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "H-09",
+  "partition": "host",
+  "base": "virt/be/r5.c",
+  "defect_file": null,
+  "base_sha256": null,
+  "declared_delta": null,
+  "declared_layer": "L11",
+  "outcome": "rejected-by-host-mechanism",
+  "driver": "tests/r6/r6-check.c",
+  "api": "be_r5_publish_target",
+  "argument": "state",
+  "field": "management_frame.gpr[BE_R4_GPR_A1]",
+  "accepted_value": "34",
+  "malformed_value": "35",
+  "world": "management-fenced",
+  "world_source": "be_r5_phase_name(state.phase) read before the call",
+  "class_source": "be_r5_error_name(the enum be_r5_error the call returned)",
+  "cases": 1,
+  "coverage": [
+    {
+      "class": "frame-state",
+      "role": "primary"
+    }
+  ],
+  "expected_first_error": "frame-state",
+  "rejection": {
+    "sticky": true,
+    "terminal": true,
+    "transactional": true,
+    "transactional_source": "caller output parameters and saved page measured unchanged after the call"
+  },
+  "self_test": {
+    "restored_expectation": "accepted",
+    "forged_class": "import",
+    "forged_class_rejection": "wrong-error-class:H-09",
+    "forged_secondary_class": null,
+    "forged_secondary_class_rejection": null,
+    "forged_world": "fresh",
+    "forged_world_rejection": "wrong-world:H-09",
+    "forged_layer": "L6",
+    "forged_layer_rejection": "wrong-layer:H-09"
+  },
+  "builds": false,
+  "qemu": false,
+  "runs": 0,
+  "notes": "frame-state is not produced by be_r5_handle_exit at all. validate_management_frame returns BE_R5_ERROR_EVENT_ARGS internally and be_r5_publish_target rewrites every internal frame verdict to BE_R5_ERROR_FRAME_STATE before returning. state->management_frame is examined by none of the earlier checks."
+}

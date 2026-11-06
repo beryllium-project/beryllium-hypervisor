@@ -1,0 +1,92 @@
+RISCV L4
+(* SPDX-License-Identifier: GPL-3.0-only *)
+(* Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com> *)
+(* Premise L4: "buffer reuse: a writer that finds room by reading the tail
+   stores into the freed slot only after that read, by the control
+   dependency on the room check" (planning/mvp-m8-plan.md, D-3 and D-9), a
+   premise of P3 (ring safety) (planning/mvp-m8-specifications.md,
+   sections 1 and 3, specification SHA-256
+   ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d).
+   A load of the tail, the branches on it, and the store into the freed
+   slot only on the path they allow, as compiled in
+   build/mvp/gcc/be-mvp.elf and build/mvp/clang/be-mvp.elf (the lines in
+   mvp/verify/litmus/sequences/SYMBOL-TOOLCHAIN.s; GCC's address, then
+   Clang's): the inbound ring full (4096 bytes posted, none released), the
+   domain hart releasing a PING's 16 bytes while hart 0 posts an ACK of 16
+   into the slot they free. The reader's fence r,w, L3's, is as compiled,
+   so the forbidden outcome needs hart 0's store above its load of the
+   tail.
+   P0, the domain hart in be_mvp_dispatch's ipi:
+     lbu x5,0(x10)   the PING's type byte, be_mvp_ring_take (by load_le,
+                     called at 102068782; inline), called by serve at
+                     102067012 and 10206727e, under be_mvp_ipi_serve at
+                     1020671e0 and 10206720a, called at
+                     1020663f8 and 1020663e2            10206830a 102068cf8
+     fence r,w       be_mvp_arch_fence_r_w, through be_mvp_exec_fence_r_w,
+                     called at                          102066404 1020664a0
+     sd x12,0(x11)   the tail, 16, be_mvp_ring_release  102068876 102068e10
+   P1, hart 0 in be_mvp_ring_post, through be_mvp_ring_post_words from
+   ping, called in drain at 102064bfa and 102065d22:
+     ld x5,0(x10)    the tail                           1020684ce 102068a3a
+     andi x6,x5,7    its alignment                      1020684d0 102068a3e
+     bne x6,x0,LC00  misaligned: refused                1020684d4 102068a42
+     sub x7,x16,x5   the published head (limit) - tail  1020684de 102068a4a
+     blt x12,x7,LC00 more than a capacity: refused      1020684e0 102068a4e
+     sub x8,x13,x5   used = cursor - tail               1020684e6 102068a56
+     blt x12,x8,LC00 more than a capacity: refused      1020684ea 102068a5a
+     sub x9,x12,x8   free = capacity - used (GCC: tail - cursor + capacity,
+                     1020684fe and 102068502)                     102068a6a
+     blt x9,x14,LC00 the room check, refused below 16   102068504 102068a6e
+     sb x15,0(x11)   the ACK's type byte, 8 (by store_le, called at
+                     102068516; inline)                 1020682ee 102068a7e
+   The compiled branches are bnez and bltu: herd7 7.58 implements neither
+   bnez nor bltu, bgeu, or sltu for RISC-V ("RISCV operation bltu is not
+   implemented (yet)"), so the test branches with bne against x0 and blt
+   on the same registers, whose values stay below 2^63, where the
+   comparisons agree; herd7's ctrl follows the branch's registers, not its
+   comparison. Every byte of the ACK is stored after these branches; the
+   type byte, the first, stands for them. A reduced test keeps fewer
+   accesses and orderings than the code, so it allows at least the code's
+   outcomes: Never here is Never there.
+   Forbidden: the domain hart's load of the PING's type byte reads the
+   ACK's while hart 0's load of the tail reads the release.
+   Digests (mvp/verify/litmus/sequences.txt):
+   be_mvp_dispatch@gcc sha256=19454e6ddfa6715f43ed56ac7bbb8c7734eb0ab16dac77fb7fba820ff57dabf8
+   be_mvp_dispatch@clang sha256=585fd111563c0a5bb2bba9e18c3d22ff562f68b134273a46de0030efe0f0b44a
+   be_mvp_ipi_serve@gcc sha256=c2c3c03eb06a168199a8857e201ed78895bef00561499aa045d151b60a629913
+   be_mvp_ipi_serve@clang sha256=0afb935f5a4a3a0ceb65abee6e6803664a72a260d6fd7675f38631b356e88048
+   serve@gcc sha256=0ed3543fedda5411ff4c2a43f6e6e7851bd634ccd103fbedcb075ddc312aef54
+   serve@clang sha256=bef68167fd63168d608aa0b0cd4af75a7f7828c5a852d25d5eefe21cba61afb7
+   be_mvp_ring_take@gcc sha256=86f0abb4ffc514a17b3fc622bb891bd2f3c0ba17730ada7d510b59ea68aa9810
+   be_mvp_ring_take@clang sha256=b28cc06163a851112fd3feefb4375ea195eef77dc34eac8f28dee5cccd793324
+   load_le@gcc sha256=fa2e7528e095f314d97b9ddbcd0307a21e446b0bb01fe89831c5603840775c33
+   be_mvp_exec_fence_r_w@gcc sha256=d2af5007185244ecff68554a5dba4d5b9d680932e87437fb430399451331246f
+   be_mvp_exec_fence_r_w@clang sha256=8e7211664d0945b560dd409a522e5b3267c3c6443146ecb502f8c84051f21975
+   be_mvp_arch_fence_r_w@gcc sha256=83318464bfc0ed2e0a2c4703a9be95feb7f5abc1a3eacbc8809ce349b8199410
+   be_mvp_arch_fence_r_w@clang sha256=83318464bfc0ed2e0a2c4703a9be95feb7f5abc1a3eacbc8809ce349b8199410
+   be_mvp_ring_release@gcc sha256=d974df60630c0167af53ae7413b1cbdaeae420ffd2a7d5b8f9c24292716b5e51
+   be_mvp_ring_release@clang sha256=e2559f03ccf88e388f5eeab7cf336f8405b2f62b8737749d97b67ce88cb0dc02
+   drain@gcc sha256=0abb8c3c24bb7045baef384ee9d178229ce382231a4382078e45ab24ef696283
+   drain@clang sha256=e676ca4159e5b163f42b52d5cee25859f6de86be997c34a2532335c7a8f1ba04
+   be_mvp_ring_post@gcc sha256=ee8afa602949d8d119a9d3e218852a01d9602a7536c0baed60145c21ef94fee0
+   be_mvp_ring_post@clang sha256=eee8be5c51bad1a916fa45b7650581b7da8f1aaf2e55a6870456548eef9fc6cf
+   store_le@gcc sha256=09c6c11d7a6aba36468fd816e04f7d964b6e9b437daaa8aea394e8197c14c5c1 *)
+{
+type_byte=7; tail=0;
+0:x10=type_byte; 0:x11=tail; 0:x12=16;
+1:x10=tail; 1:x11=type_byte; 1:x12=4096; 1:x13=4096; 1:x14=16; 1:x15=8;
+1:x16=4096;
+}
+ P0            | P1              ;
+ lbu x5,0(x10) | ld x5,0(x10)    ;
+ fence r,w     | andi x6,x5,7    ;
+ sd x12,0(x11) | bne x6,x0,LC00  ;
+               | sub x7,x16,x5   ;
+               | blt x12,x7,LC00 ;
+               | sub x8,x13,x5   ;
+               | blt x12,x8,LC00 ;
+               | sub x9,x12,x8   ;
+               | blt x9,x14,LC00 ;
+               | sb x15,0(x11)   ;
+               | LC00:           ;
+exists (0:x5=8 /\ 1:x5=16)

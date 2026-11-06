@@ -1,0 +1,74 @@
+# MVP M8 qualification (planning/mvp-m8-plan.md, D-7 item 2)
+specification_sha256=ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d
+expectations_sha256=a8871aa099d23b25e25d7ce67883a9f6ab076eeaa7c83993e5e2ddf03e9a706e
+started=2026-11-05T03:03:32Z seconds=561
+goal_seconds=60
+probe version_frama-c=33.0 (Arsenic)
+probe version_why3=Why3 platform, version 1.8.2
+probe version_alt-ergo=2.4.3-free
+probe version_z3=Z3 version 4.16.0 - 64 bit
+probe version_cvc5=cvc5 1.3.4
+probe version_cbmc=6.8.0 (ad933aa-dirty)
+probe version_herd7=7.58, Rev: exported
+probe version_cn=unknown [unknown]
+probe why3_provers=Alt-Ergo; Alt-Ergo  (BV); Alt-Ergo  (FPA); Alt-Ergo  (counterexamples); CVC5; CVC5  (counterexamples); CVC5  (strings); CVC5  (strings+counterexamples); Z3 4.16.0; Z3 4.16.0 (counterexamples); Z3 4.16.0 (noBV)
+probe acsl_importer=present: external ACSL files importer (-acsl-import-h)
+probe machdeps=avr_16 avr_8 gcc_x86_16 gcc_x86_32 gcc_x86_64 macos_arm msvc_x86_64 ppc_32 x86_16 x86_32 x86_64
+probe machdep_used=gcc_x86_64 int=4 long=8 pointer=8 char_signed (RISC-V LP64 has unsigned char)
+probe cbmc_riscv64_arch=available
+probe cbmc_sat_solver=MiniSAT 2.2.1 with simplifier
+case arm=wp solver=alt-ergo case=known-pass expected=proved observed=proved ok=yes seconds=0.7 detail=goals=19/19 alt-ergo_goals=5 
+case arm=wp solver=alt-ergo case=known-fail expected=unproved observed=unproved ok=yes seconds=61.1 detail=goals=18/19 alt-ergo_goals=4 timeout=1
+case arm=wp solver=alt-ergo case=vacuity-requires expected=detected observed=detected ok=yes seconds=0.7 detail=goals=6/9 alt-ergo_goals=2 failed=3 smoke=0/3 doomed_by=Alt-Ergo,Qed
+case arm=wp solver=alt-ergo case=vacuity-ensures expected=unproved observed=unproved ok=yes seconds=54.8 detail=goals=3/4 alt-ergo_goals=0 failed=1
+case arm=wp solver=alt-ergo case=wrong-implementation expected=failed observed=unproved ok=yes seconds=61.1 detail=goals=16/19 alt-ergo_goals=2 timeout=3
+case arm=wp solver=z3 case=known-pass expected=proved observed=proved ok=yes seconds=0.7 detail=goals=19/19 z3_goals=5 
+case arm=wp solver=z3 case=known-fail expected=unproved observed=proved ok=no seconds=0.8 detail=goals=19/19 z3_goals=5 
+case arm=wp solver=z3 case=vacuity-requires expected=detected observed=detected ok=yes seconds=1.4 detail=goals=6/9 z3_goals=2 failed=3 smoke=0/3 doomed_by=Qed,Z3
+case arm=wp solver=z3 case=vacuity-ensures expected=unproved observed=proved ok=no seconds=0.7 detail=goals=4/4 z3_goals=1 
+case arm=wp solver=z3 case=wrong-implementation expected=failed observed=proved ok=no seconds=0.8 detail=goals=19/19 z3_goals=5 
+case arm=wp solver=cvc5 case=known-pass expected=proved observed=unproved ok=no seconds=63.7 detail=goals=14/19 cvc5_goals=0 timeout=5
+case arm=wp solver=cvc5 case=known-fail expected=unproved observed=unproved ok=yes seconds=63.0 detail=goals=14/19 cvc5_goals=0 timeout=5
+case arm=wp solver=cvc5 case=vacuity-requires expected=detected observed=undetected ok=no seconds=63.0 detail=goals=7/9 cvc5_goals=3 timeout=2 smoke=3/3 doomed_by=none
+case arm=wp solver=cvc5 case=vacuity-ensures expected=unproved observed=unproved ok=yes seconds=63.0 detail=goals=3/4 cvc5_goals=0 timeout=1
+case arm=wp solver=cvc5 case=wrong-implementation expected=failed observed=unproved ok=yes seconds=63.0 detail=goals=14/19 cvc5_goals=0 timeout=5
+case arm=cbmc solver=sat case=known-pass expected=proved observed=proved ok=yes seconds=0.0 detail=solver=Running_propositional_reduction failures=0
+case arm=cbmc solver=sat case=known-fail expected=unproved observed=failed ok=yes seconds=0.0 detail=solver=Running_propositional_reduction failures=1
+case arm=cbmc solver=sat case=vacuity-requires expected=detected observed=detected ok=yes seconds=0.0 detail=solver=Running_propositional_reduction failures=0
+case arm=cbmc solver=sat case=vacuity-ensures expected=unproved observed=failed ok=yes seconds=0.0 detail=solver=Running_propositional_reduction failures=1
+case arm=cbmc solver=sat case=wrong-implementation expected=failed observed=failed ok=yes seconds=0.0 detail=solver=Running_propositional_reduction failures=4
+case arm=cbmc solver=z3 case=known-pass expected=proved observed=proved ok=yes seconds=0.0 detail=solver=Running_SMT2_QF_AUFBV_using_Z3 failures=0
+case arm=cbmc solver=z3 case=known-fail expected=unproved observed=failed ok=yes seconds=0.0 detail=solver=Running_SMT2_QF_AUFBV_using_Z3 failures=1
+case arm=cbmc solver=z3 case=vacuity-requires expected=detected observed=detected ok=yes seconds=0.0 detail=solver=Running_SMT2_QF_AUFBV_using_Z3 failures=0
+case arm=cbmc solver=z3 case=vacuity-ensures expected=unproved observed=error ok=no seconds=60.0 detail=killed after 60 s
+case arm=cbmc solver=z3 case=wrong-implementation expected=failed observed=failed ok=yes seconds=0.1 detail=solver=Running_SMT2_QF_AUFBV_using_Z3 failures=4
+case arm=cbmc solver=cvc5 case=known-pass expected=proved observed=proved ok=yes seconds=0.1 detail=solver=Running_SMT2_ALL_(with_FPA)_using_CVC5 failures=0
+case arm=cbmc solver=cvc5 case=known-fail expected=unproved observed=failed ok=yes seconds=0.1 detail=solver=Running_SMT2_ALL_(with_FPA)_using_CVC5 failures=1
+case arm=cbmc solver=cvc5 case=vacuity-requires expected=detected observed=detected ok=yes seconds=0.1 detail=solver=Running_SMT2_ALL_(with_FPA)_using_CVC5 failures=0
+case arm=cbmc solver=cvc5 case=vacuity-ensures expected=unproved observed=failed ok=yes seconds=0.1 detail=solver=Running_SMT2_ALL_(with_FPA)_using_CVC5 failures=1
+case arm=cbmc solver=cvc5 case=wrong-implementation expected=failed observed=failed ok=yes seconds=0.1 detail=solver=Running_SMT2_ALL_(with_FPA)_using_CVC5 failures=4
+case arm=cn solver=z3 case=known-pass expected=proved observed=proved ok=yes seconds=0.1 detail=functions=1 fail=0
+case arm=cn solver=z3 case=known-fail expected=unproved observed=failed ok=yes seconds=0.1 detail=functions=1 fail=1
+case arm=cn solver=z3 case=vacuity-requires expected=detected observed=detected ok=yes seconds=0.0 detail=functions=1 fail=0
+case arm=cn solver=z3 case=vacuity-ensures expected=unproved observed=failed ok=yes seconds=0.1 detail=functions=1 fail=1
+case arm=cn solver=z3 case=wrong-implementation expected=failed observed=failed ok=yes seconds=0.1 detail=functions=1 fail=1
+case arm=cn solver=cvc5 case=known-pass expected=proved observed=proved ok=yes seconds=0.1 detail=functions=1 fail=0
+case arm=cn solver=cvc5 case=known-fail expected=unproved observed=failed ok=yes seconds=0.1 detail=functions=1 fail=1
+case arm=cn solver=cvc5 case=vacuity-requires expected=detected observed=detected ok=yes seconds=0.1 detail=functions=1 fail=0
+case arm=cn solver=cvc5 case=vacuity-ensures expected=unproved observed=failed ok=yes seconds=0.1 detail=functions=1 fail=1
+case arm=cn solver=cvc5 case=wrong-implementation expected=failed observed=failed ok=yes seconds=0.1 detail=functions=1 fail=1
+case arm=litmus solver=herd7 case=known-pass expected=proved observed=proved ok=yes seconds=0.0 detail=observation=Never positive=0 negative=3
+case arm=litmus solver=herd7 case=known-fail expected=unproved observed=failed ok=yes seconds=0.0 detail=observation=Sometimes positive=1 negative=3
+case arm=litmus solver=herd7 case=vacuity-requires expected=detected observed=detected ok=yes seconds=0.0 detail=observation=Never positive=0 negative=0
+case arm=litmus solver=herd7 case=vacuity-ensures expected=unproved observed=failed ok=yes seconds=0.0 detail=observation=Sometimes positive=1 negative=2
+case arm=litmus solver=herd7 case=wrong-implementation expected=failed observed=failed ok=yes seconds=0.0 detail=observation=Sometimes positive=1 negative=3
+pair arm=wp solver=alt-ergo qualified=yes
+pair arm=wp solver=z3 qualified=no not_qualified_cases=known-fail,vacuity-ensures,wrong-implementation
+pair arm=wp solver=cvc5 qualified=no not_qualified_cases=known-pass,vacuity-requires
+pair arm=cbmc solver=sat qualified=yes
+pair arm=cbmc solver=z3 qualified=no not_qualified_cases=vacuity-ensures
+pair arm=cbmc solver=cvc5 qualified=yes
+pair arm=cn solver=z3 qualified=yes
+pair arm=cn solver=cvc5 qualified=yes
+pair arm=litmus solver=herd7 qualified=yes
+BE_MVP_QUALIFY: PASS arms=9 qualified=6 not_run=0

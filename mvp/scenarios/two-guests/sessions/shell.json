@@ -1,0 +1,27 @@
+{
+  "spdx": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "purpose": "M7-4's session for two-guests' shell variant (planning/mvp-m7-plan.md, D-11, Q8): a shell in each domain; in G0 the nonce and the count of /bin's entries, in G1 the nonce; a bad focus sequence and a literal ~~ at a line's start; then each shell's exit, so both domains power off. two-guests' domains have no role, channel, or denials, so its session has none (D-11's text names them: a plan erratum).",
+  "trust": "Data only, never executed: tests/session-typist.py types each focus pair and each line, one key per 10 ms and then Enter, with NONCE the run's 16 hex digits, and waits for each step's line; tools/gen-scenario.py derives the shell variant's expected lines from the steps and refuses a session whose step could print more than the outbound ring's peak budget (D-2); tests/check-capture.py reconciles BE_MVP:18 with the keys typed (typed.txt), this file, and the nonce.",
+  "scope": "M7. A demonstration in QEMU that typed bytes reach the focused domain alone; not evidence that arbitrary guests are contained.",
+  "schema": "be-mvp-session-v1",
+  "name": "shell",
+  "steps": [
+    {"focus": "g0"},
+    {"send": "echo NONCE"},
+    {"expect": "NONCE"},
+    {"send": "ls /bin | wc -l"},
+    {"expect": "18"},
+    {"focus": "g1"},
+    {"send": "echo NONCE"},
+    {"expect": "NONCE"},
+    {"negative": "bad-sequence"},
+    {"negative": "literal"},
+    {"focus": "g0"},
+    {"send": "exit"},
+    {"expect": "MVPINIT 11 SHELL exit=0"},
+    {"focus": "g1"},
+    {"send": "exit"},
+    {"expect": "MVPINIT 11 SHELL exit=0"}
+  ]
+}

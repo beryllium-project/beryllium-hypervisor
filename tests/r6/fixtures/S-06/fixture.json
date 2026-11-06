@@ -1,0 +1,77 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "S-06",
+  "partition": "static",
+  "declared_delta": null,
+  "base": "arch/riscv/be/r5-trap.S",
+  "base_sha256": "4721da5693b3bde3e91ca1dc36aa8042693d858f198ef06986881171f1216841",
+  "defect_file": "r5-trap.S.defect",
+  "defect_sha256": "095a2171b13a32d3d4b71f1bffced58fbf0b448003985af827815bc8a6a17449",
+  "defect": {
+    "kind": "assembly-instruction",
+    "summary": "second csrw hgatp in be_r5_arch_install_root",
+    "accepted": null,
+    "malformed": null,
+    "source_path": "arch/riscv/be/r5-trap.S",
+    "target": {
+      "line": 377,
+      "line_anchor": "csrw hgatp, a1",
+      "symbol": "be_r5_arch_install_root",
+      "slot": null
+    },
+    "anchor": "\tcsrw hgatp, a1\n\tsd a1, ACK_HGATP_WRITTEN(a0)\n",
+    "replacement": "\tcsrw hgatp, a1\n\tcsrw hgatp, a1\n\tsd a1, ACK_HGATP_WRITTEN(a0)\n"
+  },
+  "diff": {
+    "sha256": "06f08495eb2b3d43b4c28daa815a277027759d4f996ec326131a465a6a3b37cb",
+    "added": 1,
+    "removed": 0,
+    "budget": {
+      "added": 6,
+      "removed": 6
+    },
+    "unified": "--- a/arch/riscv/be/r5-trap.S\n+++ b/arch/riscv/be/r5-trap.S\n@@ -374,6 +374,7 @@\n \t * instruction trap is what establishes that V was zero.\n \t */\n \tcsrw hgatp, a1\n+\tcsrw hgatp, a1\n \tsd a1, ACK_HGATP_WRITTEN(a0)\n \tli t1, 1\n \tsw t1, ACK_VIRTUALIZATION_OFF(a0)\n"
+  },
+  "expected": {
+    "first_rejection_layer": "L6",
+    "outcome": "rejected-by-image-check",
+    "message_completeness": "complete",
+    "primary_message": "{toolchain}: expected 4 HGATP writes in the image, found 5",
+    "placeholders": {},
+    "stages": {
+      "l3": "pass",
+      "gcc-link": "pass",
+      "clang-link": "pass",
+      "gcc-image-check": "reject",
+      "clang-image-check": "reject"
+    },
+    "absent_stages": [],
+    "messages": {
+      "gcc-image-check": [
+        "gcc: expected 4 HGATP writes in the image, found 5"
+      ],
+      "clang-image-check": [
+        "clang: expected 4 HGATP writes in the image, found 5"
+      ]
+    },
+    "prohibited_layers": [
+      "L7",
+      "L8",
+      "L9",
+      "L10",
+      "L11"
+    ],
+    "qemu": "forbidden",
+    "artifacts": {
+      "quarantined": [
+        "clang-beryllium.bin",
+        "clang-beryllium.elf",
+        "gcc-beryllium.bin",
+        "gcc-beryllium.elf"
+      ],
+      "scratch_elf": true
+    }
+  }
+}

@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The three U-Boot captures are kept byte for byte as the board's serial
+# console delivered them, every line ending in CR LF: Git never converts
+# their line endings, and the CR before each LF is not a whitespace error.
+*.txt -text whitespace=cr-at-eol

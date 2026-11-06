@@ -1,0 +1,21 @@
+gcc: text_end=0x102002d10 data_end=0x1020088a0 mvp_text_end=0x1020694d0 mvp_end=0x10206c088 functions=203 words=11386 asserts=29 flat_bytes=0xa4000 boot_bytes=0x277000 dtb0_offset=0x275000 dtb1_offset=0x276000 bin_sha256=9efcde66cc2c0e02e76e0c6350bb00eb9d3d9a49a246d9d1fcb81a2fa90de1fc boot_sha256=60327082446db913c0c51d3ac29cb05ab6ede5af594aa0d16db0db58ec267635
+clang: text_end=0x102002f90 data_end=0x102008900 mvp_text_end=0x102069b40 mvp_end=0x10206c6d8 functions=212 words=12252 asserts=29 flat_bytes=0xa4000 boot_bytes=0x277000 dtb0_offset=0x275000 dtb1_offset=0x276000 bin_sha256=8aa009ac531768469e297714d0a97ae96ca393fc01fc5bb63a4f0762b3b4ff0c boot_sha256=f4eb7cbfa89c69fa41fde0a04fd7eebd7088be1bbbd624dec52c6ab3ef8820e1
+BE_MVP_IMAGE_CHECK: PASS gcc clang
+gcc: mutations rejected: 100
+BE_MVP_IMAGE_CHECK: PASS mutations=100
+clang: mutations rejected: 100
+BE_MVP_IMAGE_CHECK: PASS mutations=100
+te-poc gcc: text_end=0x102002d10 data_end=0x1020088a0 mvp_text_end=0x1020699f0 mvp_end=0x10206c798 functions=213 words=11835 asserts=29 flat_bytes=0xa4000 boot_bytes=0x277000 dtb0_offset=0x275000 dtb1_offset=0x276000 bin_sha256=b5f58024b96bfb13677e72f10df0c3a6923e99cf2fc2ef401f968ba8573ac8ee boot_sha256=92d70770fa05ab57283d9f3291a641111249f76324b2e57f276a0fd92c5a5bbb
+te-poc clang: text_end=0x102002f90 data_end=0x102008900 mvp_text_end=0x10206a050 mvp_end=0x10206cdb8 functions=219 words=12713 asserts=29 flat_bytes=0xa4000 boot_bytes=0x277000 dtb0_offset=0x275000 dtb1_offset=0x276000 bin_sha256=c4aa153c714b19a90dfabcc50e822a482c6c4d2a758b402ad46b76d11cf902c0 boot_sha256=f0d40f23c818f212cd2d225d4027aeb7f6710123b7db0b84fe99620306308334
+BE_MVP_IMAGE_CHECK: PASS te-poc-gcc te-poc-clang
+te-poc gcc: mutations rejected: 103
+BE_MVP_IMAGE_CHECK: PASS mutations=103
+te-poc clang: mutations rejected: 103
+BE_MVP_IMAGE_CHECK: PASS mutations=103
+anchor gcc: text_end=0x102002d10 data_end=0x1020088a0 mvp_text_end=0x10206a330 mvp_end=0x10206d4e8 functions=221 words=12626 asserts=29 flat_bytes=0xa4000 boot_bytes=0x277000 dtb0_offset=0x275000 dtb1_offset=0x276000 bin_sha256=4622c28c2d335d3b0fccf7ea7d90f67d9545154251932c63698ed84ca4f727c6 boot_sha256=72de23d21cd387c61958819dbd975eb5fcf31e899651e7e469b28aa56601e857
+anchor clang: text_end=0x102002f90 data_end=0x102008900 mvp_text_end=0x10206a990 mvp_end=0x10206da88 functions=227 words=13556 asserts=29 flat_bytes=0xa4000 boot_bytes=0x277000 dtb0_offset=0x275000 dtb1_offset=0x276000 bin_sha256=d042c6b4c0be7f7b5f3a85885b441b23ae4d8ad306354687fdf1ee92d1973b02 boot_sha256=02daf06eea21537bb0d8ad1f5af648817d02db570da22b16db21e3e8bd97d692
+BE_MVP_IMAGE_CHECK: PASS anchor-gcc anchor-clang
+anchor gcc: mutations rejected: 114
+BE_MVP_IMAGE_CHECK: PASS mutations=114
+anchor clang: mutations rejected: 114
+BE_MVP_IMAGE_CHECK: PASS mutations=114

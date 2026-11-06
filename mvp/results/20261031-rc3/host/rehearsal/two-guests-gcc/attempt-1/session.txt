@@ -1,0 +1,20 @@
+label=two-guests/gcc
+kind=scenario
+file=two-guests-gcc.img
+stage=done
+error=-
+qemu_exit=0
+seconds=10.6
+sbi_version=2.0
+boot_hart=5
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2584576
+crc32=c41a6ba0
+fdt=0xff7383d0
+fdt_end=0xff73edd8
+rule_hart=5
+shim_fdt=0xff7383d0
+terminal=BE_MVP:14 SHUTDOWN type=0 reason=0
+console_bytes=16960
+console_sha256=a9ae654077b85039e0251b047d3406031fab21dcc362b86a21315e91a03cdb20
+BE_MVP_UBOOT_SESSION[two-guests/gcc]: PASS boot_hart=5 qemu_exit=0 fdt=0xff7383d0 crc32=c41a6ba0 seconds=10.6

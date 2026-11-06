@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The calls.log of a successful --apply of tools/k3-make-partition.sh on
+# k3-nvme.json (tests/test-k3-make-partition.sh, apply), with K3MP_ROOT
+# as @ROOT@ and mktemp's suffix as XXXXXX; lines starting with # are not
+# compared.
+dd if=@ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL of=@ROOT@/var/k3mp-backup/gpt-primary.before.bin bs=512 count=34 conv=excl
+dd if=@ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL of=@ROOT@/var/k3mp-backup/gpt-backup.before.bin bs=512 skip=976773135 count=33 conv=excl
+sync
+btrfs check --readonly -- @ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL-part3
+mount -t btrfs -o subvolid=5 -- @ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL-part3 @ROOT@/run/k3-make-partition.XXXXXX
+btrfs filesystem resize 1:-1140850688 @ROOT@/run/k3-make-partition.XXXXXX
+sync
+umount -- @ROOT@/run/k3-make-partition.XXXXXX
+sfdisk --no-reread --no-tell-kernel -N 3 -- @ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL
+  stdin: ,829044736
+sfdisk --no-reread --no-tell-kernel --append -- @ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL
+  stdin: start=834166784, size=2097152, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name=beryllium
+partx -u --nr 3 -- @ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL
+partx -a --nr 6 -- @ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL
+mkfs.ext4 -q -L beryllium -m 0 -- @ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL-part6
+e2fsck -f -n -- @ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL-part6
+btrfs check --readonly -- @ROOT@/dev/disk/by-id/nvme-WD_Red_SN700_500GB_FAKE0000SERIAL-part3
+sync

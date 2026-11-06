@@ -1,0 +1,7 @@
+schema=be-mvp-k3-session-v1
+session=20261030-com260-rc2
+start_utc=2026-10-30T07:54:21.664Z
+serial_log=<home>/src/spacemit-k3/logs/boot-7.log
+serial_log_start=13788061
+tmux_session=k3-console-1
+reset=k3ctl

@@ -1,0 +1,225 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/*
+ * Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+ *
+ * Purpose: executable R5 image layout preserving every accepted physical
+ *          authority extent while selecting R5-specific entry, trap, and VS
+ *          fixture sections for the checked cross-domain switch.
+ * Trust:   load-bearing placement and W^X boundary checked independently.
+ *          Both trusted stacks, both saved pages, both root pools, and both
+ *          guest code pages must remain exclusive and non-overlapping.
+ * Scope:   fixed QEMU image only; no dynamic loading or changed authority.
+ */
+
+OUTPUT_ARCH(riscv)
+ENTRY(be_reset)
+
+PHDRS
+{
+	monitor_text PT_LOAD FLAGS(5);
+	monitor_ro PT_LOAD FLAGS(4);
+	monitor_data PT_LOAD FLAGS(6);
+	reserved PT_LOAD FLAGS(6);
+	guest_management PT_LOAD FLAGS(5);
+	guest_protected PT_LOAD FLAGS(5);
+}
+
+SECTIONS
+{
+	. = 0x80200000;
+	.monitor.text : ALIGN(16)
+	{
+		__be_monitor_code_start = .;
+		KEEP(*(.text.be.r5.entry))
+		*(.text .text.*)
+		. = ALIGN(16);
+		__be_monitor_code_end = .;
+	} :monitor_text
+
+	. = 0x80208000;
+	__be_monitor_data_start = .;
+	.monitor.input : ALIGN(16)
+	{
+		__be_input_start = .;
+		*r1-config.o(.rodata .rodata.*)
+		__be_input_end = .;
+	} :monitor_ro
+	.monitor.rodata : ALIGN(16) { *(.rodata .rodata.*) } :monitor_ro
+	.monitor.data : ALIGN(16)
+	{
+		*(.data .data.*)
+		. = ALIGN(8);
+		__be_bss_start = .;
+		*(.bss .bss.*)
+		*(COMMON)
+		. = ALIGN(8);
+		__be_bss_end = .;
+	} :monitor_data
+
+	. = 0x8020f000;
+	.diagnostic (NOLOAD) : ALIGN(4096)
+	{
+		__be_diagnostic_start = .;
+		. += 0x1000;
+		__be_diagnostic_end = .;
+		__be_monitor_data_end = .;
+	} :monitor_data
+
+	. = 0x80214000;
+	.gstage.root.management (NOLOAD) : ALIGN(0x4000)
+	{
+		__be_root_management_start = .; . += 0x8000;
+		__be_root_management_end = .;
+	} :reserved
+	.gstage.root.protected (NOLOAD) : ALIGN(0x4000)
+	{
+		__be_root_protected_start = .; . += 0x8000;
+		__be_root_protected_end = .;
+	} :reserved
+	. = 0x80225000;
+	.stack.management (NOLOAD) : ALIGN(4096)
+	{
+		__be_stack_management_start = .; . += 0x2000;
+		__be_stack_management_end = .;
+	} :reserved
+	. = 0x80228000;
+	.stack.protected (NOLOAD) : ALIGN(4096)
+	{
+		__be_stack_protected_start = .; . += 0x2000;
+		__be_stack_protected_end = .;
+	} :reserved
+	. = 0x8022b000;
+	.saved.management (NOLOAD) : ALIGN(4096)
+	{
+		__be_saved_management_start = .; . += 0x1000;
+		__be_saved_management_end = .;
+	} :reserved
+	.saved.protected (NOLOAD) : ALIGN(4096)
+	{
+		__be_saved_protected_start = .; . += 0x2000;
+		__be_saved_protected_end = .;
+	} :reserved
+	. = 0x8022e000;
+	.private.management (NOLOAD) : ALIGN(4096)
+	{
+		__be_private_management_start = .; . += 0x1000;
+		__be_private_management_end = .;
+	} :reserved
+	.private.protected (NOLOAD) : ALIGN(4096)
+	{
+		__be_private_protected_start = .; . += 0x1000;
+		__be_private_protected_end = .;
+	} :reserved
+	.shared (NOLOAD) : ALIGN(4096)
+	{
+		__be_shared_start = .; . += 0x1000;
+		__be_shared_end = .;
+	} :reserved
+
+	. = 0x80232000;
+	.guest.code.management : ALIGN(4096)
+	{
+		__be_guest_management_start = .;
+		KEEP(*(.guest.r5.management))
+		. = __be_guest_management_start + 0x1000;
+		__be_guest_management_end = .;
+	} :guest_management
+	.guest.code.protected : ALIGN(4096)
+	{
+		__be_guest_protected_start = .;
+		KEEP(*(.guest.r5.protected))
+		. = __be_guest_protected_start + 0x1000;
+		__be_guest_protected_end = .;
+	} :guest_protected
+
+	ASSERT(be_reset == 0x80200000, "R5 entry moved")
+	ASSERT(__be_monitor_code_start == 0x80200000, "R5 monitor code moved")
+	ASSERT(__be_monitor_code_end <= 0x80208000, "R5 monitor code overflow")
+	ASSERT(__be_monitor_data_start == 0x80208000, "R5 monitor data moved")
+	ASSERT(__be_input_end > __be_input_start, "R5 input section is empty")
+	ASSERT(__be_input_start >= __be_monitor_data_start &&
+	       __be_input_end <= __be_bss_start, "R5 input escaped rodata")
+	ASSERT(__be_bss_end <= 0x8020f000, "R5 monitor data overflow")
+	ASSERT(__be_diagnostic_start == 0x8020f000 &&
+	       __be_diagnostic_end == 0x80210000, "R5 diagnostic moved")
+	ASSERT(__be_monitor_data_end == 0x80210000, "R5 monitor data extent moved")
+	ASSERT(__be_root_management_start == 0x80214000 &&
+	       __be_root_management_end == 0x8021c000, "R5 management root moved")
+	ASSERT(__be_root_protected_start == 0x8021c000 &&
+	       __be_root_protected_end == 0x80224000, "R5 protected root moved")
+	ASSERT((__be_root_management_start & 0x3fff) == 0 &&
+	       (__be_root_protected_start & 0x3fff) == 0, "R5 root alignment")
+	ASSERT(__be_stack_management_start == 0x80225000 &&
+	       __be_stack_management_end == 0x80227000, "R5 management stack moved")
+	ASSERT(__be_stack_protected_start == 0x80228000 &&
+	       __be_stack_protected_end == 0x8022a000, "R5 protected stack moved")
+	ASSERT(__be_saved_management_start == 0x8022b000 &&
+	       __be_saved_management_end == 0x8022c000, "R5 management frame moved")
+	ASSERT(__be_saved_management_end - __be_saved_management_start == 0x1000,
+	       "R5 management frame page changed")
+	ASSERT(__be_saved_protected_start == 0x8022c000 &&
+	       __be_saved_protected_end == 0x8022d000, "R5 protected saved moved")
+	ASSERT(__be_saved_protected_end - __be_saved_protected_start == 0x1000,
+	       "R5 protected frame page changed")
+	ASSERT(__be_private_management_start == 0x8022e000 &&
+	       __be_private_management_end == 0x8022f000, "R5 management private moved")
+	ASSERT(__be_private_protected_start == 0x8022f000 &&
+	       __be_private_protected_end == 0x80230000, "R5 protected private moved")
+	ASSERT(__be_shared_start == 0x80230000 && __be_shared_end == 0x80231000,
+	       "R5 shared page moved")
+	ASSERT(__be_guest_management_start == 0x80232000 &&
+	       __be_guest_management_end == 0x80233000, "R5 management guest moved")
+	ASSERT(__be_guest_protected_start == 0x80233000 &&
+	       __be_guest_protected_end == 0x80234000, "R5 protected guest moved")
+
+	/* The two domains never share a stack, saved page, root pool, or code page. */
+	ASSERT(__be_stack_management_end <= __be_stack_protected_start,
+	       "R5 trusted stacks overlap")
+	ASSERT(__be_saved_management_end <= __be_saved_protected_start,
+	       "R5 saved pages overlap")
+	ASSERT(__be_root_management_end <= __be_root_protected_start,
+	       "R5 root pools overlap")
+	ASSERT(__be_private_management_end <= __be_private_protected_start,
+	       "R5 private pages overlap")
+	ASSERT(__be_private_protected_end <= __be_shared_start,
+	       "R5 protected private overlaps shared")
+	ASSERT(__be_guest_management_end <= __be_guest_protected_start,
+	       "R5 guest code pages overlap")
+	ASSERT(__be_monitor_data_end <= __be_root_management_start,
+	       "R5 monitor data overlaps root pools")
+	ASSERT(__be_root_protected_end <= __be_stack_management_start,
+	       "R5 root pools overlap management stack")
+	ASSERT(__be_stack_protected_end <= __be_saved_management_start,
+	       "R5 protected stack overlaps saved pages")
+	ASSERT(__be_saved_protected_end <= __be_private_management_start,
+	       "R5 saved pages overlap private backing")
+	ASSERT(__be_shared_end <= __be_guest_management_start,
+	       "R5 shared page overlaps guest code")
+
+	/* The vector must be direct-mode legal and inside monitor code. */
+	ASSERT((be_r5_trap_vector & 0x3) == 0, "R5 trap vector misaligned")
+	ASSERT(be_r5_trap_vector >= __be_monitor_code_start &&
+	       be_r5_trap_vector < __be_monitor_code_end,
+	       "R5 trap vector escaped monitor code")
+
+	/* Every checked guest PC depends on these exact fixed slot extents. */
+	ASSERT(be_r5_management_fixture == 0x80232000,
+	       "R5 management fixture first instruction moved")
+	ASSERT(be_r5_management_fixture_end - be_r5_management_fixture == 0x40,
+	       "R5 management fixture slot count changed")
+	ASSERT(be_r5_management_fixture_end <= __be_guest_management_end,
+	       "R5 management fixture overflowed its page")
+	ASSERT(be_r5_protected_fixture == 0x80233000,
+	       "R5 protected fixture first instruction moved")
+	ASSERT(be_r5_protected_fixture_end - be_r5_protected_fixture == 0x38,
+	       "R5 protected fixture slot count changed")
+	ASSERT(be_r5_protected_fixture_end <= __be_guest_protected_end,
+	       "R5 protected fixture overflowed its page")
+
+	/DISCARD/ :
+	{
+		*(.comment) *(.eh_frame .eh_frame.*) *(.note .note.*) *(.interp)
+		*(.dynamic) *(.dynsym) *(.dynstr) *(.gnu.hash) *(.hash)
+		*(.got .got.*) *(.plt .plt.*) *(.rela .rela.*) *(.rel .rel.*)
+	}
+}

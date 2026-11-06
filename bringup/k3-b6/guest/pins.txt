@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The K3 B6 guest pins (planning/k3-b6-plan.md, Build, pins, and
+# reproducibility): the SHA-256 and size of the init, the Image, and every
+# DTB that scripts/build-guest.sh makes, the Image header facts, and the
+# kernel banner, which the QEMU reference boot printed. They hold for the
+# cross toolchain named on the last line. tests/guest-pins.py checks them;
+# `build-guest.sh --unpinned` prints the lines for a deliberate update.
+file init sha256=2e13f73d4d3374363aafdb616763682013145ead00ccbbe8ae541615ac537f41 bytes=2224
+file Image sha256=a3ff61a0809e1d97f9b3e220a5ba8b6137574c799e9b909a508c8be130e1eae0 bytes=1553332
+file b6-guest.dtb sha256=9b9ae1ac0873f655998eaae456477e9da64a5bf025a00d7e92fa74ef5f95e41f bytes=4096
+file b6-guest-memory.dtb sha256=31689fc3da9e8162434a84a8e945c20025de41f6c8b11bc876a9c6d89f4916e5 bytes=4096
+file b6-guest-init-exit.dtb sha256=4e2a466f7403b0115185eec7145b04fbbaf7bdf177ca4af0b62baedc6614b35d bytes=4096
+file b6-guest-rdcycle.dtb sha256=6ea7c35f483ded85c4205e60ab00a716fa0550f0059dc2eec84f6592efeb3467 bytes=4096
+file b6-guest-sbi-time.dtb sha256=85d64484456665fa46c67ef51f002ed921e02ff27fc0793e546eaadc012ebdf9 bytes=4096
+file b6-guest-reference.dtb sha256=3cc7b045444e4f8225a103b5ef0c5325b3b81de9c8ffac98247d198896951272 bytes=4096
+kernel image_size=0x1af628
+kernel text_offset=0x200000
+kernel banner=Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+toolchain gcc=riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1)

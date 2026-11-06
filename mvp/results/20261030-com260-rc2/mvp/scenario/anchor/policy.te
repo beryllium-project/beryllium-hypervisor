@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The anchor scenario's policy (planning/mvp-m2-plan.md, "The policy, the
+# labeling, and the manifest"): Instance 3, verbatim, in security model
+# v1's concrete syntax (planning/security-model-v1.md, Part 2): an
+# untrusted host (host_t) and a protected domain (prot_t), a request page
+# the host writes and the protected domain reads, a response page the
+# protected domain writes and the host reads, a secret page only the
+# protected domain maps, and the one domain rule, which lets host_t ask the
+# monitor to pause or terminate prot_t. tools/policy-check.py parses it and
+# runs A1 to A8 on it with the scenario's labeling, need sets, and
+# manifest; the monitor never reads it. Its policy identity is the SHA-256
+# of this file's bytes, comments included.
+
+type monitor_t;    type host_t;        type prot_t;
+type host_mem_t;   type prot_mem_t;
+type req_t;        type resp_t;        type secret_t;
+type monitor_mem_t;
+
+class memory  { read write execute map }
+class channel { send receive }
+class domain  { enter switch_to terminate pause }
+
+allow host_t host_mem_t : memory { read write execute map };
+allow host_t req_t      : memory { read write map };
+allow host_t req_t      : channel { send };
+allow host_t resp_t     : memory { read map };
+allow host_t resp_t     : channel { receive };
+allow host_t prot_t     : domain { pause terminate };
+
+allow prot_t prot_mem_t : memory { read write execute map };
+allow prot_t req_t      : memory { read map };
+allow prot_t req_t      : channel { receive };
+allow prot_t resp_t     : memory { read write map };
+allow prot_t resp_t     : channel { send };
+allow prot_t secret_t   : memory { read map };

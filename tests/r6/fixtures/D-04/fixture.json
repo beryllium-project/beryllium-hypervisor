@@ -1,0 +1,155 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "D-04",
+  "partition": "dynamic",
+  "base": "arch/riscv/be/r5-guest.S",
+  "defect_file": "r5-guest.S.defect",
+  "base_sha256": "cd1a0d719418b4a5b07b7fcace5b432be210a425ea4f7bfa8dff6f89d2cc764b",
+  "defect_sha256": "f8d529481dcc1bb136a644b08db20e90d3eea5696550a10db0d0c09818b3e898",
+  "change": {
+    "added": 1,
+    "removed": 1,
+    "limit": 6,
+    "hunks": [
+      {
+        "line": 60,
+        "removed": [
+          "\tlw\ts1, 0(t2)\t\t\t/* +0x14 denied: 0x40000000 */"
+        ],
+        "added": [
+          "\tsw\ts1, 0(t2)\t\t\t/* +0x14 defect: store, not load */"
+        ]
+      }
+    ],
+    "sha256": "e11b962cc3115a425551626997674aeff547e66e1b9d80e7568566bc13488714"
+  },
+  "declared_delta": {
+    "kind": "guest-word",
+    "domain": "protected",
+    "slot": 1073811476,
+    "file_offset": 208916,
+    "base_word": "0003a483",
+    "defect_word": "0093a023",
+    "bytes": 4
+  },
+  "accepted_image_check": {
+    "disposition": "reject-with",
+    "messages": [
+      "{toolchain}: protected fixture slot 40011014 is 0093a023, expected 0003a483"
+    ]
+  },
+  "expected": {
+    "outcome": "terminated-fail-closed",
+    "error_class": "cause",
+    "last_marker": "BE_R5:04",
+    "qemu_status": 0,
+    "shutdown": "monitor-issued-srst",
+    "guest_entered": true,
+    "preempted_entry": null,
+    "console": [
+      "BE_R3:01 BOOT_VALIDATED",
+      "BE_R3:02 R1_DERIVED",
+      "BE_R3:03 R2_BUILT_REWALKED",
+      "BE_R3:04 HS_VS_STATE_VERIFIED",
+      "BE_R3:05 BINDING_PREPARED",
+      "BE_R3:06 HGATP_FENCED_PUBLISHED",
+      "BE_R3:07 ENTER_MANAGEMENT_VS pc=0x40010000",
+      "BE_R4:01 ENTRY_ARMED_IMPORTED",
+      "BE_R4:02 EXPECTED_DENIED_LOAD pc=0x40010014 resume=0x40010018",
+      "BE_R4:03 PRIVATE_EVENT pc=0x40010030 resume=0x40010034",
+      "BE_R5:01 R4_COMPLETE_IMPORTED sepc=0x40010034",
+      "BE_R5:02 PENDING_PROTECTED direction=management-to-protected",
+      "BE_R5:03 PROTECTED_HGATP_WRITTEN_FENCED_READBACK",
+      "BE_R5:04 PROTECTED_TARGET_VERIFIED pc=0x40011000",
+      "BE_R5:FAIL cause"
+    ],
+    "forbidden_markers": [
+      "BE_R5:12",
+      "BE_R5:SRST_RETURNED",
+      "GENERAL_GUEST_SBI",
+      "HGATP_WRITE_AFTER_ENTRY",
+      "HFENCE_AFTER_ENTRY",
+      "PROTECTED_PRIVATE_READ_BY_MANAGEMENT",
+      "SHARED_STORE_BY_PROTECTED"
+    ],
+    "guest_entries": [
+      {
+        "pc": "0000000040010000",
+        "hstatus": "0000000200700100",
+        "s0": "0000000000000000",
+        "a0": "0000000000000000",
+        "a1": "0000000000000000"
+      },
+      {
+        "pc": "0000000040010018",
+        "hstatus": "0000000200700140",
+        "s0": "0000000000000011",
+        "a0": "0000000000000000",
+        "a1": "0000000000000000"
+      },
+      {
+        "pc": "0000000040011000",
+        "hstatus": "0000000200700100",
+        "s0": "0000000000000000",
+        "a0": "0000000000000000",
+        "a1": "0000000000000000"
+      }
+    ],
+    "guest_exits": [
+      {
+        "label": "management-denied-private-load",
+        "scause": "0000000000000015",
+        "sepc": "0000000040010014",
+        "stval": "0000000040001000",
+        "htval": "0000000010000400"
+      },
+      {
+        "label": "management-private-event",
+        "scause": "000000000000000a",
+        "sepc": "0000000040010030",
+        "stval": "0000000000000000",
+        "htval": "0000000000000000"
+      },
+      {
+        "label": "cause23@40011014",
+        "scause": "0000000000000017",
+        "sepc": "0000000040011014",
+        "stval": "0000000040000000",
+        "htval": "0000000010000000"
+      }
+    ],
+    "root_installs": [
+      "800000000008021c"
+    ],
+    "final_registers": {
+      "s0": "0000000000000033",
+      "s1": "0000000000000000",
+      "a0": "0000000000000000",
+      "a1": "0000000000000000",
+      "a6": "0000000000000000",
+      "a7": "0000000000000000"
+    },
+    "backing": {
+      "management_private": 17,
+      "protected_private": 51,
+      "shared": 34,
+      "witnesses": [
+        {
+          "register": "s0",
+          "value": 51,
+          "source": "protected_private"
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "scause": "plan",
+    "sepc": "plan",
+    "stval": "accepted",
+    "htval": "derived",
+    "registers": "derived",
+    "class": "plan"
+  }
+}

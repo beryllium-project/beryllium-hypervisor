@@ -1,0 +1,2 @@
+installed=yes
+restored=yes

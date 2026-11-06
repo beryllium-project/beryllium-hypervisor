@@ -1,0 +1,4 @@
+BE_MVP_COUNTS: boot_hart=4 rule_hart=1 started=none exits_g0=158 exits_g1=158 records=138 wakes=113 overlap_ticks=0x271788f shorter_ticks=0x2717f56 alternations=87 g0=65 g1=65
+BE_MVP_COSTS: g0_ping_to_receipt_ticks=515 g0_receipt_to_pong_ticks=3026 g0_run_ticks=40992598 g0_run_ticks_per_exit=259446 g1_ping_to_receipt_ticks=237 g1_receipt_to_pong_ticks=33 g1_run_ticks=41001621 g1_run_ticks_per_exit=259503 hart0_idle_permille=992 hart0_idle_ticks=40692843 hart0_records=138 hart0_run_ticks=41018512 hart0_wakes=113
+BE_MVP_RESULT: PASS terminal=shutdown-requested
+BE_MVP_CAPTURE[direct shim-rule]: PASS

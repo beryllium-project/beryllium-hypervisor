@@ -1,0 +1,20 @@
+label=two-guests/clang
+kind=scenario
+file=two-guests-clang.img
+stage=done
+error=-
+qemu_exit=0
+seconds=5.6
+sbi_version=2.0
+boot_hart=1
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2748416
+crc32=518c795d
+fdt=0xff7383d0
+fdt_end=0xff73edd8
+rule_hart=1
+shim_fdt=0xff7383d0
+terminal=BE_MVP:FAIL firmware
+console_bytes=4813
+console_sha256=99d2e5a854d55b1d695a5162e4f1c00594517da983adfe7d44e51810e44f2f61
+BE_MVP_UBOOT_SESSION[two-guests/clang]: REFUSED boot_hart=1 qemu_exit=0 fdt=0xff7383d0 crc32=518c795d seconds=5.6

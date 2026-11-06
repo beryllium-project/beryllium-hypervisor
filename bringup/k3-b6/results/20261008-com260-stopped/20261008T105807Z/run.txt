@@ -1,0 +1,24 @@
+run=20261008T105807Z
+image=<repo>/build/k3-b6/gcc/be-k3-b6-boot.img
+image_sha256=b3f705c8fb2baa626c76adc8d704e4557b0f9206a0627e7026c3b25d6b6461f3
+image_check=BE_B6_BOOT_IMAGE[gcc]: PASS <repo>/build/k3-b6/gcc/be-k3-b6-boot.img bytes=0x1b2000 sha256=b3f705c8fb2baa626c76adc8d704e4557b0f9206a0627e7026c3b25d6b6461f3 crc32=2ff8296f payload_sha256=294efcd71870bc5b201156c712619a9da2879872bf8df71f1a77590ede090e8f kexec_fdt=0x108200000
+toolchain=gcc
+k3_ssh=fedora@k3e
+loader_mode=raw
+loader_sha256=5a960c53fe7565a429c1a8746e678c6f487be7f597821f27c6a23c6d1bde17fa
+layout_sha256=0869df29e783babe134b50fa3f6b53dd8fb024886315855a05638d9e34fdc50e
+serial_source=log:<home>/boot-6.log
+boot_id_before=d4980885-a8a6-4e64-ac81-c12d876f0ef9
+board_kernel=7.1.5-201.0.riscv64.omni.fc44.riscv64
+board_lockdown=[none] integrity confidentiality
+board_tmp_fstype=tmpfs
+remote_image_sha256=b3f705c8fb2baa626c76adc8d704e4557b0f9206a0627e7026c3b25d6b6461f3
+loader=kexec_load entry=0x108000000 fdt=0x108200000 image_memsz=0x1b2000 fdt_bytes=41088 kexec_loaded=1
+kexec_loaded=1
+kexec_requested_utc=2026-10-08T10:58:09Z
+kexec_ssh_status=0
+outcome=terminal-marker
+terminal_marker_utc=2026-10-08T10:58:19Z
+expected_kexec_fdt=0x108200000
+check_status=1
+BE_B6_RESULT: FAIL terminal=fail-marker

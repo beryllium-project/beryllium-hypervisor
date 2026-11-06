@@ -1,0 +1,7 @@
+attempt_utc=2026-11-05T22:36:25Z
+be_image=be-mvp-te-poc-shell-gcc.img
+printenv_be_image=be_image=be-mvp-te-poc-shell-gcc.img
+select-17-check_sha256=bea3885b43b64d8868831202396235b4949fad6e0438282311570aef8fe13192
+select_check=PASS
+saveenv=OK
+verdict=PASS

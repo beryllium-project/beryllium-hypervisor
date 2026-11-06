@@ -1,0 +1,3 @@
+session=sessions/shell.json name=shell sha256=2bf9c5d12055158d6c9c6d177d42abc72c335892c83777e863dbf392d93b4bad steps=22
+expect=te-poc-shell.json image=te-poc-shell sha256=7fcee4bb91f718d3e4e846f505a1bac5efd41d07bf2135b5dd45053e8c5de22a
+elf=<repo>/build/mvp/variants/gcc/te-poc-shell/be-mvp-boot.elf sha256=ab5e54f57702d90e1b0d629be6661d55c953c7681c898f2bd5d2a3d6ebbd5754

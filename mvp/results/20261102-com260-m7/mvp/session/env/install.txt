@@ -1,0 +1,14 @@
+attempt_utc=2026-11-02T05:42:18Z
+verdict=STOP stop=1 k3-console.sh reset stopped (exit 1)
+attempt_utc=2026-11-02T05:43:06Z
+install-check_sha256=4109c96a433776d171d32390943889848783e1ba93cdbe7594a76d144acfb077
+be_part=6
+be_image=be-mvp-probe-platform-gcc.img
+be_ld=load nvme 0:${be_part} 0x140000000 /${be_image} && md5sum 0x140000000 ${filesize}
+be_go=booti 0x140000000 - ${fdtcontroladdr}
+be_boot=nvme scan; if run be_ld; then run be_go; fi
+bootcmd=run be_boot; run be_orig_bootcmd
+be_orig_bootcmd_sha256=0404ae42737d7f700d11876fe3835ff594e8509729af1ad14a4b3b09e951f84b
+install_check=PASS
+saveenv=OK
+verdict=PASS

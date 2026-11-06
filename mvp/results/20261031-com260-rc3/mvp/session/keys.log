@@ -1,0 +1,482 @@
+2026-10-31T04:13:17.571Z	stop	stop=1 the pane of k3-console-1 runs copilot, not picocom
+2026-10-31T04:14:25.154Z	start	session=20261031-com260-rc3 offset=15036711
+2026-10-31T04:14:47.720Z	reset	seq=1 method=k3ctl reason=fedora-down offset=15055462
+2026-10-31T04:14:48.740Z	banner	seq=1 spl=15055570 uboot=15055731
+2026-10-31T04:14:49.777Z	key	s offset=15058406
+2026-10-31T04:14:50.151Z	prompt	fresh offset=15058410
+2026-10-31T04:14:51.211Z	line	first template=printenv
+2026-10-31T04:14:51.218Z	send	piece=1/1 offset=15058410 text=printenv
+2026-10-31T04:14:51.238Z	echo	ok offset=15058410-15058429
+2026-10-31T04:14:51.241Z	key	Enter template=printenv
+2026-10-31T04:14:52.671Z	prompt	template=printenv output_bytes=12305 output_sha256=4038ccde206138ab7c27e7b8ad28f7e7924a908d65d57ce394e2c3500a60ffee
+2026-10-31T04:14:54.073Z	reset	seq=2 method=k3ctl reason=idle-prompt offset=15070739
+2026-10-31T04:14:55.100Z	banner	seq=2 spl=15070847 uboot=15071008
+2026-10-31T04:14:56.139Z	key	s offset=15073697
+2026-10-31T04:14:56.510Z	prompt	fresh offset=15073701
+2026-10-31T04:14:57.570Z	line	first template=printenv
+2026-10-31T04:14:57.578Z	send	piece=1/1 offset=15073701 text=printenv
+2026-10-31T04:14:57.602Z	echo	ok offset=15073701-15073720
+2026-10-31T04:14:57.605Z	key	Enter template=printenv
+2026-10-31T04:14:59.040Z	prompt	template=printenv output_bytes=12305 output_sha256=4038ccde206138ab7c27e7b8ad28f7e7924a908d65d57ce394e2c3500a60ffee
+2026-10-31T04:15:09.929Z	reset	seq=3 method=k3ctl reason=idle-prompt offset=15086030
+2026-10-31T04:15:10.956Z	banner	seq=3 spl=15086138 uboot=15086299
+2026-10-31T04:15:11.993Z	key	s offset=15088974
+2026-10-31T04:15:12.364Z	prompt	fresh offset=15088978
+2026-10-31T04:15:13.419Z	line	first template=save-bootcmd
+2026-10-31T04:15:13.426Z	send	piece=1/1 offset=15088978 text=setenv be_orig_bootcmd "${bootcmd}"
+2026-10-31T04:15:13.447Z	echo	ok offset=15088978-15089024
+2026-10-31T04:15:13.450Z	key	Enter template=save-bootcmd
+2026-10-31T04:15:13.771Z	prompt	template=save-bootcmd output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:15:14.826Z	line	first template=be_part
+2026-10-31T04:15:14.833Z	send	piece=1/1 offset=15089029 text=setenv be_part 6
+2026-10-31T04:15:14.862Z	echo	ok offset=15089029-15089045
+2026-10-31T04:15:14.864Z	key	Enter template=be_part
+2026-10-31T04:15:15.190Z	prompt	template=be_part output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:15:16.243Z	line	first template=be_image
+2026-10-31T04:15:16.249Z	send	piece=1/1 offset=15089050 text=setenv be_image be-mvp-probe-platform-gcc.img
+2026-10-31T04:15:16.320Z	echo	ok offset=15089050-15089095
+2026-10-31T04:15:16.323Z	key	Enter template=be_image
+2026-10-31T04:15:16.647Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:15:17.704Z	line	first template=be_ld
+2026-10-31T04:15:17.711Z	send	piece=1/2 offset=15089100 text=setenv be_ld 'load nvme 0:${be_part} 0x140000000 /${be_image
+2026-10-31T04:15:17.941Z	send	piece=2/2 offset=15089100 text=} && md5sum 0x140000000 ${filesize}'
+2026-10-31T04:15:17.967Z	echo	ok offset=15089100-15089196
+2026-10-31T04:15:17.970Z	key	Enter template=be_ld
+2026-10-31T04:15:18.295Z	prompt	template=be_ld output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:15:19.359Z	line	first template=be_go
+2026-10-31T04:15:19.366Z	send	piece=1/1 offset=15089201 text=setenv be_go 'booti 0x140000000 - ${fdtcontroladdr}'
+2026-10-31T04:15:19.438Z	echo	ok offset=15089201-15089253
+2026-10-31T04:15:19.440Z	key	Enter template=be_go
+2026-10-31T04:15:19.767Z	prompt	template=be_go output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:15:20.820Z	line	first template=be_boot
+2026-10-31T04:15:20.827Z	send	piece=1/1 offset=15089258 text=setenv be_boot 'nvme scan; if run be_ld; then run be_go; fi'
+2026-10-31T04:15:20.853Z	echo	ok offset=15089258-15089318
+2026-10-31T04:15:20.855Z	key	Enter template=be_boot
+2026-10-31T04:15:21.177Z	prompt	template=be_boot output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:15:22.245Z	line	first template=install-bootcmd
+2026-10-31T04:15:22.252Z	send	piece=1/1 offset=15089323 text=setenv bootcmd 'run be_boot; run be_orig_bootcmd'
+2026-10-31T04:15:22.271Z	echo	ok offset=15089323-15089372
+2026-10-31T04:15:22.273Z	key	Enter template=install-bootcmd
+2026-10-31T04:15:22.595Z	prompt	template=install-bootcmd output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:15:23.661Z	line	first template=printenv
+2026-10-31T04:15:23.667Z	send	piece=1/1 offset=15089377 text=printenv
+2026-10-31T04:15:23.688Z	echo	ok offset=15089377-15089385
+2026-10-31T04:15:23.690Z	key	Enter template=printenv
+2026-10-31T04:15:25.117Z	prompt	template=printenv output_bytes=12593 output_sha256=edae0fabcd1bb01e7a3a353d46e46727a76024c3dd8a1f1119b06f91f8268048
+2026-10-31T04:15:26.255Z	line	first template=saveenv
+2026-10-31T04:15:26.262Z	send	piece=1/1 offset=15101983 text=saveenv
+2026-10-31T04:15:26.284Z	echo	ok offset=15101983-15101990
+2026-10-31T04:15:26.287Z	key	Enter template=saveenv
+2026-10-31T04:15:26.761Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:16:21.127Z	reset	seq=4 method=k3ctl reason=idle-prompt offset=15102031
+2026-10-31T04:16:22.154Z	banner	seq=4 spl=15102139 uboot=15102300
+2026-10-31T04:16:38.541Z	reset	seq=5 method=k3ctl reason=terminal-marker offset=15108399
+2026-10-31T04:16:39.568Z	banner	seq=5 spl=15108507 uboot=15108668
+2026-10-31T04:16:40.609Z	key	s offset=15111343
+2026-10-31T04:16:40.980Z	prompt	fresh offset=15111347
+2026-10-31T04:16:42.044Z	line	first template=be_image
+2026-10-31T04:16:42.050Z	send	piece=1/1 offset=15111347 text=setenv be_image be-mvp-probe-vmid-distinct-gcc.img
+2026-10-31T04:16:42.124Z	echo	ok offset=15111347-15111408
+2026-10-31T04:16:42.127Z	key	Enter template=be_image
+2026-10-31T04:16:42.451Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:16:43.508Z	line	first template=printenv-name
+2026-10-31T04:16:43.515Z	send	piece=1/1 offset=15111413 text=printenv be_image
+2026-10-31T04:16:43.540Z	echo	ok offset=15111413-15111430
+2026-10-31T04:16:43.542Z	key	Enter template=printenv-name
+2026-10-31T04:16:43.869Z	prompt	template=printenv-name output_bytes=45 output_sha256=37bc3af7e561fe860d42fbca21f2452e3b6e79753009442b12281e6a6e94e9f2
+2026-10-31T04:16:44.929Z	line	first template=printenv
+2026-10-31T04:16:44.935Z	send	piece=1/1 offset=15111480 text=printenv
+2026-10-31T04:16:44.955Z	echo	ok offset=15111480-15111499
+2026-10-31T04:16:44.957Z	key	Enter template=printenv
+2026-10-31T04:16:46.389Z	prompt	template=printenv output_bytes=12598 output_sha256=da8e86d34b9a72e6317316b649be312808c96272960f9c095315bd0eca7d264e
+2026-10-31T04:16:47.509Z	line	first template=saveenv
+2026-10-31T04:16:47.516Z	send	piece=1/1 offset=15124102 text=saveenv
+2026-10-31T04:16:47.547Z	echo	ok offset=15124102-15124109
+2026-10-31T04:16:47.549Z	key	Enter template=saveenv
+2026-10-31T04:16:48.022Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:16:49.527Z	reset	seq=6 method=k3ctl reason=idle-prompt offset=15124150
+2026-10-31T04:16:50.553Z	banner	seq=6 spl=15124258 uboot=15124419
+2026-10-31T04:17:06.890Z	reset	seq=7 method=k3ctl reason=terminal-marker offset=15129867
+2026-10-31T04:17:07.912Z	banner	seq=7 spl=15129975 uboot=15130136
+2026-10-31T04:17:08.997Z	key	s offset=15132811
+2026-10-31T04:17:09.368Z	prompt	fresh offset=15132815
+2026-10-31T04:17:10.433Z	line	first template=be_image
+2026-10-31T04:17:10.440Z	send	piece=1/1 offset=15132815 text=setenv be_image be-mvp-probe-vmid-shared-gcc.img
+2026-10-31T04:17:10.512Z	echo	ok offset=15132815-15132874
+2026-10-31T04:17:10.515Z	key	Enter template=be_image
+2026-10-31T04:17:10.843Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:17:11.899Z	line	first template=printenv-name
+2026-10-31T04:17:11.905Z	send	piece=1/1 offset=15132879 text=printenv be_image
+2026-10-31T04:17:11.925Z	echo	ok offset=15132879-15132896
+2026-10-31T04:17:11.928Z	key	Enter template=printenv-name
+2026-10-31T04:17:12.302Z	prompt	template=printenv-name output_bytes=43 output_sha256=7793b506b5c2bdb809aabcade4cc7761b0e666363c0cb4286617ed4d7086ed27
+2026-10-31T04:17:13.362Z	line	first template=printenv
+2026-10-31T04:17:13.368Z	send	piece=1/1 offset=15132944 text=printenv
+2026-10-31T04:17:13.389Z	echo	ok offset=15132944-15132963
+2026-10-31T04:17:13.391Z	key	Enter template=printenv
+2026-10-31T04:17:14.822Z	prompt	template=printenv output_bytes=12596 output_sha256=c601556722387aa6feb1cac3bc4d19c5da2b0e6866582dc2b20979186215b407
+2026-10-31T04:17:15.950Z	line	first template=saveenv
+2026-10-31T04:17:15.956Z	send	piece=1/1 offset=15145564 text=saveenv
+2026-10-31T04:17:15.980Z	echo	ok offset=15145564-15145571
+2026-10-31T04:17:15.983Z	key	Enter template=saveenv
+2026-10-31T04:17:16.487Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:17:18.659Z	reset	seq=8 method=k3ctl reason=idle-prompt offset=15145612
+2026-10-31T04:17:19.688Z	banner	seq=8 spl=15145720 uboot=15145881
+2026-10-31T04:17:36.018Z	reset	seq=9 method=k3ctl reason=terminal-marker offset=15151311
+2026-10-31T04:17:37.060Z	banner	seq=9 spl=15151419 uboot=15151580
+2026-10-31T04:17:38.103Z	key	s offset=15154269
+2026-10-31T04:17:38.475Z	prompt	fresh offset=15154273
+2026-10-31T04:17:39.535Z	line	first template=be_image
+2026-10-31T04:17:39.542Z	send	piece=1/1 offset=15154273 text=setenv be_image be-mvp-two-guests-gcc.img
+2026-10-31T04:17:39.569Z	echo	ok offset=15154273-15154325
+2026-10-31T04:17:39.571Z	key	Enter template=be_image
+2026-10-31T04:17:39.893Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:17:40.955Z	line	first template=printenv-name
+2026-10-31T04:17:40.962Z	send	piece=1/1 offset=15154330 text=printenv be_image
+2026-10-31T04:17:40.988Z	echo	ok offset=15154330-15154347
+2026-10-31T04:17:40.991Z	key	Enter template=printenv-name
+2026-10-31T04:17:41.348Z	prompt	template=printenv-name output_bytes=36 output_sha256=ea38c64e74f0564750ca3e8b21a9e6c4ed91439552fdeae9bbe40c596aa9dad4
+2026-10-31T04:17:42.678Z	line	first template=printenv
+2026-10-31T04:17:42.685Z	send	piece=1/1 offset=15154388 text=printenv
+2026-10-31T04:17:42.708Z	echo	ok offset=15154388-15154407
+2026-10-31T04:17:42.710Z	key	Enter template=printenv
+2026-10-31T04:17:44.144Z	prompt	template=printenv output_bytes=12589 output_sha256=181aea929e26e340e193da9b2c06f33ac548fc641facae2c8daaf5dc75e304d0
+2026-10-31T04:17:45.273Z	line	first template=saveenv
+2026-10-31T04:17:45.279Z	send	piece=1/1 offset=15167001 text=saveenv
+2026-10-31T04:17:45.306Z	echo	ok offset=15167001-15167008
+2026-10-31T04:17:45.308Z	key	Enter template=saveenv
+2026-10-31T04:17:45.785Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:17:47.300Z	reset	seq=10 method=k3ctl reason=idle-prompt offset=15167049
+2026-10-31T04:17:48.329Z	banner	seq=10 spl=15167157 uboot=15167318
+2026-10-31T04:18:06.485Z	reset	seq=11 method=k3ctl reason=terminal-marker offset=15183782
+2026-10-31T04:18:07.511Z	banner	seq=11 spl=15183890 uboot=15184051
+2026-10-31T04:18:25.670Z	reset	seq=12 method=k3ctl reason=terminal-marker offset=15200529
+2026-10-31T04:18:26.713Z	banner	seq=12 spl=15200637 uboot=15200798
+2026-10-31T04:18:44.726Z	reset	seq=13 method=k3ctl reason=terminal-marker offset=15217276
+2026-10-31T04:18:45.754Z	banner	seq=13 spl=15217384 uboot=15217545
+2026-10-31T04:18:46.876Z	key	s offset=15220234
+2026-10-31T04:18:47.309Z	prompt	fresh offset=15220238
+2026-10-31T04:18:48.431Z	line	first template=be_image
+2026-10-31T04:18:48.437Z	send	piece=1/1 offset=15220238 text=setenv be_image be-mvp-two-guests-clang.img
+2026-10-31T04:18:48.464Z	echo	ok offset=15220238-15220292
+2026-10-31T04:18:48.467Z	key	Enter template=be_image
+2026-10-31T04:18:48.797Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:18:49.854Z	line	first template=printenv-name
+2026-10-31T04:18:49.860Z	send	piece=1/1 offset=15220297 text=printenv be_image
+2026-10-31T04:18:49.881Z	echo	ok offset=15220297-15220314
+2026-10-31T04:18:49.884Z	key	Enter template=printenv-name
+2026-10-31T04:18:50.210Z	prompt	template=printenv-name output_bytes=38 output_sha256=205fca1f809df922dfb02b9518eb92d262835f942fd6e1c3422141963e86461a
+2026-10-31T04:18:51.265Z	line	first template=printenv
+2026-10-31T04:18:51.273Z	send	piece=1/1 offset=15220357 text=printenv
+2026-10-31T04:18:51.298Z	echo	ok offset=15220357-15220376
+2026-10-31T04:18:51.301Z	key	Enter template=printenv
+2026-10-31T04:18:52.741Z	prompt	template=printenv output_bytes=12591 output_sha256=3638db6d277f9aef87fb5c7656f31d1ec4f641e6996f5b47033164a61148ec53
+2026-10-31T04:18:53.870Z	line	first template=saveenv
+2026-10-31T04:18:53.876Z	send	piece=1/1 offset=15232972 text=saveenv
+2026-10-31T04:18:53.899Z	echo	ok offset=15232972-15232979
+2026-10-31T04:18:53.901Z	key	Enter template=saveenv
+2026-10-31T04:18:54.378Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:18:55.874Z	reset	seq=14 method=k3ctl reason=idle-prompt offset=15233020
+2026-10-31T04:18:56.941Z	banner	seq=14 spl=15233128 uboot=15233289
+2026-10-31T04:19:14.944Z	reset	seq=15 method=k3ctl reason=terminal-marker offset=15249753
+2026-10-31T04:19:15.971Z	banner	seq=15 spl=15249861 uboot=15250022
+2026-10-31T04:19:17.064Z	key	s offset=15252711
+2026-10-31T04:19:17.386Z	prompt	fresh offset=15252715
+2026-10-31T04:19:18.478Z	line	first template=be_image
+2026-10-31T04:19:18.510Z	send	piece=1/1 offset=15252715 text=setenv be_image be-mvp-te-poc-gcc.img
+2026-10-31T04:19:18.645Z	echo	ok offset=15252715-15252763
+2026-10-31T04:19:18.658Z	key	Enter template=be_image
+2026-10-31T04:19:19.100Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:19:20.419Z	line	first template=printenv-name
+2026-10-31T04:19:20.426Z	send	piece=1/1 offset=15252768 text=printenv be_image
+2026-10-31T04:19:20.447Z	echo	ok offset=15252768-15252785
+2026-10-31T04:19:20.449Z	key	Enter template=printenv-name
+2026-10-31T04:19:20.777Z	prompt	template=printenv-name output_bytes=32 output_sha256=a2c8c46225b3c88c2dbbac728e5a3a76f18f65384f12f7cd07a2e37e93025ae4
+2026-10-31T04:19:21.853Z	line	first template=printenv
+2026-10-31T04:19:21.859Z	send	piece=1/1 offset=15252822 text=printenv
+2026-10-31T04:19:21.879Z	echo	ok offset=15252822-15252841
+2026-10-31T04:19:21.881Z	key	Enter template=printenv
+2026-10-31T04:19:23.310Z	prompt	template=printenv output_bytes=12585 output_sha256=9b5e6fb013ee9724d30bf8c0c4398fec3ebf20a2805cccc25e0b7dff7989f526
+2026-10-31T04:19:24.499Z	line	first template=saveenv
+2026-10-31T04:19:24.506Z	send	piece=1/1 offset=15265431 text=saveenv
+2026-10-31T04:19:24.535Z	echo	ok offset=15265431-15265438
+2026-10-31T04:19:24.537Z	key	Enter template=saveenv
+2026-10-31T04:19:25.009Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:19:26.523Z	reset	seq=16 method=k3ctl reason=idle-prompt offset=15265479
+2026-10-31T04:19:27.549Z	banner	seq=16 spl=15265587 uboot=15265748
+2026-10-31T04:19:45.744Z	reset	seq=17 method=k3ctl reason=terminal-marker offset=15283945
+2026-10-31T04:19:46.770Z	banner	seq=17 spl=15284053 uboot=15284214
+2026-10-31T04:20:04.978Z	reset	seq=18 method=k3ctl reason=terminal-marker offset=15302409
+2026-10-31T04:20:05.999Z	banner	seq=18 spl=15302517 uboot=15302678
+2026-10-31T04:20:24.103Z	reset	seq=19 method=k3ctl reason=terminal-marker offset=15320859
+2026-10-31T04:20:25.141Z	banner	seq=19 spl=15320967 uboot=15321128
+2026-10-31T04:20:26.227Z	key	s offset=15323817
+2026-10-31T04:20:26.601Z	prompt	fresh offset=15323821
+2026-10-31T04:20:27.660Z	line	first template=be_image
+2026-10-31T04:20:27.666Z	send	piece=1/1 offset=15323821 text=setenv be_image be-mvp-te-poc-clang.img
+2026-10-31T04:20:27.695Z	echo	ok offset=15323821-15323871
+2026-10-31T04:20:27.697Z	key	Enter template=be_image
+2026-10-31T04:20:28.020Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:20:29.081Z	line	first template=printenv-name
+2026-10-31T04:20:29.087Z	send	piece=1/1 offset=15323876 text=printenv be_image
+2026-10-31T04:20:29.109Z	echo	ok offset=15323876-15323893
+2026-10-31T04:20:29.111Z	key	Enter template=printenv-name
+2026-10-31T04:20:29.484Z	prompt	template=printenv-name output_bytes=34 output_sha256=4eab2c2201807428e5167d47ac71ec291c82f36f844c01abd6907dd9cac547ae
+2026-10-31T04:20:30.547Z	line	first template=printenv
+2026-10-31T04:20:30.554Z	send	piece=1/1 offset=15323932 text=printenv
+2026-10-31T04:20:30.579Z	echo	ok offset=15323932-15323951
+2026-10-31T04:20:30.582Z	key	Enter template=printenv
+2026-10-31T04:20:32.009Z	prompt	template=printenv output_bytes=12587 output_sha256=b24a47894799a9df34dc98b4f905fa9bc1a133df4109f3b813754f703dbc0ab7
+2026-10-31T04:20:33.129Z	line	first template=saveenv
+2026-10-31T04:20:33.136Z	send	piece=1/1 offset=15336543 text=saveenv
+2026-10-31T04:20:33.159Z	echo	ok offset=15336543-15336550
+2026-10-31T04:20:33.161Z	key	Enter template=saveenv
+2026-10-31T04:20:33.633Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:20:35.134Z	reset	seq=20 method=k3ctl reason=idle-prompt offset=15336591
+2026-10-31T04:20:36.161Z	banner	seq=20 spl=15336699 uboot=15336860
+2026-10-31T04:20:54.242Z	reset	seq=21 method=k3ctl reason=terminal-marker offset=15355041
+2026-10-31T04:20:55.273Z	banner	seq=21 spl=15355149 uboot=15355310
+2026-10-31T04:20:56.368Z	key	s offset=15357985
+2026-10-31T04:20:56.739Z	prompt	fresh offset=15357989
+2026-10-31T04:20:57.801Z	line	first template=be_image
+2026-10-31T04:20:57.808Z	send	piece=1/1 offset=15357989 text=setenv be_image be-mvp-anchor-gcc.img
+2026-10-31T04:20:57.837Z	echo	ok offset=15357989-15358037
+2026-10-31T04:20:57.839Z	key	Enter template=be_image
+2026-10-31T04:20:58.163Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:20:59.226Z	line	first template=printenv-name
+2026-10-31T04:20:59.233Z	send	piece=1/1 offset=15358042 text=printenv be_image
+2026-10-31T04:20:59.261Z	echo	ok offset=15358042-15358059
+2026-10-31T04:20:59.263Z	key	Enter template=printenv-name
+2026-10-31T04:20:59.587Z	prompt	template=printenv-name output_bytes=32 output_sha256=59b6d7461c2322f945342423a168e2d7a334f139aebfcf55a32d7b62c550785e
+2026-10-31T04:21:00.652Z	line	first template=printenv
+2026-10-31T04:21:00.659Z	send	piece=1/1 offset=15358096 text=printenv
+2026-10-31T04:21:00.681Z	echo	ok offset=15358096-15358115
+2026-10-31T04:21:00.683Z	key	Enter template=printenv
+2026-10-31T04:21:02.115Z	prompt	template=printenv output_bytes=12585 output_sha256=c22c6356f93ad30e295718dabe7460b1684f3e6ab8bc6d6e207813e7356c9843
+2026-10-31T04:21:03.236Z	line	first template=saveenv
+2026-10-31T04:21:03.243Z	send	piece=1/1 offset=15370705 text=saveenv
+2026-10-31T04:21:03.263Z	echo	ok offset=15370705-15370712
+2026-10-31T04:21:03.265Z	key	Enter template=saveenv
+2026-10-31T04:21:03.738Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:21:05.259Z	reset	seq=22 method=k3ctl reason=idle-prompt offset=15370753
+2026-10-31T04:21:06.284Z	banner	seq=22 spl=15370861 uboot=15371022
+2026-10-31T04:21:26.881Z	reset	seq=23 method=k3ctl reason=terminal-marker offset=15393336
+2026-10-31T04:21:27.911Z	banner	seq=23 spl=15393444 uboot=15393605
+2026-10-31T04:21:48.391Z	reset	seq=24 method=k3ctl reason=terminal-marker offset=15415918
+2026-10-31T04:21:49.408Z	banner	seq=24 spl=15416026 uboot=15416187
+2026-10-31T04:22:09.787Z	reset	seq=25 method=k3ctl reason=terminal-marker offset=15438501
+2026-10-31T04:22:10.811Z	banner	seq=25 spl=15438609 uboot=15438770
+2026-10-31T04:22:11.896Z	key	s offset=15441445
+2026-10-31T04:22:12.223Z	prompt	fresh offset=15441449
+2026-10-31T04:22:13.289Z	line	first template=be_image
+2026-10-31T04:22:13.295Z	send	piece=1/1 offset=15441449 text=setenv be_image be-mvp-anchor-clang.img
+2026-10-31T04:22:13.316Z	echo	ok offset=15441449-15441499
+2026-10-31T04:22:13.318Z	key	Enter template=be_image
+2026-10-31T04:22:13.639Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:22:14.700Z	line	first template=printenv-name
+2026-10-31T04:22:14.706Z	send	piece=1/1 offset=15441504 text=printenv be_image
+2026-10-31T04:22:14.729Z	echo	ok offset=15441504-15441521
+2026-10-31T04:22:14.732Z	key	Enter template=printenv-name
+2026-10-31T04:22:15.055Z	prompt	template=printenv-name output_bytes=34 output_sha256=53550c95eb3161188e3faa08ddece45097ef6ef64ff4b160dce55b92558e6ca0
+2026-10-31T04:22:16.116Z	line	first template=printenv
+2026-10-31T04:22:16.123Z	send	piece=1/1 offset=15441560 text=printenv
+2026-10-31T04:22:16.152Z	echo	ok offset=15441560-15441579
+2026-10-31T04:22:16.154Z	key	Enter template=printenv
+2026-10-31T04:22:17.590Z	prompt	template=printenv output_bytes=12587 output_sha256=dbf7f242e55a98d118ab72d4e36bc4185d0c99ec825432ddfd5eeb849b14b5cb
+2026-10-31T04:22:18.716Z	line	first template=saveenv
+2026-10-31T04:22:18.722Z	send	piece=1/1 offset=15454171 text=saveenv
+2026-10-31T04:22:18.745Z	echo	ok offset=15454171-15454178
+2026-10-31T04:22:18.747Z	key	Enter template=saveenv
+2026-10-31T04:22:19.228Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:22:20.743Z	reset	seq=26 method=k3ctl reason=idle-prompt offset=15454219
+2026-10-31T04:22:21.771Z	banner	seq=26 spl=15454327 uboot=15454488
+2026-10-31T04:22:42.156Z	reset	seq=27 method=k3ctl reason=terminal-marker offset=15476800
+2026-10-31T04:22:43.183Z	banner	seq=27 spl=15476908 uboot=15477069
+2026-10-31T04:22:44.269Z	key	s offset=15479758
+2026-10-31T04:22:44.642Z	prompt	fresh offset=15479762
+2026-10-31T04:22:45.712Z	line	first template=be_image
+2026-10-31T04:22:45.718Z	send	piece=1/1 offset=15479762 text=setenv be_image be-mvp-two-guests-payload-gcc.img
+2026-10-31T04:22:45.790Z	echo	ok offset=15479762-15479822
+2026-10-31T04:22:45.792Z	key	Enter template=be_image
+2026-10-31T04:22:46.123Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:22:47.193Z	line	first template=printenv-name
+2026-10-31T04:22:47.199Z	send	piece=1/1 offset=15479827 text=printenv be_image
+2026-10-31T04:22:47.224Z	echo	ok offset=15479827-15479844
+2026-10-31T04:22:47.227Z	key	Enter template=printenv-name
+2026-10-31T04:22:47.557Z	prompt	template=printenv-name output_bytes=44 output_sha256=696a7e338a775a9c7b8ddf434365bf5e8dca81f5c822244c55c7fe1944f949f1
+2026-10-31T04:22:48.621Z	line	first template=printenv
+2026-10-31T04:22:48.627Z	send	piece=1/1 offset=15479893 text=printenv
+2026-10-31T04:22:48.655Z	echo	ok offset=15479893-15479912
+2026-10-31T04:22:48.658Z	key	Enter template=printenv
+2026-10-31T04:22:50.088Z	prompt	template=printenv output_bytes=12597 output_sha256=6de33a183941e1fe1cd8a1009d90b16154cb2f892951fbc39c22da7c2ced9d42
+2026-10-31T04:22:51.211Z	line	first template=saveenv
+2026-10-31T04:22:51.218Z	send	piece=1/1 offset=15492514 text=saveenv
+2026-10-31T04:22:51.238Z	echo	ok offset=15492514-15492521
+2026-10-31T04:22:51.240Z	key	Enter template=saveenv
+2026-10-31T04:22:51.714Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:22:53.212Z	reset	seq=28 method=k3ctl reason=idle-prompt offset=15492562
+2026-10-31T04:22:54.239Z	banner	seq=28 spl=15492670 uboot=15492831
+2026-10-31T04:23:10.499Z	reset	seq=29 method=k3ctl reason=terminal-marker offset=15497431
+2026-10-31T04:23:11.525Z	banner	seq=29 spl=15497539 uboot=15497700
+2026-10-31T04:23:12.611Z	key	s offset=15500389
+2026-10-31T04:23:12.984Z	prompt	fresh offset=15500393
+2026-10-31T04:23:14.046Z	line	first template=be_image
+2026-10-31T04:23:14.053Z	send	piece=1/1 offset=15500393 text=setenv be_image be-mvp-te-poc-reader-write-gcc.img
+2026-10-31T04:23:14.125Z	echo	ok offset=15500393-15500454
+2026-10-31T04:23:14.127Z	key	Enter template=be_image
+2026-10-31T04:23:14.452Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:23:15.517Z	line	first template=printenv-name
+2026-10-31T04:23:15.524Z	send	piece=1/1 offset=15500459 text=printenv be_image
+2026-10-31T04:23:15.545Z	echo	ok offset=15500459-15500476
+2026-10-31T04:23:15.548Z	key	Enter template=printenv-name
+2026-10-31T04:23:15.871Z	prompt	template=printenv-name output_bytes=45 output_sha256=cedf14e70add9b9c7716097f8773569c6a886e86bcfd0c8350c892f0b8d75aae
+2026-10-31T04:23:16.936Z	line	first template=printenv
+2026-10-31T04:23:16.943Z	send	piece=1/1 offset=15500526 text=printenv
+2026-10-31T04:23:16.963Z	echo	ok offset=15500526-15500545
+2026-10-31T04:23:16.965Z	key	Enter template=printenv
+2026-10-31T04:23:18.394Z	prompt	template=printenv output_bytes=12598 output_sha256=ef8dccaff36f5b1aed815a4882605ba3a559dc6603270fcdd54d2b7e3457960e
+2026-10-31T04:23:19.540Z	line	first template=saveenv
+2026-10-31T04:23:19.547Z	send	piece=1/1 offset=15513148 text=saveenv
+2026-10-31T04:23:19.566Z	echo	ok offset=15513148-15513155
+2026-10-31T04:23:19.568Z	key	Enter template=saveenv
+2026-10-31T04:23:20.040Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:23:21.555Z	reset	seq=30 method=k3ctl reason=idle-prompt offset=15513196
+2026-10-31T04:23:22.575Z	banner	seq=30 spl=15513304 uboot=15513465
+2026-10-31T04:23:38.815Z	reset	seq=31 method=k3ctl reason=terminal-marker offset=15518139
+2026-10-31T04:23:39.835Z	banner	seq=31 spl=15518247 uboot=15518408
+2026-10-31T04:23:40.921Z	key	s offset=15521097
+2026-10-31T04:23:41.243Z	prompt	fresh offset=15521101
+2026-10-31T04:23:42.312Z	line	first template=be_image
+2026-10-31T04:23:42.319Z	send	piece=1/1 offset=15521101 text=setenv be_image be-mvp-te-poc-no-inject-gcc.img
+2026-10-31T04:23:42.341Z	echo	ok offset=15521101-15521159
+2026-10-31T04:23:42.343Z	key	Enter template=be_image
+2026-10-31T04:23:42.666Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:23:43.736Z	line	first template=printenv-name
+2026-10-31T04:23:43.743Z	send	piece=1/1 offset=15521164 text=printenv be_image
+2026-10-31T04:23:43.766Z	echo	ok offset=15521164-15521181
+2026-10-31T04:23:43.769Z	key	Enter template=printenv-name
+2026-10-31T04:23:44.098Z	prompt	template=printenv-name output_bytes=42 output_sha256=2eadfce2262a5102cb129b4bbf1aa65f28a7e8ccdd73cb3b333ca9ccbc178430
+2026-10-31T04:23:45.168Z	line	first template=printenv
+2026-10-31T04:23:45.175Z	send	piece=1/1 offset=15521228 text=printenv
+2026-10-31T04:23:45.201Z	echo	ok offset=15521228-15521247
+2026-10-31T04:23:45.204Z	key	Enter template=printenv
+2026-10-31T04:23:46.634Z	prompt	template=printenv output_bytes=12595 output_sha256=7e0a2faa7274550a0b23f63b6d433e23b6c25dd2af44f43093e6b77455e2a68b
+2026-10-31T04:23:47.762Z	line	first template=saveenv
+2026-10-31T04:23:47.769Z	send	piece=1/1 offset=15533847 text=saveenv
+2026-10-31T04:23:47.789Z	echo	ok offset=15533847-15533854
+2026-10-31T04:23:47.791Z	key	Enter template=saveenv
+2026-10-31T04:23:48.264Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:23:49.767Z	reset	seq=32 method=k3ctl reason=idle-prompt offset=15533895
+2026-10-31T04:23:50.792Z	banner	seq=32 spl=15534003 uboot=15534164
+2026-10-31T04:24:07.989Z	reset	seq=33 method=k3ctl reason=terminal-marker offset=15549534
+2026-10-31T04:24:09.013Z	banner	seq=33 spl=15549642 uboot=15549803
+2026-10-31T04:24:10.109Z	key	s offset=15552492
+2026-10-31T04:24:10.482Z	prompt	fresh offset=15552496
+2026-10-31T04:24:11.549Z	line	first template=be_image
+2026-10-31T04:24:11.556Z	send	piece=1/1 offset=15552496 text=setenv be_image be-mvp-anchor-wrong-measurement-gcc.img
+2026-10-31T04:24:11.627Z	echo	ok offset=15552496-15552562
+2026-10-31T04:24:11.630Z	key	Enter template=be_image
+2026-10-31T04:24:11.960Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:24:13.020Z	line	first template=printenv-name
+2026-10-31T04:24:13.027Z	send	piece=1/1 offset=15552567 text=printenv be_image
+2026-10-31T04:24:13.047Z	echo	ok offset=15552567-15552584
+2026-10-31T04:24:13.050Z	key	Enter template=printenv-name
+2026-10-31T04:24:13.377Z	prompt	template=printenv-name output_bytes=50 output_sha256=f2729576baea53fb04eeced49d28905873f8cb874e4edb998ff808640057b407
+2026-10-31T04:24:14.447Z	line	first template=printenv
+2026-10-31T04:24:14.453Z	send	piece=1/1 offset=15552639 text=printenv
+2026-10-31T04:24:14.474Z	echo	ok offset=15552639-15552658
+2026-10-31T04:24:14.477Z	key	Enter template=printenv
+2026-10-31T04:24:15.911Z	prompt	template=printenv output_bytes=12603 output_sha256=3ff096eeac9bb17f11d2e40c7d94270f6427b9bd500d5475aa1ca6917e77b12e
+2026-10-31T04:24:17.044Z	line	first template=saveenv
+2026-10-31T04:24:17.051Z	send	piece=1/1 offset=15565266 text=saveenv
+2026-10-31T04:24:17.075Z	echo	ok offset=15565266-15565273
+2026-10-31T04:24:17.078Z	key	Enter template=saveenv
+2026-10-31T04:24:17.550Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:24:19.065Z	reset	seq=34 method=k3ctl reason=idle-prompt offset=15565314
+2026-10-31T04:24:20.087Z	banner	seq=34 spl=15565422 uboot=15565583
+2026-10-31T04:24:36.550Z	reset	seq=35 method=k3ctl reason=terminal-marker offset=15571807
+2026-10-31T04:24:37.577Z	banner	seq=35 spl=15571915 uboot=15572076
+2026-10-31T04:24:38.667Z	key	s offset=15574765
+2026-10-31T04:24:39.037Z	prompt	fresh offset=15574769
+2026-10-31T04:24:40.101Z	line	first template=be_image
+2026-10-31T04:24:40.109Z	send	piece=1/1 offset=15574769 text=setenv be_image be-mvp-anchor-no-grant-check-gcc.img
+2026-10-31T04:24:40.135Z	echo	ok offset=15574769-15574832
+2026-10-31T04:24:40.138Z	key	Enter template=be_image
+2026-10-31T04:24:40.463Z	prompt	template=be_image output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:24:41.530Z	line	first template=printenv-name
+2026-10-31T04:24:41.537Z	send	piece=1/1 offset=15574837 text=printenv be_image
+2026-10-31T04:24:41.564Z	echo	ok offset=15574837-15574854
+2026-10-31T04:24:41.567Z	key	Enter template=printenv-name
+2026-10-31T04:24:41.893Z	prompt	template=printenv-name output_bytes=47 output_sha256=fc405658527b74ce0a77bea119929dd25f4102021116d32e22bd56561dfdd37f
+2026-10-31T04:24:42.957Z	line	first template=printenv
+2026-10-31T04:24:42.964Z	send	piece=1/1 offset=15574906 text=printenv
+2026-10-31T04:24:42.992Z	echo	ok offset=15574906-15574925
+2026-10-31T04:24:42.994Z	key	Enter template=printenv
+2026-10-31T04:24:44.426Z	prompt	template=printenv output_bytes=12600 output_sha256=583672b06f52e870ebc668574ccb7d14aeac17d159deae9c4d3d268d78893e3f
+2026-10-31T04:24:45.560Z	line	first template=saveenv
+2026-10-31T04:24:45.566Z	send	piece=1/1 offset=15587530 text=saveenv
+2026-10-31T04:24:45.589Z	echo	ok offset=15587530-15587537
+2026-10-31T04:24:45.591Z	key	Enter template=saveenv
+2026-10-31T04:24:46.070Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:24:47.607Z	reset	seq=36 method=k3ctl reason=idle-prompt offset=15587578
+2026-10-31T04:24:48.629Z	banner	seq=36 spl=15587686 uboot=15587847
+2026-10-31T04:36:22.954Z	reset	seq=37 method=k3ctl reason=terminal-marker offset=15606411
+2026-10-31T04:36:23.975Z	banner	seq=37 spl=15606519 uboot=15606680
+2026-10-31T04:36:25.060Z	key	s offset=15609355
+2026-10-31T04:36:25.434Z	prompt	fresh offset=15609359
+2026-10-31T04:36:26.498Z	line	first template=restore-bootcmd
+2026-10-31T04:36:26.505Z	send	piece=1/1 offset=15609359 text=setenv bootcmd "${be_orig_bootcmd}"
+2026-10-31T04:36:26.524Z	echo	ok offset=15609359-15609405
+2026-10-31T04:36:26.526Z	key	Enter template=restore-bootcmd
+2026-10-31T04:36:26.848Z	prompt	template=restore-bootcmd output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:36:27.909Z	line	first template=delete
+2026-10-31T04:36:27.916Z	send	piece=1/1 offset=15609410 text=setenv be_boot
+2026-10-31T04:36:27.940Z	echo	ok offset=15609410-15609424
+2026-10-31T04:36:27.943Z	key	Enter template=delete
+2026-10-31T04:36:28.263Z	prompt	template=delete output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:36:29.326Z	line	first template=delete
+2026-10-31T04:36:29.332Z	send	piece=1/1 offset=15609429 text=setenv be_ld
+2026-10-31T04:36:29.360Z	echo	ok offset=15609429-15609441
+2026-10-31T04:36:29.362Z	key	Enter template=delete
+2026-10-31T04:36:29.692Z	prompt	template=delete output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:36:30.750Z	line	first template=delete
+2026-10-31T04:36:30.757Z	send	piece=1/1 offset=15609446 text=setenv be_go
+2026-10-31T04:36:30.779Z	echo	ok offset=15609446-15609458
+2026-10-31T04:36:30.782Z	key	Enter template=delete
+2026-10-31T04:36:31.102Z	prompt	template=delete output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:36:32.165Z	line	first template=delete
+2026-10-31T04:36:32.172Z	send	piece=1/1 offset=15609463 text=setenv be_part
+2026-10-31T04:36:32.195Z	echo	ok offset=15609463-15609477
+2026-10-31T04:36:32.197Z	key	Enter template=delete
+2026-10-31T04:36:32.523Z	prompt	template=delete output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:36:33.597Z	line	first template=delete
+2026-10-31T04:36:33.604Z	send	piece=1/1 offset=15609482 text=setenv be_image
+2026-10-31T04:36:33.630Z	echo	ok offset=15609482-15609497
+2026-10-31T04:36:33.632Z	key	Enter template=delete
+2026-10-31T04:36:33.957Z	prompt	template=delete output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:36:35.026Z	line	first template=delete
+2026-10-31T04:36:35.032Z	send	piece=1/1 offset=15609502 text=setenv be_orig_bootcmd
+2026-10-31T04:36:35.058Z	echo	ok offset=15609502-15609524
+2026-10-31T04:36:35.060Z	key	Enter template=delete
+2026-10-31T04:36:35.386Z	prompt	template=delete output_bytes=0 output_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-31T04:36:36.446Z	line	first template=printenv
+2026-10-31T04:36:36.453Z	send	piece=1/1 offset=15609529 text=printenv
+2026-10-31T04:36:36.472Z	echo	ok offset=15609529-15609537
+2026-10-31T04:36:36.475Z	key	Enter template=printenv
+2026-10-31T04:36:37.906Z	prompt	template=printenv output_bytes=12305 output_sha256=4038ccde206138ab7c27e7b8ad28f7e7924a908d65d57ce394e2c3500a60ffee
+2026-10-31T04:36:39.033Z	line	first template=saveenv
+2026-10-31T04:36:39.039Z	send	piece=1/1 offset=15621847 text=saveenv
+2026-10-31T04:36:39.065Z	echo	ok offset=15621847-15621854
+2026-10-31T04:36:39.068Z	key	Enter template=saveenv
+2026-10-31T04:36:39.542Z	prompt	template=saveenv output_bytes=36 output_sha256=06aa341bb6a98ef18807cecbaf972e07c88eada06bb7a29047328fdae4206a40
+2026-10-31T04:36:40.920Z	reset	seq=38 method=k3ctl reason=idle-prompt offset=15621895
+2026-10-31T04:36:41.943Z	banner	seq=38 spl=15622003 uboot=15622164
+2026-10-31T04:36:43.028Z	key	s offset=15624839
+2026-10-31T04:36:43.400Z	prompt	fresh offset=15624843
+2026-10-31T04:36:44.472Z	line	first template=printenv
+2026-10-31T04:36:44.478Z	send	piece=1/1 offset=15624843 text=printenv
+2026-10-31T04:36:44.503Z	echo	ok offset=15624843-15624862
+2026-10-31T04:36:44.505Z	key	Enter template=printenv
+2026-10-31T04:36:45.936Z	prompt	template=printenv output_bytes=12305 output_sha256=4038ccde206138ab7c27e7b8ad28f7e7924a908d65d57ce394e2c3500a60ffee
+2026-10-31T04:36:47.352Z	reset	seq=39 method=k3ctl reason=idle-prompt offset=15637172
+2026-10-31T04:36:48.374Z	banner	seq=39 spl=15637280 uboot=15637441

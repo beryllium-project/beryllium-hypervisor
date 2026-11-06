@@ -1,0 +1,77 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "S-10",
+  "partition": "static",
+  "declared_delta": null,
+  "base": "arch/riscv/be/r5-trap.S",
+  "base_sha256": "4721da5693b3bde3e91ca1dc36aa8042693d858f198ef06986881171f1216841",
+  "defect_file": "r5-trap.S.defect",
+  "defect_sha256": "b50f49e2b9f80e8be2420e2a352524aea9bb3613fab547a1298057592362158e",
+  "defect": {
+    "kind": "assembly-instruction",
+    "summary": "be_r5_arch_restore_active references __be_root_protected_start",
+    "accepted": null,
+    "malformed": null,
+    "source_path": "arch/riscv/be/r5-trap.S",
+    "target": {
+      "line": 535,
+      "line_anchor": "mv t4, a2",
+      "symbol": "be_r5_arch_restore_active",
+      "slot": null
+    },
+    "anchor": "be_r5_arch_restore_active:\n\t/* Reset all R-disposition controls; deliberately do not write HGATP. */\n\tmv t6, a0\n\tmv t5, a1\n\tmv t4, a2\n",
+    "replacement": "be_r5_arch_restore_active:\n\t/* Reset all R-disposition controls; deliberately do not write HGATP. */\n\tmv t6, a0\n\tmv t5, a1\n\tmv t4, a2\n\tla t0, __be_root_protected_start\n"
+  },
+  "diff": {
+    "sha256": "9f158a1877347b3b2d99bc9917bbed88324a327f8eabe0a0182ee19c6dd1cc9f",
+    "added": 1,
+    "removed": 0,
+    "budget": {
+      "added": 6,
+      "removed": 6
+    },
+    "unified": "--- a/arch/riscv/be/r5-trap.S\n+++ b/arch/riscv/be/r5-trap.S\n@@ -532,6 +532,7 @@\n \tmv t6, a0\n \tmv t5, a1\n \tmv t4, a2\n+\tla t0, __be_root_protected_start\n \tcsrw satp, zero\n \tsfence.vma zero, zero\n \tcsrw sstatus, zero\n"
+  },
+  "expected": {
+    "first_rejection_layer": "L6",
+    "outcome": "rejected-by-image-check",
+    "message_completeness": "complete",
+    "primary_message": "{toolchain}: unexpected G-stage root pool reference: be_r5_arch_restore_active,be_r5_runtime_main",
+    "placeholders": {},
+    "stages": {
+      "l3": "pass",
+      "gcc-link": "pass",
+      "clang-link": "pass",
+      "gcc-image-check": "reject",
+      "clang-image-check": "reject"
+    },
+    "absent_stages": [],
+    "messages": {
+      "gcc-image-check": [
+        "gcc: unexpected G-stage root pool reference: be_r5_arch_restore_active,be_r5_runtime_main"
+      ],
+      "clang-image-check": [
+        "clang: unexpected G-stage root pool reference: be_r5_arch_restore_active,be_r5_runtime_main"
+      ]
+    },
+    "prohibited_layers": [
+      "L7",
+      "L8",
+      "L9",
+      "L10",
+      "L11"
+    ],
+    "qemu": "forbidden",
+    "artifacts": {
+      "quarantined": [
+        "clang-beryllium.bin",
+        "clang-beryllium.elf",
+        "gcc-beryllium.bin",
+        "gcc-beryllium.elf"
+      ],
+      "scratch_elf": true
+    }
+  }
+}

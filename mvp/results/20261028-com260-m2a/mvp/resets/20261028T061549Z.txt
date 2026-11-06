@@ -1,0 +1,26 @@
+method=k3ctl
+client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+client_pin=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+device=/dev/ttyACM0
+boot_id_before=f86e14fb-1aa2-4132-afdb-aca30682aa26
+terminal_after_handoff=hart=0 line=BE_MVP:FAIL run-timeout
+terminal_within_wait=yes
+tail_wait=ended
+verdict=PASS
+probe_utc=2026-10-28T06:16:05Z
+probe=down
+probe_detail=ssh: connect to host 192.168.2.7 port 22: Connection timed out
+status_before_utc=2026-10-28T06:16:10Z
+status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=120250760 ver=1.0
+status_before_exit=0
+reset_utc=2026-10-28T06:16:10Z
+reset_reply=OK reset
+reset_exit=0
+status_after_utc=2026-10-28T06:16:10Z
+status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=120251054 ver=1.0
+status_after_exit=0
+boot_id_after=cb56d28d-552b-4c8b-bc11-7708166be740
+fedora_returned_utc=2026-10-28T06:16:53Z
+seconds_to_new_boot_id=43
+settle_seconds=30
+outcome=reset

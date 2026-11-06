@@ -1,0 +1,65 @@
+Serial log (written by hand on 2026-10-28 from the operator's picocom log,
+which is outside the repository and is not retained): the operator's
+session, `picocom -b 115200 /dev/ttyUSB0 --logfile
+<home>/src/spacemit-k3/logs/boot-7.log` on the workstation `l1`, had been
+running since before the M1 campaigns, and automation read the log
+output-only and never wrote to the serial port. The segment of this
+campaign, `20261028-com260-m2a`, runs from the first `anchor` run's kexec
+handoff (`kexec_core: Starting new kernel`, log line 96,366; `BE_MVP:01`
+at line 96,384; 03:32 UTC) to the end of the log as read (line 106,981;
+06:17 UTC). For each of the six runs it holds Fedora's shutdown through
+`systemd-kexec.service`, the kexec handoff, the shim line, and the
+monitor's lines through the run's terminal marker: `BE_MVP:14 SHUTDOWN
+type=0 reason=0` four times (`anchor`, three GCC and one Clang, each with
+`BE_MVP:06 MEASURED … expected=match`, hart 2's `BE_MVP:11 IPI_PROBE …
+spv=0` inside its first management wait and hart 1's `spv=1`, five `DENY`
+lines, fifteen `MGMT` lines, `DOMAIN_PAUSED` and `DOMAIN_TERMINATED` for
+domain 1, and both guests' prefixed lines through the host's `MVPINIT 05
+RESULT pass`), `BE_MVP:FAIL measurement` once (`wrong-measurement`, with its
+`DETAIL` line's computed and expected values, before any hart started),
+and `BE_MVP:FAIL run-timeout` once (`no-grant-check`, after `BE_MVP:MGMT
+hart=2 domain=1 seq=1 fid=terminate target=0 result=0
+target_state=terminated` and `BE_MVP:12 DOMAIN_TERMINATED hart=1 domain=0
+by=1`, with `DETAIL ticks=0x8000000`). After each terminal marker the
+tool's `k3ctl reset` follows: two NUL bytes and the boot ROM's terse lines
+(`sys: 0x10000200`, `try sd...`, `bm:3`, `ERROR: CMD8`, `ERROR: sd f!
+l:90`, `bm:4`, `nor m:0xc8 d:0x6017`, `j...`), `U-Boot SPL 2022.10 (May 21
+2026 - 07:43:32 +0000)` with its DDR line (MT62F1G32D2DS, 4096MB,
+6400MT/s), `U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build:
+jenkins-BSP-build-bsp-deb-395` with its device probes, `Starting kernel
+...`, and Fedora Linux 45 (Server) with kernel
+`7.3.0-65.1.riscv64.omni.fc45.riscv64` to its login prompt. The segment
+holds seven such reboots, each legible and complete, for six runs: the
+boot after the first run's reset (03:32:52 UTC) reached its login prompt
+with no IPv4 address (its banner reads `Web console:
+https://localhost:9090/` alone, where every other boot in the log reads
+`… or https://192.168.2.7:9090/`; `NetworkManager-wait-online.service`
+ran far longer than in the other boots), so the run tool, which waits for
+a new boot ID over SSH, stopped after 300 s without a second reset and
+recorded `outcome=reset-no-new-boot-id` (the run's own check had passed).
+The responsible human, asked, authorized a second `k3ctl reset` and the
+campaign's resumption (form answer `action=reset-resume,
+extra_reset_rule=true`); that reset, made by hand at 06:05:31 UTC, is the
+seventh reboot, after which Fedora came up at 192.168.2.7 with boot ID
+`376c699c…`. Between that boot's login prompt and the second run, the
+responsible human logged in at the serial console as `fedora` and ran
+`ifconfig` (log lines 99,087 to 99,117: `end0` at 192.168.2.7, `lo`,
+and the board's unused `wlP4p1s0`); nothing else was typed at the console
+in the segment, and no boot in it needed the extra reset the human
+allowed. The five later resets returned Fedora with a new boot ID in 42,
+33, 47, 33, and 43 s. No line with `OpenSBI`, `Platform Name`, `Domain0`,
+`PMP`, `Firmware Base`, or `Runtime SBI` appears in the segment, as in
+M0's and M1's campaigns (mvp/README.md open item 40): the firmware is
+identified only by Fedora's log, `SBI implementation ID=0x1
+Version=0x10006`, which the preflight records. Earlier in the same log
+are the preflight (02:31 UTC) and the two `anchor` load checks (02:32
+UTC), which left Fedora running, and the first M2 campaign
+(`20261028-com260-m2-stopped`): one `anchor` run (GCC; kexec handoff at
+log line 94,764, `BE_MVP:01` at 94,782; 02:33 UTC) that reached
+`BE_MVP:14 SHUTDOWN` with the same lines as this campaign's `anchor` runs
+and was judged FAIL by the checker of that commit on hart 2's `spv=0`
+(stop condition 6; Plan revision M2-A), so the tool made no reset; the
+board stayed halted until the `k3ctl reset` the responsible human
+authorized with the revision, made by hand at 02:44:32 UTC, whose boot
+(login prompt at log line 96,182, with 192.168.2.7) preceded this
+campaign's first run.

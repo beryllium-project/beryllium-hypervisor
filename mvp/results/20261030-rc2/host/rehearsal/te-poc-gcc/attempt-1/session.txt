@@ -1,0 +1,20 @@
+label=te-poc/gcc
+kind=scenario
+file=te-poc-gcc.img
+stage=done
+error=-
+qemu_exit=0
+seconds=5.5
+sbi_version=2.0
+boot_hart=2
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2584576
+crc32=7786049f
+fdt=0xff7383d0
+fdt_end=0xff73edd8
+rule_hart=2
+shim_fdt=0xff7383d0
+terminal=BE_MVP:FAIL firmware
+console_bytes=4846
+console_sha256=2fdcf265efa5e05e685523be55e946677c89ddd17c00f905ad708c958583ce8f
+BE_MVP_UBOOT_SESSION[te-poc/gcc]: REFUSED boot_hart=2 qemu_exit=0 fdt=0xff7383d0 crc32=7786049f seconds=5.5

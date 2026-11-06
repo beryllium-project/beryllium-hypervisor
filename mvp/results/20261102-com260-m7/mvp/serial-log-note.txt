@@ -1,0 +1,130 @@
+Serial log (written by hand on 2026-11-02 from the operator's picocom log,
+which is outside the repository and is not retained): the operator's
+session, `picocom -b 115200 /dev/ttyUSB0 --logfile
+<home>/src/spacemit-k3/logs/boot-8.log` in the tmux session `k3-console-1`
+on the workstation `l1`, a new log since 2026-11-01 22:41 UTC; the
+console tool found picocom's pane among the session's windows itself, so
+no window suffix was given. For this session, as planning/mvp-m5-plan.md
+decides (decision 2) and planning/mvp-m7-plan.md's D-12 adds for the
+guests, the console tool typed at U-Boot and, under
+`K3_GUEST_TYPING=human-authorized` (Plan revision S3-A.1 item 8), into
+the running monitor through that pane: 30 U-Boot sends making 29 lines
+(the `be_ld` line in two pieces), each echo-compared before its Enter,
+36 U-Boot keystrokes (seven `s`, 29 Enters), 256 probe bytes, and 100
+session bytes, every one logged with its time and log offset in the
+session's `keys.log`. The responsible human confirmed the board free
+(`proceed, K3 board is yours`, 2026-11-01 22:52 UTC) and the recorded
+`bootcmd` (`confirm 0404ae42737d`, the first 12 hexadecimal digits of
+its SHA-256, equal to release candidates 2 and 3), was present at the
+install and the restore, and typed one line by hand (below). The segment
+of this session, `20261102-com260-m7`, begins at log line 4,035
+(offset 497,562, 05:35 UTC) with Fedora's journal lines and its clean
+shutdown over SSH (`systemctl reboot`, which halts this board at
+`reboot: Restarting system`, line 4,259) after the preflight (03:08 UTC)
+and the staging of the sixteen images on the `beryllium` partition
+(05:34 UTC; the fourteen of release candidate 3 rebuilt with the M7
+userland, plus `probe-console-input` and `two-guests-shell`; every image
+2,748,416 bytes, up from release candidate 3's 2,584,576, the BusyBox
+and musl userland in the one guest Image), and runs to the end of the
+log as read (line 7,439, Fedora's login prompt after the restore, 05:47
+UTC). It holds 10 `k3ctl` resets (`reset_reply=OK reset` each time; the
+first on Fedora down, seven at an idle U-Boot prompt after a completed
+command, two after a run's terminal marker and its tail wait) and 10
+boots, one per reset and none unexplained (`banners=10 resets=10
+findings=0`): the boot ROM's terse lines (`try sd...`, `ERROR:   CMD8`),
+`U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)` with its DDR line,
+`U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build:
+jenkins-BSP-build-bsp-deb-395` with its device probes, `WDT:   Started
+watchdog@d4014000 with servicing (60s timeout)`, the `227 bytes read` of
+`env_k3.txt`, and `Autoboot in 3 seconds`. The `k3ctl` client was the
+pinned bytes (SHA-256 `7ca3d78a…`, mvp/tools/k3ctl.sha256) from a copy
+under the session, because the responsible human had moved their
+checkout of the client to v1.1 on 2026-11-02 04:39 UTC: the tool's own
+check stopped once on that checkout (05:34 UTC, stop 1, the client's
+SHA-256 differing from the pin; nothing was typed and no reset was
+made), before the session's first offset; the dongle's firmware is 1.0
+and every `status` answered `OK`. Two boots (05:36 UTC) were the
+environment records, `s` then `printenv` at each fresh prompt: the two
+records equal to each other (SHA-256 `32753344…`; V empty) and their
+`bootcmd` equal to release candidates 2's and 3's, but the records
+differ from release candidate 3's (`72443954…`) in one of the human's
+own variables, `f45_rel`, which now names Fedora's kernel
+`7.3.1-300.0.riscv64.omni.fc45.riscv64` where it named
+`7.3.0-65.1…` before: the human's change to their saved environment
+between the sessions, outside the `be_` variables, which the tool
+accepts as `variance=none` because the records agree with each other.
+At record 2's prompt (05:42:20 UTC, log line 4,706) the responsible human
+typed `saveenv` by hand (`=> sae^H ^Hveenv`, a backspaced echo, then
+`Saving Environment to mtdENV... OK`), storing the environment the two
+records hold, with no `be_` variable and `bootcmd` unchanged; the human
+said so (`I typed saveenv`). The install attempt made at that moment
+(05:42:18 UTC) stopped at the port-open rule, the prompt not being idle
+while the human typed, with no reset and nothing typed, and was
+repeated. One boot (05:43 UTC) was the install: `s`, the seven `setenv`
+lines (`be_orig_bootcmd`, `be_part`, `be_image`, `be_ld`, `be_go`,
+`be_boot`, `bootcmd`), `printenv`, and `saveenv` (`OK`), with
+`be_image=be-mvp-probe-platform-gcc.img`. Two boots (05:43 and 05:44 UTC)
+were the two selects (`s`, `setenv be_image <file>`, `printenv be_image`,
+`printenv`, `saveenv`), each at a fresh prompt at the first attempt: no
+`s` was lost or retried, no unplanned boot occurred, and no tmux
+pane-mode cancel was needed. Two boots were the runs, each launched by
+its own reset with the saved `bootcmd` running `be_boot`: `nvme scan`,
+`2748416 bytes read in 3 ms`, `md5 for 140000000 ... 14029efff ==> <the
+staged image's MD5>`, `Moving Image from 0x140000000 to 0x108000000,
+end=10829f000`, `## Flattened Device Tree blob at 2fbe8aa50`, `Loading
+Device Tree to 00000002fbd5d000, end 00000002fbd6f2ef ... OK` (the same
+addresses as release candidates 2 and 3), `fail to get alias node
+efuse_power`, `Starting kernel ...`, `Removing MTD device #0 (nor0) with
+use count 1`, the shim line (`fdt=0x00000002fbd5d000`,
+`bytes=0x00000000000a4000`), `BE_MVP:00 BOOT_VALIDATED`, and
+`BE_MVP:00 CONFIG_SEALED inventory=14 authorities=2 roots=2 harts=0,1,2
+identity=16bd3ebb3796bb68` in both (the two-guests configuration's
+identity, which does not cover the console grant; mvp/README.md open
+item 108). The first run (05:44 UTC, `probe-console-input`, 34 s from
+reset to terminal marker) printed `BE_MVP:PROBE console-input
+window_ticks=0x20000000 prefix=none`, and the tool typed the 64-byte
+text (`0`-`9`, `a`-`z`, `A`-`Z`, `-`, `=`) four times, the first three
+at 10 ms per byte and the fourth at 1 ms (11.7, 11.7, 11.7, and 2.7 ms
+measured), 256 keystrokes; the monitor printed each 64-byte piece's hex
+as it arrived (`bytes=64` to `bytes=256`, each the text's own hex), then
+`BE_MVP:PROBE console-input total=256 polls=2049 nonzero_polls=209
+max_per_poll=5 errors=0 sha256=27576c0c829bf762` and `BE_MVP:14 SHUTDOWN
+type=0 reason=0`: class `supplies` at both pacings, every byte received
+in order and none lost. The second run (05:45 UTC, `two-guests-shell`,
+19 s) printed `BE_MVP:15 INPUT_ARMED grants=g0,g1 prefix=0x7e` and
+`BE_MVP:16 FOCUS none` before the harts started, both Linux `v7.2`
+guests to `MVPINIT 11 SHELL tty=/dev/hvc0 role=none`, and then the typed
+session of sixteen steps (`two-guests/sessions/shell.json`, 100
+keystrokes, the run's nonce `a95d14ec1c364221` made by the tool): `~0`
+(`BE_MVP:16 FOCUS g0`), `echo <nonce>` echoed by domain 0 alone, `ls /bin
+| wc -l` (`18`), `~1` (`FOCUS g1`), `echo <nonce>` echoed by domain 1
+alone, the negative `~x` (`BE_MVP:17 INPUT_DROP bad-sequence`, nothing
+reaching a guest), the escape `~~/bin/echo literal` (domain 1's shell
+reading `~/bin/echo literal` and printing `literal`), `~0` and `exit`
+(`MVPINIT 11 SHELL exit=0`, `MVPINIT 05 RESULT pass`, `MVPINIT 06
+POWER_OFF`, `BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=344 sbi=343
+… dbcn_write=134 dbcn_read=0 … lines=63 ring_peak=0x12b8`), `~1` and
+`exit` (domain 1 likewise, `hart=2 domain=1 exits=361 sbi=360 …
+dbcn_write=137 dbcn_read=0 … lines=63 ring_peak=0x1308`; the served
+console reads are inside `sbi=`, and `dbcn_read` counts refused reads,
+of which there were none), then `BE_MVP:18 INPUT read=100
+g0=43:29bf01b7f09b6324 g1=46:83304396a376991e dropped=bad-sequence:1`,
+`BE_MVP:13 RUN_COMPLETE domains=2 records=134 wakes=525`, and `BE_MVP:14
+SHUTDOWN type=0 reason=0`. The last three boots (05:46 UTC) were the
+restore: `s`, `setenv bootcmd "${be_orig_bootcmd}"`, the six `setenv
+be_*` deletions, `printenv`, `saveenv` (`OK`); then `s` and `printenv` at
+a fresh prompt (record 3, whose normalized text equals record 1's,
+SHA-256 `32753344…`); then an untouched autoboot of the restored
+`bootcmd` into Fedora Linux 45 (Server Edition Prerelease) with kernel
+`7.3.1-300.0.riscv64.omni.fc45.riscv64` (the release the saved `f45_rel`
+names) to its login prompt, the board's address in its `Web console`
+banner, and the board answered over SSH with its new boot ID before the
+preflight after the session (05:48 UTC), which equals the preflight
+before it in every fact the MVP depends on, the kernel line included. No
+reset was made by hand and no hand recovery was needed; the one line
+typed by hand was the human's `saveenv`. No line with `OpenSBI`,
+`Platform Name`, `Domain0`, `PMP`, `Firmware Base`, or `Runtime SBI`
+appears in the segment, as in every campaign since M0 (mvp/README.md
+open item 40): the firmware is identified only by Fedora's log, `SBI
+implementation ID=0x1 Version=0x10006`, which the preflights before and
+after record.

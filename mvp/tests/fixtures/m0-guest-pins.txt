@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The MVP guest pins (planning/mvp-m0-plan.md, Guest software, Budgets, and
+# Tests and evidence; B7's guest/pins.txt with the MVP's outputs): the
+# SHA-256 and size of the nolibc init, the Image, and every DTB that
+# tools/build-guest.sh makes, the Image header facts, and the kernel
+# banner, which both QEMU reference boots printed. They hold for the cross
+# toolchain named on the last line. tools/guest-pins.py checks them;
+# `build-guest.sh --unpinned` prints the lines for a deliberate update.
+file init sha256=0a611ae4dc326d61a9e01c743a5a76cc9f9f8c3b990e8943a619858ebafc98a8 bytes=4176
+file Image sha256=a41ab680eb8d87afa3f45934e0150fbce3f7df07392e6804e0a68180c0933f05 bytes=1553332
+file mvp-guest-g0.dtb sha256=f51be0c7c1cf25f11eeb721dc4dcf19d34902794cf3f15cd43df0255523e0783 bytes=4096
+file mvp-guest-g1.dtb sha256=ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea bytes=4096
+file mvp-guest-g1-init-exit.dtb sha256=7cc47c2f65499ca72454588b181d7cf8ebf5a9b45818de2f0e054759a0684afd bytes=4096
+file mvp-guest-g0-rdcycle.dtb sha256=4043572a9cbcdaee41c51d91ed83ebc0b622352167173f7ced97bbcc15c6de66 bytes=4096
+file mvp-guest-g0-sbi-time.dtb sha256=568b90cee8cf8bb9a06f423a0efb212f9ffdd16b2a9384fac983bdf990b79cbf bytes=4096
+file mvp-guest-g1-sbi-time.dtb sha256=d8c1f4d8f43b7ce569ebe5187237c2c21f945cf3eae8c05e27407d566e7d45e0 bytes=4096
+file mvp-guest-g0-reference.dtb sha256=9a523ff8e0834bca6bc09b09aa43d6c7a0bc94fa307a88105c02ce5469a308e1 bytes=4096
+file mvp-guest-g1-reference.dtb sha256=0e079e289a434d44d9c965617c136c8552de0d0ccad305a9e2ea249f044bceb5 bytes=4096
+kernel image_size=0x1af628
+kernel text_offset=0x200000
+kernel banner=Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+toolchain gcc=riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1)

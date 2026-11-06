@@ -1,0 +1,30 @@
+run=20261028T061356Z
+image=<repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp-boot.img
+image_sha256=61a3cd8a3c48630bbcd601e6d0cdc79e5e1f5b139435fd966529915698834b38
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/variants/gcc/wrong-measurement/be-mvp-boot.img bytes=0x277000 sha256=61a3cd8a3c48630bbcd601e6d0cdc79e5e1f5b139435fd966529915698834b38 flat_sha256=eab487d5d1306747e8f3fa62bf3196f56e6c7bbacb68a87572c5e3ad66816d62 kexec_fdt=0x108400000 variant=wrong-measurement dtb0=0x275000 scenario=anchor
+toolchain=gcc
+expect=wrong-measurement.json expect_sha256=afcbdc6d5735a8768e1fda381422c411dc6f83345ec770c18b3eacaf90718704
+report=authority-report.json report_sha256=418797a29bf59a3c2ed0f2df81c95b7eeb21ae98f8d542e73bffefdae4df0ac6
+measured=Image kernel_sha256=c7ae03e6b26e1433bb1cdcd995467b5df2dec61cb8ed1c38ede0d4458c4799ed mvp-guest-g1-anchor.dtb dtb_sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025
+variant=wrong-measurement
+k3_ssh=fedora@k3-f45
+loader_mode=raw
+loader_sha256=6d36be511cf4c6a2007e9d5b3ecf7d7f0fa56e070dfe2923ad0c2a05361dc4f1
+layout_sha256=7ba1ac4779d78a0d82df9404a6901c5275746ca952703537822e4a623ef391cf
+reset_method=k3ctl client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec device=/dev/ttyACM0
+serial_source=log:<home>/src/spacemit-k3/logs/boot-7.log
+boot_id_before=2be97499-2954-4bc6-a38d-3b2a1604bc07
+board_kernel=7.3.0-65.1.riscv64.omni.fc45.riscv64
+board_lockdown=[none] integrity confidentiality
+board_tmp_fstype=tmpfs
+remote_image_sha256=61a3cd8a3c48630bbcd601e6d0cdc79e5e1f5b139435fd966529915698834b38
+loader=kexec_load entry=0x108000000 fdt=0x108400000 image_memsz=0x277000 fdt_bytes=49280 kexec_loaded=1
+kexec_loaded=1
+kexec_requested_utc=2026-10-28T06:13:58Z
+kexec_ssh_status=0
+outcome=terminal-marker
+terminal_marker_utc=2026-10-28T06:14:07Z
+expected_kexec_fdt=0x108400000
+check_status=0
+BE_MVP_RESULT: PASS terminal=fail-marker
+reset_outcome=reset

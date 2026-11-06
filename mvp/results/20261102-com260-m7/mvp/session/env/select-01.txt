@@ -1,0 +1,7 @@
+attempt_utc=2026-11-02T05:43:54Z
+be_image=be-mvp-probe-console-input-gcc.img
+printenv_be_image=be_image=be-mvp-probe-console-input-gcc.img
+select-01-check_sha256=16ee68d0a5ed542206e2ef02810ea4415ffcbb398f09aed323697d26a5ba5d2d
+select_check=PASS
+saveenv=OK
+verdict=PASS

@@ -1,0 +1,22 @@
+run=20261006T195720Z
+image=<repo>/build/k3-b3/clang/be-k3-b3.img
+image_sha256=a2c2194b7cebdc0406e7754bd6b960909c54ab19456e060d8e2794fd46a12a63
+image_bytes=217088
+image_check=BE_B3_IMAGES: PASS images=1 variants=0
+toolchain=clang
+launcher=uboot-booti
+loader=uboot-booti loady=0x140000000 booti=0x140000000 fdt=${fdtcontroladdr}
+load_address=0x140000000
+expected_ram_base=0x102000000
+serial_source=log:<spacemit-k3>/logs/boot-6.log
+serial_offset=1220661
+start_utc=2026-10-06T19:57:20Z
+terminal_marker_utc=2026-10-06T20:02:28Z
+outcome=terminal-marker
+capture_bytes=4885
+check_status=0
+BE_B3_RESULT: PASS terminal=shutdown-requested
+after_watch_seconds=75
+after_bytes=0
+after_first_output_seconds=none
+after_reset=no

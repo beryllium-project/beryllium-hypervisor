@@ -1,0 +1,70 @@
+RISCV L3
+(* SPDX-License-Identifier: GPL-3.0-only *)
+(* Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com> *)
+(* Premise L3: "ring release: a writer that reads the tail reads no record
+   byte before the reader has read it, because the reader's `fence r, w`
+   precedes its tail store" (planning/mvp-m8-plan.md, D-3 and D-9), a
+   premise of P3 (ring safety), P4 (ring integrity), and P8 (drain)
+   (planning/mvp-m8-specifications.md, sections 1 and 3, specification
+   SHA-256 ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d).
+   Load buffering with fence r,w, as compiled in build/mvp/gcc/be-mvp.elf
+   and build/mvp/clang/be-mvp.elf (the lines in
+   mvp/verify/litmus/sequences/SYMBOL-TOOLCHAIN.s; GCC's address, then
+   Clang's): the outbound ring full (32768 bytes posted, none released),
+   hart 0 releasing READY's 80 bytes while the domain hart posts a LINE of
+   24 into the slot they free.
+   P0, hart 0 in drain:
+     lbu x5,0(x10)   READY's type byte, be_mvp_ring_take (by load_le,
+                     called at 102068782; inline)       10206830a 102068cf8
+     fence r,w       be_mvp_arch_fence_r_w, through be_mvp_exec_fence_r_w,
+                     called at                          102064af8 102065c7e
+     sd x12,0(x11)   the tail, 80, be_mvp_ring_release  102068876 102068e10
+   P1, the domain hart in be_mvp_ring_post:
+     ld x5,0(x10)    the tail                           1020684ce 102068a3a
+     sub x6,x13,x5   used = cursor - tail               1020684e6 102068a56
+     sub x7,x12,x6   free = capacity - used (GCC: tail - cursor + capacity,
+                     1020684fe and 102068502)                     102068a6a
+     blt x7,x14,LC00 the room check, refused below 24   102068504 102068a6e
+     sb x15,0(x11)   the LINE's type byte, 3 (by store_le, called at
+                     102068516; inline)                 1020682ee 102068a7e
+   This test's subject is the reader's fence r,w; the writer's control
+   dependency, L4's, is here as compiled, its room check alone (L4 holds
+   every branch on the tail). The compiled branch is bltu: herd7 7.58
+   implements no bltu, bgeu, or sltu for RISC-V ("RISCV operation bltu is
+   not implemented (yet)"), so the test branches with blt on the same
+   registers, whose values stay below 2^63, where the two agree; herd7's
+   ctrl follows the branch's registers, not its comparison. Every other
+   record byte hart 0 reads is loaded before the fence; the type byte
+   stands for them. A reduced test keeps fewer accesses and orderings than
+   the code, so it allows at least the code's outcomes: Never here is
+   Never there.
+   Forbidden: hart 0's load of READY's type byte reads the LINE's while
+   the domain hart's load of the tail reads the release.
+   Digests (mvp/verify/litmus/sequences.txt):
+   drain@gcc sha256=0abb8c3c24bb7045baef384ee9d178229ce382231a4382078e45ab24ef696283
+   drain@clang sha256=e676ca4159e5b163f42b52d5cee25859f6de86be997c34a2532335c7a8f1ba04
+   be_mvp_ring_take@gcc sha256=86f0abb4ffc514a17b3fc622bb891bd2f3c0ba17730ada7d510b59ea68aa9810
+   be_mvp_ring_take@clang sha256=b28cc06163a851112fd3feefb4375ea195eef77dc34eac8f28dee5cccd793324
+   load_le@gcc sha256=fa2e7528e095f314d97b9ddbcd0307a21e446b0bb01fe89831c5603840775c33
+   be_mvp_exec_fence_r_w@gcc sha256=d2af5007185244ecff68554a5dba4d5b9d680932e87437fb430399451331246f
+   be_mvp_exec_fence_r_w@clang sha256=8e7211664d0945b560dd409a522e5b3267c3c6443146ecb502f8c84051f21975
+   be_mvp_arch_fence_r_w@gcc sha256=83318464bfc0ed2e0a2c4703a9be95feb7f5abc1a3eacbc8809ce349b8199410
+   be_mvp_arch_fence_r_w@clang sha256=83318464bfc0ed2e0a2c4703a9be95feb7f5abc1a3eacbc8809ce349b8199410
+   be_mvp_ring_release@gcc sha256=d974df60630c0167af53ae7413b1cbdaeae420ffd2a7d5b8f9c24292716b5e51
+   be_mvp_ring_release@clang sha256=e2559f03ccf88e388f5eeab7cf336f8405b2f62b8737749d97b67ce88cb0dc02
+   be_mvp_ring_post@gcc sha256=ee8afa602949d8d119a9d3e218852a01d9602a7536c0baed60145c21ef94fee0
+   be_mvp_ring_post@clang sha256=eee8be5c51bad1a916fa45b7650581b7da8f1aaf2e55a6870456548eef9fc6cf
+   store_le@gcc sha256=09c6c11d7a6aba36468fd816e04f7d964b6e9b437daaa8aea394e8197c14c5c1 *)
+{
+type_byte=1; tail=0;
+0:x10=type_byte; 0:x11=tail; 0:x12=80;
+1:x10=tail; 1:x11=type_byte; 1:x12=32768; 1:x13=32768; 1:x14=24; 1:x15=3;
+}
+ P0            | P1              ;
+ lbu x5,0(x10) | ld x5,0(x10)    ;
+ fence r,w     | sub x6,x13,x5   ;
+ sd x12,0(x11) | sub x7,x12,x6   ;
+               | blt x7,x14,LC00 ;
+               | sb x15,0(x11)   ;
+               | LC00:           ;
+exists (0:x5=3 /\ 1:x5=80)

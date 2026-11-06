@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+//
+// Question: what is machine checked, tested, assumed, and explicitly absent?
+digraph be_model_01_assurance {
+	graph [
+		label="Model 0.1 evidence and non-claim boundary"
+		tooltip="Rocq proves the abstract model; GCC and Clang test a separate C reference checker and state machine; no refinement is claimed."
+		labelloc=t
+		fontname="Inter,Arial"
+		fontsize=21
+		rankdir=TB
+		nodesep=0.5
+		ranksep=0.62
+		bgcolor="transparent"
+		pad=0.25
+	]
+	node [
+		shape=box
+		style="rounded,filled"
+		fontname="Inter,Arial"
+		fontsize=9
+		fontcolor="#0f172a"
+		color="#475569"
+		margin="0.15,0.09"
+	]
+	edge [
+		fontname="Inter,Arial"
+		fontsize=8
+		color="#475569"
+		fontcolor="#334155"
+		penwidth=1.3
+		arrowsize=0.7
+	]
+
+	contract [
+		label="Maintained architecture contract\nfixed vocabulary + assumptions"
+		fillcolor="#cffafe"
+		color="#0891b2"
+	]
+	rocq [
+		label="Rocq 9.2 abstract model\nnine closed theorem obligations"
+		fillcolor="#dcfce7"
+		color="#16a34a"
+	]
+	cmodel [
+		label="Restricted-C host model/checker\nGCC + Clang adversarial tests"
+		fillcolor="#dbeafe"
+		color="#2563eb"
+	]
+	reports [
+		label="Deterministic JSON reports\ntwo normalized authority fixtures"
+		fillcolor="#e0f2fe"
+		color="#0284c7"
+	]
+	refinement [
+		label="Rocq-to-C refinement\nABSENT"
+		fillcolor="#fee2e2"
+		color="#dc2626"
+	]
+	runtime [
+		label="Runtime / assembly / compiler / firmware\nQEMU / K3 / devices / multicore\nNOT PROVED; hardware NOT RUN"
+		fillcolor="#fee2e2"
+		color="#dc2626"
+	]
+	claim [
+		label="Supportable result\nbounded abstract properties machine checked;\nmalformed canonical configurations tested"
+		fillcolor="#fef3c7"
+		color="#d97706"
+		penwidth=2
+	]
+
+	contract -> rocq [label="formalized projection"]
+	contract -> cmodel [label="independent executable reference"]
+	cmodel -> reports [label="checked configuration view"]
+	rocq -> claim [label="supports abstract theorem claim"]
+	cmodel -> claim [label="supports checker/test claim"]
+	rocq -> refinement [
+		label="no proved correspondence"
+		style=dashed
+		color="#dc2626"
+	]
+	refinement -> cmodel [style=dashed color="#dc2626" dir=none]
+	claim -> runtime [
+		label="must not be promoted"
+		style=dashed
+		color="#dc2626"
+	]
+}

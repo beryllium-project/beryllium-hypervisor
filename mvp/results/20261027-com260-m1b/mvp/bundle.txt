@@ -1,0 +1,15 @@
+schema=be-mvp-evidence-v1
+kind=board
+campaign=20261027-com260-m1b
+source_commit=17ed82f7217c82328bb6027c294acfd71e73826f
+source_tree=clean
+lock_sha256=6e99262f04a14e8f1c4658791a2437c83e27edeb56a189d604e5cfc4ad7c8418
+lock_check_status=0
+closure_sha256=2875ddd675b49c390159d55ac2847a9eb1990061bfe972693bd8260b2d123009
+scenario=two-guests scenario_sha256=9978db42902d36734e70ec43e62c5682ddb558f62ce01f4a5cca862be3f1d8b2
+scenario=te-poc scenario_sha256=4fe5164591ab64846d3b3a6a9ef4a0b2986d111c5b2e4df353c4e7a853699c17 authority-report.json=fcbf210072d30c0d865c5219cc13a1d47ff17825bdd178e463e2c34d4beafdae policy.te=4a1fac2bdea04cbcf4f3248c21cb41cf2823625b46d284c45d9c69b6a25b8b2d
+policy_check=BE_MVP_POLICY: PASS scenario=te-poc grants=6 flows=1 checks=8 config=9cf028073e08e0d3fe8f9f0e92f05c78e5af3e571c129748618b1c76883d457d
+images=184
+load_checks=gcc-20261027T175222Z,clang-20261027T175244Z
+runs=6 pass=6 fail=0 refused=0 stop=0
+resets=human=0 k3ctl=6

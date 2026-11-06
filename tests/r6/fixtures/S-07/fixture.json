@@ -1,0 +1,77 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "S-07",
+  "partition": "static",
+  "declared_delta": null,
+  "base": "arch/riscv/be/r5-runtime.c",
+  "base_sha256": "a221ce8ebb77e3feaa9d7799e3eb296fb8cd7aa9190e20f1970d7e9c95bcc6e4",
+  "defect_file": "r5-runtime.c.defect",
+  "defect_sha256": "87e97841e423202b04bc691ab6daef85c929c84af6b5fb43cb1f9e85998b9400",
+  "defect": {
+    "kind": "c-statement",
+    "summary": "marker_final_event emitted inside switch_domain after be_r5_publish_target",
+    "accepted": null,
+    "malformed": null,
+    "source_path": "arch/riscv/be/r5-runtime.c",
+    "target": {
+      "line": 380,
+      "line_anchor": "be_r5_publish_target(&be_r5_control, &entry, target_frame,",
+      "symbol": "switch_domain",
+      "slot": null
+    },
+    "anchor": "\tif (be_r5_publish_target(&be_r5_control, &entry, target_frame,\n\t\t\t\t &transition) != BE_R5_ERROR_NONE)\n\t\tbe_r5_runtime_terminal(be_r5_control.error);\n",
+    "replacement": "\tif (be_r5_publish_target(&be_r5_control, &entry, target_frame,\n\t\t\t\t &transition) != BE_R5_ERROR_NONE)\n\t\tbe_r5_runtime_terminal(be_r5_control.error);\n\temit_marker(marker_final_event);\n"
+  },
+  "diff": {
+    "sha256": "014d5e2db193a464cab3819801447909d034144c1d85c8438c840e39e0a2fe9b",
+    "added": 1,
+    "removed": 0,
+    "budget": {
+      "added": 6,
+      "removed": 6
+    },
+    "unified": "--- a/arch/riscv/be/r5-runtime.c\n+++ b/arch/riscv/be/r5-runtime.c\n@@ -377,6 +377,7 @@\n \tif (be_r5_publish_target(&be_r5_control, &entry, target_frame,\n \t\t\t\t &transition) != BE_R5_ERROR_NONE)\n \t\tbe_r5_runtime_terminal(be_r5_control.error);\n+\temit_marker(marker_final_event);\n \tif (transition.action != BE_R5_ACTION_ENTER_TARGET ||\n \t    transition.direction != direction)\n \t\tbe_r5_runtime_terminal(BE_R5_ERROR_PUBLICATION);\n"
+  },
+  "expected": {
+    "first_rejection_layer": "L6",
+    "outcome": "rejected-by-image-check",
+    "message_completeness": "complete",
+    "primary_message": "{toolchain}: switch transaction emits unexpected markers: marker_final_event,marker_management_fenced,marker_management_verified,marker_pending_management,marker_pending_protected,marker_protected_fenced,marker_protected_verified",
+    "placeholders": {},
+    "stages": {
+      "l3": "pass",
+      "gcc-link": "pass",
+      "clang-link": "pass",
+      "gcc-image-check": "reject",
+      "clang-image-check": "reject"
+    },
+    "absent_stages": [],
+    "messages": {
+      "gcc-image-check": [
+        "gcc: switch transaction emits unexpected markers: marker_final_event,marker_management_fenced,marker_management_verified,marker_pending_management,marker_pending_protected,marker_protected_fenced,marker_protected_verified"
+      ],
+      "clang-image-check": [
+        "clang: switch transaction emits unexpected markers: marker_final_event,marker_management_fenced,marker_management_verified,marker_pending_management,marker_pending_protected,marker_protected_fenced,marker_protected_verified"
+      ]
+    },
+    "prohibited_layers": [
+      "L7",
+      "L8",
+      "L9",
+      "L10",
+      "L11"
+    ],
+    "qemu": "forbidden",
+    "artifacts": {
+      "quarantined": [
+        "clang-beryllium.bin",
+        "clang-beryllium.elf",
+        "gcc-beryllium.bin",
+        "gcc-beryllium.elf"
+      ],
+      "scratch_elf": true
+    }
+  }
+}

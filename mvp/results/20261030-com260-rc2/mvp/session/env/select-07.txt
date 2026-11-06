@@ -1,0 +1,7 @@
+attempt_utc=2026-10-30T08:11:31Z
+be_image=be-mvp-anchor-gcc.img
+printenv_be_image=be_image=be-mvp-anchor-gcc.img
+select-07-check_sha256=d0b1eab6aa87da976cf32017d7b06e32dc0890c7e354ee2f046ca80bee7cd2f4
+select_check=PASS
+saveenv=OK
+verdict=PASS

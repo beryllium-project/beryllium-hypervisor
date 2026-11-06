@@ -1,0 +1,7 @@
+attempt_utc=2026-11-05T22:33:42Z
+be_image=be-mvp-te-poc-no-inject-gcc.img
+printenv_be_image=be_image=be-mvp-te-poc-no-inject-gcc.img
+select-12-check_sha256=d61809c0bec7b888e4233f7fb2f29dd3e0ddc209e413cd0685a29f6c201db3ae
+select_check=PASS
+saveenv=OK
+verdict=PASS

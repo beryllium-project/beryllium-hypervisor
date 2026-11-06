@@ -1,0 +1,66 @@
+{
+  "boot_marker": "FAIL",
+  "capture": "<repo>/build/k3-b6/k3-campaigns/20261008-com260/20261008T105807Z/serial.log",
+  "expect": "pass",
+  "fields": {
+    "base": "0x0000000108000000",
+    "bytes": "0x0000000000034000",
+    "dest": "0x0000000102000000",
+    "failure": "controls",
+    "fdt": "0x0000000108200000",
+    "gstage": "gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 pool=0x102034000",
+    "hart": "0x0000000000000000",
+    "hgatp": "hgatp=0x8000000000102034",
+    "kexec_entry": "0x108000000",
+    "kexec_fdt": "0x108200000",
+    "kexec_hart": "0",
+    "sstc_readback": "henvcfg=0x8000000000000000"
+  },
+  "findings": [
+    "B6: failure lines in a pass capture: ['BE_B6:FAIL controls']",
+    "B6: marker 11: 'BE_B6:FAIL controls' is not 'BE_B6:04 GUEST_CONTROLS_CHECKED hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 fs=0x0 vs=0x0 vstimecmp=0xffffffffffffffff'",
+    "B6: the sequence stops after BE_B6:03; missing 'BE_B6:04 GUEST_CONTROLS_CHECKED hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 fs=0x0 vs=0x0 vstimecmp=0xffffffffffffffff'",
+    "B6: missing required guest line 'BE_B6_GUEST: [<s>] Linux version 7.2.0 <banner>' (or a later one is out of order)"
+  ],
+  "handoff": {
+    "b3_lines": [
+      "BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x0000000108200000 dest=0x0000000102000000 bytes=0x0000000000034000"
+    ],
+    "handoff_ok": true,
+    "image": {
+      "bytes": 1777664,
+      "crc32": "2ff8296f",
+      "sha256": "b3f705c8fb2baa626c76adc8d704e4557b0f9206a0627e7026c3b25d6b6461f3"
+    },
+    "kexec_entry": "0x108000000",
+    "kexec_fdt": "0x108200000",
+    "kexec_hart": "0",
+    "load_address": "0x140000000",
+    "mode": "kexec",
+    "ram_base": "0x102000000",
+    "shim": {
+      "base": "0x0000000108000000",
+      "bytes": "0x0000000000034000",
+      "dest": "0x0000000102000000",
+      "fdt": "0x0000000108200000",
+      "hart": "0x0000000000000000"
+    },
+    "shim_ok": true
+  },
+  "markers": [
+    "BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x0000000108200000 dest=0x0000000102000000 bytes=0x0000000000034000",
+    "BE_R3:01 BOOT_VALIDATED",
+    "BE_R3:02 R1_DERIVED",
+    "BE_R3:03 R2_BUILT_REWALKED",
+    "BE_R3:04 HS_VS_STATE_VERIFIED",
+    "BE_R3:05 BINDING_PREPARED",
+    "BE_R3:06 HGATP_FENCED_PUBLISHED",
+    "BE_B6:01 GSTAGE_BUILT_REWALKED gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 pool=0x102034000",
+    "BE_B6:02 HGATP_INSTALLED hgatp=0x8000000000102034",
+    "BE_B6:03 SSTC_STCE_READBACK henvcfg=0x8000000000000000",
+    "BE_B6:FAIL controls"
+  ],
+  "result": "FAIL",
+  "terminal": "fail-marker",
+  "toolchain": "gcc"
+}

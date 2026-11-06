@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The MVP guests' management module (guest/mgmt/be-mgmt.c;
+# planning/mvp-m2-plan.md, Q2 and Guest software), which
+# tools/build-guest.sh builds out of tree against the pinned Linux v7.2
+# build, with M= naming this directory and MO= its own output directory.
+obj-m := be-mgmt.o

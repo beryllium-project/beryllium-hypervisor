@@ -1,0 +1,61 @@
+linux_git=file://<repo>/build/mvp/linux-src
+linux_tag=v7.2
+linux_tag_object=237a1c39e8dfd3e1c6f1f023eea37a48ec04cc63
+linux_commit=8d3ae59288f1e7d58d76558a6ee96d533bc5019f
+cross_compile=riscv64-linux-gnu-
+cc=riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1)
+ld=GNU ld version 2.46.1-1.fc44
+host_cc=cc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)
+make=GNU Make 4.4.1
+python=Python 3.14.8
+dtc=Version: DTC 1.7.2-g53373d13
+sysroot=headers_install INSTALL_HDR_PATH=<OUT>/sysroot; tools/include/nolibc headers OUTPUT=<OUT>/
+sysroot_files=1065 sysroot_sha256=c931b51b8789ec8c57c2169a954d421ec8cc7aa3e5c7e5a951ec08a241cc1df0
+init_flags=-std=gnu11 -march=rv64imac_zicsr -mabi=lp64 -Os -ffreestanding -fno-builtin -fno-pic -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -mno-relax -msmall-data-limit=0 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -nostdinc -nostdlib -static -no-pie -s -Wl,-e,_start -Wl,--build-id=none -Wl,--no-relax -Wl,--fatal-warnings -isystem <OUT>/sysroot/include -I <MVP_DIR>/guest -I <MVP_DIR>/src
+init_sources=guest/mvp-init.c src/mvp-sha256.c
+kernel_build=built
+m4=/usr/bin/m4 (m4 (GNU M4) 1.4.21)
+bison=/usr/bin/bison (bison (GNU Bison) 3.8.2)
+flex=/usr/bin/flex (flex 2.6.4)
+config_values_checked=26
+config_values_overridden=CONFIG_MODULES
+mvp_config_values_checked=3
+kbuild_tools=RUSTC=/dev/null/rustc BINDGEN=/dev/null/bindgen PAHOLE=/dev/null/pahole
+config_delta=# CONFIG_IO_STRICT_DEVMEM is not set;CONFIG_DEVMEM=y;CONFIG_STRICT_DEVMEM=y
+config_delta_m2=# CONFIG_MODULE_ALLOW_MISSING_NAMESPACE_IMPORTS is not set;# CONFIG_MODULE_COMPRESS is not set;# CONFIG_MODULE_FORCE_LOAD is not set;# CONFIG_MODULE_SIG is not set;# CONFIG_MODULE_SRCVERSION_ALL is not set;# CONFIG_MODULE_UNLOAD is not set;# CONFIG_MODVERSIONS is not set;# CONFIG_STRICT_MODULE_RWX is not set;# CONFIG_TEST_ASYNC_DRIVER_PROBE is not set;# CONFIG_TEST_LOCKUP is not set;# CONFIG_TRIM_UNUSED_KSYMS is not set;CONFIG_DRIVER_DEFERRED_PROBE_TIMEOUT=10;CONFIG_EXECMEM=y;CONFIG_MODPROBE_PATH="/sbin/modprobe";CONFIG_MODULES=y;CONFIG_MODULES_USE_ELF_RELA=y
+CONFIG_RUSTC_VERSION=0
+CONFIG_RUSTC_LLVM_VERSION=0
+CONFIG_PAHOLE_VERSION=0
+source_date_epoch=1786915946
+kbuild_build_timestamp=Sun Aug 16 21:32:26 UTC 2026
+kbuild_build_user=be
+kbuild_build_host=beryllium
+kbuild_build_version=1
+localversion=
+kcflags=-ffile-prefix-map=<LINUX_SRC>/= -ffile-prefix-map=<OBJ>/=
+kaflags=-ffile-prefix-map=<LINUX_SRC>/= -ffile-prefix-map=<OBJ>/=
+make_targets=vmlinux modules; Image scripts_dtc
+module_make=-C <OBJ> M=<MVP_DIR>/guest/mgmt MO=<OUT>/mgmt modules
+module_kcflags=-ffile-prefix-map=<LINUX_SRC>/= -ffile-prefix-map=<OBJ>/= -ffile-prefix-map=<MVP_DIR>/guest/mgmt/= -ffile-prefix-map=<OUT>/mgmt/=
+jobs=32
+kernel_build_seconds=12
+pins=match
+file init sha256=dca88d1861b025c1cfbe283a1339c4f40a3b117bd94936d76193d84908aa7530 bytes=11408
+file be-mgmt.ko sha256=67529a9dca0f682d4130993040fb7c17f88f75a823b96965b3b72da78ae439d1 bytes=5736
+file Image sha256=c7ae03e6b26e1433bb1cdcd995467b5df2dec61cb8ed1c38ede0d4458c4799ed bytes=1899716
+file mvp-guest-g0.dtb sha256=f51be0c7c1cf25f11eeb721dc4dcf19d34902794cf3f15cd43df0255523e0783 bytes=4096
+file mvp-guest-g1.dtb sha256=ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea bytes=4096
+file mvp-guest-g1-init-exit.dtb sha256=7cc47c2f65499ca72454588b181d7cf8ebf5a9b45818de2f0e054759a0684afd bytes=4096
+file mvp-guest-g0-rdcycle.dtb sha256=4043572a9cbcdaee41c51d91ed83ebc0b622352167173f7ced97bbcc15c6de66 bytes=4096
+file mvp-guest-g0-sbi-time.dtb sha256=568b90cee8cf8bb9a06f423a0efb212f9ffdd16b2a9384fac983bdf990b79cbf bytes=4096
+file mvp-guest-g1-sbi-time.dtb sha256=d8c1f4d8f43b7ce569ebe5187237c2c21f945cf3eae8c05e27407d566e7d45e0 bytes=4096
+file mvp-guest-g0-reference.dtb sha256=9a523ff8e0834bca6bc09b09aa43d6c7a0bc94fa307a88105c02ce5469a308e1 bytes=4096
+file mvp-guest-g1-reference.dtb sha256=0e079e289a434d44d9c965617c136c8552de0d0ccad305a9e2ea249f044bceb5 bytes=4096
+file mvp-guest-g0-te-poc.dtb sha256=5aca65d93e8488f44f0c8a746993ce8ceb231542fc9aa64bd491ede90fb9156b bytes=4096
+file mvp-guest-g1-te-poc.dtb sha256=d761366dce46edb1fe2ecf17bc517c84f79b4630c1af332d5be58855c3cafef0 bytes=4096
+file mvp-guest-g0-anchor.dtb sha256=55acfb900d8e43daee8f5c3d2b1c13e624f8af7e8cc97dd900d6f23d8728c71b bytes=4096
+file mvp-guest-g1-anchor.dtb sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025 bytes=4096
+kernel image_size=0x203fb0
+kernel text_offset=0x200000
+kernel banner=Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+toolchain gcc=riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1)

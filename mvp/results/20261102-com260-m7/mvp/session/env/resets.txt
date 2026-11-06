@@ -1,0 +1,167 @@
+method=k3ctl
+reason=fedora-down
+reset_seq=1
+offset_before=521742
+client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+client_pin=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+device=/dev/ttyACM0
+status_before_utc=2026-11-02T05:36:01.835Z
+status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=549853381 ver=1.0
+status_before_exit=0
+reset_utc=2026-11-02T05:36:01.887Z
+reset_reply=OK reset
+reset_exit=0
+status_after_utc=2026-11-02T05:36:02.146Z
+status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=549853685 ver=1.0
+status_after_exit=0
+spl_banner_offset=521850
+uboot_banner_offset=522011
+banner_utc=2026-11-02T05:36:03.170Z
+outcome=reset
+
+method=k3ctl
+reason=idle-prompt
+reset_seq=2
+offset_before=537020
+client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+client_pin=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+device=/dev/ttyACM0
+status_before_utc=2026-11-02T05:36:08.203Z
+status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=549859751 ver=1.0
+status_before_exit=0
+reset_utc=2026-11-02T05:36:08.257Z
+reset_reply=OK reset
+reset_exit=0
+status_after_utc=2026-11-02T05:36:08.524Z
+status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=549860072 ver=1.0
+status_after_exit=0
+spl_banner_offset=537128
+uboot_banner_offset=537289
+banner_utc=2026-11-02T05:36:09.554Z
+outcome=reset
+
+method=k3ctl
+reason=idle-prompt
+reset_seq=3
+offset_before=552350
+client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+client_pin=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+device=/dev/ttyACM0
+status_before_utc=2026-11-02T05:43:08.022Z
+status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=550279576 ver=1.0
+status_before_exit=0
+reset_utc=2026-11-02T05:43:08.070Z
+reset_reply=OK reset
+reset_exit=0
+status_after_utc=2026-11-02T05:43:08.325Z
+status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=550279875 ver=1.0
+status_after_exit=0
+spl_banner_offset=552458
+uboot_banner_offset=552619
+banner_utc=2026-11-02T05:43:09.349Z
+outcome=reset
+
+method=k3ctl
+reason=idle-prompt
+reset_seq=4
+offset_before=568366
+client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+client_pin=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+device=/dev/ttyACM0
+status_before_utc=2026-11-02T05:43:55.891Z
+status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=550327439 ver=1.0
+status_before_exit=0
+reset_utc=2026-11-02T05:43:55.932Z
+reset_reply=OK reset
+reset_exit=0
+status_after_utc=2026-11-02T05:43:56.194Z
+status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=550327742 ver=1.0
+status_after_exit=0
+spl_banner_offset=568474
+uboot_banner_offset=568635
+banner_utc=2026-11-02T05:43:57.211Z
+outcome=reset
+
+method=k3ctl
+reason=terminal-marker
+reset_seq=6
+offset_before=590483
+client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+client_pin=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+device=/dev/ttyACM0
+status_before_utc=2026-11-02T05:44:46.728Z
+status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=550378282 ver=1.0
+status_before_exit=0
+reset_utc=2026-11-02T05:44:46.774Z
+reset_reply=OK reset
+reset_exit=0
+status_after_utc=2026-11-02T05:44:47.040Z
+status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=550378597 ver=1.0
+status_after_exit=0
+spl_banner_offset=590591
+uboot_banner_offset=590752
+banner_utc=2026-11-02T05:44:48.068Z
+outcome=reset
+
+method=k3ctl
+reason=terminal-marker
+reset_seq=8
+offset_before=622723
+client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+client_pin=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+device=/dev/ttyACM0
+status_before_utc=2026-11-02T05:46:00.150Z
+status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=550451707 ver=1.0
+status_before_exit=0
+reset_utc=2026-11-02T05:46:00.198Z
+reset_reply=OK reset
+reset_exit=0
+status_after_utc=2026-11-02T05:46:00.459Z
+status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=550452015 ver=1.0
+status_after_exit=0
+spl_banner_offset=622831
+uboot_banner_offset=622992
+banner_utc=2026-11-02T05:46:01.481Z
+outcome=reset
+
+method=k3ctl
+reason=idle-prompt
+reset_seq=9
+offset_before=638208
+client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+client_pin=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+device=/dev/ttyACM0
+status_before_utc=2026-11-02T05:46:18.277Z
+status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=550469831 ver=1.0
+status_before_exit=0
+reset_utc=2026-11-02T05:46:18.320Z
+reset_reply=OK reset
+reset_exit=0
+status_after_utc=2026-11-02T05:46:18.579Z
+status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=550470140 ver=1.0
+status_after_exit=0
+spl_banner_offset=638316
+uboot_banner_offset=638477
+banner_utc=2026-11-02T05:46:19.608Z
+outcome=reset
+
+method=k3ctl
+reason=idle-prompt
+reset_seq=10
+offset_before=653486
+client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+client_pin=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+device=/dev/ttyACM0
+status_before_utc=2026-11-02T05:46:24.654Z
+status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=550476209 ver=1.0
+status_before_exit=0
+reset_utc=2026-11-02T05:46:24.699Z
+reset_reply=OK reset
+reset_exit=0
+status_after_utc=2026-11-02T05:46:24.960Z
+status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=550476513 ver=1.0
+status_after_exit=0
+spl_banner_offset=653594
+uboot_banner_offset=653755
+banner_utc=2026-11-02T05:46:25.978Z
+outcome=reset

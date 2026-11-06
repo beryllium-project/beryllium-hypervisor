@@ -1,0 +1,33 @@
+{
+  "spdx": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "purpose": "M7-4's session for te-poc's shell variant (planning/mvp-m7-plan.md, D-11, Q8): a line typed before any focus (dropped, no-focus); in the writer, G0, the nonce, a channel write that carries it, and the writer's denied load of the page beyond the channel; in the reader, G1, the nonce, the channel's text read back, the reader's denied store to the channel page it may only read, and its denied load of an unmapped address; then each shell's exit.",
+  "trust": "Data only, never executed: tests/session-typist.py types each focus pair and each line, one key per 10 ms and then Enter, with NONCE the run's 16 hex digits, and waits for each step's line; tools/gen-scenario.py derives the shell variant's expected lines from the steps and refuses a session whose step could print more than the outbound ring's peak budget (D-2); tests/check-capture.py reconciles BE_MVP:18 with the keys typed (typed.txt), this file, and the nonce.",
+  "scope": "M7. A demonstration in QEMU of Instance 2's channel and denials through a shell; not evidence that arbitrary guests are contained.",
+  "schema": "be-mvp-session-v1",
+  "name": "shell",
+  "steps": [
+    {"negative": "before-focus"},
+    {"focus": "g0"},
+    {"send": "echo NONCE"},
+    {"expect": "NONCE"},
+    {"send": "be-chan write hello NONCE"},
+    {"expect": "MVPINIT 12 CHAN write"},
+    {"send": "be-deny load-unmapped"},
+    {"expect": "MVPINIT 08 DENIED n=1 kind=load gpa=0x84001000"},
+    {"focus": "g1"},
+    {"send": "echo NONCE"},
+    {"expect": "NONCE"},
+    {"send": "be-chan read"},
+    {"expect": "text=hello NONCE"},
+    {"send": "be-deny store-shared"},
+    {"expect": "MVPINIT 08 DENIED n=1 kind=store gpa=0x84000ff8"},
+    {"send": "be-deny load-unmapped"},
+    {"expect": "MVPINIT 08 DENIED n=2 kind=load gpa=0x90000000"},
+    {"send": "exit"},
+    {"expect": "MVPINIT 11 SHELL exit=0"},
+    {"focus": "g0"},
+    {"send": "exit"},
+    {"expect": "MVPINIT 11 SHELL exit=0"}
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "spdx": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "purpose": "The MVP line's first scenario (planning/mvp-m0-plan.md, Scenarios and the harness, Q9): B7's two Linux guests re-hosted on two domain harts under static ownership, with hart 0 as the control hart. It names the binding, the rings, the run limits, the guest programs, and the expected outcomes of the scenario, its negative variants, and its probe images.",
+  "trust": "Data only. tools/gen-scenario.py checks it against src/mvp-layout.h and tools/gen-dts.py and emits the build header and the checkers' expectation files from it; a change is a rebuild, never a run-time selection.",
+  "scope": "M0. Hart IDs, domain indices, and VMIDs are identifiers, not authority (S1 H03).",
+  "schema": "be-mvp-scenario-v1",
+  "name": "two-guests",
+  "platform": {
+    "harts": 8,
+    "control_hart": 0,
+    "timebase_hz": 24000000
+  },
+  "rings": {
+    "inbound_bytes": 4096,
+    "outbound_bytes": 32768
+  },
+  "limits": {
+    "exit_ceiling": 1048576,
+    "run_budget_ticks": "0x100000000",
+    "hart_start_ticks": "0x1000000",
+    "ready_ticks": "0x4000000",
+    "fail_ack_ticks": "0x1000000"
+  },
+  "domains": [
+    {
+      "index": 0,
+      "name": "G0",
+      "prefix": "BE_MVP_G0: ",
+      "hart": 1,
+      "vmid": 1,
+      "root": "0x102034000",
+      "block": "0x102044000",
+      "window": {
+        "gpa": "0x80000000",
+        "hpa": "0x110000000",
+        "bytes": "0x4000000"
+      },
+      "kernel": "Image",
+      "dtb": "mvp-guest-g0.dtb",
+      "bootargs": "earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=0",
+      "program": "/init"
+    },
+    {
+      "index": 1,
+      "name": "G1",
+      "prefix": "BE_MVP_G1: ",
+      "hart": 2,
+      "vmid": 2,
+      "root": "0x10203c000",
+      "block": "0x102054000",
+      "window": {
+        "gpa": "0x80000000",
+        "hpa": "0x114000000",
+        "bytes": "0x4000000"
+      },
+      "kernel": "Image",
+      "dtb": "mvp-guest-g1.dtb",
+      "bootargs": "earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=1",
+      "program": "/init"
+    }
+  ],
+  "expect": {
+    "domain_lines": [
+      "[<s>] Linux version 7.2.0 <banner>",
+      "[<s>] SBI implementation ID=0x4245 Version=0x3",
+      "[<s>] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=<g>",
+      "[<s>] riscv-timer: Timer interrupt in S-mode is available via sstc extension",
+      "[<s>] Memory: <m>K/65536K available <rest>",
+      "[<s>] Run /init as init process",
+      "MVPINIT 01 START guest=<g> pid=1",
+      "MVPINIT 02 UNAME release=7.2.0 machine=riscv64",
+      "MVPINIT 03 STEP n=<i>/8 rounds=<r> t_ms=<t>",
+      "MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=<e> ok=1",
+      "MVPINIT 05 RESULT pass",
+      "MVPINIT 06 POWER_OFF",
+      "[<s>] reboot: Power down"
+    ],
+    "rejected": [
+      "panic",
+      "Oops",
+      "WARN",
+      "BUG:",
+      "kernel BUG",
+      "Attempted to kill init",
+      "cut here",
+      "Call Trace:",
+      "Unable to handle kernel",
+      "rcu: INFO:",
+      "soft lockup",
+      "blocked for more than",
+      "segfault",
+      "unhandled signal",
+      "extension is not available in SBI",
+      "sbi_srst_reset",
+      "No working init found",
+      "Failed to execute",
+      "Out of memory",
+      "RESULT fail"
+    ],
+    "counters": {
+      "ipi": {"exact": 1},
+      "time": {"exact": 0},
+      "dbcn_byte": {"exact": 0},
+      "srst": {"exact": 1},
+      "refused": {"exact": 0},
+      "exits": {"min": 1, "max": 1048576},
+      "ring_peak": {"min": 16, "max": 16384}
+    },
+    "exit_classes": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "ipi"],
+    "concurrency": {
+      "overlap": "half-of-shorter",
+      "alternations": 8
+    }
+  },
+  "variants": [
+    {"name": "payload", "toolchains": ["gcc"], "where": ["qemu", "board"], "change": "the kernel's magic2 RSC\\x05 becomes RSC\\x00", "fail": "payload", "after": "BE_MVP:03"},
+    {"name": "exit-budget", "toolchains": ["gcc"], "where": ["qemu"], "change": "each domain's exit ceiling is 64", "exit_ceiling": 64, "fail": "exit-budget", "after": "BE_MVP:10", "detail": "domain"},
+    {"name": "run-timeout", "toolchains": ["gcc"], "where": ["qemu"], "change": "the run budget is 2^20 ticks", "run_budget_ticks": "0x100000", "fail": "run-timeout", "after": "BE_MVP:07"},
+    {"name": "ring-full", "toolchains": ["gcc"], "where": ["qemu"], "change": "each outbound ring is 1 KiB, and hart 0 waits 0x2000000 ticks after both domains' ENTERED before its first LINE drain (Plan revision M0-A.3)", "outbound_bytes": 1024, "drain_delay_ticks": "0x2000000", "fail": "ring", "after": "BE_MVP:10", "detail": "domain", "fallback": true},
+    {"name": "hart-start", "toolchains": ["gcc"], "where": ["qemu"], "change": "block 1 names hart 9", "fail": "hart-start", "after": "BE_MVP:07", "detail": "domain", "domain": 1, "hart": 9},
+    {"name": "init-exit", "toolchains": ["gcc"], "where": ["qemu"], "change": "G1's DTB has rdinit=/init-exit", "fail": "guest-reboot", "after": "BE_MVP:10", "detail": "domain", "domain": 1},
+    {"name": "rdcycle", "toolchains": ["gcc"], "where": ["qemu"], "change": "G0's DTB has rdinit=/init-rdcycle", "fail": "virtual-instruction", "after": "BE_MVP:10", "detail": "domain", "domain": 0, "cause": 22},
+    {"name": "no-sstc", "toolchains": ["gcc", "clang"], "where": ["qemu"], "change": "the accepted R5 QEMU CPU, without Sstc", "fail": "sstc", "after": "BE_MVP:02"},
+    {"name": "sbi-3.0", "toolchains": ["gcc", "clang"], "where": ["qemu"], "change": "QEMU's bundled OpenSBI 1.7 (SBI 3.0)", "fail": "boot", "after": "none"},
+    {"name": "sbi-time", "toolchains": ["gcc"], "where": ["qemu"], "change": "both DTBs without sstc", "pass": true, "time_above_zero": true},
+    {"name": "shim-rule", "toolchains": ["gcc"], "where": ["qemu"], "change": "the shim starts hart 1 at its entry and stops the hart that booted", "pass": true, "shim_line": "BE_MVP_SHIM: boot_hart=0x1 starting hart 0"}
+  ],
+  "probes": [
+    {"name": "probe-platform", "toolchains": ["gcc", "clang"], "lines": ["hsm", "hgatp", "gpf", "gpf", "gpf", "ipi", "ipi", "order", "order"]},
+    {"name": "probe-vmid-distinct", "toolchains": ["gcc", "clang"], "lines": ["vmid"], "switch_vmid": 2},
+    {"name": "probe-vmid-shared", "toolchains": ["gcc", "clang"], "lines": ["vmid"], "switch_vmid": 1}
+  ]
+}

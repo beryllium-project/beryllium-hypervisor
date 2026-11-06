@@ -1,0 +1,109 @@
+RISCV L5
+(* SPDX-License-Identifier: GPL-3.0-only *)
+(* Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com> *)
+(* Premise L5: "the input ring's drop: a writer that asks `room` and posts
+   within it never overwrites" (planning/mvp-m8-plan.md, D-3 and D-9), the
+   premise of P3 (e), input_ring_drops_under_room
+   (planning/mvp-m8-specifications.md, sections 1 and 3, specification
+   SHA-256 ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d).
+   As L3 and L4, on the input ring: the room read, the branch, the post or
+   the drop count, as compiled in build/mvp/gcc/be-mvp.elf and
+   build/mvp/clang/be-mvp.elf (the lines in
+   mvp/verify/litmus/sequences/SYMBOL-TOOLCHAIN.s; GCC's address, then
+   Clang's): the ring full (4096 bytes posted, none released), the
+   domain hart releasing an INPUT record of 24 bytes (8 typed bytes) while
+   hart 0 flushes 8 more, which fit only in the bytes it frees.
+   P0, the domain hart in be_mvp_dispatch's console_read:
+     lbu x5,0(x10)   the INPUT's first byte, 97, be_mvp_ring_take, called
+                     by be_mvp_input_serve at 10206a4a8 and 10206ad30,
+                     called at 10206638c and 10206641a
+                                                        102068836 102068d96
+     fence r,w       be_mvp_arch_fence_r_w, through be_mvp_exec_fence_r_w,
+                     called at                          1020663a0 10206642a
+     sd x12,0(x11)   the tail, 24, be_mvp_ring_release  102068876 102068e10
+   P1, hart 0 in be_mvp_input_flush, called by poll_input at 10206499a and
+   10206576e:
+     ld x5,0(x10)    be_mvp_ring_room: the tail         1020685c0 102068b50
+     sub x6,x13,x5   used = cursor - tail               1020685d4 102068b64
+     sub x7,x12,x6   free = capacity - used (GCC: tail - cursor + capacity,
+                     1020685ea and 1020685ec)                     102068b74
+     li x8,0         no room (GCC: the aligned tail's low bits, 0, by
+                     andi a0,a5,7)                      1020685c2 102068b7e
+     bge x9,x7,LC00  16 or fewer free: no room          1020685f0 102068b7a
+     addi x8,x7,-16  the payload room                   1020685f4 102068b84
+     andi x8,x8,-8   rounded down to 8                  102068602 102068b92
+     LC00:
+     beq x8,x0,LC01  be_mvp_input_flush: no room, the batch dropped
+                                                        10206a328 10206ab78
+     ld x14,0(x10)   be_mvp_ring_post: the tail again   1020684ce 102068a3a
+     sub x15,x13,x14 used                               1020684e6 102068a56
+     sub x16,x12,x15 free                               1020684fe 102068a6a
+     blt x16,x17,LC02 the room check, refused below 24  102068504 102068a6e
+     sb x18,0(x11)   the batch's first byte, 98         1020685a4 102068b22
+     j LC02
+     LC01:
+     sd x19,0(x20)   the drop count, hart 0's own word  10206a082 10206abea
+     LC02:
+   be_mvp_ring_room's cap of 256 (a branch on the same value, 1020685fe and
+   102068b8a) and be_mvp_input_flush's choice of the room or the pending
+   bytes (10206a322 and 10206ab72) leave these values as they are, so the
+   test leaves them out; L4 holds be_mvp_ring_post's other branches on the
+   tail. The compiled branches are bgeu, beqz, and bltu: herd7 7.58
+   implements no bltu, bgeu, or sltu for RISC-V ("RISCV operation bltu is
+   not implemented (yet)") and no beqz, so the test branches with bge,
+   beq against x0, and blt on the same registers, whose values stay below
+   2^63, where the comparisons agree; herd7's ctrl follows the branch's
+   registers, not its comparison. Clang's no-room answer is li a1,0;
+   GCC's is the aligned tail's low bits, whose zero the test loads with
+   li. A reduced test keeps fewer accesses and orderings than the code, so
+   it allows at least the code's outcomes: Never here is Never there.
+   Forbidden: the domain hart's load of the INPUT's first byte reads the
+   next batch's while hart 0's room read of the tail reads the release.
+   Digests (mvp/verify/litmus/sequences.txt):
+   be_mvp_dispatch@gcc sha256=19454e6ddfa6715f43ed56ac7bbb8c7734eb0ab16dac77fb7fba820ff57dabf8
+   be_mvp_dispatch@clang sha256=585fd111563c0a5bb2bba9e18c3d22ff562f68b134273a46de0030efe0f0b44a
+   be_mvp_input_serve@gcc sha256=846eaf79a301e4592b7e10a55660a67a69dec70fe2806941b4b4e7185a74a9e4
+   be_mvp_input_serve@clang sha256=f8e68ba77121089f15fbda135183492059ffd23ab41ac00a780cc9d4f7f3b29e
+   be_mvp_ring_take@gcc sha256=86f0abb4ffc514a17b3fc622bb891bd2f3c0ba17730ada7d510b59ea68aa9810
+   be_mvp_ring_take@clang sha256=b28cc06163a851112fd3feefb4375ea195eef77dc34eac8f28dee5cccd793324
+   be_mvp_exec_fence_r_w@gcc sha256=d2af5007185244ecff68554a5dba4d5b9d680932e87437fb430399451331246f
+   be_mvp_exec_fence_r_w@clang sha256=8e7211664d0945b560dd409a522e5b3267c3c6443146ecb502f8c84051f21975
+   be_mvp_arch_fence_r_w@gcc sha256=83318464bfc0ed2e0a2c4703a9be95feb7f5abc1a3eacbc8809ce349b8199410
+   be_mvp_arch_fence_r_w@clang sha256=83318464bfc0ed2e0a2c4703a9be95feb7f5abc1a3eacbc8809ce349b8199410
+   be_mvp_ring_release@gcc sha256=d974df60630c0167af53ae7413b1cbdaeae420ffd2a7d5b8f9c24292716b5e51
+   be_mvp_ring_release@clang sha256=e2559f03ccf88e388f5eeab7cf336f8405b2f62b8737749d97b67ce88cb0dc02
+   poll_input@gcc sha256=8030b4ed86233bbf882983ac5d99d3ebdff00b3a75ed2241e328c4ea811f28ad
+   poll_input@clang sha256=c7fd06c998affa32ddabb328379f2a9951e459a8954408c9e38a0e02f0545b54
+   be_mvp_input_flush@gcc sha256=8592e8dbfa2e07ee7c83d3f64e4252bfd5d54ad8c10e8b231271d54fe6eac44b
+   be_mvp_input_flush@clang sha256=219bd89c0898b15aa36825e6ce1eeb024905e502e99dbae7904eff2580ba6153
+   be_mvp_ring_room@gcc sha256=b28351a074d045cb01925be5f3aca16222974f3fd6ed289103dba128a8b5abd5
+   be_mvp_ring_room@clang sha256=56c673a9a552158372d3d36fc204cedde017d148761e64e19fdb080d250e24d0
+   be_mvp_ring_post@gcc sha256=ee8afa602949d8d119a9d3e218852a01d9602a7536c0baed60145c21ef94fee0
+   be_mvp_ring_post@clang sha256=eee8be5c51bad1a916fa45b7650581b7da8f1aaf2e55a6870456548eef9fc6cf
+   drop.part.0@gcc sha256=d63db8aaf39ce434ddea681efcfaae6ea7293b3bc1fc6ca9fb699ab1dd2110f4 *)
+{
+input_byte=97; tail=0; dropped=0;
+0:x10=input_byte; 0:x11=tail; 0:x12=24;
+1:x10=tail; 1:x11=input_byte; 1:x12=4096; 1:x13=4096; 1:x9=16; 1:x17=24;
+1:x18=98; 1:x19=8; 1:x20=dropped;
+}
+ P0            | P1               ;
+ lbu x5,0(x10) | ld x5,0(x10)     ;
+ fence r,w     | sub x6,x13,x5    ;
+ sd x12,0(x11) | sub x7,x12,x6    ;
+               | li x8,0          ;
+               | bge x9,x7,LC00   ;
+               | addi x8,x7,-16   ;
+               | andi x8,x8,-8    ;
+               | LC00:            ;
+               | beq x8,x0,LC01   ;
+               | ld x14,0(x10)    ;
+               | sub x15,x13,x14  ;
+               | sub x16,x12,x15  ;
+               | blt x16,x17,LC02 ;
+               | sb x18,0(x11)    ;
+               | j LC02           ;
+               | LC01:            ;
+               | sd x19,0(x20)    ;
+               | LC02:            ;
+exists (0:x5=98 /\ 1:x5=24)

@@ -1,0 +1,113 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+//
+// Question: what state is trusted, and what is the sole cross-domain channel?
+digraph be_model_01_architecture {
+	graph [
+		label="Beryllium Architecture Model 0.1 trust and authority boundary"
+		tooltip="One abstract HS isolation engine owns roots, saved states, private frames, and one directional shared channel."
+		labelloc=t
+		fontname="Inter,Arial"
+		fontsize=21
+		rankdir=TB
+		nodesep=0.5
+		ranksep=0.65
+		bgcolor="transparent"
+		pad=0.25
+	]
+	node [
+		shape=box
+		style="rounded,filled"
+		fontname="Inter,Arial"
+		fontsize=9
+		fontcolor="#0f172a"
+		color="#475569"
+		margin="0.16,0.09"
+	]
+	edge [
+		fontname="Inter,Arial"
+		fontsize=8
+		color="#475569"
+		fontcolor="#334155"
+		penwidth=1.3
+		arrowsize=0.7
+	]
+
+	firmware [
+		label="M mode\nfirmware handoff assumptions"
+		fillcolor="#ede9fe"
+		color="#7c3aed"
+	]
+
+	subgraph cluster_hs {
+		label="Trusted abstract HS boundary"
+		color="#0284c7"
+		style="rounded,dashed"
+
+		checker [
+			label="Canonical manifest checker\ncomplete + fail closed"
+			fillcolor="#cffafe"
+			color="#0891b2"
+		]
+		monitor [
+			label="Sealed Model 0.1 state\nroot / VMID / stack binding"
+			fillcolor="#dbeafe"
+			color="#2563eb"
+		]
+		saved_m [
+			label="Management saved state"
+			fillcolor="#fef3c7"
+			color="#d97706"
+		]
+		saved_p [
+			label="Protected saved state"
+			fillcolor="#fef3c7"
+			color="#d97706"
+		]
+		cache [
+			label="Modeled translation cache\ncleared by required fence"
+			fillcolor="#ffedd5"
+			color="#ea580c"
+		]
+	}
+
+	subgraph cluster_vs {
+		label="Mutually untrusted VS domains"
+		color="#dc2626"
+		style="rounded,dashed"
+
+		management [
+			label="Management abstraction\nroot 101 + private frame"
+			fillcolor="#fee2e2"
+			color="#dc2626"
+		]
+		protected [
+			label="Protected-service abstraction\nroot 102 + private frame"
+			fillcolor="#fee2e2"
+			color="#dc2626"
+		]
+	}
+
+	channel [
+		label="Declared shared frame\nmanagement RW -> protected R"
+		fillcolor="#dcfce7"
+		color="#16a34a"
+		penwidth=2
+	]
+
+	firmware -> checker [label="assumed handoff"]
+	checker -> monitor [label="valid configuration seals"]
+	monitor -> management [label="checked sequential entry"]
+	monitor -> protected [label="checked sequential entry"]
+	management -> saved_m [label="save only own state"]
+	protected -> saved_p [label="save only own state"]
+	monitor -> cache [label="root write -> fence"]
+	management -> channel [label="read + write" color="#16a34a"]
+	channel -> protected [label="read only" color="#16a34a"]
+	management -> protected [
+		label="all other storage paths denied"
+		style=dashed
+		color="#dc2626"
+		dir=none
+	]
+}

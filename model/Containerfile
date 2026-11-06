@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Pinned open rootless evaluator for the abstract Model 0.2 package.
+#
+# Image construction may use the network. Evaluation runs with networking
+# disabled and contains no proprietary, runtime, QEMU, or hardware dependency.
+
+FROM registry.fedoraproject.org/fedora@sha256:daf897befd7a78a52f11db5ca2229a4923991bb30709932770cb493f7a000cf0
+
+RUN dnf install -y \
+        clang \
+        coreutils \
+        findutils \
+        gcc \
+        git \
+        make \
+        nodejs \
+        python3 \
+        rocq && \
+    dnf clean all
+
+WORKDIR /work

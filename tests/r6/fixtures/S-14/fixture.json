@@ -1,0 +1,75 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "S-14",
+  "partition": "static",
+  "declared_delta": null,
+  "base": "tests/r5/Makefile",
+  "base_sha256": "03f82fd51e2acd07ccfa3d0a8ad91cf315e440656e03fd686a3fa42da1cf238a",
+  "defect_file": "Makefile.defect",
+  "defect_sha256": "53ec29cf16c5409b7e00f22f59ba3bca8a8408890ad6502c57604f7e207e9c6e",
+  "defect": {
+    "kind": "build-input",
+    "summary": "an undeclared translation unit is added to the image",
+    "accepted": null,
+    "malformed": null,
+    "source_path": "tests/r5/Makefile",
+    "target": {
+      "line": 90,
+      "line_anchor": "$(ROOT)/virt/be/r5.c \\",
+      "symbol": "C_SOURCES",
+      "slot": null
+    },
+    "anchor": "\t$(ROOT)/virt/be/r5.c \\\n\t$(ROOT)/arch/riscv/be/sv39x4.c",
+    "replacement": "\t$(ROOT)/virt/be/r5.c $(ROOT)/virt/be/r5-shadow.c \\\n\t$(ROOT)/arch/riscv/be/sv39x4.c"
+  },
+  "diff": {
+    "sha256": "db94ecf36171cf4c0e99932f4bba9c2b093111df12e7059682e4eebc68a2b2b8",
+    "added": 1,
+    "removed": 1,
+    "budget": {
+      "added": 6,
+      "removed": 6
+    },
+    "unified": "--- a/tests/r5/Makefile\n+++ b/tests/r5/Makefile\n@@ -87,7 +87,7 @@\n \t$(ROOT)/arch/riscv/be/r5-beryllium.lds\n override C_SOURCES := $(ROOT)/virt/be/manifest.c $(ROOT)/virt/be/state.c \\\n \t$(ROOT)/virt/be/r1-config.c $(ROOT)/virt/be/r3.c $(ROOT)/virt/be/r4.c \\\n-\t$(ROOT)/virt/be/r5.c \\\n+\t$(ROOT)/virt/be/r5.c $(ROOT)/virt/be/r5-shadow.c \\\n \t$(ROOT)/arch/riscv/be/sv39x4.c $(ROOT)/arch/riscv/be/platform.c \\\n \t$(ROOT)/arch/riscv/be/freestanding.c \\\n \t$(R5_PLATFORM_C)\n"
+  },
+  "expected": {
+    "first_rejection_layer": "L3",
+    "outcome": "rejected-at-source-inventory",
+    "message_completeness": "complete",
+    "primary_message": "R5 source inventory: Makefile declares unlisted input {path}",
+    "placeholders": {
+      "path": "virt/be/r5-shadow.c"
+    },
+    "stages": {
+      "l3": "reject"
+    },
+    "absent_stages": [
+      "gcc-link",
+      "clang-link",
+      "gcc-image-check",
+      "clang-image-check"
+    ],
+    "messages": {
+      "l3": [
+        "R5 source inventory: Makefile declares unlisted input virt/be/r5-shadow.c"
+      ]
+    },
+    "prohibited_layers": [
+      "L4",
+      "L5",
+      "L6",
+      "L7",
+      "L8",
+      "L9",
+      "L10",
+      "L11"
+    ],
+    "qemu": "forbidden",
+    "artifacts": {
+      "quarantined": [],
+      "scratch_elf": false
+    }
+  }
+}

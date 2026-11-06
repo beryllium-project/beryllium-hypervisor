@@ -1,0 +1,278 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Purpose: the MVP line's stable wrapper (planning/mvp-m0-plan.md, "The MVP
+#          line"): one entry point for every MVP operation, each mapped to
+#          one target of mvp/Makefile or one tool under mvp/tools.
+# Trust:   it runs the tool lock's Make (/usr/bin/make) in this directory
+#          with a clean environment: PATH=/usr/bin, LC_ALL=C, LANG=C,
+#          SHELL=/bin/bash, HOME, and only the caller variables the Make
+#          controls admit (tools/make-control.py checks them again, and
+#          every VAR=VALUE argument, while the Makefile is parsed).
+# Scope:   the MVP line. Operations whose targets arrive with a later work
+#          package say so and exit 3; nothing here writes outside build/ but
+#          `tool-lock refresh`, which rewrites the lock on the responsible
+#          human's direction, `board-evidence`, which adds a new board
+#          record under mvp/results/, `claim-ledger render`, which
+#          rewrites mvp/docs/claim-ledger.md from its JSON source, and
+#          `rc-record`, which writes the new record its --out names
+#          (mvp/results/<date>-rc/).
+#
+#   ./mvp help                         this text
+#   ./mvp check [VAR=VALUE ...]        every off-board check (make check)
+#   ./mvp port                         the port, re-derived byte for byte
+#   ./mvp host-test                    the host tests, GCC = Clang
+#   ./mvp tool-lock check|refresh      verify, or rewrite, the tool lock
+#   ./mvp evaluate [VAR=VALUE ...]     mvp check in the clean evaluator
+#   ./mvp verify [VAR=VALUE ...]       the M8 verification suites in the
+#                                      verifier image, built if absent
+#                                      (M8-5; tools/verifier/verify.sh)
+#   ./mvp image                        monitor and boot images (M0-3)
+#   ./mvp image-check                  the image checker and its mutations
+#   ./mvp variants                     the negative variants, checked
+#   ./mvp probes                       the probe images, checked
+#   ./mvp budgets                      every budget, measured
+#   ./mvp uboot-rehearsal              U-Boot booti of each scenario image
+#                                      under QEMU, eight harts (M5-3;
+#                                      UBOOT_REHEARSAL_ALL=1: also the
+#                                      board's probes and negatives)
+#   ./mvp qemu                         the eight-hart QEMU scenarios
+#   ./mvp sessions                     each console variant's session
+#                                      typed in QEMU (M7-4)
+#   ./mvp live                         each scenario's shell images for a
+#                                      human at the console: a
+#                                      demonstration, never evidence (M7-4)
+#   ./mvp evidence                     the evidence bundle of the last check
+#   ./mvp k3-preflight                 read-only board preflight (human)
+#   ./mvp k3-stage                     the session's images on the board's
+#                                      Beryllium partition (human)
+#   ./mvp k3-env record|install|restore
+#                                      U-Boot's saved environment: the
+#                                      records, the install, the restore
+#                                      (human, present)
+#   ./mvp k3-campaign                  the session's 25 board runs, three
+#                                      typed sessions among them
+#                                      (human; K3_GUEST_TYPING=
+#                                      human-authorized, M10's D-3)
+#   ./mvp k3-probe                     the four GCC probe images (human)
+#   ./mvp k3-characterize              the board's U-Boot, attended (human)
+#   ./mvp k3-input-characterize        the firmware console's typed
+#                                      characterization, then a shell
+#                                      session (M7-5; human, present)
+#   ./mvp board-evidence               session K3_RUN_ROOT's board record
+#   ./mvp claim-ledger check|render|self-test
+#                                      the claim ledger and the release
+#                                      surfaces under docs/ (M4-1)
+#   ./mvp rc-record ARGS...            the release-candidate record (M4-4)
+#
+# A command that runs make takes only VAR=VALUE arguments, each VAR a
+# variable the wrapper passes for that command (below); any other argument
+# is refused (exit 2) before make runs, so that no stray word becomes a
+# make goal (mvp/README.md, open item 91): `k3-env install`, for one,
+# takes no file name, its target installing the plan's first image itself.
+# tool-lock and claim-ledger take one word each, rc-record its tool's
+# arguments, and evaluate gives its arguments to mvp check in the
+# evaluator, where the same rule holds.
+#
+# Caller variables, as VAR=VALUE arguments or in the environment: TOOLCHAIN,
+# LINUX_GIT, MVP_RPM_CACHE, MVP_SRC_CACHE (a directory of the M8 verifier's
+# exact source archives), K3_SERIAL_LOG, K3_RUN_ROOT (the board session's
+# directory), K3_PREFLIGHT (before or after), K3_ENV_CONFIRM (the human's
+# confirmation of the recorded bootcmd, at the install), K3_ENV_ACCEPT_V
+# (the human's acceptance of the names in V, at the records),
+# K3_RECORD_TITLE (board-evidence's title; default MVP COM260 campaign),
+# and JOBS. The k3-* commands also pass the board tools' own settings from
+# the environment (K3_SSH, K3_SSH_OPTIONS, K3_SUDO, K3_WAIT_SECONDS,
+# K3_TAIL_SECONDS, K3_ENV_STORE, K3_PARTITION_UUID, K3_DOWN_SECONDS, K3_FEDORA_SECONDS,
+# K3_POLL_SECONDS; tools/k3-run.sh, k3-env.sh), the console's
+# (K3_TMUX_SESSION, the operator's picocom session; K3_TYPE_DELAY,
+# K3_ECHO_SECONDS, K3_PROMPT_SECONDS, K3_BOOT_SECONDS, K3_AUTOBOOT_SECONDS,
+# K3_STOP_RETRY_SECONDS,
+# K3_IDLE_SECONDS, K3_HUMAN_SECONDS; TMUX_TMPDIR; tools/k3-console.sh),
+# K3_CAMPAIGN_SKIP (tools/k3-campaign.sh: a stopped session resumed at a
+# group), typing into the MVP's (K3_GUEST_TYPING=human-authorized, the
+# authorization, K3_INPUT_SESSION, K3_GUEST_READY_SECONDS,
+# K3_GUEST_ECHO_SECONDS, K3_GUEST_STEP_SECONDS, K3_GUEST_KEY_DELAY;
+# tools/k3-input-characterize.sh, k3-console.sh), the
+# reset's (K3_RESET=k3ctl to let the tools reset the board through the
+# pinned client, K3CTL the client, K3CTL_DEV its dongle's device;
+# planning/mvp-m5-plan.md, "Resets and the dongle"), and SSH_AUTH_SOCK, the
+# SSH agent.
+set -euo pipefail
+
+here=$(cd -- "$(dirname -- "$0")" && pwd)
+make=/usr/bin/make
+python=/usr/bin/python3
+callers=(TOOLCHAIN LINUX_GIT MVP_RPM_CACHE MVP_SRC_CACHE K3_SERIAL_LOG
+	K3_RUN_ROOT K3_PREFLIGHT K3_ENV_CONFIRM K3_ENV_ACCEPT_V K3_RECORD_TITLE
+	JOBS)
+# The board tools' settings; no makefile assigns them. K3CTL_PIN is not one:
+# the board targets pass tools/k3ctl.sha256 themselves.
+board=(K3_SSH K3_SSH_OPTIONS K3_SUDO K3_WAIT_SECONDS K3_TAIL_SECONDS
+	K3_ENV_STORE K3_PARTITION_UUID K3_DOWN_SECONDS K3_FEDORA_SECONDS K3_POLL_SECONDS
+	K3_TMUX_SESSION K3_TYPE_DELAY K3_ECHO_SECONDS K3_PROMPT_SECONDS
+	K3_BOOT_SECONDS K3_AUTOBOOT_SECONDS K3_STOP_RETRY_SECONDS K3_IDLE_SECONDS K3_HUMAN_SECONDS
+	K3_CAMPAIGN_SKIP TMUX_TMPDIR K3_RESET K3CTL K3CTL_DEV SSH_AUTH_SOCK
+	K3_GUEST_TYPING K3_INPUT_SESSION K3_GUEST_READY_SECONDS
+	K3_GUEST_ECHO_SECONDS K3_GUEST_STEP_SECONDS K3_GUEST_KEY_DELAY)
+
+usage() {
+	sed -n '/^#   \.\/mvp help/,/SSH agent\.$/s/^# \{0,1\}//p' -- "$0"
+}
+
+# The clean environment, with the caller variables that are set (and, for
+# a board command, the board settings).
+clean_env() {
+	local name
+	env_args=(PATH=/usr/bin LC_ALL=C LANG=C SHELL=/bin/bash
+		"HOME=${HOME:-/}")
+	for name in "${callers[@]}" "${extra[@]}"; do
+		if [ -n "${!name+set}" ]; then
+			env_args+=("$name=${!name}")
+		fi
+	done
+}
+
+run_make() {
+	local target=$1
+
+	shift
+	assignments "$@"
+	clean_env
+	exec /usr/bin/env -i "${env_args[@]}" "$make" --no-print-directory \
+		-C "$here" "$target" "$@"
+}
+
+# assignments ARG...: each ARG VAR=VALUE, VAR a caller variable or one of
+# this command's own (extra); otherwise the usage and exit 2, and nothing
+# runs.
+assignments() {
+	local argument name known
+
+	for argument in "$@"; do
+		name=${argument%%=*}
+		if [ "$name" != "$argument" ] && [[ $name =~ ^[A-Z][A-Z0-9_]*$ ]]; then
+			for known in "${callers[@]}" "${extra[@]}"; do
+				[ "$name" != "$known" ] || continue 2
+			done
+		fi
+		printf 'BE_MVP: refused %q: %s takes only VAR=VALUE arguments, VAR a variable it passes (below); nothing ran\n' \
+			"$argument" "$command" >&2
+		usage >&2
+		exit 2
+	done
+}
+
+# A target exists once its work package adds it to the Makefile or tools.mk.
+has_target() {
+	local file
+
+	for file in "$here/Makefile" "$here/tools.mk"; do
+		[ -f "$file" ] && grep -q "^$1:" -- "$file" && return 0
+	done
+	return 1
+}
+
+later() {
+	local target=$1 package=$2
+
+	shift 2
+	if has_target "$target"; then
+		run_make "$target" "$@"
+	fi
+	printf 'BE_MVP: not-implemented-until-%s %s\n' "$package" "$target" >&2
+	exit 3
+}
+
+extra=()
+[ "$#" -gt 0 ] || { usage; exit 2; }
+command=$1
+shift
+case $command in
+help | -h | --help)
+	usage
+	;;
+check)
+	run_make check "$@"
+	;;
+port)
+	run_make port-check "$@"
+	;;
+host-test)
+	run_make host-test "$@"
+	;;
+tool-lock)
+	[ "$#" -eq 1 ] || { usage; exit 2; }
+	case $1 in
+	check) run_make tool-lock-check ;;
+	refresh)
+		clean_env
+		exec /usr/bin/env -i "${env_args[@]}" "$python" -B \
+			"$here/tools/lock/tool-lock.py" refresh
+		;;
+	*) usage; exit 2 ;;
+	esac
+	;;
+evaluate)
+	exec "$here/tools/evaluator/evaluate.sh" "$@"
+	;;
+verify)
+	run_make verify "$@"
+	;;
+image | image-check | variants | probes | budgets)
+	later "$command" M0-3 "$@"
+	;;
+uboot-rehearsal)
+	extra=(UBOOT_REHEARSAL_ALL)
+	later uboot-rehearsal M5-3 "$@"
+	;;
+qemu)
+	later qemu-test M0-4 "$@"
+	;;
+sessions | live)
+	later "$command" M7-4 "$@"
+	;;
+evidence | board-evidence)
+	later "$command" M0-4 "$@"
+	;;
+k3-preflight | k3-stage | k3-campaign | k3-probe | k3-characterize | \
+	k3-input-characterize)
+	extra=("${board[@]}")
+	later "$command" M5-2 "$@"
+	;;
+k3-env)
+	[ "$#" -ge 1 ] || { usage; exit 2; }
+	case $1 in
+	record | install | restore) step=$1 ;;
+	*) usage; exit 2 ;;
+	esac
+	shift
+	command="k3-env $step"
+	extra=("${board[@]}")
+	later "k3-env-$step" M5-2 "$@"
+	;;
+claim-ledger)
+	[ "$#" -eq 1 ] || { usage; exit 2; }
+	case $1 in
+	check | render) ;;
+	self-test)
+		set -- --self-test \
+			--scratch "$here/../build/mvp/tmp/claim-ledger-self-test"
+		;;
+	*) usage; exit 2 ;;
+	esac
+	clean_env
+	exec /usr/bin/env -i "${env_args[@]}" "$python" -B \
+		"$here/tools/claim-ledger.py" "$@"
+	;;
+rc-record)
+	clean_env
+	exec /usr/bin/env -i "${env_args[@]}" "$python" -B \
+		"$here/tools/rc-record.py" "$@"
+	;;
+*)
+	usage
+	exit 2
+	;;
+esac

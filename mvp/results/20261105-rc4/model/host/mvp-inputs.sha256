@@ -1,0 +1,6 @@
+b4ede12d9e2238da3f14d20b830dff7f3a747bc9fac24de241d88781db75dc23  mvp/tools/policy-check.py
+c50da8ad3b06ca3e44d954eaaaaf9244a6b6f121a7a21b4ad8a3466d8e9721b3  mvp/src/mvp-layout.h
+4a1fac2bdea04cbcf4f3248c21cb41cf2823625b46d284c45d9c69b6a25b8b2d  mvp/scenarios/te-poc/policy.te
+d40c11c10b397ab6e60b675a9c5c1e303f0b2c329a50cd8dd653752a5c208c77  mvp/scenarios/te-poc/scenario.json
+bfecfa923eaa64782cca2f662091de1329eba2c969408a59f04a8c0234fc79aa  mvp/scenarios/anchor/policy.te
+0a97a110dbfc44a5edf9591386f1a8ce788567693838037c4cc3839dcca293a9  mvp/scenarios/anchor/scenario.json

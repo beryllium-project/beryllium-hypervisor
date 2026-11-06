@@ -1,0 +1,21 @@
+run=20261025T035420Z
+image=<repo>/build/mvp/gcc/be-mvp-boot.img
+image_sha256=185396d1db7c1a774665342e3a086643a80d719686aaae2980857228a18498ba
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/gcc/be-mvp-boot.img bytes=0x223000 sha256=185396d1db7c1a774665342e3a086643a80d719686aaae2980857228a18498ba flat_sha256=ed8dfa131ad5e187ce144a32ef61c809be3d36cacb456b7741f785f38bdfb941 kexec_fdt=0x108400000 variant=none dtb0=0x221000
+toolchain=gcc
+expect=two-guests.json expect_sha256=11fda6f84e5319cf112780cbc27b7131fd46af96c8e294f5669ab546b04eed47
+variant=none
+k3_ssh=fedora@k3e
+loader_mode=raw
+loader_sha256=7bd92e7992e5e76650cbc6d112c405b72b02bd716822de46fe9db42a5d927bbc
+layout_sha256=b4656b71df44133eb01985b43cc4c5b3af234d8dce9fdbdaabc9ea2b5784aee6
+serial_source=none:load-only
+boot_id_before=74408ee4-7008-475d-9fbb-98230d6e32b4
+board_kernel=7.3.0-65.1.riscv64.omni.fc45.riscv64
+board_lockdown=[none] integrity confidentiality
+board_tmp_fstype=tmpfs
+remote_image_sha256=185396d1db7c1a774665342e3a086643a80d719686aaae2980857228a18498ba
+loader=kexec_load entry=0x108000000 fdt=0x108400000 image_memsz=0x223000 fdt_bytes=49280 kexec_loaded=1
+kexec_loaded=1
+kexec_loaded_after_unload=0
+outcome=load-only

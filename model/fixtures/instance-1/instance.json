@@ -1,0 +1,77 @@
+{
+  "spdx": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "purpose": "Instance 1 of security model v1 (planning/security-model-v1.md, Part 2), the fixed two-domain profile of R0-R7 and B0-B4, as a policy-layer fixture (planning/mvp-m3-plan.md, Q3; work package M3-4): its labeling of the monitor, the management and protected domains, and R0 resources 1 to 13 with the channel on resource 11 (planning/single-hart-runtime-r0-freeze.md, section 2); its need sets, which are the rules' permission sets (Part 3, A4); and the manifest's ownerships, channel, and grants of the fixed profile. Model 0.2's fixed-TE fixture is the projection of this instance without resources 12 and 13 and their execute right (security model v1 Revision 1, R1.5), which the generator derives as instance1_m02.",
+  "trust": "Data only, in the style of the MVP's scenario.json. model/tools/gen-policy-fixtures.mjs translates it with policy.te into C data and Rocq terms at build time; no model binary reads it, and a change is a rebuild.",
+  "scope": "M3. Types, subject and object names, resource numbers, and hart numbers are identifiers, not authority (S1 H03). The fixed profile runs both domains on one hart by checked switches, so it has no hart binding (Revision 1, R1.2): harts lists the one hart and no domain names a hart.",
+  "schema": "be-model-policy-instance-v1",
+  "name": "instance-1",
+  "policy": "policy.te",
+  "harts": [0],
+  "control_hart": 0,
+  "domains": [
+    {"index": 0, "name": "management"},
+    {"index": 1, "name": "protected"}
+  ],
+  "objects": [
+    {"name": "monitor_code", "class": "memory", "resource": 1, "owner": "monitor"},
+    {"name": "monitor_data", "class": "memory", "resource": 2, "owner": "monitor"},
+    {"name": "root_pool_management", "class": "memory", "resource": 3, "owner": "monitor"},
+    {"name": "root_pool_protected", "class": "memory", "resource": 4, "owner": "monitor"},
+    {"name": "trusted_stack_management", "class": "memory", "resource": 5, "owner": "monitor"},
+    {"name": "trusted_stack_protected", "class": "memory", "resource": 6, "owner": "monitor"},
+    {"name": "saved_state_management", "class": "memory", "resource": 7, "owner": "monitor"},
+    {"name": "saved_state_protected", "class": "memory", "resource": 8, "owner": "monitor"},
+    {"name": "private_management", "class": "memory", "resource": 9, "owner": "management"},
+    {"name": "private_protected", "class": "memory", "resource": 10, "owner": "protected"},
+    {"name": "shared", "class": "memory", "resource": 11, "owner": "channel"},
+    {"name": "guest_code_management", "class": "memory", "resource": 12, "owner": "management"},
+    {"name": "guest_code_protected", "class": "memory", "resource": 13, "owner": "protected"}
+  ],
+  "channels": [
+    {"name": "channel", "object": "shared", "writer": "management", "reader": "protected"}
+  ],
+  "grants": [
+    {"subject": "management", "object": "private_management", "class": "memory", "permissions": ["map", "read", "write"]},
+    {"subject": "management", "object": "guest_code_management", "class": "memory", "permissions": ["map", "read", "execute"]},
+    {"subject": "management", "object": "shared", "class": "memory", "permissions": ["map", "read", "write"]},
+    {"subject": "management", "object": "channel", "class": "channel", "permissions": ["send"]},
+    {"subject": "protected", "object": "private_protected", "class": "memory", "permissions": ["map", "read", "write"]},
+    {"subject": "protected", "object": "guest_code_protected", "class": "memory", "permissions": ["map", "read", "execute"]},
+    {"subject": "protected", "object": "shared", "class": "memory", "permissions": ["map", "read"]},
+    {"subject": "protected", "object": "channel", "class": "channel", "permissions": ["receive"]}
+  ],
+  "labeling": {
+    "subjects": [
+      {"name": "monitor", "type": "monitor_t"},
+      {"name": "management", "domain_index": 0, "type": "mgmt_t"},
+      {"name": "protected", "domain_index": 1, "type": "prot_t"}
+    ],
+    "objects": [
+      {"name": "monitor_code", "class": "memory", "type": "monitor_mem_t"},
+      {"name": "monitor_data", "class": "memory", "type": "monitor_mem_t"},
+      {"name": "root_pool_management", "class": "memory", "type": "monitor_mem_t"},
+      {"name": "root_pool_protected", "class": "memory", "type": "monitor_mem_t"},
+      {"name": "trusted_stack_management", "class": "memory", "type": "monitor_mem_t"},
+      {"name": "trusted_stack_protected", "class": "memory", "type": "monitor_mem_t"},
+      {"name": "saved_state_management", "class": "memory", "type": "monitor_mem_t"},
+      {"name": "saved_state_protected", "class": "memory", "type": "monitor_mem_t"},
+      {"name": "private_management", "class": "memory", "type": "mgmt_private_t"},
+      {"name": "private_protected", "class": "memory", "type": "prot_private_t"},
+      {"name": "shared", "class": "memory", "type": "shared_mp_t"},
+      {"name": "channel", "class": "channel", "object": "shared", "type": "shared_mp_t"},
+      {"name": "guest_code_management", "class": "memory", "type": "mgmt_code_t"},
+      {"name": "guest_code_protected", "class": "memory", "type": "prot_code_t"}
+    ]
+  },
+  "need": [
+    {"source": "mgmt_t", "target": "mgmt_private_t", "class": "memory", "permissions": ["read", "write", "map"]},
+    {"source": "mgmt_t", "target": "mgmt_code_t", "class": "memory", "permissions": ["read", "execute", "map"]},
+    {"source": "mgmt_t", "target": "shared_mp_t", "class": "memory", "permissions": ["read", "write", "map"]},
+    {"source": "mgmt_t", "target": "shared_mp_t", "class": "channel", "permissions": ["send"]},
+    {"source": "prot_t", "target": "prot_private_t", "class": "memory", "permissions": ["read", "write", "map"]},
+    {"source": "prot_t", "target": "prot_code_t", "class": "memory", "permissions": ["read", "execute", "map"]},
+    {"source": "prot_t", "target": "shared_mp_t", "class": "memory", "permissions": ["read", "map"]},
+    {"source": "prot_t", "target": "shared_mp_t", "class": "channel", "permissions": ["receive"]}
+  ]
+}

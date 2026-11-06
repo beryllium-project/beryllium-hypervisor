@@ -1,0 +1,30 @@
+run=20261028T060802Z
+image=<repo>/build/mvp/gcc/anchor/be-mvp-boot.img
+image_sha256=3b554f2cd0c6ce01226488b4363de6554aa4b6f2e671ff9663a0066b911e24dd
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/gcc/anchor/be-mvp-boot.img bytes=0x277000 sha256=3b554f2cd0c6ce01226488b4363de6554aa4b6f2e671ff9663a0066b911e24dd flat_sha256=c8aa48ec1a1eff087a8bc179996d3fe41d7fbfd83d9d6eb5b3c6bdca64d47e9d kexec_fdt=0x108400000 variant=none dtb0=0x275000 scenario=anchor
+toolchain=gcc
+expect=anchor.json expect_sha256=97e8b2aca656e65a5f83688dac0d9c3789d0e24d55d275755cd57ff585894397
+report=authority-report.json report_sha256=418797a29bf59a3c2ed0f2df81c95b7eeb21ae98f8d542e73bffefdae4df0ac6
+measured=Image kernel_sha256=c7ae03e6b26e1433bb1cdcd995467b5df2dec61cb8ed1c38ede0d4458c4799ed mvp-guest-g1-anchor.dtb dtb_sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025
+variant=none
+k3_ssh=fedora@k3-f45
+loader_mode=raw
+loader_sha256=6d36be511cf4c6a2007e9d5b3ecf7d7f0fa56e070dfe2923ad0c2a05361dc4f1
+layout_sha256=7ba1ac4779d78a0d82df9404a6901c5275746ca952703537822e4a623ef391cf
+reset_method=k3ctl client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec device=/dev/ttyACM0
+serial_source=log:<home>/src/spacemit-k3/logs/boot-7.log
+boot_id_before=376c699c-1143-436c-9285-c1705d6f18ed
+board_kernel=7.3.0-65.1.riscv64.omni.fc45.riscv64
+board_lockdown=[none] integrity confidentiality
+board_tmp_fstype=tmpfs
+remote_image_sha256=3b554f2cd0c6ce01226488b4363de6554aa4b6f2e671ff9663a0066b911e24dd
+loader=kexec_load entry=0x108000000 fdt=0x108400000 image_memsz=0x277000 fdt_bytes=49280 kexec_loaded=1
+kexec_loaded=1
+kexec_requested_utc=2026-10-28T06:08:04Z
+kexec_ssh_status=0
+outcome=terminal-marker
+terminal_marker_utc=2026-10-28T06:08:17Z
+expected_kexec_fdt=0x108400000
+check_status=0
+BE_MVP_RESULT: PASS terminal=shutdown-requested
+reset_outcome=reset

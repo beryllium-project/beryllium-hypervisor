@@ -1,0 +1,6 @@
+scenario te-poc sha256=4fe5164591ab64846d3b3a6a9ef4a0b2986d111c5b2e4df353c4e7a853699c17
+policy policy.te sha256=4a1fac2bdea04cbcf4f3248c21cb41cf2823625b46d284c45d9c69b6a25b8b2d
+report authority-report.json sha256=fcbf210072d30c0d865c5219cc13a1d47ff17825bdd178e463e2c34d4beafdae config=9cf028073e08e0d3fe8f9f0e92f05c78e5af3e571c129748618b1c76883d457d
+expect no-inject.json
+expect reader-write.json
+expect te-poc.json

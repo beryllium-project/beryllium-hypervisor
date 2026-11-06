@@ -1,0 +1,14 @@
+BE_MVP_EVALUATE: record=<repo>/build/mvp-evaluator/record/20261031T035934Z
+BE_MVP_EVALUATE: host PASS roles=32 host_only_skipped=0 closure=259 lock_sha256=2f1b732dcf24
+BE_MVP_EVALUATE: host source=ebc49a889273c811836c3d39fb0fc9bfe808be4c tree=clean images=253
+BE_MVP_EVALUATE: fetch PASS cache=<repo>/build/mvp-evaluator/rpms rpms=259 bytes=385621571 sources=fedora:116,updates:143
+BE_MVP_EVALUATE: image=localhost/beryllium-mvp-evaluator:2875ddd675b4-009c2eba5655 base=registry.fedoraproject.org/fedora@sha256:daf897befd7a78a52f11db5ca2229a4923991bb30709932770cb493f7a000cf0 closure_sha256=2875ddd675b49c390159d55ac2847a9eb1990061bfe972693bd8260b2d123009 containerfile_sha256=009c2eba5655d75193e1e8fc95ea1ae2362d3f583955781a8457aa03423c78ee closure_packages=259
+BE_MVP_EVALUATE: image_id=05e75d8dea9e4d6cd0e8cde9386b3ae37d428f8e66741769904de53ac306cc53 rpms=293 rpms_sha256=1b9ae877326d14c6cebb827fb6a57564d7842f4760f5dc4766e7dbffdaccbf70
+BE_MVP_EVALUATE: swap removed systemd-standalone-sysusers-259.7-1.fc44.x86_64 removed glibc-minimal-langpack-2.43-7.fc44.x86_64 removed rpm-build-libs-6.0.1-2.fc44.x86_64 removed rpm-sign-libs-6.0.1-2.fc44.x86_64 removed dnf5-plugins-5.4.2.1-1.fc44.x86_64 installed systemd-sysusers-259.10-1.fc44.x86_64
+BE_MVP_LOCK: PASS roles=26 host_only_skipped=6 closure=259 lock_sha256=2f1b732dcf24
+BE_MVP_TOOLS_CHECK: PASS
+BE_MVP_QEMU: PASS runs=58 attempts=73 refused=15
+BE_MVP_EVIDENCE: PASS development <repo>/build/mvp/evidence/check files=288 images=253 qemu_attempts=73 rehearsals=0
+BE_MVP_CHECK: PASS
+BE_MVP_EVALUATE: BE_MVP_IMAGE_IDENTITY: PASS images=253 same=253 differing=0
+BE_MVP_EVALUATE: PASS image=localhost/beryllium-mvp-evaluator:2875ddd675b4-009c2eba5655

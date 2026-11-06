@@ -1,0 +1,40 @@
++0.224 2026-11-05T13:32:28.047Z ready line=98 {"monitor": "BE_MVP:15 INPUT_ARMED grants=g0,g1 prefix=0x7e"}
++0.224 2026-11-05T13:32:28.047Z ready line=99 {"monitor": "BE_MVP:16 FOCUS none"}
++0.408 2026-11-05T13:32:28.232Z ready line=212 {"contains": "MVPINIT 11 SHELL tty=/dev/hvc0", "domain": 0}
++0.415 2026-11-05T13:32:28.239Z ready line=215 {"contains": "MVPINIT 11 SHELL tty=/dev/hvc0", "domain": 1}
++0.915 2026-11-05T13:32:28.739Z step=0 negative "before-focus" keys=18
++1.099 2026-11-05T13:32:28.923Z step=0 line=216 {"monitor": "BE_MVP:17 INPUT_DROP no-focus"}
++1.099 2026-11-05T13:32:28.923Z step=1 focus "g0" keys=2
++1.133 2026-11-05T13:32:28.956Z step=1 line=217 {"monitor": "BE_MVP:16 FOCUS g0"}
++1.633 2026-11-05T13:32:29.457Z step=2 send "echo NONCE" keys=22
++1.916 2026-11-05T13:32:29.740Z step=2 line=218 {"domain": 0, "line": "# echo NONCE"}
++1.918 2026-11-05T13:32:29.741Z step=3 line=219 {"contains": "NONCE", "domain": 0}
++2.418 2026-11-05T13:32:30.242Z step=4 send "be-chan write hello NONCE" keys=37
++2.847 2026-11-05T13:32:30.671Z step=4 line=220 {"domain": 0, "line": "# be-chan write hello NONCE"}
++2.851 2026-11-05T13:32:30.675Z step=5 line=221 {"contains": "MVPINIT 12 CHAN write", "domain": 0}
++3.351 2026-11-05T13:32:31.175Z step=6 send "be-deny load-unmapped" keys=22
++3.663 2026-11-05T13:32:31.487Z step=6 line=222 {"domain": 0, "line": "# be-deny load-unmapped"}
++3.667 2026-11-05T13:32:31.490Z step=7 line=224 {"contains": "MVPINIT 08 DENIED n=1 kind=load gpa=0x84001000", "domain": 0}
++3.667 2026-11-05T13:32:31.490Z step=8 focus "g1" keys=2
++3.720 2026-11-05T13:32:31.543Z step=8 line=225 {"monitor": "BE_MVP:16 FOCUS g1"}
++4.220 2026-11-05T13:32:32.043Z step=9 send "echo NONCE" keys=22
++4.479 2026-11-05T13:32:32.302Z step=9 line=226 {"domain": 1, "line": "# echo NONCE"}
++4.481 2026-11-05T13:32:32.304Z step=10 line=227 {"contains": "NONCE", "domain": 1}
++4.981 2026-11-05T13:32:32.804Z step=11 send "be-chan read" keys=13
++5.122 2026-11-05T13:32:32.945Z step=11 line=228 {"domain": 1, "line": "# be-chan read"}
++5.126 2026-11-05T13:32:32.949Z step=12 line=229 {"contains": "text=hello NONCE", "domain": 1}
++5.626 2026-11-05T13:32:33.450Z step=13 send "be-deny store-shared" keys=21
++5.842 2026-11-05T13:32:33.666Z step=13 line=230 {"domain": 1, "line": "# be-deny store-shared"}
++5.845 2026-11-05T13:32:33.669Z step=14 line=232 {"contains": "MVPINIT 08 DENIED n=1 kind=store gpa=0x84000ff8", "domain": 1}
++6.346 2026-11-05T13:32:34.169Z step=15 send "be-deny load-unmapped" keys=22
++6.658 2026-11-05T13:32:34.482Z step=15 line=233 {"domain": 1, "line": "# be-deny load-unmapped"}
++6.661 2026-11-05T13:32:34.484Z step=16 line=235 {"contains": "MVPINIT 08 DENIED n=2 kind=load gpa=0x90000000", "domain": 1}
++7.161 2026-11-05T13:32:34.985Z step=17 send "exit" keys=5
++7.282 2026-11-05T13:32:35.105Z step=17 line=236 {"domain": 1, "line": "# exit"}
++7.284 2026-11-05T13:32:35.108Z step=18 line=237 {"contains": "MVPINIT 11 SHELL exit=0", "domain": 1}
++7.284 2026-11-05T13:32:35.108Z step=19 focus "g0" keys=2
++7.313 2026-11-05T13:32:35.136Z step=19 line=242 {"monitor": "BE_MVP:16 FOCUS g0"}
++7.813 2026-11-05T13:32:35.636Z step=20 send "exit" keys=5
++7.945 2026-11-05T13:32:35.768Z step=20 line=243 {"domain": 0, "line": "# exit"}
++7.948 2026-11-05T13:32:35.771Z step=21 line=244 {"contains": "MVPINIT 11 SHELL exit=0", "domain": 0}
++7.948 2026-11-05T13:32:35.771Z session typed

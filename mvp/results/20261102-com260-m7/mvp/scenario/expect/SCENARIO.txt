@@ -1,0 +1,21 @@
+scenario two-guests sha256=87c6f18b6a18f99cad8604c796f88b9cab63c9c86f307f338a395894d9d3cc34
+config mvp-config.c sha256=eda5f753fc8bee93c89013442e0470cbf899b380b7ae43cb1538184b7e2a0a5e identity=16bd3ebb3796bb68a787f511d32162a9a0d7a665f1712fbf56a96d09f96c8167
+session sessions/shell.json sha256=06ccc1f53a0eed19d3f4c28eb62ef213bc5cb1926cef8459c30f1df132cd4f63 image=two-guests-shell
+expect exit-budget.json
+expect hart-start.json
+expect hostile.json
+expect init-exit.json
+expect no-sstc.json
+expect payload.json
+expect probe-console-input.json
+expect probe-platform.json
+expect probe-vmid-distinct.json
+expect probe-vmid-shared.json
+expect rdcycle.json
+expect ring-full.json
+expect run-timeout.json
+expect sbi-3.0.json
+expect sbi-time.json
+expect shim-rule.json
+expect two-guests.json
+expect two-guests-shell.json

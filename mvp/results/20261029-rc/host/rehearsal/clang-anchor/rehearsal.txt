@@ -1,0 +1,7 @@
+machine=virt,aia=aplic-imsic,aia-guests=7 cpu=rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true smp=8 base=0x108000000
+kernel_release=7.3.0-rc4-gc1c7e254143f
+kernel_sha256=4871aa91f05da98c02dfd0375ae3418ff577230675339609109ae0eaa79cedef
+firmware_sha256=78f14d30c95181704b6163b4c114f88483cd6c2c89e642812cd3856d01c6a42b
+image_sha256=37cdfd7064b04a366bbcf8ffc907ffb3ceff09d5e68e8fce99fe6a539f8d26ee
+attempt=1 outcome=terminal-marker-qemu-exit qemu_exit=0 boot_hart=0 kexec_hart=0 verdict=PASS
+BE_MVP_KEXEC_REHEARSAL: PASS smp=8 attempts=1 refused=0 kexec_harts=0 image=37cdfd7064b0 kernel=7.3.0-rc4-gc1c7e254143f/4871aa91f05d

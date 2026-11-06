@@ -1,0 +1,20 @@
+method=k3ctl
+reason=idle-prompt
+reset_seq=28
+offset_before=15492562
+client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+client_pin=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+device=/dev/ttyACM0
+status_before_utc=2026-10-31T04:22:52.912Z
+status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=372659775 ver=1.0
+status_before_exit=0
+reset_utc=2026-10-31T04:22:52.955Z
+reset_reply=OK reset
+reset_exit=0
+status_after_utc=2026-10-31T04:22:53.213Z
+status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=372660084 ver=1.0
+status_after_exit=0
+spl_banner_offset=15492670
+uboot_banner_offset=15492831
+banner_utc=2026-10-31T04:22:54.238Z
+outcome=reset

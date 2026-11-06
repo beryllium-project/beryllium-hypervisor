@@ -1,0 +1,19 @@
+run=20261006T115700Z
+image=build/k3-b2/gcc/be-k3-b2.bin
+image_sha256=9c145f000067d36035a18cc27c53bbbf231d41cb2088a7765ed5742323a08c79
+k3_ssh=fedora@k3e
+loader_mode=raw:0x102000000
+serial_source=log:<spacemit-k3>/logs/boot-6.log
+boot_id_before=915986fd-4f02-42aa-912b-9776ce38f2ce
+board_kernel=7.1.5-201.0.riscv64.omni.fc44.riscv64
+board_lockdown=[none] integrity confidentiality
+remote_image_sha256=9c145f000067d36035a18cc27c53bbbf231d41cb2088a7765ed5742323a08c79
+loader=kexec_load entry=0x102000000 fdt=0x102100000 image_memsz=0x34000 fdt_bytes=41088 kexec_loaded=1
+kexec_loaded=1
+kexec_requested_utc=2026-10-06T11:57:03Z
+kexec_ssh_status=0
+outcome=terminal-marker
+terminal_marker_utc=2026-10-06T11:57:14Z
+expected_base=0x102000000
+check_status=0
+BE_B2_RESULT: PASS terminal=shutdown-requested

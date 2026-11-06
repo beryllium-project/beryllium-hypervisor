@@ -1,0 +1,13 @@
+label=fallthrough
+kind=fallthrough
+file=missing.img
+stage=done
+error=-
+qemu_exit=killed:-9
+seconds=7.7
+sbi_version=2.0
+boot_hart=1
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+console_bytes=3985
+console_sha256=b182a55184b63c6636253524a89196f9c6a7cca014ed9917b982bdb16acac9d4
+BE_MVP_UBOOT_SESSION[fallthrough]: PASS boot_hart=1 qemu_exit=killed:-9 fallthrough=yes seconds=7.7

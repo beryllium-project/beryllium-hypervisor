@@ -1,0 +1,19 @@
+class=supplies
+pacing_10ms=supplies
+fast_pacing=supplies
+total=256
+polls=2049
+nonzero_polls=209
+max_per_poll=5
+errors=0
+sha256=27576c0c829bf762
+sha256_received=27576c0c829bf762
+received_bytes=256
+typed_bytes=256
+repetitions=1:64/64,2:64/64,3:64/64,4:64/64
+slow_received_before_fourth=yes
+pacing_ms=11.7,11.7,11.7,2.7
+capture=<repo>/build/mvp/k3-sessions/20261102-com260-m7/20261102T054405Z/serial.log capture_sha256=a0d2883a3b5fc6362be984782d2e08d505115db269be779ee4b202a63e591ce8
+typed_sha256=651e2b12ea298aa28cd66b148dce33137718ee9aba337d9f14b645dfe3df8504 keys=256
+session=20261102-com260-m7 run=20261102T054405Z run_status=0
+verdict=PASS

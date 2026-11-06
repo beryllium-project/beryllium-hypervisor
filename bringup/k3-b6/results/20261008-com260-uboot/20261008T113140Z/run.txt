@@ -1,0 +1,22 @@
+run=20261008T113140Z
+image=<repo>/build/k3-b6/gcc/be-k3-b6-boot.img
+image_sha256=b17036e71862578ee328bdf1ddd5717163e959c6fcd284d33e38f465f3cb97d4
+image_bytes=1777664
+image_check=BE_B6_BOOT_IMAGE[gcc]: PASS <repo>/build/k3-b6/gcc/be-k3-b6-boot.img bytes=0x1b2000 sha256=b17036e71862578ee328bdf1ddd5717163e959c6fcd284d33e38f465f3cb97d4 crc32=c42c60de payload_sha256=adc5db18ea34e419a89c9d6b2ab5e9da5b423caaf28c893326934841ae9f57a7 kexec_fdt=0x108200000
+toolchain=gcc
+launcher=uboot-booti
+loader=uboot-booti loady=0x140000000 booti=0x140000000 fdt=${fdtcontroladdr}
+load_address=0x140000000
+expected_ram_base=0x102000000
+serial_source=log:<home>/boot-7.log
+serial_offset=103088
+start_utc=2026-10-08T11:31:40Z
+terminal_marker_utc=2026-10-08T11:36:24Z
+outcome=terminal-marker
+capture_bytes=9842
+check_status=0
+BE_B6_RESULT: PASS terminal=shutdown-requested
+after_watch_seconds=75
+after_bytes=320
+after_first_output_seconds=17
+after_reset=no

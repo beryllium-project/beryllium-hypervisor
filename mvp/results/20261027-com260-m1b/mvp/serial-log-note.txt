@@ -1,0 +1,37 @@
+Serial log (written by hand on 2026-10-27 from the operator's picocom log,
+which is outside the repository and is not retained): the operator's
+session, `picocom -b 115200 /dev/ttyUSB0 --logfile
+<home>/src/spacemit-k3/logs/boot-7.log` on the workstation `l1`,
+had been running since before the first M1 campaign, and automation read
+the log output-only and never wrote to the serial port. The segment of
+this campaign, `20261027-com260-m1b`, runs from the first `te-poc` run's
+`BE_MVP:01` line (log line 85,536) to the end of the log as read (line
+94,579; 17:53 to 18:02 UTC). For each of the six runs it holds Fedora's
+shutdown through `systemd-kexec.service`, the kexec handoff, the shim
+line, and the monitor's lines through the run's
+terminal marker, `BE_MVP:14 SHUTDOWN type=0 reason=0` four times
+(`te-poc`, three GCC and one Clang), `BE_MVP:FAIL gstage` once
+(`reader-write`) and `BE_MVP:FAIL guest-page-fault` once (`no-inject`,
+hart 0's one FAIL and DETAIL pair, after both domains' `MVPINIT 07
+CHANNEL` lines, and nothing from a domain hart); then, after each
+`k3ctl reset`, two NUL bytes and the boot ROM's terse lines (`sys:
+0x10000200`, `try sd...`, `bm:3`, `ERROR: CMD8`, `ERROR: sd f! l:90`,
+`bm:4`, `nor m:0xc8 d:0x6017`, `j...`), `U-Boot SPL 2022.10 (May 21 2026
+- 07:43:32 +0000)` with its DDR line (MT62F1G32D2DS, 4096MB, 6400MT/s),
+`U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build:
+jenkins-BSP-build-bsp-deb-395` with its device probes, `Starting kernel
+...`, and Fedora Linux 45 (Server) with kernel
+`7.3.0-65.1.riscv64.omni.fc45.riscv64` to its login prompt: six such
+reboots, each legible and complete. No line with `OpenSBI`, `Platform
+Name`, `Domain0`, `PMP`, `Firmware Base`, or `Runtime SBI` appears in
+the segment, as in M0's campaign (mvp/README.md open item 40): the
+firmware is identified only by Fedora's log, `SBI implementation ID=0x1
+Version=0x10006`, which the preflight records. Earlier in the same log
+are the first M1 campaign (`20261027-com260`, 09:32 to 09:41 UTC), whose
+`no-inject` run ended in both domain harts' own FAIL and DETAIL lines and
+a halt with no further output until the `k3ctl reset` at 17:45 UTC that
+preceded this campaign's preflight, and, between that reset and this
+segment, the preflight, two `two-guests` load checks, three unplanned
+`two-guests` kexec runs with this campaign's images (made by an
+invocation without `SCENARIO=te-poc`, set aside and not part of this
+record), and the two `te-poc` load checks.

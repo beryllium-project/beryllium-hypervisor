@@ -1,0 +1,652 @@
+{
+ "checks": [
+  {
+   "analysis": "A1",
+   "detail": "9 types, 3 classes, 11 rules; 3 subjects and 13 objects, each labeled once",
+   "result": "pass"
+  },
+  {
+   "analysis": "A2",
+   "detail": "11 rules, each reachable under the labeling",
+   "result": "pass"
+  },
+  {
+   "analysis": "A3",
+   "detail": "no domain type holds a permission on monitor memory or map on another domain's private type; every channel rule has its storage, and all shared storage its channel rules",
+   "result": "pass"
+  },
+  {
+   "analysis": "A4",
+   "detail": "11 rules, each within its need set",
+   "result": "pass"
+  },
+  {
+   "analysis": "A5",
+   "detail": "req_t: static, not revocable, single writer host_t; resp_t: static, not revocable, single writer prot_t",
+   "result": "pass"
+  },
+  {
+   "analysis": "A6",
+   "detail": "F = D = {(host_t, prot_t), (prot_t, host_t)}; F+ = D+",
+   "result": "pass"
+  },
+  {
+   "analysis": "A7",
+   "detail": "vacuous: no domain holds a domain permission and no delegation exists",
+   "result": "pass"
+  },
+  {
+   "analysis": "A8",
+   "detail": "G0 G1 domain { pause terminate }: pause terminate allowed by no rule",
+   "result": "fail"
+  }
+ ],
+ "flows": [
+  {
+   "declared": "yes",
+   "from_subject": "G0",
+   "to_subject": "G1",
+   "via_object": "request_page"
+  },
+  {
+   "declared": "yes",
+   "from_subject": "G1",
+   "to_subject": "G0",
+   "via_object": "response_page"
+  }
+ ],
+ "grants": [
+  {
+   "class": "memory",
+   "derived": {
+    "flags": "0xdf",
+    "gpa": "0x80000000",
+    "size": "0x4000000"
+   },
+   "object": "g0_window",
+   "permissions": [
+    "execute",
+    "map",
+    "read",
+    "write"
+   ],
+   "source": "allow host_t host_mem_t : memory { read write execute map };",
+   "subject": "G0"
+  },
+  {
+   "class": "memory",
+   "derived": {
+    "flags": "0xd7",
+    "gpa": "0x84000000",
+    "size": "0x1000"
+   },
+   "object": "request_page",
+   "permissions": [
+    "map",
+    "read",
+    "write"
+   ],
+   "source": "allow host_t req_t : memory { read write map };",
+   "subject": "G0"
+  },
+  {
+   "class": "channel",
+   "derived": null,
+   "object": "request",
+   "permissions": [
+    "send"
+   ],
+   "source": "allow host_t req_t : channel { send };",
+   "subject": "G0"
+  },
+  {
+   "class": "memory",
+   "derived": {
+    "flags": "0x53",
+    "gpa": "0x84001000",
+    "size": "0x1000"
+   },
+   "object": "response_page",
+   "permissions": [
+    "map",
+    "read"
+   ],
+   "source": "allow host_t resp_t : memory { read map };",
+   "subject": "G0"
+  },
+  {
+   "class": "channel",
+   "derived": null,
+   "object": "response",
+   "permissions": [
+    "receive"
+   ],
+   "source": "allow host_t resp_t : channel { receive };",
+   "subject": "G0"
+  },
+  {
+   "class": "domain",
+   "derived": null,
+   "object": "G1",
+   "permissions": [
+    "pause",
+    "terminate"
+   ],
+   "source": "none",
+   "subject": "G0"
+  },
+  {
+   "class": "memory",
+   "derived": {
+    "flags": "0xdf",
+    "gpa": "0x80000000",
+    "size": "0x4000000"
+   },
+   "object": "g1_window",
+   "permissions": [
+    "execute",
+    "map",
+    "read",
+    "write"
+   ],
+   "source": "allow prot_t prot_mem_t : memory { read write execute map };",
+   "subject": "G1"
+  },
+  {
+   "class": "memory",
+   "derived": {
+    "flags": "0x53",
+    "gpa": "0x84000000",
+    "size": "0x1000"
+   },
+   "object": "request_page",
+   "permissions": [
+    "map",
+    "read"
+   ],
+   "source": "allow prot_t req_t : memory { read map };",
+   "subject": "G1"
+  },
+  {
+   "class": "channel",
+   "derived": null,
+   "object": "request",
+   "permissions": [
+    "receive"
+   ],
+   "source": "allow prot_t req_t : channel { receive };",
+   "subject": "G1"
+  },
+  {
+   "class": "memory",
+   "derived": {
+    "flags": "0xd7",
+    "gpa": "0x84001000",
+    "size": "0x1000"
+   },
+   "object": "response_page",
+   "permissions": [
+    "map",
+    "read",
+    "write"
+   ],
+   "source": "allow prot_t resp_t : memory { read write map };",
+   "subject": "G1"
+  },
+  {
+   "class": "channel",
+   "derived": null,
+   "object": "response",
+   "permissions": [
+    "send"
+   ],
+   "source": "allow prot_t resp_t : channel { send };",
+   "subject": "G1"
+  },
+  {
+   "class": "memory",
+   "derived": {
+    "flags": "0x53",
+    "gpa": "0x84002000",
+    "size": "0x1000"
+   },
+   "object": "secret_page",
+   "permissions": [
+    "map",
+    "read"
+   ],
+   "source": "allow prot_t secret_t : memory { read map };",
+   "subject": "G1"
+  }
+ ],
+ "identity": {
+  "configuration_identity": "b058389da14df1ae4fddba990881fc118b10ef004db387e0c351ccf745a28874",
+  "labeling_identity": "ad5c382eb1308719fe3222ccb5be8b67d23a3d4be8b99a7c514a3f389a630949",
+  "manifest_identity": "0c9b73c63430aee787948af56921d139edff17f97cb46541b7553f2c312dd7e6",
+  "policy_identity": "27c19e3f82a2907575e8923c4662bbafb6347f43c1e993e440c4f9e28b1ef49d"
+ },
+ "labeling": {
+  "objects": [
+   {
+    "bytes": "0x4000000",
+    "class": "memory",
+    "hpa": "0x110000000",
+    "name": "g0_window",
+    "type": "host_mem_t"
+   },
+   {
+    "bytes": "0x4000000",
+    "class": "memory",
+    "hpa": "0x114000000",
+    "name": "g1_window",
+    "type": "prot_mem_t"
+   },
+   {
+    "bytes": "0x1000",
+    "class": "memory",
+    "hpa": "0x118000000",
+    "name": "request_page",
+    "type": "req_t"
+   },
+   {
+    "bytes": "0x1000",
+    "class": "memory",
+    "hpa": "0x118001000",
+    "name": "response_page",
+    "type": "resp_t"
+   },
+   {
+    "bytes": "0x1000",
+    "class": "memory",
+    "hpa": "0x118002000",
+    "name": "secret_page",
+    "type": "secret_t"
+   },
+   {
+    "class": "channel",
+    "name": "request",
+    "object": "request_page",
+    "type": "req_t"
+   },
+   {
+    "class": "channel",
+    "name": "response",
+    "object": "response_page",
+    "type": "resp_t"
+   },
+   {
+    "bytes": "0x34000",
+    "class": "memory",
+    "hpa": "0x102000000",
+    "name": "accepted_image",
+    "type": "monitor_mem_t"
+   },
+   {
+    "bytes": "0x10000",
+    "class": "memory",
+    "hpa": "0x102034000",
+    "name": "pool",
+    "type": "monitor_mem_t"
+   },
+   {
+    "bytes": "0x20000",
+    "class": "memory",
+    "hpa": "0x102044000",
+    "name": "hart_region",
+    "type": "monitor_mem_t"
+   },
+   {
+    "bytes": "0x40000",
+    "class": "memory",
+    "hpa": "0x102064000",
+    "name": "mvp_region",
+    "type": "monitor_mem_t"
+   },
+   {
+    "bytes": "0x400000",
+    "class": "memory",
+    "hpa": "0x108000000",
+    "name": "staging",
+    "type": "monitor_mem_t"
+   },
+   {
+    "bytes": "0x200000",
+    "class": "memory",
+    "hpa": "0x108400000",
+    "name": "kexec_fdt",
+    "type": "monitor_mem_t"
+   }
+  ],
+  "subjects": [
+   {
+    "name": "monitor",
+    "type": "monitor_t"
+   },
+   {
+    "domain_index": 0,
+    "name": "G0",
+    "type": "host_t"
+   },
+   {
+    "domain_index": 1,
+    "name": "G1",
+    "type": "prot_t"
+   }
+  ]
+ },
+ "measurement": {
+  "bytes": 1907940,
+  "domain": 1,
+  "inputs": [
+   {
+    "bytes": 1899716,
+    "name": "kernel",
+    "sha256": "c7ae03e6b26e1433bb1cdcd995467b5df2dec61cb8ed1c38ede0d4458c4799ed"
+   },
+   {
+    "bytes": 4096,
+    "name": "dtb",
+    "sha256": "903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025"
+   },
+   {
+    "bytes": 4096,
+    "name": "secret_page",
+    "sha256": "ec16dc05638fc3644b35a8cc6c50b79c637151b1e7cdd1684f55c57b4fefeefd"
+   },
+   {
+    "bytes": 32,
+    "name": "configuration_identity",
+    "sha256": "d77a2cad642e5bdca30c7910f488566d376b6d5917fc23042db5e5dbcddde49e"
+   }
+  ],
+  "sha256": "2d515a4fd36ddacd2b9d754559b1019d65e903b42edeaf05f32b63dd61a58d8d"
+ },
+ "measurement_hex": "2d515a4fd36ddacd2b9d754559b1019d65e903b42edeaf05f32b63dd61a58d8d",
+ "objects": [
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x110000000",
+    "size": "0x4000000"
+   },
+   "name": "g0_window",
+   "type": "host_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x114000000",
+    "size": "0x4000000"
+   },
+   "name": "g1_window",
+   "type": "prot_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x118000000",
+    "size": "0x1000"
+   },
+   "name": "request_page",
+   "type": "req_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x118001000",
+    "size": "0x1000"
+   },
+   "name": "response_page",
+   "type": "resp_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x118002000",
+    "size": "0x1000"
+   },
+   "name": "secret_page",
+   "type": "secret_t"
+  },
+  {
+   "class": "channel",
+   "extent": {
+    "base": "0x118000000",
+    "size": "0x1000"
+   },
+   "name": "request",
+   "type": "req_t"
+  },
+  {
+   "class": "channel",
+   "extent": {
+    "base": "0x118001000",
+    "size": "0x1000"
+   },
+   "name": "response",
+   "type": "resp_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x102000000",
+    "size": "0x34000"
+   },
+   "name": "accepted_image",
+   "type": "monitor_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x102034000",
+    "size": "0x10000"
+   },
+   "name": "pool",
+   "type": "monitor_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x102044000",
+    "size": "0x20000"
+   },
+   "name": "hart_region",
+   "type": "monitor_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x102064000",
+    "size": "0x40000"
+   },
+   "name": "mvp_region",
+   "type": "monitor_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x108000000",
+    "size": "0x400000"
+   },
+   "name": "staging",
+   "type": "monitor_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x108400000",
+    "size": "0x200000"
+   },
+   "name": "kexec_fdt",
+   "type": "monitor_mem_t"
+  }
+ ],
+ "policy": {
+  "classes": [
+   {
+    "name": "memory",
+    "permissions": [
+     "read",
+     "write",
+     "execute",
+     "map"
+    ]
+   },
+   {
+    "name": "channel",
+    "permissions": [
+     "send",
+     "receive"
+    ]
+   },
+   {
+    "name": "domain",
+    "permissions": [
+     "enter",
+     "switch_to",
+     "terminate",
+     "pause"
+    ]
+   }
+  ],
+  "rules": [
+   {
+    "class": "memory",
+    "permissions": [
+     "read",
+     "write",
+     "execute",
+     "map"
+    ],
+    "source": "host_t",
+    "target": "host_mem_t",
+    "text": "allow host_t host_mem_t : memory { read write execute map };"
+   },
+   {
+    "class": "memory",
+    "permissions": [
+     "read",
+     "write",
+     "map"
+    ],
+    "source": "host_t",
+    "target": "req_t",
+    "text": "allow host_t req_t : memory { read write map };"
+   },
+   {
+    "class": "channel",
+    "permissions": [
+     "send"
+    ],
+    "source": "host_t",
+    "target": "req_t",
+    "text": "allow host_t req_t : channel { send };"
+   },
+   {
+    "class": "memory",
+    "permissions": [
+     "read",
+     "map"
+    ],
+    "source": "host_t",
+    "target": "resp_t",
+    "text": "allow host_t resp_t : memory { read map };"
+   },
+   {
+    "class": "channel",
+    "permissions": [
+     "receive"
+    ],
+    "source": "host_t",
+    "target": "resp_t",
+    "text": "allow host_t resp_t : channel { receive };"
+   },
+   {
+    "class": "memory",
+    "permissions": [
+     "read",
+     "write",
+     "execute",
+     "map"
+    ],
+    "source": "prot_t",
+    "target": "prot_mem_t",
+    "text": "allow prot_t prot_mem_t : memory { read write execute map };"
+   },
+   {
+    "class": "memory",
+    "permissions": [
+     "read",
+     "map"
+    ],
+    "source": "prot_t",
+    "target": "req_t",
+    "text": "allow prot_t req_t : memory { read map };"
+   },
+   {
+    "class": "channel",
+    "permissions": [
+     "receive"
+    ],
+    "source": "prot_t",
+    "target": "req_t",
+    "text": "allow prot_t req_t : channel { receive };"
+   },
+   {
+    "class": "memory",
+    "permissions": [
+     "read",
+     "write",
+     "map"
+    ],
+    "source": "prot_t",
+    "target": "resp_t",
+    "text": "allow prot_t resp_t : memory { read write map };"
+   },
+   {
+    "class": "channel",
+    "permissions": [
+     "send"
+    ],
+    "source": "prot_t",
+    "target": "resp_t",
+    "text": "allow prot_t resp_t : channel { send };"
+   },
+   {
+    "class": "memory",
+    "permissions": [
+     "read",
+     "map"
+    ],
+    "source": "prot_t",
+    "target": "secret_t",
+    "text": "allow prot_t secret_t : memory { read map };"
+   }
+  ],
+  "types": [
+   "monitor_t",
+   "host_t",
+   "prot_t",
+   "host_mem_t",
+   "prot_mem_t",
+   "req_t",
+   "resp_t",
+   "secret_t",
+   "monitor_mem_t"
+  ]
+ },
+ "scenario": "anchor",
+ "schema": "be-mvp-authority-report-v1",
+ "subjects": [
+  {
+   "domain_index": 0,
+   "name": "G0",
+   "type": "host_t"
+  },
+  {
+   "domain_index": 1,
+   "name": "G1",
+   "type": "prot_t"
+  }
+ ]
+}

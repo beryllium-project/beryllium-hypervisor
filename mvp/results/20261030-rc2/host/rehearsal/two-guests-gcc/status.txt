@@ -1,0 +1,19 @@
+label=two-guests/gcc
+image=gcc/be-mvp-boot.img
+image_sha256=80ac8e33415156c5b9da4d0df4bb0bdfe6401c8de5ef8df0570a9c27a3ec1076
+qemu_image_bytes=2584576
+qemu_image_sha256=351ed0e344071719eb366d5b24900be41014edc1eb1a9466aed9935cd5ebb48c
+qemu_image_crc32=81d28ad0
+qemu_text_offset=0x88000000
+qemu_image_source=built
+qemu_image=gcc/be-mvp-boot-qemu.img
+disk_file=two-guests-gcc.img
+be_image=two-guests-gcc.img
+disk_sha256=b2b3506c178d7ac83c093d1b2cb490c12363b4ca8888315bfdd0c158b392f8df
+expect=gen/expect/two-guests.json
+expect_sha256=11fda6f84e5319cf112780cbc27b7131fd46af96c8e294f5669ab546b04eed47
+report=-
+measured_kernel=-
+measured_dtb=-
+attempt=1 session=PASS check=PASS check_exit=0 boot_hart=0 qemu_exit=0 disk=same console_sha256=cf527cd4ce8941a99512dc84f3c56ae1425a6b2a8279efe4228a891584519e57
+BE_MVP_UBOOT_REHEARSAL[two-guests/gcc]: PASS attempts=1 refused=0 boot_harts=0 session=PASS check=PASS check_exit=0 qemu_exit=0 image=351ed0e34407 crc32=81d28ad0

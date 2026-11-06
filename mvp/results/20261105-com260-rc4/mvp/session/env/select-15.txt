@@ -1,0 +1,7 @@
+attempt_utc=2026-11-05T22:35:16Z
+be_image=be-mvp-anchor-self-report-flip-gcc.img
+printenv_be_image=be_image=be-mvp-anchor-self-report-flip-gcc.img
+select-15-check_sha256=cad3cd5fe96efa07e0738d15e4627c2da47bd678571926103e21b0d3a38a961d
+select_check=PASS
+saveenv=OK
+verdict=PASS

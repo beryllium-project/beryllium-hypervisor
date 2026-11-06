@@ -1,0 +1,21 @@
+label=te-poc/clang
+image=clang/te-poc/be-mvp-boot.img
+image_sha256=f1e41aec0b9b7c7728f5340e7245344e90ee638ae9db0cdb95cd58022f476878
+qemu_image_bytes=2748416
+qemu_image_sha256=73c0e6ec0ca12cbf8b349efe1ecb8093f3fcaddc37f9e067695bc53a4c729659
+qemu_image_crc32=f8a08e25
+qemu_text_offset=0x88000000
+qemu_image_source=built
+qemu_image=clang/te-poc/be-mvp-boot-qemu.img
+disk_file=te-poc-clang.img
+be_image=te-poc-clang.img
+disk_sha256=4c78469505e0536a28cdd51b9411b33362940b93551f455435b1c448d06d3a76
+expect=gen/te-poc/expect/te-poc.json
+expect_sha256=e9671176b1d0ea6b442946780bc003b3d8143dbf553d5cc128d56b72583c3654
+report=gen/te-poc/authority-report.json
+report_sha256=a7b2a39acdcc1b078951ab8bbe4726ffc41415208f9e03cbbb8ee097ea826963
+measured_kernel=-
+measured_dtb=-
+attempt=1 session=REFUSED check=REFUSED check_exit=3 boot_hart=2 qemu_exit=0 disk=same console_sha256=e81b7dd1b78d5a72ace3a9fb3371531713771b9c2664f5ed15c41fbc87235f06
+attempt=2 session=PASS check=PASS check_exit=0 boot_hart=7 qemu_exit=0 disk=same console_sha256=bcd6ebcc7369b36f20b06424b58f01e3d968aa1badd9ab447898268d84cc9ec9
+BE_MVP_UBOOT_REHEARSAL[te-poc/clang]: PASS attempts=2 refused=1 boot_harts=2,7 session=PASS check=PASS check_exit=0 qemu_exit=0 image=73c0e6ec0ca1 crc32=f8a08e25

@@ -1,0 +1,51 @@
+Serial log (written by hand on 2026-10-29 from the operator's picocom log,
+which is outside the repository and is not retained): the operator's
+session, `picocom -b 115200 /dev/ttyUSB0 --logfile
+<home>/src/spacemit-k3/logs/boot-7.log` on the workstation `l1`, had been
+running since before the M1 campaigns, and automation read the log
+output-only and never wrote to the serial port. The segment of this
+campaign, `20261029-com260-rc`, begins with the board's reboot from a
+one-shot boot of another project's kernel (`7.3.0-k3-kvm-csr1`, booted at
+08:24 UTC; the GRUB default unchanged) into the recorded
+`7.3.0-65.1.riscv64.omni.fc45.riscv64` on the `k3ctl reset` made before
+the campaign at 17:06:55 UTC (the kernel banner at log line 110,212), on
+the responsible human's confirmation that the board was free and before
+any board command, and runs to the end of the log as read (line 128,342,
+the login prompt after the eleventh run's reset, 17:36 UTC). That first
+boot's banner reads `Web console: https://localhost:9090/` alone, the
+address joining later (`NetworkManager-wait-online.service` ran long, as
+in the M2 campaign's first reboot), and the board answered over SSH with
+its new boot ID before the preflight (17:08 UTC); the preflight and the
+two `two-guests` load checks (17:12 and 17:13 UTC) left Fedora running
+and show no monitor line. For each of the eleven runs the segment holds
+Fedora's shutdown through `systemd-kexec.service`, the kexec handoff
+(`kexec_core: Starting new kernel`, first at line 111,604, 17:15 UTC),
+the shim line, and the monitor's lines through the run's terminal
+marker: `BE_MVP:14 SHUTDOWN type=0 reason=0` eight times (`two-guests`,
+three GCC and one Clang, each with `exits_g0=157 exits_g1=157
+records=138 alternations=125`; `te-poc`, three GCC and one Clang, each
+with both `MVPINIT 07 CHANNEL` lines, the three `BE_MVP:DENY` lines
+(`unmapped cause=0x15 injected=0x5 gpa=0x84001000`, `read-only
+cause=0x17 injected=0x7 gpa=0x84000ff8`, and the reader's second), and
+`exits_g0=163 exits_g1=167 denials_g0=1 denials_g1=2 records=146
+alternations=127`), `BE_MVP:FAIL payload` once (before any hart
+started), `BE_MVP:FAIL gstage` once (`reader-write`, with its `DETAIL
+channel=0 domain=1 hart=2 walked=… declared=…` line, no domain run), and
+`BE_MVP:FAIL guest-page-fault` once (`no-inject`, after 54 lines from
+each guest, hart 0's one `FAIL` and `DETAIL` pair). After each terminal
+marker the tool's `k3ctl reset` follows (`reset_reply=OK` eleven times):
+the boot ROM's terse lines, `U-Boot SPL 2022.10 (May 21 2026 - 07:43:32
++0000)` with its DDR line, `U-Boot 2022.10 (May 21 2026 - 07:43:32
++0000), Build: jenkins-BSP-build-bsp-deb-395` with its device probes,
+`Starting kernel ...`, and Fedora Linux 45 (Server) with kernel
+`7.3.0-65.1.riscv64.omni.fc45.riscv64` to its login prompt, each with
+the board's address in its `Web console` banner; the tool saw the new
+boot ID in 33 to 47 s each time (33, 33, 33, 33, 33, 42, 43, 43, 43, 45,
+47 s). The segment holds twelve such reboots, each legible and complete,
+for the pre-campaign reset and the eleven runs; no reset was made by
+hand, no run needed the extra reset the plan allows, and nothing was
+typed at the console. No line with `OpenSBI`, `Platform Name`,
+`Domain0`, `PMP`, `Firmware Base`, or `Runtime SBI` appears in the
+segment, as in M0's, M1's, and M2's campaigns (mvp/README.md open item
+40): the firmware is identified only by Fedora's log, `SBI
+implementation ID=0x1 Version=0x10006`, which the preflight records.

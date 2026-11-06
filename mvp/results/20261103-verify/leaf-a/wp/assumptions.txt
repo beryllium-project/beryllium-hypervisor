@@ -1,0 +1,17 @@
+# planning/mvp-m8-plan.md D-7, M8-6; specification planning/mvp-m8-specifications.md sections 4 and 6, SHA-256 ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d, accepted at 004f31ae
+# WP arm's assumption inventory (D-7 item 4)
+tools: Frama-C 33.0 (WP, RTE, ACSL importer), Why3 1.8.2, Alt-Ergo 2.4.3 (Fedora's alt-ergo-2.4.3-1.fc44, CeCILL-C), all from the verifier image (D-7 item 1)
+machine model: -machdep gcc_x86_64 (LP64: long and pointers 8 bytes, int 4) for a RISC-V LP64 target; frama-c parsed the translation unit with every _Static_assert of its headers and of mvp-sbi.c holding under it (sizeof(struct be_mvp_exit) == 360, offsetof vsstatus 352, the be_types sizes); plain char is signed under gcc_x86_64 and unsigned on RISC-V: the five functions read no char object (struct be_mvp_state holds a char array, console.text, which they never read), so the difference does not reach them
+preprocessing: gcc -E with the target's -I list (target-digests.txt include_dirs) and no define; mvp-sbi.c and its headers have no architecture conditional
+memory model: WP's Typed model (typed pointers, no casts between pointer types in the leaf; its only casts are null-pointer constants)
+integer model: mathematical integers in ACSL; C unsigned values as their u64 range with modulo semantics, every unsigned operation checked against the range by -warn-unsigned-overflow (section 4.4: no wrap)
+axiomatics: none written; WP's own libraries (memory, integer, and bitwise theories, Qed's simplifications) are trusted; the lemmas E3_MASK, W_MASK, and HTVAL_SHIFT are goals (goals.txt), proved in a run of their own; WP gives every lemma to the other goals as a hypothesis whether or not it is proved, so a goal's proof is conditional on the lemmas' (goals.txt lists each)
+solver trust: Alt-Ergo 2.4.3 alone (decision A), through Why3's driver for Alt-Ergo 2.4.x (why3.conf); WP's tactics (-wp-auto, for the lemmas' run) are WP's own code; D-7 item 7's pair (Z3 and cvc5) is not formed: WP with Z3 4.16.0 is unsound on WP's prelude and WP with cvc5 1.3.4 does not terminate (M8-5)
+configuration finding: the image's Why3 configuration names Alt-Ergo with an empty version (Fedora's binary prints 2.4.3-free), so Why3 uses its Alt-Ergo 2.6 driver, whose polymorphic SMT-LIB Alt-Ergo 2.4.3 cannot parse; with it, 65 of round 0's 200 obligations ended in a syntax error (Failure). why3.conf names the version (2.4.3), so Why3 uses its 2.4.x driver; the qualification's five cases are re-run under it (vacuity.txt)
+ownership premise: the four inputs and out are valid, pairwise separated objects (section 4.3), stated as requires, not checked by the tool at any caller
+not covered: the callers (be_mvp_handle_exit, the vector, the injection helper, the DENIAL record, the resume); compiled execution (claim class (d)): the proof is of the C under Frama-C's semantics with gcc_x86_64, not of the RISC-V object code GCC or Clang emits; the reads half of the frame (no WP goal: the postconditions fix every output from the inputs' values); concurrency (the leaf reads only its own hart's private state)
+Q17 rocq=The Rocq Prover, version 9.3.0
+Q17 why3_coq_versions_known=none (executable coqtop, banner 'The Coq Proof Assistant'; the image has rocq and no coqtop)
+Q17 why3_provers=Alt-Ergo; 2.4.3; Alt-Ergo; 2.4.3; (FPA)
+Q17 frama-c -wp-prover coq: Unknown prover coq
+Q17 answer=not-qualified: Why3 1.8.2 cannot target Rocq 9.3 in this image, so the link to stage 1 stays a named and reviewed transcription (Q17's default fallback)

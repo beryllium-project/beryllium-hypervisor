@@ -1,0 +1,20 @@
+label=te-poc/gcc
+image=gcc/te-poc/be-mvp-boot.img
+image_sha256=92d70770fa05ab57283d9f3291a641111249f76324b2e57f276a0fd92c5a5bbb
+qemu_image_bytes=2584576
+qemu_image_sha256=20337aec42da70e818a23f0e5ec95a9027e1e6e983754a0d28dfba1a7f29dde2
+qemu_image_crc32=3ebc6d92
+qemu_text_offset=0x88000000
+qemu_image_source=built
+qemu_image=gcc/te-poc/be-mvp-boot-qemu.img
+disk_file=te-poc-gcc.img
+be_image=te-poc-gcc.img
+disk_sha256=8c6aa7eed238e7dc4a6b7a491042661e4b895575b8492ed32826e25533428af3
+expect=gen/te-poc/expect/te-poc.json
+expect_sha256=41bddd21a5fe912856706ff381b89adb999f515a2297f7cbfbd74172e1faac8f
+report=gen/te-poc/authority-report.json
+report_sha256=1f490d678d0cf485213d77b1c20b10a42392c2bedb2b34acf1b52120aa04a7c5
+measured_kernel=-
+measured_dtb=-
+attempt=1 session=PASS check=PASS check_exit=0 boot_hart=3 qemu_exit=0 disk=same console_sha256=23739b03d05c92541622fd58182fba7269106616170ef8103b34b23101f2c30f
+BE_MVP_UBOOT_REHEARSAL[te-poc/gcc]: PASS attempts=1 refused=0 boot_harts=3 session=PASS check=PASS check_exit=0 qemu_exit=0 image=20337aec42da crc32=3ebc6d92

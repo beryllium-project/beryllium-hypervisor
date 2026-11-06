@@ -1,0 +1,37 @@
+{
+  "boot_marker": "PASS",
+  "capture": "<repo>/build/k3-b0/k3-campaigns/20261006-com260/20261006T061306Z/serial.log",
+  "expect": "pass",
+  "fields": {
+    "base": "0x0000000102000000",
+    "bss_zero": "1",
+    "dbcn": "1",
+    "fdt": "0x0000000102007000",
+    "fdt_magic": "0x00000000d00dfeed",
+    "fdt_totalsize": "0x000000000000a080",
+    "hart": "0x0000000000000000",
+    "hsm": "1",
+    "hstatus": "0x0000000200000000",
+    "image_end": "0x0000000102007000",
+    "impl": "0x0000000000000001",
+    "impl_version": "0x0000000000010006",
+    "satp": "0x0000000000000000",
+    "sp": "0x0000000102006f90",
+    "spec": "0x0000000002000000",
+    "srst": "1",
+    "sstatus": "0x0000000200000120",
+    "stack": "0x0000000102003000"
+  },
+  "findings": [],
+  "markers": [
+    "BE_B0:01 ENTRY hart=0x0000000000000000 base=0x0000000102000000 fdt=0x0000000102007000 bss_zero=1",
+    "BE_B0:02 SBI spec=0x0000000002000000 impl=0x0000000000000001 impl_version=0x0000000000010006",
+    "BE_B0:03 EXT dbcn=1 srst=1 hsm=1",
+    "BE_B0:04 HS satp=0x0000000000000000 sstatus=0x0000000200000120 hstatus=0x0000000200000000 sp=0x0000000102006f90 stack=0x0000000102003000",
+    "BE_B0:05 FDT magic=0x00000000d00dfeed totalsize=0x000000000000a080",
+    "BE_B0:06 BE-K3-L0BOOT PASS image_end=0x0000000102007000",
+    "BE_B0:07 SRST_SHUTDOWN"
+  ],
+  "result": "PASS",
+  "terminal": "srst-shutdown-requested"
+}

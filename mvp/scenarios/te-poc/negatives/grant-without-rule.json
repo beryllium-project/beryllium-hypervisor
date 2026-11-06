@@ -1,0 +1,17 @@
+{
+  "spdx": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "purpose": "The build-time negative image grant-without-rule (planning/mvp-m1-plan.md, Scenarios and the harness, Negative images; Q11; S1 H27): te-poc's manifest with the reader's rights on channel0 widened to read write, the policy unchanged. A8 fails alone: the report holds a grant with source none (G1's on shared_page) and a flow from G1 to G0 with declared no; tools/gen-scenario.py writes no header, so no image exists. make -C mvp policy-negatives runs it with tools/policy-check.py --negative grant-without-rule, which passes only if the check fails exactly as declared below.",
+  "schema": "be-mvp-policy-negative-v1",
+  "name": "grant-without-rule",
+  "change": {"channel": "channel0", "reader_rights": ["read", "write"]},
+  "expect": {
+    "fail": ["A8"],
+    "source_none": [
+      {"subject": "G1", "object": "shared_page", "class": "memory", "permissions": ["map", "read", "write"]}
+    ],
+    "undeclared": [
+      {"from_subject": "G1", "to_subject": "G0", "via_object": "shared_page"}
+    ]
+  }
+}

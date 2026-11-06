@@ -1,0 +1,29 @@
+run=20261031T042446Z
+image=<repo>/build/mvp/variants/gcc/no-grant-check/be-mvp-boot.img
+image_sha256=44eb344ad61bfb2de2b90b56f15414436877e221871a4599ba29692c2e62bf02
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/variants/gcc/no-grant-check/be-mvp-boot.img bytes=0x277000 sha256=44eb344ad61bfb2de2b90b56f15414436877e221871a4599ba29692c2e62bf02 flat_sha256=690f628b335ffbb9f7a511e43dec909edfbc32a727cd38ff7b823381ea003838 kexec_fdt=0x108400000 variant=no-grant-check dtb0=0x275000 scenario=anchor
+toolchain=gcc
+expect=no-grant-check.json expect_sha256=5876224fa1c0fe2a80c94eef7afd338dde0db16654120ab4306e147f5a9283d7
+report=authority-report.json report_sha256=beb0189859a3d9e4565a301aaff3a665c46d9633225c2320cda53b94a1b56278
+measured=Image kernel_sha256=c7ae03e6b26e1433bb1cdcd995467b5df2dec61cb8ed1c38ede0d4458c4799ed mvp-guest-g1-anchor.dtb dtb_sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025
+variant=no-grant-check
+launcher=uboot-autoboot-nvme
+loader=uboot-autoboot-nvme be_image=be-mvp-anchor-no-grant-check-gcc.img load=0x140000000 booti=0x140000000 fdt=${fdtcontroladdr}
+be_image=be-mvp-anchor-no-grant-check-gcc.img
+remote_image_sha256=44eb344ad61bfb2de2b90b56f15414436877e221871a4599ba29692c2e62bf02
+staged_bytes=2584576 staged_md5=da5d47fd4f480ab3bb06825df9a8c8e8
+selected_be_image=be-mvp-anchor-no-grant-check-gcc.img
+serial_source=log:<home>/src/spacemit-k3/logs/boot-7.log
+boot_id_before=reset-36@15587578
+reset_utc=2026-10-31T04:24:47.342Z
+serial_range=15587578-15606411
+outcome=terminal-marker
+terminal_marker_utc=2026-10-31T04:25:05Z
+spl_banner=U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)
+uboot_banner=U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395
+board_kernel=none (boot from system reset)
+check_status=0
+BE_MVP_RESULT: PASS terminal=fail-marker
+attribution_lines=bytes_read=2584576 digest=md5:da5d47fd4f480ab3bb06825df9a8c8e8
+attribution=PASS selected=yes staged_sha256=yes size_md5=yes check=yes
+banner_audit=PASS

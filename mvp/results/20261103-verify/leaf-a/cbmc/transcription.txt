@@ -1,0 +1,11 @@
+# planning/mvp-m8-plan.md D-7, M8-6; specification planning/mvp-m8-specifications.md sections 4 and 6, SHA-256 ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d, accepted at 004f31ae
+# CBMC on Leaf A: how each section 4 clause is checked (mvp/verify/cbmc/leaf-a/harness.c)
+section 4.1 -> the harness's C functions bit, gpa_of, opcode, htinst_ok, inside_spec, in_page, has_page, page_index (PAGE, the lowest index), mapped, access_fault_spec, in unsigned __int128 so that no sum or shift of the specification wraps
+section 4.2 -> e2, e3, e6, unmapped, read_only, e7, entry (E1 and E4 inline)
+section 4.3 -> every input a nondeterministic local (valid, distinct, so separated); __CPROVER_assume that the map's and each page's sums do not wrap (size <= 2^64 - 1 - base); nothing else
+section 4.4 -> check_decide's assertions, named as the WP and CN arms' goals: D_result, D_E1 to D_E7, D_complete and its three cases (empty window; GPA in the window; GPA outside it), D_cause, D_kind_unmapped, D_kind_read_only, the eleven fields, D_inject_vsstatus_spp/_spie/_sie/_rest, D_resume_pc, D_zero_* (fifteen); check_frame's D_frame (each input byte for byte unchanged, memcmp); the runtime errors as CBMC's bounds, pointer, signed and unsigned overflow checks on every reached operation
+section 4.5 -> check_helpers' AF_cause, HI_iff, IN_iff (under the no-wrap assumption), LA_page (PAGE's address), LA_none
+bounds: leaf_at's loop runs three times; --unwind 4 with --unwinding-assertions checks that the bound covers it; memcmp's loop is unwound 513 times (every input structure is shorter)
+file mvp/verify/cbmc/leaf-a/harness.c sha256=c7f960fea6a5f6661b2a1c37ded8c732d0210c45eb16aca2e181b665281bbb5b
+digests_before=BE_MVP_TARGET_DIGESTS: PASS files=13 record=mvp/verify/target-digests.txt
+digests_after=BE_MVP_TARGET_DIGESTS: PASS files=13 record=mvp/verify/target-digests.txt

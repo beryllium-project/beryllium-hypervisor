@@ -1,0 +1,87 @@
+RISCV L2
+(* SPDX-License-Identifier: GPL-3.0-only *)
+(* Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com> *)
+(* Premise L2: "ring publish: a reader that acquires the head and fences
+   reads the records' bytes the writer posted before its `fence w, w`"
+   (planning/mvp-m8-plan.md, D-3 and D-9), a premise of P3 (ring safety),
+   P4 (ring integrity), and P8 (drain) (planning/mvp-m8-specifications.md,
+   sections 1 and 3, specification SHA-256
+   ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d).
+   Message passing with fence w,w and fence r,r on a ring, as compiled in
+   build/mvp/gcc/be-mvp.elf and build/mvp/clang/be-mvp.elf (the lines in
+   mvp/verify/litmus/sequences/SYMBOL-TOOLCHAIN.s; GCC's address, then
+   Clang's): the outbound ring, which the domain hart writes and hart 0
+   reads.
+   P0, the domain hart in be_mvp_hart_main, posting READY and ENTERED:
+     sb x6,0(x10)    READY's type byte, 1, be_mvp_ring_post (by store_le,
+                     called at 102068516; inline)  1020682ee 102068a7e
+     fence w,w       be_mvp_arch_fence_w_w, through be_mvp_exec_fence_w_w,
+                     called at                          10206666e 10206676e
+     sd x7,0(x11)    the head, 120, be_mvp_ring_publish 1020686a0 102068c20
+   P1, hart 0 in drain:
+     ld x5,0(x11)    the head, be_mvp_ring_acquire      1020686cc 102068c3e
+     fence r,r       be_mvp_arch_fence_r_r, through be_mvp_exec_fence_r_r,
+                     called at                          102064ad4 102065c62
+     lbu x6,0(x10)   the type byte, be_mvp_ring_take (by load_le, called at
+                     102068782; inline)                 10206830a 102068cf8
+   Every writer posts, calls the same fence, then publishes, and every
+   reader acquires, calls the fence, then takes; the excerpts list each
+   call. The writers, in both ELFs: poll_input (the input ring); ping's
+   PING and domain_failed's ACK (the inbound ring; GCC inlines both in
+   drain); and on the outbound ring hart_fail's FAIL, console's LINE,
+   ipi's PONG, stopped's SHUTDOWN (GCC inlines ipi and stopped in
+   be_mvp_dispatch, Clang ipi alone), and be_mvp_hart_main's READY and
+   ENTERED. The readers: drain (the outbound ring), acknowledged in
+   hart_fail and ipi in be_mvp_dispatch (the inbound ring), console_read
+   in be_mvp_dispatch (the input ring). Every other byte of the records is
+   stored before the fence and loaded after it; the type byte stands for
+   them. acquire's checks on the head branch before the fence, and a
+   branch orders no later load under RVWMO (its rule 11 orders stores), so
+   the test leaves them out. A reduced test keeps fewer accesses and
+   orderings than the code, so it allows at least the code's outcomes:
+   Never here is Never there.
+   Forbidden: hart 0 reads the head of READY and ENTERED (80 and 40
+   bytes) with the type byte as it was before READY's.
+   Digests (mvp/verify/litmus/sequences.txt):
+   be_mvp_ring_post@gcc sha256=ee8afa602949d8d119a9d3e218852a01d9602a7536c0baed60145c21ef94fee0
+   be_mvp_ring_post@clang sha256=eee8be5c51bad1a916fa45b7650581b7da8f1aaf2e55a6870456548eef9fc6cf
+   store_le@gcc sha256=09c6c11d7a6aba36468fd816e04f7d964b6e9b437daaa8aea394e8197c14c5c1
+   be_mvp_hart_main@gcc sha256=2754ae74c2b48f495a2e6c4009609da42973854664a950b6bb39ba5f405a9e2c
+   be_mvp_hart_main@clang sha256=eb0618c2c2216fafab4777cacd749b5ee51521573c33cab80a2755ea4f5236f9
+   be_mvp_exec_fence_w_w@gcc sha256=d2af5007185244ecff68554a5dba4d5b9d680932e87437fb430399451331246f
+   be_mvp_exec_fence_w_w@clang sha256=8e7211664d0945b560dd409a522e5b3267c3c6443146ecb502f8c84051f21975
+   be_mvp_arch_fence_w_w@gcc sha256=4a9c49b5aeb97cd559e75906fa16144d0b05bd33affb259ae823429b7fb89d2b
+   be_mvp_arch_fence_w_w@clang sha256=4a9c49b5aeb97cd559e75906fa16144d0b05bd33affb259ae823429b7fb89d2b
+   be_mvp_ring_publish@gcc sha256=d6bc6d9bd556d6d600e6a4781c2a44262bf09e30c7ce18fda5bf8a346b0a4499
+   be_mvp_ring_publish@clang sha256=b711c6231b4fd53b0c441d9e3a992a064d56587e1764cd58a94d66a31d140f96
+   drain@gcc sha256=0abb8c3c24bb7045baef384ee9d178229ce382231a4382078e45ab24ef696283
+   drain@clang sha256=e676ca4159e5b163f42b52d5cee25859f6de86be997c34a2532335c7a8f1ba04
+   be_mvp_ring_acquire@gcc sha256=eef51e43a0c46bf53374713121bf4e0689155ee51f05ae9ca8163f27fa09b7fe
+   be_mvp_ring_acquire@clang sha256=a994f23057b4f865722f8e59fef642e6480bef64d06abf711a618ae0dfd2a211
+   be_mvp_exec_fence_r_r@gcc sha256=d2af5007185244ecff68554a5dba4d5b9d680932e87437fb430399451331246f
+   be_mvp_exec_fence_r_r@clang sha256=8e7211664d0945b560dd409a522e5b3267c3c6443146ecb502f8c84051f21975
+   be_mvp_arch_fence_r_r@gcc sha256=a173287af103bb3df9e7a542c380e51560c7777708cf7ac49430094df5ce713b
+   be_mvp_arch_fence_r_r@clang sha256=a173287af103bb3df9e7a542c380e51560c7777708cf7ac49430094df5ce713b
+   be_mvp_ring_take@gcc sha256=86f0abb4ffc514a17b3fc622bb891bd2f3c0ba17730ada7d510b59ea68aa9810
+   be_mvp_ring_take@clang sha256=b28cc06163a851112fd3feefb4375ea195eef77dc34eac8f28dee5cccd793324
+   load_le@gcc sha256=fa2e7528e095f314d97b9ddbcd0307a21e446b0bb01fe89831c5603840775c33
+   poll_input@gcc sha256=8030b4ed86233bbf882983ac5d99d3ebdff00b3a75ed2241e328c4ea811f28ad
+   poll_input@clang sha256=c7fd06c998affa32ddabb328379f2a9951e459a8954408c9e38a0e02f0545b54
+   domain_failed@clang sha256=e67ee03624371a13a623a406ba7dc9df6a15e0e5e849626143af00820d9f5f83
+   hart_fail@gcc sha256=00007a9e29a080abdef9be2bec01391be529b39f6d32eff0881fd896b71bb5e9
+   hart_fail@clang sha256=6b23d163a972cfeebb98a9dcc278ba121c4cb31818041fc8e6016344882733fa
+   console@gcc sha256=fc1d10eaf33faea4f333c79507c7dd0ccd6ce235c5c8e819776afdd21ada7004
+   console@clang sha256=d54a3492ab3213daa8826606cf4dcd18c5c156d2604ac6e8e66bdf5de3d0f674
+   be_mvp_dispatch@gcc sha256=19454e6ddfa6715f43ed56ac7bbb8c7734eb0ab16dac77fb7fba820ff57dabf8
+   be_mvp_dispatch@clang sha256=585fd111563c0a5bb2bba9e18c3d22ff562f68b134273a46de0030efe0f0b44a
+   stopped@clang sha256=d2e8f42530f83cc9bdc0ee2dcd83a370bd45c3ddaab141e57b385e8be2f1a42d *)
+{
+type_byte=0; head=0;
+0:x10=type_byte; 0:x11=head; 0:x6=1; 0:x7=120;
+1:x10=type_byte; 1:x11=head;
+}
+ P0           | P1            ;
+ sb x6,0(x10) | ld x5,0(x11)  ;
+ fence w,w    | fence r,r     ;
+ sd x7,0(x11) | lbu x6,0(x10) ;
+exists (1:x5=120 /\ 1:x6=0)

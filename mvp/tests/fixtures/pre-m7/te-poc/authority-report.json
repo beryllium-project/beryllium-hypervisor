@@ -1,0 +1,419 @@
+{
+ "checks": [
+  {
+   "analysis": "A1",
+   "detail": "7 types, 2 classes, 6 rules; 3 subjects and 9 objects, each labeled once",
+   "result": "pass"
+  },
+  {
+   "analysis": "A2",
+   "detail": "6 rules, each reachable under the labeling",
+   "result": "pass"
+  },
+  {
+   "analysis": "A3",
+   "detail": "no domain type holds a permission on monitor memory or map on another domain's private type; every channel rule has its storage, and all shared storage its channel rules",
+   "result": "pass"
+  },
+  {
+   "analysis": "A4",
+   "detail": "6 rules, each within its need set",
+   "result": "pass"
+  },
+  {
+   "analysis": "A5",
+   "detail": "shared_wr_t: static, not revocable, single writer writer_t",
+   "result": "pass"
+  },
+  {
+   "analysis": "A6",
+   "detail": "F = D = {(writer_t, reader_t)}; F+ = D+",
+   "result": "pass"
+  },
+  {
+   "analysis": "A7",
+   "detail": "vacuous: no domain holds a domain permission and no delegation exists",
+   "result": "pass"
+  },
+  {
+   "analysis": "A8",
+   "detail": "6 grants, each allowed by its rule",
+   "result": "pass"
+  }
+ ],
+ "flows": [
+  {
+   "declared": "yes",
+   "from_subject": "G0",
+   "to_subject": "G1",
+   "via_object": "shared_page"
+  }
+ ],
+ "grants": [
+  {
+   "class": "memory",
+   "derived": {
+    "flags": "0xdf",
+    "gpa": "0x80000000",
+    "size": "0x4000000"
+   },
+   "object": "g0_window",
+   "permissions": [
+    "execute",
+    "map",
+    "read",
+    "write"
+   ],
+   "source": "allow writer_t writer_mem_t : memory { read write execute map };",
+   "subject": "G0"
+  },
+  {
+   "class": "memory",
+   "derived": {
+    "flags": "0xd7",
+    "gpa": "0x84000000",
+    "size": "0x1000"
+   },
+   "object": "shared_page",
+   "permissions": [
+    "map",
+    "read",
+    "write"
+   ],
+   "source": "allow writer_t shared_wr_t : memory { read write map };",
+   "subject": "G0"
+  },
+  {
+   "class": "channel",
+   "derived": null,
+   "object": "channel0",
+   "permissions": [
+    "send"
+   ],
+   "source": "allow writer_t shared_wr_t : channel { send };",
+   "subject": "G0"
+  },
+  {
+   "class": "memory",
+   "derived": {
+    "flags": "0xdf",
+    "gpa": "0x80000000",
+    "size": "0x4000000"
+   },
+   "object": "g1_window",
+   "permissions": [
+    "execute",
+    "map",
+    "read",
+    "write"
+   ],
+   "source": "allow reader_t reader_mem_t : memory { read write execute map };",
+   "subject": "G1"
+  },
+  {
+   "class": "memory",
+   "derived": {
+    "flags": "0x53",
+    "gpa": "0x84000000",
+    "size": "0x1000"
+   },
+   "object": "shared_page",
+   "permissions": [
+    "map",
+    "read"
+   ],
+   "source": "allow reader_t shared_wr_t : memory { read map };",
+   "subject": "G1"
+  },
+  {
+   "class": "channel",
+   "derived": null,
+   "object": "channel0",
+   "permissions": [
+    "receive"
+   ],
+   "source": "allow reader_t shared_wr_t : channel { receive };",
+   "subject": "G1"
+  }
+ ],
+ "identity": {
+  "configuration_identity": "5c9678f15a7e9906b5822b7e1fe4642c7b16d53970a3e82a18f6f167af7ac551",
+  "core_identity": "6b72438740dba14915ab56a0100fc930f694463d4c0272246587a46500ee1c6c",
+  "labeling_identity": "e402fefff233b99841a19ae52277d7ff9192b0421ed37ed20c72310d404c73a2",
+  "manifest_identity": "7d78736ea2105c6f028e35f05569119bdb722c7148a007eba5a0856cc3ffce95",
+  "policy_identity": "4a1fac2bdea04cbcf4f3248c21cb41cf2823625b46d284c45d9c69b6a25b8b2d"
+ },
+ "labeling": {
+  "objects": [
+   {
+    "bytes": "0x4000000",
+    "class": "memory",
+    "hpa": "0x110000000",
+    "name": "g0_window",
+    "type": "writer_mem_t"
+   },
+   {
+    "bytes": "0x4000000",
+    "class": "memory",
+    "hpa": "0x114000000",
+    "name": "g1_window",
+    "type": "reader_mem_t"
+   },
+   {
+    "bytes": "0x1000",
+    "class": "memory",
+    "hpa": "0x118000000",
+    "name": "shared_page",
+    "type": "shared_wr_t"
+   },
+   {
+    "class": "channel",
+    "name": "channel0",
+    "object": "shared_page",
+    "type": "shared_wr_t"
+   },
+   {
+    "bytes": "0x34000",
+    "class": "memory",
+    "hpa": "0x102000000",
+    "name": "accepted_image",
+    "type": "monitor_mem_t"
+   },
+   {
+    "bytes": "0x10000",
+    "class": "memory",
+    "hpa": "0x102034000",
+    "name": "pool",
+    "type": "monitor_mem_t"
+   },
+   {
+    "bytes": "0x20000",
+    "class": "memory",
+    "hpa": "0x102044000",
+    "name": "hart_region",
+    "type": "monitor_mem_t"
+   },
+   {
+    "bytes": "0x40000",
+    "class": "memory",
+    "hpa": "0x102064000",
+    "name": "mvp_region",
+    "type": "monitor_mem_t"
+   },
+   {
+    "bytes": "0x400000",
+    "class": "memory",
+    "hpa": "0x108000000",
+    "name": "staging",
+    "type": "monitor_mem_t"
+   }
+  ],
+  "subjects": [
+   {
+    "name": "monitor",
+    "type": "monitor_t"
+   },
+   {
+    "domain_index": 0,
+    "name": "G0",
+    "type": "writer_t"
+   },
+   {
+    "domain_index": 1,
+    "name": "G1",
+    "type": "reader_t"
+   }
+  ]
+ },
+ "objects": [
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x110000000",
+    "size": "0x4000000"
+   },
+   "name": "g0_window",
+   "type": "writer_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x114000000",
+    "size": "0x4000000"
+   },
+   "name": "g1_window",
+   "type": "reader_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x118000000",
+    "size": "0x1000"
+   },
+   "name": "shared_page",
+   "type": "shared_wr_t"
+  },
+  {
+   "class": "channel",
+   "extent": {
+    "base": "0x118000000",
+    "size": "0x1000"
+   },
+   "name": "channel0",
+   "type": "shared_wr_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x102000000",
+    "size": "0x34000"
+   },
+   "name": "accepted_image",
+   "type": "monitor_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x102034000",
+    "size": "0x10000"
+   },
+   "name": "pool",
+   "type": "monitor_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x102044000",
+    "size": "0x20000"
+   },
+   "name": "hart_region",
+   "type": "monitor_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x102064000",
+    "size": "0x40000"
+   },
+   "name": "mvp_region",
+   "type": "monitor_mem_t"
+  },
+  {
+   "class": "memory",
+   "extent": {
+    "base": "0x108000000",
+    "size": "0x400000"
+   },
+   "name": "staging",
+   "type": "monitor_mem_t"
+  }
+ ],
+ "policy": {
+  "classes": [
+   {
+    "name": "memory",
+    "permissions": [
+     "read",
+     "write",
+     "execute",
+     "map"
+    ]
+   },
+   {
+    "name": "channel",
+    "permissions": [
+     "send",
+     "receive"
+    ]
+   }
+  ],
+  "rules": [
+   {
+    "class": "memory",
+    "permissions": [
+     "read",
+     "write",
+     "execute",
+     "map"
+    ],
+    "source": "writer_t",
+    "target": "writer_mem_t",
+    "text": "allow writer_t writer_mem_t : memory { read write execute map };"
+   },
+   {
+    "class": "memory",
+    "permissions": [
+     "read",
+     "write",
+     "map"
+    ],
+    "source": "writer_t",
+    "target": "shared_wr_t",
+    "text": "allow writer_t shared_wr_t : memory { read write map };"
+   },
+   {
+    "class": "channel",
+    "permissions": [
+     "send"
+    ],
+    "source": "writer_t",
+    "target": "shared_wr_t",
+    "text": "allow writer_t shared_wr_t : channel { send };"
+   },
+   {
+    "class": "memory",
+    "permissions": [
+     "read",
+     "write",
+     "execute",
+     "map"
+    ],
+    "source": "reader_t",
+    "target": "reader_mem_t",
+    "text": "allow reader_t reader_mem_t : memory { read write execute map };"
+   },
+   {
+    "class": "memory",
+    "permissions": [
+     "read",
+     "map"
+    ],
+    "source": "reader_t",
+    "target": "shared_wr_t",
+    "text": "allow reader_t shared_wr_t : memory { read map };"
+   },
+   {
+    "class": "channel",
+    "permissions": [
+     "receive"
+    ],
+    "source": "reader_t",
+    "target": "shared_wr_t",
+    "text": "allow reader_t shared_wr_t : channel { receive };"
+   }
+  ],
+  "types": [
+   "monitor_t",
+   "writer_t",
+   "reader_t",
+   "writer_mem_t",
+   "reader_mem_t",
+   "shared_wr_t",
+   "monitor_mem_t"
+  ]
+ },
+ "scenario": "te-poc",
+ "schema": "be-mvp-authority-report-v1",
+ "subjects": [
+  {
+   "domain_index": 0,
+   "name": "G0",
+   "type": "writer_t"
+  },
+  {
+   "domain_index": 1,
+   "name": "G1",
+   "type": "reader_t"
+  }
+ ]
+}

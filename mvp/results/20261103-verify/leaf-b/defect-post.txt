@@ -1,0 +1,671 @@
+# MVP M8 Leaf B: CBMC bounded model check of mvp-ring.c (planning/mvp-m8-plan.md, D-8): a bounded model check, never a proof
+specification=planning/mvp-m8-specifications.md accepted=004f31ae sha256=ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d
+leaf=mvp/src/mvp-ring.c sha256=432dbc511397da4b051da37f3860b1f8d078ef87fa175ea47d7b3c7a1bc267ba
+started=2026-11-03T13:08:56Z cbmc=6.8.0 (ad933aa-dirty) cvc5=cvc5 1.3.4
+# The row's failures on the unmodified leaf, each a CBMC counterexample (SAT); the leaf is not changed (planning/mvp-m8-plan.md, stop condition 2: the human's).
+
+## main.assertion.3: post: returns 1 iff the row's conditions, else 0 (the cursor past the published head)
+part=scalar capacity=512
+reason=specification-mismatch
+reading: the row bounds the tail by the cursor only; be_mvp_ring_post also refuses a tail ahead of the head the writer published (limit - t > C: mvp-ring.c, 'aligned, and at or behind the head the writer published, by at most a capacity'), the trace's state: a record posted and not published, the tail past the published head
+log=logs/post-scalar-512-sat-B-all-trace-main.assertion.3.log
+
+Trace for main.assertion.3:
+
+State 8 file mvp/verify/cbmc/ring/harness.h function any_side line 165 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 9 file mvp/verify/cbmc/ring/harness.h function any_side line 165 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$any_side=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 11 file mvp/verify/cbmc/ring/post.c function main line 87 thread 0
+----------------------------------------------------
+  return_value_any_side=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 12 file mvp/verify/cbmc/ring/post.c function main line 87 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 15 file mvp/verify/cbmc/ring/harness.h function own_index line 159 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=17852268922896646136ul (11110111 10111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+State 16 file mvp/verify/cbmc/ring/harness.h function own_index line 159 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$own_index=17852268922896646136ul (11110111 10111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+State 18 file mvp/verify/cbmc/ring/post.c function main line 88 thread 0
+----------------------------------------------------
+  return_value_own_index=17852268922896646136ul (11110111 10111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+State 19 file mvp/verify/cbmc/ring/post.c function main line 88 thread 0
+----------------------------------------------------
+  own=17852268922896646136ul (11110111 10111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+State 20 file mvp/verify/cbmc/ring/post.c function main line 89 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=8u (00000000 00000000 00000000 00001000)
+
+State 21 file mvp/verify/cbmc/ring/post.c function main line 89 thread 0
+----------------------------------------------------
+  type=8ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001000)
+
+State 22 file mvp/verify/cbmc/ring/post.c function main line 91 thread 0
+----------------------------------------------------
+  return_value_nondet_u64$0=76ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 01001100)
+
+State 23 file mvp/verify/cbmc/ring/post.c function main line 91 thread 0
+----------------------------------------------------
+  length=76ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 01001100)
+
+State 25 file mvp/verify/cbmc/ring/post.c function main line 92 thread 0
+----------------------------------------------------
+  data=payload!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 28 file mvp/verify/cbmc/ring/post.c function main line 94 thread 0
+----------------------------------------------------
+  length=76ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 01001100)
+
+State 29 file mvp/verify/cbmc/ring/harness.h function spec_record_bytes line 102 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$spec_record_bytes=96ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 01100000)
+
+State 31 file mvp/verify/cbmc/ring/post.c function main line 94 thread 0
+----------------------------------------------------
+  return_value_spec_record_bytes=96ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 01100000)
+
+State 32 file mvp/verify/cbmc/ring/post.c function main line 94 thread 0
+----------------------------------------------------
+  size=96ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 01100000)
+
+State 35 file mvp/verify/cbmc/ring/post.c function main line 100 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 36 file mvp/verify/cbmc/ring/post.c function main line 100 thread 0
+----------------------------------------------------
+  own=17852268922896646136ul (11110111 10111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+State 37 file mvp/verify/cbmc/ring/harness.h function build line 179 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=17852268922896645728ul (11110111 10111111 11111111 11111111 11111111 11111111 11111110 01100000)
+
+State 38 file mvp/verify/cbmc/ring/harness.h function build line 179 thread 0
+----------------------------------------------------
+  peer=17852268922896645728ul (11110111 10111111 11111111 11111111 11111111 11111111 11111110 01100000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/harness.h line 181 function build
+  (own & (unsigned long int)7u) == (unsigned long int)0u && (peer & (unsigned long int)7u) == (unsigned long int)0u
+
+State 46 file mvp/verify/cbmc/ring/harness.h function build line 182 thread 0
+----------------------------------------------------
+  head.value=17852268922896646136ul (11110111 10111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+State 53 file mvp/verify/cbmc/ring/harness.h function build line 183 thread 0
+----------------------------------------------------
+  tail.value=17852268922896645728ul (11110111 10111111 11111111 11111111 11111111 11111111 11111110 01100000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/harness.h line 184 function build
+  head->value - tail->value <= (be_u64)512
+
+State 67 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  return_value_nondet_u64$0=57728ul (00000000 00000000 00000000 00000000 00000000 00000000 11100001 10000000)
+
+State 68 file mvp/verify/cbmc/ring/harness.h function build line 186 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=0u (00000000 00000000 00000000 00000000)
+
+State 71 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  types=57728ul (00000000 00000000 00000000 00000000 00000000 00000000 11100001 10000000)
+
+State 72 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  domain=0u (00000000 00000000 00000000 00000000)
+
+State 73 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 84 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  types=57728ul (00000000 00000000 00000000 00000000 00000000 00000000 11100001 10000000)
+
+State 85 file mvp/src/mvp-ring.c function types_valid line 92 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 87 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  return_value_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 88 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  tmp_if_expr=FALSE (0)
+
+State 96 file mvp/src/mvp-ring.c function be_mvp_ring_init line 125 thread 0
+----------------------------------------------------
+  head_value=17852268922896646136ul (11110111 10111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+State 103 file mvp/src/mvp-ring.c function be_mvp_ring_init line 126 thread 0
+----------------------------------------------------
+  tail_value=17852268922896645728ul (11110111 10111111 11111111 11111111 11111111 11111111 11111110 01100000)
+
+State 135 file mvp/src/mvp-ring.c function be_mvp_ring_init line 135 thread 0
+----------------------------------------------------
+  view.types=57728ul (00000000 00000000 00000000 00000000 00000000 00000000 11100001 10000000)
+
+State 148 file mvp/src/mvp-ring.c function be_mvp_ring_init line 137 thread 0
+----------------------------------------------------
+  view.role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 155 file mvp/src/mvp-ring.c function be_mvp_ring_init line 138 thread 0
+----------------------------------------------------
+  view.cursor=17852268922896646136ul (11110111 10111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+State 168 file mvp/src/mvp-ring.c function be_mvp_ring_init line 139 thread 0
+----------------------------------------------------
+  view.limit=17852268922896646136ul (11110111 10111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+State 182 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  return_value_be_mvp_ring_init=1 (00000000 00000000 00000000 00000001)
+
+State 183 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$build=1 (00000000 00000000 00000000 00000001)
+
+State 185 file mvp/verify/cbmc/ring/post.c function main line 100 thread 0
+----------------------------------------------------
+  return_value_build=1 (00000000 00000000 00000000 00000001)
+
+State 189 file mvp/verify/cbmc/ring/post.c function main line 119 thread 0
+----------------------------------------------------
+  own=17852268922896646136ul (11110111 10111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/harness.h line 201 function restate
+  view->buffer == buffer && view->capacity == (be_u64)512 && view->head == head && view->tail == tail && view->cursor == own
+
+State 251 file mvp/verify/cbmc/ring/harness.h function restate line 208 thread 0
+----------------------------------------------------
+  view.cursor=17852268922896646136ul (11110111 10111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+State 256 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 215 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 258 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 217 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=8u (00000000 00000000 00000000 00001000)
+
+State 261 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 216 thread 0
+----------------------------------------------------
+  type=/*enum*/BE_MVP_RECORD_ACK (00000000 00000000 00000000 00001000)
+
+State 280 file mvp/src/mvp-ring.c function be_mvp_ring_post line 162 thread 0
+----------------------------------------------------
+  return_value_usable=1 (00000000 00000000 00000000 00000001)
+
+State 303 file mvp/src/mvp-ring.c function be_mvp_ring_post line 171 thread 0
+----------------------------------------------------
+  tail=17852268922896645728ul (11110111 10111111 11111111 11111111 11111111 11111111 11111110 01100000)
+
+State 323 file mvp/src/mvp-ring.c function be_mvp_ring_post line 174 thread 0
+----------------------------------------------------
+  used=408ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 10011000)
+
+State 584 file mvp/src/mvp-ring.c function be_mvp_ring_post line 195 thread 0
+----------------------------------------------------
+  view.cursor=17852268922896646152ul (11110111 11000000 00000000 00000000 00000000 00000000 00000000 00001000)
+
+State 593 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 219 thread 0
+----------------------------------------------------
+  return_value_nondet_bool$0=FALSE (00000000)
+
+State 599 file mvp/verify/cbmc/ring/harness.h function fail_maybe line 246 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=FALSE (00000000)
+
+State 604 file mvp/verify/cbmc/ring/post.c function main line 125 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 606 file mvp/verify/cbmc/ring/harness.h function havoc_peer line 256 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=17852268922896646144ul (11110111 11000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 613 file mvp/verify/cbmc/ring/harness.h function havoc_peer line 256 thread 0
+----------------------------------------------------
+  tail.value=17852268922896646144ul (11110111 11000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 616 file mvp/verify/cbmc/ring/post.c function main line 126 thread 0
+----------------------------------------------------
+  before.types=57728ul (00000000 00000000 00000000 00000000 00000000 00000000 11100001 10000000)
+
+State 617 file mvp/verify/cbmc/ring/post.c function main line 126 thread 0
+----------------------------------------------------
+  before.role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 618 file mvp/verify/cbmc/ring/post.c function main line 126 thread 0
+----------------------------------------------------
+  before.failed=0u (00000000 00000000 00000000 00000000)
+
+State 619 file mvp/verify/cbmc/ring/post.c function main line 126 thread 0
+----------------------------------------------------
+  before.cursor=17852268922896646152ul (11110111 11000000 00000000 00000000 00000000 00000000 00000000 00001000)
+
+State 620 file mvp/verify/cbmc/ring/post.c function main line 126 thread 0
+----------------------------------------------------
+  before.limit=17852268922896646136ul (11110111 10111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+State 621 file mvp/verify/cbmc/ring/post.c function main line 127 thread 0
+----------------------------------------------------
+  lines_at=48ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00110000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/post.c line 127 function main
+  lines_at < (unsigned long int)(64u - 8u)
+
+State 626 file mvp/verify/cbmc/ring/post.c function main line 131 thread 0
+----------------------------------------------------
+  t=17852268922896646144ul (11110111 11000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 627 file mvp/verify/cbmc/ring/post.c function main line 132 thread 0
+----------------------------------------------------
+  used=8ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001000)
+
+State 631 file mvp/verify/cbmc/ring/post.c function main line 134 thread 0
+----------------------------------------------------
+  types=57728ul (00000000 00000000 00000000 00000000 00000000 00000000 11100001 10000000)
+
+State 632 file mvp/verify/cbmc/ring/post.c function main line 134 thread 0
+----------------------------------------------------
+  type=8ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001000)
+
+State 634 file mvp/verify/cbmc/ring/harness.h function spec_in_set line 117 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$spec_in_set=1 (00000000 00000000 00000000 00000001)
+
+State 636 file mvp/verify/cbmc/ring/post.c function main line 134 thread 0
+----------------------------------------------------
+  return_value_spec_in_set=1 (00000000 00000000 00000000 00000001)
+
+State 637 file mvp/verify/cbmc/ring/post.c function main line 133 thread 0
+----------------------------------------------------
+  tmp_if_expr$0=TRUE (1)
+
+State 639 file mvp/verify/cbmc/ring/post.c function main line 133 thread 0
+----------------------------------------------------
+  expected=1 (00000000 00000000 00000000 00000001)
+
+State 642 file mvp/verify/cbmc/ring/post.c function main line 137 thread 0
+----------------------------------------------------
+  type=/*enum*/BE_MVP_RECORD_ACK (00000000 00000000 00000000 00001000)
+
+State 643 file mvp/verify/cbmc/ring/post.c function main line 137 thread 0
+----------------------------------------------------
+  payload=payload!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 644 file mvp/verify/cbmc/ring/post.c function main line 137 thread 0
+----------------------------------------------------
+  length=76ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 01001100)
+
+State 663 file mvp/src/mvp-ring.c function be_mvp_ring_post line 162 thread 0
+----------------------------------------------------
+  return_value_usable=1 (00000000 00000000 00000000 00000001)
+
+State 686 file mvp/src/mvp-ring.c function be_mvp_ring_post line 171 thread 0
+----------------------------------------------------
+  tail=17852268922896646144ul (11110111 11000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 711 file mvp/verify/cbmc/ring/post.c function main line 137 thread 0
+----------------------------------------------------
+  result=0 (00000000 00000000 00000000 00000000)
+
+Violated property:
+  file mvp/verify/cbmc/ring/post.c function main line 148 thread 0
+  post: returns 1 iff the row's conditions, else 0 (the cursor past the published head)
+  result == (expected != 0 ? 1 : 0)
+
+
+
+
+
+## main.assertion.3: post: returns 1 iff the row's conditions, else 0 (the cursor past the published head)
+part=scalar capacity=4096
+reason=specification-mismatch
+reading: the row bounds the tail by the cursor only; be_mvp_ring_post also refuses a tail ahead of the head the writer published (limit - t > C: mvp-ring.c, 'aligned, and at or behind the head the writer published, by at most a capacity'), the trace's state: a record posted and not published, the tail past the published head
+log=logs/post-scalar-4096-sat-B-all-trace-main.assertion.3.log
+
+Trace for main.assertion.3:
+
+State 8 file mvp/verify/cbmc/ring/harness.h function any_side line 165 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 9 file mvp/verify/cbmc/ring/harness.h function any_side line 165 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$any_side=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 11 file mvp/verify/cbmc/ring/post.c function main line 87 thread 0
+----------------------------------------------------
+  return_value_any_side=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 12 file mvp/verify/cbmc/ring/post.c function main line 87 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 15 file mvp/verify/cbmc/ring/harness.h function own_index line 159 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=1805490451784925176ul (00011001 00001110 01100011 11111111 11111111 11111111 11111111 11111000)
+
+State 16 file mvp/verify/cbmc/ring/harness.h function own_index line 159 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$own_index=1805490451784925176ul (00011001 00001110 01100011 11111111 11111111 11111111 11111111 11111000)
+
+State 18 file mvp/verify/cbmc/ring/post.c function main line 88 thread 0
+----------------------------------------------------
+  return_value_own_index=1805490451784925176ul (00011001 00001110 01100011 11111111 11111111 11111111 11111111 11111000)
+
+State 19 file mvp/verify/cbmc/ring/post.c function main line 88 thread 0
+----------------------------------------------------
+  own=1805490451784925176ul (00011001 00001110 01100011 11111111 11111111 11111111 11111111 11111000)
+
+State 20 file mvp/verify/cbmc/ring/post.c function main line 89 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=16u (00000000 00000000 00000000 00010000)
+
+State 21 file mvp/verify/cbmc/ring/post.c function main line 89 thread 0
+----------------------------------------------------
+  type=16ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00010000)
+
+State 22 file mvp/verify/cbmc/ring/post.c function main line 91 thread 0
+----------------------------------------------------
+  return_value_nondet_u64$0=236ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 11101100)
+
+State 23 file mvp/verify/cbmc/ring/post.c function main line 91 thread 0
+----------------------------------------------------
+  length=236ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 11101100)
+
+State 25 file mvp/verify/cbmc/ring/post.c function main line 92 thread 0
+----------------------------------------------------
+  data=payload!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 28 file mvp/verify/cbmc/ring/post.c function main line 94 thread 0
+----------------------------------------------------
+  length=236ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 11101100)
+
+State 29 file mvp/verify/cbmc/ring/harness.h function spec_record_bytes line 102 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$spec_record_bytes=256ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 00000000)
+
+State 31 file mvp/verify/cbmc/ring/post.c function main line 94 thread 0
+----------------------------------------------------
+  return_value_spec_record_bytes=256ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 00000000)
+
+State 32 file mvp/verify/cbmc/ring/post.c function main line 94 thread 0
+----------------------------------------------------
+  size=256ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 00000000)
+
+State 35 file mvp/verify/cbmc/ring/post.c function main line 100 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 36 file mvp/verify/cbmc/ring/post.c function main line 100 thread 0
+----------------------------------------------------
+  own=1805490451784925176ul (00011001 00001110 01100011 11111111 11111111 11111111 11111111 11111000)
+
+State 37 file mvp/verify/cbmc/ring/harness.h function build line 179 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=1805490451784924792ul (00011001 00001110 01100011 11111111 11111111 11111111 11111110 01111000)
+
+State 38 file mvp/verify/cbmc/ring/harness.h function build line 179 thread 0
+----------------------------------------------------
+  peer=1805490451784924792ul (00011001 00001110 01100011 11111111 11111111 11111111 11111110 01111000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/harness.h line 181 function build
+  (own & (unsigned long int)7u) == (unsigned long int)0u && (peer & (unsigned long int)7u) == (unsigned long int)0u
+
+State 46 file mvp/verify/cbmc/ring/harness.h function build line 182 thread 0
+----------------------------------------------------
+  head.value=1805490451784925176ul (00011001 00001110 01100011 11111111 11111111 11111111 11111111 11111000)
+
+State 53 file mvp/verify/cbmc/ring/harness.h function build line 183 thread 0
+----------------------------------------------------
+  tail.value=1805490451784924792ul (00011001 00001110 01100011 11111111 11111111 11111111 11111110 01111000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/harness.h line 184 function build
+  head->value - tail->value <= (be_u64)4096
+
+State 67 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  return_value_nondet_u64$0=65536ul (00000000 00000000 00000000 00000000 00000000 00000001 00000000 00000000)
+
+State 68 file mvp/verify/cbmc/ring/harness.h function build line 186 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=0u (00000000 00000000 00000000 00000000)
+
+State 71 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  types=65536ul (00000000 00000000 00000000 00000000 00000000 00000001 00000000 00000000)
+
+State 72 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  domain=0u (00000000 00000000 00000000 00000000)
+
+State 73 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 84 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  types=65536ul (00000000 00000000 00000000 00000000 00000000 00000001 00000000 00000000)
+
+State 85 file mvp/src/mvp-ring.c function types_valid line 92 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 87 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  return_value_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 88 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  tmp_if_expr=FALSE (0)
+
+State 96 file mvp/src/mvp-ring.c function be_mvp_ring_init line 125 thread 0
+----------------------------------------------------
+  head_value=1805490451784925176ul (00011001 00001110 01100011 11111111 11111111 11111111 11111111 11111000)
+
+State 103 file mvp/src/mvp-ring.c function be_mvp_ring_init line 126 thread 0
+----------------------------------------------------
+  tail_value=1805490451784924792ul (00011001 00001110 01100011 11111111 11111111 11111111 11111110 01111000)
+
+State 135 file mvp/src/mvp-ring.c function be_mvp_ring_init line 135 thread 0
+----------------------------------------------------
+  view.types=65536ul (00000000 00000000 00000000 00000000 00000000 00000001 00000000 00000000)
+
+State 148 file mvp/src/mvp-ring.c function be_mvp_ring_init line 137 thread 0
+----------------------------------------------------
+  view.role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 155 file mvp/src/mvp-ring.c function be_mvp_ring_init line 138 thread 0
+----------------------------------------------------
+  view.cursor=1805490451784925176ul (00011001 00001110 01100011 11111111 11111111 11111111 11111111 11111000)
+
+State 168 file mvp/src/mvp-ring.c function be_mvp_ring_init line 139 thread 0
+----------------------------------------------------
+  view.limit=1805490451784925176ul (00011001 00001110 01100011 11111111 11111111 11111111 11111111 11111000)
+
+State 182 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  return_value_be_mvp_ring_init=1 (00000000 00000000 00000000 00000001)
+
+State 183 file mvp/verify/cbmc/ring/harness.h function build line 185 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$build=1 (00000000 00000000 00000000 00000001)
+
+State 185 file mvp/verify/cbmc/ring/post.c function main line 100 thread 0
+----------------------------------------------------
+  return_value_build=1 (00000000 00000000 00000000 00000001)
+
+State 189 file mvp/verify/cbmc/ring/post.c function main line 119 thread 0
+----------------------------------------------------
+  own=1805490451784925176ul (00011001 00001110 01100011 11111111 11111111 11111111 11111111 11111000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/harness.h line 201 function restate
+  view->buffer == buffer && view->capacity == (be_u64)4096 && view->head == head && view->tail == tail && view->cursor == own
+
+State 251 file mvp/verify/cbmc/ring/harness.h function restate line 208 thread 0
+----------------------------------------------------
+  view.cursor=1805490451784925176ul (00011001 00001110 01100011 11111111 11111111 11111111 11111111 11111000)
+
+State 256 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 215 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 258 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 217 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=16u (00000000 00000000 00000000 00010000)
+
+State 261 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 216 thread 0
+----------------------------------------------------
+  type=/*enum*/BE_MVP_RECORD_INPUT (00000000 00000000 00000000 00010000)
+
+State 280 file mvp/src/mvp-ring.c function be_mvp_ring_post line 162 thread 0
+----------------------------------------------------
+  return_value_usable=1 (00000000 00000000 00000000 00000001)
+
+State 303 file mvp/src/mvp-ring.c function be_mvp_ring_post line 171 thread 0
+----------------------------------------------------
+  tail=1805490451784924792ul (00011001 00001110 01100011 11111111 11111111 11111111 11111110 01111000)
+
+State 323 file mvp/src/mvp-ring.c function be_mvp_ring_post line 174 thread 0
+----------------------------------------------------
+  used=384ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 10000000)
+
+State 584 file mvp/src/mvp-ring.c function be_mvp_ring_post line 195 thread 0
+----------------------------------------------------
+  view.cursor=1805490451784925192ul (00011001 00001110 01100100 00000000 00000000 00000000 00000000 00001000)
+
+State 593 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 219 thread 0
+----------------------------------------------------
+  return_value_nondet_bool$0=FALSE (00000000)
+
+State 599 file mvp/verify/cbmc/ring/harness.h function fail_maybe line 246 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=FALSE (00000000)
+
+State 604 file mvp/verify/cbmc/ring/post.c function main line 125 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 606 file mvp/verify/cbmc/ring/harness.h function havoc_peer line 256 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=1805490451784925192ul (00011001 00001110 01100100 00000000 00000000 00000000 00000000 00001000)
+
+State 613 file mvp/verify/cbmc/ring/harness.h function havoc_peer line 256 thread 0
+----------------------------------------------------
+  tail.value=1805490451784925192ul (00011001 00001110 01100100 00000000 00000000 00000000 00000000 00001000)
+
+State 616 file mvp/verify/cbmc/ring/post.c function main line 126 thread 0
+----------------------------------------------------
+  before.types=65536ul (00000000 00000000 00000000 00000000 00000000 00000001 00000000 00000000)
+
+State 617 file mvp/verify/cbmc/ring/post.c function main line 126 thread 0
+----------------------------------------------------
+  before.role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 618 file mvp/verify/cbmc/ring/post.c function main line 126 thread 0
+----------------------------------------------------
+  before.failed=0u (00000000 00000000 00000000 00000000)
+
+State 619 file mvp/verify/cbmc/ring/post.c function main line 126 thread 0
+----------------------------------------------------
+  before.cursor=1805490451784925192ul (00011001 00001110 01100100 00000000 00000000 00000000 00000000 00001000)
+
+State 620 file mvp/verify/cbmc/ring/post.c function main line 126 thread 0
+----------------------------------------------------
+  before.limit=1805490451784925176ul (00011001 00001110 01100011 11111111 11111111 11111111 11111111 11111000)
+
+State 621 file mvp/verify/cbmc/ring/post.c function main line 127 thread 0
+----------------------------------------------------
+  lines_at=32ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00100000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/post.c line 127 function main
+  lines_at < (unsigned long int)(64u - 8u)
+
+State 626 file mvp/verify/cbmc/ring/post.c function main line 131 thread 0
+----------------------------------------------------
+  t=1805490451784925192ul (00011001 00001110 01100100 00000000 00000000 00000000 00000000 00001000)
+
+State 627 file mvp/verify/cbmc/ring/post.c function main line 132 thread 0
+----------------------------------------------------
+  used=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 631 file mvp/verify/cbmc/ring/post.c function main line 134 thread 0
+----------------------------------------------------
+  types=65536ul (00000000 00000000 00000000 00000000 00000000 00000001 00000000 00000000)
+
+State 632 file mvp/verify/cbmc/ring/post.c function main line 134 thread 0
+----------------------------------------------------
+  type=16ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00010000)
+
+State 634 file mvp/verify/cbmc/ring/harness.h function spec_in_set line 117 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$spec_in_set=1 (00000000 00000000 00000000 00000001)
+
+State 636 file mvp/verify/cbmc/ring/post.c function main line 134 thread 0
+----------------------------------------------------
+  return_value_spec_in_set=1 (00000000 00000000 00000000 00000001)
+
+State 637 file mvp/verify/cbmc/ring/post.c function main line 133 thread 0
+----------------------------------------------------
+  tmp_if_expr$0=TRUE (1)
+
+State 639 file mvp/verify/cbmc/ring/post.c function main line 133 thread 0
+----------------------------------------------------
+  expected=1 (00000000 00000000 00000000 00000001)
+
+State 642 file mvp/verify/cbmc/ring/post.c function main line 137 thread 0
+----------------------------------------------------
+  type=/*enum*/BE_MVP_RECORD_INPUT (00000000 00000000 00000000 00010000)
+
+State 643 file mvp/verify/cbmc/ring/post.c function main line 137 thread 0
+----------------------------------------------------
+  payload=payload!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 644 file mvp/verify/cbmc/ring/post.c function main line 137 thread 0
+----------------------------------------------------
+  length=236ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 11101100)
+
+State 663 file mvp/src/mvp-ring.c function be_mvp_ring_post line 162 thread 0
+----------------------------------------------------
+  return_value_usable=1 (00000000 00000000 00000000 00000001)
+
+State 686 file mvp/src/mvp-ring.c function be_mvp_ring_post line 171 thread 0
+----------------------------------------------------
+  tail=1805490451784925192ul (00011001 00001110 01100100 00000000 00000000 00000000 00000000 00001000)
+
+State 711 file mvp/verify/cbmc/ring/post.c function main line 137 thread 0
+----------------------------------------------------
+  result=0 (00000000 00000000 00000000 00000000)
+
+Violated property:
+  file mvp/verify/cbmc/ring/post.c function main line 148 thread 0
+  post: returns 1 iff the row's conditions, else 0 (the cursor past the published head)
+  result == (expected != 0 ? 1 : 0)
+
+
+
+

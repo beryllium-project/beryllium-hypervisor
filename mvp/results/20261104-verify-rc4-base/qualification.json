@@ -1,0 +1,576 @@
+{
+ "schema": "be-mvp-qualification-record-v1",
+ "specification_sha256": "ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d",
+ "expectations_sha256": "a8871aa099d23b25e25d7ce67883a9f6ab076eeaa7c83993e5e2ddf03e9a706e",
+ "started": "2026-11-05T03:03:32Z",
+ "goal_seconds": 60,
+ "probes": {
+  "version_frama-c": "33.0 (Arsenic)",
+  "version_why3": "Why3 platform, version 1.8.2",
+  "version_alt-ergo": "2.4.3-free",
+  "version_z3": "Z3 version 4.16.0 - 64 bit",
+  "version_cvc5": "cvc5 1.3.4",
+  "version_cbmc": "6.8.0 (ad933aa-dirty)",
+  "version_herd7": "7.58, Rev: exported",
+  "version_cn": "unknown [unknown]",
+  "why3_provers": "Alt-Ergo; Alt-Ergo  (BV); Alt-Ergo  (FPA); Alt-Ergo  (counterexamples); CVC5; CVC5  (counterexamples); CVC5  (strings); CVC5  (strings+counterexamples); Z3 4.16.0; Z3 4.16.0 (counterexamples); Z3 4.16.0 (noBV)",
+  "acsl_importer": "present: external ACSL files importer (-acsl-import-h)",
+  "machdeps": "avr_16 avr_8 gcc_x86_16 gcc_x86_32 gcc_x86_64 macos_arm msvc_x86_64 ppc_32 x86_16 x86_32 x86_64",
+  "machdep_used": "gcc_x86_64 int=4 long=8 pointer=8 char_signed (RISC-V LP64 has unsigned char)",
+  "cbmc_riscv64_arch": "available",
+  "cbmc_sat_solver": "MiniSAT 2.2.1 with simplifier"
+ },
+ "cases": [
+  {
+   "arm": "wp",
+   "solver": "alt-ergo",
+   "case": "known-pass",
+   "file": "mvp/verify/qualify/wp/known-pass.c",
+   "expected": "proved",
+   "observed": "proved",
+   "ok": true,
+   "seconds": 0.7,
+   "detail": "goals=19/19 alt-ergo_goals=5 "
+  },
+  {
+   "arm": "wp",
+   "solver": "alt-ergo",
+   "case": "known-fail",
+   "file": "mvp/verify/qualify/wp/known-fail.c",
+   "expected": "unproved",
+   "observed": "unproved",
+   "ok": true,
+   "seconds": 61.1,
+   "detail": "goals=18/19 alt-ergo_goals=4 timeout=1"
+  },
+  {
+   "arm": "wp",
+   "solver": "alt-ergo",
+   "case": "vacuity-requires",
+   "file": "mvp/verify/qualify/wp/vacuity-requires.c",
+   "expected": "detected",
+   "observed": "detected",
+   "ok": true,
+   "seconds": 0.7,
+   "detail": "goals=6/9 alt-ergo_goals=2 failed=3 smoke=0/3 doomed_by=Alt-Ergo,Qed"
+  },
+  {
+   "arm": "wp",
+   "solver": "alt-ergo",
+   "case": "vacuity-ensures",
+   "file": "mvp/verify/qualify/wp/vacuity-ensures.c",
+   "expected": "unproved",
+   "observed": "unproved",
+   "ok": true,
+   "seconds": 54.8,
+   "detail": "goals=3/4 alt-ergo_goals=0 failed=1"
+  },
+  {
+   "arm": "wp",
+   "solver": "alt-ergo",
+   "case": "wrong-implementation",
+   "file": "mvp/verify/qualify/wp/wrong-implementation.c",
+   "expected": "failed",
+   "observed": "unproved",
+   "ok": true,
+   "seconds": 61.1,
+   "detail": "goals=16/19 alt-ergo_goals=2 timeout=3"
+  },
+  {
+   "arm": "wp",
+   "solver": "z3",
+   "case": "known-pass",
+   "file": "mvp/verify/qualify/wp/known-pass.c",
+   "expected": "proved",
+   "observed": "proved",
+   "ok": true,
+   "seconds": 0.7,
+   "detail": "goals=19/19 z3_goals=5 "
+  },
+  {
+   "arm": "wp",
+   "solver": "z3",
+   "case": "known-fail",
+   "file": "mvp/verify/qualify/wp/known-fail.c",
+   "expected": "unproved",
+   "observed": "proved",
+   "ok": false,
+   "seconds": 0.8,
+   "detail": "goals=19/19 z3_goals=5 "
+  },
+  {
+   "arm": "wp",
+   "solver": "z3",
+   "case": "vacuity-requires",
+   "file": "mvp/verify/qualify/wp/vacuity-requires.c",
+   "expected": "detected",
+   "observed": "detected",
+   "ok": true,
+   "seconds": 1.4,
+   "detail": "goals=6/9 z3_goals=2 failed=3 smoke=0/3 doomed_by=Qed,Z3"
+  },
+  {
+   "arm": "wp",
+   "solver": "z3",
+   "case": "vacuity-ensures",
+   "file": "mvp/verify/qualify/wp/vacuity-ensures.c",
+   "expected": "unproved",
+   "observed": "proved",
+   "ok": false,
+   "seconds": 0.7,
+   "detail": "goals=4/4 z3_goals=1 "
+  },
+  {
+   "arm": "wp",
+   "solver": "z3",
+   "case": "wrong-implementation",
+   "file": "mvp/verify/qualify/wp/wrong-implementation.c",
+   "expected": "failed",
+   "observed": "proved",
+   "ok": false,
+   "seconds": 0.8,
+   "detail": "goals=19/19 z3_goals=5 "
+  },
+  {
+   "arm": "wp",
+   "solver": "cvc5",
+   "case": "known-pass",
+   "file": "mvp/verify/qualify/wp/known-pass.c",
+   "expected": "proved",
+   "observed": "unproved",
+   "ok": false,
+   "seconds": 63.7,
+   "detail": "goals=14/19 cvc5_goals=0 timeout=5"
+  },
+  {
+   "arm": "wp",
+   "solver": "cvc5",
+   "case": "known-fail",
+   "file": "mvp/verify/qualify/wp/known-fail.c",
+   "expected": "unproved",
+   "observed": "unproved",
+   "ok": true,
+   "seconds": 63.0,
+   "detail": "goals=14/19 cvc5_goals=0 timeout=5"
+  },
+  {
+   "arm": "wp",
+   "solver": "cvc5",
+   "case": "vacuity-requires",
+   "file": "mvp/verify/qualify/wp/vacuity-requires.c",
+   "expected": "detected",
+   "observed": "undetected",
+   "ok": false,
+   "seconds": 63.0,
+   "detail": "goals=7/9 cvc5_goals=3 timeout=2 smoke=3/3 doomed_by=none"
+  },
+  {
+   "arm": "wp",
+   "solver": "cvc5",
+   "case": "vacuity-ensures",
+   "file": "mvp/verify/qualify/wp/vacuity-ensures.c",
+   "expected": "unproved",
+   "observed": "unproved",
+   "ok": true,
+   "seconds": 63.0,
+   "detail": "goals=3/4 cvc5_goals=0 timeout=1"
+  },
+  {
+   "arm": "wp",
+   "solver": "cvc5",
+   "case": "wrong-implementation",
+   "file": "mvp/verify/qualify/wp/wrong-implementation.c",
+   "expected": "failed",
+   "observed": "unproved",
+   "ok": true,
+   "seconds": 63.0,
+   "detail": "goals=14/19 cvc5_goals=0 timeout=5"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "sat",
+   "case": "known-pass",
+   "file": "mvp/verify/qualify/cbmc/known-pass.c",
+   "expected": "proved",
+   "observed": "proved",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "solver=Running_propositional_reduction failures=0"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "sat",
+   "case": "known-fail",
+   "file": "mvp/verify/qualify/cbmc/known-fail.c",
+   "expected": "unproved",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "solver=Running_propositional_reduction failures=1"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "sat",
+   "case": "vacuity-requires",
+   "file": "mvp/verify/qualify/cbmc/vacuity-requires.c",
+   "expected": "detected",
+   "observed": "detected",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "solver=Running_propositional_reduction failures=0"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "sat",
+   "case": "vacuity-ensures",
+   "file": "mvp/verify/qualify/cbmc/vacuity-ensures.c",
+   "expected": "unproved",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "solver=Running_propositional_reduction failures=1"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "sat",
+   "case": "wrong-implementation",
+   "file": "mvp/verify/qualify/cbmc/wrong-implementation.c",
+   "expected": "failed",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "solver=Running_propositional_reduction failures=4"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "z3",
+   "case": "known-pass",
+   "file": "mvp/verify/qualify/cbmc/known-pass.c",
+   "expected": "proved",
+   "observed": "proved",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "solver=Running_SMT2_QF_AUFBV_using_Z3 failures=0"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "z3",
+   "case": "known-fail",
+   "file": "mvp/verify/qualify/cbmc/known-fail.c",
+   "expected": "unproved",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "solver=Running_SMT2_QF_AUFBV_using_Z3 failures=1"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "z3",
+   "case": "vacuity-requires",
+   "file": "mvp/verify/qualify/cbmc/vacuity-requires.c",
+   "expected": "detected",
+   "observed": "detected",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "solver=Running_SMT2_QF_AUFBV_using_Z3 failures=0"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "z3",
+   "case": "vacuity-ensures",
+   "file": "mvp/verify/qualify/cbmc/vacuity-ensures.c",
+   "expected": "unproved",
+   "observed": "error",
+   "ok": false,
+   "seconds": 60.0,
+   "detail": "killed after 60 s"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "z3",
+   "case": "wrong-implementation",
+   "file": "mvp/verify/qualify/cbmc/wrong-implementation.c",
+   "expected": "failed",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "solver=Running_SMT2_QF_AUFBV_using_Z3 failures=4"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "cvc5",
+   "case": "known-pass",
+   "file": "mvp/verify/qualify/cbmc/known-pass.c",
+   "expected": "proved",
+   "observed": "proved",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "solver=Running_SMT2_ALL_(with_FPA)_using_CVC5 failures=0"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "cvc5",
+   "case": "known-fail",
+   "file": "mvp/verify/qualify/cbmc/known-fail.c",
+   "expected": "unproved",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "solver=Running_SMT2_ALL_(with_FPA)_using_CVC5 failures=1"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "cvc5",
+   "case": "vacuity-requires",
+   "file": "mvp/verify/qualify/cbmc/vacuity-requires.c",
+   "expected": "detected",
+   "observed": "detected",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "solver=Running_SMT2_ALL_(with_FPA)_using_CVC5 failures=0"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "cvc5",
+   "case": "vacuity-ensures",
+   "file": "mvp/verify/qualify/cbmc/vacuity-ensures.c",
+   "expected": "unproved",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "solver=Running_SMT2_ALL_(with_FPA)_using_CVC5 failures=1"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "cvc5",
+   "case": "wrong-implementation",
+   "file": "mvp/verify/qualify/cbmc/wrong-implementation.c",
+   "expected": "failed",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "solver=Running_SMT2_ALL_(with_FPA)_using_CVC5 failures=4"
+  },
+  {
+   "arm": "cn",
+   "solver": "z3",
+   "case": "known-pass",
+   "file": "mvp/verify/qualify/cn/known-pass.c",
+   "expected": "proved",
+   "observed": "proved",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "functions=1 fail=0"
+  },
+  {
+   "arm": "cn",
+   "solver": "z3",
+   "case": "known-fail",
+   "file": "mvp/verify/qualify/cn/known-fail.c",
+   "expected": "unproved",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "functions=1 fail=1"
+  },
+  {
+   "arm": "cn",
+   "solver": "z3",
+   "case": "vacuity-requires",
+   "file": "mvp/verify/qualify/cn/vacuity-requires.c",
+   "expected": "detected",
+   "observed": "detected",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "functions=1 fail=0"
+  },
+  {
+   "arm": "cn",
+   "solver": "z3",
+   "case": "vacuity-ensures",
+   "file": "mvp/verify/qualify/cn/vacuity-ensures.c",
+   "expected": "unproved",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "functions=1 fail=1"
+  },
+  {
+   "arm": "cn",
+   "solver": "z3",
+   "case": "wrong-implementation",
+   "file": "mvp/verify/qualify/cn/wrong-implementation.c",
+   "expected": "failed",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "functions=1 fail=1"
+  },
+  {
+   "arm": "cn",
+   "solver": "cvc5",
+   "case": "known-pass",
+   "file": "mvp/verify/qualify/cn/known-pass.c",
+   "expected": "proved",
+   "observed": "proved",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "functions=1 fail=0"
+  },
+  {
+   "arm": "cn",
+   "solver": "cvc5",
+   "case": "known-fail",
+   "file": "mvp/verify/qualify/cn/known-fail.c",
+   "expected": "unproved",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "functions=1 fail=1"
+  },
+  {
+   "arm": "cn",
+   "solver": "cvc5",
+   "case": "vacuity-requires",
+   "file": "mvp/verify/qualify/cn/vacuity-requires.c",
+   "expected": "detected",
+   "observed": "detected",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "functions=1 fail=0"
+  },
+  {
+   "arm": "cn",
+   "solver": "cvc5",
+   "case": "vacuity-ensures",
+   "file": "mvp/verify/qualify/cn/vacuity-ensures.c",
+   "expected": "unproved",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "functions=1 fail=1"
+  },
+  {
+   "arm": "cn",
+   "solver": "cvc5",
+   "case": "wrong-implementation",
+   "file": "mvp/verify/qualify/cn/wrong-implementation.c",
+   "expected": "failed",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.1,
+   "detail": "functions=1 fail=1"
+  },
+  {
+   "arm": "litmus",
+   "solver": "herd7",
+   "case": "known-pass",
+   "file": "mvp/verify/litmus/qualify/MP+fence.w.w+fence.r.r.litmus",
+   "expected": "proved",
+   "observed": "proved",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "observation=Never positive=0 negative=3"
+  },
+  {
+   "arm": "litmus",
+   "solver": "herd7",
+   "case": "known-fail",
+   "file": "mvp/verify/litmus/qualify/MP.litmus",
+   "expected": "unproved",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "observation=Sometimes positive=1 negative=3"
+  },
+  {
+   "arm": "litmus",
+   "solver": "herd7",
+   "case": "vacuity-requires",
+   "file": "mvp/verify/litmus/qualify/MP+fence.w.w+fence.r.r+filter.litmus",
+   "expected": "detected",
+   "observed": "detected",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "observation=Never positive=0 negative=0"
+  },
+  {
+   "arm": "litmus",
+   "solver": "herd7",
+   "case": "vacuity-ensures",
+   "file": "mvp/verify/litmus/qualify/MP+fence.w.w+fence.r.r+sc.litmus",
+   "expected": "unproved",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "observation=Sometimes positive=1 negative=2"
+  },
+  {
+   "arm": "litmus",
+   "solver": "herd7",
+   "case": "wrong-implementation",
+   "file": "mvp/verify/litmus/qualify/MP+fence.r.r+fence.r.r.litmus",
+   "expected": "failed",
+   "observed": "failed",
+   "ok": true,
+   "seconds": 0.0,
+   "detail": "observation=Sometimes positive=1 negative=3"
+  }
+ ],
+ "pairs": [
+  {
+   "arm": "wp",
+   "solver": "alt-ergo",
+   "qualified": "yes",
+   "reason": ""
+  },
+  {
+   "arm": "wp",
+   "solver": "z3",
+   "qualified": "no",
+   "reason": "known-fail,vacuity-ensures,wrong-implementation"
+  },
+  {
+   "arm": "wp",
+   "solver": "cvc5",
+   "qualified": "no",
+   "reason": "known-pass,vacuity-requires"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "sat",
+   "qualified": "yes",
+   "reason": ""
+  },
+  {
+   "arm": "cbmc",
+   "solver": "z3",
+   "qualified": "no",
+   "reason": "vacuity-ensures"
+  },
+  {
+   "arm": "cbmc",
+   "solver": "cvc5",
+   "qualified": "yes",
+   "reason": ""
+  },
+  {
+   "arm": "cn",
+   "solver": "z3",
+   "qualified": "yes",
+   "reason": ""
+  },
+  {
+   "arm": "cn",
+   "solver": "cvc5",
+   "qualified": "yes",
+   "reason": ""
+  },
+  {
+   "arm": "litmus",
+   "solver": "herd7",
+   "qualified": "yes",
+   "reason": ""
+  }
+ ]
+}

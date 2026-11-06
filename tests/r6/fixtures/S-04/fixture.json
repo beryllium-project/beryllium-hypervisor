@@ -1,0 +1,73 @@
+{
+  "schema": "be-r6-fixture-v1",
+  "spdx_license_identifier": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "id": "S-04",
+  "partition": "static",
+  "declared_delta": null,
+  "base": "arch/riscv/be/r5-trap.S",
+  "base_sha256": "4721da5693b3bde3e91ca1dc36aa8042693d858f198ef06986881171f1216841",
+  "defect_file": "r5-trap.S.defect",
+  "defect_sha256": "71c7d60f0e629d97e82a869e9b04889bb158152c41972012cb6a1ba6c64ecddb",
+  "defect": {
+    "kind": "assembly-instruction",
+    "summary": "second sret added to the guest-return tail",
+    "accepted": null,
+    "malformed": null,
+    "source_path": "arch/riscv/be/r5-trap.S",
+    "target": {
+      "line": 772,
+      "line_anchor": "ld t6, 240(t6)",
+      "symbol": "be_r5_enter_guest_tail",
+      "slot": null
+    },
+    "anchor": "\tld t6, 240(t6)\n\tsret\n",
+    "replacement": "\tld t6, 240(t6)\n\tsret\n\tsret\n"
+  },
+  "diff": {
+    "sha256": "aa75928772a9373d6e2f09b159ad81ec1099298debfaafb841e49f166e410efa",
+    "added": 1,
+    "removed": 0,
+    "budget": {
+      "added": 6,
+      "removed": 6
+    },
+    "unified": "--- a/arch/riscv/be/r5-trap.S\n+++ b/arch/riscv/be/r5-trap.S\n@@ -769,6 +769,7 @@\n \tld sp, 8(t6)\n \tld t6, 240(t6)\n \tsret\n+\tsret\n \t.size be_r5_enter_guest_tail, . - be_r5_enter_guest_tail\n \n \t.align 4\n"
+  },
+  "expected": {
+    "first_rejection_layer": "L3",
+    "outcome": "rejected-at-source-inventory",
+    "message_completeness": "complete",
+    "primary_message": "R5 source inventory: r5-trap.S does not contain exactly one sret",
+    "placeholders": {},
+    "stages": {
+      "l3": "reject"
+    },
+    "absent_stages": [
+      "gcc-link",
+      "clang-link",
+      "gcc-image-check",
+      "clang-image-check"
+    ],
+    "messages": {
+      "l3": [
+        "R5 source inventory: r5-trap.S does not contain exactly one sret"
+      ]
+    },
+    "prohibited_layers": [
+      "L4",
+      "L5",
+      "L6",
+      "L7",
+      "L8",
+      "L9",
+      "L10",
+      "L11"
+    ],
+    "qemu": "forbidden",
+    "artifacts": {
+      "quarantined": [],
+      "scratch_elf": false
+    }
+  }
+}

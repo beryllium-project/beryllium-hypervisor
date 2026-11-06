@@ -1,0 +1,4 @@
+BE_MVP_POLICY: FAIL A4: allow reader_t shared_wr_t : memory { write }; grants write outside its need set
+BE_MVP_POLICY: FAIL A5: shared_wr_t is shared writable storage with 2 writers (reader_t, writer_t) and no revocation path; a static instance admits one (V3)
+BE_MVP_POLICY: FAIL A6: F+ holds reader_t -> reader_t outside D+, an undeclared flow; F+ holds reader_t -> writer_t outside D+, an undeclared flow through shared_wr_t; F+ holds writer_t -> writer_t outside D+, an undeclared flow
+BE_MVP_POLICY_NEGATIVE: PASS name=undeclared-flow fails=A4,A5,A6 source_none=0 undeclared=0

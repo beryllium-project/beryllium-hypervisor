@@ -1,0 +1,20 @@
+label=te-poc/clang
+kind=scenario
+file=te-poc-clang.img
+stage=done
+error=-
+qemu_exit=0
+seconds=5.6
+sbi_version=2.0
+boot_hart=2
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2748416
+crc32=f8a08e25
+fdt=0xff7383d0
+fdt_end=0xff73edd8
+rule_hart=2
+shim_fdt=0xff7383d0
+terminal=BE_MVP:FAIL firmware
+console_bytes=4805
+console_sha256=e81b7dd1b78d5a72ace3a9fb3371531713771b9c2664f5ed15c41fbc87235f06
+BE_MVP_UBOOT_SESSION[te-poc/clang]: REFUSED boot_hart=2 qemu_exit=0 fdt=0xff7383d0 crc32=f8a08e25 seconds=5.6

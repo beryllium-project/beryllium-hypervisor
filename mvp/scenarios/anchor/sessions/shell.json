@@ -1,0 +1,27 @@
+{
+  "spdx": "GPL-3.0-only",
+  "copyright": "Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>",
+  "purpose": "M7-4's session for anchor's shell variant (planning/mvp-m7-plan.md, D-11, Q8, Q27): the host, G0, alone gets a shell; the nonce; request 7 through the pages, which the protected domain's role answers; the host's denied store to the response page it may only read and its denied load of the secret page; a focus sequence naming the protected domain, which has no grant (dropped, no-grant); the host's pause and termination of the protected domain as M2's host role makes them; then the shell's exit. Nothing is typed to the protected domain.",
+  "trust": "Data only, never executed: tests/session-typist.py types each focus pair and each line, one key per 10 ms and then Enter, with NONCE the run's 16 hex digits, and waits for each step's line; tools/gen-scenario.py derives the shell variant's expected lines from the steps and refuses a session whose step could print more than the outbound ring's peak budget (D-2); tests/check-capture.py reconciles BE_MVP:18 with the keys typed (typed.txt), this file, and the nonce.",
+  "scope": "M7. A demonstration in QEMU of Instance 3 through the untrusted domain's shell; not evidence that arbitrary guests are contained.",
+  "schema": "be-mvp-session-v1",
+  "name": "shell",
+  "steps": [
+    {"focus": "g0"},
+    {"send": "echo NONCE"},
+    {"expect": "NONCE"},
+    {"send": "be-anchor request 7"},
+    {"expect": "MVPINIT 09 REQUEST n=7"},
+    {"send": "be-deny store-shared"},
+    {"expect": "MVPINIT 08 DENIED n=1 kind=store gpa=0x84001ff8"},
+    {"send": "be-deny load-unmapped"},
+    {"expect": "MVPINIT 08 DENIED n=2 kind=load gpa=0x84002000"},
+    {"negative": "no-grant"},
+    {"send": "be-anchor pause"},
+    {"expect": "MVPINIT 10 MGMT fid=pause target=1 result=0"},
+    {"send": "be-anchor terminate"},
+    {"expect": "MVPINIT 10 MGMT fid=terminate target=1 result=0"},
+    {"send": "exit"},
+    {"expect": "MVPINIT 11 SHELL exit=0"}
+  ]
+}

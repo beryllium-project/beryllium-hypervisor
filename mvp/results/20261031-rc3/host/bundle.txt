@@ -1,0 +1,29 @@
+schema=be-mvp-evidence-v1
+kind=development
+source_commit=ebc49a889273c811836c3d39fb0fc9bfe808be4c
+source_tree=clean
+lock_sha256=2f1b732dcf2415c7a4b25c5008ab06bae4c9af0fc3804028772f16a693e47d70
+lock_check_status=0
+closure_sha256=2875ddd675b49c390159d55ac2847a9eb1990061bfe972693bd8260b2d123009
+scenario=two-guests scenario_sha256=9978db42902d36734e70ec43e62c5682ddb558f62ce01f4a5cca862be3f1d8b2
+scenario=te-poc scenario_sha256=cdd8a6b0e15a446d8912f73245883b204f8f9c27c8013d60725a0ce921ef9fc7 authority-report.json=1f490d678d0cf485213d77b1c20b10a42392c2bedb2b34acf1b52120aa04a7c5 policy.te=4a1fac2bdea04cbcf4f3248c21cb41cf2823625b46d284c45d9c69b6a25b8b2d
+scenario=anchor scenario_sha256=3cc38352e33b5e30abdef47deecf150eb5eec27c3c9e2d5af077868194e43821 authority-report.json=beb0189859a3d9e4565a301aaff3a665c46d9633225c2320cda53b94a1b56278 policy.te=bfecfa923eaa64782cca2f662091de1329eba2c969408a59f04a8c0234fc79aa
+images=253
+records=image-check,variants,probes,budgets,platform-probe,partition-tool,run-tool-check
+capture_self-test=BE_MVP_CAPTURE_SELF_TEST: PASS cases=129 failed=0
+capture_mutation-test=BE_MVP_CAPTURE_MUTATIONS: PASS mutations=317 rejected=317 seed=0x4d30
+policy_check=BE_MVP_POLICY: PASS scenario=te-poc grants=6 flows=1 checks=8 config=5c9678f15a7e9906b5822b7e1fe4642c7b16d53970a3e82a18f6f167af7ac551
+policy_check_anchor=BE_MVP_POLICY: PASS scenario=anchor grants=12 flows=2 checks=8 config=769c374673a977e477e42d164274102052c2006ba0d4a6a1b03c40d932c610f4 measurement=f5c39b63dcd6b0a6ced0873dc6cbb34ba3cda16d7fc95436cfa7bdd6abe93ee0
+policy_self_test=BE_MVP_POLICY_SELF_TEST: PASS cases=45
+policy_mutations=BE_MVP_POLICY_MUTATIONS: PASS mutations=14 rejected=14
+BE_MVP_QEMU_TOOLCHAIN[gcc]: runs=29 attempts=34 refused=5
+BE_MVP_QEMU_TOOLCHAIN[clang]: runs=29 attempts=36 refused=7
+BE_MVP_QEMU: PASS runs=58 attempts=70 refused=12
+rehearsal=BE_MVP_UBOOT_REHEARSAL: PASS cases=7 attempts=7 refused=0 uboot=d96d1c22c67b opensbi=78f14d30c951 qemu=10.2.2
+rehearsal_anchor-clang=BE_MVP_UBOOT_REHEARSAL[anchor/clang]: PASS attempts=1 refused=0 boot_harts=0 session=PASS check=PASS check_exit=0 qemu_exit=0 image=0d5c8257a68e crc32=307d8931
+rehearsal_anchor-gcc=BE_MVP_UBOOT_REHEARSAL[anchor/gcc]: PASS attempts=1 refused=0 boot_harts=7 session=PASS check=PASS check_exit=0 qemu_exit=0 image=a321e0b3270e crc32=d78da5ed
+rehearsal_fallthrough=BE_MVP_UBOOT_REHEARSAL[fallthrough]: PASS attempts=1 refused=0 boot_harts=7 session=PASS check=- check_exit=- qemu_exit=killed:-9 image=1049f9755804 crc32=c41a6ba0 (FALLTHROUGH, no Starting kernel)
+rehearsal_te-poc-clang=BE_MVP_UBOOT_REHEARSAL[te-poc/clang]: PASS attempts=1 refused=0 boot_harts=7 session=PASS check=PASS check_exit=0 qemu_exit=0 image=895d5dd9604e crc32=57e4ff5a
+rehearsal_te-poc-gcc=BE_MVP_UBOOT_REHEARSAL[te-poc/gcc]: PASS attempts=1 refused=0 boot_harts=3 session=PASS check=PASS check_exit=0 qemu_exit=0 image=20337aec42da crc32=3ebc6d92
+rehearsal_two-guests-clang=BE_MVP_UBOOT_REHEARSAL[two-guests/clang]: PASS attempts=1 refused=0 boot_harts=0 session=PASS check=PASS check_exit=0 qemu_exit=0 image=f9badc03e260 crc32=007b82b3
+rehearsal_two-guests-gcc=BE_MVP_UBOOT_REHEARSAL[two-guests/gcc]: PASS attempts=1 refused=0 boot_harts=5 session=PASS check=PASS check_exit=0 qemu_exit=0 image=1049f9755804 crc32=c41a6ba0

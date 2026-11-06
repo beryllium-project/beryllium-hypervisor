@@ -1,0 +1,46 @@
+[   1.948] Autoboot in 3 seconds
+[   4.957] pcie_dw_spacemit pcie@80000000: Port0 has no device detect gpio
+[   4.970] Now int init_x2_puphy...
+[   4.971] waiting pll lock...
+[   4.973] PHY PLL Locked.
+[   4.986] Now int init_x2_puphy...
+[   4.986] waiting pll lock...
+[   4.989] PHY PLL Locked.
+[   4.991] pcie_dw_spacemit pcie@80000000: pcie config device cmd in rc mode: 0x3bf
+[   5.113] PCIE-0: Link up (Gen3-x4, Bus0)
+[   5.129] Now int init_x1_puphy...
+[   5.129] waiting pll lock...
+[   5.132] PHY PLL Locked.
+[   5.134] pcie_dw_spacemit pcie@80c00000: pcie config device cmd in rc mode: 0x33f
+[   6.243] PCIE-2: Link down
+[   6.274] 2748416 bytes read in 3 ms (873.7 MiB/s)
+[   6.283] md5 for 140000000 ... 14029efff ==> 55f761074913a19dad9af17590464b8a
+[   6.287] Moving Image from 0x140000000 to 0x108000000, end=10829f000
+[   6.294] ## Flattened Device Tree blob at 2fbe8aa50
+[   6.298]    Booting using the fdt blob at 0x2fbe8aa50
+[   6.303]    Loading Device Tree to 00000002fbd5d000, end 00000002fbd6f2ef ... OK
+fail to get alias node efuse_power
+[   6.515] 
+Starting kernel ...
+
+[   6.515] Removing MTD device #0 (nor0) with use count 1
+BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x00000002fbd5d000 dest=0x0000000102000000 bytes=0x00000000000a4000
+BE_MVP:00 BOOT_VALIDATED
+BE_MVP:00 CONFIG_SEALED inventory=14 authorities=2 roots=2 harts=0,1,2 identity=16bd3ebb3796bb68
+BE_MVP:01 SCENARIO name=probe-console-input domains=1 harts=0,1 of=8 ring_bytes=0x8000 mvp_region=0x102064000 mvp_bytes=0x40000 image_bytes=0xa4000
+BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status=1:1,2:1,3:1,4:1,5:1,6:1,7:1 started=none
+BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 hart=1 gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 root=0x102034000 vmid=1
+BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 hart=2 gpa=0x80000000 hpa=0x114000000 size=0x4000000 leaves=32 root=0x10203c000 vmid=2
+BE_MVP:05 DOMAIN_RAM_CLEARED domain=0 gpa=0x80000000 size=0x4000000 ticks=0x860dc
+BE_MVP:05 DOMAIN_RAM_CLEARED domain=1 gpa=0x80000000 size=0x4000000 ticks=0x860de
+BE_MVP:07 BLOCKS_PUBLISHED region=0x102044000 bytes=0x20000 generation=1 budget_ticks=0x100000000
+BE_MVP:08 HART_STARTED hart=1 domain=0 result=0 status=0 ticks=0x598
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0xb15c hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x0 ticks=0x69b
+BE_MVP:PROBE console-input window_ticks=0x20000000 prefix=none
+BE_MVP:PROBE console-input bytes=64 hex=303132333435363738396162636465666768696a6b6c6d6e6f707172737475767778797a4142434445464748494a4b4c4d4e4f505152535455565758595a2d3d
+BE_MVP:PROBE console-input bytes=128 hex=303132333435363738396162636465666768696a6b6c6d6e6f707172737475767778797a4142434445464748494a4b4c4d4e4f505152535455565758595a2d3d
+BE_MVP:PROBE console-input bytes=192 hex=303132333435363738396162636465666768696a6b6c6d6e6f707172737475767778797a4142434445464748494a4b4c4d4e4f505152535455565758595a2d3d
+BE_MVP:PROBE console-input bytes=256 hex=303132333435363738396162636465666768696a6b6c6d6e6f707172737475767778797a4142434445464748494a4b4c4d4e4f505152535455565758595a2d3d
+BE_MVP:PROBE console-input total=256 polls=2049 nonzero_polls=209 max_per_poll=5 errors=0 sha256=27576c0c829bf762
+BE_MVP:14 SHUTDOWN type=0 reason=0

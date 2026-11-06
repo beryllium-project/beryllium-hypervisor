@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The pinned k3ctl client (planning/mvp-m1-plan.md, "Tool lock and the
+# clean evaluator" and "The remote reset"; Q14): the one client the board
+# tools run for K3_RESET=k3ctl, as `python3 -B CLIENT -d DEVICE COMMAND`
+# with the locked Python 3 and COMMAND only `status` or `reset` (the client
+# itself pings first). k3ctl is not a lock role: it is a script in the
+# responsible human's k3-com260-info checkout (tools/k3ctl/k3ctl) that no
+# package owns and the evaluator never runs. tools/k3-run.sh, which
+# tools/k3-campaign.sh asks before any run, refuses a K3CTL whose SHA-256
+# differs from sha256 below, or a K3CTL or K3CTL_DEV not of the forms
+# below (stop condition 10), before any run and again before each
+# command; tools/k3-preflight.sh records the comparison. The value is the
+# client's SHA-256 the plan recorded at planning time (2026-10-26), found
+# unchanged in that checkout at M1-5 (2026-10-27). Change it only on the
+# responsible human's direction, after reviewing the new client.
+#
+#   sha256   the client's SHA-256
+#   client   the form K3CTL must have: an absolute path of these characters
+#   device   the form K3CTL_DEV must have: a path under /dev
+sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+client=^/[A-Za-z0-9._+/-]+$
+device=^/dev/[A-Za-z0-9._+/-]+$

@@ -1,0 +1,30 @@
+run=20261105T223456Z
+image=<repo>/build/mvp/variants/gcc/no-grant-check/be-mvp-boot.img
+image_sha256=6b9c4c54217b5da1d610a7ad8f5eea56b12cf2d3242aa415001725434f19cd4b
+image_check=BE_MVP_BOOT_IMAGE[gcc]: PASS <repo>/build/mvp/variants/gcc/no-grant-check/be-mvp-boot.img bytes=0x29f000 sha256=6b9c4c54217b5da1d610a7ad8f5eea56b12cf2d3242aa415001725434f19cd4b flat_sha256=581031a96e91b31bf1b00cde18859f979bd564d31ab3b590c69b448bd5c0be29 kexec_fdt=0x108400000 variant=no-grant-check dtb0=0x29d000 scenario=anchor
+toolchain=gcc
+expect=no-grant-check.json expect_sha256=b238a50bbe563a18b6a03c425229a7c169e18ad802838fde225c2828c6cc865a
+report=authority-report.json report_sha256=9a1645ab67b98260e7731184086b1c023bf8c8ad17a5edc4c2dcfd8130feffdb
+measured=Image kernel_sha256=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6 mvp-guest-g1-anchor.dtb dtb_sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025
+variant=no-grant-check
+launcher=uboot-autoboot-nvme
+loader=uboot-autoboot-nvme be_image=be-mvp-anchor-no-grant-check-gcc.img load=0x140000000 booti=0x140000000 fdt=${fdtcontroladdr}
+be_image=be-mvp-anchor-no-grant-check-gcc.img
+remote_image_sha256=6b9c4c54217b5da1d610a7ad8f5eea56b12cf2d3242aa415001725434f19cd4b
+staged_bytes=2748416 staged_md5=51df6ccb5df91c358a41a9903889a3b7
+selected_be_image=be-mvp-anchor-no-grant-check-gcc.img
+serial_source=log:<home>/src/spacemit-k3/logs/boot-8.log
+staged_sha256=yes
+boot_id_before=reset-38@2897515
+reset_utc=2026-11-05T22:34:57.879Z
+serial_range=2897515-2921359
+outcome=terminal-marker
+terminal_marker_utc=2026-11-05T22:35:16Z
+spl_banner=U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)
+uboot_banner=U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395
+board_kernel=none (boot from system reset)
+check_status=0
+BE_MVP_RESULT: PASS terminal=fail-marker
+attribution_lines=bytes_read=2748416 digest=md5:51df6ccb5df91c358a41a9903889a3b7 autoboot_lines=1
+attribution=PASS selected=yes staged_sha256=yes size_md5=yes check=yes
+banner_audit=PASS

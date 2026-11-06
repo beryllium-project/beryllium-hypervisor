@@ -1,0 +1,4 @@
+BE_MVP_COUNTS: boot_hart=7 rule_hart=7 started=7 exits_g0=164 exits_g1=167 denials_g0=1 denials_g1=2 records=146 wakes=117 overlap_ticks=0x26d4fd5 shorter_ticks=0x26d5048 alternations=83 g0=67 g1=68
+BE_MVP_COSTS: g0_denial1_service_ticks=1920 g0_ping_to_receipt_ticks=542 g0_receipt_to_pong_ticks=3112 g0_run_ticks=40718408 g0_run_ticks_per_exit=248282 g1_denial1_service_ticks=367 g1_denial2_service_ticks=45 g1_ping_to_receipt_ticks=485 g1_receipt_to_pong_ticks=81 g1_run_ticks=40737360 g1_run_ticks_per_exit=243936 hart0_idle_permille=994 hart0_idle_ticks=40517622 hart0_records=146 hart0_run_ticks=40757121 hart0_wakes=117
+BE_MVP_RESULT: PASS terminal=shutdown-requested
+BE_MVP_CAPTURE[direct te-poc]: PASS

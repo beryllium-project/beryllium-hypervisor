@@ -1,0 +1,4 @@
+BE_MVP_COUNTS: started=none denials_g0=4 denials_g1=1 mgmt_g0=0 mgmt_g1=2 g0=59 g1=59
+BE_MVP_UBOOT: load_bytes=2584576 load_digest_kind=md5 load_digest=05bb6e650930d449018aea451394778d moving_from=0x140000000 moving_to=0x108000000 moving_end=0x108277000 fdt_blob=0x2fbe8aa50 fdt_loaded=0x2fbd5d000 fdt_end=0x2fbd6f2ef fdt_in_place=false
+BE_MVP_RESULT: PASS terminal=fail-marker
+BE_MVP_CAPTURE[uboot no-grant-check]: PASS
