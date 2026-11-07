@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
 
+import path from 'node:path'
 import { defineConfig } from 'vitepress'
+import type { SiteConfig } from 'vitepress'
 
 const base = process.env.DOCS_BASE ?? './'
 const outDir = process.env.DOCS_OUT_DIR ?? '../docs/html'
+// A relative link to a Markdown page: its path, then any ?query or #fragment.
+const relativeMarkdownLink =
+  /^(?![a-z][a-z0-9+.-]*:)([^/?#][^?#]*\.md)([?#].*)?$/i
 
 export default defineConfig({
   lang: 'en-US',
@@ -41,6 +46,51 @@ export default defineConfig({
     theme: {
       light: 'github-light',
       dark: 'github-dark'
+    },
+    // VitePress generates a rewritten page at its new path (README.md as
+    // index.md) but leaves the relative links that name it: a page's
+    // [...](README.md) would render as ./README.html, which the site never
+    // has. Each relative link whose target page is rewritten points instead
+    // at the page generated for it, as an explicit .html file. The map is
+    // the one VitePress resolved from `rewrites` above, in the site config
+    // it sets before rendering any page (VITEPRESS_CONFIG, which its own
+    // content loader reads). The Markdown keeps README.md, which works
+    // where the Markdown is read as it is.
+    config(md) {
+      md.core.ruler.push('rewritten_link_targets', (state) => {
+        const site = (globalThis as { VITEPRESS_CONFIG?: SiteConfig })
+          .VITEPRESS_CONFIG
+        const page = state.env?.realPath ?? state.env?.path
+        if (!site || typeof page !== 'string') {
+          return
+        }
+        const source = path
+          .relative(site.srcDir, page)
+          .split(path.sep)
+          .join('/')
+        const generated = site.rewrites.map[source] ?? source
+        const tokens = state.tokens.flatMap((block) => block.children ?? [])
+        for (const token of tokens) {
+          const link =
+            token.type === 'link_open'
+              ? relativeMarkdownLink.exec(token.attrGet('href') ?? '')
+              : null
+          const target =
+            link &&
+            site.rewrites.map[
+              path.posix.join(path.posix.dirname(source), decodeURI(link[1]))
+            ]
+          if (target) {
+            const href = path.posix
+              .relative(path.posix.dirname(generated), target)
+              .replace(/\.md$/, '.html')
+            token.attrSet(
+              'href',
+              `${href.startsWith('../') ? '' : './'}${href}${link[2] ?? ''}`
+            )
+          }
+        }
+      })
     }
   },
   themeConfig: {
