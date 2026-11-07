@@ -330,9 +330,9 @@
         },
         {
           "path": "mvp/tests/uboot-rehearsal.sh",
-          "sha256": "081f17a5c76e5704a04d206a0d5242d52b1f618c2e47335eff3877f018cc3454",
+          "sha256": "de26160a21a7d59367dd6d923b00026ae133786de9667fe6016d966bc2e994e9",
           "evidence_source_commit": "7440bec6b706495a72a0422ee60524546f208c71",
-          "note": "The U-Boot rehearsal in QEMU (M5-3): the session's be_ lines and bootcmd typed at B3's pinned upstream U-Boot v2022.10 with virtio for nvme, crc32 for md5sum (upstream has no md5sum), and a stand-in be_orig_bootcmd, then a typed boot, each scenario image of both toolchains judged in uboot mode; the missing-image fall-through."
+          "note": "The U-Boot rehearsal in QEMU (M5-3): the session's be_ lines and bootcmd typed at B3's pinned upstream U-Boot v2022.10 with virtio for nvme, crc32 for md5sum (upstream has no md5sum), and a stand-in be_orig_bootcmd, then a typed boot, each scenario image of both toolchains judged in uboot mode; the missing-image fall-through. In the clean repository, F1 (the security review's S-01) revised this file: OpenSBI's fw_dynamic.bin is refused unless its SHA-256 is the lock's MVP_PIN_OPENSBI_BIN_SHA256, before the cases and before each attempt; this SHA-256 is that revision's, which no internal commit holds."
         },
         {
           "path": "mvp/results/20261030-com260-rc2/MANIFEST.sha256",
@@ -633,9 +633,9 @@
       "evidence": [
         {
           "path": "mvp/tools/lock/tool-lock.conf",
-          "sha256": "2f1b732dcf2415c7a4b25c5008ab06bae4c9af0fc3804028772f16a693e47d70",
+          "sha256": "4a66647fd469697661b86904f8caf138e2db0e42bf840c92c29a504ba167bf20",
           "evidence_source_commit": "0e733e7630e6b5b2ca42ea9bde334f672f6b4b03",
-          "note": "The lock as M5 left it (0e733e76): MVP_TOOL_ROLES 32, MVP_TOOL_HOST_ONLY_ROLES podman ssh scp mke2fs sfdisk tmux, and MVP_PIN_UBOOT_TAG, _COMMIT, _DEFCONFIG, _BUILD_SCRIPT, and _BIN_SHA256 for the rehearsal's U-Boot v2022.10; the closure unchanged (MVP_CLOSURE_SHA256 2875ddd6..., 259 packages)."
+          "note": "The lock as M5 left it (0e733e76): MVP_TOOL_ROLES 32, MVP_TOOL_HOST_ONLY_ROLES podman ssh scp mke2fs sfdisk tmux, and MVP_PIN_UBOOT_TAG, _COMMIT, _DEFCONFIG, _BUILD_SCRIPT, and _BIN_SHA256 for the rehearsal's U-Boot v2022.10; the closure unchanged (MVP_CLOSURE_SHA256 2875ddd6..., 259 packages). In the clean repository, F1 (the security review's S-01) adds MVP_PIN_OPENSBI_BIN_SHA256, the SHA-256 of the OpenSBI firmware QEMU runs, beside MVP_PIN_OPENSBI_COMMIT; this SHA-256 is that revision's, which no internal commit holds."
         },
         {
           "path": "planning/mvp-m2-result-review-summary.md",
@@ -1206,9 +1206,9 @@
         },
         {
           "path": "mvp/tests/session-typist.py",
-          "sha256": "b1d4f64370961753efd7c58cabeb02e682bc5b6cc9c6d6469245a02eaab6a3cc",
+          "sha256": "734f64845a08879ac274a6ae109b725ae99df89dc2f21d6c55c882e027538685",
           "evidence_source_commit": "e357711e0598a0273f89547b0a35813f9d531df9",
-          "note": "The QEMU typist: a stdio chardev whose own log is the capture, one key per 10 ms, a per-run nonce from os.urandom, lockstep on the BE_MVP:16 and echo lines, every key recorded with its step in typed.txt."
+          "note": "The QEMU typist: a stdio chardev whose own log is the capture, one key per 10 ms, a per-run nonce from os.urandom, lockstep on the BE_MVP:16 and echo lines, every key recorded with its step in typed.txt. In the clean repository, F1 (the security review's S-01) revised this file: --firmware is refused before each QEMU start unless its SHA-256 is the lock's MVP_PIN_OPENSBI_BIN_SHA256; this SHA-256 is that revision's, which no internal commit holds."
         },
         {
           "path": "mvp/tests/fixtures/qemu-te-poc-shell-gcc-m7.log",

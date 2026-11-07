@@ -76,6 +76,12 @@
 #
 #   run-qemu.sh BUILD_DIR OPENSBI_FW OUT_DIR [RUN ...]
 #
+# OPENSBI_FW is M-mode firmware that sees all of a run's memory and its
+# console, so its SHA-256 must be the tool lock's
+# MVP_PIN_OPENSBI_BIN_SHA256 (the release's security review, S-01): checked
+# before anything else, and again before every QEMU run that boots it; a
+# firmware with other bytes is refused (exit 2) and no QEMU run boots it.
+#
 # RUN names a scenario (TOOLCHAIN/NAME), a variant (variant/TOOLCHAIN/NAME),
 # a probe image (probe/TOOLCHAIN/NAME), a te-poc run (te-poc/TOOLCHAIN/
 # MACHINE), a te-poc variant (te-poc/TOOLCHAIN/VARIANT), an anchor run
@@ -97,6 +103,7 @@ shift 3
 selected=("$@")
 here=$(cd -- "$(dirname -- "$0")" && pwd)
 checker=$here/check-capture.py
+lock=$(dirname -- "$here")/tools/lock/tool-lock.conf
 expect_dir=$build/gen/expect
 te_poc_dir=$build/gen/te-poc
 anchor_dir=$build/gen/anchor
@@ -144,6 +151,20 @@ te_poc_variants=(reader-write no-inject)
 anchor_variants=(secret-shared response-writable wrong-measurement
 	no-grant-check self-report-flip)
 [ -r "$firmware" ] || { printf 'OPENSBI_FW %s is not readable\n' "$firmware" >&2; exit 2; }
+firmware_pin=$(sed -n 's/^MVP_PIN_OPENSBI_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' -- "$lock")
+[ -n "$firmware_pin" ] ||
+	{ printf '%s pins no OpenSBI binary (MVP_PIN_OPENSBI_BIN_SHA256)\n' "$lock" >&2; exit 2; }
+# The firmware's bytes, the lock's pin, or the suite ends here (exit 2).
+pinned_firmware() {
+	local digest
+
+	digest=$(sha256sum -- "$firmware" | cut -d' ' -f1)
+	[ "$digest" = "$firmware_pin" ] && return 0
+	printf "OPENSBI_FW %s has SHA-256 %s, not the lock's MVP_PIN_OPENSBI_BIN_SHA256 %s: refused\n" \
+		"$firmware" "$digest" "$firmware_pin" >&2
+	exit 2
+}
+pinned_firmware
 case $max_attempts in
 '' | *[!0-9]* | 0) printf 'BE_MVP_QEMU_ATTEMPTS must be a positive integer\n' >&2; exit 2 ;;
 esac
@@ -233,6 +254,7 @@ boot() {
 	local console=$stem.console.log
 	local qemu_pid deadline terminal_at status
 
+	[ "$bios" != "$firmware" ] || pinned_firmware
 	: >"$console"
 	"$qemu" -machine "$machine" -cpu "$cpu" -smp 8 -m 8G -bios "$bios" \
 		-kernel "$elf" -display none -serial "file:$console" \

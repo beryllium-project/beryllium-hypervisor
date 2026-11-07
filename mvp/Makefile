@@ -861,7 +861,7 @@ variants: image $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_VARIANTS) \
 # board, about 7 minutes at QEMU's timebase). The images' paths and a
 # QEMU command line for each are printed.
 .PHONY: live
-live: variants $(OPENSBI_FW)
+live: variants opensbi
 	@$(foreach t,$(VARIANT_TOOLCHAINS),$(foreach s,$(MVP_SHELL_SCENARIOS),echo \
 		"BE_MVP_LIVE: $(t)/$(s) image=$(call shell_dir,$(t),$(s))/be-mvp-boot.img qemu: $(QEMU) -machine virt,aia=aplic-imsic,aia-guests=7 -cpu rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true -smp 8 -m 8G -bios $(OPENSBI_FW) -kernel $(call shell_dir,$(t),$(s))/be-mvp-boot.elf -nographic -monitor none -no-reboot";))
 	@echo "BE_MVP_LIVE: a demonstration, never evidence; run budget 0x100000000 ticks, not Q12's 2^35 (a monitor switch M7-4 does not make)"
@@ -1053,7 +1053,14 @@ budgets: image variants probes \
 $(B2_OPENSBI_FW):
 	$(MAKE) -C $(B2_DIR) opensbi
 
+# OPENSBI_FW against the lock's pin (guest.mk's MVP_OPENSBI_PIN_CHECK; the
+# release's security review, S-01): check runs it beside the lock, and
+# every target that boots the firmware, or prints it for a human, depends
+# on it or runs the same check; tests/run-qemu.sh, tests/session-typist.py,
+# tests/uboot-rehearsal.sh, and tools/run-reference-boot.sh check again
+# before each QEMU run.
 opensbi: $(OPENSBI_FW)
+	$(MVP_OPENSBI_PIN_CHECK)
 
 # -------------------------------------------------------------- the lock
 # Every role of the tool lock, the pins, and the evaluator's closure,
@@ -1191,9 +1198,9 @@ claim-ledger-check: $(if $(filter check,$(MAKECMDGOALS)),$(TOOLS_EVIDENCE))
 		$(RECORDS)/claim-ledger/self-test.txt \
 		$(RECORDS)/claim-ledger/check.txt
 
-check: tool-lock-check lint policy-negatives port-check guest-pin-check \
-	host-test target-check reference-boot image-check variants probes \
-	reference-check $(TOOLS_CHECKS) budgets $(TOOLS_EVIDENCE) \
+check: tool-lock-check opensbi lint policy-negatives port-check \
+	guest-pin-check host-test target-check reference-boot image-check \
+	variants probes reference-check $(TOOLS_CHECKS) budgets $(TOOLS_EVIDENCE) \
 	claim-ledger-check
 	@echo "BE_MVP_CHECK: PASS"
 

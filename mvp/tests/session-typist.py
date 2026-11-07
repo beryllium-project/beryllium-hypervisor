@@ -54,7 +54,10 @@ ROOT/sessions.txt, each run's line and last BE_MVP_SESSIONS: PASS|FAIL
 sessions=N attempts=A refused=R. Exit 0 PASS, 1 FAIL, 2 usage.
 
 Trust: a test driver; it writes only under DIR or ROOT, types only the
-expectation's bytes, and reads no path from a record.
+expectation's bytes, and reads no path from a record. FW is M-mode
+firmware that sees the whole run, so before every QEMU launch its SHA-256
+must be the tool lock's MVP_PIN_OPENSBI_BIN_SHA256, or the typist exits
+refusing it and no QEMU starts (the release's security review, S-01).
 """
 
 import argparse
@@ -73,6 +76,9 @@ import time
 
 HERE = pathlib.Path(__file__).resolve().parent
 CHECKER = HERE / "check-capture.py"
+# The tool lock, whose MVP_PIN_OPENSBI_BIN_SHA256 FW must have.
+LOCK = HERE.parent / "tools" / "lock" / "tool-lock.conf"
+FIRMWARE_PIN = "MVP_PIN_OPENSBI_BIN_SHA256"
 # tests/run-qemu.sh's k3-like machine and CPU, and its terminal markers.
 MACHINE = "virt,aia=aplic-imsic,aia-guests=7"
 CPU = ("rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,"
@@ -106,6 +112,23 @@ def sha256(data):
 def utc():
     now = datetime.datetime.now(datetime.timezone.utc)
     return f"{now:%Y-%m-%dT%H:%M:%S}.{now.microsecond // 1000:03d}Z"
+
+
+def firmware_pin(lock=LOCK):
+    """The lock's MVP_PIN_OPENSBI_BIN_SHA256."""
+    for line in lock.read_text(encoding="utf-8").splitlines():
+        name, _, value = line.partition("=")
+        if name == FIRMWARE_PIN and re.fullmatch(r"[0-9a-f]{64}", value):
+            return value
+    raise SystemExit(f"{lock} pins no OpenSBI binary ({FIRMWARE_PIN})")
+
+
+def pinned_firmware(path, pin):
+    """Refuse FW at PATH unless its SHA-256 is PIN."""
+    digest = sha256(pathlib.Path(path).read_bytes())
+    if digest != pin:
+        raise SystemExit(f"--firmware {path} has SHA-256 {digest}, not the "
+                         f"lock's {FIRMWARE_PIN} {pin}: refused")
 
 
 class Lines:
@@ -273,7 +296,9 @@ def stop(process, grace=0.0):
 
 def attempt(args, expect, directory, session_sha, elf_sha):
     """One QEMU boot through the session into DIRECTORY; (QEMU's exit,
-    the error that ended it early or None, keys, seconds)."""
+    the error that ended it early or None, keys, seconds). FW first, by
+    the lock's pin, before anything of the attempt is written."""
+    pinned_firmware(args.firmware, firmware_pin())
     if directory.exists():
         shutil.rmtree(directory)
     directory.mkdir(parents=True)
@@ -522,14 +547,61 @@ def self_test():
         ok = len(rows) == 2 and all(re.fullmatch(
             r"\+[0-9]+\.[0-9]{3} [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}\."
             r"[0-9]{3}Z step=3 key=0x(?:7e|0d)", row) for row in rows)
+        firmware_cases = firmware_self_test(scratch)
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
     failed += not ok
     total += 1
     print(f"{'ok  ' if ok else 'FAIL'} typed.txt's rows")
+    for name, ok in firmware_cases:
+        failed += not ok
+        total += 1
+        print(f"{'ok  ' if ok else 'FAIL'} {name}")
     print(f"BE_MVP_SESSION_TYPIST_SELF_TEST: {'PASS' if not failed else 'FAIL'}"
           f" cases={total} failed={failed}")
     return 0 if not failed else 1
+
+
+def firmware_self_test(scratch):
+    """FW by its pin, in SCRATCH: [(case, ok)]. A firmware passes against
+    its own digest and, with one byte changed, is refused; and attempt(),
+    given that firmware and a QEMU that records any start, refuses it
+    against the lock's pin before QEMU starts or the attempt's directory
+    is made."""
+    firmware = scratch / "fw_dynamic.bin"
+    firmware.write_bytes(bytes(range(256)) * 64)
+    digest = sha256(firmware.read_bytes())
+
+    def refused(action):
+        try:
+            action()
+        except SystemExit as error:
+            return "refused" in str(error)
+        except Exception:  # pylint: disable=broad-except
+            return False
+        return False
+
+    cases = [("a firmware against its own digest", not refused(
+        lambda: pinned_firmware(firmware, digest)))]
+    changed = bytearray(firmware.read_bytes())
+    changed[len(changed) // 2] ^= 0x01
+    firmware.write_bytes(bytes(changed))
+    cases.append(("the firmware with one byte changed, refused", refused(
+        lambda: pinned_firmware(firmware, digest))))
+    started = scratch / "qemu-started"
+    qemu = scratch / "qemu"
+    qemu.write_text(f"#!/bin/sh\n: >{shlex.quote(str(started))}\n",
+                    encoding="ascii")
+    qemu.chmod(0o755)
+    directory = scratch / "attempt-1"
+    args = argparse.Namespace(firmware=str(firmware), qemu=str(qemu),
+                              elf=str(firmware), expect=str(firmware),
+                              run_timeout=1.0)
+    cases.append(("a launch with that firmware, refused before QEMU starts",
+                  refused(lambda: attempt(args, {}, directory, "0" * 64,
+                                          "0" * 64)) and
+                  not started.exists() and not directory.exists()))
+    return cases
 
 
 def main(argv):

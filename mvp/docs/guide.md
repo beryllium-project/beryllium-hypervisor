@@ -65,11 +65,12 @@ absolute command, the resolved executable, the version arguments and first
 version line, the executable's SHA-256, and the owning package's exact
 NEVRA. It pins the Linux and OpenSBI sources, Linux `v7.2`
 (`MVP_PIN_LINUX_COMMIT`, `MVP_PIN_LINUX_TAG_OBJECT`) and OpenSBI `v1.6`
-(`MVP_PIN_OPENSBI_COMMIT`); the U-Boot rehearsal's U-Boot, v2022.10, by its
-commit, defconfig, and build script (`MVP_PIN_UBOOT_*`) and its binary's
-SHA-256 (`MVP_PIN_UBOOT_BIN_SHA256`); and it binds the evaluator's package
-closure, `mvp/tools/lock/closure.txt` (each package by NEVRA, with its RPM's
-SHA-256), through `MVP_CLOSURE_SHA256`.
+(`MVP_PIN_OPENSBI_COMMIT`), and the SHA-256 of the OpenSBI firmware QEMU
+runs (`MVP_PIN_OPENSBI_BIN_SHA256`); the U-Boot rehearsal's U-Boot,
+v2022.10, by its commit, defconfig, and build script (`MVP_PIN_UBOOT_*`)
+and its binary's SHA-256 (`MVP_PIN_UBOOT_BIN_SHA256`); and it binds the
+evaluator's package closure, `mvp/tools/lock/closure.txt` (each package by
+NEVRA, with its RPM's SHA-256), through `MVP_CLOSURE_SHA256`.
 
 ```sh
 ./mvp/mvp tool-lock check
@@ -124,7 +125,12 @@ firmware are built from pinned sources on each host and never committed:
   downloads them when that directory lacks them.
 - **OpenSBI `v1.6`.** QEMU's firmware is `fw_dynamic.bin` built from the
   lock's OpenSBI commit: B1's build under `build/k3-b1/` when present,
-  otherwise the one B2's target builds.
+  otherwise the one B2's target builds. It is M-mode code that sees all of
+  a run's memory and its console, so its SHA-256 must be the lock's
+  `MVP_PIN_OPENSBI_BIN_SHA256`: `./mvp/mvp check` checks it beside the
+  lock, and each QEMU run, typed session, reference boot, and U-Boot
+  rehearsal attempt, and the evaluator, refuse other bytes before they boot
+  them.
 - **U-Boot v2022.10**, for the U-Boot rehearsal only: B3's pinned upstream
   build, `qemu-riscv64_smode_defconfig`, at
   `build/k3-b3/u-boot-build/u-boot.bin`, with the SHA-256 the lock pins
@@ -1562,8 +1568,9 @@ a clean container and compares the images it builds with the host's:
    read-only at its own path, a separate writable build tree
    (`build/mvp-evaluator/build`) is mounted over `build/` so that the host's
    build products stay hidden, and the local Linux mirror and B1's OpenSBI
-   firmware are mounted read-only; the environment is as clean as the
-   wrapper's. The lock check passes inside with its host-only roles skipped.
+   firmware, refused unless its SHA-256 is the lock's pin, are mounted
+   read-only; the environment is as clean as the wrapper's. The lock check
+   passes inside with its host-only roles skipped.
 6. **The comparison.** The evaluator's `images.sha256` against the host's,
    image by image, ending `BE_MVP_IMAGE_IDENTITY: PASS` with no image
    differing.

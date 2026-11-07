@@ -13,7 +13,11 @@ be-mvp-tool-lock-v2). For each role it records, as the R3-R7 locks do
 (tests/r3/tool-lock.mjs), the absolute command, the resolved executable,
 the version arguments, the first line of the version output (stderr if
 any, else stdout), the executable's SHA-256, and the owning package's exact
-NEVRA; plus the Linux and OpenSBI source pins, the U-Boot rehearsal's
+NEVRA; plus the Linux and OpenSBI source pins, the SHA-256 of the OpenSBI
+firmware every QEMU run boots (fw_dynamic.bin, which tests/run-qemu.sh,
+tests/session-typist.py, tests/uboot-rehearsal.sh,
+tools/run-reference-boot.sh, the evaluator, and mvp/Makefile's opensbi
+target each require before it boots), the U-Boot rehearsal's
 U-Boot pins (planning/mvp-m5-plan.md, Q9: its source, the script that
 builds it, and the binary's SHA-256, which tests/uboot-rehearsal.sh
 requires), and the SHA-256 of the evaluator's package closure
@@ -22,7 +26,8 @@ its RPM file (M0-B.1).
 Trust: `check` fails closed on any drift: a role's command, resolved path,
 bytes, version line, or owning package; a compiler driver that resolves its
 cc1, collect2, as, or ld to another executable; a pin that is malformed or
-differs from the accepted B1 and B2 OpenSBI commit, or a U-Boot pin that
+differs from the accepted B1 and B2 OpenSBI commit, an OpenSBI or U-Boot
+binary digest that is not 64 hexadecimal digits, or a U-Boot pin that
 B3's build script does not build; a closure whose bytes or form differ, or
 a closure package that is not installed at its exact NEVRA. It runs every
 tool with a clean environment (PATH=/usr/bin, LC_ALL=C) and stdin from
@@ -132,6 +137,13 @@ PINS = {
     "MVP_PIN_LINUX_TAG_OBJECT": "237a1c39e8dfd3e1c6f1f023eea37a48ec04cc63",
     "MVP_PIN_OPENSBI_TAG": "v1.6",
     "MVP_PIN_OPENSBI_COMMIT": "bd613dd92113f683052acfb23d9dc8ba60029e0a",
+    # QEMU's OpenSBI firmware, fw_dynamic.bin built from that commit (B1's
+    # build): M-mode code that sees every byte and the console of a run, so
+    # each consumer refuses other bytes before it boots them (the release's
+    # security review, S-01). An external input, never committed; the
+    # digest release candidate 4's records name (opensbi=78f14d30c951).
+    "MVP_PIN_OPENSBI_BIN_SHA256":
+        "78f14d30c95181704b6163b4c114f88483cd6c2c89e642812cd3856d01c6a42b",
     # The U-Boot rehearsal's U-Boot (planning/mvp-m5-plan.md, Q9): B3's
     # pinned upstream build, an external input never committed, which its
     # script builds from these and the rehearsal requires by SHA-256.
@@ -172,9 +184,10 @@ HEADER = """\
 # development host and checked by tools/lock/tool-lock.py check. Each role:
 # its absolute command, the resolved executable, the version arguments, the
 # first version line, the executable's SHA-256, and the owning package's
-# NEVRA. The pins are the Linux and OpenSBI sources and the U-Boot
-# rehearsal's U-Boot: its source, its build script, and its binary's
-# SHA-256 (planning/mvp-m5-plan.md, Q9). MVP_CLOSURE_SHA256 binds
+# NEVRA. The pins are the Linux and OpenSBI sources, the SHA-256 of the
+# OpenSBI firmware QEMU runs (fw_dynamic.bin), and the U-Boot rehearsal's
+# U-Boot: its source, its build script, and its binary's SHA-256
+# (planning/mvp-m5-plan.md, Q9). MVP_CLOSURE_SHA256 binds
 # tools/lock/closure.txt, the evaluator's package closure. This file is
 # also a makefile fragment. Refresh only on the responsible human's
 # direction after a tool update, and review the diff.
@@ -486,11 +499,16 @@ def verify_drivers(values):
 
 
 def verify_opensbi(values, root=REPO_ROOT):
+    """The OpenSBI pins: B1's and B2's makefiles build the pinned commit.
+    The firmware's SHA-256 is its consumers' to check, as U-Boot's is the
+    rehearsal's: the build output need not exist for `check`."""
     pin = values["MVP_PIN_OPENSBI_COMMIT"]
     for makefile in OPENSBI_MAKEFILES:
         text = (root / makefile).read_text(encoding="utf-8")
         if f"OPENSBI_COMMIT := {pin}\n" not in text:
             raise Drift(f"{makefile} does not build OpenSBI {pin}")
+    if not HEX64.match(values["MVP_PIN_OPENSBI_BIN_SHA256"]):
+        raise Drift("the OpenSBI binary's SHA-256 is malformed")
 
 
 def verify_uboot(values, root=REPO_ROOT):
@@ -743,6 +761,14 @@ def self_test():
     expect("the accepted OpenSBI pin", lambda: verify_opensbi(PINS))
     expect("another OpenSBI pin", lambda: verify_opensbi(
         dict(PINS, MVP_PIN_OPENSBI_COMMIT="0" * 40)), "does not build")
+    expect("a malformed OpenSBI binary digest", lambda: verify_opensbi(
+        dict(PINS, MVP_PIN_OPENSBI_BIN_SHA256="0" * 63)), "malformed")
+    expect("another OpenSBI binary digest", lambda: load(lines.replace(
+        PINS["MVP_PIN_OPENSBI_BIN_SHA256"], "0" * 64)), "not the plan's")
+    expect("a lock without the OpenSBI binary digest", lambda: load(
+        "\n".join(line for line in lines.split("\n") if not
+                  line.startswith("MVP_PIN_OPENSBI_BIN_SHA256="))),
+        "keys differ")
     expect("the U-Boot pins", lambda: verify_uboot(PINS))
     expect("another U-Boot commit", lambda: verify_uboot(
         dict(PINS, MVP_PIN_UBOOT_COMMIT="0" * 40)), "does not build")

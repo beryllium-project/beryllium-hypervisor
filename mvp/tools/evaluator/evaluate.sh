@@ -24,7 +24,12 @@
 #          reads are B1's OpenSBI v1.6 firmware for the QEMU profile, mounted
 #          read-only, and the guest userland's release tarballs and
 #          signatures (planning/mvp-m7-plan.md, D-9), copied into the hidden
-#          tree, where the guest build checks them again. The gates run
+#          tree, where the guest build checks them again. The firmware is
+#          refused, before anything is recorded or run, unless its SHA-256
+#          is the lock's MVP_PIN_OPENSBI_BIN_SHA256 (M-mode firmware sees
+#          every QEMU run whole; the release's security review, S-01), and
+#          mvp check inside checks the mounted bytes again before each QEMU
+#          run boots them. The gates run
 #          under env -i with PATH=/usr/bin, LC_ALL=C, LANG=C,
 #          SHELL=/bin/bash, and GIT_OPTIONAL_LOCKS=0. Inside, the tool
 #          lock must pass with the same lock (mvp check runs it first), with
@@ -48,7 +53,8 @@
 # cache of the closure's RPMs (default build/mvp-evaluator/rpms);
 # MVP_LINUX_MIRROR, a local git repository holding the pinned Linux tag
 # (default build/mvp/linux-src, the host's own fetched checkout);
-# MVP_OPENSBI_FW, the OpenSBI firmware (default B1's build); and
+# MVP_OPENSBI_FW, the OpenSBI firmware (default B1's build), which must
+# have the lock's MVP_PIN_OPENSBI_BIN_SHA256; and
 # MVP_RPM_CACHE, a directory of exact RPMs the fetch tries first. MAKE_ARGS
 # go to `mvp check`, under the Make controls; an MVP_RPM_CACHE=DIR among
 # them (the wrapper's VAR=VALUE form, which reaches here as an argument and
@@ -79,6 +85,25 @@ cache=${MVP_EVALUATOR_RPMS:-$tree/build/mvp-evaluator/rpms}
 firmware=${MVP_OPENSBI_FW:-$tree/build/$firmware_build}
 host_bundle=$tree/build/mvp/evidence/check
 records=$tree/build/mvp-evaluator/record
+
+# The firmware by the lock's pin, before anything is recorded or run.
+firmware_pin=$(sed -n 's/^MVP_PIN_OPENSBI_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' "$lock")
+if [ -z "$firmware_pin" ]; then
+	printf 'BE_MVP_EVALUATE: FAIL %s pins no OpenSBI binary (MVP_PIN_OPENSBI_BIN_SHA256); nothing ran\n' \
+		"$lock" >&2
+	exit 1
+fi
+if [ ! -f "$firmware" ]; then
+	printf 'BE_MVP_EVALUATE: FAIL %s is missing (set MVP_OPENSBI_FW); nothing ran\n' \
+		"$firmware" >&2
+	exit 1
+fi
+firmware_sha256=$(sha256sum -- "$firmware" | cut -d' ' -f1)
+if [ "$firmware_sha256" != "$firmware_pin" ]; then
+	printf "BE_MVP_EVALUATE: FAIL MVP_OPENSBI_FW %s has SHA-256 %s, not the lock's MVP_PIN_OPENSBI_BIN_SHA256 %s; nothing ran\n" \
+		"$firmware" "$firmware_sha256" "$firmware_pin" >&2
+	exit 1
+fi
 record=$records/$(date -u +%Y%m%dT%H%M%SZ)
 
 # One directory per run: a second run in the same UTC second waits for the
@@ -103,7 +128,7 @@ note "record=$record"
 [ -f "$closure" ] || die "$closure is missing"
 [ -d "$mirror/.git" ] || [ -f "$mirror/HEAD" ] ||
 	die "$mirror is not a git repository (set MVP_LINUX_MIRROR)"
-[ -f "$firmware" ] || die "$firmware is missing (set MVP_OPENSBI_FW)"
+note "opensbi sha256=$firmware_sha256 (the lock's MVP_PIN_OPENSBI_BIN_SHA256)"
 case $hidden in
 "$tree"/build/*) ;;
 *) die "the hidden build tree $hidden is not under $tree/build" ;;

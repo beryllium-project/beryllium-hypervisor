@@ -78,6 +78,15 @@ CROSS_COMPILE ?= riscv64-linux-gnu-
 B1_OPENSBI_FW ?= $(REPO_ROOT)/build/k3-b1/opensbi-build/platform/generic/firmware/fw_dynamic.bin
 B2_OPENSBI_FW ?= $(REPO_ROOT)/build/k3-b2/opensbi-build/platform/generic/firmware/fw_dynamic.bin
 OPENSBI_FW ?= $(if $(wildcard $(B1_OPENSBI_FW)),$(B1_OPENSBI_FW),$(B2_OPENSBI_FW))
+# OPENSBI_FW's bytes against the tool lock's MVP_PIN_OPENSBI_BIN_SHA256:
+# M-mode firmware sees the whole of a QEMU run (the release's security
+# review, S-01), so every recipe that boots it, or prints it for a human to
+# boot, runs this first; mvp/Makefile's opensbi target is this check.
+MVP_OPENSBI_PIN_CHECK = @digest=$$(sha256sum <'$(OPENSBI_FW)' | cut -d' ' -f1) && \
+	[ "$$digest" = '$(MVP_PIN_OPENSBI_BIN_SHA256)' ] && \
+	echo "BE_MVP_OPENSBI: PASS $(OPENSBI_FW) sha256=$$digest" || \
+	{ echo "BE_MVP_OPENSBI: FAIL $(OPENSBI_FW) has SHA-256 $${digest:-none}, not the lock's MVP_PIN_OPENSBI_BIN_SHA256 $(MVP_PIN_OPENSBI_BIN_SHA256)" >&2; \
+	exit 1; }
 
 # The guest kernel source: upstream v7.2, B6's external input under BUILD,
 # never committed, at the tool lock's pins.
@@ -239,6 +248,7 @@ $(MVP_REF_STUB): $(MVP_DIR)/guest/ref-stub.S $(MVP_LAYOUT_H) \
 # guest ID.
 reference-boot: $(MVP_GUEST_IMAGE) $(MVP_REF_DTB_G0) $(MVP_REF_DTB_G1) \
 		$(MVP_REF_STUB) $(OPENSBI_FW)
+	$(MVP_OPENSBI_PIN_CHECK)
 	set -e; for guest in 0 1; do \
 		case $$guest in 0) dtb=$(MVP_REF_DTB_G0) ;; *) dtb=$(MVP_REF_DTB_G1) ;; esac; \
 		QEMU='$(QEMU)' PYTHON='$(PYTHON)' \
@@ -290,6 +300,7 @@ kernel-repro: guest
 # console typed into (tests/guest-shell-smoke.py). Not part of check.
 MVP_SHELL_SMOKE ?= $(BUILD)/guest-shell-smoke
 guest-shell-smoke: $(MVP_GUEST_IMAGE) $(OPENSBI_FW)
+	$(MVP_OPENSBI_PIN_CHECK)
 	rm -rf -- $(MVP_SHELL_SMOKE)
 	$(PYTHON) -B $(MVP_DIR)/tests/guest-shell-smoke.py --qemu $(QEMU) \
 		--firmware $(OPENSBI_FW) --kernel $(MVP_GUEST_IMAGE) \

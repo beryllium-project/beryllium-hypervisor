@@ -8,7 +8,10 @@
 # U-Boot's prompt to the MVP's SRST shutdown, on QEMU virt with
 # tests/run-qemu.sh's k3-like machine and CPU (read from that file, their
 # one source), eight harts, and 8 GiB; OpenSBI v1.6 fw_dynamic (OPENSBI_FW)
-# as -bios; B3's pinned upstream U-Boot v2022.10,
+# as -bios, which must have the lock's MVP_PIN_OPENSBI_BIN_SHA256 before
+# anything else is read and again before each attempt (M-mode firmware sees
+# every byte and the console; the release's security review, S-01); B3's
+# pinned upstream U-Boot v2022.10,
 # qemu-riscv64_smode_defconfig (Q9), as -kernel, which must have the lock's
 # MVP_PIN_UBOOT_BIN_SHA256; and a raw disk, virtio-blk, with a GPT and one
 # ext4 partition labelled beryllium that holds the case's QEMU-only image
@@ -170,6 +173,17 @@ auto | built | derive) ;;
 *) usage_error 'UBOOT_REHEARSAL_QEMU_IMAGES must be built or derive' ;;
 esac
 [ -r "$firmware" ] || usage_error "OPENSBI_FW $firmware is not readable"
+# OpenSBI, by the lock's pin, before anything boots it.
+opensbi_pin=$(sed -n 's/^MVP_PIN_OPENSBI_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' -- "$lock")
+[ -n "$opensbi_pin" ] || fail "$lock pins no OpenSBI binary (MVP_PIN_OPENSBI_BIN_SHA256)"
+pinned_firmware() {
+	local digest
+
+	digest=$(sha "$firmware")
+	[ "$digest" = "$opensbi_pin" ] ||
+		fail "OPENSBI_FW $firmware has SHA-256 $digest, not the lock's $opensbi_pin"
+}
+pinned_firmware
 # The k3-like machine and CPU, from tests/run-qemu.sh.
 machine=$(sed -n "s/^k3_machine='\([^']*\)'\$/\1/p" -- "$here/run-qemu.sh")
 cpu=$(sed -n "s/^k3_cpu='\([^']*\)'\$/\1/p" -- "$here/run-qemu.sh")
@@ -336,6 +350,7 @@ run_case() {
 	while [ "$attempt" -lt "$max_attempts" ]; do
 		attempt=$((attempt + 1))
 		adir=$dir/attempt-$attempt
+		pinned_firmware
 		"$python" -B "$driver" session --label "$label" --firmware "$firmware" \
 			--uboot "$uboot" --disk "$scratch/disk.img" --image "$qemu_image" \
 			--file "$be_image" "${kind_args[@]}" --machine "$machine" \
