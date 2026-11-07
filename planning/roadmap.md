@@ -3,6 +3,12 @@
 
 # Beryllium roadmap
 
+> **Reading note (MVP 1.0's public release).** This page is part of the
+> planning record as it stood at this repository's source commit, before
+> the repository existed; its statements of status, repositories, and
+> publication are as of the source commit (2026-11-05). The release itself is described by
+> `README.md` and `RELEASE.md` at the repository's root.
+
 **Status date:** 2026-10-22. This is the maintained project-lead placemat for
 the active development line. It records current decisions, the planned
 sequence, and gates; the linked plans, evidence, and review records remain

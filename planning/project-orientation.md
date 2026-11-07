@@ -3,6 +3,12 @@
 
 # Beryllium project orientation
 
+> **Reading note (MVP 1.0's public release).** This page is part of the
+> planning record as it stood at this repository's source commit, before
+> the repository existed; its statements of status, repositories, and
+> publication are as of its status date, 2026-10-17. The release itself is described by
+> `README.md` and `RELEASE.md` at the repository's root.
+
 **Status date:** 2026-10-17. **Re-baseline base:** B6 acceptance record
 `3acb99ab999d7296276396393b5bcafcdee9ed77`. This guide is a scan-first
 re-entry aid for a responsible human returning after time away. It reports

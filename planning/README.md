@@ -1,5 +1,11 @@
 # Planning
 
+> **Reading note (MVP 1.0's public release).** This page is part of the
+> planning record as it stood at this repository's source commit, before
+> the repository existed; its statements of status, repositories, and
+> publication are as of the source commit (2026-11-05). The release itself is described by
+> `README.md` and `RELEASE.md` at the repository's root.
+
 Returning after time away? Read the
 [project orientation guide](project-orientation.md) first, use the
 [glossary](glossary.md) for maintained terminology, and use the
