@@ -14,7 +14,13 @@
 #          host's images as they are now, and its images.sha256 must equal
 #          the evaluator's (tools/evidence.py --compare-images).
 # Trust:   podman is the lock's host-only role, checked with the rest of the
-#          host's lock first. The image builds from the cache with every
+#          host's lock first. ./mvp/mvp evaluate runs this script under
+#          env -i with only its documented settings (below), as it runs
+#          make; whoever runs it, it clears every PYTHON* variable, checks
+#          the host's tool lock before any other command, names every
+#          command by its absolute path, and runs each Python tool as
+#          /usr/bin/python3 -I -B (the release's security review, S-02).
+#          The image builds from the cache with every
 #          repository disabled, each RPM checked against the closure's
 #          SHA-256. The container has no network; the source tree is mounted
 #          read-only at its own path; the build tree it writes is a separate
@@ -25,7 +31,7 @@
 #          read-only, and the guest userland's release tarballs and
 #          signatures (planning/mvp-m7-plan.md, D-9), copied into the hidden
 #          tree, where the guest build checks them again. The firmware is
-#          refused, before anything is recorded or run, unless its SHA-256
+#          refused, before anything is recorded, unless its SHA-256
 #          is the lock's MVP_PIN_OPENSBI_BIN_SHA256 (M-mode firmware sees
 #          every QEMU run whole; the release's security review, S-01), and
 #          mvp check inside checks the mounted bytes again before each QEMU
@@ -44,7 +50,9 @@
 #          host's tool lock), fetch.txt (the fetch, each RPM's source),
 #          build.log, swap.txt (the base packages removed by name), rpms.txt
 #          (the image's rpm -qa), check.log (mvp check inside), and
-#          image-identity.txt.
+#          image-identity.txt. A run whose lock check passes and whose
+#          input (the firmware, the mirror, the hidden build tree, the
+#          closure, or podman) is refused has no record.
 #
 #   evaluate.sh [MAKE_ARGS ...]
 #
@@ -63,21 +71,53 @@
 # argument form ignored by the fetch; mvp/README.md, "Debt sweep 4").
 set -euo pipefail
 
+# The wrapper's clean environment, kept whoever runs this script (the
+# release's security review, S-02): no PYTHON* variable reaches a tool or
+# its children, every command below is named by its absolute path, and
+# PATH, LC_ALL, and LANG are the wrapper's for the programs podman runs.
+while read -r name; do
+	unset -v "$name"
+done < <(compgen -v PYTHON || true)
+export PATH=/usr/bin LC_ALL=C LANG=C
+
 for argument in "$@"; do
 	case $argument in
 	MVP_RPM_CACHE=*) export MVP_RPM_CACHE=${argument#MVP_RPM_CACHE=} ;;
 	esac
 done
 
-here=$(cd -- "$(dirname -- "$0")" && pwd)
-tools=$(dirname -- "$here")
-mvp=$(dirname -- "$tools")
-tree=$(dirname -- "$mvp")
-python=/usr/bin/python3
+case $0 in
+*/*) here=${0%/*} ;;
+*) here=. ;;
+esac
+here=$(CDPATH='' cd -- "$here" && pwd)
+tools=${here%/*}
+mvp=${tools%/*}
+tree=${mvp%/*}
+python=(/usr/bin/python3 -I -B)
 evidence=$tools/evidence.py
 lock=$tools/lock/tool-lock.conf
 closure=$tools/lock/closure.txt
-podman=$(sed -n 's/^MVP_TOOL_podman_command=//p' "$lock")
+
+# The host's tools, podman included (a host-only role), before any other
+# command runs: the lock's Python under env -i, in isolated mode.
+set +e
+lock_output=$(/usr/bin/env -i PATH=/usr/bin LC_ALL=C LANG=C HOME="${HOME:-/}" \
+	"${python[@]}" "$tools/lock/tool-lock.py" check 2>&1)
+lock_status=$?
+set -e
+
+# lock_value NAME: the lock's NAME, read without a command.
+lock_value() {
+	local name value
+
+	while IFS='=' read -r name value; do
+		[ "$name" != "$1" ] || { printf '%s\n' "$value"; return 0; }
+	done <"$lock"
+	return 1
+}
+podman=$(lock_value MVP_TOOL_podman_command || true)
+firmware_pin=$(lock_value MVP_PIN_OPENSBI_BIN_SHA256 || true)
 firmware_build=k3-b1/opensbi-build/platform/generic/firmware/fw_dynamic.bin
 hidden=${MVP_EVALUATOR_BUILD:-$tree/build/mvp-evaluator/build}
 mirror=${MVP_LINUX_MIRROR:-$tree/build/mvp/linux-src}
@@ -85,84 +125,105 @@ cache=${MVP_EVALUATOR_RPMS:-$tree/build/mvp-evaluator/rpms}
 firmware=${MVP_OPENSBI_FW:-$tree/build/$firmware_build}
 host_bundle=$tree/build/mvp/evidence/check
 records=$tree/build/mvp-evaluator/record
+record=
+early=()
 
-# The firmware by the lock's pin, before anything is recorded or run.
-firmware_pin=$(sed -n 's/^MVP_PIN_OPENSBI_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' "$lock")
-if [ -z "$firmware_pin" ]; then
-	printf 'BE_MVP_EVALUATE: FAIL %s pins no OpenSBI binary (MVP_PIN_OPENSBI_BIN_SHA256); nothing ran\n' \
-		"$lock" >&2
-	exit 1
-fi
-if [ ! -f "$firmware" ]; then
-	printf 'BE_MVP_EVALUATE: FAIL %s is missing (set MVP_OPENSBI_FW); nothing ran\n' \
-		"$firmware" >&2
-	exit 1
-fi
-firmware_sha256=$(sha256sum -- "$firmware" | cut -d' ' -f1)
-if [ "$firmware_sha256" != "$firmware_pin" ]; then
-	printf "BE_MVP_EVALUATE: FAIL MVP_OPENSBI_FW %s has SHA-256 %s, not the lock's MVP_PIN_OPENSBI_BIN_SHA256 %s; nothing ran\n" \
-		"$firmware" "$firmware_sha256" "$firmware_pin" >&2
-	exit 1
-fi
-record=$records/$(date -u +%Y%m%dT%H%M%SZ)
-
-# One directory per run: a second run in the same UTC second waits for the
-# next one rather than sharing or replacing a record.
-while ! mkdir -- "$record" 2>/dev/null; do
-	[ -d "$records" ] || mkdir -p -- "$records"
-	[ -e "$record" ] && sleep 1
-	record=$records/$(date -u +%Y%m%dT%H%M%SZ)
-done
-ln -sfn -- "$(basename -- "$record")" "$records/latest"
-: >"$record/evaluate.txt"
+# note TEXT: a line of the output and of the run's record, evaluate.txt;
+# kept for the record until it exists.
 note() {
-	printf 'BE_MVP_EVALUATE: %s\n' "$*" | tee -a -- "$record/evaluate.txt"
+	printf 'BE_MVP_EVALUATE: %s\n' "$*"
+	if [ -n "$record" ]; then
+		printf 'BE_MVP_EVALUATE: %s\n' "$*" >>"$record/evaluate.txt"
+	else
+		early+=("BE_MVP_EVALUATE: $*")
+	fi
 }
 die() {
 	note "FAIL $*" >&2
 	exit 1
 }
+# refuse TEXT: an input refused before the run has a record.
+refuse() {
+	printf 'BE_MVP_EVALUATE: FAIL %s; nothing was recorded\n' "$*" >&2
+	exit 1
+}
+# One directory per run: a second run in the same UTC second waits for the
+# next one rather than sharing or replacing a record.
+start_record() {
+	local line
 
-note "record=$record"
-[ -x "${podman:-/nonexistent}" ] || die "the lock's podman ($podman) is missing"
-[ -f "$closure" ] || die "$closure is missing"
+	record=$records/$(/usr/bin/date -u +%Y%m%dT%H%M%SZ)
+	while ! /usr/bin/mkdir -- "$record" 2>/dev/null; do
+		[ -d "$records" ] || /usr/bin/mkdir -p -- "$records"
+		[ -e "$record" ] && /usr/bin/sleep 1
+		record=$records/$(/usr/bin/date -u +%Y%m%dT%H%M%SZ)
+	done
+	/usr/bin/ln -sfn -- "${record##*/}" "$records/latest"
+	printf '%s\n' "$lock_output" >"$record/lock.txt"
+	: >"$record/evaluate.txt"
+	for line in "${early[@]}"; do
+		printf '%s\n' "$line" >>"$record/evaluate.txt"
+	done
+	note "record=$record"
+}
+
+if [ "$lock_status" != 0 ]; then
+	start_record
+	printf '%s\n' "$lock_output" >&2
+	die "the host's tool lock does not pass ($record/lock.txt)"
+fi
+lock_line=
+while read -r line; do
+	case $line in
+	'BE_MVP_LOCK: '*) lock_line=${line#BE_MVP_LOCK: } ;;
+	esac
+done <<<"$lock_output"
+note "host $lock_line"
+
+# The inputs, each refused before the run is recorded: the firmware by the
+# lock's pin, first (M-mode firmware sees every QEMU run whole; the
+# release's security review, S-01); the Linux mirror; the hidden build
+# tree; the closure; the lock's podman.
+[[ $firmware_pin =~ ^[0-9a-f]{64}$ ]] ||
+	refuse "$lock pins no OpenSBI binary (MVP_PIN_OPENSBI_BIN_SHA256)"
+[ -f "$firmware" ] || refuse "$firmware is missing (set MVP_OPENSBI_FW)"
+firmware_sha256=$(/usr/bin/sha256sum -- "$firmware") ||
+	refuse "cannot read $firmware"
+firmware_sha256=${firmware_sha256%% *}
+[ "$firmware_sha256" = "$firmware_pin" ] ||
+	refuse "MVP_OPENSBI_FW $firmware has SHA-256 $firmware_sha256, not the lock's MVP_PIN_OPENSBI_BIN_SHA256 $firmware_pin"
 [ -d "$mirror/.git" ] || [ -f "$mirror/HEAD" ] ||
-	die "$mirror is not a git repository (set MVP_LINUX_MIRROR)"
-note "opensbi sha256=$firmware_sha256 (the lock's MVP_PIN_OPENSBI_BIN_SHA256)"
+	refuse "$mirror is not a git repository (set MVP_LINUX_MIRROR)"
 case $hidden in
 "$tree"/build/*) ;;
-*) die "the hidden build tree $hidden is not under $tree/build" ;;
+*) refuse "the hidden build tree $hidden is not under $tree/build" ;;
 esac
-
-# The host's tools, podman included (a host-only role), before any is run.
-/usr/bin/env -i PATH=/usr/bin LC_ALL=C LANG=C HOME="${HOME:-/}" \
-	"$python" -B "$tools/lock/tool-lock.py" check >"$record/lock.txt" 2>&1 || {
-	cat -- "$record/lock.txt" >&2
-	die "the host's tool lock does not pass ($record/lock.txt)"
-}
-note "host $(sed -n 's/^BE_MVP_LOCK: //p' "$record/lock.txt")"
+[ -f "$closure" ] || refuse "$closure is missing"
+[ -x "${podman:-/nonexistent}" ] || refuse "the lock's podman (${podman:-none}) is missing"
+start_record
+note "opensbi sha256=$firmware_sha256 (the lock's MVP_PIN_OPENSBI_BIN_SHA256)"
 
 # The host side first: its last check's bundle, with its images as now.
-"$python" -B "$evidence" --verify "$host_bundle" >"$record/host-bundle.txt" ||
+"${python[@]}" "$evidence" --verify "$host_bundle" >"$record/host-bundle.txt" ||
 	die "the host bundle $host_bundle does not verify; run ./mvp/mvp check"
-"$python" -B "$evidence" --images "$tree/build/mvp" >"$record/host-images.sha256" ||
+"${python[@]}" "$evidence" --images "$tree/build/mvp" >"$record/host-images.sha256" ||
 	die "cannot list the host's images"
-cmp -s -- "$record/host-images.sha256" "$host_bundle/images.sha256" ||
+/usr/bin/cmp -s -- "$record/host-images.sha256" "$host_bundle/images.sha256" ||
 	die "the host's images changed since its last check; run ./mvp/mvp check"
-note "host source=$(sed -n 's/^source_commit=//p' "$host_bundle/bundle.txt") $(sed -n 's/^source_tree=/tree=/p' "$host_bundle/bundle.txt") images=$(wc -l <"$record/host-images.sha256")"
+note "host source=$(/usr/bin/sed -n 's/^source_commit=//p' "$host_bundle/bundle.txt") $(/usr/bin/sed -n 's/^source_tree=/tree=/p' "$host_bundle/bundle.txt") images=$(/usr/bin/wc -l <"$record/host-images.sha256")"
 
 # The closure's RPMs, each verified by its SHA-256 (Plan revision M0-B.2).
-"$python" -B "$here/fetch-closure.py" --cache "$cache" >"$record/fetch.txt" 2>&1 || {
-	tail -n 5 -- "$record/fetch.txt" >&2
+"${python[@]}" "$here/fetch-closure.py" --cache "$cache" >"$record/fetch.txt" 2>&1 || {
+	/usr/bin/tail -n 5 -- "$record/fetch.txt" >&2
 	die "cannot fetch the closure into $cache ($record/fetch.txt)"
 }
-note "fetch $(tail -n 1 -- "$record/fetch.txt" | sed 's/^BE_MVP_FETCH: //')"
+note "fetch $(/usr/bin/tail -n 1 -- "$record/fetch.txt" | /usr/bin/sed 's/^BE_MVP_FETCH: //')"
 
-digest=$(sha256sum -- "$closure" | cut -d' ' -f1)
-recipe=$(sha256sum -- "$here/Containerfile" | cut -d' ' -f1)
+digest=$(/usr/bin/sha256sum -- "$closure" | /usr/bin/cut -d' ' -f1)
+recipe=$(/usr/bin/sha256sum -- "$here/Containerfile" | /usr/bin/cut -d' ' -f1)
 tag=localhost/beryllium-mvp-evaluator:${digest:0:12}-${recipe:0:12}
-base=$(sed -n 's/^FROM //p' "$here/Containerfile")
-note "image=$tag base=$base closure_sha256=$digest containerfile_sha256=$recipe closure_packages=$(grep -vc '^#' "$closure")"
+base=$(/usr/bin/sed -n 's/^FROM //p' "$here/Containerfile")
+note "image=$tag base=$base closure_sha256=$digest containerfile_sha256=$recipe closure_packages=$(/usr/bin/grep -vc '^#' "$closure")"
 if ! "$podman" image exists "$tag"; then
 	set +e
 	"$podman" build --pull=missing --security-opt label=disable \
@@ -173,8 +234,8 @@ if ! "$podman" image exists "$tag"; then
 	status=$?
 	set -e
 	if [ "$status" != 0 ]; then
-		grep -E '^( ?Problem|No match for argument|  - |Error)' \
-			"$record/build.log" | tee -a -- "$record/evaluate.txt" >&2 || true
+		/usr/bin/grep -E '^( ?Problem|No match for argument|  - |Error)' \
+			"$record/build.log" | /usr/bin/tee -a -- "$record/evaluate.txt" >&2 || true
 		die "cannot build $tag (podman build exited $status; $record/build.log)"
 	fi
 fi
@@ -183,33 +244,32 @@ for label in closure-sha256:"$digest" containerfile-sha256:"$recipe"; do
 		"{{index .Labels \"be.mvp.${label%%:*}\"}}" "$tag")" = "${label#*:}" ] ||
 		die "$tag does not carry the ${label%%:*} label ${label#*:}"
 done
-"$podman" run --rm --network=none "$tag" cat /etc/mvp-evaluator-rpms.txt \
+"$podman" run --rm --network=none "$tag" /usr/bin/cat /etc/mvp-evaluator-rpms.txt \
 	>"$record/rpms.txt" || die "cannot read the image's package list"
-"$podman" run --rm --network=none "$tag" cat /etc/mvp-evaluator-swap.txt \
+"$podman" run --rm --network=none "$tag" /usr/bin/cat /etc/mvp-evaluator-swap.txt \
 	>"$record/swap.txt" || die "cannot read the image's removed packages"
-note "image_id=$("$podman" image inspect --format '{{.Id}}' "$tag") rpms=$(wc -l <"$record/rpms.txt") rpms_sha256=$(sha256sum -- "$record/rpms.txt" | cut -d' ' -f1)"
-note "swap $(paste -sd' ' -- "$record/swap.txt")"
+note "image_id=$("$podman" image inspect --format '{{.Id}}' "$tag") rpms=$(/usr/bin/wc -l <"$record/rpms.txt") rpms_sha256=$(/usr/bin/sha256sum -- "$record/rpms.txt" | /usr/bin/cut -d' ' -f1)"
+note "swap $(/usr/bin/paste -sd' ' -- "$record/swap.txt")"
 
 # The firmware's mount point inside the hidden tree, and git's home.
-mkdir -p -- "$(dirname -- "$hidden/$firmware_build")" \
-	"$hidden/mvp/evaluator-home"
+/usr/bin/mkdir -p -- "$hidden/${firmware_build%/*}" "$hidden/mvp/evaluator-home"
 [ -f "$hidden/$firmware_build" ] || : >"$hidden/$firmware_build"
 # The guest userland's release tarballs and signatures (planning/
 # mvp-m7-plan.md, D-9), which the evaluation, having no network, cannot
 # fetch: the host's, which its own guest build fetched and verified, copied
 # into the hidden tree, where tools/build-guest.sh checks each again by its
 # pinned SHA-256 and signature.
-"$python" -B "$tools/guest-pins.py" --sources --pins "$mvp/guest/pins.txt" \
+"${python[@]}" "$tools/guest-pins.py" --sources --pins "$mvp/guest/pins.txt" \
 	>"$record/sources.txt" || die "guest/pins.txt's source lines are malformed"
-mkdir -p -- "$hidden/mvp/guest/dist"
+/usr/bin/mkdir -p -- "$hidden/mvp/guest/dist"
 while read -r _ _ _ _ _ _ _ _ _ _ tarball signature; do
 	for file in "$tarball" "$signature"; do
 		[ -f "$tree/build/mvp/guest/dist/$file" ] ||
 			die "build/mvp/guest/dist/$file is missing; run ./mvp/mvp check"
-		cp -- "$tree/build/mvp/guest/dist/$file" "$hidden/mvp/guest/dist/$file"
+		/usr/bin/cp -- "$tree/build/mvp/guest/dist/$file" "$hidden/mvp/guest/dist/$file"
 	done
 done <"$record/sources.txt"
-note "userland $(cut -d' ' -f1,2,11 -- "$record/sources.txt" | paste -sd' ')"
+note "userland $(/usr/bin/cut -d' ' -f1,2,11 -- "$record/sources.txt" | /usr/bin/paste -sd' ')"
 set +e
 "$podman" run --rm --init --network=none --security-opt label=disable \
 	-v "$tree:$tree:ro" \
@@ -220,18 +280,18 @@ set +e
 	/usr/bin/env -i PATH=/usr/bin LC_ALL=C LANG=C SHELL=/bin/bash \
 	GIT_OPTIONAL_LOCKS=0 HOME="$tree/build/mvp/evaluator-home" \
 	LINUX_GIT=/mnt/linux-mirror \
-	/usr/bin/bash "$mvp/mvp" check "$@" 2>&1 | tee -- "$record/check.log"
+	/usr/bin/bash "$mvp/mvp" check "$@" 2>&1 | /usr/bin/tee -- "$record/check.log"
 status=${PIPESTATUS[0]}
 set -e
-grep -E '^BE_MVP_(LOCK|CHECK|QEMU|EVIDENCE|TOOLS_CHECK):' "$record/check.log" \
+/usr/bin/grep -E '^BE_MVP_(LOCK|CHECK|QEMU|EVIDENCE|TOOLS_CHECK):' "$record/check.log" \
 	>>"$record/evaluate.txt" || true
 [ "$status" = 0 ] || die "mvp check failed in $tag (exit $status)"
 
 # Every image the evaluator built against the host's, byte for byte.
-if ! "$python" -B "$evidence" --compare-images "$host_bundle/images.sha256" \
+if ! "${python[@]}" "$evidence" --compare-images "$host_bundle/images.sha256" \
 	"$hidden/mvp/evidence/check/images.sha256" >"$record/image-identity.txt"; then
-	grep -v '^same ' "$record/image-identity.txt" >&2 || true
+	/usr/bin/grep -v '^same ' "$record/image-identity.txt" >&2 || true
 	die "the evaluator's images differ from the host's ($record/image-identity.txt)"
 fi
-note "$(tail -n 1 -- "$record/image-identity.txt")"
+note "$(/usr/bin/tail -n 1 -- "$record/image-identity.txt")"
 note "PASS image=$tag"

@@ -10,6 +10,10 @@
 #          SHELL=/bin/bash, HOME, and only the caller variables the Make
 #          controls admit (tools/make-control.py checks them again, and
 #          every VAR=VALUE argument, while the Makefile is parsed).
+#          `evaluate` runs tools/evaluator/evaluate.sh with /usr/bin/bash
+#          in the same clean environment, with its own documented
+#          settings beside the caller variables, and under the same
+#          argument rule (the release's security review, S-02).
 # Scope:   the MVP line. Operations whose targets arrive with a later work
 #          package say so and exit 3; nothing here writes outside build/ but
 #          `tool-lock refresh`, which rewrites the lock on the responsible
@@ -71,9 +75,9 @@
 # is refused (exit 2) before make runs, so that no stray word becomes a
 # make goal (mvp/README.md, open item 91): `k3-env install`, for one,
 # takes no file name, its target installing the plan's first image itself.
-# tool-lock and claim-ledger take one word each, rc-record its tool's
-# arguments, and evaluate gives its arguments to mvp check in the
-# evaluator, where the same rule holds.
+# tool-lock and claim-ledger take one word each, and rc-record its tool's
+# arguments. evaluate takes the arguments check takes, under the same rule,
+# and gives them to mvp check in the evaluator, where the rule holds again.
 #
 # Caller variables, as VAR=VALUE arguments or in the environment: TOOLCHAIN,
 # LINUX_GIT, MVP_RPM_CACHE, MVP_SRC_CACHE (a directory of the M8 verifier's
@@ -82,8 +86,12 @@
 # confirmation of the recorded bootcmd, at the install), K3_ENV_ACCEPT_V
 # (the human's acceptance of the names in V, at the records),
 # K3_RECORD_TITLE (board-evidence's title; default MVP COM260 campaign),
-# and JOBS. The k3-* commands also pass the board tools' own settings from
-# the environment (K3_SSH, K3_SSH_OPTIONS, K3_SUDO, K3_WAIT_SECONDS,
+# and JOBS. evaluate also passes the evaluator's own settings from the
+# environment (MVP_EVALUATOR_BUILD, MVP_EVALUATOR_RPMS, MVP_LINUX_MIRROR,
+# and MVP_OPENSBI_FW; tools/evaluator/evaluate.sh), never as arguments, and
+# no other variable. The k3-* commands also pass the board tools' own
+# settings from the environment (K3_SSH, K3_SSH_OPTIONS, K3_SUDO,
+# K3_WAIT_SECONDS,
 # K3_TAIL_SECONDS, K3_ENV_STORE, K3_PARTITION_UUID, K3_DOWN_SECONDS, K3_FEDORA_SECONDS,
 # K3_POLL_SECONDS; tools/k3-run.sh, k3-env.sh), the console's
 # (K3_TMUX_SESSION, the operator's picocom session; K3_TYPE_DELAY,
@@ -116,6 +124,10 @@ board=(K3_SSH K3_SSH_OPTIONS K3_SUDO K3_WAIT_SECONDS K3_TAIL_SECONDS
 	K3_CAMPAIGN_SKIP TMUX_TMPDIR K3_RESET K3CTL K3CTL_DEV SSH_AUTH_SOCK
 	K3_GUEST_TYPING K3_INPUT_SESSION K3_GUEST_READY_SECONDS
 	K3_GUEST_ECHO_SECONDS K3_GUEST_STEP_SECONDS K3_GUEST_KEY_DELAY)
+# The evaluator's own settings (tools/evaluator/evaluate.sh), from the
+# environment only: its arguments are mvp check's.
+evaluator=(MVP_EVALUATOR_BUILD MVP_EVALUATOR_RPMS MVP_LINUX_MIRROR
+	MVP_OPENSBI_FW)
 
 usage() {
 	sed -n '/^#   \.\/mvp help/,/SSH agent\.$/s/^# \{0,1\}//p' -- "$0"
@@ -215,7 +227,11 @@ tool-lock)
 	esac
 	;;
 evaluate)
-	exec "$here/tools/evaluator/evaluate.sh" "$@"
+	assignments "$@"
+	extra=("${evaluator[@]}")
+	clean_env
+	exec /usr/bin/env -i "${env_args[@]}" /usr/bin/bash \
+		"$here/tools/evaluator/evaluate.sh" "$@"
 	;;
 verify)
 	run_make verify "$@"

@@ -79,6 +79,19 @@
 #                     runs anything; the pinned bytes passed to each next
 #                     step; and a suite whose firmware changes as its first
 #                     QEMU run starts refused before its second
+#   evaluate-environment  ./mvp/mvp evaluate on the wrapper's copy with a
+#                     stand-in evaluate.sh: only the wrapper's variables,
+#                     the evaluator's settings, and the admitted arguments
+#                     reach it; a stray word, and a setting given as an
+#                     argument, refused (exit 2) before it runs; the real
+#                     evaluate.sh with a hostile PATH and PYTHONPATH: the
+#                     lock check first, a changed firmware and a missing
+#                     mirror refused before any record, no trap reached;
+#                     a copy in its own tree, past its inputs: its first
+#                     Python tool after the record, beside hostile
+#                     modules, imports none (where the lock's podman is
+#                     absent, the copy stops at podman and the case says
+#                     so) (the release's security review, S-02)
 #   env-session       record (Fedora's clean shutdown, two records, V
 #                     empty), install, select, and restore: each verdict
 #                     PASS, the private store's texts (0700, 0600), the
@@ -369,6 +382,38 @@ export PATH PYTHON=$python TMUX_TMPDIR=$out/tmux K3_SSH=$fake_host \
 autoboot_seconds=3
 export TMPDIR=$out/tmp
 mkdir -p -- "$TMPDIR"
+# Hostile traps for the clean environments the tools keep (the release's
+# security review, S-02 and S-05): OUT/hostile holds modules of the
+# standard library's names that a Python run without -I would import from
+# PYTHONPATH or its working directory, and OUT/hostile-bin commands of the
+# names the tools run, which a tool would find on a PATH it kept; each
+# logs itself to OUT/hostile.log (a module then refuses to load; a command
+# runs the real one). The log must stay empty; hostile_clean fails a case
+# that wrote it. First, both traps are seen to work.
+hostile=$out/hostile
+hostile_bin=$out/hostile-bin
+hostile_log=$out/hostile.log
+mkdir -p -- "$hostile" "$hostile_bin"
+for module in hashlib json platform shlex struct zlib; do
+	printf 'import sys\nwith open(%s, "a") as log:\n    log.write("module %s " + repr(sys.argv) + "\\n")\nraise ImportError("a hostile %s.py")\n' \
+		"'$hostile_log'" "$module" "$module" >"$hostile/$module.py"
+done
+for command in basename cat cmp cp cut date dirname env find grep head ln \
+	mkdir paste podman python3 rm sed sha256sum sleep sort tail tee tr wc; do
+	printf '#!/usr/bin/bash\nprintf "command %%s %%s\\n" "$0" "$*" >>%q\nexec /usr/bin/%s "$@"\n' \
+		"$hostile_log" "$command" >"$hostile_bin/$command"
+	chmod +x -- "$hostile_bin/$command"
+done
+(cd -- "$hostile" && PATH=$hostile_bin:/usr/bin PYTHONPATH=$hostile \
+	/usr/bin/bash -c 'sed -n 1p /dev/null; /usr/bin/python3 -B -c "import json"' \
+	>/dev/null 2>&1) || true
+{ grep -q '^command .*/sed ' "$hostile_log" && grep -q '^module json ' "$hostile_log"; } ||
+	fail "the hostile traps: a PATH command or a PYTHONPATH module was not caught"
+rm -f -- "$hostile_log"
+# hostile_clean NAME: nothing reached the traps.
+hostile_clean() {
+	[ ! -e "$hostile_log" ] || fail "$1: a hostile trap was reached: $(tr '\n' '|' <"$hostile_log")"
+}
 fake_k3ctl=$here/fake-k3ctl.py
 fake_dev=/dev/be-mvp-dry-run-no-such-k3ctl
 [ ! -e "$fake_dev" ] || fail "$fake_dev exists; the dry run needs a device path that does not"
@@ -1039,11 +1084,93 @@ evaluator_records=$repo_root/build/mvp-evaluator/record
 records_before=$(find "$evaluator_records" -mindepth 1 -maxdepth 1 2>/dev/null | LC_ALL=C sort || true)
 expect firmware-evaluate-changed 1 env MVP_OPENSBI_FW="$fw/changed.bin" \
 	"$tools/evaluator/evaluate.sh"
-grep -qF "BE_MVP_EVALUATE: FAIL MVP_OPENSBI_FW $fw/changed.bin has SHA-256 $changed_sha, $pin_line; nothing ran" \
+grep -qF "BE_MVP_EVALUATE: FAIL MVP_OPENSBI_FW $fw/changed.bin has SHA-256 $changed_sha, $pin_line; nothing was recorded" \
 	"$out/firmware-evaluate-changed.txt" || fail "firmware-pin: the evaluator did not refuse the changed firmware"
 [ "$(find "$evaluator_records" -mindepth 1 -maxdepth 1 2>/dev/null | LC_ALL=C sort || true)" = "$records_before" ] ||
 	fail "firmware-pin: the evaluator made a record for the firmware it refused"
 pass firmware-pin "one changed byte of OPENSBI_FW: refused before QEMU by run-qemu.sh, the U-Boot rehearsal, and the reference boot, and by the evaluator before a record; the pinned bytes passed to each next step; a firmware changed during a suite refused before its next run"
+
+# ------------------------------------------------- the evaluator's environment
+# ./mvp/mvp evaluate and tools/evaluator/evaluate.sh keep the clean
+# environment of the wrapper's other commands (the release's security
+# review, S-02). The wrapper's copy runs a stand-in evaluate.sh that records
+# its arguments and environment: from a caller with PYTHONPATH, another
+# variable, and the evaluator's settings, it gets exactly the wrapper's
+# fixed variables, the settings, and its admitted arguments; a stray word,
+# and an evaluator setting given as an argument, are refused (exit 2) and
+# nothing runs. Then the real evaluate.sh, run directly with the hostile
+# PATH and PYTHONPATH from the hostile directory: its lock check passes
+# first, a changed firmware and then a missing mirror are refused before
+# any record, and no hostile command or module is reached. Last, a copy of
+# evaluate.sh in a tree of its own (its lock the real one, its records its
+# own), past its inputs into its first Python tool after the record,
+# tools/evidence.py, copied beside hostile hashlib.py and json.py (an
+# importable untracked file) and with PYTHONPATH hostile: neither is
+# imported, and the tool runs and refuses the missing host bundle. Where
+# the lock's podman is absent (in the evaluator), that run is refused at
+# podman instead, before any Python tool, and the case says so.
+mkdir -p -- "$wrapper/tools/evaluator"
+printf '#!/usr/bin/bash\n{ printf "args:"; printf " %%s" "$@"; printf "\\n"; /usr/bin/env; } >%q\n' \
+	"$out/evaluate-stand-in.txt" >"$wrapper/tools/evaluator/evaluate.sh"
+chmod +x -- "$wrapper/tools/evaluator/evaluate.sh"
+expect evaluate-wrapper 0 env -i PATH=/usr/bin HOME="$out/home" \
+	PYTHONPATH="$hostile" PYTHONSTARTUP="$hostile/json.py" UNLISTED=1 \
+	MVP_EVALUATOR_BUILD="$out/evaluator-build" MVP_RPM_CACHE="$out/rpm-cache" \
+	"$wrapper/mvp" evaluate MVP_RPM_CACHE="$out/rpm-argument" TOOLCHAIN=gcc
+[ "$(sed -n 's/^args://p' "$out/evaluate-stand-in.txt")" = \
+	" MVP_RPM_CACHE=$out/rpm-argument TOOLCHAIN=gcc" ] ||
+	fail "evaluate-environment: the stand-in's arguments: $(head -n 1 "$out/evaluate-stand-in.txt")"
+[ "$(grep -vE '^(args:|PWD=|OLDPWD=|SHLVL=|_=)' "$out/evaluate-stand-in.txt" | LC_ALL=C sort | tr '\n' ' ')" = \
+	"HOME=$out/home LANG=C LC_ALL=C MVP_EVALUATOR_BUILD=$out/evaluator-build MVP_RPM_CACHE=$out/rpm-cache PATH=/usr/bin SHELL=/bin/bash " ] ||
+	fail "evaluate-environment: the stand-in's environment: $(grep -v '^args:' "$out/evaluate-stand-in.txt" | tr '\n' ' ')"
+rm -f -- "$out/evaluate-stand-in.txt"
+expect evaluate-stray 2 "$wrapper/mvp" evaluate stray
+grep -qF 'BE_MVP: refused stray: evaluate takes only VAR=VALUE arguments' \
+	"$out/evaluate-stray.txt" || fail "evaluate-environment: the stray word is not named"
+expect evaluate-setting 2 "$wrapper/mvp" evaluate MVP_OPENSBI_FW="$fw/pinned.bin"
+grep -qF "BE_MVP: refused MVP_OPENSBI_FW=$fw/pinned.bin: evaluate takes only VAR=VALUE arguments" \
+	"$out/evaluate-setting.txt" || fail "evaluate-environment: the setting given as an argument is not named"
+[ ! -e "$out/evaluate-stand-in.txt" ] || fail "evaluate-environment: evaluate.sh ran for a refused argument"
+records_before=$(find "$evaluator_records" -mindepth 1 -maxdepth 1 2>/dev/null | LC_ALL=C sort || true)
+(cd -- "$hostile" && expect evaluate-hostile 1 env PATH="$hostile_bin:/usr/bin" \
+	PYTHONPATH="$hostile" MVP_OPENSBI_FW="$fw/changed.bin" \
+	/usr/bin/bash "$tools/evaluator/evaluate.sh")
+[ "$(grep '^BE_MVP_EVALUATE: ' "$out/evaluate-hostile.txt" | cut -d' ' -f2-3)" = 'host PASS
+FAIL MVP_OPENSBI_FW' ] ||
+	fail "evaluate-environment: not the lock check's PASS, then the firmware's refusal"
+grep -qF "; nothing was recorded" "$out/evaluate-hostile.txt" ||
+	fail "evaluate-environment: the refusal does not say that nothing was recorded"
+(cd -- "$hostile" && expect evaluate-hostile-mirror 1 env PATH="$hostile_bin:/usr/bin" \
+	PYTHONPATH="$hostile" MVP_OPENSBI_FW="$fw/pinned.bin" \
+	MVP_LINUX_MIRROR="$fw/no-mirror" /usr/bin/bash "$tools/evaluator/evaluate.sh")
+grep -qF "BE_MVP_EVALUATE: FAIL $fw/no-mirror is not a git repository (set MVP_LINUX_MIRROR); nothing was recorded" \
+	"$out/evaluate-hostile-mirror.txt" || fail "evaluate-environment: the pinned firmware did not pass to the mirror's check"
+[ "$(find "$evaluator_records" -mindepth 1 -maxdepth 1 2>/dev/null | LC_ALL=C sort || true)" = "$records_before" ] ||
+	fail "evaluate-environment: the evaluator made a record for a run it refused"
+evaluator_tree=$out/evaluator-tree
+mkdir -p -- "$evaluator_tree/mvp/tools/evaluator" "$fw/mirror"
+cp -- "$tools/evaluator/evaluate.sh" "$evaluator_tree/mvp/tools/evaluator/"
+cp -- "$tools/evidence.py" "$hostile/hashlib.py" "$hostile/json.py" \
+	"$evaluator_tree/mvp/tools/"
+ln -s -- "$tools/lock" "$evaluator_tree/mvp/tools/lock"
+: >"$fw/mirror/HEAD"
+(cd -- "$hostile" && expect evaluate-hostile-python 1 env PATH="$hostile_bin:/usr/bin" \
+	PYTHONPATH="$hostile" MVP_OPENSBI_FW="$fw/pinned.bin" MVP_LINUX_MIRROR="$fw/mirror" \
+	/usr/bin/bash "$evaluator_tree/mvp/tools/evaluator/evaluate.sh")
+lock_podman=$(sed -n 's/^MVP_TOOL_podman_command=//p' "$tools/lock/tool-lock.conf")
+if [ -x "$lock_podman" ]; then
+	grep -qF "BE_MVP_EVALUATE: FAIL the host bundle $evaluator_tree/build/mvp/evidence/check does not verify; run ./mvp/mvp check" \
+		"$evaluator_tree/build/mvp-evaluator/record/latest/evaluate.txt" ||
+		fail "evaluate-environment: the copy did not reach evidence.py and record its refusal of the missing bundle"
+	evaluate_python="evidence.py, the first Python tool after the record, beside hostile hashlib.py and json.py and with PYTHONPATH hostile: neither imported"
+else
+	grep -qF "BE_MVP_EVALUATE: FAIL the lock's podman ($lock_podman) is missing; nothing was recorded" \
+		"$out/evaluate-hostile-python.txt" ||
+		fail "evaluate-environment: without the lock's podman, the copy was not refused at podman"
+	evaluate_python="no $lock_podman here, so the copy stopped at podman before its first Python tool"
+fi
+hostile_clean evaluate-environment
+pass evaluate-environment "./mvp/mvp evaluate: PYTHONPATH, PYTHONSTARTUP, and an unlisted variable cleared, the evaluator's settings and the admitted arguments passed, a stray word and a setting given as an argument refused before evaluate.sh runs; evaluate.sh with a hostile PATH and PYTHONPATH: the lock first, then a changed firmware and a missing mirror refused before any record, no hostile command or module reached; $evaluate_python"
 
 # ------------------------------------------------------- the environment
 probe_image=be-mvp-probe-platform-gcc.img

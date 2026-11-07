@@ -1543,9 +1543,17 @@ target and address.
 ```
 
 runs `mvp/tools/evaluator/evaluate.sh`, which runs `./mvp/mvp check` again in
-a clean container and compares the images it builds with the host's:
+a clean container and compares the images it builds with the host's. The
+wrapper runs it as it runs make, under `env -i` with its fixed variables,
+the caller variables, and the evaluator's own settings (`MVP_EVALUATOR_BUILD`,
+`MVP_EVALUATOR_RPMS`, `MVP_LINUX_MIRROR`, and `MVP_OPENSBI_FW`, from the
+environment only), its arguments under `check`'s rule; the script clears
+every `PYTHON*` variable, names each command by its absolute path, and runs
+each Python tool as `/usr/bin/python3 -I -B`:
 
-1. **The host's lock.** The tool lock check, with podman among its roles.
+1. **The host's lock.** The tool lock check, with podman among its roles,
+   before any other command; then the inputs, each refused before the run
+   is recorded.
 2. **The host's last bundle.** `build/mvp/evidence/check` must match its
    manifest and hold the host's images as they are now.
 3. **The closure.** `mvp/tools/evaluator/fetch-closure.py` puts every RPM
