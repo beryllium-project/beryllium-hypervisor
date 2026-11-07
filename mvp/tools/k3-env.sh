@@ -74,8 +74,14 @@
 set -euo pipefail
 
 script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
-python=${PYTHON:-python3}
-uboot=("$python" -B "$script_dir/k3-uboot.py")
+# Python, here and on the board, runs only as /usr/bin/python3 -I -B, and
+# no PYTHON* variable reaches it or a child (the release's security review,
+# S-05).
+while read -r name; do
+	unset -v "$name"
+done < <(compgen -v PYTHON || true)
+python=/usr/bin/python3
+uboot=("$python" -I -B "$script_dir/k3-uboot.py")
 console=("$script_dir/k3-console.sh")
 tag=BE_MVP_K3_ENV
 run_root=${K3_RUN_ROOT:-}

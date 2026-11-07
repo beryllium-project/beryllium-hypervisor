@@ -223,7 +223,12 @@
 #                     status, and reset
 #   fakes             every fake dongle received only ping, status, and
 #                     reset; every line typed was a template; no tmux
-#                     command was refused
+#                     command was refused; and no hostile trap was reached
+#                     (S-05): every case's board tool (tools/k3-*) ran from
+#                     the hostile directory with it on PYTHONPATH, the fake
+#                     board ran the streamed probe's command and the
+#                     staging script from it so, and K3CTL's client lies
+#                     beside hostile modules of the names it imports
 #   autoboot          every `s` the console tool sent came inside its fake
 #                     board's autoboot window, the board's 3 s after
 #                     `Autoboot in` (tests/fake-uboot.py's autoboot.log;
@@ -359,14 +364,15 @@ sha() {
 	sha256sum -- "$1" | cut -d' ' -f1
 }
 
-# The fakes, first on PATH.
+# The fakes, first on PATH, each run in isolated mode, so that the hostile
+# traps below see the tools' own Python alone.
 fake_host=fedora@fake-k3-board.invalid
 mkdir -p -- "$out/bin" "$out/tmux" "$out/store"
 for command in ssh scp; do
-	printf '#!/usr/bin/env bash\nexec %q -B %q %s "$@"\n' "$python" \
+	printf '#!/usr/bin/env bash\nexec %q -I -B %q %s "$@"\n' "$python" \
 		"$here/fake-board.py" "$command" >"$out/bin/$command"
 done
-printf '#!/usr/bin/env bash\nexec %q -B %q tmux "$@"\n' "$python" \
+printf '#!/usr/bin/env bash\nexec %q -I -B %q tmux "$@"\n' "$python" \
 	"$here/fake-uboot.py" >"$out/bin/tmux"
 chmod +x -- "$out/bin"/*
 PATH=$out/bin:$PATH
@@ -429,7 +435,15 @@ fake_dev=/dev/be-mvp-dry-run-no-such-k3ctl
 dry_pin=$out/k3ctl.sha256
 sed "s/^sha256=.*/sha256=$(sha "$fake_k3ctl")/" "$tools/k3ctl.sha256" \
 	>"$dry_pin"
-export K3_RESET=k3ctl K3CTL=$fake_k3ctl K3CTL_DEV=$fake_dev K3CTL_PIN=$dry_pin
+# The client K3CTL names, the fake's bytes, lies beside hostile modules of
+# the names it imports, as in an operator's tool directory that another
+# account could write: the tools must run it in isolated mode (S-05).
+k3ctl_client=$out/k3ctl-client
+mkdir -p -- "$k3ctl_client"
+cp -- "$fake_k3ctl" "$k3ctl_client/k3ctl"
+cp -- "$hostile/json.py" "$hostile/shlex.py" "$k3ctl_client/"
+export K3_RESET=k3ctl K3CTL=$k3ctl_client/k3ctl K3CTL_DEV=$fake_dev \
+	K3CTL_PIN=$dry_pin FAKE_K3_HOSTILE=$hostile
 
 # The session's image groups and staged names, as tools.mk derives them
 # (k3_group, K3_PLAN, K3_STAGE).
@@ -599,11 +613,27 @@ expect_dongle() {
 
 # expect NAME STATUS COMMAND...: COMMAND exits STATUS; its output in
 # OUT/NAME.txt.
+# A board tool (tools/k3-*) runs from the hostile directory with it on
+# PYTHONPATH, and the fake board runs the remote scripts it streams the
+# same way (FAKE_K3_HOSTILE): its Python, here and on the board, must be
+# /usr/bin/python3 -I -B with no PYTHON* variable (S-05); hostile_clean
+# then fails the case that reached a trap.
 expect() {
-	local name=$1 want=$2 status=0
+	local name=$1 want=$2 status=0 argument board_tool=no
 	shift 2
 
-	"$@" >"$out/$name.txt" 2>&1 || status=$?
+	for argument in "$@"; do
+		case $argument in
+		"$tools"/k3-*) board_tool=yes ;;
+		esac
+	done
+	if [ "$board_tool" = yes ]; then
+		(cd -- "$hostile" && PYTHONPATH=$hostile exec "$@") \
+			>"$out/$name.txt" 2>&1 || status=$?
+		hostile_clean "$name"
+	else
+		"$@" >"$out/$name.txt" 2>&1 || status=$?
+	fi
 	if [ "$status" != "$want" ]; then
 		cat -- "$out/$name.txt" >&2
 		fail "$name: exit $status, expected $want"
@@ -2408,7 +2438,8 @@ for log in "$out"/board-*/uboot/received.log; do
 done
 ! ls "$out"/board-*/uboot/tmux-refused.log >/dev/null 2>&1 ||
 	fail "fakes: the fake tmux refused a command"
-pass fakes "$logs dongles received only ping, status, and reset; $lines lines typed, each a template or (in the diagnostic case) a diagnostic; no tmux command refused"
+hostile_clean fakes
+pass fakes "$logs dongles received only ping, status, and reset; $lines lines typed, each a template or (in the diagnostic case) a diagnostic; no tmux command refused; no hostile trap reached"
 # autoboot (mvp/README.md, item 93): every `s` the console tool sent met its
 # fake board's autoboot window, autoboot_seconds after `Autoboot in` as on
 # the board; the latest is this run's margin under the host's load. An `s`

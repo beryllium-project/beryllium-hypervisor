@@ -67,7 +67,13 @@ fi
 script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
 mvp_dir=$(dirname -- "$script_dir")
 repo_root=$(cd -- "$mvp_dir/.." && pwd)
-python=${PYTHON:-python3}
+# Python, here and on the board, runs only as /usr/bin/python3 -I -B, and
+# no PYTHON* variable reaches it or a child (the release's security review,
+# S-05).
+while read -r name; do
+	unset -v "$name"
+done < <(compgen -v PYTHON || true)
+python=/usr/bin/python3
 run_root=${K3_RUN_ROOT:-}
 
 usage() {
@@ -91,7 +97,7 @@ for group in "$@"; do
 		usage "not a NAME:RUNS:TOOLCHAIN:IMAGE:FLAT:EXPECT:REPORT[:VARIANT[:SESSION]] of readable files: $group"
 	fi
 	# The session the expectation names, by its SHA-256, or none.
-	named=$("$python" -B -c 'import json, sys
+	named=$("$python" -I -B -c 'import json, sys
 section = json.load(open(sys.argv[1], encoding="utf-8")).get("console_input")
 print(section["session"]["sha256"] if section else "")' "$expect") ||
 		usage "$name: the expectation $expect is not readable JSON"
@@ -173,7 +179,7 @@ done
 
 if find "$run_root" -mindepth 2 -maxdepth 2 -name run.txt -print -quit |
 	grep -q .; then
-	"$python" -B "$repo_root/bringup/k3-b0/tests/summarize-runs.py" \
+	"$python" -I -B "$repo_root/bringup/k3-b0/tests/summarize-runs.py" \
 		"$run_root" >"$run_root/summary.md"
 	cat -- "$run_root/summary.md"
 fi

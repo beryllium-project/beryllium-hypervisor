@@ -10,7 +10,10 @@
                                       offline: are the MVP's extents free in a
                                       preflight record
 
-probe reads /sys/firmware/fdt (as root, through tools/k3-preflight.sh) and
+probe reads /sys/firmware/fdt (as root, through tools/k3-preflight.sh,
+which streams this file from / to /usr/bin/python3 -I -B, so that no
+platform, re, or struct module of a working directory or PYTHONPATH is
+imported in its place) and
 prints one line, fdt_reserved=: every range of the FDT's reservation block
 and of /reserved-memory's reg properties, `none`, or why it could not be
 read. It reads nothing else and writes nothing; it calls no kexec

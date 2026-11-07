@@ -37,9 +37,18 @@ Purpose: let the dry run drive tools/k3-preflight.sh, k3-stage.sh, and
          `reboot: Restarting system` and a reset boots it, as the COM260
          does; after a poweroff it is off and a reset does nothing, as
          the COM260 is (2026-10-30).
-Trust:   test-only; it runs no command it receives but the staging script,
-         and that only inside the fake board; anything it does not recognize
-         fails with status 127.
+         With FAKE_K3_HOSTILE, a directory of hostile modules (tests/
+         run-tool-dry-run.sh's), the board account's shell runs from it
+         with it on PYTHONPATH, as a board account's could (the release's
+         security review, S-05): the platform probe's command is run as
+         the board would run it, its sudo a pass-through, its output
+         dropped (on this host the probe refuses a machine that is not
+         riscv64), so that a Python it starts without -I imports a hostile
+         module, which the dry run's hostile log records; and so is the
+         staging script.
+Trust:   test-only; it runs no command it receives but the staging script
+         and the platform probe's command, each only inside the fake board;
+         anything it does not recognize fails with status 127.
 Scope:   MVP board-tool dry run. The board is the directory named by
          FAKE_K3_BOARD: config.json (the scenario), state.json, tmp/ (the
          board's /tmp), partition/ (the Beryllium partition's files),
@@ -58,6 +67,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import shlex
 import subprocess
 import sys
@@ -79,8 +89,9 @@ UUID = "66666666-7777-4888-9999-000000000006"
 # record holds redacted: the fake board prints one, so a record that copies
 # the preflight after the session without B0's redaction fails the dry run.
 ROOT_UUID = "0f0f0f0f-1111-4222-8333-444444444444"
-PROBE = ("if sudo -n true 2>/dev/null; then sudo -n python3 - probe; else "
-         "python3 - probe; fi")
+# The platform probe's command: any that streams it to a python3 (the
+# tools' is `cd / && ... /usr/bin/python3 -I -B - probe ...`).
+PROBE = re.compile(r".*\bpython3\b.* - probe\b.*")
 STAGE_PREPARE = "rm -rf /tmp/be-mvp-stage && mkdir -m 0700 /tmp/be-mvp-stage"
 
 
@@ -172,6 +183,44 @@ def board_path(root, path):
             all(part and part not in (".", "..") for part in parts[2:]):
         return root / "tmp" / "/".join(parts[2:])
     return None
+
+
+def tools_dir(root):
+    """The board's blkid, findmnt, mount, umount, sudo, and sync: this
+    script's tools, each run in isolated mode."""
+    tools = root / "bin"
+    tools.mkdir(exist_ok=True)
+    for name in ("blkid", "findmnt", "mount", "umount", "sudo", "sync"):
+        (tools / name).write_text(
+            f"#!/usr/bin/env bash\nexec {shlex.quote(sys.executable)} -I -B "
+            f"{shlex.quote(__file__)} tool {name} \"$@\"\n", encoding="ascii")
+        (tools / name).chmod(0o755)
+    return tools
+
+
+def account(root):
+    """The board account's working directory and PYTHONPATH, with
+    FAKE_K3_HOSTILE: (its directory, its environment's PYTHONPATH); else
+    the board's root and none."""
+    hostile = os.environ.get("FAKE_K3_HOSTILE")
+    if hostile:
+        return pathlib.Path(hostile), {"PYTHONPATH": hostile}
+    return root, {}
+
+
+def probe_as_sent(root, command, source):
+    """The platform probe's COMMAND as the board's shell runs it, from the
+    account's directory, its sudo a pass-through and its output dropped:
+    a Python it starts without -I imports the hostile modules there."""
+    directory, extra = account(root)
+    if not extra:
+        return
+    environment = {"PATH": f"{tools_dir(root)}:/usr/bin", "LC_ALL": "C",
+                   "LANG": "C", "HOME": str(directory),
+                   "FAKE_K3_BOARD": str(root), **extra}
+    subprocess.run(["bash", "-c", command], input=source, text=True,
+                   cwd=directory, env=environment, stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL, check=False)
 
 
 def run_probe(root, settings, source):
@@ -341,8 +390,10 @@ def ssh(args):
         if "iomem_system_ram_begin" not in sys.stdin.read():
             return unsupported("bash -s without the MVP preflight script")
         sys.stdout.write(preflight_answer(settings))
-    elif command == PROBE:
-        return run_probe(root, settings, sys.stdin.read())
+    elif PROBE.fullmatch(command):
+        source = sys.stdin.read()
+        probe_as_sent(root, command, source)
+        return run_probe(root, settings, source)
     elif command == STAGE_PREPARE:
         target = root / "tmp" / "be-mvp-stage"
         subprocess.run(["rm", "-rf", "--", str(target)], check=True)
@@ -365,23 +416,19 @@ def ssh(args):
 
 
 def stage(root, script, names):
-    """The staging script under bash, inside the fake board: its /tmp the
-    board's, and blkid, findmnt, mount, umount, sudo, and sync this
-    script's tools."""
-    tools = root / "bin"
-    tools.mkdir(exist_ok=True)
-    for name in ("blkid", "findmnt", "mount", "umount", "sudo", "sync"):
-        (tools / name).write_text(
-            f"#!/usr/bin/env bash\nexec {shlex.quote(sys.executable)} -B "
-            f"{shlex.quote(__file__)} tool {name} \"$@\"\n", encoding="ascii")
-        (tools / name).chmod(0o755)
+    """The staging script under bash, inside the fake board, from the
+    account's directory: its /tmp the board's, and blkid, findmnt, mount,
+    umount, sudo, and sync this script's tools."""
+    tools = tools_dir(root)
     (root / "partition").mkdir(exist_ok=True)
+    directory, extra = account(root)
     environment = {"PATH": f"{tools}:/usr/bin", "LC_ALL": "C", "LANG": "C",
                    "HOME": str(root), "TMPDIR": str(root / "tmp"),
-                   "FAKE_K3_BOARD": str(root), "sudo": "sudo -n"}
+                   "FAKE_K3_BOARD": str(root), "sudo": "sudo -n", **extra}
     return subprocess.run(
         ["bash", "-s", "--", str(root / "tmp" / "be-mvp-stage"), *names],
-        input=script, text=True, env=environment, check=False).returncode
+        input=script, text=True, cwd=directory, env=environment,
+        check=False).returncode
 
 
 def tool(name, args):

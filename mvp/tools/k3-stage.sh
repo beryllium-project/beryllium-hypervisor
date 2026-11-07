@@ -25,7 +25,8 @@
 #     condition 4; nothing is copied).
 #  2. One scp of the named copies and the three lists to the board's
 #     /tmp/be-mvp-stage/.
-#  3. On the board, one `bash -s` script (below), privileged commands
+#  3. On the board, one `bash -s` script (below), run from /, its CRC-32
+#     check /usr/bin/python3 -I -B, privileged commands
 #     through K3_SUDO: the partition found by its UUID (blkid -U, the UUID
 #     the preflight stored in the private store, or K3_PARTITION_UUID),
 #     labelled beryllium, ext4, and not mounted; mounted on a fresh
@@ -67,7 +68,13 @@ out=$1
 shift
 script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
 repo_root=$(cd -- "$script_dir/../.." && pwd)
-python=${PYTHON:-python3}
+# Python, here and on the board, runs only as /usr/bin/python3 -I -B, and
+# no PYTHON* variable reaches it or a child (the release's security review,
+# S-05).
+while read -r name; do
+	unset -v "$name"
+done < <(compgen -v PYTHON || true)
+python=/usr/bin/python3
 k3_ssh=${K3_SSH:-fedora@k3e}
 read -r -a extra_options <<<"${K3_SSH_OPTIONS:-}"
 sudo_prefix=${K3_SUDO:-sudo -n}
@@ -102,7 +109,7 @@ for pair in "$@"; do
 done
 # Sizes, SHA-256s, MD5s, and CRC-32s, then the distinctness of the MD5s
 # and of the CRC-32s.
-"$python" -B - "$out/files" "${names[@]}" >"$out/files/.facts" <<'EOF'
+"$python" -I -B - "$out/files" "${names[@]}" >"$out/files/.facts" <<'EOF'
 import hashlib, pathlib, sys, zlib
 root = pathlib.Path(sys.argv[1])
 for name in sys.argv[2:]:
@@ -160,8 +167,10 @@ ssh "${ssh_options[@]}" -- "$k3_ssh" \
 	"$(printf 'sudo=%q bash -s -- %q %q' "$sudo_prefix" "$remote" "$uuid") ${names[*]}" \
 	>"$out/remote.txt" 2>&1 <<'EOF'
 # be-mvp k3-stage remote: stage the images on the Beryllium partition, found
-# by its UUID.
+# by its UUID, from / (no directory the board account can write), its one
+# Python /usr/bin/python3 -I -B.
 set -eu
+cd /
 src=$1
 uuid=$2
 shift 2
@@ -172,7 +181,7 @@ fail() {
 verify() {
 	(cd "$1" && sha256sum --quiet -c SHA256SUMS) || fail "sha256 $2"
 	(cd "$1" && md5sum --quiet -c MD5SUMS) || fail "md5 $2"
-	python3 - "$1" <<'PY' || fail "crc32 $2"
+	/usr/bin/python3 -I -B - "$1" <<'PY' || fail "crc32 $2"
 import pathlib, sys, zlib
 root = pathlib.Path(sys.argv[1])
 for line in (root / "CRC32SUMS").read_text().splitlines():

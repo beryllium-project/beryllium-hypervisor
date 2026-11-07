@@ -318,9 +318,9 @@
         },
         {
           "path": "mvp/tools/k3-env.sh",
-          "sha256": "504447b6a765e5a0eb1004bd267942ad6c986611e5625c2b16ad5710f1d36f56",
+          "sha256": "92b7ae659bd2bc23ab81e3dc1140aa6877edba7faf582afbb59b6673f87e4d9c",
           "evidence_source_commit": "aeb9fb46b0ef602d7e1c838d42a84d045e79a7c0",
-          "note": "The session's install, select, and restore of U-Boot's saved environment through the console tool's templates, each at a fresh prompt: be_ld (ending in md5sum), be_go, be_boot (nvme scan first), bootcmd, and be_orig_bootcmd; the printenv comparison before every saveenv; the two records and V; the private store."
+          "note": "The session's install, select, and restore of U-Boot's saved environment through the console tool's templates, each at a fresh prompt: be_ld (ending in md5sum), be_go, be_boot (nvme scan first), bootcmd, and be_orig_bootcmd; the printenv comparison before every saveenv; the two records and V; the private store. In the clean repository, F4 (the security review's S-05) revised this file: its Python, tools/k3-uboot.py, runs as /usr/bin/python3 -I -B, with every PYTHON* variable cleared; this SHA-256 is that revision's, which no internal commit holds."
         },
         {
           "path": "mvp/tests/check-capture.py",

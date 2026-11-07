@@ -162,7 +162,7 @@ K3_STAGE = $(foreach g,$(K3_PLAN),$(word 1,$(subst :, ,$(g)))=$(word 4,$(subst :
 # The board tools' inputs: the guest Image (the payload variant's image
 # check, anchor's measurement), the pins, and the measured domain's DTB
 # (anchor's measurement).
-K3_ENV = PYTHON=$(PYTHON) K3_KERNEL=$(MVP_GUEST_IMAGE) K3_PINS=$(MVP_GUEST_PINS) \
+K3_ENV = K3_KERNEL=$(MVP_GUEST_IMAGE) K3_PINS=$(MVP_GUEST_PINS) \
 	K3_MEASURED_DTB=$(MVP_GUEST_DTB_G1_ANCHOR) K3CTL_PIN=$(K3CTL_PIN) \
 	K3_RUN_ROOT=$(K3_RUN_ROOT) K3_SERIAL_LOG=$(K3_SERIAL_LOG)
 
@@ -402,14 +402,14 @@ endif
 # contacted); into K3_RUN_ROOT/preflight-before or -after (K3_PREFLIGHT),
 # or without a session into BUILD/k3-preflight.
 k3-preflight:
-	PYTHON=$(PYTHON) K3CTL_PIN=$(K3CTL_PIN) \
+	K3CTL_PIN=$(K3CTL_PIN) \
 		$(MVP_DIR)/tools/k3-preflight.sh $(if $(K3_RUN_ROOT),$(K3_RUN_ROOT)/preflight-$(or \
 		$(K3_PREFLIGHT),before),$(BUILD)/k3-preflight)
 
 # The session's 19 images on the Beryllium partition, verified twice, and the
 # staging record (step f).
 k3-stage: image-check variants probes
-	PYTHON=$(PYTHON) $(MVP_DIR)/tools/k3-stage.sh $(K3_RUN_ROOT)/stage \
+	$(MVP_DIR)/tools/k3-stage.sh $(K3_RUN_ROOT)/stage \
 		$(K3_STAGE)
 
 # U-Boot's saved environment (tools/k3-env.sh): the records after Fedora's

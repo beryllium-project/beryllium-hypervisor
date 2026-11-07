@@ -129,9 +129,15 @@ fi
 image=$1
 script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
 mvp_dir=$(dirname -- "$script_dir")
-python=${PYTHON:-python3}
+# Python, here and on the board, runs only as /usr/bin/python3 -I -B, and
+# no PYTHON* variable reaches it or a child (the release's security review,
+# S-05).
+while read -r name; do
+	unset -v "$name"
+done < <(compgen -v PYTHON || true)
+python=/usr/bin/python3
 checker=$mvp_dir/tests/check-capture.py
-uboot=("$python" -B "$script_dir/k3-uboot.py")
+uboot=("$python" -I -B "$script_dir/k3-uboot.py")
 console=("$script_dir/k3-console.sh")
 toolchain=${TOOLCHAIN:-gcc}
 flat=${K3_FLAT:-}
@@ -211,7 +217,7 @@ esac
 # authority report, before the launch and after the run; a v3 one (anchor's
 # or its variants') also with its measured domain's kernel and DTB as built,
 # from which the capture checker computes the measurement.
-expect_schema=$("$python" -B -c 'import json, sys
+expect_schema=$("$python" -I -B -c 'import json, sys
 print(json.load(open(sys.argv[1], encoding="utf-8")).get("schema", ""))' \
 	"$expect") || die "expectation $expect is not JSON"
 measured=()
@@ -231,13 +237,13 @@ fi
 # A session typed into the run is the one its expectation names.
 if [ "$guest_run" = session ]; then
 	session_sha256=$(sha256sum <"$K3_GUEST_SESSION" | cut -d' ' -f1)
-	[ "$session_sha256" = "$("$python" -B -c 'import json, sys
+	[ "$session_sha256" = "$("$python" -I -B -c 'import json, sys
 section = json.load(open(sys.argv[1], encoding="utf-8")).get("console_input")
 print(section["session"]["sha256"] if section else "none")' "$expect")" ] ||
 		die "the session $K3_GUEST_SESSION is not the one the expectation $(basename -- "$expect") names"
 fi
 # Only a checked image, staged under its name in this session, is run.
-image_check=$("$python" -B "$checker" --check-image \
+image_check=$("$python" -I -B "$checker" --check-image \
 	"$toolchain:$image:$flat${variant:+:$variant}" --pins "$pins" \
 	${kernel:+--kernel "$kernel"} ${report:+--expect "$expect" --report "$report"} |
 	tail -n 1) ||
@@ -353,7 +359,7 @@ record "board_kernel=none (boot from system reset)"
 # image's expectation, its authority report for a v2 or v3 one, a v3 one's
 # measured inputs, and the guest pins.
 set +e
-"$python" -B "$checker" "$run_dir/serial.log" --mode uboot --expect "$expect" \
+"$python" -I -B "$checker" "$run_dir/serial.log" --mode uboot --expect "$expect" \
 	--image "$image" --toolchain "$toolchain" --pins "$pins" \
 	${report:+--report "$report"} "${measured[@]}" "${typed[@]}" \
 	--json "$run_dir/result.json" | tee -- "$run_dir/check.txt"

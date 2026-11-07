@@ -93,8 +93,9 @@
 # a full printenv), and its output must end in OK (stop condition 3).
 #
 # Resets (Q14, "Resets and the dongle"): K3_RESET=k3ctl, the pinned client
-# (tools/k3ctl.sha256, run as `python3 -B K3CTL -d K3CTL_DEV status` or
-# `... reset`, nothing else; the client pings first): `status` clean, then
+# (tools/k3ctl.sha256, run as `/usr/bin/python3 -I -B K3CTL -d K3CTL_DEV
+# status` or `... reset`, nothing else, so that no module beside the client
+# or on PYTHONPATH is imported; the client pings first): `status` clean, then
 # `reset` once, then `status` clean again; or K3_RESET=human, the tool asks
 # for the reset and waits K3_HUMAN_SECONDS. The dongle's port is opened only
 # when the log since the last reset (or the session's start) shows one of
@@ -178,8 +179,14 @@
 set -euo pipefail
 
 script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
-python=${PYTHON:-python3}
-uboot=("$python" -B "$script_dir/k3-uboot.py")
+# Python, here and on the board, runs only as /usr/bin/python3 -I -B, and
+# no PYTHON* variable reaches it or a child (the release's security review,
+# S-05).
+while read -r name; do
+	unset -v "$name"
+done < <(compgen -v PYTHON || true)
+python=/usr/bin/python3
+uboot=("$python" -I -B "$script_dir/k3-uboot.py")
 tag=BE_MVP_K3_CONSOLE
 session_name=${K3_TMUX_SESSION:-k3-console-1}
 serial_log=${K3_SERIAL_LOG:-}
@@ -452,7 +459,7 @@ k3ctl_command() {
 	*) exit 99 ;;
 	esac
 	set +e
-	k3ctl_reply=$(timeout 60 "$python" -B "$k3ctl" -d "$k3ctl_dev" "$1" \
+	k3ctl_reply=$(timeout 60 "$python" -I -B "$k3ctl" -d "$k3ctl_dev" "$1" \
 		2>"$error_file")
 	k3ctl_status=$?
 	set -e

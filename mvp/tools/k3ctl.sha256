@@ -3,9 +3,10 @@
 #
 # The pinned k3ctl client (planning/mvp-m1-plan.md, "Tool lock and the
 # clean evaluator" and "The remote reset"; Q14): the one client the board
-# tools run for K3_RESET=k3ctl, as `python3 -B CLIENT -d DEVICE COMMAND`
-# with the locked Python 3 and COMMAND only `status` or `reset` (the client
-# itself pings first). k3ctl is not a lock role: it is a script in the
+# tools run for K3_RESET=k3ctl, as `/usr/bin/python3 -I -B CLIENT -d DEVICE
+# COMMAND`, the locked Python 3 in isolated mode, with COMMAND only `status`
+# or `reset` (the client itself pings first). k3ctl is not a lock role: it
+# is a script in the
 # responsible human's k3-com260-info checkout (tools/k3ctl/k3ctl) that no
 # package owns and the evaluator never runs. tools/k3-run.sh, which
 # tools/k3-campaign.sh asks before any run, refuses a K3CTL whose SHA-256

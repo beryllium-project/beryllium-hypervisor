@@ -32,10 +32,11 @@
 # from an ext4 bootfs, or else on a read-only mount made for the read): its
 # size and SHA-256, and the names it sets, of which neither bootcmd nor a
 # be_ name may be one. Changes nothing on the board: the probe scripts are
-# streamed over stdin and only read /proc, /sys, the device tree,
-# /sys/firmware/fdt, the kernel log, the partitions' metadata, and
-# env_k3.txt, as root through `sudo -n` where needed; tools/platform-probe.py
-# probe reads the FDT's reservations. The kexec facts of the M0 to M4
+# streamed over stdin, each run from /, and only read /proc, /sys, the
+# device tree, /sys/firmware/fdt, the kernel log, the partitions' metadata,
+# and env_k3.txt, as root through `sudo -n` where needed;
+# tools/platform-probe.py probe, run as /usr/bin/python3 -I -B, reads the
+# FDT's reservations. The kexec facts of the M0 to M4
 # preflights are gone (S3-A policy item 2). Beside the board's facts the
 # record holds this workstation's: the k3ctl client (K3CTL) that
 # K3_RESET=k3ctl would run, by its SHA-256, against its pin
@@ -68,7 +69,13 @@ k3_ssh=${K3_SSH:-fedora@k3e}
 read -r -a extra_options <<<"${K3_SSH_OPTIONS:-}"
 script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
 layout=$(dirname -- "$script_dir")/src/mvp-layout.h
-python=${PYTHON:-python3}
+# Python, here and on the board, runs only as /usr/bin/python3 -I -B, and
+# no PYTHON* variable reaches it or a child (the release's security review,
+# S-05).
+while read -r name; do
+	unset -v "$name"
+done < <(compgen -v PYTHON || true)
+python=/usr/bin/python3
 mkdir -p -- "$output"
 report=$output/preflight.txt
 ssh_command=(ssh -o BatchMode=yes -o ConnectTimeout=10 "${extra_options[@]}"
@@ -76,6 +83,7 @@ ssh_command=(ssh -o BatchMode=yes -o ConnectTimeout=10 "${extra_options[@]}"
 
 if ! "${ssh_command[@]}" bash -s >"$report" 2>&1 <<'EOF'
 set -u
+cd /
 printf 'captured_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 printf 'hostname=%s\n' "$(hostname)"
 printf 'kernel=%s\n' "$(uname -r)"
@@ -244,9 +252,11 @@ then
 	exit 2
 fi
 # The FDT reservations (as root, so /sys/firmware/fdt is readable):
-# platform-probe.py probe, streamed.
+# platform-probe.py probe, streamed from / to /usr/bin/python3 -I -B, so
+# that no module of the board account's directories or PYTHONPATH stands in
+# for platform, re, or struct.
 "${ssh_command[@]}" \
-	'if sudo -n true 2>/dev/null; then sudo -n python3 - probe; else python3 - probe; fi' \
+	'cd / && if sudo -n true 2>/dev/null; then sudo -n /usr/bin/python3 -I -B - probe; else /usr/bin/python3 -I -B - probe; fi' \
 	<"$script_dir/platform-probe.py" >>"$report" 2>&1 || true
 # The partition's UUID to the private store; the record keeps its SHA-256.
 uuid=$(sed -n 's/^partition_uuid=//p' "$report")
@@ -290,7 +300,7 @@ cat -- "$report"
 # Every MVP extent against every System RAM child and FDT reservation the
 # record holds (the layout rule).
 set +e
-"$python" -B "$script_dir/platform-probe.py" region-check "$layout" "$report" \
+"$python" -I -B "$script_dir/platform-probe.py" region-check "$layout" "$report" \
 	>"$output/region-check.txt" 2>&1
 region_status=$?
 set -e

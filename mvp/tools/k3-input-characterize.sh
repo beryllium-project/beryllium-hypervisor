@@ -55,7 +55,13 @@
 set -euo pipefail
 
 script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
-python=${PYTHON:-python3}
+# Python, here and on the board, runs only as /usr/bin/python3 -I -B, and
+# no PYTHON* variable reaches it or a child (the release's security review,
+# S-05).
+while read -r name; do
+	unset -v "$name"
+done < <(compgen -v PYTHON || true)
+python=/usr/bin/python3
 run_root=${K3_RUN_ROOT:-}
 session_file=${K3_INPUT_SESSION:-}
 tag=BE_MVP_K3_INPUT
@@ -132,7 +138,7 @@ run() {
 # 1, 2: the characterization and its judgement.
 run "$1" probe
 judge=0
-"$python" -B "$script_dir/k3-uboot.py" input-judge "$run_dir" \
+"$python" -I -B "$script_dir/k3-uboot.py" input-judge "$run_dir" \
 	>"$run_dir/characterization.txt" || judge=$?
 {
 	printf 'capture=%s capture_sha256=%s\n' "$run_dir/serial.log" \
