@@ -1050,8 +1050,8 @@ The harness stages, as M1 changes them:
   never runs it. It is pinned instead: `tools/k3ctl.sha256` holds its
   SHA-256, recorded at M1-5 from the client the responsible human
   designates, and the campaign tool refuses a client that differs before it
-  sends anything. The tool runs it with the locked Python 3 (`python3 -B
-  <client>`), and records its SHA-256 and the dongle's replies in every
+  sends anything. The tool runs it with the locked Python 3
+  (`python3 -B <client>`), and records its SHA-256 and the dongle's replies in every
   run and in the board record. The dongle's firmware is outside the lock
   and is recorded by the protocol version its replies carry (`1.0`), which
   its README says "does not identify the build".

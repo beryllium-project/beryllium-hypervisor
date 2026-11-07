@@ -241,7 +241,7 @@ identified in the ledger, … extends registers with measured records only …�
 When the board step is pending, add “The new log and launch-gate evidence is
 from QEMU; the M9 board correlation has not run.” When R2 is omitted, say
 “This profile omits a monitor self-report.” When no probe occurred, say
-“Lifecycle and debug state were not determined as of <date>; no probe was performed.”
+“Lifecycle and debug state were not determined as of &lt;date&gt;; no probe was performed.”
 For the loader use “No loader observation exists in direct QEMU boots; the
 U-Boot rehearsal records CRC-32 separately.” Bind later board wording to the
 specific tested images, not merely to a date or to the existence of an M7 run.

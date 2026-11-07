@@ -17,6 +17,13 @@ product. It was copied byte for byte from the selected tree of the
 project's private internal repository and adapted by eight commits so that
 its gates run here; `RELEASE.md` records how.
 
+Beryllium is maintained by James Morris, its responsible human: the
+person who reviews and decides every plan, result, and release of the
+project, and who alone approves what is published. AI systems assist with
+the work under that review, as the [AI-assistance disclosure](mvp/docs/ai-assistance.md)
+describes. Security reports go to him as [`SECURITY.md`](SECURITY.md)
+says, and contributions as [`CONTRIBUTING.md`](CONTRIBUTING.md) says.
+
 ## What MVP 1.0 is
 
 MVP 1.0 runs on three harts of an eight-hart RISC-V platform, assigned
@@ -61,6 +68,31 @@ method, its evidence, and its non-claim.
 - [`planning/README.md`](planning/README.md), the index of the planning
   record (below).
 
+## How to read this repository
+
+The records use the project's short names, which
+[`planning/glossary.md`](planning/glossary.md) defines as of 2026-10-08:
+
+- **R0 to R7**: the single-hart runtime stages, in QEMU, from the frozen
+  fixed profile (R0) to the bounded exact-byte proof (R7);
+- **B0 to B7**: the bring-up on the K3 board, from a first boot
+  marker (B0) to two Linux guests on one hart (B7);
+- **S1 to S3**: the synthesis of the Helium pathfinder into Beryllium, the
+  security model, and the MVP plan;
+- **M0 to M10**: MVP 1.0's milestones, from the multi-hart substrate (M0)
+  to release candidate 4 (M10);
+- **accepted**: decided by the responsible human for one exact commit, by
+  an instruction quoted in the review and acceptance record that the plan
+  or result names;
+- **exact commit**: the one commit a decision covers; a later change
+  needs a decision of its own;
+- **stop condition**: an event a plan lists that returns the work to the
+  responsible human, rather than being worked around;
+- **Q12 at its default**, and the like: a plan's open question, answered
+  with the default the plan proposed;
+- **plan revision** (S3-A, M0-B, and the like): a change to an accepted
+  plan, decided in its own right.
+
 ## Running the gates
 
 Release candidate 4 passed eight gates from a clean checkout on the
@@ -73,7 +105,7 @@ project's development host. `./be help` lists them, with their commands:
 | Evaluator | `./mvp/mvp evaluate` | `check` again in a container built from the locked package closure alone; every image compared byte for byte with the host's |
 | U-Boot rehearsal | `make -C mvp uboot-build`, then `./mvp/mvp uboot-rehearsal` | The board's boot path from system reset, rehearsed in QEMU, with U-Boot built from its pinned source first |
 | Kernel reproduction | `make -C mvp kernel-repro` | The guest kernel, BusyBox, and musl rebuilt and compared |
-| Model check | `./be model-check` | The documentation source check, then the abstract model's tests, proofs, and differential check |
+| Model check | `./be model-check` | `npm ci` from `package-lock.json`, the documentation source check, then the abstract model's tests, proofs, and differential check |
 | Model evaluator | `./be evaluate` | The model's gates in its rootless evaluator |
 | Verifier | `./mvp/mvp verify` | The first verification plan's arms in the verifier image (hours, not minutes) |
 
@@ -96,7 +128,9 @@ committed here:
 
 - Linux `v7.2`, OpenSBI `v1.6`, and, for the U-Boot rehearsal, U-Boot
   v2022.10, each at the commit the lock pins; `LINUX_GIT=<mirror>` names a
-  local Linux mirror;
+  local Linux mirror. The OpenSBI firmware that QEMU runs, and U-Boot's
+  binary, are pinned by SHA-256 as well: each run checks those bytes
+  against the pin before it starts and refuses others;
 - BusyBox 1.36.1 and musl 1.2.6, each a release tarball checked against its
   maintainer's signature with the keys under
   [`mvp/guest/keys/`](mvp/guest/keys/);
@@ -110,6 +144,53 @@ Fedora's retention is the lasting dependency: when Fedora 44 reaches its
 end of life, its repositories move to Fedora's archive host, which the
 closure's fetch does not yet try (item 106 of
 [`mvp/README.md`](mvp/README.md)).
+
+## What you can run
+
+The gates, and every build and QEMU run behind them, run only on a host
+that satisfies the tool lock: Fedora 44 on x86_64, with the exact
+packages and executables that
+[`mvp/tools/lock/tool-lock.conf`](mvp/tools/lock/tool-lock.conf) and
+[`mvp/tools/lock/closure.txt`](mvp/tools/lock/closure.txt) name; the
+abstract model's gates have their own lock,
+[`model/toolchain.conf`](model/toolchain.conf). On a host that does not
+satisfy the lock, `./mvp/mvp check` stops at its first step, the lock
+check, by design, and the evaluator runs the same check first. Results from a host whose lock
+was refreshed to its own tools are that host's, not the project's
+evidence. A way to reproduce the QEMU evidence on other hosts is future
+work.
+
+On any host you can:
+
+- read the claim, the ledger, the guide, the records, and the planning
+  record;
+- check each release-candidate and board record under `mvp/results/`
+  against the manifest in its directory, with `sha256sum -c MANIFEST.sha256`
+  run there (the verifier records and the U-Boot `help` record have no
+  manifest);
+- read the source of the monitor, `mvp/src/`, and of every tool and
+  checker.
+
+The R-series and B-series trees (below, "Records, not gates") are records
+of earlier work and are not expected to run in this repository, and the
+board procedures need the one board that the records name.
+
+## Known limitations of this release
+
+- The gates run only on the development host (above).
+- `npm ci`, which gate 6 and the documentation source check run first,
+  reports advisories in the documentation site's development
+  dependencies. They reach no build output, and `package-lock.json` is
+  kept as release candidate 4's.
+- Fedora 44's retention (above, "External inputs").
+- The model evaluator (`./be evaluate`) installs the model's tools from
+  Fedora's repositories by package name when it builds its image, not from
+  an exact package closure as the MVP evaluator does, so a later run may
+  use later builds of those packages. `RELEASE.md` records the packages
+  its image held when the release's gates ran.
+- The claim's [required limit](mvp/docs/claim.md#required-limit), and the
+  non-claims and open rows of the [claim ledger](mvp/docs/claim-ledger.md),
+  state what the evidence does not show.
 
 ## Provenance
 
@@ -131,7 +212,8 @@ results cite are the private internal repository's, and they do not
 resolve here. `RELEASE.txt` is the machine-readable marker of this
 provenance, which the claim ledger's commit check reads; `RELEASE.md` is
 the release record: the copy commit, each adaptation with its reason, the
-exclusions, the scans and their classification, and the gates' results.
+exclusions, the scans and their classification, the fixes made after
+two reviews before release, and the gates' results.
 
 ## AI assistance
 
@@ -175,7 +257,12 @@ among the gates above, and the root wrapper does not run them:
 commit: the plans, the decisions with their exact commits, the review and
 acceptance records, the evidence records, and the roadmap. Its status pages
 describe the private internal repository and the public review snapshot
-as they were then. The internal session handoff is not part of this
+as they were then: in particular
+[`planning/README.md`](planning/README.md) and
+[`planning/roadmap.md`](planning/roadmap.md) give the position at the
+source commit, before this repository existed, and
+[`planning/project-orientation.md`](planning/project-orientation.md) the
+position of 2026-10-17. This page and `RELEASE.md` describe the release. The internal session handoff is not part of this
 repository; a stub stands at its path.
 
 ## Identifying strings

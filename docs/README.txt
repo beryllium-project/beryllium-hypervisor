@@ -1,4 +1,6 @@
-This directory contains the generated HTML documentation.
+The documentation build writes the planning site's generated HTML to
+docs/html/, which git ignores; this directory holds the build's link
+checker.
 
 Source of truth:
   planning/*.md
@@ -23,7 +25,7 @@ Check the sources alone, without a build (./be model-check runs this too):
 Build and open the full interactive planning site:
   ./be docs
 
-Direct local-file fallback:
+Direct local-file fallback, once a build has written it:
   docs/html/index.html
 
 The direct-file site is readable and uses relative URLs. Browser security

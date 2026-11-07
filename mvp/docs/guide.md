@@ -9,8 +9,8 @@ release-candidate commit `RC4`, exact commit `d70a8535`, accepted
 2026-11-05, which adds the final records and ledger updates over it. The
 [claim ledger](claim-ledger.md)'s release table names both
 (release candidate 3, exact commit `89ef04e9`, is accepted history). It is for a
-security researcher who has this repository and the workstation's open
-tools and has not read the development log, and it describes only what the
+security researcher who has this repository and the open tools its
+lock pins (section 2) and has not read the development log, and it describes only what the
 harness under `mvp/` implements.
 
 Commands run from the repository root, and paths are relative to it. Paths

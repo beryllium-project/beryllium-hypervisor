@@ -391,7 +391,10 @@ carries that session's `Copilot-Session` trailer beside the
 --format='%(trailers:key=Copilot-Session,valueonly)'`). The owner session
 and its sub-agents ran Claude Opus 5.5 (`claude-opus-5.5`), the
 sub-agents at `max` effort with the `long_context` tier (the step 3 plan,
-section 5).
+section 5), but for the two reviews before release (below). The
+responsible human selected that model for the session;
+in the milestones' sessions, as section 2 records, planning,
+orchestration, and review ran on `claude-fable-5.1`.
 
 | Work | Made by | Under |
 | --- | --- | --- |
@@ -406,9 +409,21 @@ section 5).
 | The adaptations' texts: A6, A1, A7, and A8 | The owner session | The plan's acceptance |
 | The adaptations' code: A2, A3, A4, and A5 | A sub-agent; each commit reviewed by the owner session | The plan's acceptance |
 | The recheck of the Linux kernel's AI and patch-process documents (the plan's Q10) | The owner session | The plan's acceptance |
+| A security review of the signed exit commit, read-only | A sub-agent on an unlisted model | The responsible human's direction of 2026-11-06 for two reviews before release |
+| A review of the project's state before release, read-only | A sub-agent on `claude-fable-5.1` | The same direction |
+| The proposed category of each review finding: before MVP 1.0, after it, or deferred for more analysis | The owner session | The same direction |
+| The fixes F1 to F4, in the tools and gates, and D3, in the planning site's configuration | A sub-agent; each commit reviewed by the owner session | The same direction |
+| The fixes D1 and D2, in the documentation | The owner session | The same direction |
+| Accepting the fixes and the categories | The responsible human | Its own instruction |
 | Approving the exit commit, signing off, approving the public commit and its tag, and publishing | The responsible human alone | Each its own instruction |
 
-No AI system selected what migrated, classified a finding, approved a
-commit, added a `Signed-off-by`, or published anything
-(`LLM_POLICY_ALIGNMENT.md`, "Beryllium public GitHub release
-boundary").
+The project review ran on `claude-fable-5.1` and the security review
+on an unlisted model, each chosen by the responsible human for that
+session. Their reports, unedited, are kept in the private internal
+repository's planning record; `RELEASE.md` lists each fix with the
+findings it answers.
+
+No AI system selected what migrated, classified a scan finding, accepted
+a review finding's category, approved a commit, added a `Signed-off-by`,
+or published anything (`LLM_POLICY_ALIGNMENT.md`, "Beryllium public
+GitHub release boundary").

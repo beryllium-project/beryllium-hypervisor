@@ -87,8 +87,8 @@ checked
 ([`78d979db`](https://github.com/torvalds/linux/blob/78d979db6cef557c171d6059cbce06c3db89c7ee/Documentation/process/coding-assistants.rst),
 2026-07-16) required an `Assisted-by: AGENT_NAME:MODEL_VERSION
 [SPECIALIZED_TOOLS...]` tag, and `submitting-patches.rst` said that omitting
-it could impede acceptance; eight commits of this repository, of 2026-07-16
-to 18, carry `Assisted-by: GitHub-Copilot-CLI:gpt-5.6-sol`. Upstream commit
+it could impede acceptance; eight commits of the private internal
+repository, of 2026-07-16 to 18, carry `Assisted-by: GitHub-Copilot-CLI:gpt-5.6-sol`. Upstream commit
 `816d9992d9ed` (2026-08-03, "coding-assistants: simplify attribution")
 reduced the tag to `Assisted-by: LLM`, and commit `1e035297ffda`
 (2026-10-14, "docs: remove Assisted-by references", after the 2026

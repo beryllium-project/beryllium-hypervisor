@@ -412,9 +412,9 @@ marked M0-image characterization of the board and firmware, not
 evidence about the candidate's images; and the reproducibility rows (the
 lock, the evaluator image's identity, `kernel-repro`, the images
 identical between host and evaluator). At `R`, rows for the
-release-candidate evidence are added: the clean gates (`mvp/results/
-<date>-rc/MANIFEST.sha256`) and the board campaign (`mvp/results/
-<date>-com260-rc/MANIFEST.sha256`, or the M2-A record for `anchor` with
+release-candidate evidence are added: the clean gates
+(`mvp/results/<date>-rc/MANIFEST.sha256`) and the board campaign
+(`mvp/results/<date>-com260-rc/MANIFEST.sha256`, or the M2-A record for `anchor` with
 both image hashes). The **unproved boundary** is its own list: R7's
 fifteen cut points stand for the accepted R5 bytes only; the B5 to B7
 layers; and every MVP addition named in pass criterion 2, each marked

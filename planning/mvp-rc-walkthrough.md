@@ -247,8 +247,8 @@ denials) or `build/mvp/gcc/anchor/be-mvp-boot.elf` for `anchor` (the
 measurement line `BE_MVP:06 MEASURED … expected=match`, the host's
 `REQUEST` lines, five `DENY` lines, the `MGMT` lines, `DOMAIN_PAUSED`
 and `DOMAIN_TERMINATED`, the host's `RESULT pass`), and `clang` for
-`gcc`. The negative variants are under `build/mvp/variants/<toolchain>/
-<variant>/be-mvp-boot.elf`; each ends in a `BE_MVP:FAIL <reason>` line
+`gcc`. The negative variants are under
+`build/mvp/variants/<toolchain>/<variant>/be-mvp-boot.elf`; each ends in a `BE_MVP:FAIL <reason>` line
 with a `DETAIL` line, and the checker expects exactly that.
 
 To judge a capture you made by hand with the same checker the harness
