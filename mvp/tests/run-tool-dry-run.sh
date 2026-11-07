@@ -92,6 +92,15 @@
 #                     modules, imports none (where the lock's podman is
 #                     absent, the copy stops at podman and the case says
 #                     so) (the release's security review, S-02)
+#   root-wrapper      ./be on its copy beside a stand-in Makefile: each of
+#                     make's controls a caller sets, MAKEFLAGS=-n among
+#                     them, refused by name (exit 2), no make run, no PASS;
+#                     BE_DRY_RUN=1: the command, a SKIP line, exit 3,
+#                     nothing run; ./be evaluate: FAIL without the
+#                     evaluator's fresh evidence, PASS last with it; make's
+#                     environment PATH, LC_ALL, LANG, and HOME alone; the
+#                     root Makefile's gate 6: npm ci, then the
+#                     documentation source check (S-03)
 #   env-session       record (Fedora's clean shutdown, two records, V
 #                     empty), install, select, and restore: each verdict
 #                     PASS, the private store's texts (0700, 0600), the
@@ -1171,6 +1180,90 @@ else
 fi
 hostile_clean evaluate-environment
 pass evaluate-environment "./mvp/mvp evaluate: PYTHONPATH, PYTHONSTARTUP, and an unlisted variable cleared, the evaluator's settings and the admitted arguments passed, a stray word and a setting given as an argument refused before evaluate.sh runs; evaluate.sh with a hostile PATH and PYTHONPATH: the lock first, then a changed firmware and a missing mirror refused before any record, no hostile command or module reached; $evaluate_python"
+
+# ------------------------------------------------------- the root wrapper
+# ./be and the root Makefile, gates 6 and 7 (the release's security review,
+# S-03). A copy of ./be runs /usr/bin/make on a stand-in Makefile beside it,
+# whose targets log their goal and their environment, and whose
+# model-evaluate writes the evaluator's evidence only when write-evidence
+# is there: each of make's controls a caller sets (MAKEFLAGS=-n among them)
+# is refused by name, exit 2, with no make run and no PASS; BE_DRY_RUN=1
+# prints the command and a SKIP line, exits 3, and runs nothing; ./be
+# evaluate removes an earlier run's evidence and prints FAIL, exit 1, when
+# make passes without writing it, and PASS, last, only when it does; make
+# sees only PATH, LC_ALL, LANG, and HOME of the caller's environment. Then
+# a copy of the root Makefile, with a stand-in npm first on PATH and a
+# stand-in model/Makefile: gate 6 runs npm ci before the documentation
+# source check, then the model's check.
+root_copy=$out/root-wrapper
+mkdir -p -- "$root_copy"
+cp -- "$repo_root/be" "$root_copy/be"
+cat >"$root_copy/Makefile" <<'EOF'
+model-check docs-source-check docs-check model-evaluate:
+	@env | LC_ALL=C sort >env-$@.txt
+	@echo goal=$@ >>ran.log
+	@if [ $@ = model-evaluate ] && [ -f write-evidence ]; then \
+		mkdir -p build/model/evidence && \
+		printf '%064d sha256:%064d\n' 0 0 >build/model/evidence/rootless-image.txt; \
+	fi
+EOF
+# be_run NAME STATUS VAR=VALUE... COMMAND...: the copy under env -i.
+be_run() {
+	local name=$1 want=$2
+
+	shift 2
+	expect "$name" "$want" env -i PATH=/usr/bin HOME="$out/home" "$@"
+}
+for control in MAKEFLAGS=-n MFLAGS=-n GNUMAKEFLAGS=-n \
+	MAKEFILES="$root_copy/Makefile" MAKELEVEL=1 MAKE=/usr/bin/true; do
+	be_run root-control 2 "$control" "$root_copy/be" model-check
+	grep -qF "BE: refused $control: " "$out/root-control.txt" ||
+		fail "root-wrapper: $control is not refused by name"
+done
+be_run root-control-evaluate 2 MAKEFLAGS=-n "$root_copy/be" evaluate
+! grep -q PASS "$out/root-control-evaluate.txt" ||
+	fail "root-wrapper: MAKEFLAGS=-n ./be evaluate printed PASS"
+[ ! -e "$root_copy/ran.log" ] || fail "root-wrapper: make ran for a refused control"
+for target in model-check evaluate; do
+	be_run "root-dry-$target" 3 BE_DRY_RUN=1 "$root_copy/be" "$target"
+	{ grep -q '^BE_COMMAND: </usr/bin/env> <-i> <PATH=/usr/bin> .* </usr/bin/make> <-C> ' \
+		"$out/root-dry-$target.txt" &&
+		grep -q "^BE_DRY_RUN: SKIP $target: " "$out/root-dry-$target.txt" &&
+		! grep -q PASS "$out/root-dry-$target.txt"; } ||
+		fail "root-wrapper: BE_DRY_RUN=1 ./be $target: not the command, a SKIP line, and no PASS"
+done
+[ ! -e "$root_copy/ran.log" ] || fail "root-wrapper: make ran under BE_DRY_RUN=1"
+root_evidence=$root_copy/build/model/evidence/rootless-image.txt
+mkdir -p -- "${root_evidence%/*}"
+printf '%064d sha256:%064d\n' 1 1 >"$root_evidence"
+be_run root-evaluate-stale 1 PYTHONPATH="$hostile" NODE_OPTIONS=--require=/nonexistent \
+	UNLISTED=1 "$root_copy/be" evaluate
+{ grep -qx 'BE_EVALUATION: Model 0.2 rootless evidence START' "$out/root-evaluate-stale.txt" &&
+	grep -q '^BE_EVALUATION: Model 0.2 rootless evidence FAIL status=0 ' \
+		"$out/root-evaluate-stale.txt" &&
+	! grep -q PASS "$out/root-evaluate-stale.txt" && [ ! -e "$root_evidence" ]; } ||
+	fail "root-wrapper: ./be evaluate without fresh evidence: not START, FAIL, no PASS, and the earlier file removed"
+[ "$(grep -vE '^(PWD|OLDPWD|SHLVL|_|MAKEFLAGS|MFLAGS|MAKELEVEL|MAKE_TERMOUT|MAKE_TERMERR)=' \
+	"$root_copy/env-model-evaluate.txt" | tr '\n' ' ')" = "HOME=$out/home LANG=C LC_ALL=C PATH=/usr/bin " ] ||
+	fail "root-wrapper: make's environment: $(tr '\n' ' ' <"$root_copy/env-model-evaluate.txt")"
+: >"$root_copy/write-evidence"
+be_run root-evaluate 0 "$root_copy/be" evaluate
+[ "$(tail -n 1 "$out/root-evaluate.txt")" = 'BE_EVALUATION: Model 0.2 rootless evidence PASS' ] ||
+	fail "root-wrapper: ./be evaluate with the evaluator's evidence: PASS is not its last line"
+root_make=$out/root-makefile
+mkdir -p -- "$root_make/bin" "$root_make/model"
+cp -- "$repo_root/Makefile" "$root_make/Makefile"
+printf '#!/usr/bin/bash\nprintf "npm %%s\\n" "$*" >>%q\n' "$root_make/ran.log" \
+	>"$root_make/bin/npm"
+chmod +x -- "$root_make/bin/npm"
+printf 'check:\n\t@echo model check >>%s\n' "$root_make/ran.log" >"$root_make/model/Makefile"
+expect root-makefile 0 env -i PATH="$root_make/bin:/usr/bin" HOME="$out/home" \
+	/usr/bin/make -C "$root_make" model-check
+[ "$(cat -- "$root_make/ran.log")" = 'npm ci --no-audit --no-fund
+npm run docs:source-check
+model check' ] ||
+	fail "root-wrapper: gate 6 is not npm ci, the documentation source check, then the model's check: $(tr '\n' '|' <"$root_make/ran.log")"
+pass root-wrapper "make's controls, MAKEFLAGS=-n among them, refused by name with no make run and no PASS; BE_DRY_RUN=1: the command, a SKIP line, exit 3, nothing run; ./be evaluate: an earlier run's evidence removed, FAIL without new evidence, PASS last with it; make's environment PATH, LC_ALL, LANG, and HOME alone; gate 6: npm ci, then the documentation source check, then the model's check"
 
 # ------------------------------------------------------- the environment
 probe_image=be-mvp-probe-platform-gcc.img
