@@ -177,6 +177,12 @@ board procedures need the one board that the records name.
 
 ## Known limitations of this release
 
+MVP 1.0 is the project's first public release, and the next priority is
+its thorough review, both external and internal. It is still
+developmental and research-oriented, and it is expected to have issues
+that require remediation before the project proceeds to its more complex
+phases. The limitations known at the release:
+
 - The gates run only on the development host (above).
 - `npm ci`, which gate 6 and the documentation source check run first,
   reports advisories in the documentation site's development
@@ -191,6 +197,11 @@ board procedures need the one board that the records name.
 - The claim's [required limit](mvp/docs/claim.md#required-limit), and the
   non-claims and open rows of the [claim ledger](mvp/docs/claim-ledger.md),
   state what the evidence does not show.
+
+Reviews, bug reports, and other feedback can be posted freely as issues
+on this repository, or sent privately by e-mail to James Morris
+(`jmorris@namei.org`). Collaboration and contributions are very welcome,
+as [`CONTRIBUTING.md`](CONTRIBUTING.md) describes.
 
 ## Provenance
 
