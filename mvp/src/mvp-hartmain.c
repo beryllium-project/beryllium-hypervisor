@@ -598,7 +598,7 @@ void be_mvp_hart_main(be_u64 hart_id, be_u64 block)
 	failure = be_mvp_stce_class(value);
 	if (failure != BE_MVP_CLASS_NONE)
 		register_fail(page, failure, BE_MVP_REGISTER_HENVCFG,
-			      BE_MVP_HENVCFG_STCE, value);
+			      BE_MVP_HENVCFG_ARMED, value);
 	/* The hart's one install: its domain's root, fenced and read back. */
 	value = be_mvp_exec_install_hgatp(state->desc.hgatp);
 	if (value != state->desc.hgatp)

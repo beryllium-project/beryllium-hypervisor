@@ -48,8 +48,19 @@ struct be_mgmt_call {
 
 static_assert(BE_MGMT_IOC_CALL == 0xc0184242);
 
+/*
+ * beryllium-cheri: in CHERI Alliance Linux's purecap user ABI an ioctl's
+ * argument is a user capability, user_uintptr_t, which the cast below
+ * keeps whole.
+ */
+#ifdef CONFIG_CHERI_PURECAP_UABI
+typedef user_uintptr_t be_mgmt_arg_t;
+#else
+typedef unsigned long be_mgmt_arg_t;
+#endif
+
 static long be_mgmt_ioctl(struct file *file, unsigned int cmd,
-			  unsigned long arg)
+			  be_mgmt_arg_t arg)
 {
 	void __user *user = (void __user *)arg;
 	struct be_mgmt_call call;

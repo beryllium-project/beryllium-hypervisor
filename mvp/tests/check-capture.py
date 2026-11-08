@@ -4,6 +4,7 @@
 """Check one MVP serial capture against its image's expectation file.
 
   check-capture.py CAPTURE --expect FILE [--mode direct|kexec|uboot]
+                   [--monitor riscv|cheri [--cheri-mutations]]
                    [--pins F] [--sbi-version V] [--kexec-fdt ADDR]
                    [--image BOOT_IMG | --image-bytes N [--image-md5 HEX]
                    [--image-crc32 HEX]]
@@ -142,7 +143,20 @@ round-robin drain (Plan revision M0-C.2), two domains that produce lines at
 once alternate on the console at least once per wake in which both rings
 hold a record; a console-bound hart 0 lowers the wakes, not the alternation
 within a wake. :09's hedeleg is a WARL reading of 0xb15d holding 0xb10c;
-:04 and :06 carry the pinned kernel_bytes and image_size.
+:04 and :06 carry the pinned kernel_bytes and image_size. beryllium-cheri:
+--monitor cheri judges the CHERI-aware monitor (planning/cheri-platform.md),
+whose :09 hedeleg is a WARL reading of 0x1000b15d holding 0x1000b10c (cause
+28, CHERI v0.9.3's CHERI fault, too); --monitor riscv, the default, the
+RISC-V monitor. An expectation of the CHERI-aware monitor's may state the
+hedeleg its image arms (cheri-fault-hs's, 0xb15d holding 0xb10c), which
+:09 is then a WARL reading of, and the lines its faulting domain ends with,
+the domain its DETAIL names (cheri_findings(): cheri-fault-hs's trace line
+0; cap-store's module's lines before its tagged store). With
+--cheri-mutations, a passing capture of the
+CHERI-aware monitor's is also mutated by the CHERI enforcement rules'
+mutations that apply to its image (planning/cheri-enforcement-plan.md,
+section 6; cheri_mutations()), each judged as the capture was and each
+to be rejected for its own reason; one that is not fails the run.
 
 Fail (the variants): the first BE_MVP:FAIL has the declared class; the
 monitor lines before it follow the pass order and include every line of the
@@ -397,6 +411,8 @@ sys.dont_write_bytecode = True
 HERE = pathlib.Path(__file__).resolve().parent
 MVP_DIR = HERE.parent
 LAYOUT_H = MVP_DIR / "src" / "mvp-layout.h"
+# beryllium-cheri: the monitor's header, for its console line's length.
+MVP_H = MVP_DIR / "src" / "mvp.h"
 DEFAULT_PINS = MVP_DIR / "guest" / "pins.txt"
 FIXTURES = HERE / "fixtures"
 # B7's recorded COM260 kexec handoff (accepted at 7b6b846b): its first
@@ -416,6 +432,19 @@ def layout_constants(path=LAYOUT_H):
 
 
 LAYOUT = layout_constants()
+
+
+def header_constant(name, path=MVP_H):
+    """beryllium-cheri: BE_MVP_<name>, an unsigned literal #define of
+    src/mvp.h; its absence, or a second definition, is an error."""
+    found = re.findall(
+        rf"^#define\s+BE_MVP_{name}\s+(0x[0-9a-fA-F]+|\d+)U?\s*$",
+        pathlib.Path(path).read_text(encoding="utf-8"), re.M)
+    if len(found) != 1:
+        raise SystemExit(f"{path}: BE_MVP_{name} is not one literal #define")
+    return int(found[0], 0)
+
+
 STAGING = LAYOUT["STAGING_HPA"]
 # The kexec era's FDT slot after the staged image (test-only, for the
 # retained kexec records; the layout no longer names it since M6, Q3).
@@ -500,7 +529,17 @@ IPI_PROBE = re.compile(rf"BE_MVP:11 IPI_PROBE hart=({DEC}) domain=({DEC}) "
                        rf"sent=({HEX}) received=({HEX}) answered=({HEX}) "
                        r"spv=([01])")
 # hedeleg is WARL (B6's fix-warl): a reading of 0xb15d that holds 0xb10c.
-HEDELEG, HEDELEG_REQUIRED = 0xb15d, 0xb10c
+# beryllium-cheri: the values per monitor variant (--monitor): the
+# CHERI-aware monitor's delegate cause 28, CHERI v0.9.3's CHERI fault, too,
+# which a CHERI guest needs: 0x1000b15d holding 0x1000b10c.
+MONITOR_HEDELEG = {"riscv": (0xb15d, 0xb10c),
+                   "cheri": (0x1000b15d, 0x1000b10c)}
+HEDELEG, HEDELEG_REQUIRED = MONITOR_HEDELEG["riscv"]
+# beryllium-cheri: the monitor's console line, read from src/mvp.h
+# (BE_MVP_CONSOLE_LINE_BYTES), and Linux's boot timestamp,
+# "[    0.000000] ".
+CONSOLE_LINE_BYTES = header_constant("CONSOLE_LINE_BYTES")
+BOOT_STAMP_BYTES = 15
 # The marker IDs whose lines name a domain, and those that run per domain
 # in either hart order.
 PER_DOMAIN = ("BE_MVP:03", "BE_MVP:05", "BE_MVP:06", "BE_MVP:08",
@@ -797,7 +836,14 @@ def domain_pattern(template, domain, pins, extra=None):
         if token == "<banner>":
             prefix = template[:match.start()].split("] ", 1)[-1]
             banner = pins["banner"]
-            out.append(re.escape(banner[len(prefix):])
+            # beryllium-cheri: a guest line longer than the monitor's
+            # console line (src/mvp.h, BE_MVP_CONSOLE_LINE_BYTES) arrives in
+            # pieces, so a long banner's line holds its first piece: the
+            # boot timestamp "[    0.000000] ", the prefix, and what fits
+            # of the rest. The CHERI LLVM's version strings make the CHERI
+            # guest's banner such a line.
+            room = CONSOLE_LINE_BYTES - BOOT_STAMP_BYTES - len(prefix)
+            out.append(re.escape(banner[len(prefix):][:room])
                        if banner.startswith(prefix) else r"\S.*")
         elif token == "<g>":
             out.append(str(domain))
@@ -3109,6 +3155,8 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
             if parsed is not None and "pages" not in expect:
                 findings += boot_report_findings(state, parsed)
         findings += absent_findings(capture, outcome)
+        # beryllium-cheri: a CHERI variant's faulting domain's last lines.
+        findings += cheri_findings(capture, outcome, pins, expect)
         log, requests = {}, {}
         # A v3 failure whose domains ran (no-grant-check) has its denials,
         # a prefix of the declared ones for each of PREFIX.
@@ -5780,6 +5828,321 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
           f"seed=0x{MUTATION_SEED:x}")
     return 0 if not failed else 1
 
+
+# ------------------------------------------- beryllium-cheri: mutations
+# The CHERI enforcement rules (planning/cheri-enforcement-plan.md, section
+# 6) are the CHERI expectations' (tools/gen-scenario.py, --monitor cheri
+# and --guest-flavour cheri-linux), and their mutations are of the passing
+# capture this checker has just judged (--cheri-mutations, which
+# tests/run-qemu.sh gives the CHERI-aware monitor's runs): each must be
+# rejected for its own reason, a verdict other than PASS and the named
+# finding. B1: the CHERI Linux guest's capability-write PTE line, and Q6,
+# its root capability's line, in each scenario's own image; B2: channel-cw,
+# whose walker refuses its level-0 leaf before any root's line; C1 and C2:
+# te-poc's roles' lines of their own CHERI faults, each by value; C3:
+# cheri-fault-hs, whose hedeleg leaves the CHERI fault to HS; B3:
+# cap-store, whose G0 module's tagged store into the channel page the
+# G-stage faults under Zcheripte; B4: cap-store-control, the same image
+# without Zcheripte, whose store lands.
+CHERI_PTE_LINE = ("[<s>] CHERI: Selected SATP mode: 0x8000000000000000 "
+                  "PTE.CW support: yes")
+CHERI_ROOT_PREFIX = "[<s>] CHERI: Root capability: "
+CHERI_WHOLE = "0x0000000000000000-0xffffffffffffffff"
+CHERI_TESTS = "MVPINIT 14 CHERI "
+CHERI_TRACE_OFF = CHERI_TESTS + "exception-trace=0"
+CHERI_REPORT_LINE = ("[    0.000000] ===== CHERI exception: addr=0x100000010 "
+                     "xtval2=0x10004 (length violation, data fault due to "
+                     "load store or AMO)")
+
+
+def cheri_findings(capture, outcome, pins, expect):
+    """beryllium-cheri: a declared failure's faulting domain, the one its
+    exit DETAIL names, ends with the lines the variant declares, domain
+    templates (cheri-fault-hs: its trace line 0, so that its child printed
+    nothing; cap-store: its module's lines before the store, so that the
+    module printed nothing after it); detail_findings() judges the DETAIL
+    itself."""
+    last = outcome.get("last_lines")
+    details = [DETAIL_FORMS["exit"].fullmatch(line.text)
+               for line in capture.monitor
+               if line.text.startswith(DETAIL_PREFIX)]
+    if not last or not details or details[0] is None:
+        return []
+    domain = int(details[0].group(1))
+    own = capture.domains[domain] if domain < len(capture.domains) else []
+    ends = [line.text for line in own[-len(last):]]
+    matched = len(ends) == len(last) and all(
+        re.fullmatch(domain_pattern(template, domain, pins,
+                                    expect.get("domain_placeholders")), text)
+        for template, text in zip(last, ends))
+    return [] if matched else [
+        f"G{domain}, which the DETAIL names, ends with "
+        f"{[text[:60] for text in ends]!r}, not {last!r}"]
+
+
+def cheri_line_edit(text, prefix, needle, old=None, new=None):
+    """beryllium-cheri: TEXT with its first line that starts with PREFIX
+    and holds NEEDLE deleted, or with OLD in it replaced by NEW."""
+    parts = lines(text)
+    index = next(at for at, line in enumerate(parts)
+                 if line.startswith(prefix) and needle in line)
+    if old is None:
+        del parts[index]
+    elif old in parts[index]:
+        parts[index] = parts[index].replace(old, new, 1)
+    else:
+        raise ValueError(f"{old!r} not in {parts[index]!r}")
+    return text_of(parts)
+
+
+def cheri_mutations(expect):
+    """beryllium-cheri: the mutations that apply to EXPECT's image, each
+    (name, edit of the capture's text, the finding)."""
+    own = expect.get("domain_lines") or {}
+    first = own.get("0", []) if isinstance(own, dict) else own
+    out = []
+    if expect["outcome"].get("pass") and \
+            expect["image"] == expect["scenario"]:
+        lacks = "{} lacks the required line '{}"
+        if CHERI_PTE_LINE in first:
+            out += [
+                ("B1: G0's PTE.CW line missing", lambda text: cheri_line_edit(
+                    text, "BE_MVP_G0: ", "PTE.CW support: yes"),
+                 lacks.format("G0", CHERI_PTE_LINE)),
+                ("B1: G1's PTE.CW support no", lambda text: cheri_line_edit(
+                    text, "BE_MVP_G1: ", "PTE.CW support: yes", "yes",
+                    "no"), lacks.format("G1", CHERI_PTE_LINE))]
+        if any(line.startswith(CHERI_ROOT_PREFIX) for line in first):
+            out += [
+                ("Q6: G0's root capability bounded to its window",
+                 lambda text: cheri_line_edit(
+                     text, "BE_MVP_G0: ", "] CHERI: Root capability: ",
+                     CHERI_WHOLE, "0x0000000080000000-0x0000000084000000"),
+                 lacks.format("G0", CHERI_ROOT_PREFIX)),
+                ("Q6: G1's root capability line missing",
+                 lambda text: cheri_line_edit(
+                     text, "BE_MVP_G1: ", "] CHERI: Root capability: "),
+                 lacks.format("G1", CHERI_ROOT_PREFIX))]
+        if CHERI_TRACE_OFF in first:
+            out += cheri_test_mutations(first, lacks)
+    if expect["image"] == "cheri-fault-hs":
+        out += cheri_fault_mutations(first)
+    if expect["image"] == "channel-cw":
+        walked = next(entry["template"] for entry in expect["control_lines"]
+                      if entry["template"].startswith(
+                          "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 "))
+        fail = FAIL_PREFIX + "gstage"
+        out += [
+            ("B2: a BE_MVP:07 line", lambda text: insert(
+                text, fail, "BE_MVP:07 BLOCKS_PUBLISHED region=0x102044000 "
+                "bytes=0x20000 generation=1 budget_ticks=0x100000000",
+                after=False), "where the order expects"),
+            ("B2: the failure after a domain entered", lambda text: insert(
+                text, fail, "BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 "
+                "pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x47a7",
+                after=False), "where the order expects"),
+            ("B2: the failure after domain 0's root was walked",
+             lambda text: insert(text, fail, walked, after=False),
+             "the failure follows BE_MVP:03, expected BE_MVP:02"),
+            ("B2: the channel check's DETAIL", lambda text: insert(
+                text, fail, "BE_MVP:DETAIL channel=0 domain=0 hart=1 "
+                "walked=0x10000000460000d7 declared=0x460000d7"),
+             "class gstage takes no BE_MVP:DETAIL line"),
+            ("B2: another failure class", lambda text: replace_in(
+                text, fail, "gstage", "payload"),
+             f"expected {fail!r}")]
+    if expect["image"] == "cap-store":
+        out += cap_store_mutations(expect)
+    if expect["image"] == "cap-store-control":
+        out += cap_store_control_mutations(first)
+    return out
+
+
+def cap_store_mutations(expect):
+    """beryllium-cheri: B3's mutations of cap-store's capture: its DETAIL's
+    htval of the next page, the store from VU mode, a transformed
+    instruction, tval at another page offset, and a zero vsatp; and G0's
+    lines: the module's post-store line present, its own-data tag 0, and
+    its integer readback missing."""
+    template = expect["outcome"]["detail_lines"][0]["template"]
+    htval = re.search(r" htval=(0x[0-9a-f]+) ", template).group(1)
+    detail = "none of the variant's DETAIL lines"
+    ends = "which the DETAIL names, ends with"
+
+    def field(name, value):
+        def edit(text):
+            old = re.search(rf"^{DETAIL_PREFIX}.* ({name}=0x[0-9a-f]+) ",
+                            text, re.M).group(1)
+            return replace_in(text, DETAIL_PREFIX, old, f"{name}={value(old)}")
+        return edit
+
+    def module(needle, old=None, new=None):
+        return lambda text: cheri_line_edit(
+            text, "BE_MVP_G0: ", "be_cheri_store: " + needle, old, new)
+    return [
+        ("B3: htval of the next page", lambda text: replace_in(
+            text, DETAIL_PREFIX, f"htval={htval} ",
+            f"htval={int(htval, 16) + 0x400:#x} "), detail),
+        ("B3: the store from VU mode", lambda text: replace_in(
+            text, DETAIL_PREFIX, "spvp=1", "spvp=0"), detail),
+        ("B3: a transformed instruction", lambda text: replace_in(
+            text, DETAIL_PREFIX, "htinst=0x0 ", "htinst=0x3023 "), detail),
+        ("B3: tval at page offset 0x088", field(
+            "tval", lambda old: old[5:-3] + "088"), detail),
+        ("B3: vsatp zero", field("vsatp", lambda old: "0x0"), detail),
+        ("B3: the module's post-store line", lambda text: insert(
+            text, "be_cheri_store: channel gpa=", "BE_MVP_G0: [    0.092300] "
+            "be_cheri_store: channel offset=0x80 tag=1"), ends),
+        ("B3: the own-data tag 0", module("own tag=", "tag=1", "tag=0"),
+         ends),
+        ("B3: the integer readback missing", module("channel gpa="), ends)]
+
+
+def cap_store_control_mutations(first):
+    """beryllium-cheri: B4's mutations of cap-store-control's capture
+    (FIRST, domain 0's required lines, holds the module's post-store line):
+    that line with tag 0 or missing, G0's capability-write PTE line reading
+    yes, and a BE_MVP:FAIL."""
+    lacks = "{} lacks the required line '{}"
+    stored = next(text for text in first
+                  if text.startswith("[<s>] be_cheri_store: channel offset="))
+    probe = CHERI_PTE_LINE.replace("yes", "no")
+
+    def edit(needle, old=None, new=None):
+        return lambda text: cheri_line_edit(text, "BE_MVP_G0: ", needle, old,
+                                            new)
+    return [
+        ("B4: the post-store tag 0", edit(stored[6:], "tag=1", "tag=0"),
+         lacks.format("G0", stored)),
+        ("B4: the post-store line missing", edit(stored[6:]),
+         lacks.format("G0", stored)),
+        ("B4: G0's PTE.CW support yes", edit(
+            "PTE.CW support: no", "no", "yes"), lacks.format("G0", probe)),
+        ("B4: a BE_MVP:FAIL", lambda text: insert(
+            text, "BE_MVP:13 ", FAIL_PREFIX + "guest-page-fault",
+            after=False), "where the order expects")]
+
+
+def cheri_test_mutations(first, lacks):
+    """beryllium-cheri: C1's and C2's mutations of a capture whose domains
+    print te-poc's roles' CHERI test lines (FIRST, domain 0's required
+    lines, holds them): each value, in G0's lines or G1's, and the guest
+    kernel's report of the fault, each a required line's absence or a
+    rejected substring (LACKS, the absence's finding)."""
+    trace_on, bounds, short, whole = (
+        next(line for line in first if line.startswith(CHERI_TESTS + kind))
+        for kind in ("exception-trace=1", "bounds ", "write bound=16 ",
+                     "write bound=64 "))
+    base, addr = re.search(r" base=(0x[0-9a-f]+) addr=(0x[0-9a-f]+)$",
+                           bounds).groups()
+
+    def edit(domain, needle, old=None, new=None):
+        return lambda text: cheri_line_edit(text, f"BE_MVP_G{domain}: ",
+                                            needle, old, new)
+    return [
+        ("C1: G0's fault SEGV_ACCERR", edit(0, bounds, "code=12", "code=2"),
+         lacks.format("G0", bounds)),
+        ("C1: G1's signal SIGBUS", edit(1, bounds, "signo=11", "signo=7"),
+         lacks.format("G1", bounds)),
+        ("C1: G0's si_addr at the base", edit(
+            0, bounds, f"addr={addr}", f"addr={base}"),
+         lacks.format("G0", bounds)),
+        ("C1: G1's si_addr at the base plus 17", edit(
+            1, bounds, f"addr={addr}", f"addr={int(base, 16) + 17:#x}"),
+         lacks.format("G1", bounds)),
+        ("C1: G0's child without a fault", edit(
+            0, bounds, bounds.split("bounds ")[1], "no-fault"),
+         lacks.format("G0", bounds)),
+        ("C1: G1's trace line 1 missing", edit(1, trace_on),
+         lacks.format("G1", trace_on)),
+        ("C1: G0's trace line 1 reading 0", edit(
+            0, trace_on, "exception-trace=1", "exception-trace=0"),
+         lacks.format("G0", trace_on)),
+        ("C1: G1's kernel report of the fault", lambda text: insert(
+            text, f"BE_MVP_G1: {CHERI_TRACE_OFF}",
+            f"BE_MVP_G1: {CHERI_REPORT_LINE}"),
+         "rejected '===== CHERI exception'"),
+        ("C2: G0's bounded write of all 64 bytes", edit(
+            0, short, "result=-1 errno=14", "result=64 errno=0"),
+         lacks.format("G0", short)),
+        ("C2: G1's bounded write of 16 bytes", edit(
+            1, short, "result=-1 errno=14", "result=16 errno=0"),
+         lacks.format("G1", short)),
+        ("C2: G0's whole write failing", edit(
+            0, whole, "result=64 errno=0", "result=-1 errno=14"),
+         lacks.format("G0", whole))]
+
+
+def cheri_fault_mutations(first):
+    """beryllium-cheri: C3's mutations of cheri-fault-hs's capture (FIRST,
+    domain 0's required lines, holds the child's line): the CHERI fault
+    delegated, another cause, address, or mode in the DETAIL, the run
+    passing, and the faulting domain's child printing or its trace line 0
+    missing."""
+    bounds = next(line for line in first
+                  if line.startswith(CHERI_TESTS + "bounds "))
+    base, addr = re.search(r" base=(0x[0-9a-f]+) addr=(0x[0-9a-f]+)$",
+                           bounds).groups()
+    detail = "none of the variant's DETAIL lines"
+
+    def faulting(text):
+        return "BE_MVP_G" + re.search(r"^BE_MVP:DETAIL domain=([0-9]+) ",
+                                      text, re.M).group(1) + ": "
+    return [
+        ("C3: hedeleg with the CHERI fault", lambda text: replace_in(
+            text, "BE_MVP:09 HART_READY ", "hedeleg=0xb15d",
+            "hedeleg=0x1000b15d"), "is not a WARL reading of 0xb15d"),
+        ("C3: another cause", lambda text: replace_in(
+            text, DETAIL_PREFIX, "cause=0x1c", "cause=0x17"), detail),
+        ("C3: tval at the base", lambda text: replace_in(
+            text, DETAIL_PREFIX, f"tval={addr}", f"tval={base}"), detail),
+        ("C3: the fault from VS mode", lambda text: replace_in(
+            text, DETAIL_PREFIX, "spvp=0", "spvp=1"), detail),
+        ("C3: the run passing", lambda text: delete(delete(
+            text, DETAIL_PREFIX), FAIL_PREFIX + "exception"),
+         "no BE_MVP:FAIL exception line"),
+        ("C3: the child's line after the trace line 0", lambda text: insert(
+            text, faulting(text) + CHERI_TRACE_OFF, faulting(text) + bounds),
+         "which the variant declares absent"),
+        ("C3: the trace line 0 missing", lambda text: delete(
+            text, faulting(text) + CHERI_TRACE_OFF),
+         "which the DETAIL names, ends with")]
+
+
+def cheri_mutation_test(data, expect, args, options, verdict, record):
+    """beryllium-cheri: each of cheri_mutations() on the capture DATA,
+    judged as main() judged it; the run's verdict, FAIL with a finding
+    when a mutation was not rejected for its own reason. Its lines go to
+    record["cheri_mutations"]."""
+    mutations = cheri_mutations(expect) if verdict == "PASS" else []
+    if not mutations:
+        return verdict
+    pins = read_pins(args.pins)
+    report_data = pathlib.Path(args.report[0]).read_bytes() \
+        if args.report else None
+    text = data.decode("utf-8", "replace")
+    out, failed = [], []
+    for name, edit, wanted in mutations:
+        got, judged = evaluate(edit(text), expect, args.mode, pins,
+                               report_data, **options)
+        named = [finding for finding in judged["findings"]
+                 if wanted in finding]
+        ok = got != "PASS" and bool(named)
+        failed += [] if ok else [name]
+        out.append(f"cheri-mutation {'ok  ' if ok else 'FAIL'} {name}: "
+                   f"{got} {named[:1] if ok else judged['findings'][:2]}")
+    out.append(f"BE_MVP_CHERI_MUTATIONS: {'FAIL' if failed else 'PASS'} "
+               f"image={expect['image']} mutations={len(mutations)} "
+               f"rejected={len(mutations) - len(failed)}")
+    record["cheri_mutations"] = out
+    if not failed:
+        return verdict
+    record["findings"] += [f"CHERI mutation {name!r} was not rejected for "
+                           f"its own reason" for name in failed]
+    record["result"], record["boot_marker"] = "FAIL", "FAIL"
+    return "FAIL"
+
+
 def report(verdict, record, name):
     """The checker's printed lines."""
     out = [f"finding: {finding}" for finding in record["findings"]]
@@ -5808,6 +6171,8 @@ def report(verdict, record, name):
                 "fdt_loaded", "fdt_end", "fdt_in_place")
             if key in fields)).rstrip())
     out += log_report(record)
+    # beryllium-cheri: the CHERI rules' mutations (--cheri-mutations).
+    out += record.get("cheri_mutations", [])
     out.append(f"BE_MVP_RESULT: {verdict} terminal={record['terminal']}")
     out.append(f"BE_MVP_CAPTURE[{fields['mode']} {name}]: {verdict}")
     return "\n".join(out)
@@ -5942,6 +6307,12 @@ def main(argv):
     parser.add_argument("--report", action="append", default=[])
     parser.add_argument("--mode", choices=("direct", "kexec", "uboot"),
                         default="direct")
+    # beryllium-cheri: the monitor variant whose values the checks expect.
+    parser.add_argument("--monitor", choices=tuple(MONITOR_HEDELEG),
+                        default="riscv")
+    # beryllium-cheri: the CHERI rules' mutations of a passing capture
+    # (cheri_mutation_test()), for the CHERI-aware monitor's runs.
+    parser.add_argument("--cheri-mutations", action="store_true")
     parser.add_argument("--pins", default=str(DEFAULT_PINS))
     parser.add_argument("--sbi-version")
     parser.add_argument("--kexec-fdt", type=number)
@@ -5964,7 +6335,12 @@ def main(argv):
     parser.add_argument("--mutation-test", action="store_true")
     parser.add_argument("--write-fixtures")
     args = parser.parse_args(argv[1:])
+    global HEDELEG, HEDELEG_REQUIRED
+    HEDELEG, HEDELEG_REQUIRED = MONITOR_HEDELEG[args.monitor]
     many = args.self_test or args.mutation_test or args.write_fixtures
+    if args.cheri_mutations and (args.monitor != "cheri" or many):
+        parser.error("--cheri-mutations judges one capture of the "
+                     "CHERI-aware monitor (--monitor cheri)")
     if len(args.report) > 1 and not many:
         parser.error("one --report, the expectation's")
     if len(args.image) > 1 and not args.write_fixtures:
@@ -6022,6 +6398,11 @@ def main(argv):
     if not args.capture or not args.expect:
         parser.error("a capture and --expect are required")
     expect = json.loads(pathlib.Path(args.expect).read_text(encoding="utf-8"))
+    # beryllium-cheri: the hedeleg a CHERI variant's image arms, which its
+    # expectation states (cheri-fault-hs's, without cause 28).
+    if args.monitor == "cheri" and "hedeleg" in expect["outcome"]:
+        HEDELEG, HEDELEG_REQUIRED = (int(value, 16) for value in
+                                     expect["outcome"]["hedeleg"])
     data = pathlib.Path(args.capture).read_bytes()
     options = {"sbi_version": args.sbi_version, "kexec_fdt": args.kexec_fdt,
                "measured": measured, "toolchain": args.toolchain,
@@ -6052,6 +6433,9 @@ def main(argv):
         data, expect, args.mode, read_pins(args.pins),
         pathlib.Path(args.report[0]).read_bytes() if args.report else None,
         **options)
+    if args.cheri_mutations:
+        verdict = cheri_mutation_test(data, expect, args, options, verdict,
+                                      record)
     record["capture"] = {"sha256": hashlib.sha256(data).hexdigest(),
                          "bytes": len(data)}
     record["expect"] = {"image": expect["image"],

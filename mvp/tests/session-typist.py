@@ -58,6 +58,18 @@ expectation's bytes, and reads no path from a record. FW is M-mode
 firmware that sees the whole run, so before every QEMU launch its SHA-256
 must be the tool lock's MVP_PIN_OPENSBI_BIN_SHA256, or the typist exits
 refusing it and no QEMU starts (the release's security review, S-01).
+
+beryllium-cheri: as tests/run-qemu.sh, it reads BE_MVP_MONITOR (riscv, the
+default, or cheri: the firmware's SBI version, 2.0 or 3.0, and the
+checker's --monitor), BE_MVP_GUEST_PINS (the guest flavour's pins for the
+checker, when set), and BE_MVP_QEMU_K3_LIKE=plic (planning/
+cheri-platform.md; tools/cheri-check.sh sets all three), and, for the
+CHERI-aware monitor only, BE_MVP_QEMU_CHERI_CPU, its addition to the CPU
+string (cheri_pte=on from tools/cheri-check.sh; planning/
+cheri-enforcement-plan.md, CE-2, Q7), which qemu.txt's command line
+shows. suite's --build, and run's optional --build, is the checker's
+--build-root, whose references it reads; without it, the checker's
+default, build/mvp, the RISC-V monitor's tree.
 """
 
 import argparse
@@ -83,6 +95,27 @@ FIRMWARE_PIN = "MVP_PIN_OPENSBI_BIN_SHA256"
 MACHINE = "virt,aia=aplic-imsic,aia-guests=7"
 CPU = ("rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,"
        "smstateen=true")
+# beryllium-cheri: the CHERI QEMU (8.1) has no svade or svadu property;
+# BE_MVP_QEMU_K3_LIKE=plic types on the plic machine instead, as
+# tests/run-qemu.sh does.
+if os.environ.get("BE_MVP_QEMU_K3_LIKE") == "plic":
+    MACHINE, CPU = "virt", "rv64,h=true"
+# beryllium-cheri: the monitor variant (tests/run-qemu.sh's
+# BE_MVP_MONITOR): its firmware's SBI version, OpenSBI 1.6's 2.0 or the
+# CHERI Alliance OpenSBI's 3.0, and the checker's arguments, with the
+# guest flavour's pins when BE_MVP_GUEST_PINS names them.
+MONITOR = os.environ.get("BE_MVP_MONITOR", "riscv")
+FIRMWARE_SBI = {"riscv": "2.0", "cheri": "3.0"}.get(MONITOR)
+CHECKED = (["--monitor", "cheri"] if MONITOR == "cheri" else []) + \
+    (["--pins", os.environ["BE_MVP_GUEST_PINS"]]
+     if os.environ.get("BE_MVP_GUEST_PINS") else [])
+# beryllium-cheri: tests/run-qemu.sh's BE_MVP_QEMU_CHERI_CPU, the CHERI-aware
+# monitor's addition to the CPU string (cheri_pte=on, the CHERI emulator's
+# Zcheripte; planning/cheri-enforcement-plan.md, CE-2, Q7), which main()
+# refuses for the RISC-V monitor and in any other form.
+CHERI_CPU = os.environ.get("BE_MVP_QEMU_CHERI_CPU", "")
+CHERI_CPU_FORM = re.compile(r"[a-z0-9_]+=[a-z0-9_]+"
+                            r"(?:,[a-z0-9_]+=[a-z0-9_]+)*")
 TERMINAL = re.compile(r"^(?:BE_MVP:14 SHUTDOWN|BE_MVP:FAIL|BE_K3_B3: FAIL)")
 PREFIX = re.compile(r"^BE_MVP_G([0-9]): ")
 NONCE = "NONCE"
@@ -312,7 +345,8 @@ def attempt(args, expect, directory, session_sha, elf_sha):
         f"expect={pathlib.Path(args.expect).name} image={expect['image']} "
         f"sha256={sha256(pathlib.Path(args.expect).read_bytes())}\n"
         f"elf={args.elf} sha256={elf_sha}\n", encoding="utf-8")
-    argv = [args.qemu, "-machine", MACHINE, "-cpu", CPU, "-smp", "8", "-m",
+    argv = [args.qemu, "-machine", MACHINE, "-cpu",
+            CPU + (f",{CHERI_CPU}" if CHERI_CPU else ""), "-smp", "8", "-m",
             "8G", "-bios", args.firmware, "-kernel", args.elf, "-display",
             "none", "-monitor", "none", "-no-reboot", "-chardev",
             f"stdio,id=uart0,signal=off,logfile={directory / 'console.log'},"
@@ -368,14 +402,20 @@ def judge(args, directory, session):
     """The checker on DIRECTORY's capture: its verdict, the boot hart."""
     command = [sys.executable, "-B", str(CHECKER),
                str(directory / "console.log"), "--expect", args.expect,
-               "--mode", "direct", "--sbi-version", "2.0", "--toolchain",
-               args.toolchain, "--json", str(directory / "result.json"),
+               "--mode", "direct", *CHECKED, "--sbi-version", FIRMWARE_SBI,
+               "--toolchain", args.toolchain, "--json",
+               str(directory / "result.json"),
                "--typed", str(directory / "typed.txt"), "--nonce",
                str(directory / "nonce.txt"), "--session", str(session)]
     if args.report:
         command += ["--report", args.report]
     if args.kernel:
         command += ["--kernel", args.kernel, "--dtb", args.dtb]
+    # beryllium-cheri: --build, the suite's or run's, is the checker's build
+    # root, whose references it reads (its default, build/mvp, is the
+    # RISC-V monitor's tree).
+    if args.build:
+        command += ["--build-root", str(args.build)]
     with open(directory / "check.txt", "wb") as out:
         subprocess.run(command, stdout=out, stderr=subprocess.STDOUT,
                        check=False)
@@ -632,6 +672,9 @@ def main(argv):
             command.add_argument("--report")
             command.add_argument("--kernel")
             command.add_argument("--dtb")
+            # beryllium-cheri: the build tree, as suite's --build, for the
+            # checker's build root.
+            command.add_argument("--build")
         else:
             command.add_argument("--build", required=True)
             command.add_argument("--scenarios", required=True)
@@ -641,6 +684,13 @@ def main(argv):
         return self_test()
     if args.command is None:
         parser.error("run, suite, or --self-test")
+    if FIRMWARE_SBI is None:
+        parser.error(f"BE_MVP_MONITOR={MONITOR} is neither riscv nor cheri")
+    if CHERI_CPU and (MONITOR != "cheri" or
+                      not CHERI_CPU_FORM.fullmatch(CHERI_CPU)):
+        parser.error(f"BE_MVP_QEMU_CHERI_CPU={CHERI_CPU} is not property="
+                     "value pairs for the CHERI-aware monitor "
+                     "(BE_MVP_MONITOR=cheri)")
     if args.attempts < 1:
         parser.error("--attempts must be at least 1")
     if args.command == "run":

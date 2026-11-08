@@ -671,6 +671,22 @@ export default defineConfig({
           {
             text: 'CHERI-RISC-V and the MVP',
             link: '/sidebar-cheri-mvp'
+          },
+          {
+            text: 'The CHERI platform branch',
+            link: '/cheri-platform'
+          },
+          {
+            text: 'CHERI enforcement plan (accepted)',
+            link: '/cheri-enforcement-plan'
+          },
+          {
+            text: 'CHERI enforcement plan review and acceptance record',
+            link: '/cheri-enforcement-plan-review-summary'
+          },
+          {
+            text: 'CHERI enforcement result review and acceptance record',
+            link: '/cheri-enforcement-result-review-summary'
           }
         ]
       },
@@ -1784,6 +1800,22 @@ export default defineConfig({
           {
             text: 'CHERI-RISC-V and the MVP\'s mechanisms',
             link: '/sidebar-cheri-mvp'
+          },
+          {
+            text: 'The CHERI platform branch',
+            link: '/cheri-platform'
+          },
+          {
+            text: 'CHERI enforcement plan (accepted)',
+            link: '/cheri-enforcement-plan'
+          },
+          {
+            text: 'CHERI enforcement plan review and acceptance record',
+            link: '/cheri-enforcement-plan-review-summary'
+          },
+          {
+            text: 'CHERI enforcement result review and acceptance record',
+            link: '/cheri-enforcement-result-review-summary'
           }
         ]
       }

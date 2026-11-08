@@ -27,6 +27,23 @@
  *          budget timer with sstatus.SIE 0, and a paused or terminated
  *          domain hart on the IPI alone; no hvip injection; hstateen0,
  *          hvictl, hvien, and hviprio* are never accessed.
+ *
+ * beryllium-cheri: two monitor variants assemble from this file
+ * (planning/cheri-platform.md). Without BE_MVP_CHERI it is the RISC-V
+ * monitor, instruction for instruction the development line's. With
+ * BE_MVP_CHERI (mvp/Makefile's MVP_MONITOR=cheri) it is the CHERI-aware
+ * monitor, for CHERI v0.9.3 (Zcherihybrid): six routines carry
+ * conditional blocks, as CHERI Alliance Linux's arch/riscv/kernel/entry.S
+ * carries its CHERI blocks, and the vector and the resume tail keep the
+ * guest's registers through the register macros below. The vector enters
+ * Capability Pointer Mode first, saves every guest register whole in a
+ * capability frame after struct be_mvp_exit, and switches ddc (CSR 0x416)
+ * to the monitor's, which the resume tail switches back, restoring every
+ * register whole; the three arm helpers write the armed henvcfg with CRE,
+ * delegate cause 28, and name the trusted top in sscratchc, the arm
+ * helper also clearing the capability frame and passing the device tree
+ * as a capability; and the injection helper moves sepcc and vstvecc
+ * whole, so it writes sepc too.
  */
 
 #include "mvp-layout.h"
@@ -48,13 +65,27 @@
 	.equ MVP_SSTATUS_CONTROL_MASK, 0x00000000000de722
 	.equ MVP_SSTATUS_SPP, 0x100
 	/* Causes 0, 2, 3, 4, 6, 8, 12, 13, and 15 go to the guest, as in B6. */
+#if defined(BE_MVP_CHERI) && !defined(BE_MVP_VARIANT_CHERI_FAULT_HS)
+	/* beryllium-cheri: and cause 28, CHERI v0.9.3's CHERI fault, but in
+	 * cheri-fault-hs (src/mvp.h). */
+	.equ MVP_HEDELEG, 0x1000b15d
+#else
 	.equ MVP_HEDELEG, 0xb15d
+#endif
 	.equ MVP_HIDELEG_VSTI, 0x40
 	.equ MVP_HIE_VSTIE, 0x40
 	/* VSSIP, VSTIP, and VSEIP: QEMU also shows a pending HS STIP. */
 	.equ MVP_HVIP_VS_BITS, 0x444
 	.equ MVP_HCOUNTEREN_TM, 0x2
 	.equ MVP_HENVCFG_STCE, 0x8000000000000000
+	/* The armed henvcfg, which the arm helper writes and the resume tail
+	 * requires: STCE only. */
+#ifdef BE_MVP_CHERI
+	/* beryllium-cheri: STCE and CHERI v0.9.3's VS-mode enable, CRE. */
+	.equ MVP_HENVCFG_ARMED, 0x8000000010000000
+#else
+	.equ MVP_HENVCFG_ARMED, MVP_HENVCFG_STCE
+#endif
 	/* The IPI: the supervisor software interrupt, taken only while V=1. */
 	.equ MVP_SIE_SSIE, 0x2
 	/* Hart 0's wait: the IPI and its budget timer. */
@@ -67,6 +98,27 @@
 	 * asserts both against mvp-layout.h. */
 	.equ MVP_REGION_SHIFT, 17
 	.equ MVP_BLOCK_SHIFT, 16
+
+#ifdef BE_MVP_CHERI
+	/*
+	 * beryllium-cheri: CHERI v0.9.3 (Zcherihybrid). Beryllium's
+	 * assemblers lack the extension, so its instructions are encoded:
+	 * MODESW.CAP and MODESW.INT whole; SC (store capability) as
+	 * .insn s 0x23, 4; LC (load capability) as .insn i 0x0f, 4; and
+	 * SCADDR as .insn r 0x33, 1, 0x06. In Capability Pointer Mode a
+	 * load or store takes its base register's capability as its
+	 * authority, and a CSRRW of sscratch or ddc moves a whole
+	 * capability. ddc (CSR 0x416) is one register for every mode.
+	 * The capability frame follows struct be_mvp_exit in the saved
+	 * page: slot 0 the guest's ddc, slot N (1 to 31) the guest's cN,
+	 * 16 bytes each; then the monitor's ddc.
+	 */
+	.equ MVP_INSN_MODESW_CAP, 0x12001033
+	.equ MVP_INSN_MODESW_INT, 0x14001033
+	.equ CF, 368
+	.equ CF_MON_DDC, 880
+	.equ CF_END, 896
+#endif
 
 	/* enum be_mvp_class values; mvp-runtime.c asserts them. */
 	.equ MVP_CLASS_EXCEPTION, 11
@@ -126,12 +178,46 @@
 	.equ IJ_VSEPC, 16
 	.equ IJ_VSSTATUS, 24
 
+	/*
+	 * The register macros of the vector and the resume tail, in the manner
+	 * of CHERI Alliance Linux's CREG_S and CREG_L (arch/riscv/include/asm/
+	 * asm.h), which are REG_S and REG_L without CHERI: MVP_SAVE_GPR stores
+	 * the guest's xN, held in reg, in xN's slot of the saved page, and
+	 * MVP_RESTORE_GPR loads reg from it. The RISC-V monitor's slot is the
+	 * accepted frame's word at (N - 1) * 8, through t0 in the vector and t6
+	 * in the resume tail. beryllium-cheri: the CHERI-aware monitor's is the
+	 * capability frame's slot at CF + 16 * N, through csp in the vector and
+	 * ct6 in the resume tail, by SC and LC, whole; MVP_RECORD_GPR then
+	 * copies xN's address from that slot into the accepted frame's word,
+	 * for the dispatch.
+	 */
+#ifdef BE_MVP_CHERI
+	.macro MVP_SAVE_GPR reg, n
+	.insn	s 0x23, 4, \reg, CF + 16 * \n(sp)
+	.endm
+	.macro MVP_RESTORE_GPR reg, n
+	.insn	i 0x0f, 4, \reg, t6, CF + 16 * \n
+	.endm
+	.macro MVP_RECORD_GPR n
+	ld	t0, CF + 16 * \n(sp)
+	sd	t0, \n * 8 - 8(sp)
+	.endm
+#else
+	.macro MVP_SAVE_GPR reg, n
+	sd	\reg, \n * 8 - 8(t0)
+	.endm
+	.macro MVP_RESTORE_GPR reg, n
+	ld	\reg, \n * 8 - 8(t6)
+	.endm
+#endif
+
 	.section .text, "ax"
 
 	/*
-	 * Arm helper: henvcfg = STCE only. STCE reads back 1 only when Sstc
-	 * exists and M-mode set menvcfg.STCE, so this probe cannot trap. Hart 0
-	 * runs it as its Sstc probe; each domain hart, before its arming.
+	 * Arm helper: henvcfg = the armed value, STCE only (beryllium-cheri:
+	 * STCE and CRE in the CHERI-aware monitor). STCE reads back 1 only when
+	 * Sstc exists and M-mode set menvcfg.STCE, so this probe cannot trap.
+	 * Hart 0 runs it as its Sstc probe; each domain hart, before its arming.
 	 */
 	.align 2
 	.globl be_mvp_arch_arm_stce
@@ -139,7 +225,7 @@
 be_mvp_arch_arm_stce:
 	.option push
 	.option arch, +h
-	li	t0, MVP_HENVCFG_STCE
+	li	t0, MVP_HENVCFG_ARMED
 	csrw	henvcfg, t0
 	csrr	a0, henvcfg
 	.option pop
@@ -177,6 +263,65 @@ be_mvp_arch_arm_controls:
 	li	t0, MVP_SIE_SSIE
 	csrs	sie, t0
 	csrw	sscratch, a1
+#ifdef BE_MVP_CHERI
+	/*
+	 * beryllium-cheri: sscratchc is the trusted top as a capability from
+	 * the monitor's ddc. The capability frame is cleared; the monitor's
+	 * ddc is kept for the vector and is the guest's first ddc. a1's
+	 * slot holds the device tree as a capability, the monitor's ddc at
+	 * BE_MVP_DTB_GPA bounded to BE_MVP_DTB_BYTES (SCBNDSR is .insn r
+	 * 0x33, 1, 0x07): a CHERI kernel takes its device tree from ca1, as
+	 * CHERI firmware passes it, and the first entry's a1 equals its
+	 * address, so the resume tail keeps the capability.
+	 */
+	csrrs	t0, 0x416, zero
+	.insn	r 0x33, 1, 0x06, t1, t0, a1
+	li	t2, BE_MVP_DTB_GPA
+	.insn	r 0x33, 1, 0x06, t3, t0, t2
+	li	t2, BE_MVP_DTB_BYTES
+	.insn	r 0x33, 1, 0x07, t3, t3, t2
+	/* The frame cleared, straight-line (no loop), each slot a null
+	 * capability: CF to CF_END is 33 slots. */
+	.insn	s 0x23, 4, zero, CF + 16 * 0(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 1(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 2(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 3(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 4(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 5(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 6(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 7(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 8(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 9(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 10(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 11(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 12(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 13(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 14(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 15(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 16(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 17(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 18(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 19(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 20(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 21(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 22(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 23(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 24(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 25(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 26(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 27(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 28(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 29(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 30(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 31(a1)
+	.insn	s 0x23, 4, zero, CF + 16 * 32(a1)
+	.4byte	MVP_INSN_MODESW_CAP
+	csrrw	zero, sscratch, t1
+	.insn	s 0x23, 4, t0, CF_MON_DDC(t1)
+	.insn	s 0x23, 4, t0, CF(t1)
+	.insn	s 0x23, 4, t3, CF + 16 * 11(t1)
+	.4byte	MVP_INSN_MODESW_INT
+#endif
 	ld	t0, VC_VSSTATUS(a2)
 	csrw	vsstatus, t0
 	ld	t0, VC_VSIE(a2)
@@ -274,6 +419,15 @@ be_mvp_arch_set_timer:
 	 * vsstatus; each is then read back into a4's four words, in the same
 	 * order, for C to compare with the values written. After arming it is
 	 * the only writer of the four, and it touches no other CSR.
+	 *
+	 * beryllium-cheri: with CHERI on, the guest's pc at the denied access
+	 * is sepcc, a capability, and the guest's handler is vstvecc. In
+	 * Capability Pointer Mode vsepcc becomes the former and sepcc the
+	 * latter, whole, so that the guest's handler runs with its own
+	 * capability and its sepcc is the faulting code's own. The integer
+	 * writes that follow set only addresses: vsepc's to a2, sepcc's own,
+	 * and the resume tail's sepc to the handler's. So this helper also
+	 * writes sepc, which the resume tail writes again.
 	 */
 	.align 2
 	.globl be_mvp_arch_inject
@@ -283,6 +437,14 @@ be_mvp_arch_inject:
 	.option arch, +h
 	csrw	vscause, a0
 	csrw	vstval, a1
+#ifdef BE_MVP_CHERI
+	.4byte	MVP_INSN_MODESW_CAP
+	csrrs	t0, sepc, zero
+	csrrw	zero, vsepc, t0
+	csrrs	t0, vstvec, zero
+	csrrw	zero, sepc, t0
+	.4byte	MVP_INSN_MODESW_INT
+#endif
 	csrw	vsepc, a2
 	csrw	vsstatus, a3
 	csrr	t0, vscause
@@ -314,6 +476,15 @@ be_mvp_arch_arm_budget:
 	li	t0, MVP_SIE_CONTROL
 	csrs	sie, t0
 	csrw	sscratch, a1
+#ifdef BE_MVP_CHERI
+	/* beryllium-cheri: sscratchc is hart 0's top as a capability, as
+	 * the vector's Capability Pointer Mode entry needs. */
+	csrrs	t0, 0x416, zero
+	.insn	r 0x33, 1, 0x06, t0, t0, a1
+	.4byte	MVP_INSN_MODESW_CAP
+	csrrw	zero, sscratch, t0
+	.4byte	MVP_INSN_MODESW_INT
+#endif
 	csrr	a0, sie
 	ret
 	.size be_mvp_arch_arm_budget, . - be_mvp_arch_arm_budget
@@ -424,6 +595,24 @@ be_mvp_arch_park:
 	.globl be_mvp_trap_vector
 	.type be_mvp_trap_vector, @function
 be_mvp_trap_vector:
+#ifdef BE_MVP_CHERI
+	/*
+	 * beryllium-cheri: enter Capability Pointer Mode first, so that every
+	 * access before ddc is switched takes the monitor's trusted-top
+	 * capability as its authority, never the guest's ddc. The swap is
+	 * then whole: csp is the trusted top and sscratchc the guest's csp.
+	 */
+	.4byte	MVP_INSN_MODESW_CAP
+	csrrw	sp, sscratch, sp
+	/* The guest's ct0 and ct1, spilled below the top. */
+	.insn	s 0x23, 4, t0, -32(sp)
+	.insn	s 0x23, 4, t1, -16(sp)
+	/*
+	 * The top must be a block's 0x2000 offset in the hart region; the
+	 * saved page starts there. Anything else is terminal.
+	 */
+	mv	t0, sp
+#else
 	/* First instruction exchanges untrusted guest sp before any stack access. */
 	csrrw	sp, sscratch, sp
 	/*
@@ -438,52 +627,109 @@ be_mvp_trap_vector:
 	 * saved page starts there. Anything else is terminal.
 	 */
 	addi	t0, sp, 16
+#endif
 	la	t1, __be_mvp_hart_region_start
 	sub	t0, t0, t1
 	srli	t1, t0, MVP_REGION_SHIFT
-	bnez	t1, .Lmvp_bad_stack
+	bnez	t1, .Lmvp_vector_bad_stack
 	slli	t0, t0, 64 - MVP_BLOCK_SHIFT
 	srli	t0, t0, 64 - MVP_BLOCK_SHIFT
 	li	t1, BE_MVP_BLOCK_STACK_TOP_OFFSET
-	bne	t0, t1, .Lmvp_bad_stack
+	bne	t0, t1, .Lmvp_vector_bad_stack
+#ifdef BE_MVP_CHERI
+	/* Every guest capability register into the capability frame. */
+	.insn	i 0x0f, 4, t0, sp, -32
+	MVP_SAVE_GPR t0, 5
+	.insn	i 0x0f, 4, t0, sp, -16
+	MVP_SAVE_GPR t0, 6
+	MVP_SAVE_GPR ra, 1
+	MVP_SAVE_GPR gp, 3
+	MVP_SAVE_GPR tp, 4
+#else
 	addi	t0, sp, 16
-	sd	ra, 0(t0)
+	MVP_SAVE_GPR ra, 1
 	csrr	t1, sscratch
-	sd	t1, 8(t0)
+	MVP_SAVE_GPR t1, 2
 	/* sscratch names trusted storage again before C is reachable. */
 	addi	t1, sp, 16
 	csrw	sscratch, t1
-	sd	gp, 16(t0)
-	sd	tp, 24(t0)
+	MVP_SAVE_GPR gp, 3
+	MVP_SAVE_GPR tp, 4
 	ld	t1, 0(sp)
-	sd	t1, 32(t0)
+	MVP_SAVE_GPR t1, 5
 	ld	t1, 8(sp)
-	sd	t1, 40(t0)
-	sd	t2, 48(t0)
-	sd	s0, 56(t0)
-	sd	s1, 64(t0)
-	sd	a0, 72(t0)
-	sd	a1, 80(t0)
-	sd	a2, 88(t0)
-	sd	a3, 96(t0)
-	sd	a4, 104(t0)
-	sd	a5, 112(t0)
-	sd	a6, 120(t0)
-	sd	a7, 128(t0)
-	sd	s2, 136(t0)
-	sd	s3, 144(t0)
-	sd	s4, 152(t0)
-	sd	s5, 160(t0)
-	sd	s6, 168(t0)
-	sd	s7, 176(t0)
-	sd	s8, 184(t0)
-	sd	s9, 192(t0)
-	sd	s10, 200(t0)
-	sd	s11, 208(t0)
-	sd	t3, 216(t0)
-	sd	t4, 224(t0)
-	sd	t5, 232(t0)
-	sd	t6, 240(t0)
+	MVP_SAVE_GPR t1, 6
+#endif
+	MVP_SAVE_GPR t2, 7
+	MVP_SAVE_GPR s0, 8
+	MVP_SAVE_GPR s1, 9
+	MVP_SAVE_GPR a0, 10
+	MVP_SAVE_GPR a1, 11
+	MVP_SAVE_GPR a2, 12
+	MVP_SAVE_GPR a3, 13
+	MVP_SAVE_GPR a4, 14
+	MVP_SAVE_GPR a5, 15
+	MVP_SAVE_GPR a6, 16
+	MVP_SAVE_GPR a7, 17
+	MVP_SAVE_GPR s2, 18
+	MVP_SAVE_GPR s3, 19
+	MVP_SAVE_GPR s4, 20
+	MVP_SAVE_GPR s5, 21
+	MVP_SAVE_GPR s6, 22
+	MVP_SAVE_GPR s7, 23
+	MVP_SAVE_GPR s8, 24
+	MVP_SAVE_GPR s9, 25
+	MVP_SAVE_GPR s10, 26
+	MVP_SAVE_GPR s11, 27
+	MVP_SAVE_GPR t3, 28
+	MVP_SAVE_GPR t4, 29
+	MVP_SAVE_GPR t5, 30
+	MVP_SAVE_GPR t6, 31
+#ifdef BE_MVP_CHERI
+	csrrs	t0, sscratch, zero
+	MVP_SAVE_GPR t0, 2
+	/* sscratch names trusted storage again before C is reachable. */
+	csrrw	zero, sscratch, sp
+	/* The guest's ddc into slot 0; the monitor's ddc back. */
+	csrrs	t0, 0x416, zero
+	.insn	s 0x23, 4, t0, CF(sp)
+	.insn	i 0x0f, 4, t0, sp, CF_MON_DDC
+	csrrw	zero, 0x416, t0
+	/* The accepted integer frame: each register's address. */
+	MVP_RECORD_GPR 1
+	MVP_RECORD_GPR 2
+	MVP_RECORD_GPR 3
+	MVP_RECORD_GPR 4
+	MVP_RECORD_GPR 5
+	MVP_RECORD_GPR 6
+	MVP_RECORD_GPR 7
+	MVP_RECORD_GPR 8
+	MVP_RECORD_GPR 9
+	MVP_RECORD_GPR 10
+	MVP_RECORD_GPR 11
+	MVP_RECORD_GPR 12
+	MVP_RECORD_GPR 13
+	MVP_RECORD_GPR 14
+	MVP_RECORD_GPR 15
+	MVP_RECORD_GPR 16
+	MVP_RECORD_GPR 17
+	MVP_RECORD_GPR 18
+	MVP_RECORD_GPR 19
+	MVP_RECORD_GPR 20
+	MVP_RECORD_GPR 21
+	MVP_RECORD_GPR 22
+	MVP_RECORD_GPR 23
+	MVP_RECORD_GPR 24
+	MVP_RECORD_GPR 25
+	MVP_RECORD_GPR 26
+	MVP_RECORD_GPR 27
+	MVP_RECORD_GPR 28
+	MVP_RECORD_GPR 29
+	MVP_RECORD_GPR 30
+	MVP_RECORD_GPR 31
+	.4byte	MVP_INSN_MODESW_INT
+	mv	t0, sp
+#endif
 	.option push
 	.option arch, +h
 	csrr	t1, vstvec
@@ -526,6 +772,15 @@ be_mvp_trap_vector:
 	csrr	a0, sscratch
 	li	a1, MVP_CLASS_RESUME
 	tail	be_mvp_hart_terminal
+
+.Lmvp_vector_bad_stack:
+#ifdef BE_MVP_CHERI
+	/* beryllium-cheri: back to Integer Pointer Mode, with sp 16 below
+	 * the top, as the RISC-V monitor's vector leaves it. */
+	.4byte	MVP_INSN_MODESW_INT
+	addi	sp, sp, -16
+	j	.Lmvp_bad_stack
+#endif
 
 .Lmvp_bad_stack:
 	/*
@@ -624,7 +879,7 @@ be_mvp_arch_resume:
 	csrr	t0, htimedelta
 	bnez	t0, .Lmvp_resume_bad
 	csrr	t0, henvcfg
-	li	t1, MVP_HENVCFG_STCE
+	li	t1, MVP_HENVCFG_ARMED
 	bne	t0, t1, .Lmvp_resume_bad
 	csrr	t0, hgeie
 	bnez	t0, .Lmvp_resume_bad
@@ -634,37 +889,72 @@ be_mvp_arch_resume:
 	.option pop
 	ld	t0, FR_SEPC(t6)
 	csrw	sepc, t0
-	ld	ra, 0(t6)
-	ld	gp, 16(t6)
-	ld	tp, 24(t6)
-	ld	t0, 32(t6)
-	ld	t1, 40(t6)
-	ld	t2, 48(t6)
-	ld	s0, 56(t6)
-	ld	s1, 64(t6)
-	ld	a0, 72(t6)
-	ld	a1, 80(t6)
-	ld	a2, 88(t6)
-	ld	a3, 96(t6)
-	ld	a4, 104(t6)
-	ld	a5, 112(t6)
-	ld	a6, 120(t6)
-	ld	a7, 128(t6)
-	ld	s2, 136(t6)
-	ld	s3, 144(t6)
-	ld	s4, 152(t6)
-	ld	s5, 160(t6)
-	ld	s6, 168(t6)
-	ld	s7, 176(t6)
-	ld	s8, 184(t6)
-	ld	s9, 192(t6)
-	ld	s10, 200(t6)
-	ld	s11, 208(t6)
-	ld	t3, 216(t6)
-	ld	t4, 224(t6)
-	ld	t5, 232(t6)
-	ld	sp, 8(t6)
-	ld	t6, 240(t6)
+#ifdef BE_MVP_CHERI
+	/*
+	 * beryllium-cheri: a register the dispatch changed (its frame word
+	 * no longer equals its capability's address) returns as that
+	 * integer, untagged; every other register returns as the guest's
+	 * capability. Integer stores clear a slot's tag.
+	 */
+	li	t0, 1
+	mv	t1, t6
+	addi	t2, t6, CF + 16
+1:
+	ld	t3, 0(t1)
+	ld	t4, 0(t2)
+	beq	t3, t4, 2f
+	sd	t3, 0(t2)
+	sd	zero, 8(t2)
+2:
+	addi	t0, t0, 1
+	addi	t1, t1, 8
+	addi	t2, t2, 16
+	li	t3, 32
+	bltu	t0, t3, 1b
+	/* Capability Pointer Mode; ct6 is the trusted top, from sscratchc. */
+	.4byte	MVP_INSN_MODESW_CAP
+	csrrs	t6, sscratch, zero
+	.insn	i 0x0f, 4, t0, t6, CF
+	csrrw	zero, 0x416, t0
+#endif
+	MVP_RESTORE_GPR ra, 1
+#ifdef BE_MVP_CHERI
+	/* beryllium-cheri: csp in its order; ct6, not csp, is the base. */
+	MVP_RESTORE_GPR sp, 2
+#endif
+	MVP_RESTORE_GPR gp, 3
+	MVP_RESTORE_GPR tp, 4
+	MVP_RESTORE_GPR t0, 5
+	MVP_RESTORE_GPR t1, 6
+	MVP_RESTORE_GPR t2, 7
+	MVP_RESTORE_GPR s0, 8
+	MVP_RESTORE_GPR s1, 9
+	MVP_RESTORE_GPR a0, 10
+	MVP_RESTORE_GPR a1, 11
+	MVP_RESTORE_GPR a2, 12
+	MVP_RESTORE_GPR a3, 13
+	MVP_RESTORE_GPR a4, 14
+	MVP_RESTORE_GPR a5, 15
+	MVP_RESTORE_GPR a6, 16
+	MVP_RESTORE_GPR a7, 17
+	MVP_RESTORE_GPR s2, 18
+	MVP_RESTORE_GPR s3, 19
+	MVP_RESTORE_GPR s4, 20
+	MVP_RESTORE_GPR s5, 21
+	MVP_RESTORE_GPR s6, 22
+	MVP_RESTORE_GPR s7, 23
+	MVP_RESTORE_GPR s8, 24
+	MVP_RESTORE_GPR s9, 25
+	MVP_RESTORE_GPR s10, 26
+	MVP_RESTORE_GPR s11, 27
+	MVP_RESTORE_GPR t3, 28
+	MVP_RESTORE_GPR t4, 29
+	MVP_RESTORE_GPR t5, 30
+#ifndef BE_MVP_CHERI
+	/* sp last but t6, the record's base. */
+	MVP_RESTORE_GPR sp, 2
+#endif
+	MVP_RESTORE_GPR t6, 31
 	sret
 
 .Lmvp_resume_bad:

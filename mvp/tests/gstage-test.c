@@ -24,6 +24,12 @@
  *          every single-bit flip of a root with pages, and the two
  *          negative images' leaves, secret-shared's and
  *          response-writable's, as their builders write them.
+ *          beryllium-cheri: built with BE_MVP_CHERI, as the CHERI-aware
+ *          monitor's (planning/cheri-enforcement-plan.md, CE-2), every
+ *          case with CW in each window leaf, and CW in every window leaf
+ *          of each MVP root and in no other entry, and the walker's
+ *          refusals of a window leaf without CW or with another high bit,
+ *          a channel or page leaf with CW, and a pointer with CW.
  * Trust:   host evidence only. No CSR, fence, guest entry, QEMU, or hardware
  *          behaviour is exercised.
  * Scope:   the MVP line (planning/mvp-m0-plan.md, planning/mvp-m1-plan.md,
@@ -80,6 +86,16 @@ static unsigned long scenarios;
 /* Pool offsets of a level-1 and a level-0 entry. */
 #define L1_AT(entry)		(0x4000U + (entry) * 8U)
 #define L0_AT(entry)		(0x5000U + (entry) * 8U)
+/*
+ * A window leaf's high bits, a literal of the test's own: none.
+ * beryllium-cheri: in the CHERI-aware monitor (BE_MVP_CHERI), CW, bit 60,
+ * the capability-write bit (planning/cheri-enforcement-plan.md, CE-2).
+ */
+#ifdef BE_MVP_CHERI
+#define WINDOW_CW		(BE_U64_C(1) << 60)
+#else
+#define WINDOW_CW		BE_U64_C(0)
+#endif
 
 static be_u8 pool[BE_MVP_GSTAGE_POOL_BYTES];
 static be_u8 expected[BE_MVP_GSTAGE_POOL_BYTES];
@@ -117,9 +133,10 @@ static void model(const struct be_mvp_gstage_desc *desc)
 	for (leaf = 0U; leaf < desc->size / (2U * MIB); ++leaf) {
 		be_u64 pa = desc->hpa_base + leaf * 2U * MIB;
 
-		/* V R W X U A D = 0xdf; G, RSW, and bits 54-63 clear. */
+		/* V R W X U A D = 0xdf; G, RSW, and bits 54-63 clear, but CW
+		 * in the CHERI build (WINDOW_CW). */
 		put_le64(expected + 0x4000U + (first + leaf) * 8U,
-			 0xdfU | ((pa / 4096U) << 10));
+			 0xdfU | WINDOW_CW | ((pa / 4096U) << 10));
 	}
 }
 
@@ -351,10 +368,10 @@ static void test_mvp_windows(void)
 	} guests[] = {
 		{ BE_MVP_G0_HPA, BE_MVP_G0_ROOT_HPA, BE_MVP_G0_VMID,
 		  BE_MVP_DOMAIN0_HART, BE_MVP_G0_HGATP, BE_U64_C(0x4080e001),
-		  BE_U64_C(0x440000df) },
+		  BE_U64_C(0x440000df) | WINDOW_CW },
 		{ BE_MVP_G1_HPA, BE_MVP_G1_ROOT_HPA, BE_MVP_G1_VMID,
 		  BE_MVP_DOMAIN1_HART, BE_MVP_G1_HGATP, BE_U64_C(0x40810001),
-		  BE_U64_C(0x450000df) },
+		  BE_U64_C(0x450000df) | WINDOW_CW },
 	};
 	static be_u8 both[BE_MVP_POOL_BYTES];
 	struct be_mvp_gstage_map maps[2];
@@ -386,8 +403,9 @@ static void test_mvp_windows(void)
 		/* Level-1 indices 0-31: 0xdf leaves onto the guest's window. */
 		for (leaf = 0U; leaf < 32U; ++leaf)
 			CHECK(get_le64(own + 0x4000U + leaf * 8U) ==
-			      (0xdfU | (((guests[guest].hpa + leaf * 2U * MIB) >>
-					 12) << 10)));
+			      (0xdfU | WINDOW_CW |
+			       (((guests[guest].hpa + leaf * 2U * MIB) >>
+				 12) << 10)));
 		CHECK(get_le64(own + 0x4000U) == guests[guest].first_leaf);
 		CHECK(get_le64(own + 0x4000U + 32U * 8U) == 0U);
 	}
@@ -631,7 +649,7 @@ static void test_moves(void)
 	/* One linear leaf added at the end: 66 MiB. */
 	memcpy(scratch, pool, sizeof(pool));
 	put_le64(scratch + 0x4000U + 32U * 8U,
-		 0xdfU | (((HPA_G0 + 64U * MIB) >> 12) << 10));
+		 0xdfU | WINDOW_CW | (((HPA_G0 + 64U * MIB) >> 12) << 10));
 	CHECK(be_mvp_gstage_walk(&desc, scratch, sizeof(scratch), &map) ==
 	      BE_MVP_GSTAGE_MISMATCH);
 	/* A hole in the run. */
@@ -649,7 +667,8 @@ static void test_moves(void)
 	      BE_MVP_GSTAGE_L1);
 	/* A leaf pointing at the pool itself is not this window. */
 	memcpy(scratch, pool, sizeof(pool));
-	put_le64(scratch + 0x4000U, 0xdfU | ((BE_U64_C(0x102000000) >> 12) << 10));
+	put_le64(scratch + 0x4000U, 0xdfU | WINDOW_CW |
+		 ((BE_U64_C(0x102000000) >> 12) << 10));
 	CHECK(be_mvp_gstage_walk(&desc, scratch, sizeof(scratch), &map) ==
 	      BE_MVP_GSTAGE_L1);
 }
@@ -943,7 +962,8 @@ static void test_channel_roots(void)
 		/* Root index 2 and level-1 entries 0-31 are M0's. */
 		CHECK(get_le64(own + 16U) == guests[guest].root_pte);
 		CHECK(get_le64(own + L1_AT(31U)) ==
-		      (0xdfU | (((desc.hpa_base + 62U * MIB) >> 12) << 10)));
+		      (0xdfU | WINDOW_CW |
+		       (((desc.hpa_base + 62U * MIB) >> 12) << 10)));
 		CHECK(get_le64(own + L1_AT(32U)) == guests[guest].pointer);
 		CHECK(get_le64(own + L1_AT(33U)) == 0U);
 		/* The leaf at entry 0, then nothing to the pool's end. */
@@ -2409,6 +2429,175 @@ static void test_page_check(void)
 				       &refusal) == BE_MVP_GSTAGE_NULL);
 }
 
+#ifdef BE_MVP_CHERI
+/*
+ * beryllium-cheri: the CHERI-aware monitor's capability-write control
+ * (planning/cheri-enforcement-plan.md, CE-2): CW in every window leaf and
+ * in no other entry, and the walker's refusals of a window leaf without
+ * CW or with another high bit, a channel or page leaf with CW, and a
+ * pointer with CW. CRG is bit 59, beside CW; bits 54-63 are a PTE's high
+ * bits.
+ */
+#define CRG			(BE_U64_C(1) << 59)
+#define HIGH_BITS		(BE_U64_C(0x3ff) << 54)
+
+/* Build one of the six MVP roots in pool[]: M0's (0, 1), te-poc's channel
+ * roots (2, 3), anchor's roots with pages (4, 5); domain ROOT % 2. */
+static void build_cheri_root(be_u64 root,
+			     const struct be_mvp_gstage_page *pages)
+{
+	struct be_mvp_gstage_desc desc = mvp_desc(root % 2U);
+	struct be_mvp_gstage_root_page page =
+		mvp_page(root % 2U == 0U ? RIGHT_RW : RIGHT_R);
+
+	if (root < 2U)
+		CHECK(be_mvp_gstage_build(&desc, pool, sizeof(pool)) ==
+		      BE_MVP_GSTAGE_OK);
+	else if (root < 4U)
+		CHECK(be_mvp_gstage_build_channel(&desc, &page, pool,
+						  sizeof(pool)) ==
+		      BE_MVP_GSTAGE_OK);
+	else
+		CHECK(be_mvp_gstage_build_pages(&desc, pages, 3U, root % 2U,
+						pool, sizeof(pool)) ==
+		      BE_MVP_GSTAGE_OK);
+}
+
+/* Walk scratch[] as ROOT's kind walks it. */
+static enum be_mvp_gstage_error
+walk_cheri_root(be_u64 root, const struct be_mvp_gstage_page *pages)
+{
+	static const struct be_mvp_gstage_root_page none = { 0U, 0U, 0U, 0U };
+	struct be_mvp_gstage_desc desc = mvp_desc(root % 2U);
+	struct be_mvp_gstage_root_page page =
+		mvp_page(root % 2U == 0U ? RIGHT_RW : RIGHT_R);
+
+	if (root < 2U)
+		return walk_scratch(&desc, &none);
+	if (root < 4U)
+		return walk_scratch(&desc, &page);
+	return walk_scratch_pages(&desc, pages, 3U);
+}
+
+/*
+ * Each MVP root's entries: its 32 window leaves, the level-1 page's
+ * entries with X, each with exactly CW among its high bits; and every
+ * other entry with none: its root pointer, and in te-poc's roots the
+ * level-1 pointer and the channel leaf, and in anchor's the level-1
+ * pointer and the host's two page leaves or the protected domain's three.
+ */
+static void test_cheri_leaves(void)
+{
+	static const be_u64 others[6] = { 1U, 1U, 3U, 3U, 4U, 5U };
+	struct be_mvp_gstage_page pages[3];
+	be_u64 root;
+	be_u64 offset;
+
+	SCENARIO();
+	anchor_pages(pages);
+	CHECK(WINDOW_CW == BE_U64_C(0x1000000000000000));
+	for (root = 0U; root < 6U; ++root) {
+		be_u64 windows = 0U;
+		be_u64 rest = 0U;
+
+		build_cheri_root(root, pages);
+		for (offset = 0U; offset < BE_MVP_GSTAGE_POOL_BYTES;
+		     offset += 8U) {
+			be_u64 pte = get_le64(pool + offset);
+
+			if (pte == 0U)
+				continue;
+			if (offset >= L1_AT(0U) && offset < L0_AT(0U) &&
+			    (pte & 0x3ffU) == 0xdfU) {
+				CHECK((pte & HIGH_BITS) == WINDOW_CW);
+				++windows;
+			} else {
+				CHECK((pte & HIGH_BITS) == 0U);
+				++rest;
+			}
+		}
+		CHECK(windows == 32U && rest == others[root]);
+	}
+}
+
+/*
+ * The walker's refusals: in each MVP root, a window leaf without CW (the
+ * first, the second, a middle one, the last, or all 32, as the
+ * development line's builder writes them), with CRG beside CW or in its
+ * place, or with any other high bit beside CW; a channel or page leaf
+ * with CW, as channel-cw's builder writes it; and the root pointer or
+ * the level-1 pointer with CW.
+ */
+static void test_cheri_walk(void)
+{
+	static const be_u64 leaves[] = { 0U, 1U, 15U, 31U };
+	static const unsigned int bits[] = { 54U, 55U, 56U, 57U, 58U, 59U,
+					     61U, 62U, 63U };
+	struct be_mvp_gstage_page pages[3];
+	be_u64 root;
+	be_size index;
+	be_size bit;
+
+	SCENARIO();
+	anchor_pages(pages);
+	for (root = 0U; root < 6U; ++root) {
+		be_u64 entry;
+
+		build_cheri_root(root, pages);
+		memcpy(scratch, pool, sizeof(pool));
+		CHECK(walk_cheri_root(root, pages) == BE_MVP_GSTAGE_OK);
+		for (index = 0U; index < BE_ARRAY_SIZE(leaves); ++index) {
+			be_u64 at = L1_AT(leaves[index]);
+			be_u64 leaf = get_le64(pool + at);
+
+			memcpy(scratch, pool, sizeof(pool));
+			put_le64(scratch + at, leaf & ~WINDOW_CW);
+			CHECK(walk_cheri_root(root, pages) == BE_MVP_GSTAGE_L1);
+			put_le64(scratch + at, (leaf & ~WINDOW_CW) | CRG);
+			CHECK(walk_cheri_root(root, pages) == BE_MVP_GSTAGE_L1);
+			for (bit = 0U; bit < BE_ARRAY_SIZE(bits); ++bit) {
+				put_le64(scratch + at,
+					 leaf | (BE_U64_C(1) << bits[bit]));
+				CHECK(walk_cheri_root(root, pages) ==
+				      BE_MVP_GSTAGE_L1);
+			}
+		}
+		memcpy(scratch, pool, sizeof(pool));
+		for (entry = 0U; entry < 32U; ++entry)
+			put_le64(scratch + L1_AT(entry),
+				 get_le64(pool + L1_AT(entry)) & ~WINDOW_CW);
+		CHECK(walk_cheri_root(root, pages) == BE_MVP_GSTAGE_L1);
+		/* The root pointer, in root slot 2, with CW. */
+		memcpy(scratch, pool, sizeof(pool));
+		put_le64(scratch + 16U, get_le64(pool + 16U) | WINDOW_CW);
+		CHECK(walk_cheri_root(root, pages) == BE_MVP_GSTAGE_ROOT);
+		if (root < 2U)
+			continue;
+		/* The level-1 pointer, entry 32, with CW. */
+		memcpy(scratch, pool, sizeof(pool));
+		put_le64(scratch + L1_AT(32U),
+			 get_le64(pool + L1_AT(32U)) | WINDOW_CW);
+		CHECK(walk_cheri_root(root, pages) == BE_MVP_GSTAGE_L1);
+		/* Each channel or page leaf with CW, and all of them. */
+		for (entry = 0U; entry < 3U; ++entry) {
+			if (get_le64(pool + L0_AT(entry)) == 0U)
+				continue;
+			memcpy(scratch, pool, sizeof(pool));
+			put_le64(scratch + L0_AT(entry),
+				 get_le64(pool + L0_AT(entry)) | WINDOW_CW);
+			CHECK(walk_cheri_root(root, pages) == BE_MVP_GSTAGE_L0);
+		}
+		memcpy(scratch, pool, sizeof(pool));
+		for (entry = 0U; entry < 3U; ++entry)
+			if (get_le64(pool + L0_AT(entry)) != 0U)
+				put_le64(scratch + L0_AT(entry),
+					 get_le64(pool + L0_AT(entry)) |
+					 WINDOW_CW);
+		CHECK(walk_cheri_root(root, pages) == BE_MVP_GSTAGE_L0);
+	}
+}
+#endif
+
 int main(void)
 {
 	test_constants();
@@ -2444,6 +2633,10 @@ int main(void)
 	check_pages_mutations(0U);
 	check_pages_mutations(1U);
 	test_page_check();
+#ifdef BE_MVP_CHERI
+	test_cheri_leaves();
+	test_cheri_walk();
+#endif
 	printf("BE_MVP_GSTAGE_CHECK: PASS\n");
 	printf("BE_MVP_GSTAGE_CHECK: scenarios=%lu\n", scenarios);
 	printf("BE_MVP_GSTAGE_CHECK: assertions=%lu\n", assertions);

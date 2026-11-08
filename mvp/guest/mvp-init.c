@@ -194,17 +194,33 @@
 #include <sys/utsname.h>
 #include <sys/wait.h>
 #include <asm/ioctls.h>
+#ifdef __CHERI_PURE_CAPABILITY__
+#include <errno.h>
+#include <signal.h>
+#include <stddef.h>
+#include <ucontext.h>
+#else
 #include <asm/sigcontext.h>
 #include <asm/ucontext.h>
+#endif
 #include <linux/ioctl.h>
 #include <linux/reboot.h>
 #include <linux/types.h>
 
 #include "mvp-guest-id.h"
 #include "mvp-sha256.h"
+#ifdef __CHERI_PURE_CAPABILITY__
+/* beryllium-cheri: te-poc's roles' own CHERI faults (run_role()). */
+#include "cheri/cheri-tests.h"
+#endif
 
 /* The pinned guest kernel (Linux v7.2), and the plan's steps and sleep. */
+#ifdef __CHERI_PURE_CAPABILITY__
+/* beryllium-cheri: the CHERI guest's kernel is CHERI Alliance Linux v7.1. */
+#define EXPECTED_RELEASE	"7.1.0"
+#else
 #define EXPECTED_RELEASE	"7.2.0"
+#endif
 #define EXPECTED_MACHINE	"riscv64"
 #define STEPS			8UL
 #define STEP_COMPUTE_NS		25000000UL
@@ -283,7 +299,40 @@ struct be_mgmt_call {
 
 #define BE_MGMT_IOC_CALL	_IOWR('B', 0x42, struct be_mgmt_call)
 
+#ifndef __CHERI_PURE_CAPABILITY__
 _Static_assert(sizeof(sigset_t) == SIGSET_BYTES, "sigset_t is one word");
+#else
+/*
+ * beryllium-cheri: the CHERI guest's init is a purecap program against the
+ * CHERI Alliance musl, not nolibc. nolibc's _syscall(), its syscall()
+ * without the errno conversion (0 or more, or a negative errno), is musl's
+ * syscall(), whose macro passes every argument as a capability-sized word,
+ * converted back; and SIGSEGV's action goes through musl's sigaction(),
+ * since the kernel's purecap struct sigaction is not nolibc's (set_segv).
+ */
+typedef void (*__sighandler_t)(int);
+
+/*
+ * The kernel's purecap struct ucontext (arch/riscv/include/uapi/asm/
+ * ucontext.h) keeps uc_mcontext at offset 0xb0, where a non-CHERI kernel
+ * has it, but CHERI Alliance musl's ucontext_t has it at 0xc0 (after its
+ * 128-byte sigset_t), so musl's __gregs[REG_PC] is the kernel's ra. musl
+ * means a 112-byte sigset_t here, which would agree, but the guard in its
+ * include/alltypes.h.in tests __CHERI_PURE_CAPABILITY, which the compiler
+ * does not define (it defines __CHERI_PURE_CAPABILITY__). The handler
+ * uses the kernel's layout: pc is sc_regs' first capability.
+ */
+#define MVP_KERNEL_UC_MCONTEXT	0xb0UL
+_Static_assert(offsetof(ucontext_t, uc_mcontext) == 0xc0UL,
+	       "musl's ucontext_t is the layout this workaround measured");
+
+static long mvp_syscall_result(intptr_t result)
+{
+	return (long)result < 0 ? -(long)errno : (long)result;
+}
+
+#define _syscall(...)	mvp_syscall_result(syscall(__VA_ARGS__))
+#endif
 _Static_assert(BE_MGMT_IOC_CALL == 0xc0184242UL,
 	       "the management ioctl is be-mgmt.ko's");
 
@@ -652,19 +701,35 @@ static long set_segv(__sighandler_t handler, unsigned long flags)
 
 	memset(&action, 0, sizeof(action));
 	action.sa_handler = handler;
+#ifdef __CHERI_PURE_CAPABILITY__
+	action.sa_flags = (int)flags;
+	return sigaction(SIGSEGV, &action, NULL) == 0 ? 0 : -(long)errno;
+#else
 	action.sa_flags = flags;
 	return _syscall(__NR_rt_sigaction, SIGSEGV, &action, NULL, SIGSET_BYTES);
+#endif
 }
 
 /*
  * The handler: record the signal; step over the armed instruction alone,
  * on its first fault. Any other fault restores the default action, so the
  * instruction faults again and ends the child.
+ *
+ * beryllium-cheri: in the purecap init, the ucontext's pc is a capability,
+ * at the kernel's offset (MVP_KERNEL_UC_MCONTEXT); its address is
+ * compared, and the step adds 4 to the capability itself, which keeps it
+ * valid.
  */
 static void on_segv(int signo, siginfo_t *info, void *context)
 {
+#ifdef __CHERI_PURE_CAPABILITY__
+	__uintcap_t *pc_slot = (__uintcap_t *)(void *)((char *)context +
+						       MVP_KERNEL_UC_MCONTEXT);
+	unsigned long pc = (unsigned long)*pc_slot;
+#else
 	struct ucontext *frame = context;
 	unsigned long pc = frame->uc_mcontext.sc_regs.pc;
+#endif
 
 	seen_count = seen_count + 1UL;
 	seen_signo = info->si_signo;
@@ -672,7 +737,11 @@ static void on_segv(int signo, siginfo_t *info, void *context)
 	seen_addr = (unsigned long)info->si_addr;
 	seen_pc = pc;
 	if (signo == SIGSEGV && pc == armed_pc && seen_count == 1UL)
+#ifdef __CHERI_PURE_CAPABILITY__
+		*pc_slot += 4;
+#else
 		frame->uc_mcontext.sc_regs.pc = pc + 4UL;
+#endif
 	else
 		(void)set_segv(SIG_DFL, 0UL);
 }
@@ -1048,6 +1117,22 @@ static void run_role(const struct mvp_role *role)
 	pid_t child;
 	int status = 0;
 
+#ifdef __CHERI_PURE_CAPABILITY__
+	/*
+	 * beryllium-cheri: M1's roles, te-poc's, first make the CHERI guest's
+	 * own CHERI faults (planning/cheri-enforcement-plan.md, CE-3, Q3;
+	 * cheri/cheri-tests.c), its MVPINIT 14 lines.
+	 */
+	if (role->pages == 0UL && mvp_cheri_tests(say) != 0UL)
+		failed = 1;
+	/*
+	 * CE-4: cap-store's writer, run as /init-cap-store, loads the
+	 * capability-store module with the channel's GPA before its pattern
+	 * write (cheri/cheri-tests.c; any other init loads nothing).
+	 */
+	if (role->pages == 0UL && mvp_cheri_store(say, role->channel) != 0UL)
+		failed = 1;
+#endif
 	if (role->pages != 0UL) {
 		open_anchor(role);
 	} else {

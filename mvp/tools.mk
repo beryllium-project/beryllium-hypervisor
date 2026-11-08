@@ -82,7 +82,9 @@ TE_POC_EXPECT_STAMP := $(GEN)/te-poc/expect/SCENARIO.txt
 ANCHOR_EXPECT_STAMP := $(GEN)/anchor/expect/SCENARIO.txt
 MEASURED_INPUTS := $(MVP_GUEST_IMAGE) $(MVP_GUEST_DTB_G1_ANCHOR)
 MEASURED_ARGS := --kernel $(MVP_GUEST_IMAGE) --dtb $(MVP_GUEST_DTB_G1_ANCHOR)
-CAPTURE_CHECK := $(PYTHON) -B $(MVP_DIR)/tests/check-capture.py
+# beryllium-cheri: the capture checker judges the monitor variant built.
+CAPTURE_CHECK := $(PYTHON) -B $(MVP_DIR)/tests/check-capture.py \
+	$(if $(filter cheri,$(MVP_MONITOR)),--monitor cheri)
 EVIDENCE := $(PYTHON) -B $(MVP_DIR)/tools/evidence.py
 SESSION_TYPIST := $(PYTHON) -B $(MVP_DIR)/tests/session-typist.py
 
@@ -325,6 +327,22 @@ verifier-image:
 
 verify: port $(foreach t,$(TOOLCHAINS),$(BUILD)/$(t)/be-mvp.elf)
 	$(MVP_DIR)/tools/verifier/verify.sh
+
+# beryllium-cheri: the CHERI-aware monitor runs only on the CHERI emulator
+# and firmware, which the tool lock does not hold, so its QEMU runs and
+# sessions are tools/cheri-check.sh's, never these targets'. Its live
+# command lines are tools/cheri-live.sh's: `live` would print the tool
+# lock's QEMU and firmware, so it is refused before anything is built.
+ifeq ($(MVP_MONITOR),cheri)
+.PHONY: cheri-harness-refused
+qemu-test sessions uboot-rehearsal: cheri-harness-refused
+cheri-harness-refused:
+	@echo "BE_MVP_CHERI: FAIL MVP_MONITOR=cheri runs only under mvp/tools/cheri-check.sh (the CHERI emulator and firmware are outside the tool lock)"
+	@exit 1
+ifneq ($(filter live,$(MAKECMDGOALS)),)
+$(error BE_MVP_CHERI: FAIL MVP_MONITOR=cheri: `live` would print the tool lock's QEMU and firmware; run mvp/tools/cheri-live.sh, the CHERI live runner)
+endif
+endif
 
 # ------------------------------------------------------ QEMU scenarios
 # Every scenario, negative variant, and probe image of the plan by direct

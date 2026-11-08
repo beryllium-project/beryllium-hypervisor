@@ -82,6 +82,31 @@
 # before anything else, and again before every QEMU run that boots it; a
 # firmware with other bytes is refused (exit 2) and no QEMU run boots it.
 #
+# beryllium-cheri: BE_MVP_MONITOR names the monitor variant BUILD_DIR holds
+# (planning/cheri-platform.md): riscv, the default, whose firmware is
+# OpenSBI 1.6 (SBI 2.0), as above; or cheri, the CHERI-aware monitor, whose
+# firmware is the CHERI Alliance OpenSBI (SBI 3.0, tools/port.py's CHERI
+# rule cheri-firmware-sbi-3.0), and whose captures the checker judges with
+# --monitor cheri. BE_MVP_GUEST_PINS, when set, names the guest flavour's
+# pins for the checker (guest/cheri-pins.txt for the CHERI Linux guest).
+# The checker's build root is BUILD_DIR, whose references, boot images, and
+# measured inputs it reads (its default, build/mvp, is the RISC-V monitor's
+# tree, and the CHERI-aware monitor's is build/mvp.cheri.cheri-linux).
+# BE_MVP_QEMU_K3_LIKE=plic runs the k3-like runs on the plic machine.
+# tools/cheri-check.sh sets all three. For the CHERI-aware monitor only,
+# BE_MVP_QEMU_CHERI_CPU, when set, is an addition to every run's CPU
+# string, property=value pairs joined by commas: tools/cheri-check.sh gives
+# cheri_pte=on, the CHERI emulator's Zcheripte, under which every
+# translation stage checks the capability-write PTE bit (planning/
+# cheri-enforcement-plan.md, CE-2, Q7); the RISC-V monitor's runs, on the
+# tool lock's QEMU, refuse it. The CHERI-aware monitor's te-poc runs also
+# take channel-cw, a te-poc variant (te-poc/TOOLCHAIN/channel-cw), and,
+# with its CHERI Linux guests, cheri-fault-hs and cap-store, and
+# cap-store's image once more, its control (te-poc/TOOLCHAIN/
+# cap-store-control), which alone runs without the CPU addition, and its
+# captures are judged with --cheri-mutations, the CHERI rules' mutations of
+# each passing capture (tests/check-capture.py).
+#
 # RUN names a scenario (TOOLCHAIN/NAME), a variant (variant/TOOLCHAIN/NAME),
 # a probe image (probe/TOOLCHAIN/NAME), a te-poc run (te-poc/TOOLCHAIN/
 # MACHINE), a te-poc variant (te-poc/TOOLCHAIN/VARIANT), an anchor run
@@ -121,16 +146,49 @@ terminal_regex='BE_MVP:14 SHUTDOWN|BE_MVP:FAIL|BE_K3_B3: FAIL'
 # The plan's k3-like machine and CPU (B6's).
 k3_machine='virt,aia=aplic-imsic,aia-guests=7'
 k3_cpu='rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true'
+# beryllium-cheri: the CHERI QEMU (8.1) has no svade or svadu property,
+# so k3-like cannot run there; BE_MVP_QEMU_K3_LIKE=plic runs the runs
+# that use k3-like (the variants and the probes) on the plic machine.
+if [ "${BE_MVP_QEMU_K3_LIKE:-}" = plic ]; then
+	k3_machine=virt
+	k3_cpu='rv64,h=true'
+fi
 # The accepted R5 QEMU CPU profile (tests/r5/run-qemu.sh).
 minimal='rv64,h=true,f=false,d=false,v=false,zfa=false,sv48=off,sv57=off,sstc=false,smstateen=false,svadu=false,debug=false'
+# beryllium-cheri: the monitor variant, OPENSBI_FW's SBI version, which the
+# monitor requires (tools/port.py's CHERI rule cheri-firmware-sbi-3.0 for
+# the CHERI-aware monitor's 3.0), and the checker's variant arguments.
+monitor=${BE_MVP_MONITOR:-riscv}
+case $monitor in
+riscv) firmware_sbi=2.0 checked=() ;;
+cheri) firmware_sbi=3.0 checked=(--monitor cheri --cheri-mutations) ;;
+*)
+	printf 'BE_MVP_MONITOR=%s is neither riscv nor cheri\n' "$monitor" >&2
+	exit 2
+	;;
+esac
+[ -z "${BE_MVP_GUEST_PINS:-}" ] || checked+=(--pins "$BE_MVP_GUEST_PINS")
+# beryllium-cheri: the CHERI-aware monitor's addition to every CPU string
+# (BE_MVP_QEMU_CHERI_CPU, above), never the RISC-V monitor's.
+cheri_cpu=${BE_MVP_QEMU_CHERI_CPU:-}
+if [ -n "$cheri_cpu" ]; then
+	if [ "$monitor" != cheri ]; then
+		printf 'BE_MVP_QEMU_CHERI_CPU is for the CHERI-aware monitor (BE_MVP_MONITOR=cheri) only\n' >&2
+		exit 2
+	fi
+	if ! [[ $cheri_cpu =~ ^[a-z0-9_]+=[a-z0-9_]+(,[a-z0-9_]+=[a-z0-9_]+)*$ ]]; then
+		printf 'BE_MVP_QEMU_CHERI_CPU=%s is not property=value pairs\n' "$cheri_cpu" >&2
+		exit 2
+	fi
+fi
 # Every scenario on each toolchain's boot ELF: the scenario, the QEMU
 # machine and CPU, the firmware (opensbi: OPENSBI_FW; default: QEMU's
 # bundled OpenSBI) and its SBI version, and the expectation file.
 scenarios=(
-	"k3-like $k3_machine $k3_cpu opensbi 2.0 two-guests"
-	"rva23 virt,aia=aplic-imsic rva23s64 opensbi 2.0 two-guests"
-	"plic virt rv64,h=true opensbi 2.0 two-guests"
-	"no-sstc virt,aia=none $minimal opensbi 2.0 no-sstc"
+	"k3-like $k3_machine $k3_cpu opensbi $firmware_sbi two-guests"
+	"rva23 virt,aia=aplic-imsic rva23s64 opensbi $firmware_sbi two-guests"
+	"plic virt rv64,h=true opensbi $firmware_sbi two-guests"
+	"no-sstc virt,aia=none $minimal opensbi $firmware_sbi no-sstc"
 	"sbi-3.0 $k3_machine $k3_cpu default 3.0 sbi-3.0"
 )
 # The variants (planning/mvp-m0-plan.md, Negative images) and the probe
@@ -146,6 +204,21 @@ te_poc_machines=(
 	"plic virt rv64,h=true"
 )
 te_poc_variants=(reader-write no-inject)
+# beryllium-cheri: and the CHERI-aware monitor's channel-cw (planning/
+# cheri-enforcement-plan.md, section 6, B2), and, where BUILD_DIR's CHERI
+# Linux guests have it (tools/gen-scenario.py writes its expectation for
+# them only), cheri-fault-hs (C3).
+[ "$monitor" != cheri ] || te_poc_variants+=(channel-cw)
+[ "$monitor" != cheri ] || [ ! -e "$te_poc_dir/expect/cheri-fault-hs.json" ] ||
+	te_poc_variants+=(cheri-fault-hs)
+# beryllium-cheri: and, where they have it, cap-store (CE-4, B3), whose
+# image runs once more as its control (B4), cap-store-control, against its
+# own expectation and without BE_MVP_QEMU_CHERI_CPU (run()).
+[ "$monitor" != cheri ] || [ ! -e "$te_poc_dir/expect/cap-store.json" ] ||
+	te_poc_variants+=(cap-store)
+cap_store_control=
+[ "$monitor" != cheri ] || [ ! -e "$te_poc_dir/expect/cap-store-control.json" ] ||
+	cap_store_control=cap-store-control
 # anchor's machines are te-poc's; its four runtime negatives and
 # self-report-flip.
 anchor_variants=(secret-shared response-writable wrong-measurement
@@ -192,39 +265,43 @@ done
 for toolchain in "${variant_toolchains[@]}"; do
 	for name in "${variants[@]}"; do
 		wanted "variant/$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware 2.0 $expect_dir/$name.json - -")
+		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $expect_dir/$name.json - -")
 	done
 done
 for toolchain in "${probe_toolchains[@]}"; do
 	for name in "${probes[@]}"; do
 		wanted "probe/$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/probes/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware 2.0 $expect_dir/$name.json - -")
+		runs+=("$toolchain/$name $build/probes/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $expect_dir/$name.json - -")
 	done
 done
 for toolchain in "${toolchains[@]}"; do
 	for entry in "${te_poc_machines[@]}"; do
 		read -r name machine cpu <<<"$entry"
 		wanted "te-poc/$toolchain/$name" || continue
-		runs+=("$toolchain/te-poc-$name $build/$toolchain/te-poc/be-mvp-boot.elf $machine $cpu $firmware 2.0 $te_poc_dir/expect/te-poc.json $te_poc_dir/authority-report.json -")
+		runs+=("$toolchain/te-poc-$name $build/$toolchain/te-poc/be-mvp-boot.elf $machine $cpu $firmware $firmware_sbi $te_poc_dir/expect/te-poc.json $te_poc_dir/authority-report.json -")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do
 	for name in "${te_poc_variants[@]}"; do
 		wanted "te-poc/$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware 2.0 $te_poc_dir/expect/$name.json $te_poc_dir/authority-report.json -")
+		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $te_poc_dir/expect/$name.json $te_poc_dir/authority-report.json -")
 	done
+	if [ -n "$cap_store_control" ] &&
+		wanted "te-poc/$toolchain/$cap_store_control"; then
+		runs+=("$toolchain/$cap_store_control $build/variants/$toolchain/cap-store/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $te_poc_dir/expect/$cap_store_control.json $te_poc_dir/authority-report.json -")
+	fi
 done
 for toolchain in "${toolchains[@]}"; do
 	for entry in "${te_poc_machines[@]}"; do
 		read -r name machine cpu <<<"$entry"
 		wanted "anchor/$toolchain/$name" || continue
-		runs+=("$toolchain/anchor-$name $build/$toolchain/anchor/be-mvp-boot.elf $machine $cpu $firmware 2.0 $anchor_dir/expect/anchor.json $anchor_dir/authority-report.json $measured")
+		runs+=("$toolchain/anchor-$name $build/$toolchain/anchor/be-mvp-boot.elf $machine $cpu $firmware $firmware_sbi $anchor_dir/expect/anchor.json $anchor_dir/authority-report.json $measured")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do
 	for name in "${anchor_variants[@]}"; do
 		wanted "anchor/$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware 2.0 $anchor_dir/expect/$name.json $anchor_dir/authority-report.json $measured")
+		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $anchor_dir/expect/$name.json $anchor_dir/authority-report.json $measured")
 	done
 done
 missing=()
@@ -245,6 +322,9 @@ mkdir -p -- "$output"
 summary=$output/summary.txt
 attempts_file=$output/attempts.tsv
 : >"$summary"
+# beryllium-cheri: the CPU addition, for the record.
+[ -z "$cheri_cpu" ] ||
+	printf 'BE_MVP_QEMU_CHERI_CPU: %s\n' "$cheri_cpu" | tee -a -- "$summary"
 printf 'toolchain\trun\tattempt\tboot_hart\tqemu_exit\tverdict\tcapture_sha256\telf\telf_sha256\n' \
 	>"$attempts_file"
 
@@ -256,7 +336,8 @@ boot() {
 
 	[ "$bios" != "$firmware" ] || pinned_firmware
 	: >"$console"
-	"$qemu" -machine "$machine" -cpu "$cpu" -smp 8 -m 8G -bios "$bios" \
+	"$qemu" -machine "$machine" -cpu "$cpu" \
+		-smp 8 -m 8G -bios "$bios" \
 		-kernel "$elf" -display none -serial "file:$console" \
 		-monitor none -no-reboot </dev/null >"$stem.qemu.txt" 2>&1 &
 	qemu_pid=$!
@@ -297,20 +378,29 @@ run() {
 	local report=$8 inputs=$9
 	local toolchain=${label%%/*} name=${label#*/}
 	local attempt=0 refusals=0 harts='' verdict=none status stem
-	local hart sha check elf_sha reported=()
+	local hart sha check elf_sha reported=() addition=$cheri_cpu
 
 	[ "$report" = - ] || reported=(--report "$report")
 	[ "$inputs" = - ] ||
 		reported+=(--kernel "${inputs%%:*}" --dtb "${inputs#*:}")
+	# beryllium-cheri: the control runs cap-store's image without the CPU
+	# addition, and its checker reads that image (--image) for the log.
+	if [ "$name" = cap-store-control ]; then
+		addition=
+		reported+=(--image "${elf%.elf}.img")
+		printf 'BE_MVP_QEMU_CHERI_CPU[%s/%s]: none (B4, the control)\n' \
+			"$toolchain" "$name" | tee -a -- "$summary"
+	fi
 	elf_sha=$(sha256sum -- "$elf" | cut -d' ' -f1)
 	while [ "$attempt" -lt "$max_attempts" ]; do
 		attempt=$((attempt + 1))
 		stem=$output/$toolchain-$name.$attempt
-		boot "$stem" "$elf" "$machine" "$cpu" "$bios"
+		boot "$stem" "$elf" "$machine" "$cpu${addition:+,$addition}" "$bios"
 		status=$(cat -- "$stem.exit.txt")
 		set +e
 		"$python" -B "$checker" "$stem.console.log" \
 			--expect "$expect" --mode direct "${reported[@]}" \
+			"${checked[@]}" --build-root "$build" \
 			--sbi-version "$sbi" --toolchain "$toolchain" \
 			--json "$stem.result.json" >"$stem.check.txt" 2>&1
 		set -e

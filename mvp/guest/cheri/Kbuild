@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# beryllium-cheri: the CHERI Linux guest's capability-store module
+# (guest/cheri/be-cheri-store.c; planning/cheri-enforcement-plan.md, CE-4),
+# which tools/build-guest-cheri.sh builds out of tree against the CHERI
+# guest kernel's build, with M= naming this directory and MO= its own
+# output directory. The init's cheri-tests.c here is user space, not Kbuild's.
+obj-m := be-cheri-store.o

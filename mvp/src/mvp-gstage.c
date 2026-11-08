@@ -41,6 +41,22 @@
 				 BE_MVP_GSTAGE_RIGHT_WRITE)
 
 /*
+ * beryllium-cheri: the CHERI-aware monitor's capability-write control
+ * (planning/cheri-enforcement-plan.md, CE-2): CW, bit 60, which the CHERI
+ * emulator's Zcheripte checks in every translation stage on a tagged
+ * capability store, set in each 2 MiB window leaf and in no other entry,
+ * so that a domain stores tags in its own window and in no declared page.
+ * The walker requires exactly CW among a window leaf's high bits; a
+ * pointer or a declared page's leaf holds none. RISC-V CHERI leaves the
+ * field reserved in G-stage entries: this is the emulator's behaviour.
+ */
+#if defined(BE_MVP_CHERI)
+#define WINDOW_CW		(BE_U64_C(1) << 60)
+#else
+#define WINDOW_CW		BE_U64_C(0)
+#endif
+
+/*
  * The reader-write negative image (planning/mvp-m1-plan.md, "Scenarios and
  * the harness"): a builder that writes W and D into every channel leaf, the
  * reader's included, under the unchanged sealed record. The walker accepts
@@ -48,6 +64,14 @@
  */
 #if defined(BE_MVP_VARIANT_READER_WRITE)
 #define BUILDER_DEFECT		(BE_MVP_PTE_W | BE_MVP_PTE_D)
+#elif defined(BE_MVP_CHERI) && defined(BE_MVP_VARIANT_CHANNEL_CW)
+/*
+ * beryllium-cheri: channel-cw (planning/cheri-enforcement-plan.md, section
+ * 6, B2), a builder that also sets CW in every channel leaf, under the
+ * unchanged sealed record; the walker refuses that leaf, so no root is
+ * published and no domain hart starts.
+ */
+#define BUILDER_DEFECT		WINDOW_CW
 #else
 #define BUILDER_DEFECT		BE_U64_C(0)
 #endif
@@ -219,7 +243,7 @@ static void write_window(const struct be_mvp_gstage_desc *desc, be_u8 *pool)
 	for (index = 0U; index < count; ++index)
 		store_le64(pool + BE_MVP_GSTAGE_L1_OFFSET +
 				   (l1_first + index) * PTE_BYTES,
-			   BE_MVP_PTE_LEAF_FLAGS |
+			   BE_MVP_PTE_LEAF_FLAGS | WINDOW_CW |
 				   (((desc->hpa_base +
 				      index * BE_MVP_GSTAGE_LEAF_BYTES) >>
 				     PAGE_SHIFT) << BE_MVP_PTE_PPN_SHIFT));
@@ -452,7 +476,7 @@ static enum be_mvp_gstage_error walk_l1(const be_u8 *pool, be_u64 pointer,
 		if (pte == 0U || index == pointer)
 			continue;
 		if ((pte & LOW_FLAGS_MASK) != BE_MVP_PTE_LEAF_FLAGS ||
-		    (pte & PTE_HIGH_MASK) != 0U ||
+		    (pte & PTE_HIGH_MASK) != WINDOW_CW ||
 		    (ppn & LEAF_PPN_ALIGN_MASK) != 0U)
 			return BE_MVP_GSTAGE_L1;
 		if (start == NO_ENTRY) {

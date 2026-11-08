@@ -183,8 +183,16 @@ _Static_assert(BE_MVP_SSTATUS_CONTROL_MASK == BE_U64_C(0xde722),
 	       "assembly sstatus mask mismatch");
 _Static_assert(BE_MVP_SSTATUS_SPP == BE_MVP_HSTATUS_SPVP,
 	       "the tail sets SPP from SPVP in the same bit");
+#if defined(BE_MVP_CHERI) && !defined(BE_MVP_VARIANT_CHERI_FAULT_HS)
+/* beryllium-cheri: the CHERI-aware monitor's arming values. */
+_Static_assert(BE_MVP_HEDELEG == BE_U64_C(0x1000b15d),
+	       "assembly hedeleg mismatch");
+_Static_assert(BE_MVP_HENVCFG_ARMED == BE_U64_C(0x8000000010000000),
+	       "assembly armed henvcfg mismatch");
+#else
 _Static_assert(BE_MVP_HEDELEG == BE_U64_C(0xb15d),
 	       "assembly hedeleg mismatch");
+#endif
 _Static_assert(BE_MVP_SIE_SSIE == BE_U64_C(0x2) &&
 	       BE_MVP_SIE_CONTROL == BE_U64_C(0x22) &&
 	       BE_MVP_HVIP_VS_BITS == BE_U64_C(0x444),

@@ -38,7 +38,12 @@ Rules, each failing closed:
     M4-A.2: letters, digits, spaces, and . , -), and the board session's
     (planning/mvp-m5-plan.md): K3_PREFLIGHT (before or after),
     K3_ENV_CONFIRM (12 lower-case hexadecimal digits), and K3_ENV_ACCEPT_V
-    (variable names, comma-separated);
+    (variable names, comma-separated); and (beryllium-cheri) the CHERI
+    platform branch's build switches, MVP_MONITOR (riscv or cheri) and
+    MVP_GUEST_FLAVOUR (linux or cheri-linux), and its CHERI guest inputs,
+    CHERI_SDK, CHERI_LINUX_SRC, CHERI_BUSYBOX_SRC, CHERI_MUSL_SRC, and
+    CHERI_LLVM_SRC (paths), and CHERI_LINUX_COMMIT, CHERI_BUSYBOX_COMMIT,
+    CHERI_MUSL_COMMIT, and CHERI_LLVM_COMMIT (40 hexadecimal digits);
   - the environment may not set MAKEFILES, a variable any MVP makefile or the
     tool lock assigns, or a variable that changes the compilers, the loader,
     the shell, or Python; an allowlisted variable in the environment must
@@ -74,6 +79,23 @@ CALLER = {
     "K3_ENV_CONFIRM": re.compile(r"^[0-9a-f]{12}$"),
     "K3_ENV_ACCEPT_V": re.compile(r"^[A-Za-z0-9_.-]{1,32}(?:,[A-Za-z0-9_.-]"
                                   r"{1,32}){0,15}$"),
+    # beryllium-cheri: the CHERI platform branch's build switches
+    # (mvp/Makefile): the monitor variant and the guest flavour.
+    "MVP_MONITOR": re.compile(r"^(?:riscv|cheri)$"),
+    "MVP_GUEST_FLAVOUR": re.compile(r"^(?:linux|cheri-linux)$"),
+    # beryllium-cheri: the CHERI Linux guest's inputs (guest.mk,
+    # tools/build-guest-cheri.sh), which stay outside the tool lock: the
+    # CHERI Alliance SDK, and the Linux, BusyBox, musl, and LLVM checkouts
+    # and commits.
+    "CHERI_SDK": PATH_FORM,
+    "CHERI_LINUX_SRC": PATH_FORM,
+    "CHERI_LINUX_COMMIT": re.compile(r"^[0-9a-f]{40}$"),
+    "CHERI_BUSYBOX_SRC": PATH_FORM,
+    "CHERI_BUSYBOX_COMMIT": re.compile(r"^[0-9a-f]{40}$"),
+    "CHERI_MUSL_SRC": PATH_FORM,
+    "CHERI_MUSL_COMMIT": re.compile(r"^[0-9a-f]{40}$"),
+    "CHERI_LLVM_SRC": PATH_FORM,
+    "CHERI_LLVM_COMMIT": re.compile(r"^[0-9a-f]{40}$"),
 }
 # Environment names that change Make, the shell, the compilers, the loader,
 # Python, or the guest kernel build, beyond the makefiles' own variables.
@@ -446,6 +468,8 @@ def self_test():
     expect("verifier caches", ["verify", "MVP_RPM_CACHE=/srv/rpms",
                                "MVP_SRC_CACHE=/srv/sources"])
     expect("scenario", ["scenario", "MVP_SCENARIO_NAME=te-poc"])
+    expect("build switches", ["check", "MVP_MONITOR=cheri",
+                              "MVP_GUEST_FLAVOUR=cheri-linux"])
     expect("board session", ["k3-env-install", "K3_RUN_ROOT=/home/x/s",
                              "K3_ENV_CONFIRM=0123456789ab",
                              "K3_PREFLIGHT=after"])
@@ -482,6 +506,10 @@ def self_test():
          "not of its form"),
         ("jobs zero", ["check", "JOBS=0"], None, "not of its form"),
         ("scenario path", ["scenario", "MVP_SCENARIO_NAME=../te-poc"], None,
+         "not of its form"),
+        ("monitor variant", ["check", "MVP_MONITOR=cheri-v1"], None,
+         "not of its form"),
+        ("guest flavour", ["check", "MVP_GUEST_FLAVOUR=cheri"], None,
          "not of its form"),
         ("preflight form", ["k3-preflight", "K3_PREFLIGHT=during"], None,
          "not of its form"),

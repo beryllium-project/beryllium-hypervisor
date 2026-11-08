@@ -10,6 +10,15 @@ can drift from the monitor's guest window.
   gen-dts.py --layout H --template T --self-test [--plan P] [--b6-plan P]
   gen-dts.py --layout H --query NAME
 
+beryllium-cheri: --guest-flavour linux|cheri-linux (default linux; the
+CHERI platform branch's, planning/cheri-platform.md) names the guest
+flavour: the CHERI Linux guest's DTBs (tools/build-guest-cheri.sh) also
+name CHERI v0.9.3's Zcherihybrid and Zcheripurecap after svade, and its
+self-test expects them. That flavour alone also has the variant cap-store,
+te-poc's DTB with " rdinit=/init-cap-store" before the "--", G0's, for
+te-poc's cap-store image (planning/cheri-enforcement-plan.md, CE-4), the
+last of its DTBS and its dtbs query.
+
 Every value comes from a `#define BE_MVP_<NAME> BE_MVP_C(<literal>)` line of
 the layout header: the window (BE_MVP_GUEST_GPA, BE_MVP_GUEST_BYTES), the
 timebase (BE_MVP_TIMEBASE_HZ), the DTB size for dtc -S (BE_MVP_DTB_BYTES),
@@ -122,6 +131,14 @@ B6_MODEL = "Beryllium K3 B6 guest"
 B6_COMPATIBLE = "beryllium,k3-b6-guest"
 ISA_EXTENSIONS = ("i", "m", "a", "c", "zicsr", "zifencei", "zihintpause",
                   "zba", "zbb", "zbs", "sstc", "svade")
+# beryllium-cheri: each guest flavour's further extensions, after svade
+# (--guest-flavour): the CHERI Linux guest's DTBs also name CHERI v0.9.3's
+# Zcherihybrid and Zcheripurecap, without which CHERI Alliance Linux never
+# enables CHERI for user space (senvcfg.CRE; arch/riscv/kernel/
+# cpufeature.c). main() selects the flavour.
+FLAVOUR_EXTENSIONS = {"linux": (),
+                      "cheri-linux": ("zcherihybrid", "zcheripurecap")}
+FLAVOUR = "linux"
 VARIANTS = ("base", "init-exit", "rdcycle", "sbi-time", "reference",
             "te-poc", "anchor", "shell", "te-poc-shell", "anchor-shell",
             "hostile")
@@ -145,6 +162,16 @@ DTBS = (
     ("mvp-guest-g0-anchor-shell.dtb", 0, "anchor-shell"),
     ("mvp-guest-g0-hostile.dtb", 0, "hostile"),
 )
+# beryllium-cheri: each guest flavour's own DTBs, after DTBS
+# (select_flavour()): the CHERI Linux guest's cap-store, te-poc's G0 with
+# rdinit=/init-cap-store, a link to /init, whose init loads the
+# capability-store module before its pattern write (planning/
+# cheri-enforcement-plan.md, CE-4).
+CAP_STORE_ARG = " rdinit=/init-cap-store"
+FLAVOUR_DTBS = {"linux": (),
+                "cheri-linux": (("mvp-guest-g0-cap-store.dtb", 0,
+                                 "cap-store"),)}
+BASE_VARIANTS, BASE_DTBS = VARIANTS, DTBS
 REQUIRED = ("DOMAINS", "GUEST_GPA", "GUEST_BYTES", "TIMEBASE_HZ",
             "DTB_BYTES", "KERNEL_GPA", "KERNEL_TEXT_OFFSET",
             "GUEST_LEAF_BYTES")
@@ -195,6 +222,16 @@ def parse_layout(text):
 def reference_memory(layout):
     """The reference node: the window's size, starting at the kernel."""
     return layout["KERNEL_GPA"], layout["GUEST_BYTES"]
+
+
+def select_flavour(flavour):
+    """beryllium-cheri: FLAVOUR's rules: its extensions, and its own
+    variants and DTBs after the others (FLAVOUR_DTBS)."""
+    global FLAVOUR, VARIANTS, DTBS
+    FLAVOUR = flavour
+    VARIANTS = BASE_VARIANTS + tuple(variant for _, _, variant in
+                                     FLAVOUR_DTBS[flavour])
+    DTBS = BASE_DTBS + FLAVOUR_DTBS[flavour]
 
 
 def query(layout, name):
@@ -279,7 +316,7 @@ def values(layout, guest, variant):
     if guest not in range(layout["DOMAINS"]):
         raise ValueError(f"unknown guest {guest!r}")
     bootargs = guest_bootargs(guest)
-    isa = list(ISA_EXTENSIONS)
+    isa = list(ISA_EXTENSIONS) + list(FLAVOUR_EXTENSIONS[FLAVOUR])
     base, size = layout["GUEST_GPA"], layout["GUEST_BYTES"]
     if variant == "init-exit":
         bootargs = guest_bootargs(guest, " rdinit=/init-exit")
@@ -288,6 +325,9 @@ def values(layout, guest, variant):
     elif variant == "te-poc":
         bootargs = guest_bootargs(guest,
                                   init=te_poc_arguments(layout, guest))
+    elif variant == "cap-store":
+        bootargs = guest_bootargs(guest, CAP_STORE_ARG,
+                                  te_poc_arguments(layout, guest))
     elif variant == "anchor":
         bootargs = guest_bootargs(guest,
                                   init=anchor_arguments(layout, guest))
@@ -354,11 +394,21 @@ def replace_once(text, old, new):
     return text.replace(old, new)
 
 
+def flavour_isa_tail():
+    """beryllium-cheri: svade and the flavour's further extensions, as the
+    DTS's riscv,isa-extensions list ends."""
+    return ", ".join(f'"{name}"' for name in
+                     ("svade",) + FLAVOUR_EXTENSIONS[FLAVOUR]) + ";"
+
+
 def mvp_plan_dts(b6_plan_text, guest):
-    """B6's accepted DTS with the MVP model, compatible, and bootargs."""
+    """B6's accepted DTS with the MVP model, compatible, and bootargs, and
+    (beryllium-cheri) the flavour's further extensions after svade."""
     text = plan_dts(b6_plan_text)
     text = replace_once(text, f'"{B6_COMPATIBLE}"', f'"{COMPATIBLE}"')
     text = replace_once(text, f'"{B6_MODEL}"', f'"{MODEL}"')
+    if FLAVOUR_EXTENSIONS[FLAVOUR]:
+        text = replace_once(text, '"svade";', flavour_isa_tail())
     return replace_once(text, f'"{BOOTARGS}"', f'"{guest_bootargs(guest)}"')
 
 
@@ -414,10 +464,14 @@ def self_test(template, layout_text, plan_text, b6_plan_text, id_header):
                    '";')],
         "hostile": [("bootargs", '"' + guest_bootargs("{g}", HOSTILE_ARG) +
                      '";')],
-        "sbi-time": [("riscv,isa-extensions", '"zbs", "svade";')],
+        "sbi-time": [("riscv,isa-extensions",
+                      '"zbs", ' + flavour_isa_tail())],
         "reference": [("memory@", f"memory@{ref_base:x} {{"),
                       ("reg", f"{ref_base & U32:#x} {ref_size >> 32:#x} "
                        f"{ref_size & U32:#x}>;")],
+        # beryllium-cheri: the CHERI Linux guest's cap-store, G0's alone.
+        "cap-store": [("bootargs", '"' + guest_bootargs(
+            "{g}", CAP_STORE_ARG, te_poc_arguments(layout, 0)) + '";')],
     }
     names = [name for name, _, _ in DTBS]
     expect(len(set(names)) == len(names), "DTBS repeats a name")
@@ -451,7 +505,7 @@ def self_test(template, layout_text, plan_text, b6_plan_text, id_header):
             expect('"sstc"' in bases[guest] and '"sstc"' not in rendered,
                    f"{name} still names sstc")
         if variant in ("init-exit", "rdcycle", "shell", "te-poc-shell",
-                       "anchor-shell", "hostile"):
+                       "anchor-shell", "hostile", "cap-store"):
             expect(rendered.index("rdinit=") < rendered.index(" -- "),
                    f"{name}: rdinit= is not a kernel option before --")
     dtb = int(query(layout, "reference-dtb"), 16)
@@ -548,13 +602,20 @@ def main():
     parser.add_argument("--layout", required=True, type=pathlib.Path)
     parser.add_argument("--template", type=pathlib.Path)
     parser.add_argument("--guest", type=int, default=0)
-    parser.add_argument("--variant", default="base", choices=VARIANTS)
+    parser.add_argument("--variant", default="base",
+                        choices=VARIANTS + tuple(
+                            variant for dtbs in FLAVOUR_DTBS.values()
+                            for _, _, variant in dtbs))
     parser.add_argument("--output", type=pathlib.Path)
     parser.add_argument("--query")
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--plan", type=pathlib.Path)
     parser.add_argument("--b6-plan", type=pathlib.Path)
+    # beryllium-cheri: the guest flavour.
+    parser.add_argument("--guest-flavour", choices=tuple(FLAVOUR_EXTENSIONS),
+                        default="linux")
     args = parser.parse_args()
+    select_flavour(args.guest_flavour)
     layout_text = args.layout.read_text(encoding="ascii")
     try:
         layout = parse_layout(layout_text)
