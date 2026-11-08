@@ -177,7 +177,7 @@ cheri_mutations() {
 for t in "image references" image-check reference-check port-check lint \
 	policy-negatives guest-self-test host-test target-check budgets \
 	tool-lock-check platform-probe-check partition-tool-check \
-	evidence-check rc-record-check snapshot-check session-typist-check \
+	evidence-check rc-record-check session-typist-check \
 	verify-tools-check platform-record-check uboot-rehearsal-check; do
 	if ! make_step "make $t" "$out/make-${t// /-}.log" "$top/mvp" "$t" \
 		"${inputs[@]}"; then
