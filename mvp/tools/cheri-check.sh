@@ -35,7 +35,9 @@
 #    merge on HEAD's first-parent history (each a catch-up, the page's
 #    rule 1), which must be git merge-base's answer for HEAD and the
 #    development line (refs/heads/main, or refs/remotes/origin/main where
-#    there is no main). It is built once, with the same tools and
+#    there is no main). Where that history has no merge, on a branch that
+#    has never caught up, the reference is that merge base itself. It is
+#    built once, with the same tools and
 #    invocation, in a temporary clone under build/cheri-check/reference/
 #    SHA/, which then keeps only its digests and its build log, so that it
 #    is built again only when a catch-up brings a new main commit. While a
@@ -289,7 +291,8 @@ fi
 images "$top/$plain" >"$out/plain-images.sha256"
 
 # The reference: the newest first-parent merge's second parent, which must
-# be the merge base of HEAD and the development line.
+# be the merge base of HEAD and the development line; with no merge on
+# HEAD's first-parent history, that merge base.
 reference=
 merge=$(git -C "$top" log --first-parent --merges -1 --format=%H HEAD)
 line=
@@ -299,8 +302,13 @@ for candidate in refs/heads/main refs/remotes/origin/main; do
 		break
 	fi
 done
-if [ -z "$merge" ] || [ -z "$line" ]; then
-	echo "plain reference: FAIL no catch-up merge or no development line (main, origin/main)" >>"$summary"
+how="$merge's second parent"
+if [ -z "$line" ]; then
+	echo "plain reference: FAIL no development line (main, origin/main)" >>"$summary"
+elif [ -z "$merge" ]; then
+	how="the merge base; no catch-up merge"
+	reference=$(git -C "$top" merge-base HEAD "$line") ||
+		echo "plain reference: FAIL HEAD and $line have no merge base" >>"$summary"
 elif ! reference=$(git -C "$top" rev-parse --verify -q "$merge^2") ||
 	[ "$(git -C "$top" merge-base HEAD "$line")" != "$reference" ]; then
 	echo "plain reference: FAIL $merge's second parent is not the merge base of HEAD and $line" >>"$summary"
@@ -309,7 +317,7 @@ fi
 if [ -n "$reference" ]; then
 	refdir=$cache/$reference
 	if [ -s "$refdir/images.sha256" ]; then
-		echo "plain reference: main $reference ($merge's second parent), digests cached" >>"$summary"
+		echo "plain reference: main $reference ($how), digests cached" >>"$summary"
 	else
 		start=$SECONDS
 		rm -rf -- "$refdir"
@@ -323,7 +331,7 @@ if [ -n "$reference" ]; then
 			images "$refdir/src/$plain" >"$refdir/images.sha256.part"
 			mv -- "$refdir/images.sha256.part" "$refdir/images.sha256"
 			rm -rf -- "$refdir/src"
-			echo "plain reference: main $reference ($merge's second parent), built in $((SECONDS - start)) s" >>"$summary"
+			echo "plain reference: main $reference ($how), built in $((SECONDS - start)) s" >>"$summary"
 		else
 			echo "plain reference: FAIL the build of $reference (log $refdir/build.log)" >>"$summary"
 			reference=
