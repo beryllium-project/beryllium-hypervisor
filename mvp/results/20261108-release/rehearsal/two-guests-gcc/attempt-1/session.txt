@@ -1,0 +1,20 @@
+label=two-guests/gcc
+kind=scenario
+file=two-guests-gcc.img
+stage=done
+error=-
+qemu_exit=0
+seconds=5.6
+sbi_version=2.0
+boot_hart=1
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2748416
+crc32=7c5b59a5
+fdt=0xff7383d0
+fdt_end=0xff73edd8
+rule_hart=1
+shim_fdt=0xff7383d0
+terminal=BE_MVP:FAIL firmware
+console_bytes=4814
+console_sha256=b3d197908752cf88b5e282712e46b96d25438e394698e0527110c5111651652b
+BE_MVP_UBOOT_SESSION[two-guests/gcc]: REFUSED boot_hart=1 qemu_exit=0 fdt=0xff7383d0 crc32=7c5b59a5 seconds=5.6

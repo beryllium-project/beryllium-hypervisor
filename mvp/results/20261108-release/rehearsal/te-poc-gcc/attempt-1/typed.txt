@@ -1,0 +1,10 @@
+# seconds after QEMU's start, UTC, what, echo, text; a line is typed a key at a time, then Enter once its echo matched
++0.155 2026-11-08T02:03:25.421Z key - <space>
++0.528 2026-11-08T02:03:25.794Z line ok setenv be_part 1
++1.033 2026-11-08T02:03:26.299Z line ok setenv be_image te-poc-gcc.img
++2.220 2026-11-08T02:03:27.486Z line ok setenv be_ld 'load virtio 0:${be_part} 0x140000000 /${be_image} && crc32 0x140000000 ${filesize}'
++2.949 2026-11-08T02:03:28.215Z line ok setenv be_go 'booti 0x140000000 - ${fdtcontroladdr}'
++3.651 2026-11-08T02:03:28.917Z line ok setenv be_boot 'if run be_ld; then run be_go; fi'
++4.569 2026-11-08T02:03:29.835Z line ok setenv be_orig_bootcmd 'echo BE_UBOOT_REHEARSAL: FALLTHROUGH; sleep 1'
++5.266 2026-11-08T02:03:30.532Z line ok setenv bootcmd 'run be_boot; run be_orig_bootcmd'
++5.507 2026-11-08T02:03:30.773Z line ok boot

@@ -1,0 +1,85 @@
+linux_git=file://<repo>/build/mvp/linux-src
+linux_tag=v7.2
+linux_tag_object=237a1c39e8dfd3e1c6f1f023eea37a48ec04cc63
+linux_commit=8d3ae59288f1e7d58d76558a6ee96d533bc5019f
+cross_compile=riscv64-linux-gnu-
+cc=riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1)
+ld=GNU ld version 2.46.1-1.fc44
+host_cc=cc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)
+make=GNU Make 4.4.1
+python=Python 3.14.8
+dtc=Version: DTC 1.7.2-g53373d13
+sysroot=headers_install INSTALL_HDR_PATH=<OUT>/sysroot; tools/include/nolibc headers OUTPUT=<OUT>/
+sysroot_files=1065 sysroot_sha256=c931b51b8789ec8c57c2169a954d421ec8cc7aa3e5c7e5a951ec08a241cc1df0
+init_flags=-std=gnu11 -march=rv64imac_zicsr -mabi=lp64 -Os -ffreestanding -fno-builtin -fno-pic -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -mno-relax -msmall-data-limit=0 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -nostdinc -nostdlib -static -no-pie -s -Wl,-e,_start -Wl,--build-id=none -Wl,--no-relax -Wl,--fatal-warnings -isystem <OUT>/sysroot/include -I <MVP_DIR>/guest -I <MVP_DIR>/src
+init_sources=guest/mvp-init.c src/mvp-sha256.c
+busybox_source=1.36.1 tag=1_36_1 commit=1a64f6a20aaf6ea4dbba68bbfa8cc1ab7e5c57c4 tarball=busybox-1.36.1.tar.bz2 sha256=b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314 signature=busybox-1.36.1.tar.bz2.sig license=GPL-2.0-only
+busybox_key=guest/keys/busybox.asc sha256=41d0554e1abb52e962d52ed360181ca9def8876f512553dc660edd0a4a3cb160 fingerprint=C9E9416F76E610DBD09D040F47B70C55ACC9965B
+busybox_validsig=C9E9416F76E610DBD09D040F47B70C55ACC9965B 2023-05-18 1684449258 0 4 0 17 2 00 C9E9416F76E610DBD09D040F47B70C55ACC9965B
+musl_source=1.2.6 tag=v1.2.6 commit=9fa28ece75d8a2191de7c5bb53bed224c5947417 tarball=musl-1.2.6.tar.gz sha256=d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a signature=musl-1.2.6.tar.gz.asc license=MIT
+musl_key=guest/keys/musl.asc sha256=bf6baaa63c2c4958636850a24bb9d2d514c8b6a1b3ab9c08f3b75910fb6f57be fingerprint=836489290BB6B70F99FFDA0556BCDB593020450F
+musl_validsig=836489290BB6B70F99FFDA0556BCDB593020450F 2026-03-20 1774021285 0 4 0 1 2 00 836489290BB6B70F99FFDA0556BCDB593020450F
+musl_configure=--target=riscv64-linux-gnu --prefix=<OUT>/musl --disable-shared --enable-wrapper=gcc CROSS_COMPILE=riscv64-linux-gnu- CC=riscv64-linux-gnu-gcc CFLAGS=-march=rv64imac -mabi=lp64
+musl_make=AR=<riscv64-linux-gnu-ar with D> RANLIB=riscv64-linux-gnu-ranlib -D; install
+musl_tree=files=231 sha256=f40c5fdb71f1cab9af013fc36d1710d983b477bd3aec2492ff8956781b4896c4
+busybox_config_sha256=838de485138aa154dac6dc75846c94496077a270aa843404cd3eac7dfba2dc40
+busybox_make=CROSS_COMPILE=riscv64-linux-gnu- CC=<OUT>/musl/bin/musl-gcc CFLAGS=-march=rv64imac -mabi=lp64 LDFLAGS=-fno-link-libatomic KCONFIG_NOTIMESTAMP=1 SOURCE_DATE_EPOCH=1786915946 busybox
+busybox_applets=[ ash cat echo false head hexdump ls printf sh sleep test true wc
+busybox_links_none_of=regcomp regexec iconv iconv_open
+userland_build_seconds=11
+kernel_build=built
+m4=/usr/bin/m4 (m4 (GNU M4) 1.4.21)
+bison=/usr/bin/bison (bison (GNU Bison) 3.8.2)
+flex=/usr/bin/flex (flex 2.6.4)
+config_values_checked=26
+config_values_overridden=CONFIG_MODULES
+mvp_config_values_checked=3
+kbuild_tools=RUSTC=/dev/null/rustc BINDGEN=/dev/null/bindgen PAHOLE=/dev/null/pahole
+config_delta=# CONFIG_IO_STRICT_DEVMEM is not set;CONFIG_DEVMEM=y;CONFIG_STRICT_DEVMEM=y
+config_delta_m2=# CONFIG_MODULE_ALLOW_MISSING_NAMESPACE_IMPORTS is not set;# CONFIG_MODULE_COMPRESS is not set;# CONFIG_MODULE_FORCE_LOAD is not set;# CONFIG_MODULE_SIG is not set;# CONFIG_MODULE_SRCVERSION_ALL is not set;# CONFIG_MODULE_UNLOAD is not set;# CONFIG_MODVERSIONS is not set;# CONFIG_STRICT_MODULE_RWX is not set;# CONFIG_TEST_ASYNC_DRIVER_PROBE is not set;# CONFIG_TEST_LOCKUP is not set;# CONFIG_TRIM_UNUSED_KSYMS is not set;CONFIG_DRIVER_DEFERRED_PROBE_TIMEOUT=10;CONFIG_EXECMEM=y;CONFIG_MODPROBE_PATH="/sbin/modprobe";CONFIG_MODULES=y;CONFIG_MODULES_USE_ELF_RELA=y
+CONFIG_RUSTC_VERSION=0
+CONFIG_RUSTC_LLVM_VERSION=0
+CONFIG_PAHOLE_VERSION=0
+source_date_epoch=1786915946
+kbuild_build_timestamp=Sun Aug 16 21:32:26 UTC 2026
+kbuild_build_user=be
+kbuild_build_host=beryllium
+kbuild_build_version=1
+localversion=
+kcflags=-ffile-prefix-map=<LINUX_SRC>/= -ffile-prefix-map=<OBJ>/=
+kaflags=-ffile-prefix-map=<LINUX_SRC>/= -ffile-prefix-map=<OBJ>/=
+make_targets=vmlinux modules; Image scripts_dtc
+module_make=-C <OBJ> M=<MVP_DIR>/guest/mgmt MO=<OUT>/mgmt modules
+module_kcflags=-ffile-prefix-map=<LINUX_SRC>/= -ffile-prefix-map=<OBJ>/= -ffile-prefix-map=<MVP_DIR>/guest/mgmt/= -ffile-prefix-map=<OUT>/mgmt/=
+jobs=32
+kernel_build_seconds=13
+pins=match
+source busybox version=1.36.1 tag=1_36_1 commit=1a64f6a20aaf6ea4dbba68bbfa8cc1ab7e5c57c4 url=https://busybox.net/downloads/busybox-1.36.1.tar.bz2 sha256=b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314 signature=https://busybox.net/downloads/busybox-1.36.1.tar.bz2.sig key=guest/keys/busybox.asc fingerprint=C9E9416F76E610DBD09D040F47B70C55ACC9965B license=GPL-2.0-only
+source musl version=1.2.6 tag=v1.2.6 commit=9fa28ece75d8a2191de7c5bb53bed224c5947417 url=https://musl.libc.org/releases/musl-1.2.6.tar.gz sha256=d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a signature=https://musl.libc.org/releases/musl-1.2.6.tar.gz.asc key=guest/keys/musl.asc fingerprint=836489290BB6B70F99FFDA0556BCDB593020450F license=MIT
+file init sha256=441a5006d87b251fa9e71cc966d0cb0fbb3ad025e4935c197f0326e9c83d9709 bytes=17176
+file be-mgmt.ko sha256=67529a9dca0f682d4130993040fb7c17f88f75a823b96965b3b72da78ae439d1 bytes=5736
+file busybox sha256=26591347cd7e5962e485011b402ea54cca0a2f594180087c894ed56ddcb80b90 bytes=141560
+file musl-libc.a sha256=578556667ef60864f99e4bb57d150f5966138d6ce03cbe122ad37cebe21f6944 bytes=4300500
+file Image sha256=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6 bytes=2063556
+file mvp-guest-g0.dtb sha256=f51be0c7c1cf25f11eeb721dc4dcf19d34902794cf3f15cd43df0255523e0783 bytes=4096
+file mvp-guest-g1.dtb sha256=ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea bytes=4096
+file mvp-guest-g1-init-exit.dtb sha256=7cc47c2f65499ca72454588b181d7cf8ebf5a9b45818de2f0e054759a0684afd bytes=4096
+file mvp-guest-g0-rdcycle.dtb sha256=4043572a9cbcdaee41c51d91ed83ebc0b622352167173f7ced97bbcc15c6de66 bytes=4096
+file mvp-guest-g0-sbi-time.dtb sha256=568b90cee8cf8bb9a06f423a0efb212f9ffdd16b2a9384fac983bdf990b79cbf bytes=4096
+file mvp-guest-g1-sbi-time.dtb sha256=d8c1f4d8f43b7ce569ebe5187237c2c21f945cf3eae8c05e27407d566e7d45e0 bytes=4096
+file mvp-guest-g0-reference.dtb sha256=9a523ff8e0834bca6bc09b09aa43d6c7a0bc94fa307a88105c02ce5469a308e1 bytes=4096
+file mvp-guest-g1-reference.dtb sha256=0e079e289a434d44d9c965617c136c8552de0d0ccad305a9e2ea249f044bceb5 bytes=4096
+file mvp-guest-g0-te-poc.dtb sha256=5aca65d93e8488f44f0c8a746993ce8ceb231542fc9aa64bd491ede90fb9156b bytes=4096
+file mvp-guest-g1-te-poc.dtb sha256=d761366dce46edb1fe2ecf17bc517c84f79b4630c1af332d5be58855c3cafef0 bytes=4096
+file mvp-guest-g0-anchor.dtb sha256=55acfb900d8e43daee8f5c3d2b1c13e624f8af7e8cc97dd900d6f23d8728c71b bytes=4096
+file mvp-guest-g1-anchor.dtb sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025 bytes=4096
+file mvp-guest-g0-shell.dtb sha256=aabf721bc86adcd78d7bd6c91f081df15e3c564802c154f419647ab71ab749e7 bytes=4096
+file mvp-guest-g1-shell.dtb sha256=ff9e5ca0f2ef0c978fac295c7de6da7137a61ee303ac860b0707df959c4f114c bytes=4096
+file mvp-guest-g0-te-poc-shell.dtb sha256=777d225af04ad8336811a76ce944d6cdb0e6c298b6d2a10ed7d1adf867e987df bytes=4096
+file mvp-guest-g1-te-poc-shell.dtb sha256=b408340c0babce04416957d053b1c23166b416c4b42ecde243f68b3959e817b6 bytes=4096
+file mvp-guest-g0-anchor-shell.dtb sha256=9efc1d9df7f4936aa9efa2956abc1189f1829daa0c913e9e9c11d95debff727e bytes=4096
+file mvp-guest-g0-hostile.dtb sha256=2cee0fc98003e17bbc98684a701a5c1b65752952392b342db00deea721ce9099 bytes=4096
+kernel image_size=0x22bfb0
+kernel text_offset=0x200000
+kernel banner=Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+toolchain gcc=riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1)

@@ -1,0 +1,7 @@
+BE_MVP_SESSION[gcc/two-guests-shell]: PASS attempts=1 refused=0 steps=16 keys=100 seconds=5.6 (BE_MVP_CAPTURE[direct two-guests-shell]: PASS)
+BE_MVP_SESSION[clang/two-guests-shell]: PASS attempts=2 refused=1 steps=16 keys=100 seconds=5.3 (BE_MVP_CAPTURE[direct two-guests-shell]: PASS)
+BE_MVP_SESSION[gcc/te-poc-shell]: PASS attempts=1 refused=0 steps=22 keys=193 seconds=8.3 (BE_MVP_CAPTURE[direct te-poc-shell]: PASS)
+BE_MVP_SESSION[clang/te-poc-shell]: PASS attempts=1 refused=0 steps=22 keys=193 seconds=8.3 (BE_MVP_CAPTURE[direct te-poc-shell]: PASS)
+BE_MVP_SESSION[gcc/anchor-shell]: PASS attempts=1 refused=0 steps=16 keys=130 seconds=6.4 (BE_MVP_CAPTURE[direct anchor-shell]: PASS)
+BE_MVP_SESSION[clang/anchor-shell]: PASS attempts=1 refused=0 steps=16 keys=130 seconds=6.1 (BE_MVP_CAPTURE[direct anchor-shell]: PASS)
+BE_MVP_SESSIONS: PASS sessions=6 attempts=7 refused=1

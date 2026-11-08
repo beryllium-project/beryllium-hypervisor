@@ -1,0 +1,18 @@
+label=fallthrough
+image=gcc/be-mvp-boot.img
+image_sha256=3c836649f66e7070fd28b403b2f439989ca19cc136b9cfe6d3a9642b51c56ab0
+qemu_image_bytes=2748416
+qemu_image_sha256=d041b7f4b5a29a1966f9be2a97204ce3ff1b50f90613c672aa1af22138e9e048
+qemu_image_crc32=7c5b59a5
+qemu_text_offset=0x88000000
+qemu_image_source=built
+qemu_image=gcc/be-mvp-boot-qemu.img
+disk_file=two-guests-gcc.img
+be_image=missing.img
+disk_sha256=29617ede92171a9cea8f881038a5cc1e51a0d30756920dc07d0dcc9d7022bec9
+expect=-
+report=-
+measured_kernel=-
+measured_dtb=-
+attempt=1 session=PASS check=- check_exit=- boot_hart=0 qemu_exit=killed:-9 disk=same console_sha256=369069f211ab6d6c5b5d253ba7ca919516bcd6aefe5e29a6110fc30c4ceb4bd7
+BE_MVP_UBOOT_REHEARSAL[fallthrough]: PASS attempts=1 refused=0 boot_harts=0 session=PASS check=- check_exit=- qemu_exit=killed:-9 image=d041b7f4b5a2 crc32=7c5b59a5 (FALLTHROUGH, no Starting kernel)

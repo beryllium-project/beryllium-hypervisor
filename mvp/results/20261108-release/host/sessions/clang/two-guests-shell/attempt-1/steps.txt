@@ -1,0 +1,1 @@
++0.078 2026-11-08T01:47:42.084Z stopped: ready {'monitor': 'BE_MVP:15 INPUT_ARMED grants=g0,g1 prefix=0x7e'}: the run ended

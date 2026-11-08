@@ -1,0 +1,8 @@
+toolchain	run	attempt	boot_hart	qemu_exit	verdict	capture_sha256	elf	elf_sha256	keys	steps	seconds
+gcc	two-guests-shell	1	5	0	PASS	8cc4e15be5ead3c8aa686905529512a51121613b7327358c4d5a2cb5d89cd9ac	variants/gcc/two-guests-shell/be-mvp-boot.elf	a194b45f23f5b2961aa0c8735ff6b48b4fc7cc5b7b9b8c1bc0953d04cf4083a2	100	16	5.6
+clang	two-guests-shell	1	1	0	REFUSED	185f1ccc9df2e27d670c8c06d05f71df585e4b1857f8aa571b93aa97fa1ba758	variants/clang/two-guests-shell/be-mvp-boot.elf	0d2d186ac4a69b81ec38af46e2341ffc73b16537391432b043a67274e86011fa	0	16	0.1
+clang	two-guests-shell	2	6	0	PASS	ad7b7b451ec1eae88feee34c010fa4d4332239733d8d8fdc7b13263e90efe5de	variants/clang/two-guests-shell/be-mvp-boot.elf	0d2d186ac4a69b81ec38af46e2341ffc73b16537391432b043a67274e86011fa	100	16	5.3
+gcc	te-poc-shell	1	6	0	PASS	eb87638a1fab0b75e512813acc179bda6a0d5c8cafb2b95aa67dd9f3b7afaf37	variants/gcc/te-poc-shell/be-mvp-boot.elf	ab5e54f57702d90e1b0d629be6661d55c953c7681c898f2bd5d2a3d6ebbd5754	193	22	8.3
+clang	te-poc-shell	1	5	0	PASS	1d1ba9928f49ea8b12b5c817f57d5ccdc8f0e593279a2addc767f609fb520f02	variants/clang/te-poc-shell/be-mvp-boot.elf	9ed8dc71b1fc44ad0ee8cef855928341c187182b99239ab834210ef3fe37a134	193	22	8.3
+gcc	anchor-shell	1	6	0	PASS	599703792ceaf3925e91970e96e64d596f56908fa638acbe3b22285f12bd11ac	variants/gcc/anchor-shell/be-mvp-boot.elf	607c121b1e516a0dcb4d3776fe5bf62cbe90fe0b98ec056a56466310f7e81021	130	16	6.4
+clang	anchor-shell	1	0	0	PASS	b22f3eca862da7d815dbb97472f47c806f384a0f24c4e2c19a4506e12b614f50	variants/clang/anchor-shell/be-mvp-boot.elf	bb36ea7734f05586a3c80c3291a720f703308c4de2ebd7c63684afe0a9757b86	130	16	6.1

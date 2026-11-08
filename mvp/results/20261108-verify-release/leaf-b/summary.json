@@ -1,0 +1,17 @@
+{
+ "schema": "be-mvp-cbmc-ring-v1",
+ "specification_sha256": "aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b",
+ "result": "OPEN",
+ "properties": 14931,
+ "checked": 13547,
+ "open": 1384,
+ "mutants": 24,
+ "killed": 22,
+ "unobservable": 1,
+ "harness_findings": 1,
+ "compile_errors": 0,
+ "coverage": true,
+ "vacuity": true,
+ "seconds": 7538,
+ "started": "2026-11-08T03:48:24Z"
+}

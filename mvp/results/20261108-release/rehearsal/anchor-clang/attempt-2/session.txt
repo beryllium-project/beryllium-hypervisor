@@ -1,0 +1,20 @@
+label=anchor/clang
+kind=scenario
+file=anchor-clang.img
+stage=done
+error=-
+qemu_exit=0
+seconds=12.3
+sbi_version=2.0
+boot_hart=6
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2748416
+crc32=a063f17d
+fdt=0xff7383d0
+fdt_end=0xff73edd8
+rule_hart=6
+shim_fdt=0xff7383d0
+terminal=BE_MVP:14 SHUTDOWN type=0 reason=0
+console_bytes=27707
+console_sha256=d6744fdc519a4ce1344b3a97fe8fe71a163b10e87ec79951dfcd1e342ddffc1a
+BE_MVP_UBOOT_SESSION[anchor/clang]: PASS boot_hart=6 qemu_exit=0 fdt=0xff7383d0 crc32=a063f17d seconds=12.3

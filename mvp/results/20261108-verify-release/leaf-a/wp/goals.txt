@@ -1,0 +1,137 @@
+# planning/mvp-m8-plan.md D-7, M8-6; specification planning/mvp-m8-specifications.md Revision 1, sections 4 and 6, SHA-256 aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b, accepted at 93a8d136
+# WP arm, final round 1: every goal (property; obligations with -wp-split are its paths)
+goal access_fault_assigns function=access_fault status=proved obligations=4/4 closed_by=Qed
+goal access_fault_ensures_AF_cause function=access_fault status=proved obligations=4/4 closed_by=Alt-Ergo 2.4.3,Qed
+goal access_fault_ensures_AF_other function=access_fault status=proved obligations=4/4 closed_by=Qed
+goal be_mvp_denial_decide_assert_D_E3_here function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_D_gpa_here function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_D_place_here function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_D_reads_74 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_D_reads_78 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_D_reads_82 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_D_reads_87 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_D_reads_97 function=be_mvp_denial_decide status=proved obligations=8/8 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_assert_D_window_here function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_10 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_11 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_12 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_13 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_14 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_15 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_16 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_17 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_18 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_19 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_2 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_20 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_21 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_22 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_23 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_24 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_25 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_26 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_27 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_28 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_29 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_3 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_30 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_31 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_32 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_33 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_34 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_35 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_36 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_37 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_38 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_39 function=be_mvp_denial_decide status=proved obligations=2/2 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_4 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_40 function=be_mvp_denial_decide status=proved obligations=4/4 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_41 function=be_mvp_denial_decide status=proved obligations=8/8 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_42 function=be_mvp_denial_decide status=proved obligations=8/8 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_43 function=be_mvp_denial_decide status=proved obligations=8/8 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_44 function=be_mvp_denial_decide status=proved obligations=8/8 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_5 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_6 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_7 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Qed
+goal be_mvp_denial_decide_assert_rte_mem_access_8 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_mem_access_9 function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assert_rte_unsigned_overflow function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal be_mvp_denial_decide_assigns function=be_mvp_denial_decide status=proved obligations=94/94 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_E1 function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_E2 function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_E3 function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_E4 function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_E5 function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_E6 function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_E7 function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_cause function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_complete function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_gpa function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_htinst function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_htval function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_inject_vscause function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_inject_vsepc function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_inject_vsstatus_rest function=be_mvp_denial_decide status=timeout obligations=17/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_inject_vsstatus_sie function=be_mvp_denial_decide status=timeout obligations=15/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_inject_vsstatus_spie function=be_mvp_denial_decide status=timeout obligations=15/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_inject_vsstatus_spp function=be_mvp_denial_decide status=timeout obligations=15/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_inject_vstval function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_kind_read_only function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_kind_unmapped function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_result function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_resume_pc function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_sepc function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_stval function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_time function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_vsstatus function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Alt-Ergo 2.4.3,Qed
+goal be_mvp_denial_decide_ensures_D_vstvec function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_cause function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_gpa function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_htinst function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_htval function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_inject_vscause function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_inject_vsepc function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_inject_vsstatus function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_inject_vstval function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_kind function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_resume_pc function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_sepc function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_stval function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_time function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_vsstatus function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_ensures_D_zero_vstvec function=be_mvp_denial_decide status=proved obligations=19/19 closed_by=Qed
+goal be_mvp_denial_decide_exits function=be_mvp_denial_decide status=proved obligations=4/4 closed_by=Qed
+goal be_mvp_denial_decide_terminates function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Qed
+goal htinst_accepted_assigns function=htinst_accepted status=proved obligations=11/11 closed_by=Qed
+goal htinst_accepted_ensures_HI_bool function=htinst_accepted status=proved obligations=8/8 closed_by=Qed
+goal htinst_accepted_ensures_HI_iff function=htinst_accepted status=proved obligations=8/8 closed_by=Alt-Ergo 2.4.3
+goal inside_assert_rte_unsigned_overflow function=inside status=proved obligations=1/1 closed_by=Qed
+goal inside_assert_rte_unsigned_overflow_2 function=inside status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal inside_assigns function=inside status=proved obligations=4/4 closed_by=Qed
+goal inside_ensures_IN_bool function=inside status=proved obligations=4/4 closed_by=Qed
+goal inside_ensures_IN_iff function=inside status=proved obligations=4/4 closed_by=Alt-Ergo 2.4.3
+goal inside_requires_IN_nowrap function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal inside_requires_IN_nowrap_2 function=leaf_at status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal leaf_at_assert_rte_index_bound function=leaf_at status=proved obligations=1/1 closed_by=Qed
+goal leaf_at_assert_rte_index_bound_2 function=leaf_at status=proved obligations=1/1 closed_by=Qed
+goal leaf_at_assert_rte_mem_access function=leaf_at status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal leaf_at_assert_rte_mem_access_2 function=leaf_at status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal leaf_at_assert_rte_unsigned_overflow function=leaf_at status=proved obligations=1/1 closed_by=Qed
+goal leaf_at_assigns function=leaf_at status=proved obligations=9/9 closed_by=Qed
+goal leaf_at_ensures_LA_found function=leaf_at status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3,Qed
+goal leaf_at_ensures_LA_none function=leaf_at status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3,Qed
+goal leaf_at_ensures_LA_null function=leaf_at status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3,Qed
+goal leaf_at_ensures_LA_page function=leaf_at status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3
+goal leaf_at_exits function=leaf_at status=proved obligations=1/1 closed_by=Qed
+goal leaf_at_loop_assigns function=leaf_at status=proved obligations=2/2 closed_by=Qed
+goal leaf_at_loop_invariant_LA_before function=leaf_at status=proved obligations=2/2 closed_by=Alt-Ergo 2.4.3,Qed
+goal leaf_at_loop_invariant_LA_index function=leaf_at status=proved obligations=2/2 closed_by=Qed
+goal leaf_at_loop_variant function=leaf_at status=proved obligations=2/2 closed_by=Qed
+goal leaf_at_requires_LA_nowrap function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goal leaf_at_requires_LA_valid function=be_mvp_denial_decide status=proved obligations=1/1 closed_by=Qed
+goal leaf_at_terminates function=leaf_at status=proved obligations=1/1 closed_by=Qed
+goal lemma_E3_MASK function=(lemma) status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3,Qed,Script
+goal lemma_HTVAL_SHIFT function=(lemma) status=proved obligations=1/1 closed_by=Qed,Script
+goal lemma_W_MASK function=(lemma) status=proved obligations=1/1 closed_by=Alt-Ergo 2.4.3
+goals=134 proved=130 open=4

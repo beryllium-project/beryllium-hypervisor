@@ -1,0 +1,1049 @@
+# MVP M8 Leaf B: CBMC bounded model check of mvp-ring.c (planning/mvp-m8-plan.md, D-8): a bounded model check, never a proof
+specification=planning/mvp-m8-specifications.md revision=1 accepted=93a8d136 sha256=aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b
+leaf=mvp/src/mvp-ring.c sha256=432dbc511397da4b051da37f3860b1f8d078ef87fa175ea47d7b3c7a1bc267ba
+started=2026-11-08T03:48:24Z cbmc=6.8.0 (ad933aa-dirty) cvc5=cvc5 1.3.4
+# The row's failures on the unmodified leaf, each a CBMC counterexample (SAT); the leaf is not changed (planning/mvp-m8-plan.md, stop condition 2: the human's).
+
+## host-test reproducer
+reproducer=build/mvp/verify/cbmc-ring/defect-room/room-reproducer.c (scratch; built with verify/target-digests.txt's host_test_flags and the unmodified mvp/src/mvp-ring.c)
+build_status=0
+exit=1
+BE_MVP_RING_DEFECT: capacity=512 limit-t=512 cursor-t=528 room=0 failed=1 row=well-formed,none-fits,not-failed contradicts
+BE_MVP_RING_DEFECT: capacity=512 limit-t=504 cursor-t=520 room=0 failed=1 row=well-formed,none-fits,not-failed contradicts
+BE_MVP_RING_DEFECT: capacity=512 limit-t=496 cursor-t=512 room=0 failed=0 row=well-formed,none-fits,not-failed agrees
+BE_MVP_RING_DEFECT: capacity=512 limit-t=520 cursor-t=536 room=0 failed=1 row=malformed,failed agrees
+BE_MVP_RING_DEFECT: capacity=4096 limit-t=4096 cursor-t=4112 room=0 failed=1 row=well-formed,none-fits,not-failed contradicts
+BE_MVP_RING_DEFECT: capacity=4096 limit-t=4088 cursor-t=4104 room=0 failed=1 row=well-formed,none-fits,not-failed contradicts
+BE_MVP_RING_DEFECT: capacity=4096 limit-t=4080 cursor-t=4096 room=0 failed=0 row=well-formed,none-fits,not-failed agrees
+BE_MVP_RING_DEFECT: capacity=4096 limit-t=4104 cursor-t=4120 room=0 failed=1 row=malformed,failed agrees
+BE_MVP_RING_DEFECT: CONFIRMED contradictions=4
+
+## main.assertion.1: room: a well-formed tail the cursor is more than C past (none fits): 0, writes nothing, the view not failed
+part=all capacity=512
+reason=specification-mismatch
+reading: Revision 1's room row calls a tail well formed when it is aligned with limit - t <= C (its parenthesis, 'as post reads it: aligned, with limit - t <= C', R1-6) and says room never fails the view for want of room; be_mvp_ring_room also refuses, as malformed, a tail the cursor is more than C past (cursor - t > C: mvp-ring.c line 211; mvp-ring.h: room 'checks it as be_mvp_ring_post() does') and fails the view. With a record posted and not published (cursor = limit + 16) a tail C or C - 8 behind the published head is well formed by the row and refused by the code: the trace's state and the reproducer's. A reader's release never moves the tail back, and post keeps cursor - t <= C when it posts, so the state needs a tail value no release writes; the row's 'for any peer index value' admits it. The row and the code disagree; neither is changed here (stop 2: the human's)
+log=logs/room-all-512-sat-B-all-trace-main.assertion.1.log
+
+Trace for main.assertion.1:
+
+State 6 file mvp/verify/cbmc/ring/room.c function main line 42 thread 0
+----------------------------------------------------
+  buffer={ 8, 24, '(', ' ', 'H', 0, '@', ' ', 8, 136, 0, 4, 136, 136, 0, 4, 8, '(', ' ', 2, '\t', 4, 'H', '@', 0, 0, 0, 1, '(', '\n', 4, 0, 0, 'H', 2, 1, 4, 'H', 128, 16, 0, 4, 2, 'H', '@', 12, '(', '\t', 8, 12, 4, ' ', 0, 'H', '\t', 0, 8, ' ', '@', 12, '@', ' ', '(', 136, 8, 12, 4, 12, 12, 128, 'H', 0, 8, 136, 'H', 16, 24, 1, 16, 16, 8, 'H', 'H', 4, ' ', 0, 128, 'H', 8, 12, '@', '\n', '\n', '\t', 24, 136, 8, 4, '@', 136, 1, ' ', 128, 0, 8, 0, '\n', '@', 128, '(', 0, '\t', 0, 2, '@', 0, '(', '\t', '@', 1, 0, 16, 0, '\n', ' ', 1, 4, 24, 8, 12, 136, 1, '\t', 0, '\t', 136, 8, 8, 1, 1, 4, 0, 136, '\t', 8, 0, 2, 2, 128, 2, ' ', '\t', 8, '(', '(', ' ', 24, 136, 0, 128, 0, 0, 128, 128, 'H', '\t', '(', ' ', 8, 'H', ' ', 136, 12, ' ', 128, 1, 8, 0, 12, ' ', '(', 2, 128, 24, 0, 0, 'H', 136, '@', '@', 16, 0, 0, '(', 24, 12, 16, '@', 4, '@', 0, 136, 136, 128, '(', 136, 2, 4, 8, 0, 0, 4, 128, 0, '\t', 4, 8, 128, '\n', 136, 0, 1, 136, '\n', 8, ' ', '\t', '(', 24, '\t', 2, 136, 8, 24, 24, 1, 4, 0, '\t', 24, 8, '\n', 4, 128, 0, '\t', '\n', 4, 8, 4, ' ', '\n', ' ', 4, 12, 24, 8, '\n', 4, 'H', '\n', 24, '(', 0, 0, 136, '@', 2, '\n', '@', '@', '\n', 8, '@', 4, 'H', '\n', 16, 1, 12, 0, 0, 128, 136, 136, 1, 24, 136, 8, '(', 136, '(', 'H', 1, 4, ' ', 0, 'H', ' ', 'H', 128, 4, 0, 0, 8, 136, 136, 1, 'H', 16, 'H', '\n', 8, 0, 'H', 12, 24, 128, 'H', 0, 0, '\n', '\t', ' ', 16, 12, 136, 0, 0, 136, 1, '\t', 2, 4, 2, '(', 0, ' ', 16, 136, 0, '\t', '\n', 4, 0, 'H', 136, '\t', 16, '(', 128, ' ', 8, '(', 12, 2, 'H', 0, 0, 24, 8, 'H', '@', 16, 12, 12, 16, 0, 8, 0, 0, '\n', '\t', 128, 128, ' ', 8, 'H', 128, 0, 136, '\t', 'H', 24, 0, 0, 24, 1, 0, 16, ' ', '(', 8, '\n', 128, 136, 24, ' ', '@', '\t', 8, 24, 0, 0, '\n', 0, '\t', 136, 0, 128, '(', '@', '\t', 128, 'H', 0, 0, 24, ' ', 1, ' ', 2, 128, ' ', 8, 24, '\n', 1, '\t', '\n', '\n', 2, 8, 2, '\t', 2, '\n', 0, 2, 1, 0, ' ', 16, 'H', ' ', 136, 128, 24, 0, 136, ' ', 128, 12, 0, 1, 16, 0, 16, 136, '@', 0, 1, 'H', '@', 8, '\n', 24, 136, '\n', '\n', 0, 128, 8, '@', 'H', 2, 0, ' ', ' ', 24, 0, ' ', 0, '@', 0, 12, '\n', '(', 0, 4, 'H', '\n', 24, 1, 16, 'H', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } ({ 00001000, 00011000, 00101000, 00100000, 01001000, 00000000, 01000000, 00100000, 00001000, 10001000, 00000000, 00000100, 10001000, 10001000, 00000000, 00000100, 00001000, 00101000, 00100000, 00000010, 00001001, 00000100, 01001000, 01000000, 00000000, 00000000, 00000000, 00000001, 00101000, 00001010, 00000100, 00000000, 00000000, 01001000, 00000010, 00000001, 00000100, 01001000, 10000000, 00010000, 00000000, 00000100, 00000010, 01001000, 01000000, 00001100, 00101000, 00001001, 00001000, 00001100, 00000100, 00100000, 00000000, 01001000, 00001001, 00000000, 00001000, 00100000, 01000000, 00001100, 01000000, 00100000, 00101000, 10001000, 00001000, 00001100, 00000100, 00001100, 00001100, 10000000, 01001000, 00000000, 00001000, 10001000, 01001000, 00010000, 00011000, 00000001, 00010000, 00010000, 00001000, 01001000, 01001000, 00000100, 00100000, 00000000, 10000000, 01001000, 00001000, 00001100, 01000000, 00001010, 00001010, 00001001, 00011000, 10001000, 00001000, 00000100, 01000000, 10001000, 00000001, 00100000, 10000000, 00000000, 00001000, 00000000, 00001010, 01000000, 10000000, 00101000, 00000000, 00001001, 00000000, 00000010, 01000000, 00000000, 00101000, 00001001, 01000000, 00000001, 00000000, 00010000, 00000000, 00001010, 00100000, 00000001, 00000100, 00011000, 00001000, 00001100, 10001000, 00000001, 00001001, 00000000, 00001001, 10001000, 00001000, 00001000, 00000001, 00000001, 00000100, 00000000, 10001000, 00001001, 00001000, 00000000, 00000010, 00000010, 10000000, 00000010, 00100000, 00001001, 00001000, 00101000, 00101000, 00100000, 00011000, 10001000, 00000000, 10000000, 00000000, 00000000, 10000000, 10000000, 01001000, 00001001, 00101000, 00100000, 00001000, 01001000, 00100000, 10001000, 00001100, 00100000, 10000000, 00000001, 00001000, 00000000, 00001100, 00100000, 00101000, 00000010, 10000000, 00011000, 00000000, 00000000, 01001000, 10001000, 01000000, 01000000, 00010000, 00000000, 00000000, 00101000, 00011000, 00001100, 00010000, 01000000, 00000100, 01000000, 00000000, 10001000, 10001000, 10000000, 00101000, 10001000, 00000010, 00000100, 00001000, 00000000, 00000000, 00000100, 10000000, 00000000, 00001001, 00000100, 00001000, 10000000, 00001010, 10001000, 00000000, 00000001, 10001000, 00001010, 00001000, 00100000, 00001001, 00101000, 00011000, 00001001, 00000010, 10001000, 00001000, 00011000, 00011000, 00000001, 00000100, 00000000, 00001001, 00011000, 00001000, 00001010, 00000100, 10000000, 00000000, 00001001, 00001010, 00000100, 00001000, 00000100, 00100000, 00001010, 00100000, 00000100, 00001100, 00011000, 00001000, 00001010, 00000100, 01001000, 00001010, 00011000, 00101000, 00000000, 00000000, 10001000, 01000000, 00000010, 00001010, 01000000, 01000000, 00001010, 00001000, 01000000, 00000100, 01001000, 00001010, 00010000, 00000001, 00001100, 00000000, 00000000, 10000000, 10001000, 10001000, 00000001, 00011000, 10001000, 00001000, 00101000, 10001000, 00101000, 01001000, 00000001, 00000100, 00100000, 00000000, 01001000, 00100000, 01001000, 10000000, 00000100, 00000000, 00000000, 00001000, 10001000, 10001000, 00000001, 01001000, 00010000, 01001000, 00001010, 00001000, 00000000, 01001000, 00001100, 00011000, 10000000, 01001000, 00000000, 00000000, 00001010, 00001001, 00100000, 00010000, 00001100, 10001000, 00000000, 00000000, 10001000, 00000001, 00001001, 00000010, 00000100, 00000010, 00101000, 00000000, 00100000, 00010000, 10001000, 00000000, 00001001, 00001010, 00000100, 00000000, 01001000, 10001000, 00001001, 00010000, 00101000, 10000000, 00100000, 00001000, 00101000, 00001100, 00000010, 01001000, 00000000, 00000000, 00011000, 00001000, 01001000, 01000000, 00010000, 00001100, 00001100, 00010000, 00000000, 00001000, 00000000, 00000000, 00001010, 00001001, 10000000, 10000000, 00100000, 00001000, 01001000, 10000000, 00000000, 10001000, 00001001, 01001000, 00011000, 00000000, 00000000, 00011000, 00000001, 00000000, 00010000, 00100000, 00101000, 00001000, 00001010, 10000000, 10001000, 00011000, 00100000, 01000000, 00001001, 00001000, 00011000, 00000000, 00000000, 00001010, 00000000, 00001001, 10001000, 00000000, 10000000, 00101000, 01000000, 00001001, 10000000, 01001000, 00000000, 00000000, 00011000, 00100000, 00000001, 00100000, 00000010, 10000000, 00100000, 00001000, 00011000, 00001010, 00000001, 00001001, 00001010, 00001010, 00000010, 00001000, 00000010, 00001001, 00000010, 00001010, 00000000, 00000010, 00000001, 00000000, 00100000, 00010000, 01001000, 00100000, 10001000, 10000000, 00011000, 00000000, 10001000, 00100000, 10000000, 00001100, 00000000, 00000001, 00010000, 00000000, 00010000, 10001000, 01000000, 00000000, 00000001, 01001000, 01000000, 00001000, 00001010, 00011000, 10001000, 00001010, 00001010, 00000000, 10000000, 00001000, 01000000, 01001000, 00000010, 00000000, 00100000, 00100000, 00011000, 00000000, 00100000, 00000000, 01000000, 00000000, 00001100, 00001010, 00101000, 00000000, 00000100, 01001000, 00001010, 00011000, 00000001, 00010000, 01001000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000 })
+
+State 9 file mvp/verify/cbmc/ring/harness.h function any_side line 170 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 10 file mvp/verify/cbmc/ring/harness.h function any_side line 170 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$any_side=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 12 file mvp/verify/cbmc/ring/room.c function main line 49 thread 0
+----------------------------------------------------
+  return_value_any_side=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 13 file mvp/verify/cbmc/ring/room.c function main line 49 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 14 file mvp/verify/cbmc/ring/room.c function main line 53 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=4611686018426339322ul (00111111 11111111 11111111 11111111 11111111 11101111 11111111 11111010)
+
+State 15 file mvp/verify/cbmc/ring/room.c function main line 53 thread 0
+----------------------------------------------------
+  n=4611686018426339322ul (00111111 11111111 11111111 11111111 11111111 11101111 11111111 11111010)
+
+State 18 file mvp/verify/cbmc/ring/harness.h function own_index line 164 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=2305843009213723632ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110000)
+
+State 19 file mvp/verify/cbmc/ring/harness.h function own_index line 164 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$own_index=2305843009213723632ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110000)
+
+State 21 file mvp/verify/cbmc/ring/room.c function main line 55 thread 0
+----------------------------------------------------
+  return_value_own_index=2305843009213723632ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110000)
+
+State 24 file mvp/verify/cbmc/ring/room.c function main line 55 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 25 file mvp/verify/cbmc/ring/room.c function main line 55 thread 0
+----------------------------------------------------
+  own=2305843009213723632ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110000)
+
+State 26 file mvp/verify/cbmc/ring/harness.h function build line 184 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=2305843009213723136ul (00100000 00000000 00000000 00000000 00000000 00000000 01110010 00000000)
+
+State 27 file mvp/verify/cbmc/ring/harness.h function build line 184 thread 0
+----------------------------------------------------
+  peer=2305843009213723136ul (00100000 00000000 00000000 00000000 00000000 00000000 01110010 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/harness.h line 186 function build
+  (own & (unsigned long int)7u) == (unsigned long int)0u && (peer & (unsigned long int)7u) == (unsigned long int)0u
+
+State 35 file mvp/verify/cbmc/ring/harness.h function build line 187 thread 0
+----------------------------------------------------
+  head.value=2305843009213723632ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110000)
+
+State 42 file mvp/verify/cbmc/ring/harness.h function build line 188 thread 0
+----------------------------------------------------
+  tail.value=2305843009213723136ul (00100000 00000000 00000000 00000000 00000000 00000000 01110010 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/harness.h line 189 function build
+  head->value - tail->value <= (be_u64)512
+
+State 56 file mvp/verify/cbmc/ring/harness.h function build line 190 thread 0
+----------------------------------------------------
+  return_value_nondet_u64$0=256ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 00000000)
+
+State 57 file mvp/verify/cbmc/ring/harness.h function build line 191 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=0u (00000000 00000000 00000000 00000000)
+
+State 60 file mvp/verify/cbmc/ring/harness.h function build line 190 thread 0
+----------------------------------------------------
+  types=256ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 00000000)
+
+State 61 file mvp/verify/cbmc/ring/harness.h function build line 190 thread 0
+----------------------------------------------------
+  domain=0u (00000000 00000000 00000000 00000000)
+
+State 62 file mvp/verify/cbmc/ring/harness.h function build line 190 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 73 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  types=256ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 00000000)
+
+State 74 file mvp/src/mvp-ring.c function types_valid line 92 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 76 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  return_value_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 77 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  tmp_if_expr=FALSE (0)
+
+State 85 file mvp/src/mvp-ring.c function be_mvp_ring_init line 125 thread 0
+----------------------------------------------------
+  head_value=2305843009213723632ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110000)
+
+State 92 file mvp/src/mvp-ring.c function be_mvp_ring_init line 126 thread 0
+----------------------------------------------------
+  tail_value=2305843009213723136ul (00100000 00000000 00000000 00000000 00000000 00000000 01110010 00000000)
+
+State 124 file mvp/src/mvp-ring.c function be_mvp_ring_init line 135 thread 0
+----------------------------------------------------
+  view.types=256ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 00000000)
+
+State 131 file mvp/src/mvp-ring.c function be_mvp_ring_init line 136 thread 0
+----------------------------------------------------
+  view.domain=0u (00000000 00000000 00000000 00000000)
+
+State 138 file mvp/src/mvp-ring.c function be_mvp_ring_init line 137 thread 0
+----------------------------------------------------
+  view.role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 145 file mvp/src/mvp-ring.c function be_mvp_ring_init line 138 thread 0
+----------------------------------------------------
+  view.cursor=2305843009213723632ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110000)
+
+State 158 file mvp/src/mvp-ring.c function be_mvp_ring_init line 139 thread 0
+----------------------------------------------------
+  view.limit=2305843009213723632ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110000)
+
+State 165 file mvp/src/mvp-ring.c function be_mvp_ring_init line 140 thread 0
+----------------------------------------------------
+  view.peak=496ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11110000)
+
+State 177 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 220 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 179 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 222 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=8u (00000000 00000000 00000000 00001000)
+
+State 180 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 223 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 183 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 221 thread 0
+----------------------------------------------------
+  type=/*enum*/BE_MVP_RECORD_ACK (00000000 00000000 00000000 00001000)
+
+State 184 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 221 thread 0
+----------------------------------------------------
+  time=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 203 file mvp/src/mvp-ring.c function be_mvp_ring_post line 162 thread 0
+----------------------------------------------------
+  return_value_usable=1 (00000000 00000000 00000000 00000001)
+
+State 226 file mvp/src/mvp-ring.c function be_mvp_ring_post line 171 thread 0
+----------------------------------------------------
+  tail=2305843009213723136ul (00100000 00000000 00000000 00000000 00000000 00000000 01110010 00000000)
+
+State 246 file mvp/src/mvp-ring.c function be_mvp_ring_post line 174 thread 0
+----------------------------------------------------
+  used=496ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11110000)
+
+State 270 file mvp/src/mvp-ring.c function be_mvp_ring_post line 178 thread 0
+----------------------------------------------------
+  mask=511ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11111111)
+
+State 285 file mvp/src/mvp-ring.c function be_mvp_ring_post line 179 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 286 file mvp/src/mvp-ring.c function be_mvp_ring_post line 179 thread 0
+----------------------------------------------------
+  mask=511ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11111111)
+
+State 287 file mvp/src/mvp-ring.c function be_mvp_ring_post line 179 thread 0
+----------------------------------------------------
+  position=2305843009213723632ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110000)
+
+State 288 file mvp/src/mvp-ring.c function be_mvp_ring_post line 179 thread 0
+----------------------------------------------------
+  value=8ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00001000)
+
+State 298 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[496l]=8 (00001000)
+
+State 322 file mvp/src/mvp-ring.c function be_mvp_ring_post line 181 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 323 file mvp/src/mvp-ring.c function be_mvp_ring_post line 181 thread 0
+----------------------------------------------------
+  mask=511ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11111111)
+
+State 324 file mvp/src/mvp-ring.c function be_mvp_ring_post line 181 thread 0
+----------------------------------------------------
+  position=2305843009213723633ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110001)
+
+State 325 file mvp/src/mvp-ring.c function be_mvp_ring_post line 181 thread 0
+----------------------------------------------------
+  value=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 335 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[497l]=0 (00000000)
+
+State 353 file mvp/src/mvp-ring.c function be_mvp_ring_post line 183 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 354 file mvp/src/mvp-ring.c function be_mvp_ring_post line 183 thread 0
+----------------------------------------------------
+  mask=511ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11111111)
+
+State 355 file mvp/src/mvp-ring.c function be_mvp_ring_post line 183 thread 0
+----------------------------------------------------
+  position=2305843009213723634ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110010)
+
+State 365 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[498l]=0 (00000000)
+
+State 376 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[499l]=0 (00000000)
+
+State 394 file mvp/src/mvp-ring.c function be_mvp_ring_post line 184 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 395 file mvp/src/mvp-ring.c function be_mvp_ring_post line 184 thread 0
+----------------------------------------------------
+  mask=511ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11111111)
+
+State 396 file mvp/src/mvp-ring.c function be_mvp_ring_post line 184 thread 0
+----------------------------------------------------
+  position=2305843009213723636ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110100)
+
+State 406 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[500l]=0 (00000000)
+
+State 417 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[501l]=0 (00000000)
+
+State 428 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[502l]=0 (00000000)
+
+State 439 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[503l]=0 (00000000)
+
+State 457 file mvp/src/mvp-ring.c function be_mvp_ring_post line 185 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 458 file mvp/src/mvp-ring.c function be_mvp_ring_post line 185 thread 0
+----------------------------------------------------
+  mask=511ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 11111111)
+
+State 459 file mvp/src/mvp-ring.c function be_mvp_ring_post line 185 thread 0
+----------------------------------------------------
+  position=2305843009213723640ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11111000)
+
+State 460 file mvp/src/mvp-ring.c function be_mvp_ring_post line 185 thread 0
+----------------------------------------------------
+  value=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 470 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[504l]=0 (00000000)
+
+State 481 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[505l]=0 (00000000)
+
+State 492 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[506l]=0 (00000000)
+
+State 503 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[507l]=0 (00000000)
+
+State 514 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[508l]=0 (00000000)
+
+State 525 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[509l]=0 (00000000)
+
+State 536 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[510l]=0 (00000000)
+
+State 547 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[511l]=0 (00000000)
+
+State 558 file mvp/src/mvp-ring.c function be_mvp_ring_post line 195 thread 0
+----------------------------------------------------
+  view.cursor=2305843009213723648ul (00100000 00000000 00000000 00000000 00000000 00000000 01110100 00000000)
+
+State 566 file mvp/src/mvp-ring.c function be_mvp_ring_post line 197 thread 0
+----------------------------------------------------
+  view.peak=512ul (00000000 00000000 00000000 00000000 00000000 00000000 00000010 00000000)
+
+State 568 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 224 thread 0
+----------------------------------------------------
+  return_value_nondet_bool$0=FALSE (00000000)
+
+State 575 file mvp/verify/cbmc/ring/harness.h function fail_maybe line 251 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=FALSE (00000000)
+
+State 580 file mvp/verify/cbmc/ring/room.c function main line 61 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 582 file mvp/verify/cbmc/ring/harness.h function havoc_peer line 261 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=2305843009213723120ul (00100000 00000000 00000000 00000000 00000000 00000000 01110001 11110000)
+
+State 589 file mvp/verify/cbmc/ring/harness.h function havoc_peer line 261 thread 0
+----------------------------------------------------
+  tail.value=2305843009213723120ul (00100000 00000000 00000000 00000000 00000000 00000000 01110001 11110000)
+
+State 592 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 593 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.capacity=512ul (00000000 00000000 00000000 00000000 00000000 00000000 00000010 00000000)
+
+State 594 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.head=&head!0@1 (00000011 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 595 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.tail=&tail!0@1 (00000100 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 596 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.types=256ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 00000000)
+
+State 597 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.domain=0u (00000000 00000000 00000000 00000000)
+
+State 598 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 599 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.failed=0u (00000000 00000000 00000000 00000000)
+
+State 600 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.cursor=2305843009213723648ul (00100000 00000000 00000000 00000000 00000000 00000000 01110100 00000000)
+
+State 601 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.limit=2305843009213723632ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110000)
+
+State 602 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.peak=512ul (00000000 00000000 00000000 00000000 00000000 00000000 00000010 00000000)
+
+State 603 file mvp/verify/cbmc/ring/room.c function main line 63 thread 0
+----------------------------------------------------
+  lines_head=2305843009213723632ul (00100000 00000000 00000000 00000000 00000000 00000000 01110011 11110000)
+
+State 604 file mvp/verify/cbmc/ring/room.c function main line 63 thread 0
+----------------------------------------------------
+  lines_tail=2305843009213723120ul (00100000 00000000 00000000 00000000 00000000 00000000 01110001 11110000)
+
+State 605 file mvp/verify/cbmc/ring/room.c function main line 63 thread 0
+----------------------------------------------------
+  lines_at=48ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00110000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/room.c line 63 function main
+  lines_at < (unsigned long int)(64u - 8u)
+
+State 608 file mvp/verify/cbmc/ring/room.c function main line 63 thread 0
+----------------------------------------------------
+  lines_head_pad=0 (00000000)
+
+State 610 file mvp/verify/cbmc/ring/room.c function main line 63 thread 0
+----------------------------------------------------
+  lines_tail_pad=0 (00000000)
+
+State 612 file mvp/verify/cbmc/ring/room.c function main line 64 thread 0
+----------------------------------------------------
+  probe_at=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/room.c line 64 function main
+  probe_at < (be_u64)512
+
+State 615 file mvp/verify/cbmc/ring/room.c function main line 64 thread 0
+----------------------------------------------------
+  probe_was=8 (00001000)
+
+State 617 file mvp/verify/cbmc/ring/room.c function main line 65 thread 0
+----------------------------------------------------
+  t=2305843009213723120ul (00100000 00000000 00000000 00000000 00000000 00000000 01110001 11110000)
+
+State 618 file mvp/verify/cbmc/ring/room.c function main line 66 thread 0
+----------------------------------------------------
+  used=528ul (00000000 00000000 00000000 00000000 00000000 00000000 00000010 00010000)
+
+State 639 file mvp/src/mvp-ring.c function be_mvp_ring_room line 206 thread 0
+----------------------------------------------------
+  return_value_usable=1 (00000000 00000000 00000000 00000001)
+
+State 653 file mvp/src/mvp-ring.c function be_mvp_ring_room line 209 thread 0
+----------------------------------------------------
+  tail=2305843009213723120ul (00100000 00000000 00000000 00000000 00000000 00000000 01110001 11110000)
+
+State 690 file mvp/verify/cbmc/ring/room.c function main line 68 thread 0
+----------------------------------------------------
+  result=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 695 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  used=528ul (00000000 00000000 00000000 00000000 00000000 00000000 00000010 00010000)
+
+State 697 file mvp/verify/cbmc/ring/room.c function fits line 37 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$fits=0 (00000000 00000000 00000000 00000000)
+
+State 699 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  return_value_fits=0 (00000000 00000000 00000000 00000000)
+
+State 702 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  tmp_if_expr$0=TRUE (1)
+
+State 707 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  used=528ul (00000000 00000000 00000000 00000000 00000000 00000000 00000010 00010000)
+
+State 709 file mvp/verify/cbmc/ring/room.c function fits line 37 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$fits=0 (00000000 00000000 00000000 00000000)
+
+State 711 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  return_value_fits$1=0 (00000000 00000000 00000000 00000000)
+
+State 712 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  tmp_if_expr$1=TRUE (1)
+
+State 717 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  tmp_if_expr$3=TRUE (1)
+
+State 854 file mvp/verify/cbmc/ring/harness.h function view_unchanged line 308 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$view_unchanged=0 (00000000 00000000 00000000 00000000)
+
+State 856 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  return_value_view_unchanged=0 (00000000 00000000 00000000 00000000)
+
+State 857 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  tmp_if_expr$4=FALSE (0)
+
+Violated property:
+  file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+  room: a well-formed tail the cursor is more than C past (none fits): 0, writes nothing, the view not failed
+  (tmp_if_expr$4 ? (head.value == lines_head && tail.value == lines_tail && head.pad[(signed long int)lines_at] == lines_head_pad && tail.pad[(signed long int)lines_at] == lines_tail_pad ? TRUE : FALSE) : FALSE) ? (buffer[(signed long int)probe_at] == probe_was ? TRUE : FALSE) : FALSE
+
+
+
+
+
+## main.assertion.1: room: a well-formed tail the cursor is more than C past (none fits): 0, writes nothing, the view not failed
+part=all capacity=4096
+reason=specification-mismatch
+reading: Revision 1's room row calls a tail well formed when it is aligned with limit - t <= C (its parenthesis, 'as post reads it: aligned, with limit - t <= C', R1-6) and says room never fails the view for want of room; be_mvp_ring_room also refuses, as malformed, a tail the cursor is more than C past (cursor - t > C: mvp-ring.c line 211; mvp-ring.h: room 'checks it as be_mvp_ring_post() does') and fails the view. With a record posted and not published (cursor = limit + 16) a tail C or C - 8 behind the published head is well formed by the row and refused by the code: the trace's state and the reproducer's. A reader's release never moves the tail back, and post keeps cursor - t <= C when it posts, so the state needs a tail value no release writes; the row's 'for any peer index value' admits it. The row and the code disagree; neither is changed here (stop 2: the human's)
+log=logs/room-all-4096-sat-B-all-trace-main.assertion.1.log
+
+Trace for main.assertion.1:
+
+State 6 file mvp/verify/cbmc/ring/room.c function main line 42 thread 0
+----------------------------------------------------
+  buffer={ 0, 2, 128, 4, 8, 128, '@', ' ', 0, 8, ' ', 1, 1, 1, '@', 4, 0, ' ', 4, 128, 2, ' ', 8, 1, 0, 8, ' ', 8, ' ', ' ', 2, ' ', 0, 128, 8, 4, 1, 128, 128, 4, 0, ' ', 16, 128, '@', ' ', 2, ' ', 0, 128, 1, 2, 8, ' ', ' ', ' ', 0, 128, 1, 2, '@', 128, 8, 16, 0, ' ', 1, 4, 128, ' ', '@', '@', 0, ' ', 16, 1, 16, 128, 8, 8, 0, 16, 4, '@', 4, 16, 4, 1, 0, '@', 8, 2, 128, 4, 128, 2, 0, ' ', 1, 2, 8, 4, 8, 4, 0, 128, '@', 4, '@', 128, 4, 128, 0, 4, ' ', '@', 8, 8, 1, 4, 0, 128, 16, 4, ' ', 8, 4, 16, 0, '@', 1, 16, 1, 16, 4, 4, 0, 2, 1, '@', 8, 4, 128, 8, 0, 128, 2, '@', 16, 16, 1, 16, 0, 128, 8, ' ', 1, 16, 128, 1, 0, '@', 4, 1, 128, 8, 4, 16, 0, ' ', 8, 8, 2, 2, 1, 1, 0, 128, '@', ' ', 16, '@', 16, 2, 0, 128, 16, 8, 16, ' ', 8, 4, 0, ' ', '@', 8, ' ', 128, ' ', 1, 0, 4, 2, 1, ' ', ' ', 128, ' ', 0, 128, 8, 1, 4, '@', '@', ' ', 0, 128, ' ', '@', 128, 128, ' ', ' ', 0, '@', 4, 4, 4, 1, ' ', '@', 0, ' ', 16, 4, 4, 1, 2, ' ', 0, 2, '@', 1, 1, 1, 4, 4, 0, 8, ' ', 8, ' ', ' ', 8, 2, 0, 8, 8, 8, '@', ' ', 128, '@', 0, 8, 1, 128, ' ', 128, 2, 128, 0, 8, 8, 128, 4, 2, 8, '@', 0, 16, '@', 1, 16, ' ', 1, 2, 0, '@', ' ', 16, 2, 128, '@', 8, 0, 2, 16, 8, 128, ' ', 8, ' ', 0, ' ', 1, 16, 8, 8, ' ', 4, 0, ' ', 2, 8, '@', 2, '@', ' ', 0, 16, 8, 128, 2, 4, 4, '@', 0, 128, 1, 128, 8, 1, 8, 16, 0, 128, 16, 128, 16, 1, 1, 1, 0, 16, 1, '@', 16, 2, 4, 2, 0, 8, 2, 1, 4, ' ', 128, 8, 0, 128, 128, 2, 2, 2, 128, '@', 0, 8, '@', 8, 4, 1, 128, '@', 0, 16, ' ', 128, 2, 4, ' ', '@', 0, 8, '@', 4, '@', 16, ' ', 4, 0, 8, 128, '@', '@', 1, ' ', ' ', 0, ' ', 2, ' ', 4, 128, 8, 1, 0, 2, 2, 16, 2, ' ', 8, 128, 0, 4, 1, 2, '@', 4, 1, 1, 0, 16, 8, '@', 16, 4, ' ', 8, 0, 4, 1, '@', '@', 1, 128, 128, 0, '@', 2, ' ', 16, 8, 16, '@', 0, ' ', 8, '@', ' ', 4, 2, 8, 0, '@', '@', ' ', '@', 16, 4, 2, 0, ' ', 4, 4, 8, 128, '@', '@', 0, 128, 128, 2, 128, 1, 16, 16, 0, 16, ' ', ' ', 4, 8, ' ', 2, 0, 16, 128, '@', 2, 16, 8, 4, 0, 128, 2, 1, 16, 1, 4, '@', 0, 16, 1, ' ', 2, 16, 2, 8, 0, 4, 16, 8, 16, 2, 8, 8, 0, '@', '@', 2, 16, 8, 2, 16, 0, 4, '@', 16, 8, 8, 16, 128, 0, 16, '@', 2, 2, ' ', 16, 128, 0, ' ', 16, 1, 1, '@', 4, 8, 0, ' ', 128, 1, 2, '@', 1, 2, 0, ' ', 8, 1, ' ', 2, '@', 1, 0, 16, '@', 8, '@', 16, 16, 8, 0, 16, 1, 128, 2, ' ', 4, 128, 0, 2, 8, 128, '@', 16, 8, 1, 0, 16, 128, 8, 1, '@', 1, 128, 0, 128, 4, 1, 4, 4, 128, 128, 0, ' ', 4, 1, 16, 128, 8, 2, 0, 128, 2, 4, 1, 8, 1, 4, 0, 128, ' ', 1, 1, ' ', 16, 4, 0, ' ', 128, 2, 4, 2, 16, 16, 0, ' ', ' ', 8, 1, 4, 2, 128, 0, ' ', 16, 4, 1, 8, 1, 128, 0, 16, 128, 128, 4, 128, '@', 16, 0, 2, 4, 1, ' ', 4, '@', 2, 0, 8, 8, 2, ' ', 16, 1, ' ', 0, 128, '@', 128, 16, 1, 16, 4, 0, ' ', ' ', 16, ' ', 128, 16, 128, 0, '@', ' ', '@', 16, ' ', 8, '@', 0, 2, 8, 1, 1, 128, '@', 16, 0, 16, 1, ' ', 8, 8, '@', 8, 0, 128, '@', 128, 8, 4, '@', 1, 0, 16, 128, 2, 2, 16, 16, 128, 0, 8, ' ', ' ', 1, 16, '@', '@', 0, 128, 16, 2, 128, '@', 1, 1, 0, 8, ' ', 128, 4, 128, 2, 4, 0, '@', 16, 16, 16, 4, ' ', 1, 0, 4, 2, 16, '@', '@', 4, 4, 0, '@', 2, '@', '@', ' ', 128, '@', 0, 8, 16, 1, 1, '@', 16, '@', 0, 2, '@', 2, 128, 8, 128, '@', 0, 16, 128, '@', 128, ' ', 16, 128, 0, 128, 4, 1, 1, ' ', 2, 1, 0, '@', ' ', 128, ' ', 4, '@', ' ', 0, 2, 8, '@', ' ', 128, 8, 1, 0, 128, 8, 1, 4, 128, 2, 16, 0, 2, ' ', 16, 4, '@', 128, 4, 0, '@', ' ', 8, ' ', 8, 2, 8, 0, ' ', '@', 2, 4, 2, 128, 2, 0, 4, ' ', '@', ' ', '@', '@', 4, 0, '@', '@', 4, 2, 4, 128, ' ', 0, '@', 128, 16, 4, 16, 4, 128, 0, 16, ' ', 128, 1, '@', 2, ' ', 0, ' ', 2, 4, 1, 16, 16, 8, 0, 128, 8, 128, ' ', '@', 16, 4, 0, 8, 1, ' ', 16, 2, 128, 2, 0, 128, 2, ' ', 1, ' ', '@', 4, 0, 16, 128, 2, 1, 1, 8, 8, 0, ' ', 2, ' ', 4, 8, 4, 128, 0, ' ', 4, 128, ' ', 8, 1, 128, 0, 4, 4, 1, 4, 8, ' ', 2, 0, 2, 16, 2, ' ', 1, 2, 128, 0, 2, 4, '@', 128, 128, 4, 16, 0, 8, 16, 128, 8, ' ', '@', ' ', 0, ' ', 4, ' ', 1, 8, 2, 16, 0, '@', ' ', 4, 16, 8, 16, 16, 0, ' ', 8, 4, 8, 128, ' ', ' ', 0, 128, 128, 16, '@', 1, '@', 128, 0, 16, 128, '@', ' ', 16, 16, 16, 0, ' ', 128, 8, 128, 8, 2, ' ', 0, 128, '@', 8, 128, 2, 16, '@', 0, ' ', ' ', 128, 4, ' ', 4, 1, 0, '@', '@', '@', ' ', ' ', 2, 1, 0, 128, 128, ' ', 4, 8, 2, 1, 0, 8, 2, 2, 16, 16, 8, 16, 0, 128, 8, 2, ' ', 8, 4, ' ', 0, ' ', 16, 16, 4, 2, '@', 1, 0, 2, 4, ' ', 128, 8, 1, 4, 0, '@', 2, 128, 4, 2, 8, 4, 0, '@', ' ', 4, 128, ' ', 4, 4, 0, ' ', 8, '@', '@', '@', 2, ' ', 0, 2, ' ', 4, 4, 8, 4, 4, 0, 128, 8, 8, '@', 4, 128, 128, 0, '@', 2, 1, ' ', 8, ' ', '@', 0, 2, 16, 1, ' ', 1, 16, 2, 0, 4, ' ', '@', 4, 8, 128, 2, 0, 4, 2, 16, 128, 128, 8, 2, 0, 128, 1, ' ', 8, '@', 2, 16, 0, 2, 4, 1, ' ', 16, 1, 1, 0, 4, 4, 128, '@', '@', 1, ' ', 0, 2, 8, 128, 16, 4, 2, 4, 0, '@', 1, '@', 2, 128, 2, 8, 0, 8, 128, 4, 128, 128, 8, 1, 0, 4, 4, 1, ' ', 2, 2, 128, 0, 16, '@', 4, '@', 16, 8, 2, 0, ' ', 1, 4, 16, 1, 2, 128, 0, 16, ' ', 2, 128, 8, 2, 2, 0, ' ', 128, 128, '@', ' ', 2, 128, 0, 16, ' ', 8, ' ', 16, ' ', 1, 0, ' ', 8, 16, 1, 128, '@', ' ', 0, '@', 128, 1, 8, 128, 128, 4, 0, 4, ' ', 16, 128, 128, 16, 128, 0, '@', 1, 4, ' ', 128, '@', 16, 0, 2, 16, 2, ' ', 8, 8, 8, 0, ' ', ' ', 8, 1, 2, 1, '@', 0, 2, 1, 128, 1, '@', 16, '@', 0, '@', 4, 128, '@', 16, 8, ' ', 0, 4, 8, ' ', ' ', 1, 4, 4, 0, 2, 128, 128, 16, 1, 4, 16, 0, 4, ' ', 1, ' ', ' ', '@', 4, 0, '@', 8, 2, 2, 8, 8, 128, 0, 16, 1, 16, ' ', 16, 8, 1, 0, 128, 4, 8, 16, ' ', ' ', 16, 0, 2, ' ', 128, '@', 1, 4, 16, 0, ' ', 8, 4, 128, ' ', 16, 128, 0, 16, 8, 8, ' ', 4, 128, '@', 0, '@', ' ', 128, 4, ' ', 1, ' ', 0, 16, 1, 16, 2, '@', 2, 8, 0, 8, '@', 128, 4, ' ', 16, 4, 0, 128, 16, ' ', 2, 128, 4, 16, 0, ' ', '@', 128, 1, 16, 8, 16, 0, '@', 2, 4, 8, 8, 16, ' ', 0, '@', 2, 4, 4, 2, 128, 128, 0, '@', 16, '@', 16, 2, '@', 4, 0, 16, 1, 2, 16, 4, ' ', 2, 0, 16, ' ', 1, 1, 8, 2, 2, 0, 2, 4, 8, 16, 128, 1, 2, 0, 4, '@', 2, 16, 16, 2, 16, 0, 16, 1, ' ', 128, 1, '@', 2, 0, ' ', 4, 4, 4, 128, 16, '@', 0, 2, ' ', 8, 128, '@', 1, 128, 0, '@', '@', 4, 4, 2, ' ', 2, 0, 8, 4, '@', 1, ' ', ' ', 4, 0, 4, 128, 8, 2, '@', '@', ' ', 0, '@', 128, 1, 16, 128, ' ', 128, 0, 16, 128, 8, 1, 8, ' ', 128, 0, 8, '@', 2, '@', 8, 16, 16, 0, '@', 1, 1, 4, 128, 8, ' ', 0, ' ', ' ', ' ', 8, 2, 8, 128, 0, ' ', 2, 4, 128, 8, '@', ' ', 0, 128, ' ', ' ', ' ', 4, 4, 8, 0, ' ', '@', 4, 4, 2, 4, 2, 0, 16, ' ', 128, 2, 8, 4, 4, 0, 4, 128, '@', 4, 1, 2, 16, 0, '@', 8, '@', 16, 128, ' ', ' ', 0, 4, '@', 2, 128, 8, 8, 1, 0, 4, 16, ' ', 4, 16, ' ', ' ', 0, 128, 16, 2, 8, ' ', 2, 1, 0, 16, 4, 128, ' ', ' ', ' ', 128, 0, '@', 16, 16, 128, ' ', 4, 4, 0, ' ', 2, 128, '@', 16, 4, 128, 0, 128, 8, 16, '@', '@', '@', 4, 0, 16, '@', 128, '@', 4, ' ', 16, 0, 2, 4, 2, 128, 4, 2, 128, 0, 2, 1, 8, 16, 128, 16, '@', 0, 128, '@', 2, 16, 16, '@', 2, 0, ' ', 128, '@', '@', 8, 16, 4, 0, 8, ' ', ' ', 8, ' ', 16, 16, 0, 16, ' ', 1, '@', ' ', 1, '@', 0, 16, 128, 4, '@', 16, 128, ' ', 0, '@', 128, 128, 128, 16, 4, 2, 0, 128, 2, '@', '@', ' ', 8, 128, 0, 8, 128, 16, 128, '@', 4, 16, 0, 128, '@', 128, 16, ' ', 16, 2, 0, 16, 4, '@', ' ', 8, '@', 2, 0, 128, 128, '@', 1, 2, 128, 1, 0, '@', 8, ' ', 128, 2, 2, 4, 0, 4, 128, 2, 4, 2, 16, '@', 0, ' ', 2, 128, 16, 1, 2, '@', 0, 128, 1, 128, 16, 1, 1, '@', 0, 2, ' ', 4, 16, 2, 4, 8, 0, '@', 1, 1, '@', 1, 4, 2, 0, 8, ' ', 16, 128, 1, 2, 16, 0, '@', 128, 8, 2, 8, 128, 16, 0, 4, 1, ' ', 16, 16, 4, 2, 0, 8, 2, 16, 4, 16, ' ', '@', 0, 2, 8, '@', 16, 4, 1, 16, 0, 128, 4, '@', ' ', 4, 1, 2, 0, 8, ' ', 16, '@', 128, 16, 128, 0, 16, '@', 128, 128, '@', ' ', 8, 0, 2, 8, 8, ' ', 8, 1, '@', 0, 16, 16, '@', '@', 2, ' ', 1, 0, 4, 4, ' ', 16, 128, ' ', 2, 0, 2, '@', 2, 4, 2, 16, 128, 0, ' ', 2, ' ', 4, ' ', ' ', ' ', 0, 2, ' ', 16, 4, 16, 16, 1, 0, '@', 2, 2, '@', 128, 2, '@', 0, ' ', 128, 128, 1, '@', 16, 8, 0, '@', '@', 128, 2, 16, 2, 4, 0, 2, 4, ' ', 4, 8, '@', '@', 0, 8, 4, 128, 1, 16, 1, ' ', 0, 128, ' ', 4, 128, ' ', 1, 128, 0, '@', 2, '@', 1, 16, 1, ' ', 0, 128, 4, 128, ' ', 2, '@', ' ', 0, 128, 4, 8, '@', 1, 128, 4, 0, 2, 16, 4, '@', 128, 8, 1, 0, ' ', ' ', 128, 2, 128, 2, 8, 0, 128, 2, 4, '@', 8, 2, 1, 0, 2, 16, ' ', 8, ' ', 2, 2, 0, ' ', 8, 4, 8, 2, 8, 16, 0, 4, 4, '@', 2, ' ', '@', 8, 0, 128, ' ', 4, 1, 4, 8, 8, 0, 128, 16, 8, '@', 2, ' ', 2, 0, 128, 1, 128, 4, 16, 2, 4, 0, 16, ' ', 128, '@', 8, 16, '@', 0, 4, 128, 4, 128, 1, 16, 1, 0, 2, 128, 16, 8, 1, 16, 4, 0, ' ', ' ', 16, 4, ' ', '@', 1, 0, '@', 2, 16, 2, 16, 2, 1, 0, 16, 16, 1, 128, 2, 4, 128, 0, ' ', 16, '@', 2, 16, 16, 1, 0, ' ', 128, 16, 8, 1, 1, 16, 0, 8, 2, '@', '@', 8, 1, 128, 0, 128, 8, 1, '@', 2, 2, 1, 0, ' ', 1, 8, '@', 2, 1, 2, 0, ' ', '@', ' ', '@', 1, 16, 1, 0, 4, 1, 8, ' ', ' ', 1, ' ', 0, 4, 16, 128, 4, 128, 2, 16, 0, 8, 4, 2, '@', 16, ' ', 8, 0, 2, 2, 16, ' ', 4, '@', 1, 0, 128, 2, 128, 4, ' ', 128, 128, 0, 128, 8, '@', 1, ' ', ' ', '@', 0, 2, '@', 8, '@', 128, 4, 2, 0, 128, '@', 128, 16, 16, 4, 8, 0, 128, '@', 128, '@', 8, '@', 1, 0, '@', 16, 8, 16, 1, 2, 4, 0, 16, 16, 128, 4, ' ', '@', 1, 0, 4, 16, 2, 4, 16, 16, ' ', 0, 4, 2, 128, 8, '@', 128, 1, 0, 2, 4, 8, 2, 1, 128, 4, 0, 4, '@', 128, ' ', 16, 16, 4, 0, 2, '@', 2, ' ', ' ', 1, ' ', 0, ' ', 1, ' ', 4, '@', 2, ' ', 0, ' ', 4, 4, 2, '@', '@', ' ', 0, 128, 2, 4, ' ', 128, 16, 16, 0, 128, ' ', 8, 2, 1, '@', ' ', 0, ' ', 128, 2, 16, 2, 8, 1, 0, 128, 1, '@', 16, '@', 128, 2, 0, 4, 4, '@', 4, 128, 2, 1, 0, 4, 1, 4, 2, 1, ' ', '@', 0, 2, 1, 8, 128, 8, 4, '@', 0, 16, 4, 16, 128, 2, '@', ' ', 0, 16, 8, 2, 2, 4, 16, 8, 0, '@', ' ', 8, 16, 1, ' ', 4, 0, 8, 1, '@', 2, 8, 2, 1, 0, 2, 2, 2, ' ', 1, 128, 128, 0, '@', 1, 2, 1, 128, '@', ' ', 0, 4, 8, 4, '@', 4, '@', 2, 0, 128, ' ', ' ', 128, 16, 1, ' ', 0, 2, '@', 1, 16, 8, 8, 2, 0, 4, '@', 4, 16, 2, 128, '@', 0, ' ', 1, ' ', ' ', 16, 16, '@', 0, 2, 16, 1, 1, 8, '@', 8, 0, 128, 8, ' ', 4, ' ', 128, 2, 0, 4, 2, 128, ' ', 128, 16, 16, 0, '@', 4, 16, '@', 16, 4, 8, 0, 8, 128, 4, 1, 128, 16, '@', 0, 16, 2, 128, 1, 2, 2, 4, 0, 16, 2, 8, ' ', ' ', 2, '@', 0, 16, 1, 8, ' ', 128, 128, '@', 0, 16, 16, ' ', 128, 4, 1, 2, 0, '@', '@', 8, 16, 2, ' ', 2, 0, 8, 2, 8, 8, 8, '@', 16, 0, 8, 2, 8, 2, 128, ' ', 128, 0, 16, 8, '@', 1, 16, ' ', 4, 0, 16, 1, 16, 128, ' ', ' ', 2, 0, 8, 8, 128, '@', 128, 8, 128, 0, 8, 2, 16, 4, 4, 128, 8, 0, 4, 2, ' ', 8, 4, 2, 16, 0, 128, 128, 16, 4, '@', 2, 8, 0, 16, ' ', '@', ' ', 2, 4, 16, 0, 16, 8, 4, 16, 128, ' ', 8, 0, 2, 8, 16, ' ', 16, 2, 16, 0, 2, 4, 8, 128, 128, 1, 2, 0, 16, 2, 1, 8, 2, 1, 128, 0, 128, 2, 128, 8, 4, '@', ' ', 0, ' ', 8, 128, 2, 128, 4, '@', 0, 128, 1, 2, 4, 16, ' ', 1, 0, 8, 8, 8, 2, '@', 128, '@', 0, 16, '@', 4, 128, ' ', 8, '@', 0, 128, 128, 16, 2, 16, 16, 16, 0, '@', 1, '@', 1, 1, 2, '@', 0, '@', 128, 8, 4, 16, ' ', '@', 0, 4, 128, 1, 4, '@', 8, 8, 0, 2, 1, '@', 128, 128, 4, 8, 0, 8, 16, 4, 4, 128, 2, 128, 0, 4, 4, 2, '@', 128, 16, 2, 0, 4, 16, 128, 128, 4, ' ', 16, 0, '@', 8, 4, 8, '@', ' ', 128, 0, '@', 4, ' ', 16, ' ', 8, 128, 0, '@', 2, 4, 2, 4, 4, ' ', 0, 4, '@', 128, '@', 1, 2, 16, 0, 4, 128, 16, 1, 128, 1, 128, 0, 8, 128, '@', 4, 16, 4, 1, 0, 16, 16, ' ', ' ', ' ', 1, 1, 0, 128, 128, 4, 2, 1, 1, 8, 0, 8, 4, ' ', 16, ' ', 16, 128, 0, 8, 2, 16, 8, 128, 1, 4, 0, 8, 2, 16, 4, 128, 16, 16, 0, 128, ' ', 2, '@', '@', 128, 1, 0, '@', 128, '@', 16, ' ', 128, 128, 0, 128, 128, 2, 2, 1, 8, 8, 0, 16, 4, 2, '@', 8, 16, ' ', 0, 16, 16, ' ', 4, ' ', 128, 128, 0, 8, 8, 16, '@', '@', '@', ' ', 0, ' ', 1, 128, 2, ' ', '@', 4, 0, 16, 128, 16, 2, 1, ' ', ' ', 0, 8, ' ', 128, 128, ' ', 4, 1, 0, ' ', 128, 16, 4, 8, 1, 4, 0, 4, 16, 2, 2, 2, '@', 1, 0, 128, 128, ' ', 4, 4, 128, 8, 0, 128, 16, 128, ' ', 16, 4, ' ', 0, 128, 8, 16, 128, 1, 8, '@', 0, '@', 16, 2, 128, 128, ' ', ' ', 0, 16, 1, 128, 4, 16, 128, '@', 0, ' ', ' ', 16, ' ', 4, ' ', 1, 0, 16, '@', ' ', 16, 128, 4, 4, 0, 16, 2, 1, 8, 128, 1, 4, 0, 128, ' ', 2, 128, ' ', 8, 2, 0, ' ', 1, 4, 8, 2, 4, '@', 0, ' ', 2, '@', ' ', 8, 8, 128, 0, ' ', 8, 4, 16, 1, 1, 1, 0, 16, 4, 4, ' ', '@', 1, 16, 0, 2, 2, '@', 4, 128, ' ', ' ', 0, 16, 128, 1, ' ', 16, '@', '@', 0, ' ', ' ', 4, 4, 2, 4, 1, 0, 128, '@', 128, 16, 2, 128, ' ', 0, ' ', 128, 16, 16, 16, 8, 4, 0, ' ', ' ', 16, 4, 8, 1, 8, 0, 2, '@', '@', 2, 8, 8, 8, 0, 128, 128, '@', 4, '@', 2, 16, 0, ' ', 16, 16, 4, ' ', 8, 128, 0, 8, 2, ' ', 16, 128, 16, 8, 0, 2, 128, 4, 1, '@', '@', 2, 0, '@', '@', 2, 4, 1, '@', 2, 0, 4, 4, 16, 8, '@', 8, 1, 0, 4, ' ', '@', 1, '@', ' ', 128, 0, 4, 128, 16, ' ', ' ', 1, 4, 0, 4, '@', 1, 128, 128, 1, '@', 0, 2, '@', 8, 2, 128, 128, 16, 0, '@', '@', 16, 8, 2, 2, 2, 0, ' ', 4, ' ', 128, '@', 16, 16, 0, 2, 2, '@', 16, 128, 128, 1, 0, 2, 2, 128, 2, 2, 8, 1, 0, ' ', 8, 8, '@', ' ', 1, ' ', 0, 4, ' ', 8, 1, 4, 4, 4, 0, 128, 16, 128, 16, ' ', 16, 2, 0, 128, 4, '@', ' ', 8, '@', '@', 0, 128, 8, 4, 1, 4, 16, 4, 0, 128, 16, 2, 8, 16, 8, 16, 0, '@', 128, 16, 128, ' ', 4, 16, 0, '@', 4, ' ', '@', 4, 4, 4, 0, 4, 2, 2, 16, 4, 128, ' ', 0, 4, '@', ' ', ' ', '@', '@', 2, 0, '@', 8, 128, '@', 128, 128, '@', 0, 4, '@', 4, 8, 16, 8, 8, 0, 16, 1, 16, 8, 1, 8, 8, 0, 16, 2, '@', 16, 2, 1, 8, 0, 128, ' ', ' ', ' ', 4, 128, 128, 0, ' ', 2, 8, '@', 8, 16, 16, 0, '@', '@', 2, 1, 128, '@', 16, 0, 4, 16, 128, 16, 8, 8, 2, 0, 128, 128, 8, 16, 128, 4, 4, 0, 8, '@', 8, 2, ' ', 1, '@', 0, 8, 1, ' ', 128, 1, 1, 8, 0, 4, 1, 16, ' ', 128, '@', 128, 0, 128, ' ', 1, 4, 128, 128, 2, 0, '@', 128, '@', ' ', 2, 8, ' ', 0, 4, 4, 2, '@', ' ', 1, 1, 0, ' ', ' ', 1, 4, 16, 128, 16, 0, '@', 2, 8, 16, 1, '@', 16, 0, 8, 128, 1, ' ', 2, 4, 2, 0, ' ', '@', 4, 128, 2, ' ', '@', 0, 16, 16, 16, ' ', 2, 2, 128, 0, 128, 16, 4, 1, 1, 4, ' ', 0, 4, 4, 1, 1, 128, 4, 128, 0, '@', 4, 2, ' ', 4, 2, 1, 0, '@', 16, 8, 16, ' ', 2, ' ', 0, ' ', 1, 128, 1, ' ', 16, 2, 0, 8, 1, 128, ' ', 8, 16, 128, 0, 16, '@', '@', 16, 1, 2, 1, 0, 128, 8, 1, 4, 2, ' ', 16, 0, '@', 128, 1, 4, ' ', '@', 4, 0, 16, 16, 16, 2, 8, ' ', 16, 0, 4, 1, 4, ' ', 8, 16, 128, 0, '@', 8, ' ', 2, 8, 8, 4, 0, 8, ' ', 4, 1, 8, ' ', 4, 0, 128, '@', 4, 128, 128, 8, '@', 0, 128, '@', 16, 2, '@', 8, 128, 0, ' ', 128, 1, '@', 128, 2, 16, 0, 128, ' ', 4, '@', 8, 2, '@', 0, 4, 8, 16, 128, 8, 128, 16, 0, 16, '@', ' ', 2, ' ', 2, 8, 0, 16, 4, 2, 16, '@', ' ', 4, 0, 16, 4, 128, 8, 128, 128, '@', 0, 8, 2, 8, 16, ' ', 128, 4, 0, 128, 16, 2, 8, 16, 8, 2, 0, 128, 8, ' ', 1, 16, ' ', 2, 0, ' ', ' ', 2, 1, ' ', ' ', ' ', 0, '@', '@', ' ', 1, 1, 2, 2, 0, 2, 2, '@', 2, 128, 8, 4, 0, 16, '@', ' ', 8, 128, '@', '@', 0, 16, ' ', ' ', 16, ' ', 8, 2, 0, '@', '@', 2, 16, 16, 2, 4, 0, 8, ' ', 16, 1, 1, 128, 2, 0, 128, '@', 16, 2, 1, 2, 2, 0, 128, 4, 128, 2, 128, 2, ' ', 0, 2, 4, 1, 1, 4, ' ', '@', 0, 8, 1, ' ', '@', 8, '@', 4, 0, '@', 128, '@', 1, 16, ' ', 1, 0, 8, '@', 128, 16, ' ', 1, 128, 0, '@', 2, ' ', '@', ' ', 8, 1, 0, ' ', ' ', 8, 4, 128, 2, 128, 0, 2, '@', 1, 4, '@', 4, 1, 0, 2, '@', 2, 2, '@', 4, 1, 0, ' ', 2, 2, 128, 128, 8, 8, 0, 8, 1, ' ', 1, 4, 128, 16, 0, 4, 8, ' ', 1, 4, 1, 8, 0, ' ', 4, '@', '@', 8, 16, 16, 0, 4, 16, 16, 8, 128, 128, 4, 0, ' ', 2, 2, '@', 4, 16, 8, 0, 4, ' ', ' ', 16, '@', 4, 4, 0, 16, 1, 16, 8, 4, 4, 2, 0, ' ', 4, 1, 128, 8, 16, 2, 0, 16, '@', 4, ' ', 128, '@', 1, 0, 16, 8, 4, 2, 16, 1, ' ', 0, ' ', ' ', 4, 1, '@', 128, 8, 0, '@', ' ', '@', 1, '@', 1, ' ', 0, 4, 2, 1, 16, 4, 16, ' ', 0, '@', ' ', 8, 4, 2, 1, 2, 0, 2, 128, ' ', 2, '@', 1, 4, 0, 2, 2, 2, 1, 2, 8, 1, 0, 2, 1, ' ', 16, 1, ' ', 8, 0, 8, ' ', 2, 16, 128, ' ', 1, 0, '@', 8, 128, 2, '@', 2, 1, 0, ' ', ' ', 16, '@', ' ', 1, ' ', 0, 16, 8, 2, 4, 8, 128, '@', 0, ' ', 2, 2, 2, '@', 2, 2, 0, ' ', 128, 8, '@', 1, 16, '@', 0, 4, 4, '@', 128, 16, '@', 1, 0, 4, 16, 8, 2, '@', 16, 2, 0, ' ', '@', 4, 8, '@', ' ', 8, 0, 2, 16, 8, 2, 16, 1, 128, 0, 128, 128, 4, 16, 2, 16, ' ', 0, 128, 128, 8, ' ', 16, 8, 1, 0, 2, 4, '@', 4, 128, 128, '@', 0, ' ', 8, 16, '@', 2, 128, 8, 0, ' ', 2, 1, 16, 8, 128, 16, 0, 4, 128, 16, 2, 4, 1, 8, 0, '@', 128, 128, 128, 2, 128, 2, 0, ' ', 8, 1, 16, 8, 8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } ({ 00000000, 00000010, 10000000, 00000100, 00001000, 10000000, 01000000, 00100000, 00000000, 00001000, 00100000, 00000001, 00000001, 00000001, 01000000, 00000100, 00000000, 00100000, 00000100, 10000000, 00000010, 00100000, 00001000, 00000001, 00000000, 00001000, 00100000, 00001000, 00100000, 00100000, 00000010, 00100000, 00000000, 10000000, 00001000, 00000100, 00000001, 10000000, 10000000, 00000100, 00000000, 00100000, 00010000, 10000000, 01000000, 00100000, 00000010, 00100000, 00000000, 10000000, 00000001, 00000010, 00001000, 00100000, 00100000, 00100000, 00000000, 10000000, 00000001, 00000010, 01000000, 10000000, 00001000, 00010000, 00000000, 00100000, 00000001, 00000100, 10000000, 00100000, 01000000, 01000000, 00000000, 00100000, 00010000, 00000001, 00010000, 10000000, 00001000, 00001000, 00000000, 00010000, 00000100, 01000000, 00000100, 00010000, 00000100, 00000001, 00000000, 01000000, 00001000, 00000010, 10000000, 00000100, 10000000, 00000010, 00000000, 00100000, 00000001, 00000010, 00001000, 00000100, 00001000, 00000100, 00000000, 10000000, 01000000, 00000100, 01000000, 10000000, 00000100, 10000000, 00000000, 00000100, 00100000, 01000000, 00001000, 00001000, 00000001, 00000100, 00000000, 10000000, 00010000, 00000100, 00100000, 00001000, 00000100, 00010000, 00000000, 01000000, 00000001, 00010000, 00000001, 00010000, 00000100, 00000100, 00000000, 00000010, 00000001, 01000000, 00001000, 00000100, 10000000, 00001000, 00000000, 10000000, 00000010, 01000000, 00010000, 00010000, 00000001, 00010000, 00000000, 10000000, 00001000, 00100000, 00000001, 00010000, 10000000, 00000001, 00000000, 01000000, 00000100, 00000001, 10000000, 00001000, 00000100, 00010000, 00000000, 00100000, 00001000, 00001000, 00000010, 00000010, 00000001, 00000001, 00000000, 10000000, 01000000, 00100000, 00010000, 01000000, 00010000, 00000010, 00000000, 10000000, 00010000, 00001000, 00010000, 00100000, 00001000, 00000100, 00000000, 00100000, 01000000, 00001000, 00100000, 10000000, 00100000, 00000001, 00000000, 00000100, 00000010, 00000001, 00100000, 00100000, 10000000, 00100000, 00000000, 10000000, 00001000, 00000001, 00000100, 01000000, 01000000, 00100000, 00000000, 10000000, 00100000, 01000000, 10000000, 10000000, 00100000, 00100000, 00000000, 01000000, 00000100, 00000100, 00000100, 00000001, 00100000, 01000000, 00000000, 00100000, 00010000, 00000100, 00000100, 00000001, 00000010, 00100000, 00000000, 00000010, 01000000, 00000001, 00000001, 00000001, 00000100, 00000100, 00000000, 00001000, 00100000, 00001000, 00100000, 00100000, 00001000, 00000010, 00000000, 00001000, 00001000, 00001000, 01000000, 00100000, 10000000, 01000000, 00000000, 00001000, 00000001, 10000000, 00100000, 10000000, 00000010, 10000000, 00000000, 00001000, 00001000, 10000000, 00000100, 00000010, 00001000, 01000000, 00000000, 00010000, 01000000, 00000001, 00010000, 00100000, 00000001, 00000010, 00000000, 01000000, 00100000, 00010000, 00000010, 10000000, 01000000, 00001000, 00000000, 00000010, 00010000, 00001000, 10000000, 00100000, 00001000, 00100000, 00000000, 00100000, 00000001, 00010000, 00001000, 00001000, 00100000, 00000100, 00000000, 00100000, 00000010, 00001000, 01000000, 00000010, 01000000, 00100000, 00000000, 00010000, 00001000, 10000000, 00000010, 00000100, 00000100, 01000000, 00000000, 10000000, 00000001, 10000000, 00001000, 00000001, 00001000, 00010000, 00000000, 10000000, 00010000, 10000000, 00010000, 00000001, 00000001, 00000001, 00000000, 00010000, 00000001, 01000000, 00010000, 00000010, 00000100, 00000010, 00000000, 00001000, 00000010, 00000001, 00000100, 00100000, 10000000, 00001000, 00000000, 10000000, 10000000, 00000010, 00000010, 00000010, 10000000, 01000000, 00000000, 00001000, 01000000, 00001000, 00000100, 00000001, 10000000, 01000000, 00000000, 00010000, 00100000, 10000000, 00000010, 00000100, 00100000, 01000000, 00000000, 00001000, 01000000, 00000100, 01000000, 00010000, 00100000, 00000100, 00000000, 00001000, 10000000, 01000000, 01000000, 00000001, 00100000, 00100000, 00000000, 00100000, 00000010, 00100000, 00000100, 10000000, 00001000, 00000001, 00000000, 00000010, 00000010, 00010000, 00000010, 00100000, 00001000, 10000000, 00000000, 00000100, 00000001, 00000010, 01000000, 00000100, 00000001, 00000001, 00000000, 00010000, 00001000, 01000000, 00010000, 00000100, 00100000, 00001000, 00000000, 00000100, 00000001, 01000000, 01000000, 00000001, 10000000, 10000000, 00000000, 01000000, 00000010, 00100000, 00010000, 00001000, 00010000, 01000000, 00000000, 00100000, 00001000, 01000000, 00100000, 00000100, 00000010, 00001000, 00000000, 01000000, 01000000, 00100000, 01000000, 00010000, 00000100, 00000010, 00000000, 00100000, 00000100, 00000100, 00001000, 10000000, 01000000, 01000000, 00000000, 10000000, 10000000, 00000010, 10000000, 00000001, 00010000, 00010000, 00000000, 00010000, 00100000, 00100000, 00000100, 00001000, 00100000, 00000010, 00000000, 00010000, 10000000, 01000000, 00000010, 00010000, 00001000, 00000100, 00000000, 10000000, 00000010, 00000001, 00010000, 00000001, 00000100, 01000000, 00000000, 00010000, 00000001, 00100000, 00000010, 00010000, 00000010, 00001000, 00000000, 00000100, 00010000, 00001000, 00010000, 00000010, 00001000, 00001000, 00000000, 01000000, 01000000, 00000010, 00010000, 00001000, 00000010, 00010000, 00000000, 00000100, 01000000, 00010000, 00001000, 00001000, 00010000, 10000000, 00000000, 00010000, 01000000, 00000010, 00000010, 00100000, 00010000, 10000000, 00000000, 00100000, 00010000, 00000001, 00000001, 01000000, 00000100, 00001000, 00000000, 00100000, 10000000, 00000001, 00000010, 01000000, 00000001, 00000010, 00000000, 00100000, 00001000, 00000001, 00100000, 00000010, 01000000, 00000001, 00000000, 00010000, 01000000, 00001000, 01000000, 00010000, 00010000, 00001000, 00000000, 00010000, 00000001, 10000000, 00000010, 00100000, 00000100, 10000000, 00000000, 00000010, 00001000, 10000000, 01000000, 00010000, 00001000, 00000001, 00000000, 00010000, 10000000, 00001000, 00000001, 01000000, 00000001, 10000000, 00000000, 10000000, 00000100, 00000001, 00000100, 00000100, 10000000, 10000000, 00000000, 00100000, 00000100, 00000001, 00010000, 10000000, 00001000, 00000010, 00000000, 10000000, 00000010, 00000100, 00000001, 00001000, 00000001, 00000100, 00000000, 10000000, 00100000, 00000001, 00000001, 00100000, 00010000, 00000100, 00000000, 00100000, 10000000, 00000010, 00000100, 00000010, 00010000, 00010000, 00000000, 00100000, 00100000, 00001000, 00000001, 00000100, 00000010, 10000000, 00000000, 00100000, 00010000, 00000100, 00000001, 00001000, 00000001, 10000000, 00000000, 00010000, 10000000, 10000000, 00000100, 10000000, 01000000, 00010000, 00000000, 00000010, 00000100, 00000001, 00100000, 00000100, 01000000, 00000010, 00000000, 00001000, 00001000, 00000010, 00100000, 00010000, 00000001, 00100000, 00000000, 10000000, 01000000, 10000000, 00010000, 00000001, 00010000, 00000100, 00000000, 00100000, 00100000, 00010000, 00100000, 10000000, 00010000, 10000000, 00000000, 01000000, 00100000, 01000000, 00010000, 00100000, 00001000, 01000000, 00000000, 00000010, 00001000, 00000001, 00000001, 10000000, 01000000, 00010000, 00000000, 00010000, 00000001, 00100000, 00001000, 00001000, 01000000, 00001000, 00000000, 10000000, 01000000, 10000000, 00001000, 00000100, 01000000, 00000001, 00000000, 00010000, 10000000, 00000010, 00000010, 00010000, 00010000, 10000000, 00000000, 00001000, 00100000, 00100000, 00000001, 00010000, 01000000, 01000000, 00000000, 10000000, 00010000, 00000010, 10000000, 01000000, 00000001, 00000001, 00000000, 00001000, 00100000, 10000000, 00000100, 10000000, 00000010, 00000100, 00000000, 01000000, 00010000, 00010000, 00010000, 00000100, 00100000, 00000001, 00000000, 00000100, 00000010, 00010000, 01000000, 01000000, 00000100, 00000100, 00000000, 01000000, 00000010, 01000000, 01000000, 00100000, 10000000, 01000000, 00000000, 00001000, 00010000, 00000001, 00000001, 01000000, 00010000, 01000000, 00000000, 00000010, 01000000, 00000010, 10000000, 00001000, 10000000, 01000000, 00000000, 00010000, 10000000, 01000000, 10000000, 00100000, 00010000, 10000000, 00000000, 10000000, 00000100, 00000001, 00000001, 00100000, 00000010, 00000001, 00000000, 01000000, 00100000, 10000000, 00100000, 00000100, 01000000, 00100000, 00000000, 00000010, 00001000, 01000000, 00100000, 10000000, 00001000, 00000001, 00000000, 10000000, 00001000, 00000001, 00000100, 10000000, 00000010, 00010000, 00000000, 00000010, 00100000, 00010000, 00000100, 01000000, 10000000, 00000100, 00000000, 01000000, 00100000, 00001000, 00100000, 00001000, 00000010, 00001000, 00000000, 00100000, 01000000, 00000010, 00000100, 00000010, 10000000, 00000010, 00000000, 00000100, 00100000, 01000000, 00100000, 01000000, 01000000, 00000100, 00000000, 01000000, 01000000, 00000100, 00000010, 00000100, 10000000, 00100000, 00000000, 01000000, 10000000, 00010000, 00000100, 00010000, 00000100, 10000000, 00000000, 00010000, 00100000, 10000000, 00000001, 01000000, 00000010, 00100000, 00000000, 00100000, 00000010, 00000100, 00000001, 00010000, 00010000, 00001000, 00000000, 10000000, 00001000, 10000000, 00100000, 01000000, 00010000, 00000100, 00000000, 00001000, 00000001, 00100000, 00010000, 00000010, 10000000, 00000010, 00000000, 10000000, 00000010, 00100000, 00000001, 00100000, 01000000, 00000100, 00000000, 00010000, 10000000, 00000010, 00000001, 00000001, 00001000, 00001000, 00000000, 00100000, 00000010, 00100000, 00000100, 00001000, 00000100, 10000000, 00000000, 00100000, 00000100, 10000000, 00100000, 00001000, 00000001, 10000000, 00000000, 00000100, 00000100, 00000001, 00000100, 00001000, 00100000, 00000010, 00000000, 00000010, 00010000, 00000010, 00100000, 00000001, 00000010, 10000000, 00000000, 00000010, 00000100, 01000000, 10000000, 10000000, 00000100, 00010000, 00000000, 00001000, 00010000, 10000000, 00001000, 00100000, 01000000, 00100000, 00000000, 00100000, 00000100, 00100000, 00000001, 00001000, 00000010, 00010000, 00000000, 01000000, 00100000, 00000100, 00010000, 00001000, 00010000, 00010000, 00000000, 00100000, 00001000, 00000100, 00001000, 10000000, 00100000, 00100000, 00000000, 10000000, 10000000, 00010000, 01000000, 00000001, 01000000, 10000000, 00000000, 00010000, 10000000, 01000000, 00100000, 00010000, 00010000, 00010000, 00000000, 00100000, 10000000, 00001000, 10000000, 00001000, 00000010, 00100000, 00000000, 10000000, 01000000, 00001000, 10000000, 00000010, 00010000, 01000000, 00000000, 00100000, 00100000, 10000000, 00000100, 00100000, 00000100, 00000001, 00000000, 01000000, 01000000, 01000000, 00100000, 00100000, 00000010, 00000001, 00000000, 10000000, 10000000, 00100000, 00000100, 00001000, 00000010, 00000001, 00000000, 00001000, 00000010, 00000010, 00010000, 00010000, 00001000, 00010000, 00000000, 10000000, 00001000, 00000010, 00100000, 00001000, 00000100, 00100000, 00000000, 00100000, 00010000, 00010000, 00000100, 00000010, 01000000, 00000001, 00000000, 00000010, 00000100, 00100000, 10000000, 00001000, 00000001, 00000100, 00000000, 01000000, 00000010, 10000000, 00000100, 00000010, 00001000, 00000100, 00000000, 01000000, 00100000, 00000100, 10000000, 00100000, 00000100, 00000100, 00000000, 00100000, 00001000, 01000000, 01000000, 01000000, 00000010, 00100000, 00000000, 00000010, 00100000, 00000100, 00000100, 00001000, 00000100, 00000100, 00000000, 10000000, 00001000, 00001000, 01000000, 00000100, 10000000, 10000000, 00000000, 01000000, 00000010, 00000001, 00100000, 00001000, 00100000, 01000000, 00000000, 00000010, 00010000, 00000001, 00100000, 00000001, 00010000, 00000010, 00000000, 00000100, 00100000, 01000000, 00000100, 00001000, 10000000, 00000010, 00000000, 00000100, 00000010, 00010000, 10000000, 10000000, 00001000, 00000010, 00000000, 10000000, 00000001, 00100000, 00001000, 01000000, 00000010, 00010000, 00000000, 00000010, 00000100, 00000001, 00100000, 00010000, 00000001, 00000001, 00000000, 00000100, 00000100, 10000000, 01000000, 01000000, 00000001, 00100000, 00000000, 00000010, 00001000, 10000000, 00010000, 00000100, 00000010, 00000100, 00000000, 01000000, 00000001, 01000000, 00000010, 10000000, 00000010, 00001000, 00000000, 00001000, 10000000, 00000100, 10000000, 10000000, 00001000, 00000001, 00000000, 00000100, 00000100, 00000001, 00100000, 00000010, 00000010, 10000000, 00000000, 00010000, 01000000, 00000100, 01000000, 00010000, 00001000, 00000010, 00000000, 00100000, 00000001, 00000100, 00010000, 00000001, 00000010, 10000000, 00000000, 00010000, 00100000, 00000010, 10000000, 00001000, 00000010, 00000010, 00000000, 00100000, 10000000, 10000000, 01000000, 00100000, 00000010, 10000000, 00000000, 00010000, 00100000, 00001000, 00100000, 00010000, 00100000, 00000001, 00000000, 00100000, 00001000, 00010000, 00000001, 10000000, 01000000, 00100000, 00000000, 01000000, 10000000, 00000001, 00001000, 10000000, 10000000, 00000100, 00000000, 00000100, 00100000, 00010000, 10000000, 10000000, 00010000, 10000000, 00000000, 01000000, 00000001, 00000100, 00100000, 10000000, 01000000, 00010000, 00000000, 00000010, 00010000, 00000010, 00100000, 00001000, 00001000, 00001000, 00000000, 00100000, 00100000, 00001000, 00000001, 00000010, 00000001, 01000000, 00000000, 00000010, 00000001, 10000000, 00000001, 01000000, 00010000, 01000000, 00000000, 01000000, 00000100, 10000000, 01000000, 00010000, 00001000, 00100000, 00000000, 00000100, 00001000, 00100000, 00100000, 00000001, 00000100, 00000100, 00000000, 00000010, 10000000, 10000000, 00010000, 00000001, 00000100, 00010000, 00000000, 00000100, 00100000, 00000001, 00100000, 00100000, 01000000, 00000100, 00000000, 01000000, 00001000, 00000010, 00000010, 00001000, 00001000, 10000000, 00000000, 00010000, 00000001, 00010000, 00100000, 00010000, 00001000, 00000001, 00000000, 10000000, 00000100, 00001000, 00010000, 00100000, 00100000, 00010000, 00000000, 00000010, 00100000, 10000000, 01000000, 00000001, 00000100, 00010000, 00000000, 00100000, 00001000, 00000100, 10000000, 00100000, 00010000, 10000000, 00000000, 00010000, 00001000, 00001000, 00100000, 00000100, 10000000, 01000000, 00000000, 01000000, 00100000, 10000000, 00000100, 00100000, 00000001, 00100000, 00000000, 00010000, 00000001, 00010000, 00000010, 01000000, 00000010, 00001000, 00000000, 00001000, 01000000, 10000000, 00000100, 00100000, 00010000, 00000100, 00000000, 10000000, 00010000, 00100000, 00000010, 10000000, 00000100, 00010000, 00000000, 00100000, 01000000, 10000000, 00000001, 00010000, 00001000, 00010000, 00000000, 01000000, 00000010, 00000100, 00001000, 00001000, 00010000, 00100000, 00000000, 01000000, 00000010, 00000100, 00000100, 00000010, 10000000, 10000000, 00000000, 01000000, 00010000, 01000000, 00010000, 00000010, 01000000, 00000100, 00000000, 00010000, 00000001, 00000010, 00010000, 00000100, 00100000, 00000010, 00000000, 00010000, 00100000, 00000001, 00000001, 00001000, 00000010, 00000010, 00000000, 00000010, 00000100, 00001000, 00010000, 10000000, 00000001, 00000010, 00000000, 00000100, 01000000, 00000010, 00010000, 00010000, 00000010, 00010000, 00000000, 00010000, 00000001, 00100000, 10000000, 00000001, 01000000, 00000010, 00000000, 00100000, 00000100, 00000100, 00000100, 10000000, 00010000, 01000000, 00000000, 00000010, 00100000, 00001000, 10000000, 01000000, 00000001, 10000000, 00000000, 01000000, 01000000, 00000100, 00000100, 00000010, 00100000, 00000010, 00000000, 00001000, 00000100, 01000000, 00000001, 00100000, 00100000, 00000100, 00000000, 00000100, 10000000, 00001000, 00000010, 01000000, 01000000, 00100000, 00000000, 01000000, 10000000, 00000001, 00010000, 10000000, 00100000, 10000000, 00000000, 00010000, 10000000, 00001000, 00000001, 00001000, 00100000, 10000000, 00000000, 00001000, 01000000, 00000010, 01000000, 00001000, 00010000, 00010000, 00000000, 01000000, 00000001, 00000001, 00000100, 10000000, 00001000, 00100000, 00000000, 00100000, 00100000, 00100000, 00001000, 00000010, 00001000, 10000000, 00000000, 00100000, 00000010, 00000100, 10000000, 00001000, 01000000, 00100000, 00000000, 10000000, 00100000, 00100000, 00100000, 00000100, 00000100, 00001000, 00000000, 00100000, 01000000, 00000100, 00000100, 00000010, 00000100, 00000010, 00000000, 00010000, 00100000, 10000000, 00000010, 00001000, 00000100, 00000100, 00000000, 00000100, 10000000, 01000000, 00000100, 00000001, 00000010, 00010000, 00000000, 01000000, 00001000, 01000000, 00010000, 10000000, 00100000, 00100000, 00000000, 00000100, 01000000, 00000010, 10000000, 00001000, 00001000, 00000001, 00000000, 00000100, 00010000, 00100000, 00000100, 00010000, 00100000, 00100000, 00000000, 10000000, 00010000, 00000010, 00001000, 00100000, 00000010, 00000001, 00000000, 00010000, 00000100, 10000000, 00100000, 00100000, 00100000, 10000000, 00000000, 01000000, 00010000, 00010000, 10000000, 00100000, 00000100, 00000100, 00000000, 00100000, 00000010, 10000000, 01000000, 00010000, 00000100, 10000000, 00000000, 10000000, 00001000, 00010000, 01000000, 01000000, 01000000, 00000100, 00000000, 00010000, 01000000, 10000000, 01000000, 00000100, 00100000, 00010000, 00000000, 00000010, 00000100, 00000010, 10000000, 00000100, 00000010, 10000000, 00000000, 00000010, 00000001, 00001000, 00010000, 10000000, 00010000, 01000000, 00000000, 10000000, 01000000, 00000010, 00010000, 00010000, 01000000, 00000010, 00000000, 00100000, 10000000, 01000000, 01000000, 00001000, 00010000, 00000100, 00000000, 00001000, 00100000, 00100000, 00001000, 00100000, 00010000, 00010000, 00000000, 00010000, 00100000, 00000001, 01000000, 00100000, 00000001, 01000000, 00000000, 00010000, 10000000, 00000100, 01000000, 00010000, 10000000, 00100000, 00000000, 01000000, 10000000, 10000000, 10000000, 00010000, 00000100, 00000010, 00000000, 10000000, 00000010, 01000000, 01000000, 00100000, 00001000, 10000000, 00000000, 00001000, 10000000, 00010000, 10000000, 01000000, 00000100, 00010000, 00000000, 10000000, 01000000, 10000000, 00010000, 00100000, 00010000, 00000010, 00000000, 00010000, 00000100, 01000000, 00100000, 00001000, 01000000, 00000010, 00000000, 10000000, 10000000, 01000000, 00000001, 00000010, 10000000, 00000001, 00000000, 01000000, 00001000, 00100000, 10000000, 00000010, 00000010, 00000100, 00000000, 00000100, 10000000, 00000010, 00000100, 00000010, 00010000, 01000000, 00000000, 00100000, 00000010, 10000000, 00010000, 00000001, 00000010, 01000000, 00000000, 10000000, 00000001, 10000000, 00010000, 00000001, 00000001, 01000000, 00000000, 00000010, 00100000, 00000100, 00010000, 00000010, 00000100, 00001000, 00000000, 01000000, 00000001, 00000001, 01000000, 00000001, 00000100, 00000010, 00000000, 00001000, 00100000, 00010000, 10000000, 00000001, 00000010, 00010000, 00000000, 01000000, 10000000, 00001000, 00000010, 00001000, 10000000, 00010000, 00000000, 00000100, 00000001, 00100000, 00010000, 00010000, 00000100, 00000010, 00000000, 00001000, 00000010, 00010000, 00000100, 00010000, 00100000, 01000000, 00000000, 00000010, 00001000, 01000000, 00010000, 00000100, 00000001, 00010000, 00000000, 10000000, 00000100, 01000000, 00100000, 00000100, 00000001, 00000010, 00000000, 00001000, 00100000, 00010000, 01000000, 10000000, 00010000, 10000000, 00000000, 00010000, 01000000, 10000000, 10000000, 01000000, 00100000, 00001000, 00000000, 00000010, 00001000, 00001000, 00100000, 00001000, 00000001, 01000000, 00000000, 00010000, 00010000, 01000000, 01000000, 00000010, 00100000, 00000001, 00000000, 00000100, 00000100, 00100000, 00010000, 10000000, 00100000, 00000010, 00000000, 00000010, 01000000, 00000010, 00000100, 00000010, 00010000, 10000000, 00000000, 00100000, 00000010, 00100000, 00000100, 00100000, 00100000, 00100000, 00000000, 00000010, 00100000, 00010000, 00000100, 00010000, 00010000, 00000001, 00000000, 01000000, 00000010, 00000010, 01000000, 10000000, 00000010, 01000000, 00000000, 00100000, 10000000, 10000000, 00000001, 01000000, 00010000, 00001000, 00000000, 01000000, 01000000, 10000000, 00000010, 00010000, 00000010, 00000100, 00000000, 00000010, 00000100, 00100000, 00000100, 00001000, 01000000, 01000000, 00000000, 00001000, 00000100, 10000000, 00000001, 00010000, 00000001, 00100000, 00000000, 10000000, 00100000, 00000100, 10000000, 00100000, 00000001, 10000000, 00000000, 01000000, 00000010, 01000000, 00000001, 00010000, 00000001, 00100000, 00000000, 10000000, 00000100, 10000000, 00100000, 00000010, 01000000, 00100000, 00000000, 10000000, 00000100, 00001000, 01000000, 00000001, 10000000, 00000100, 00000000, 00000010, 00010000, 00000100, 01000000, 10000000, 00001000, 00000001, 00000000, 00100000, 00100000, 10000000, 00000010, 10000000, 00000010, 00001000, 00000000, 10000000, 00000010, 00000100, 01000000, 00001000, 00000010, 00000001, 00000000, 00000010, 00010000, 00100000, 00001000, 00100000, 00000010, 00000010, 00000000, 00100000, 00001000, 00000100, 00001000, 00000010, 00001000, 00010000, 00000000, 00000100, 00000100, 01000000, 00000010, 00100000, 01000000, 00001000, 00000000, 10000000, 00100000, 00000100, 00000001, 00000100, 00001000, 00001000, 00000000, 10000000, 00010000, 00001000, 01000000, 00000010, 00100000, 00000010, 00000000, 10000000, 00000001, 10000000, 00000100, 00010000, 00000010, 00000100, 00000000, 00010000, 00100000, 10000000, 01000000, 00001000, 00010000, 01000000, 00000000, 00000100, 10000000, 00000100, 10000000, 00000001, 00010000, 00000001, 00000000, 00000010, 10000000, 00010000, 00001000, 00000001, 00010000, 00000100, 00000000, 00100000, 00100000, 00010000, 00000100, 00100000, 01000000, 00000001, 00000000, 01000000, 00000010, 00010000, 00000010, 00010000, 00000010, 00000001, 00000000, 00010000, 00010000, 00000001, 10000000, 00000010, 00000100, 10000000, 00000000, 00100000, 00010000, 01000000, 00000010, 00010000, 00010000, 00000001, 00000000, 00100000, 10000000, 00010000, 00001000, 00000001, 00000001, 00010000, 00000000, 00001000, 00000010, 01000000, 01000000, 00001000, 00000001, 10000000, 00000000, 10000000, 00001000, 00000001, 01000000, 00000010, 00000010, 00000001, 00000000, 00100000, 00000001, 00001000, 01000000, 00000010, 00000001, 00000010, 00000000, 00100000, 01000000, 00100000, 01000000, 00000001, 00010000, 00000001, 00000000, 00000100, 00000001, 00001000, 00100000, 00100000, 00000001, 00100000, 00000000, 00000100, 00010000, 10000000, 00000100, 10000000, 00000010, 00010000, 00000000, 00001000, 00000100, 00000010, 01000000, 00010000, 00100000, 00001000, 00000000, 00000010, 00000010, 00010000, 00100000, 00000100, 01000000, 00000001, 00000000, 10000000, 00000010, 10000000, 00000100, 00100000, 10000000, 10000000, 00000000, 10000000, 00001000, 01000000, 00000001, 00100000, 00100000, 01000000, 00000000, 00000010, 01000000, 00001000, 01000000, 10000000, 00000100, 00000010, 00000000, 10000000, 01000000, 10000000, 00010000, 00010000, 00000100, 00001000, 00000000, 10000000, 01000000, 10000000, 01000000, 00001000, 01000000, 00000001, 00000000, 01000000, 00010000, 00001000, 00010000, 00000001, 00000010, 00000100, 00000000, 00010000, 00010000, 10000000, 00000100, 00100000, 01000000, 00000001, 00000000, 00000100, 00010000, 00000010, 00000100, 00010000, 00010000, 00100000, 00000000, 00000100, 00000010, 10000000, 00001000, 01000000, 10000000, 00000001, 00000000, 00000010, 00000100, 00001000, 00000010, 00000001, 10000000, 00000100, 00000000, 00000100, 01000000, 10000000, 00100000, 00010000, 00010000, 00000100, 00000000, 00000010, 01000000, 00000010, 00100000, 00100000, 00000001, 00100000, 00000000, 00100000, 00000001, 00100000, 00000100, 01000000, 00000010, 00100000, 00000000, 00100000, 00000100, 00000100, 00000010, 01000000, 01000000, 00100000, 00000000, 10000000, 00000010, 00000100, 00100000, 10000000, 00010000, 00010000, 00000000, 10000000, 00100000, 00001000, 00000010, 00000001, 01000000, 00100000, 00000000, 00100000, 10000000, 00000010, 00010000, 00000010, 00001000, 00000001, 00000000, 10000000, 00000001, 01000000, 00010000, 01000000, 10000000, 00000010, 00000000, 00000100, 00000100, 01000000, 00000100, 10000000, 00000010, 00000001, 00000000, 00000100, 00000001, 00000100, 00000010, 00000001, 00100000, 01000000, 00000000, 00000010, 00000001, 00001000, 10000000, 00001000, 00000100, 01000000, 00000000, 00010000, 00000100, 00010000, 10000000, 00000010, 01000000, 00100000, 00000000, 00010000, 00001000, 00000010, 00000010, 00000100, 00010000, 00001000, 00000000, 01000000, 00100000, 00001000, 00010000, 00000001, 00100000, 00000100, 00000000, 00001000, 00000001, 01000000, 00000010, 00001000, 00000010, 00000001, 00000000, 00000010, 00000010, 00000010, 00100000, 00000001, 10000000, 10000000, 00000000, 01000000, 00000001, 00000010, 00000001, 10000000, 01000000, 00100000, 00000000, 00000100, 00001000, 00000100, 01000000, 00000100, 01000000, 00000010, 00000000, 10000000, 00100000, 00100000, 10000000, 00010000, 00000001, 00100000, 00000000, 00000010, 01000000, 00000001, 00010000, 00001000, 00001000, 00000010, 00000000, 00000100, 01000000, 00000100, 00010000, 00000010, 10000000, 01000000, 00000000, 00100000, 00000001, 00100000, 00100000, 00010000, 00010000, 01000000, 00000000, 00000010, 00010000, 00000001, 00000001, 00001000, 01000000, 00001000, 00000000, 10000000, 00001000, 00100000, 00000100, 00100000, 10000000, 00000010, 00000000, 00000100, 00000010, 10000000, 00100000, 10000000, 00010000, 00010000, 00000000, 01000000, 00000100, 00010000, 01000000, 00010000, 00000100, 00001000, 00000000, 00001000, 10000000, 00000100, 00000001, 10000000, 00010000, 01000000, 00000000, 00010000, 00000010, 10000000, 00000001, 00000010, 00000010, 00000100, 00000000, 00010000, 00000010, 00001000, 00100000, 00100000, 00000010, 01000000, 00000000, 00010000, 00000001, 00001000, 00100000, 10000000, 10000000, 01000000, 00000000, 00010000, 00010000, 00100000, 10000000, 00000100, 00000001, 00000010, 00000000, 01000000, 01000000, 00001000, 00010000, 00000010, 00100000, 00000010, 00000000, 00001000, 00000010, 00001000, 00001000, 00001000, 01000000, 00010000, 00000000, 00001000, 00000010, 00001000, 00000010, 10000000, 00100000, 10000000, 00000000, 00010000, 00001000, 01000000, 00000001, 00010000, 00100000, 00000100, 00000000, 00010000, 00000001, 00010000, 10000000, 00100000, 00100000, 00000010, 00000000, 00001000, 00001000, 10000000, 01000000, 10000000, 00001000, 10000000, 00000000, 00001000, 00000010, 00010000, 00000100, 00000100, 10000000, 00001000, 00000000, 00000100, 00000010, 00100000, 00001000, 00000100, 00000010, 00010000, 00000000, 10000000, 10000000, 00010000, 00000100, 01000000, 00000010, 00001000, 00000000, 00010000, 00100000, 01000000, 00100000, 00000010, 00000100, 00010000, 00000000, 00010000, 00001000, 00000100, 00010000, 10000000, 00100000, 00001000, 00000000, 00000010, 00001000, 00010000, 00100000, 00010000, 00000010, 00010000, 00000000, 00000010, 00000100, 00001000, 10000000, 10000000, 00000001, 00000010, 00000000, 00010000, 00000010, 00000001, 00001000, 00000010, 00000001, 10000000, 00000000, 10000000, 00000010, 10000000, 00001000, 00000100, 01000000, 00100000, 00000000, 00100000, 00001000, 10000000, 00000010, 10000000, 00000100, 01000000, 00000000, 10000000, 00000001, 00000010, 00000100, 00010000, 00100000, 00000001, 00000000, 00001000, 00001000, 00001000, 00000010, 01000000, 10000000, 01000000, 00000000, 00010000, 01000000, 00000100, 10000000, 00100000, 00001000, 01000000, 00000000, 10000000, 10000000, 00010000, 00000010, 00010000, 00010000, 00010000, 00000000, 01000000, 00000001, 01000000, 00000001, 00000001, 00000010, 01000000, 00000000, 01000000, 10000000, 00001000, 00000100, 00010000, 00100000, 01000000, 00000000, 00000100, 10000000, 00000001, 00000100, 01000000, 00001000, 00001000, 00000000, 00000010, 00000001, 01000000, 10000000, 10000000, 00000100, 00001000, 00000000, 00001000, 00010000, 00000100, 00000100, 10000000, 00000010, 10000000, 00000000, 00000100, 00000100, 00000010, 01000000, 10000000, 00010000, 00000010, 00000000, 00000100, 00010000, 10000000, 10000000, 00000100, 00100000, 00010000, 00000000, 01000000, 00001000, 00000100, 00001000, 01000000, 00100000, 10000000, 00000000, 01000000, 00000100, 00100000, 00010000, 00100000, 00001000, 10000000, 00000000, 01000000, 00000010, 00000100, 00000010, 00000100, 00000100, 00100000, 00000000, 00000100, 01000000, 10000000, 01000000, 00000001, 00000010, 00010000, 00000000, 00000100, 10000000, 00010000, 00000001, 10000000, 00000001, 10000000, 00000000, 00001000, 10000000, 01000000, 00000100, 00010000, 00000100, 00000001, 00000000, 00010000, 00010000, 00100000, 00100000, 00100000, 00000001, 00000001, 00000000, 10000000, 10000000, 00000100, 00000010, 00000001, 00000001, 00001000, 00000000, 00001000, 00000100, 00100000, 00010000, 00100000, 00010000, 10000000, 00000000, 00001000, 00000010, 00010000, 00001000, 10000000, 00000001, 00000100, 00000000, 00001000, 00000010, 00010000, 00000100, 10000000, 00010000, 00010000, 00000000, 10000000, 00100000, 00000010, 01000000, 01000000, 10000000, 00000001, 00000000, 01000000, 10000000, 01000000, 00010000, 00100000, 10000000, 10000000, 00000000, 10000000, 10000000, 00000010, 00000010, 00000001, 00001000, 00001000, 00000000, 00010000, 00000100, 00000010, 01000000, 00001000, 00010000, 00100000, 00000000, 00010000, 00010000, 00100000, 00000100, 00100000, 10000000, 10000000, 00000000, 00001000, 00001000, 00010000, 01000000, 01000000, 01000000, 00100000, 00000000, 00100000, 00000001, 10000000, 00000010, 00100000, 01000000, 00000100, 00000000, 00010000, 10000000, 00010000, 00000010, 00000001, 00100000, 00100000, 00000000, 00001000, 00100000, 10000000, 10000000, 00100000, 00000100, 00000001, 00000000, 00100000, 10000000, 00010000, 00000100, 00001000, 00000001, 00000100, 00000000, 00000100, 00010000, 00000010, 00000010, 00000010, 01000000, 00000001, 00000000, 10000000, 10000000, 00100000, 00000100, 00000100, 10000000, 00001000, 00000000, 10000000, 00010000, 10000000, 00100000, 00010000, 00000100, 00100000, 00000000, 10000000, 00001000, 00010000, 10000000, 00000001, 00001000, 01000000, 00000000, 01000000, 00010000, 00000010, 10000000, 10000000, 00100000, 00100000, 00000000, 00010000, 00000001, 10000000, 00000100, 00010000, 10000000, 01000000, 00000000, 00100000, 00100000, 00010000, 00100000, 00000100, 00100000, 00000001, 00000000, 00010000, 01000000, 00100000, 00010000, 10000000, 00000100, 00000100, 00000000, 00010000, 00000010, 00000001, 00001000, 10000000, 00000001, 00000100, 00000000, 10000000, 00100000, 00000010, 10000000, 00100000, 00001000, 00000010, 00000000, 00100000, 00000001, 00000100, 00001000, 00000010, 00000100, 01000000, 00000000, 00100000, 00000010, 01000000, 00100000, 00001000, 00001000, 10000000, 00000000, 00100000, 00001000, 00000100, 00010000, 00000001, 00000001, 00000001, 00000000, 00010000, 00000100, 00000100, 00100000, 01000000, 00000001, 00010000, 00000000, 00000010, 00000010, 01000000, 00000100, 10000000, 00100000, 00100000, 00000000, 00010000, 10000000, 00000001, 00100000, 00010000, 01000000, 01000000, 00000000, 00100000, 00100000, 00000100, 00000100, 00000010, 00000100, 00000001, 00000000, 10000000, 01000000, 10000000, 00010000, 00000010, 10000000, 00100000, 00000000, 00100000, 10000000, 00010000, 00010000, 00010000, 00001000, 00000100, 00000000, 00100000, 00100000, 00010000, 00000100, 00001000, 00000001, 00001000, 00000000, 00000010, 01000000, 01000000, 00000010, 00001000, 00001000, 00001000, 00000000, 10000000, 10000000, 01000000, 00000100, 01000000, 00000010, 00010000, 00000000, 00100000, 00010000, 00010000, 00000100, 00100000, 00001000, 10000000, 00000000, 00001000, 00000010, 00100000, 00010000, 10000000, 00010000, 00001000, 00000000, 00000010, 10000000, 00000100, 00000001, 01000000, 01000000, 00000010, 00000000, 01000000, 01000000, 00000010, 00000100, 00000001, 01000000, 00000010, 00000000, 00000100, 00000100, 00010000, 00001000, 01000000, 00001000, 00000001, 00000000, 00000100, 00100000, 01000000, 00000001, 01000000, 00100000, 10000000, 00000000, 00000100, 10000000, 00010000, 00100000, 00100000, 00000001, 00000100, 00000000, 00000100, 01000000, 00000001, 10000000, 10000000, 00000001, 01000000, 00000000, 00000010, 01000000, 00001000, 00000010, 10000000, 10000000, 00010000, 00000000, 01000000, 01000000, 00010000, 00001000, 00000010, 00000010, 00000010, 00000000, 00100000, 00000100, 00100000, 10000000, 01000000, 00010000, 00010000, 00000000, 00000010, 00000010, 01000000, 00010000, 10000000, 10000000, 00000001, 00000000, 00000010, 00000010, 10000000, 00000010, 00000010, 00001000, 00000001, 00000000, 00100000, 00001000, 00001000, 01000000, 00100000, 00000001, 00100000, 00000000, 00000100, 00100000, 00001000, 00000001, 00000100, 00000100, 00000100, 00000000, 10000000, 00010000, 10000000, 00010000, 00100000, 00010000, 00000010, 00000000, 10000000, 00000100, 01000000, 00100000, 00001000, 01000000, 01000000, 00000000, 10000000, 00001000, 00000100, 00000001, 00000100, 00010000, 00000100, 00000000, 10000000, 00010000, 00000010, 00001000, 00010000, 00001000, 00010000, 00000000, 01000000, 10000000, 00010000, 10000000, 00100000, 00000100, 00010000, 00000000, 01000000, 00000100, 00100000, 01000000, 00000100, 00000100, 00000100, 00000000, 00000100, 00000010, 00000010, 00010000, 00000100, 10000000, 00100000, 00000000, 00000100, 01000000, 00100000, 00100000, 01000000, 01000000, 00000010, 00000000, 01000000, 00001000, 10000000, 01000000, 10000000, 10000000, 01000000, 00000000, 00000100, 01000000, 00000100, 00001000, 00010000, 00001000, 00001000, 00000000, 00010000, 00000001, 00010000, 00001000, 00000001, 00001000, 00001000, 00000000, 00010000, 00000010, 01000000, 00010000, 00000010, 00000001, 00001000, 00000000, 10000000, 00100000, 00100000, 00100000, 00000100, 10000000, 10000000, 00000000, 00100000, 00000010, 00001000, 01000000, 00001000, 00010000, 00010000, 00000000, 01000000, 01000000, 00000010, 00000001, 10000000, 01000000, 00010000, 00000000, 00000100, 00010000, 10000000, 00010000, 00001000, 00001000, 00000010, 00000000, 10000000, 10000000, 00001000, 00010000, 10000000, 00000100, 00000100, 00000000, 00001000, 01000000, 00001000, 00000010, 00100000, 00000001, 01000000, 00000000, 00001000, 00000001, 00100000, 10000000, 00000001, 00000001, 00001000, 00000000, 00000100, 00000001, 00010000, 00100000, 10000000, 01000000, 10000000, 00000000, 10000000, 00100000, 00000001, 00000100, 10000000, 10000000, 00000010, 00000000, 01000000, 10000000, 01000000, 00100000, 00000010, 00001000, 00100000, 00000000, 00000100, 00000100, 00000010, 01000000, 00100000, 00000001, 00000001, 00000000, 00100000, 00100000, 00000001, 00000100, 00010000, 10000000, 00010000, 00000000, 01000000, 00000010, 00001000, 00010000, 00000001, 01000000, 00010000, 00000000, 00001000, 10000000, 00000001, 00100000, 00000010, 00000100, 00000010, 00000000, 00100000, 01000000, 00000100, 10000000, 00000010, 00100000, 01000000, 00000000, 00010000, 00010000, 00010000, 00100000, 00000010, 00000010, 10000000, 00000000, 10000000, 00010000, 00000100, 00000001, 00000001, 00000100, 00100000, 00000000, 00000100, 00000100, 00000001, 00000001, 10000000, 00000100, 10000000, 00000000, 01000000, 00000100, 00000010, 00100000, 00000100, 00000010, 00000001, 00000000, 01000000, 00010000, 00001000, 00010000, 00100000, 00000010, 00100000, 00000000, 00100000, 00000001, 10000000, 00000001, 00100000, 00010000, 00000010, 00000000, 00001000, 00000001, 10000000, 00100000, 00001000, 00010000, 10000000, 00000000, 00010000, 01000000, 01000000, 00010000, 00000001, 00000010, 00000001, 00000000, 10000000, 00001000, 00000001, 00000100, 00000010, 00100000, 00010000, 00000000, 01000000, 10000000, 00000001, 00000100, 00100000, 01000000, 00000100, 00000000, 00010000, 00010000, 00010000, 00000010, 00001000, 00100000, 00010000, 00000000, 00000100, 00000001, 00000100, 00100000, 00001000, 00010000, 10000000, 00000000, 01000000, 00001000, 00100000, 00000010, 00001000, 00001000, 00000100, 00000000, 00001000, 00100000, 00000100, 00000001, 00001000, 00100000, 00000100, 00000000, 10000000, 01000000, 00000100, 10000000, 10000000, 00001000, 01000000, 00000000, 10000000, 01000000, 00010000, 00000010, 01000000, 00001000, 10000000, 00000000, 00100000, 10000000, 00000001, 01000000, 10000000, 00000010, 00010000, 00000000, 10000000, 00100000, 00000100, 01000000, 00001000, 00000010, 01000000, 00000000, 00000100, 00001000, 00010000, 10000000, 00001000, 10000000, 00010000, 00000000, 00010000, 01000000, 00100000, 00000010, 00100000, 00000010, 00001000, 00000000, 00010000, 00000100, 00000010, 00010000, 01000000, 00100000, 00000100, 00000000, 00010000, 00000100, 10000000, 00001000, 10000000, 10000000, 01000000, 00000000, 00001000, 00000010, 00001000, 00010000, 00100000, 10000000, 00000100, 00000000, 10000000, 00010000, 00000010, 00001000, 00010000, 00001000, 00000010, 00000000, 10000000, 00001000, 00100000, 00000001, 00010000, 00100000, 00000010, 00000000, 00100000, 00100000, 00000010, 00000001, 00100000, 00100000, 00100000, 00000000, 01000000, 01000000, 00100000, 00000001, 00000001, 00000010, 00000010, 00000000, 00000010, 00000010, 01000000, 00000010, 10000000, 00001000, 00000100, 00000000, 00010000, 01000000, 00100000, 00001000, 10000000, 01000000, 01000000, 00000000, 00010000, 00100000, 00100000, 00010000, 00100000, 00001000, 00000010, 00000000, 01000000, 01000000, 00000010, 00010000, 00010000, 00000010, 00000100, 00000000, 00001000, 00100000, 00010000, 00000001, 00000001, 10000000, 00000010, 00000000, 10000000, 01000000, 00010000, 00000010, 00000001, 00000010, 00000010, 00000000, 10000000, 00000100, 10000000, 00000010, 10000000, 00000010, 00100000, 00000000, 00000010, 00000100, 00000001, 00000001, 00000100, 00100000, 01000000, 00000000, 00001000, 00000001, 00100000, 01000000, 00001000, 01000000, 00000100, 00000000, 01000000, 10000000, 01000000, 00000001, 00010000, 00100000, 00000001, 00000000, 00001000, 01000000, 10000000, 00010000, 00100000, 00000001, 10000000, 00000000, 01000000, 00000010, 00100000, 01000000, 00100000, 00001000, 00000001, 00000000, 00100000, 00100000, 00001000, 00000100, 10000000, 00000010, 10000000, 00000000, 00000010, 01000000, 00000001, 00000100, 01000000, 00000100, 00000001, 00000000, 00000010, 01000000, 00000010, 00000010, 01000000, 00000100, 00000001, 00000000, 00100000, 00000010, 00000010, 10000000, 10000000, 00001000, 00001000, 00000000, 00001000, 00000001, 00100000, 00000001, 00000100, 10000000, 00010000, 00000000, 00000100, 00001000, 00100000, 00000001, 00000100, 00000001, 00001000, 00000000, 00100000, 00000100, 01000000, 01000000, 00001000, 00010000, 00010000, 00000000, 00000100, 00010000, 00010000, 00001000, 10000000, 10000000, 00000100, 00000000, 00100000, 00000010, 00000010, 01000000, 00000100, 00010000, 00001000, 00000000, 00000100, 00100000, 00100000, 00010000, 01000000, 00000100, 00000100, 00000000, 00010000, 00000001, 00010000, 00001000, 00000100, 00000100, 00000010, 00000000, 00100000, 00000100, 00000001, 10000000, 00001000, 00010000, 00000010, 00000000, 00010000, 01000000, 00000100, 00100000, 10000000, 01000000, 00000001, 00000000, 00010000, 00001000, 00000100, 00000010, 00010000, 00000001, 00100000, 00000000, 00100000, 00100000, 00000100, 00000001, 01000000, 10000000, 00001000, 00000000, 01000000, 00100000, 01000000, 00000001, 01000000, 00000001, 00100000, 00000000, 00000100, 00000010, 00000001, 00010000, 00000100, 00010000, 00100000, 00000000, 01000000, 00100000, 00001000, 00000100, 00000010, 00000001, 00000010, 00000000, 00000010, 10000000, 00100000, 00000010, 01000000, 00000001, 00000100, 00000000, 00000010, 00000010, 00000010, 00000001, 00000010, 00001000, 00000001, 00000000, 00000010, 00000001, 00100000, 00010000, 00000001, 00100000, 00001000, 00000000, 00001000, 00100000, 00000010, 00010000, 10000000, 00100000, 00000001, 00000000, 01000000, 00001000, 10000000, 00000010, 01000000, 00000010, 00000001, 00000000, 00100000, 00100000, 00010000, 01000000, 00100000, 00000001, 00100000, 00000000, 00010000, 00001000, 00000010, 00000100, 00001000, 10000000, 01000000, 00000000, 00100000, 00000010, 00000010, 00000010, 01000000, 00000010, 00000010, 00000000, 00100000, 10000000, 00001000, 01000000, 00000001, 00010000, 01000000, 00000000, 00000100, 00000100, 01000000, 10000000, 00010000, 01000000, 00000001, 00000000, 00000100, 00010000, 00001000, 00000010, 01000000, 00010000, 00000010, 00000000, 00100000, 01000000, 00000100, 00001000, 01000000, 00100000, 00001000, 00000000, 00000010, 00010000, 00001000, 00000010, 00010000, 00000001, 10000000, 00000000, 10000000, 10000000, 00000100, 00010000, 00000010, 00010000, 00100000, 00000000, 10000000, 10000000, 00001000, 00100000, 00010000, 00001000, 00000001, 00000000, 00000010, 00000100, 01000000, 00000100, 10000000, 10000000, 01000000, 00000000, 00100000, 00001000, 00010000, 01000000, 00000010, 10000000, 00001000, 00000000, 00100000, 00000010, 00000001, 00010000, 00001000, 10000000, 00010000, 00000000, 00000100, 10000000, 00010000, 00000010, 00000100, 00000001, 00001000, 00000000, 01000000, 10000000, 10000000, 10000000, 00000010, 10000000, 00000010, 00000000, 00100000, 00001000, 00000001, 00010000, 00001000, 00001000, 00000001, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000 })
+
+State 9 file mvp/verify/cbmc/ring/harness.h function any_side line 170 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 10 file mvp/verify/cbmc/ring/harness.h function any_side line 170 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$any_side=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 12 file mvp/verify/cbmc/ring/room.c function main line 49 thread 0
+----------------------------------------------------
+  return_value_any_side=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 13 file mvp/verify/cbmc/ring/room.c function main line 49 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 14 file mvp/verify/cbmc/ring/room.c function main line 53 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 15 file mvp/verify/cbmc/ring/room.c function main line 53 thread 0
+----------------------------------------------------
+  n=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 18 file mvp/verify/cbmc/ring/harness.h function own_index line 164 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=9223372036854775792ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110000)
+
+State 19 file mvp/verify/cbmc/ring/harness.h function own_index line 164 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$own_index=9223372036854775792ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110000)
+
+State 21 file mvp/verify/cbmc/ring/room.c function main line 55 thread 0
+----------------------------------------------------
+  return_value_own_index=9223372036854775792ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110000)
+
+State 24 file mvp/verify/cbmc/ring/room.c function main line 55 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 25 file mvp/verify/cbmc/ring/room.c function main line 55 thread 0
+----------------------------------------------------
+  own=9223372036854775792ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110000)
+
+State 26 file mvp/verify/cbmc/ring/harness.h function build line 184 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=9223372036854775552ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 00000000)
+
+State 27 file mvp/verify/cbmc/ring/harness.h function build line 184 thread 0
+----------------------------------------------------
+  peer=9223372036854775552ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/harness.h line 186 function build
+  (own & (unsigned long int)7u) == (unsigned long int)0u && (peer & (unsigned long int)7u) == (unsigned long int)0u
+
+State 35 file mvp/verify/cbmc/ring/harness.h function build line 187 thread 0
+----------------------------------------------------
+  head.value=9223372036854775792ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110000)
+
+State 42 file mvp/verify/cbmc/ring/harness.h function build line 188 thread 0
+----------------------------------------------------
+  tail.value=9223372036854775552ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/harness.h line 189 function build
+  head->value - tail->value <= (be_u64)4096
+
+State 56 file mvp/verify/cbmc/ring/harness.h function build line 190 thread 0
+----------------------------------------------------
+  return_value_nondet_u64$0=34ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00100010)
+
+State 57 file mvp/verify/cbmc/ring/harness.h function build line 191 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=0u (00000000 00000000 00000000 00000000)
+
+State 60 file mvp/verify/cbmc/ring/harness.h function build line 190 thread 0
+----------------------------------------------------
+  types=34ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00100010)
+
+State 61 file mvp/verify/cbmc/ring/harness.h function build line 190 thread 0
+----------------------------------------------------
+  domain=0u (00000000 00000000 00000000 00000000)
+
+State 62 file mvp/verify/cbmc/ring/harness.h function build line 190 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 73 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  types=34ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00100010)
+
+State 74 file mvp/src/mvp-ring.c function types_valid line 92 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 76 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  return_value_types_valid=1 (00000000 00000000 00000000 00000001)
+
+State 77 file mvp/src/mvp-ring.c function be_mvp_ring_init line 121 thread 0
+----------------------------------------------------
+  tmp_if_expr=FALSE (0)
+
+State 85 file mvp/src/mvp-ring.c function be_mvp_ring_init line 125 thread 0
+----------------------------------------------------
+  head_value=9223372036854775792ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110000)
+
+State 92 file mvp/src/mvp-ring.c function be_mvp_ring_init line 126 thread 0
+----------------------------------------------------
+  tail_value=9223372036854775552ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 00000000)
+
+State 124 file mvp/src/mvp-ring.c function be_mvp_ring_init line 135 thread 0
+----------------------------------------------------
+  view.types=34ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00100010)
+
+State 131 file mvp/src/mvp-ring.c function be_mvp_ring_init line 136 thread 0
+----------------------------------------------------
+  view.domain=0u (00000000 00000000 00000000 00000000)
+
+State 138 file mvp/src/mvp-ring.c function be_mvp_ring_init line 137 thread 0
+----------------------------------------------------
+  view.role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 145 file mvp/src/mvp-ring.c function be_mvp_ring_init line 138 thread 0
+----------------------------------------------------
+  view.cursor=9223372036854775792ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110000)
+
+State 158 file mvp/src/mvp-ring.c function be_mvp_ring_init line 139 thread 0
+----------------------------------------------------
+  view.limit=9223372036854775792ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110000)
+
+State 165 file mvp/src/mvp-ring.c function be_mvp_ring_init line 140 thread 0
+----------------------------------------------------
+  view.peak=240ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 11110000)
+
+State 177 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 220 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=TRUE (00000001)
+
+State 179 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 222 thread 0
+----------------------------------------------------
+  return_value_nondet_u32=1u (00000000 00000000 00000000 00000001)
+
+State 180 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 223 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 183 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 221 thread 0
+----------------------------------------------------
+  type=/*enum*/BE_MVP_RECORD_READY (00000000 00000000 00000000 00000001)
+
+State 184 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 221 thread 0
+----------------------------------------------------
+  time=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 203 file mvp/src/mvp-ring.c function be_mvp_ring_post line 162 thread 0
+----------------------------------------------------
+  return_value_usable=1 (00000000 00000000 00000000 00000001)
+
+State 226 file mvp/src/mvp-ring.c function be_mvp_ring_post line 171 thread 0
+----------------------------------------------------
+  tail=9223372036854775552ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 00000000)
+
+State 246 file mvp/src/mvp-ring.c function be_mvp_ring_post line 174 thread 0
+----------------------------------------------------
+  used=240ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 11110000)
+
+State 270 file mvp/src/mvp-ring.c function be_mvp_ring_post line 178 thread 0
+----------------------------------------------------
+  mask=4095ul (00000000 00000000 00000000 00000000 00000000 00000000 00001111 11111111)
+
+State 285 file mvp/src/mvp-ring.c function be_mvp_ring_post line 179 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 286 file mvp/src/mvp-ring.c function be_mvp_ring_post line 179 thread 0
+----------------------------------------------------
+  mask=4095ul (00000000 00000000 00000000 00000000 00000000 00000000 00001111 11111111)
+
+State 287 file mvp/src/mvp-ring.c function be_mvp_ring_post line 179 thread 0
+----------------------------------------------------
+  position=9223372036854775792ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110000)
+
+State 288 file mvp/src/mvp-ring.c function be_mvp_ring_post line 179 thread 0
+----------------------------------------------------
+  value=1ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001)
+
+State 298 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4080l]=1 (00000001)
+
+State 322 file mvp/src/mvp-ring.c function be_mvp_ring_post line 181 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 323 file mvp/src/mvp-ring.c function be_mvp_ring_post line 181 thread 0
+----------------------------------------------------
+  mask=4095ul (00000000 00000000 00000000 00000000 00000000 00000000 00001111 11111111)
+
+State 324 file mvp/src/mvp-ring.c function be_mvp_ring_post line 181 thread 0
+----------------------------------------------------
+  position=9223372036854775793ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110001)
+
+State 325 file mvp/src/mvp-ring.c function be_mvp_ring_post line 181 thread 0
+----------------------------------------------------
+  value=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 335 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4081l]=0 (00000000)
+
+State 353 file mvp/src/mvp-ring.c function be_mvp_ring_post line 183 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 354 file mvp/src/mvp-ring.c function be_mvp_ring_post line 183 thread 0
+----------------------------------------------------
+  mask=4095ul (00000000 00000000 00000000 00000000 00000000 00000000 00001111 11111111)
+
+State 355 file mvp/src/mvp-ring.c function be_mvp_ring_post line 183 thread 0
+----------------------------------------------------
+  position=9223372036854775794ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110010)
+
+State 365 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4082l]=0 (00000000)
+
+State 376 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4083l]=0 (00000000)
+
+State 394 file mvp/src/mvp-ring.c function be_mvp_ring_post line 184 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 395 file mvp/src/mvp-ring.c function be_mvp_ring_post line 184 thread 0
+----------------------------------------------------
+  mask=4095ul (00000000 00000000 00000000 00000000 00000000 00000000 00001111 11111111)
+
+State 396 file mvp/src/mvp-ring.c function be_mvp_ring_post line 184 thread 0
+----------------------------------------------------
+  position=9223372036854775796ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110100)
+
+State 406 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4084l]=0 (00000000)
+
+State 417 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4085l]=0 (00000000)
+
+State 428 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4086l]=0 (00000000)
+
+State 439 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4087l]=0 (00000000)
+
+State 457 file mvp/src/mvp-ring.c function be_mvp_ring_post line 185 thread 0
+----------------------------------------------------
+  buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 458 file mvp/src/mvp-ring.c function be_mvp_ring_post line 185 thread 0
+----------------------------------------------------
+  mask=4095ul (00000000 00000000 00000000 00000000 00000000 00000000 00001111 11111111)
+
+State 459 file mvp/src/mvp-ring.c function be_mvp_ring_post line 185 thread 0
+----------------------------------------------------
+  position=9223372036854775800ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11111000)
+
+State 460 file mvp/src/mvp-ring.c function be_mvp_ring_post line 185 thread 0
+----------------------------------------------------
+  value=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 470 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4088l]=0 (00000000)
+
+State 481 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4089l]=0 (00000000)
+
+State 492 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4090l]=0 (00000000)
+
+State 503 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4091l]=0 (00000000)
+
+State 514 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4092l]=0 (00000000)
+
+State 525 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4093l]=0 (00000000)
+
+State 536 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4094l]=0 (00000000)
+
+State 547 file mvp/src/mvp-ring.c function store_le line 56 thread 0
+----------------------------------------------------
+  buffer[4095l]=0 (00000000)
+
+State 558 file mvp/src/mvp-ring.c function be_mvp_ring_post line 195 thread 0
+----------------------------------------------------
+  view.cursor=9223372036854775808ul (10000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 566 file mvp/src/mvp-ring.c function be_mvp_ring_post line 197 thread 0
+----------------------------------------------------
+  view.peak=256ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 00000000)
+
+State 568 file mvp/verify/cbmc/ring/harness.h function writer_prefix line 224 thread 0
+----------------------------------------------------
+  return_value_nondet_bool$0=FALSE (00000000)
+
+State 575 file mvp/verify/cbmc/ring/harness.h function fail_maybe line 251 thread 0
+----------------------------------------------------
+  return_value_nondet_bool=FALSE (00000000)
+
+State 580 file mvp/verify/cbmc/ring/room.c function main line 61 thread 0
+----------------------------------------------------
+  role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 582 file mvp/verify/cbmc/ring/harness.h function havoc_peer line 261 thread 0
+----------------------------------------------------
+  return_value_nondet_u64=9223372036854771696ul (01111111 11111111 11111111 11111111 11111111 11111111 11101111 11110000)
+
+State 589 file mvp/verify/cbmc/ring/harness.h function havoc_peer line 261 thread 0
+----------------------------------------------------
+  tail.value=9223372036854771696ul (01111111 11111111 11111111 11111111 11111111 11111111 11101111 11110000)
+
+State 592 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.buffer=buffer!0@1 (00000010 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 593 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.capacity=4096ul (00000000 00000000 00000000 00000000 00000000 00000000 00010000 00000000)
+
+State 594 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.head=&head!0@1 (00000011 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 595 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.tail=&tail!0@1 (00000100 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 596 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.types=34ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00100010)
+
+State 597 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.domain=0u (00000000 00000000 00000000 00000000)
+
+State 598 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.role=/*enum*/BE_MVP_RING_WRITER (00000000 00000000 00000000 00000001)
+
+State 599 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.failed=0u (00000000 00000000 00000000 00000000)
+
+State 600 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.cursor=9223372036854775808ul (10000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 601 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.limit=9223372036854775792ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110000)
+
+State 602 file mvp/verify/cbmc/ring/room.c function main line 62 thread 0
+----------------------------------------------------
+  before.peak=256ul (00000000 00000000 00000000 00000000 00000000 00000000 00000001 00000000)
+
+State 603 file mvp/verify/cbmc/ring/room.c function main line 63 thread 0
+----------------------------------------------------
+  lines_head=9223372036854775792ul (01111111 11111111 11111111 11111111 11111111 11111111 11111111 11110000)
+
+State 604 file mvp/verify/cbmc/ring/room.c function main line 63 thread 0
+----------------------------------------------------
+  lines_tail=9223372036854771696ul (01111111 11111111 11111111 11111111 11111111 11111111 11101111 11110000)
+
+State 605 file mvp/verify/cbmc/ring/room.c function main line 63 thread 0
+----------------------------------------------------
+  lines_at=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/room.c line 63 function main
+  lines_at < (unsigned long int)(64u - 8u)
+
+State 608 file mvp/verify/cbmc/ring/room.c function main line 63 thread 0
+----------------------------------------------------
+  lines_head_pad=0 (00000000)
+
+State 610 file mvp/verify/cbmc/ring/room.c function main line 63 thread 0
+----------------------------------------------------
+  lines_tail_pad=0 (00000000)
+
+State 612 file mvp/verify/cbmc/ring/room.c function main line 64 thread 0
+----------------------------------------------------
+  probe_at=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+Assumption:
+  file mvp/verify/cbmc/ring/room.c line 64 function main
+  probe_at < (be_u64)4096
+
+State 615 file mvp/verify/cbmc/ring/room.c function main line 64 thread 0
+----------------------------------------------------
+  probe_was=0 (00000000)
+
+State 617 file mvp/verify/cbmc/ring/room.c function main line 65 thread 0
+----------------------------------------------------
+  t=9223372036854771696ul (01111111 11111111 11111111 11111111 11111111 11111111 11101111 11110000)
+
+State 618 file mvp/verify/cbmc/ring/room.c function main line 66 thread 0
+----------------------------------------------------
+  used=4112ul (00000000 00000000 00000000 00000000 00000000 00000000 00010000 00010000)
+
+State 639 file mvp/src/mvp-ring.c function be_mvp_ring_room line 206 thread 0
+----------------------------------------------------
+  return_value_usable=1 (00000000 00000000 00000000 00000001)
+
+State 653 file mvp/src/mvp-ring.c function be_mvp_ring_room line 209 thread 0
+----------------------------------------------------
+  tail=9223372036854771696ul (01111111 11111111 11111111 11111111 11111111 11111111 11101111 11110000)
+
+State 690 file mvp/verify/cbmc/ring/room.c function main line 68 thread 0
+----------------------------------------------------
+  result=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 695 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  used=4112ul (00000000 00000000 00000000 00000000 00000000 00000000 00010000 00010000)
+
+State 697 file mvp/verify/cbmc/ring/room.c function fits line 37 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$fits=0 (00000000 00000000 00000000 00000000)
+
+State 699 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  return_value_fits=0 (00000000 00000000 00000000 00000000)
+
+State 702 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  tmp_if_expr$0=TRUE (1)
+
+State 707 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  used=4112ul (00000000 00000000 00000000 00000000 00000000 00000000 00010000 00010000)
+
+State 709 file mvp/verify/cbmc/ring/room.c function fits line 37 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$fits=0 (00000000 00000000 00000000 00000000)
+
+State 711 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  return_value_fits$1=0 (00000000 00000000 00000000 00000000)
+
+State 712 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  tmp_if_expr$1=TRUE (1)
+
+State 718 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  used=4112ul (00000000 00000000 00000000 00000000 00000000 00000000 00010000 00010000)
+
+State 719 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  n=0ul (00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000)
+
+State 721 file mvp/verify/cbmc/ring/room.c function fits line 37 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$fits=0 (00000000 00000000 00000000 00000000)
+
+State 723 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  return_value_fits$2=0 (00000000 00000000 00000000 00000000)
+
+State 724 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  tmp_if_expr$2=TRUE (1)
+
+State 725 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  tmp_if_expr$3=TRUE (1)
+
+State 862 file mvp/verify/cbmc/ring/harness.h function view_unchanged line 308 thread 0
+----------------------------------------------------
+  goto_symex$$return_value$$view_unchanged=0 (00000000 00000000 00000000 00000000)
+
+State 864 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  return_value_view_unchanged=0 (00000000 00000000 00000000 00000000)
+
+State 865 file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+----------------------------------------------------
+  tmp_if_expr$4=FALSE (0)
+
+Violated property:
+  file mvp/verify/cbmc/ring/room.c function main line 76 thread 0
+  room: a well-formed tail the cursor is more than C past (none fits): 0, writes nothing, the view not failed
+  (tmp_if_expr$4 ? (head.value == lines_head && tail.value == lines_tail && head.pad[(signed long int)lines_at] == lines_head_pad && tail.pad[(signed long int)lines_at] == lines_tail_pad ? TRUE : FALSE) : FALSE) ? (buffer[(signed long int)probe_at] == probe_was ? TRUE : FALSE) : FALSE
+
+
+
+
