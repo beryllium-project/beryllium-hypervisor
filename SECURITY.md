@@ -7,7 +7,8 @@
 
 Beryllium is a research security monitor for RISC-V. This repository is
 MVP 1.0's clean repository: the selected tree of MVP 1.0 release candidate
-4, with the adaptations that `RELEASE.md` records. It is research
+4, with the adaptations and the fixes after two reviews that `RELEASE.md`
+records, released as MVP 1.0 at the tag `mvp-1.0`. It is research
 software, not a product. Nothing in it is a security claim beyond the one
 statement in [`mvp/docs/claim.md`](mvp/docs/claim.md), read with its
 required limit; every other property is unproved, untested, or out of
@@ -22,17 +23,20 @@ repository. It does not mean that the version is fit to protect anything.
 
 | Version | Supported |
 | --- | --- |
-| MVP 1.0, this repository's `main` | Yes |
+| MVP 1.0: the tag `mvp-1.0` and this repository's `main` | Yes |
 | MVP 1.0 release candidates 1 to 3, the earlier review snapshots, and anything older | No |
 
 ## Reporting a security issue
 
-Report privately, by either of these channels:
-
-- write to the responsible human, James Morris (`jmorris@namei.org`),
-  with "Beryllium security" in the subject; or
-- use this repository's private vulnerability reporting on GitHub, where
-  the repository enables it.
+Report a security issue as an ordinary issue on this repository.
+Beryllium is a research project: nothing in it is meant to be deployed,
+and an open report lets others check the claim too, above all a report
+that shows a claim of [`mvp/docs/claim.md`](mvp/docs/claim.md) to be
+false. If you would rather tell the responsible human first, write to
+James Morris (`jmorris@namei.org`) with "Beryllium security" in the
+subject; that e-mail is not encrypted, and the project publishes no key
+for it. This repository's private vulnerability reporting on GitHub may
+also be used, where the repository enables it.
 
 Please include:
 
@@ -46,19 +50,14 @@ Please include:
   assistance (the project discloses its own; see
   [`mvp/docs/ai-assistance.md`](mvp/docs/ai-assistance.md)).
 
-An open report, as an ordinary issue on this repository, is still welcome
-where you judge that nothing is gained by privacy, above all a report that
-shows a claim of `mvp/docs/claim.md` to be false: nothing here is meant to
-be deployed, and an open report lets others check the claim too.
-
 ## What to expect
 
-Reports are read by the responsible human, who acknowledges a private
-report, agrees a disclosure date with its reporter, and publishes the
-report with its fix, normally together and soon, since nothing should
-depend on this software. A fix lands as a new commit of this repository,
-with its tests, and is published only once the responsible human has
-reviewed and approved that exact commit (`LLM_POLICY_ALIGNMENT.md`).
-There is no CVE assignment, advisory service, or fixed schedule. A report
-that changes what the project may claim is recorded against the claim
-ledger's rows.
+Reports are read by the responsible human, who answers each one. For a
+report sent to him privately, he agrees a disclosure date with its
+reporter and publishes the report with its fix, normally together and
+soon, since nothing should depend on this software. A fix lands as a new
+commit of this repository, with its tests, and is published only once
+the responsible human has reviewed and approved that exact commit
+(`LLM_POLICY_ALIGNMENT.md`). There is no CVE assignment, advisory
+service, or fixed schedule. A report that changes what the project may
+claim is recorded against the claim ledger's rows.

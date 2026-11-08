@@ -6,7 +6,8 @@
 This is the release record of this repository. It states where the
 content came from, how it was copied and adapted, what was fixed after
 two reviews before release, what was scanned and how the responsible
-human classified it, and what the gates gave here.
+human classified it, what the gates gave here, and how the release is
+tagged.
 `RELEASE.txt` is its machine-readable marker. Each table between a pair of
 `release.py` markers is rendered by the release path's internal tools
 (`release/release.py record`, in the private internal repository) from
@@ -153,7 +154,7 @@ after the copy commit is covered by a rule.
 | R7 | `credential` | `mvp/*` | kept | Variables named token or secret in the monitor, checkers, and tools; the anchor scenario's deliberately public test secret (BE-MVP-M2-TEST-SECRET-0000000000, in hex); gitleaks generic-api-key on a test comment naming the secret-shared variant; no value is a secret | 14 | 63 |
 | R8 | `codasip` | `planning/sidebar-cheri-mvp.md` | kept | The public names of the emulator branch and CPU model that the CHERI runs used, in the CHERI-Alliance QEMU repository's public branches and source, checked 2026-11-06; no non-public material | 1 | 3 |
 | R9 | `codasip` | `planning/mvp-m7-plan.md` | kept | A line reference (L110) that the CPU-model pattern matches; not a Codasip name | 1 | 1 |
-| R10 | `session-id` | `@message/*` | kept | Each commit's Copilot-Session trailer, naming the owner session that made it (the copy commit's is part of its fixed message, S3W-3) | 17 | 34 |
+| R10 | `session-id` | `@message/*` | kept | Each commit's Copilot-Session trailer, naming the owner session that made it (the copy commit's is part of its fixed message, S3W-3) | 18 | 36 |
 | R11 | `session-id` | `mvp/docs/ai-assistance.md` | kept | The AI-assistance disclosure names one session deliberately (step 2, section 9) | 2 | 9 |
 | R12 | `session-id` | `planning/*` | kept | Session identifiers in the three 2026-07-20 session-analysis pages and two R-series review records, history at the source commit (step 2, section 9) | 5 | 7 |
 | R13 | `home-path` | `planning/*` | kept | Home-directory paths in seven planning review records, packet-time evidence at the source commit (step 2, section 9) | 7 | 15 |
@@ -191,9 +192,9 @@ after the copy commit is covered by a rule.
 | R45 | `third-party` | `planning/*` | kept | The vendor's name and short attributed quotations of vendor documentation in planning records (step 2, section 9) | 30 | 63 |
 | R46 | `third-party` | `mvp/*` | kept | The vendor's name in the MVP's README, claim, guide, ledger, and tools, and the guest-pins tool's key-armour marker | 10 | 20 |
 | R47 | `third-party` | `tests/kvm0/*` | kept | The vendor's name in the dropped KVM0 workstream's tests, history | 1 | 2 |
-| R48 | `unresolvable-ref` | `*` | kept | Internal commit IDs, by design under fresh history (step 2, section 6); RELEASE.md and README.md say why they do not resolve | 332 | 4,352 |
-| R49 | `internal-process` | `RELEASE.md` | kept | The release record's exclusions and adaptations tables name the excluded instruction files and the session handoff, with the selection's reasons, as its required content | 1 | 10 |
-| R50 | `codasip` | `RELEASE.md` | kept | The release record's rules table names the category of R8, R9, and this rule, and quotes R9's reason, as its required content | 1 | 10 |
+| R48 | `unresolvable-ref` | `*` | kept | Internal commit IDs, by design under fresh history (step 2, section 6); RELEASE.md and README.md say why they do not resolve | 332 | 4,357 |
+| R49 | `internal-process` | `RELEASE.md` | kept | The release record's exclusions and adaptations tables name the excluded instruction files and the session handoff, with the selection's reasons, as its required content | 1 | 15 |
+| R50 | `codasip` | `RELEASE.md` | kept | The release record's rules table names the category of R8, R9, and this rule, and quotes R9's reason, as its required content | 1 | 15 |
 <!-- release.py:end rules -->
 
 ## Identifying strings
@@ -276,7 +277,8 @@ and `Copilot-Session` trailers. The responsible human accepted the exit
 commit of step 3 and added his own `Signed-off-by` to each of its nine
 commits with one command (the step 3 plan's Q11); he then reviewed the
 fixes after the two reviews and signed each of them off the same way, and
-this commit carries his sign-off, added after his review of it. The
+he signed off step 4's commit, which adds the gates' records, and step
+5's, which adds the tag's section below, each after his review of it. The
 internal tools checked, commit for commit, that each sign-off changed
 nothing but its line: each tree and parent tree, each author, and each
 message otherwise. Each sign-off gave its commits new IDs, the ones this
@@ -322,7 +324,7 @@ added. The 156 ELF files are reported, not compared: 50 of them, each a
 `be-mvp.elf`, differ, as they did in the comparison at step 3's exit,
 because an ELF file keeps its build directory's path.
 
-**The records**, added by this commit:
+**The records**, added by step 4's commit:
 
 - [`mvp/results/20261108-release/`](mvp/results/20261108-release/rc.txt):
   the release record, written by `./mvp/mvp rc-record` from the gates'
@@ -342,3 +344,33 @@ host; what the evidence shows, and what it does not, is the claim's
 The results above leave out the digests and image names the gates print;
 `mvp/results/20261108-release/rc.txt` and
 `mvp/results/20261108-verify-release/verify.txt` hold each line in full.
+
+## The release's tag (step 5)
+
+MVP 1.0 is released at this repository's tag `mvp-1.0`: an annotated tag
+that the responsible human created and signed with his OpenPGP key,
+fingerprint `4137 0FEA 4038 E3A3 B4BB  BD3B 7120 D2C2 6E2F 20C6`, on the
+commit that adds this section, after his review of that commit (the
+release path's step 5). That commit holds release candidate 4's monitor
+and images, unchanged: the 185 path-independent outputs that step 4
+compared equal release candidate 4's (above). The fixes after the two
+reviews (above) changed the release's tools and documentation. The
+claim, the claim ledger, and the guide keep the candidate's name, "MVP
+1.0 release candidate 4"; the release and its tag are MVP 1.0.
+
+That commit changes only this file and `SECURITY.md`. Of the gates,
+only the licence check reads them, and only their first three lines,
+which the commit leaves as they were; no record of the gates names them.
+Step 4's results (above) therefore stand for it.
+
+The tag's message names the tree of the commit it tags. To check the
+tag, fetch the key, then check the signature and the tree:
+
+```sh
+gpg --keyserver hkps://keys.openpgp.org --recv-keys 41370FEA4038E3A3B4BBBD3B7120D2C26E2F20C6
+git verify-tag mvp-1.0
+git rev-parse 'mvp-1.0^{tree}'
+```
+
+`git verify-tag` must report a good signature by that key, and the last
+command must print the tree that the message's `Tree:` line names.
