@@ -3,6 +3,23 @@
 
 # Beryllium MVP 1.0
 
+> **This is the `cheri-platform` branch: research, outside any
+> release.** It holds MVP 1.0, the tag `mvp-1.0`, with the project's
+> CHERI platform work on top: a CHERI-aware variant of the monitor and
+> CHERI Linux guests, run on RISC-V CHERI v0.9.3 under emulation, as
+> [`planning/cheri-platform.md`](planning/cheri-platform.md) describes.
+> None of it is evidence for MVP 1.0's claim. The work is planned to
+> join `main`. Until then, on this branch:
+>
+> - the plain variant's boot images are MVP 1.0's, byte for byte, and
+>   `./mvp/mvp check` passes every step but its last,
+>   `claim-ledger-check`, because the claim ledger pins by SHA-256
+>   seven files that the CHERI variant changes;
+> - the CHERI variant's check, `mvp/tools/cheri-check.sh`, needs a
+>   CHERI toolchain, a CHERI QEMU with two local changes, and CHERI
+>   firmware, built from the pins of the project's CHERI research
+>   repository, which is not yet public.
+
 Beryllium is an open-source defensive security project for Linux-oriented
 systems: a small RISC-V monitor that runs in HS mode and keeps each domain
 in its own G-stage (second-stage) address space. Its security properties
@@ -228,9 +245,13 @@ discloses that assistance.
 
 ## Licences
 
-Beryllium is `GPL-3.0-only` ([`COPYING`](COPYING)), but for the guest
-management module, [`mvp/guest/mgmt/be-mgmt.c`](mvp/guest/mgmt/be-mgmt.c),
-which is `GPL-2.0-only` because it is linked into the guest's Linux kernel.
+Beryllium is `GPL-3.0-only` ([`COPYING`](COPYING)), but for two guest
+kernel modules, the management module
+[`mvp/guest/mgmt/be-mgmt.c`](mvp/guest/mgmt/be-mgmt.c) and, on this
+branch, the CHERI guests' module
+[`mvp/guest/cheri/be-cheri-store.c`](mvp/guest/cheri/be-cheri-store.c),
+which are `GPL-2.0-only` because they are linked into the guest's Linux
+kernel.
 The licence texts are under [`LICENSES/`](LICENSES/), and the third-party
 sources the build uses, with their licences and pins, are listed in
 [`mvp/docs/licence-manifest.md`](mvp/docs/licence-manifest.md). Security
