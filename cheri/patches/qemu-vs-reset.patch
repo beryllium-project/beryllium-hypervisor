@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
+# The CHERI QEMU's first local change, which cheri/tools/
+# build-qemu-vs-reset.sh applies to a copy of the pinned source
+# (cheri-alliance-qemu in cheri/pins.txt): at reset, vstvecc and vsepcc
+# hold the infinite capability. The script's header says why.
+--- a/target/riscv/cpu.c
++++ b/target/riscv/cpu.c
+@@ -1353,6 +1353,7 @@
+ #endif
+     // Supervisor mode trap handling
+     set_max_perms_capability(env, &env->stvecc, 0);
++    set_max_perms_capability(env, &env->vstvecc, 0);
+     env->sscratchc = make_null_capability(env);
+     set_max_perms_capability(env, &env->sepcc_hs, 0);
+     set_max_perms_capability(env, &env->sepcc, 0);
+@@ -1376,7 +1377,6 @@
+     env->stidc = make_null_capability(env);
+     env->vstidc = make_null_capability(env);
+     env->mtidc = make_null_capability(env);
+-    env->vsepcc = make_null_capability(env);
+ #ifdef TARGET_CHERI_RISCV_V9
+     env->mtdc = make_null_capability(env);
+     env->stdc = make_null_capability(env);

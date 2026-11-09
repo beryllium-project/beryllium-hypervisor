@@ -7,19 +7,24 @@
 # cannot: QEMU 8.1's configure needs Python's distlib, which the host's
 # Python 3.14 and pip 26 lack. This configures QEMU with an isolated Python
 # venv under toolchains/ holding the pinned distlib wheel (python-distlib in
-# tools/pins.txt), and cheribuild's QEMU configure flags otherwise.
+# cheri/pins.txt), and cheribuild's QEMU configure flags otherwise.
+# toolchains/ is the stack root's, CHERI_DIR's (default: build/cheri/ in
+# this repository).
+#
+# Usage: cheri/tools/build-qemu.sh [CHERI_DIR]
 set -euo pipefail
 top=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
-tc=$top/toolchains
+[ "$#" -le 1 ] && [[ ${1-} != -* ]] || { echo "usage: $0 [CHERI_DIR]" >&2; exit 2; }
+tc=$(cd -- "${1:-$top/build/cheri}" && pwd -P)/toolchains
 src=$tc/cheri/qemu
 build=$tc/cheri/build/qemu-codasip-build
 prefix=$tc/cheri/output/qemu-codasip
 venv=$tc/qemu-python
-field() { awk -v n="$1" -v f="$2" '$1 == n { print $f }' "$top/tools/pins.txt"; }
+field() { awk -v n="$1" -v f="$2" '$1 == n { print $f }' "$top/cheri/pins.txt"; }
 
 commit=$(field cheri-alliance-qemu 4)
 if [ "$(git -C "$src" rev-parse HEAD)" != "$commit" ]; then
-	echo "$src is not at $commit; run experiments/fetch-stack.sh" >&2
+	echo "$src is not at $commit; run cheri/tools/fetch-stack.sh" >&2
 	exit 1
 fi
 

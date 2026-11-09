@@ -2,17 +2,18 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
 #
-# Build the pinned QEMU (cheri-alliance-qemu in tools/pins.txt) with one
+# Build the pinned QEMU (cheri-alliance-qemu in cheri/pins.txt) with one
 # local change: at reset, vstvecc and vsepcc hold the infinite capability,
 # as the CHERI v0.9.3 CSR table (riscv-cheri v0.9.3-prerelease,
 # src/csv/CHERI_CSR.csv) and RVY's (v0.9.10.1-ar20261013,
 # src/cheri/csv/CHERI_CSR.csv) both require. At the pin, reset leaves
 # vstvecc unset and sets vsepcc to the null capability, so a guest that
 # runs with CHERI off cannot install a trap vector or return from a trap
-# (experiments/monitor-run.sh, first run). The pinned source and build are
-# untouched: the source is copied to build/qemu-vs-reset/src, edited there,
-# and built with experiments/build-qemu.sh's configuration into
-# build/qemu-vs-reset/install. Run experiments/build-qemu.sh first.
+# (cheri/experiments/monitor-run.sh, first run). The pinned source and
+# build are untouched: the source is copied to build/qemu-vs-reset/src,
+# patched there with cheri/patches/qemu-vs-reset.patch, and built with
+# cheri/tools/build-qemu.sh's configuration into
+# build/qemu-vs-reset/install. Run cheri/tools/build-qemu.sh first.
 #
 # With --ia-fix, a second local change is made too, and the result goes to
 # build/qemu-ia-fix instead, leaving build/qemu-vs-reset alone. CHERI's
@@ -24,20 +25,34 @@
 # rewritten to 0xffffffff8c623530 and the capability loses its tag. The
 # check reads vsatp, which only a hypervisor sets, so a guest kernel under
 # a hypervisor that writes such an address to sepcc returns to a bad pc
-# (experiments/be-cheri-poc.md). The change passes the width, checkbit + 1.
+# (cheri/experiments/be-cheri-poc.md). The change, cheri/patches/
+# qemu-ia-fix.patch, passes the width, checkbit + 1.
+#
+# toolchains/ and build/ are the stack root's, CHERI_DIR's (default:
+# build/cheri/ in this repository). git apply patches the copy, with exact
+# context and no fuzz, as a plain patch tool: GIT_CEILING_DIRECTORIES stops
+# git from taking the copy for part of an enclosing work tree, such as this
+# repository's under build/cheri/, so that no repository's attributes or
+# configuration bear on it.
+#
+# Usage: cheri/tools/build-qemu-vs-reset.sh [--ia-fix] [CHERI_DIR]
 set -euo pipefail
 top=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
-tc=$top/toolchains
+usage() { echo "usage: $0 [--ia-fix] [CHERI_DIR]" >&2; exit 2; }
+ia_fix=no
+[ "${1-}" != --ia-fix ] || { ia_fix=yes; shift; }
+[ "$#" -le 1 ] && [[ ${1-} != -* ]] || usage
+stack=$(cd -- "${1:-$top/build/cheri}" && pwd -P)
+tc=$stack/toolchains
 pinned=$tc/cheri/qemu
 venv=$tc/qemu-python
-work=$top/build/qemu-vs-reset
-ia_fix=no
-case ${1-} in
-	"") ;;
-	--ia-fix) ia_fix=yes; work=$top/build/qemu-ia-fix ;;
-	*) echo "usage: $0 [--ia-fix]" >&2; exit 2 ;;
-esac
-field() { awk -v n="$1" -v f="$2" '$1 == n { print $f }' "$top/tools/pins.txt"; }
+work=$stack/build/qemu-vs-reset
+[ "$ia_fix" = no ] || work=$stack/build/qemu-ia-fix
+field() { awk -v n="$1" -v f="$2" '$1 == n { print $f }' "$top/cheri/pins.txt"; }
+apply() {
+	GIT_CEILING_DIRECTORIES=$work git -C "$work/src" apply --verbose \
+		"$top/cheri/patches/$1"
+}
 
 commit=$(field cheri-alliance-qemu 4)
 if [ "$(git -C "$pinned" rev-parse HEAD)" != "$commit" ] ||
@@ -45,7 +60,7 @@ if [ "$(git -C "$pinned" rev-parse HEAD)" != "$commit" ] ||
 	echo "$pinned is not a clean checkout of $commit" >&2
 	exit 1
 fi
-[ -x "$venv/bin/python3" ] || { echo "run experiments/build-qemu.sh first" >&2; exit 1; }
+[ -x "$venv/bin/python3" ] || { echo "run cheri/tools/build-qemu.sh first" >&2; exit 1; }
 
 rm -rf "$work"
 mkdir -p "$work/build"
@@ -53,39 +68,15 @@ rsync -a --exclude=.git "$pinned/" "$work/src/"
 
 # The change: one line added after stvecc's reset, and the later line
 # that nulls vsepcc removed (an earlier line already gives it the
-# infinite capability). Each anchor must match exactly once.
-"$venv/bin/python3" - "$work/src/target/riscv/cpu.c" <<'EOF'
-import sys
-path = sys.argv[1]
-text = open(path).read()
-add_after = "    set_max_perms_capability(env, &env->stvecc, 0);\n"
-added = "    set_max_perms_capability(env, &env->vstvecc, 0);\n"
-removed = "    env->vsepcc = make_null_capability(env);\n"
-for anchor in (add_after, removed):
-    if text.count(anchor) != 1:
-        sys.exit(f"anchor matched {text.count(anchor)} times: {anchor!r}")
-if added in text:
-    sys.exit("vstvecc already reset; nothing to change")
-text = text.replace(add_after, add_after + added).replace(removed, "")
-open(path, "w").write(text)
-EOF
+# infinite capability).
+apply qemu-vs-reset.patch
 diff -u "$pinned/target/riscv/cpu.c" "$work/src/target/riscv/cpu.c" \
 	>"$work/cpu.c.diff" || true
 echo "local change ($(grep -c '^[-+]    ' "$work/cpu.c.diff") lines):"
 grep '^[-+]    ' "$work/cpu.c.diff"
 
 if [ "$ia_fix" = yes ]; then
-	"$venv/bin/python3" - "$work/src/target/riscv/csr.c" <<'EOF'
-import sys
-path = sys.argv[1]
-text = open(path).read()
-for var in ("address", "addr"):
-    old = f"SignExtend64({var}, checkbit);"
-    if text.count(old) != 1:
-        sys.exit(f"anchor matched {text.count(old)} times: {old!r}")
-    text = text.replace(old, f"SignExtend64({var}, checkbit + 1);")
-open(path, "w").write(text)
-EOF
+	apply qemu-ia-fix.patch
 	diff -u "$pinned/target/riscv/csr.c" "$work/src/target/riscv/csr.c" \
 		>"$work/csr.c.diff" || true
 	echo "invalid address conversion change ($(grep -c '^[-+] ' "$work/csr.c.diff") lines):"

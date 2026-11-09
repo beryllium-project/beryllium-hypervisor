@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
+# The CHERI QEMU's second local change, which cheri/tools/
+# build-qemu-vs-reset.sh applies after the first with --ia-fix: CHERI's
+# invalid address conversion passes SignExtend64() the address width,
+# checkbit + 1, not the top valid bit's index. The script's header says
+# why.
+--- a/target/riscv/csr.c
++++ b/target/riscv/csr.c
+@@ -4513,7 +4513,7 @@
+     }
+     uint8_t checkbit = topbit_for_address_mode(env);
+     target_ulong address = cap_get_cursor(&cap);
+-    target_ulong extend_address = SignExtend64(address, checkbit);
++    target_ulong extend_address = SignExtend64(address, checkbit + 1);
+     if (address == extend_address) {
+         // this is a valid address
+         return true;
+@@ -4538,7 +4538,7 @@
+         return addr;
+     }
+     uint8_t checkbit = topbit_for_address_mode(env);
+-    target_ulong extend_address = SignExtend64(addr, checkbit);
++    target_ulong extend_address = SignExtend64(addr, checkbit + 1);
+     return extend_address;
+ }
+ 
