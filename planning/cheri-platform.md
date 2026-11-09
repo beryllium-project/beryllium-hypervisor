@@ -32,6 +32,19 @@
 >   beryllium-cheri checkout. Where this page says that the CHERI inputs
 >   or beryllium-cheri's scripts come from `../beryllium-cheri`, read
 >   these places instead.
+> - The CHERI integration plan, an internal planning record accepted on
+>   2026-11-09, brings this branch into `main`.
+>   - Its work package CI-4 refreshed the claim ledger's 11 pins of the
+>     seven files that the variant split changes, each with its reason
+>     in the ledger. It did so after checks that the plain variant's
+>     images, the checkers' judgements of the retained captures, and the
+>     generators' outputs are unchanged. `./mvp/mvp check` passes,
+>     `claim-ledger-check` included; where this page says that
+>     `claim-ledger-check` fails, that is history.
+>   - Its CI-5 re-wrote M8's target digests against `5980edff`. It also
+>     made the plain build's `MVP_HENVCFG_ARMED` in `mvp/src/mvp-trap.S`
+>     a preprocessor name, so that both plain monitor ELFs equal
+>     MVP 1.0's, as M8's sequences record requires (see "Checking it").
 
 ## Status and scope
 
@@ -391,10 +404,13 @@ come from `CHERI_DIR`, a beryllium-cheri checkout (by default the sibling
    checkout's path.
    - **The reference** is a build of the latest `main` commit merged into
      the branch: the second parent of the newest merge on `HEAD`'s
-     first-parent history. That commit must also be the merge base of
-     `HEAD` and `main` (`origin/main` where there is no `main`), so the
-     check fails if the newest merge brought in anything but the
-     development line.
+     first-parent history that `main` (`origin/main` where there is no
+     `main`) does not hold. That commit must also be the merge base of
+     `HEAD` and `main`, so the check fails if the newest merge brought in
+     anything but the development line. Where there is no such merge, the
+     reference is that merge base: on a branch that has never caught up,
+     on `main` itself, and on a branch from `main` without a catch-up
+     merge.
    - It is built with the same tools and invocation, in a temporary clone
      under `build/cheri-check/reference/<commit>/`, which then keeps only
      the digests and the build log. Later runs reuse the digests, so the
@@ -472,8 +488,8 @@ The check before the enforcement work passed on 2026-11-06 at
 
 `make -C mvp check`, or `./mvp/mvp check`, which passes neither switch,
 checks the plain variant as the development line is checked, with the
-tool lock's tools. It passes every step but the last,
-`claim-ledger-check` (see the table below).
+tool lock's tools. It passes, `claim-ledger-check` included (see the
+table below).
 
 The steps of `make check` that part 1 does not run, and the other
 checks, for each variant:
@@ -487,17 +503,25 @@ checks, for each variant:
 | `reference-boot`, `kernel-repro` | Pass | Not run: they boot and rebuild the Linux guests, with the tool lock's tools |
 | `qemu-test`, `sessions` | Pass | Refused by `mvp/tools.mk`: parts 1 and 3 of `cheri-check.sh` run the same harness with the CHERI emulator and firmware |
 | `evidence` | Passes | Not run: it bundles every check's records |
-| `claim-ledger-check` | Fails: the ledger pins, by SHA-256, seven files that the split changes; its claims are the development line's | Not run, for the same reason |
+| `claim-ledger-check` | Passes: the ledger's 11 pins of the seven files that the split changes are refreshed, each with its reason (the note above) | Not run: its claims and their evidence are the plain variant's |
 | The `k3-like`, `rva23`, and `no-sstc` machines | Run in `qemu-test` | QEMU 8.1 lacks the CPU properties they need, so `k3-like`'s variants and probes run on `plic` |
 | `uboot-rehearsal` | Not run here: it needs B3's U-Boot build | Refused by `mvp/tools.mk` |
 | `live` | Prints the plain commands (see "Running it by hand") | Refused by `mvp/tools.mk`: `mvp/tools/cheri-live.sh` prints and runs the CHERI commands |
 | `./mvp/mvp evaluate`, `./mvp/mvp verify` | Not run: each takes hours | Not run |
 
-M8's frozen record (`mvp/verify/target-digests.txt`) names
-`mvp/src/mvp-sbi.c` and `mvp/src/mvp.h`, and this branch changes both:
-the plain variant's boot images are the development line's, byte for
-byte, but the text of these two files is not. M8's results therefore
-describe the development line's files, not this branch's.
+M8's frozen records are two, and `./mvp/mvp verify` checks both
+before its arms run.
+- **The target digests**, `mvp/verify/target-digests.txt`, name
+  `mvp/src/mvp-sbi.c` and `mvp/src/mvp.h`, among the pilot's files.
+  This branch changes both: `mvp-sbi.c` outside Leaf A's function, and
+  `mvp.h` with the CHERI-aware monitor's values. In the plain build the
+  preprocessed text of both leaves is MVP 1.0's. The digests are
+  re-written against `5980edff`, whose text of both files is this
+  branch's.
+- **The sequences record**, `mvp/verify/litmus/sequences.txt`, pins
+  each plain monitor ELF without its debug sections. The plain build's
+  `MVP_HENVCFG_ARMED` is a preprocessor name, not an assembler symbol,
+  so that these ELFs equal MVP 1.0's and the record stays as released.
 
 ## The CHERI rules' review
 

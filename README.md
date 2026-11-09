@@ -8,17 +8,23 @@
 > CHERI platform work on top: a CHERI-aware variant of the monitor and
 > CHERI Linux guests, run on RISC-V CHERI v0.9.3 under emulation, as
 > [`planning/cheri-platform.md`](planning/cheri-platform.md) describes.
-> None of it is evidence for MVP 1.0's claim. The work is planned to
-> join `main`. Until then, on this branch:
+> None of it is evidence for MVP 1.0's claim. The work is being
+> integrated into `main`. On this branch:
 >
 > - the plain variant's boot images are MVP 1.0's, byte for byte, and
->   `./mvp/mvp check` passes every step but its last,
->   `claim-ledger-check`, because the claim ledger pins by SHA-256
->   seven files that the CHERI variant changes;
+>   `./mvp/mvp check` passes. The claim ledger pins by SHA-256 seven
+>   files that the CHERI variant changes. Its 11 pins of them are
+>   refreshed, each with its reason in the ledger, after checks that the
+>   plain variant's images, the checkers' judgements of the retained
+>   captures, and the generators' outputs are unchanged;
+> - the first verification plan's target digests,
+>   `mvp/verify/target-digests.txt`, are re-written against this
+>   branch's commit `5980edff`, since the CHERI variant changes two of
+>   the files that they cover;
 > - the CHERI variant's check, `mvp/tools/cheri-check.sh`, needs a
 >   CHERI toolchain, a CHERI QEMU with two local changes, and CHERI
->   firmware, built from the pins of the project's CHERI research
->   repository, which is not yet public.
+>   firmware, which the tools in [`cheri/`](cheri/README.md) build from
+>   the pins there.
 
 Beryllium is an open-source defensive security project for Linux-oriented
 systems: a small RISC-V monitor that runs in HS mode and keeps each domain
