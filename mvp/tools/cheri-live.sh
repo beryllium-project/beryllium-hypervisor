@@ -25,8 +25,9 @@
 # into: ~0 or ~1 at the start of a line gives a shell the input, and Ctrl-C
 # ends QEMU.
 #
-# The CHERI inputs come from CHERI_DIR as for tools/cheri-check.sh (default:
-# the sibling ../beryllium-cheri), which is only read. The Linux guests'
+# The CHERI inputs come from CHERI_DIR, and their pins from cheri/pins.txt,
+# as for tools/cheri-check.sh (default: build/cheri/ in this checkout),
+# which is only read. The Linux guests'
 # source is fetched as `make -C mvp` fetches it (LINUX_GIT from the
 # environment, or guest.mk's default), or from build/mvp/linux-src once the
 # plain variant's build has it, and checked against its pinned commit. Build
@@ -59,16 +60,17 @@ if [ "${1:-}" = --run ]; then
 		usage
 fi
 [ "$#" -le 1 ] || usage
-cheri=$(cd -- "${1:-$top/../beryllium-cheri}" && pwd)
+cheri=$(cd -- "${1:-$top/build/cheri}" && pwd)
 out=$top/build/cheri-live
-pin() { awk -v n="$1" '$1 == n { print $4 }' "$cheri/tools/pins.txt"; }
+pins=$top/cheri/pins.txt
+pin() { awk -v n="$1" '$1 == n { print $4 }' "$pins"; }
 
 tc=$cheri/toolchains/cheri
 sdk=$tc/output/cheri-alliance-sdk
 qemu=$cheri/build/qemu-ia-fix/install/bin/qemu-system-riscv64cheristd
 fw=$sdk/opensbi/riscv64zcheri093-purecap/share/opensbi/l64pc128/generic/firmware/fw_dynamic.bin
-for f in "$cheri/tools/pins.txt" "$qemu" "$fw" "$sdk/bin/clang"; do
-	[ -r "$f" ] || { echo "missing $f; see planning/cheri-platform.md" >&2; exit 2; }
+for f in "$pins" "$qemu" "$fw" "$sdk/bin/clang"; do
+	[ -r "$f" ] || { echo "missing $f; see cheri/README.md" >&2; exit 2; }
 done
 # S-01 for the CHERI-aware monitor: the firmware by its pin in this tree.
 firmware_pin=$(sed -n 's/^firmware fw_dynamic\.bin sha256=\([0-9a-f]\{64\}\) bytes=[0-9]\{1,\}$/\1/p' \

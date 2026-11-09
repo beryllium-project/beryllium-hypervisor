@@ -11,8 +11,8 @@
 # under names of their own, the capability-store module and cap-store's
 # G0 DTB, planning/cheri-enforcement-plan.md's CE-4), the
 # Image header facts, and the kernel banner. They hold for the CHERI
-# Alliance LLVM named on the last line. The CHERI sources and the SDK stay
-# outside this repository: beryllium-cheri's tools/pins.txt pins each by its
+# Alliance LLVM named on the last line. The CHERI sources and the SDK are
+# never committed: cheri/pins.txt, the CHERI stack's lock, pins each by its
 # commit, and tools/build-guest-cheri.sh refuses any other. The script
 # compares its outputs with the `file`, `kernel`, and `toolchain` lines;
 # `build-guest-cheri.sh --unpinned` prints them for a deliberate update.

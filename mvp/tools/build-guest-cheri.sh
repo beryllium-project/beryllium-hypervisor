@@ -45,8 +45,8 @@
 # CHERI_LLVM_SRC and CHERI_LLVM_COMMIT, the same for CHERI Alliance
 # BusyBox, musl, and LLVM (its compiler-rt); cmake and ninja; PYTHON
 # (default python3). None of them is in Beryllium's tool lock: the CHERI
-# toolchain and sources stay outside this repository (beryllium-cheri's
-# tools/pins.txt pins them).
+# toolchain and sources are never committed, and cheri/pins.txt, the
+# CHERI stack's lock, pins them (cheri/README.md).
 #
 # Floating point: the guest kernel has no FPU (B6's fragment), and the
 # monitor keeps HS sstatus.FS off, so a guest program that executes a

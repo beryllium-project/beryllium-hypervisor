@@ -56,14 +56,17 @@
 #    guest/pins.txt.
 #
 # The CHERI toolchain, sources, emulator, and firmware are not in the tool
-# lock. They come from CHERI_DIR, a beryllium-cheri checkout (default: the
-# sibling ../beryllium-cheri), which is only read:
+# lock. Their pins are cheri/pins.txt, the CHERI stack's lock in this
+# tree, and they come from CHERI_DIR, the root of a CHERI stack that
+# cheri/tools/ built (default: build/cheri/ in this checkout; a
+# beryllium-cheri checkout has the same layout), which is only read:
 #   - the CHERI Alliance SDK, and the Linux, BusyBox, musl, and LLVM
-#     checkouts under toolchains/cheri/, each at its commit in tools/pins.txt
-#     (tools/build-guest-cheri.sh refuses any other);
+#     checkouts under toolchains/cheri/, each at its commit in
+#     cheri/pins.txt (tools/build-guest-cheri.sh refuses any other);
 #   - the CHERI QEMU with its two local changes, build/qemu-ia-fix/
-#     (experiments/build-qemu-vs-reset.sh --ia-fix);
+#     (cheri/tools/build-qemu-vs-reset.sh --ia-fix, cheri/patches/);
 #   - the SDK's purecap OpenSBI, which reports SBI 3.0.
+# cheri/README.md says how to build the stack.
 # The Linux guests' source is fetched as `make -C mvp` fetches it
 # (LINUX_GIT from the environment, or guest.mk's default) and checked
 # against its pinned commit; the reference and part 3 fetch it from
@@ -87,17 +90,18 @@ esac
 	exit 2
 }
 top=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
-cheri=$(cd -- "${1:-$top/../beryllium-cheri}" && pwd)
+cheri=$(cd -- "${1:-$top/build/cheri}" && pwd)
 out=$top/build/cheri-check
 cache=$out/reference
-pin() { awk -v n="$1" '$1 == n { print $4 }' "$cheri/tools/pins.txt"; }
+pins=$top/cheri/pins.txt
+pin() { awk -v n="$1" '$1 == n { print $4 }' "$pins"; }
 
 tc=$cheri/toolchains/cheri
 sdk=$tc/output/cheri-alliance-sdk
 qemu=$cheri/build/qemu-ia-fix/install/bin/qemu-system-riscv64cheristd
 fw=$sdk/opensbi/riscv64zcheri093-purecap/share/opensbi/l64pc128/generic/firmware/fw_dynamic.bin
-for f in "$cheri/tools/pins.txt" "$qemu" "$fw" "$sdk/bin/clang"; do
-	[ -r "$f" ] || { echo "missing $f; see planning/cheri-platform.md" >&2; exit 2; }
+for f in "$pins" "$qemu" "$fw" "$sdk/bin/clang"; do
+	[ -r "$f" ] || { echo "missing $f; see cheri/README.md" >&2; exit 2; }
 done
 
 # The build switches and the CHERI inputs go on make's command line, where
@@ -130,7 +134,7 @@ dirty=
 [ -z "$(git -C "$top" status --porcelain)" ] || dirty=" (with uncommitted changes)"
 {
 	echo "beryllium: $(git -C "$top" rev-parse HEAD)$dirty"
-	echo "beryllium-cheri: $(git -C "$cheri" rev-parse HEAD)"
+	echo "CHERI stack: $cheri; pins: cheri/pins.txt, SHA-256 $(sha256sum -- "$pins" | cut -d' ' -f1)"
 	echo "emulator: $("$qemu" --version | head -n 1), build/qemu-ia-fix"
 	echo "firmware: $(sha256sum -- "$fw" | cut -d' ' -f1)"
 	echo "build: MVP_MONITOR=cheri MVP_GUEST_FLAVOUR=cheri-linux ($build)"
