@@ -81,6 +81,9 @@
 # MVP_PIN_OPENSBI_BIN_SHA256 (the release's security review, S-01): checked
 # before anything else, and again before every QEMU run that boots it; a
 # firmware with other bytes is refused (exit 2) and no QEMU run boots it.
+# beryllium-cheri: for the CHERI-aware monitor (BE_MVP_MONITOR=cheri,
+# below), the pin is instead the firmware line of guest/cheri-pins.txt in
+# this script's tree, checked in the same way.
 #
 # beryllium-cheri: BE_MVP_MONITOR names the monitor variant BUILD_DIR holds
 # (planning/cheri-platform.md): riscv, the default, whose firmware is
@@ -227,14 +230,25 @@ anchor_variants=(secret-shared response-writable wrong-measurement
 firmware_pin=$(sed -n 's/^MVP_PIN_OPENSBI_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' -- "$lock")
 [ -n "$firmware_pin" ] ||
 	{ printf '%s pins no OpenSBI binary (MVP_PIN_OPENSBI_BIN_SHA256)\n' "$lock" >&2; exit 2; }
-# The firmware's bytes, the lock's pin, or the suite ends here (exit 2).
+pin_source="the lock's MVP_PIN_OPENSBI_BIN_SHA256"
+# beryllium-cheri: the CHERI-aware monitor's firmware has its own pin, the
+# firmware line of guest/cheri-pins.txt in this script's tree (S-01).
+if [ "$monitor" = cheri ]; then
+	cheri_pins=$(dirname -- "$here")/guest/cheri-pins.txt
+	firmware_pin=$(sed -n 's/^firmware fw_dynamic\.bin sha256=\([0-9a-f]\{64\}\) bytes=[0-9]\{1,\}$/\1/p' \
+		-- "$cheri_pins")
+	[[ $firmware_pin =~ ^[0-9a-f]{64}$ ]] ||
+		{ printf '%s pins no CHERI firmware (one firmware line)\n' "$cheri_pins" >&2; exit 2; }
+	pin_source="guest/cheri-pins.txt's firmware pin"
+fi
+# The firmware's bytes, its pin, or the suite ends here (exit 2).
 pinned_firmware() {
 	local digest
 
 	digest=$(sha256sum -- "$firmware" | cut -d' ' -f1)
 	[ "$digest" = "$firmware_pin" ] && return 0
-	printf "OPENSBI_FW %s has SHA-256 %s, not the lock's MVP_PIN_OPENSBI_BIN_SHA256 %s: refused\n" \
-		"$firmware" "$digest" "$firmware_pin" >&2
+	printf 'OPENSBI_FW %s has SHA-256 %s, not %s %s: refused\n' \
+		"$firmware" "$digest" "$pin_source" "$firmware_pin" >&2
 	exit 2
 }
 pinned_firmware

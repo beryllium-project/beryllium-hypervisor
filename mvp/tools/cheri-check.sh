@@ -24,7 +24,10 @@
 #    cap-store's image without Zcheripte, and the store lands. te-poc's
 #    runs also show its roles' own CHERI faults. Each passing run's capture
 #    is also mutated by the CHERI rules' mutations, each to be rejected
-#    (tests/check-capture.py --cheri-mutations).
+#    (tests/check-capture.py --cheri-mutations). Before the runs,
+#    tests/run-qemu.sh must refuse the firmware with one byte changed
+#    (exit 2, no QEMU start): its pin is the firmware line of
+#    guest/cheri-pins.txt (S-01).
 # 2. The plain variant's identity. The defaults' build (build/mvp), its
 #    images cleaned and rebuilt by `image variants probes qemu-images`,
 #    must equal a build of the development line byte for byte: every
@@ -214,6 +217,30 @@ for t in gcc clang; do
 		"te-poc/$t/cap-store-control")
 done
 status=0
+# S-01 for the CHERI-aware monitor: tests/run-qemu.sh refuses the firmware
+# with one byte changed (exit 2) before any start of a stand-in QEMU.
+pin_test=$out/firmware-pin
+mkdir -p -- "$pin_test"
+cp -- "$fw" "$pin_test/fw_dynamic.bin"
+python3 -I -B -c 'import sys; f = open(sys.argv[1], "r+b"); b = f.read(1); f.seek(0); f.write(bytes([b[0] ^ 1])); f.close()' \
+	"$pin_test/fw_dynamic.bin"
+cat >"$pin_test/qemu" <<'EOF'
+#!/bin/sh
+: >"$(dirname -- "$0")/started"
+EOF
+chmod +x -- "$pin_test/qemu"
+pin_status=0
+(cd "$top" && "${clean[@]}" QEMU="$pin_test/qemu" BE_MVP_MONITOR=cheri \
+	bash mvp/tests/run-qemu.sh "$build" "$pin_test/fw_dynamic.bin" \
+	"$pin_test/out" te-poc/gcc/plic) >"$pin_test/run-qemu.log" 2>&1 ||
+	pin_status=$?
+if [ "$pin_status" = 2 ] && [ ! -e "$pin_test/started" ] &&
+	grep -qF "not guest/cheri-pins.txt's firmware pin" "$pin_test/run-qemu.log"; then
+	echo "BE_MVP_CHERI_FIRMWARE_PIN: PASS one byte changed: refused, exit 2, no QEMU start" >>"$summary"
+else
+	echo "BE_MVP_CHERI_FIRMWARE_PIN: FAIL exit $pin_status$([ ! -e "$pin_test/started" ] || echo ', QEMU started') (log $pin_test/run-qemu.log)" >>"$summary"
+	status=1
+fi
 # The harness judges the CHERI-aware monitor (--monitor cheri, firmware
 # SBI 3.0) against the CHERI Linux guest's pins.
 harness=(BE_MVP_MONITOR=cheri BE_MVP_GUEST_PINS="$top/mvp/guest/cheri-pins.txt"

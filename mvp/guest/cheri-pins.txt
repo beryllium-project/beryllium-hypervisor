@@ -16,6 +16,11 @@
 # commit, and tools/build-guest-cheri.sh refuses any other. The script
 # compares its outputs with the `file`, `kernel`, and `toolchain` lines;
 # `build-guest-cheri.sh --unpinned` prints them for a deliberate update.
+# The `firmware` line pins the CHERI-aware monitor's firmware (the SDK's
+# purecap OpenSBI fw_dynamic.bin, which tools/cheri-check.sh boots), as
+# the tool lock's MVP_PIN_OPENSBI_BIN_SHA256 pins the RISC-V monitor's
+# (the release's security review, S-01).
+firmware fw_dynamic.bin sha256=e0aeeae9ac48ed52ec95188dd7cb9a415be266f182c70acb63b8a3c91d628c7d bytes=547680
 file init sha256=1f6311e245c63bc14dc2a795cc7826dd79fb7d43c8fcdfaa9f77d6049b4402cc bytes=77600
 file be-mgmt.ko sha256=3e7653f860479d127da091e3a249c95d3d1833f2783e679b1486466843a2391a bytes=7792
 file be-cheri-store.ko sha256=e69fb5787b2680a8fe372051eb5a523faa8873d290db369e77e7e8ff8347021b bytes=7120

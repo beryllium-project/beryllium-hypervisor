@@ -30,7 +30,9 @@
 # source is fetched as `make -C mvp` fetches it (LINUX_GIT from the
 # environment, or guest.mk's default), or from build/mvp/linux-src once the
 # plain variant's build has it, and checked against its pinned commit. Build
-# logs go to build/cheri-live/.
+# logs go to build/cheri-live/. The firmware's SHA-256 must be the firmware
+# pin of guest/cheri-pins.txt (the release's security review, S-01), before
+# the build and again before anything is printed or run, or it exits 2.
 #
 # Usage: mvp/tools/cheri-live.sh [-h | --help] [--run cheri.FLAVOUR/TOOLCHAIN/SCENARIO] [CHERI_DIR]
 set -euo pipefail
@@ -68,6 +70,19 @@ fw=$sdk/opensbi/riscv64zcheri093-purecap/share/opensbi/l64pc128/generic/firmware
 for f in "$cheri/tools/pins.txt" "$qemu" "$fw" "$sdk/bin/clang"; do
 	[ -r "$f" ] || { echo "missing $f; see planning/cheri-platform.md" >&2; exit 2; }
 done
+# S-01 for the CHERI-aware monitor: the firmware by its pin in this tree.
+firmware_pin=$(sed -n 's/^firmware fw_dynamic\.bin sha256=\([0-9a-f]\{64\}\) bytes=[0-9]\{1,\}$/\1/p' \
+	-- "$top/mvp/guest/cheri-pins.txt")
+pinned_firmware() {
+	local digest
+
+	digest=$(sha256sum -- "$fw" | cut -d' ' -f1)
+	[[ $firmware_pin =~ ^[0-9a-f]{64}$ ]] && [ "$digest" = "$firmware_pin" ] &&
+		return 0
+	echo "BE_MVP_CHERI_LIVE: FAIL $fw has SHA-256 $digest, not guest/cheri-pins.txt's firmware pin ${firmware_pin:-(none)}: refused" >&2
+	exit 2
+}
+pinned_firmware
 
 # As in tools/cheri-check.sh: the switches and the CHERI inputs on make's
 # command line, never in the environment.
@@ -130,6 +145,7 @@ command_for() {
 		-kernel "$dir/be-mvp-boot.elf" -nographic -monitor none -no-reboot)
 }
 
+pinned_firmware
 if [ -n "$run" ]; then
 	IFS=/ read -r label toolchain scenario <<<"$run"
 	command_for "${label#cheri.}" "$toolchain" "$scenario"
