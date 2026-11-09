@@ -1,0 +1,578 @@
+From c7a060d44832ab24d64b19202d92a13e71a4c056 Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 5 Nov 2026 03:03:05 -0800
+Subject: [PATCH 5/5] mvp: CHERI proof of concept: a soft-float userland, and
+ M7's shell sessions
+
+Four changes, validated together on the CHERI QEMU with beryllium-cheri's
+two local changes (experiments/build-qemu-vs-reset.sh --ia-fix) and the
+CHERI Alliance OpenSBI:
+
+- The guest userland is soft-float, as Beryllium's is. The CHERI Alliance
+  SDK's purecap musl and compiler-rt are hard-float (l64pc128d), and the
+  guests have no FPU, so BusyBox's shell took an illegal instruction in
+  setjmp. tools/build-guest-cheri.sh now builds compiler-rt's builtins
+  and CRT objects and CHERI Alliance musl for l64pc128 from their pinned
+  sources (CHERI_LLVM_SRC and CHERI_LLVM_COMMIT, CHERI_MUSL_SRC and
+  CHERI_MUSL_COMMIT, which guest.mk passes and tools/make-control.py
+  allows), and the init and BusyBox against them. guest/pins.txt is
+  re-pinned; two builds give the same bytes.
+- The init's vDSO workarounds go. The fault behind them (0f161828) is
+  the CHERI QEMU's, not the kernel's: its invalid address conversion on
+  a capability write to sepcc checks an Sv39 address against bit 37, not
+  bit 38, and reads the mode from vsatp, so only under a hypervisor does
+  the guest kernel's sepcc write before its sret turn a vDSO pc
+  (0x3f8c623530) into an invalid one (0xffffffff8c623530). Natively, the
+  same kernel and binaries return from the same fault correctly.
+  beryllium-cheri's --ia-fix corrects the bit. touch_vdso and the
+  clock_gettime system call are removed, so the init uses musl's
+  clock_gettime. The ucontext offset's comment now names its cause: the
+  guard for CHERI musl's smaller sigset_t tests __CHERI_PURE_CAPABILITY,
+  which the compiler does not define.
+- M7's shell sessions run: tests/session-typist.py types on the plic
+  machine under BE_MVP_QEMU_K3_LIKE=plic and judges with the firmware's
+  SBI 3.0.
+- The monitor refuses at arming a hart that cannot delegate cause 28
+  (BE_MVP_HEDELEG_REQUIRED 0x1000b10c), as tests/check-capture.py
+  already required, since a CHERI guest takes its own CHERI faults.
+  tests/sbi-test.c follows the CHERI monitor: hedeleg with cause 28,
+  henvcfg STCE and CRE, B6's 0xb15d refused, and STCE alone refused;
+  two more assertions (the Makefile's pin, 16294).
+
+Results: make image references (BE_MVP_GUEST_BUILD: PASS cheri
+pins=match), image-check (127, 131, and 140 mutations), reference-check,
+port-check, lint, policy-negatives, guest-self-test, host-test (eleven
+suites, GCC equal to Clang), target-check, budgets, and tool-lock-check
+pass; tests/run-qemu.sh: BE_MVP_QEMU: PASS runs=48; and
+tests/session-typist.py: BE_MVP_SESSIONS: PASS sessions=6.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+Copilot-Session: a7fa2f95-839f-4f32-a6fc-7415e24f2dbc
+---
+ mvp/Makefile                   |   3 +-
+ mvp/guest.mk                   |   9 ++-
+ mvp/guest/mvp-init.c           |  43 ++-----------
+ mvp/guest/pins.txt             |   8 +--
+ mvp/src/mvp.h                  |  15 +++--
+ mvp/tests/sbi-test.c           |  37 ++++++-----
+ mvp/tests/session-typist.py    |  13 +++-
+ mvp/tools/build-guest-cheri.sh | 108 ++++++++++++++++++++++++++-------
+ mvp/tools/make-control.py      |   9 ++-
+ 9 files changed, 156 insertions(+), 89 deletions(-)
+
+diff --git a/mvp/Makefile b/mvp/Makefile
+index 7b51022a..2cc31ef8 100644
+--- a/mvp/Makefile
++++ b/mvp/Makefile
+@@ -219,7 +219,8 @@ HOST_ASSERTIONS_ring := 409415
+ HOST_SCENARIOS_hart := 843
+ HOST_ASSERTIONS_hart := 176892
+ HOST_SCENARIOS_sbi := 133
+-HOST_ASSERTIONS_sbi := 16292
++# beryllium-cheri: two more, hedeleg without cause 28 and henvcfg without CRE.
++HOST_ASSERTIONS_sbi := 16294
+ HOST_SCENARIOS_gstage := 44
+ HOST_ASSERTIONS_gstage := 39647
+ HOST_SCENARIOS_payload := 8
+diff --git a/mvp/guest.mk b/mvp/guest.mk
+index 9419e0cf..454b6907 100644
+--- a/mvp/guest.mk
++++ b/mvp/guest.mk
+@@ -199,10 +199,17 @@ CHERI_LINUX_SRC ?=
+ CHERI_LINUX_COMMIT ?=
+ CHERI_BUSYBOX_SRC ?=
+ CHERI_BUSYBOX_COMMIT ?=
++CHERI_MUSL_SRC ?=
++CHERI_MUSL_COMMIT ?=
++CHERI_LLVM_SRC ?=
++CHERI_LLVM_COMMIT ?=
+ MVP_GUEST_CHERI_ENV = CHERI_SDK='$(CHERI_SDK)' \
+ 	CHERI_LINUX_SRC='$(CHERI_LINUX_SRC)' CHERI_LINUX_COMMIT='$(CHERI_LINUX_COMMIT)' \
+ 	CHERI_BUSYBOX_SRC='$(CHERI_BUSYBOX_SRC)' \
+-	CHERI_BUSYBOX_COMMIT='$(CHERI_BUSYBOX_COMMIT)' PYTHON='$(PYTHON)'
++	CHERI_BUSYBOX_COMMIT='$(CHERI_BUSYBOX_COMMIT)' \
++	CHERI_MUSL_SRC='$(CHERI_MUSL_SRC)' CHERI_MUSL_COMMIT='$(CHERI_MUSL_COMMIT)' \
++	CHERI_LLVM_SRC='$(CHERI_LLVM_SRC)' CHERI_LLVM_COMMIT='$(CHERI_LLVM_COMMIT)' \
++	PYTHON='$(PYTHON)'
+ $(MVP_GUEST_OUTPUTS) &: $(addprefix $(MVP_DIR)/,$(MVP_GUEST_SOURCES)) \
+ 		$(addprefix $(B6_DIR)/,$(MVP_GUEST_B6_SOURCES))
+ 	$(MVP_GUEST_CHERI_ENV) $(MVP_DIR)/tools/build-guest-cheri.sh $(MVP_DIR) \
+diff --git a/mvp/guest/mvp-init.c b/mvp/guest/mvp-init.c
+index 980f72b7..f3560649 100644
+--- a/mvp/guest/mvp-init.c
++++ b/mvp/guest/mvp-init.c
+@@ -198,7 +198,6 @@
+ #include <errno.h>
+ #include <signal.h>
+ #include <stddef.h>
+-#include <sys/auxv.h>
+ #include <ucontext.h>
+ #else
+ #include <asm/sigcontext.h>
+@@ -313,8 +312,11 @@ typedef void (*__sighandler_t)(int);
+  * The kernel's purecap struct ucontext (arch/riscv/include/uapi/asm/
+  * ucontext.h) keeps uc_mcontext at offset 0xb0, where a non-CHERI kernel
+  * has it, but CHERI Alliance musl's ucontext_t has it at 0xc0 (after its
+- * 128-byte sigset_t), so musl's __gregs[REG_PC] is the kernel's ra. The
+- * handler uses the kernel's layout: pc is sc_regs' first capability.
++ * 128-byte sigset_t), so musl's __gregs[REG_PC] is the kernel's ra. musl
++ * means a 112-byte sigset_t here, which would agree, but the guard in its
++ * include/alltypes.h.in tests __CHERI_PURE_CAPABILITY, which the compiler
++ * does not define (it defines __CHERI_PURE_CAPABILITY__). The handler
++ * uses the kernel's layout: pc is sc_regs' first capability.
+  */
+ #define MVP_KERNEL_UC_MCONTEXT	0xb0UL
+ _Static_assert(offsetof(ucontext_t, uc_mcontext) == 0xc0UL,
+@@ -326,20 +328,6 @@ static long mvp_syscall_result(intptr_t result)
+ }
+ 
+ #define _syscall(...)	mvp_syscall_result(syscall(__VA_ARGS__))
+-
+-/*
+- * CHERI Alliance musl's clock_gettime() calls the vDSO through a function
+- * capability that __vdsosym (src/internal/vdso.c) derives by arithmetic
+- * on uintptr_t; under this kernel it comes back untagged, with its
+- * address's low 32 bits sign-extended, and the first call faults.
+- * The init asks the kernel directly instead.
+- */
+-static int mvp_clock_gettime(clockid_t clock, struct timespec *now)
+-{
+-	return (int)syscall(SYS_clock_gettime, clock, now);
+-}
+-
+-#define clock_gettime(clock, now)	mvp_clock_gettime(clock, now)
+ #endif
+ _Static_assert(BE_MGMT_IOC_CALL == 0xc0184242UL,
+ 	       "the management ioctl is be-mgmt.ko's");
+@@ -833,24 +821,6 @@ static unsigned long deny_one(const struct mvp_role *role, unsigned long index,
+ 	return !observed || (store && !unchanged) ? 1UL : 0UL;
+ }
+ 
+-#ifdef __CHERI_PURE_CAPABILITY__
+-/*
+- * beryllium-cheri: under the proof of concept's stack, a page fault taken
+- * with the user pc in the vDSO returns to that pc with its low 32 bits
+- * sign-extended (cause not established), and the kernel's signal return
+- * runs the vDSO's rt_sigreturn trampoline, in the vDSO's first page. So
+- * the child reads that page from its own code before it arms its handler,
+- * and the trampoline's page is mapped before the trampoline runs.
+- */
+-static void touch_vdso(void)
+-{
+-	const volatile char *vdso = getauxptr(AT_SYSINFO_EHDR);
+-
+-	if (vdso != NULL)
+-		(void)vdso[0];
+-}
+-#endif
+-
+ /*
+  * In the child: each denied access in be.deny's order (deny_one); the
+  * number of denials that failed (all of them when the handler cannot be
+@@ -861,9 +831,6 @@ static unsigned long make_denials(const struct mvp_role *role)
+ {
+ 	unsigned long index, failures = 0;
+ 
+-#ifdef __CHERI_PURE_CAPABILITY__
+-	touch_vdso();
+-#endif
+ 	if (role->denials != 0UL &&
+ 	    set_segv((__sighandler_t)(void (*)(void))on_segv, SA_SIGINFO) != 0)
+ 		return role->denials;
+diff --git a/mvp/guest/pins.txt b/mvp/guest/pins.txt
+index c14eae09..ce8b15ed 100644
+--- a/mvp/guest/pins.txt
++++ b/mvp/guest/pins.txt
+@@ -47,11 +47,11 @@ source musl version=1.2.6 tag=v1.2.6 commit=9fa28ece75d8a2191de7c5bb53bed224c594
+ # tools/build-guest-cheri.sh (CHERI Alliance Linux v7.1, BusyBox, and
+ # musl, purecap, built by the CHERI Alliance LLVM). The two source lines
+ # above are tools/build-guest.sh's, which this branch does not run.
+-file init sha256=adda80917bdc597bc63adc911dc6219e9bbcfb0dd7c92feefad74dd38b0dbfbc bytes=71248
++file init sha256=a190993f6a089adb65673e60a680ad02285d3f3fe0eacb8d04a3ca7f641ef5f5 bytes=72576
+ file be-mgmt.ko sha256=3e7653f860479d127da091e3a249c95d3d1833f2783e679b1486466843a2391a bytes=7792
+-file busybox sha256=0afac45e79613971c8a58c877fde74c1ab5e79bbdf13d8d818702c54b0c9287b bytes=283272
+-file musl-libc.a sha256=e775da235e58886ba7edaf8143df213f7a12b0962a83a5015151b621b02651bc bytes=18591080
+-file Image sha256=b4b85b2a6b71f0c68a9b61b4cc65d66bf6156350e675d340fe0bf6ca0558d85c bytes=3264512
++file busybox sha256=b03d709e56c128bf512d8998ca44c5af4c1ee9b8d3afd958abf69c3c1cb87577 bytes=286280
++file musl-libc.a sha256=afd9eab769778155aec3685786be47412a29dd3ab9b24c4a371368c24ef6826a bytes=3749616
++file Image sha256=f02bb2a341ce0d61b83cfa2b50591f7e5396cd41200b85cdeb36345816b301f9 bytes=3264512
+ file mvp-guest-g0.dtb sha256=68cf8491748bdcb528a0d46d0d154b02fde1b46e4cfb01ecad3f1e0bc7774c16 bytes=4096
+ file mvp-guest-g1.dtb sha256=570b047047a43f1460f3992f0ea80fafc497ea9555540c4b0cd767d08244c706 bytes=4096
+ file mvp-guest-g1-init-exit.dtb sha256=418aab61389585056a4103ab3995b63f08ca7f235cece4dc439a1ecdd67e082b bytes=4096
+diff --git a/mvp/src/mvp.h b/mvp/src/mvp.h
+index 64160326..3cc45b34 100644
+--- a/mvp/src/mvp.h
++++ b/mvp/src/mvp.h
+@@ -200,9 +200,11 @@
+  * hedeleg is WARL, as in B6 and B7 (responsible-human direction fix-warl,
+  * 2026-10-08): the readback may lack causes 0, 4, and 6; causes 2, 3, 8,
+  * 12, 13, and 15 must stick, and no other bit may appear. The resume tail
+- * then requires the armed readback.
++ * then requires the armed readback. beryllium-cheri: cause 28 must stick
++ * too, since a CHERI guest takes its own CHERI faults; a hart that cannot
++ * delegate it is refused at arming, not failed at the guest's first fault.
+  */
+-#define BE_MVP_HEDELEG_REQUIRED		BE_U64_C(0xb10c)
++#define BE_MVP_HEDELEG_REQUIRED		BE_U64_C(0x1000b10c)
+ #define BE_MVP_HIDELEG_VSTI		(BE_U64_C(1) << 6)
+ #define BE_MVP_HIE_VSTIE		(BE_U64_C(1) << 6)
+ /*
+@@ -927,10 +929,11 @@ enum be_mvp_class be_mvp_stce_class(be_u64 henvcfg);
+  *
+  * Return: 1 when every control holds its guest-run value: hip 0 after the
+  *         timer was disarmed; hstatus controls 0x180 (SPV, SPVP; VTW, VTVM,
+- *         and VTSR clear); hedeleg within 0xb15d and holding 0xb10c (WARL);
+- *         hideleg VSTI only; hie, htimedelta, and hgeie 0; hvip's VS bits
+- *         0; hcounteren TM only; henvcfg STCE only; vstimecmp ~0; sie SSIE
+- *         only; sstatus SIE, SPIE, SPP, FS, VS, XS, SUM, and MXR 0;
++ *         and VTSR clear); hedeleg within 0x1000b15d and holding
++ *         0x1000b10c (WARL); hideleg VSTI only; hie, htimedelta, and hgeie
++ *         0; hvip's VS bits 0; hcounteren TM only; henvcfg STCE and CRE
++ *         only; vstimecmp ~0; sie SSIE only; sstatus SIE, SPIE, SPP, FS,
++ *         VS, XS, SUM, and MXR 0;
+  *         @expected_hgatp; Bare vsatp; and sscratch the trusted top.
+  *         Otherwise 0.
+  */
+diff --git a/mvp/tests/sbi-test.c b/mvp/tests/sbi-test.c
+index 7096771d..73aa7f3b 100644
+--- a/mvp/tests/sbi-test.c
++++ b/mvp/tests/sbi-test.c
+@@ -357,16 +357,17 @@ static void test_class_names(void)
+ 
+ static struct be_mvp_controls armed_controls(void)
+ {
++	/* beryllium-cheri: hedeleg with cause 28, henvcfg STCE and CRE. */
+ 	return (struct be_mvp_controls) {
+ 		.hip = 0U,
+ 		.hstatus = BE_U64_C(0x200000180),
+-		.hedeleg = 0xb15dU,
++		.hedeleg = 0x1000b15dU,
+ 		.hideleg = 0x40U,
+ 		.hie = 0U,
+ 		.hvip = 0U,
+ 		.hcounteren = 0x2U,
+ 		.htimedelta = 0U,
+-		.henvcfg = BE_U64_C(0x8000000000000000),
++		.henvcfg = BE_U64_C(0x8000000010000000),
+ 		.hgeie = 0U,
+ 		.vstimecmp = ALL_ONES,
+ 		.sie = 0x2U,
+@@ -398,7 +399,8 @@ static void test_controls(void)
+ 	CHECK(BE_MVP_SIE_SSIE == 0x2U && BE_MVP_SIE_STIE == 0x20U);
+ 	CHECK(BE_MVP_SIE_CONTROL == 0x22U);
+ 	CHECK(BE_MVP_HVIP_VS_BITS == 0x444U);
+-	CHECK(BE_MVP_HEDELEG == 0xb15dU);
++	/* beryllium-cheri: hedeleg also delegates cause 28, the CHERI fault. */
++	CHECK(BE_MVP_HEDELEG == 0x1000b15dU);
+ 	CHECK(BE_MVP_HIDELEG_VSTI == 0x40U && BE_MVP_HIE_VSTIE == 0x40U);
+ 	CHECK(BE_MVP_HCOUNTEREN_TM == 0x2U);
+ 	CHECK(BE_MVP_HENVCFG_STCE == BE_U64_C(0x8000000000000000));
+@@ -442,17 +444,21 @@ static void test_controls(void)
+ 		      (bit == 0U || bit == 4U || bit == 6U ? 1 : 0));
+ 	}
+ 	{
++		/*
++		 * beryllium-cheri: each with cause 28, which must stick; B6's
++		 * 0xb15d, without it, now fails.
++		 */
+ 		static const be_u64 warl_good[] = {
+-			0xb15dU, 0xb15cU, 0xb14dU, 0xb14cU,
+-			0xb11dU, 0xb11cU, 0xb10dU, 0xb10cU,
++			0x1000b15dU, 0x1000b15cU, 0x1000b14dU, 0x1000b14cU,
++			0x1000b11dU, 0x1000b11cU, 0x1000b10dU, 0x1000b10cU,
+ 		};
+ 		static const be_u64 warl_bad[] = {
+-			0xb17dU, 0xb15fU, 0x315dU, 0xa15dU, 0x915dU,
+-			0xb05dU, 0xb155U, 0xb159U, 0xb10bU, 0U,
+-			ALL_ONES,
++			0x1000b17dU, 0x1000b15fU, 0x1000315dU, 0x1000a15dU,
++			0x1000915dU, 0x1000b05dU, 0x1000b155U, 0x1000b159U,
++			0x1000b10bU, 0xb15dU, 0U, ALL_ONES,
+ 		};
+ 
+-		CHECK(BE_MVP_HEDELEG_REQUIRED == 0xb10cU);
++		CHECK(BE_MVP_HEDELEG_REQUIRED == 0x1000b10cU);
+ 		CHECK((BE_MVP_HEDELEG & BE_MVP_HEDELEG_REQUIRED) ==
+ 		      BE_MVP_HEDELEG_REQUIRED);
+ 		for (index = 0U; index < BE_ARRAY_SIZE(warl_good); ++index) {
+@@ -535,11 +541,13 @@ static void test_controls(void)
+ 	controls.sstatus |= BE_U64_C(1) << 10;
+ 	CHECK(armed_valid(&controls) == 0);
+ 
+-	CHECK(be_mvp_stce_class(BE_MVP_HENVCFG_STCE) == BE_MVP_CLASS_NONE);
++	/* beryllium-cheri: armed is STCE and CRE; STCE alone fails. */
++	CHECK(be_mvp_stce_class(BE_MVP_HENVCFG_ARMED) == BE_MVP_CLASS_NONE);
++	CHECK(be_mvp_stce_class(BE_MVP_HENVCFG_STCE) == BE_MVP_CLASS_CONTROLS);
+ 	CHECK(be_mvp_stce_class(0U) == BE_MVP_CLASS_SSTC);
+ 	CHECK(be_mvp_stce_class(1U) == BE_MVP_CLASS_SSTC);
+ 	CHECK(be_mvp_stce_class(ALL_ONES >> 1) == BE_MVP_CLASS_SSTC);
+-	CHECK(be_mvp_stce_class(BE_MVP_HENVCFG_STCE | 1U) ==
++	CHECK(be_mvp_stce_class(BE_MVP_HENVCFG_ARMED | 1U) ==
+ 	      BE_MVP_CLASS_CONTROLS);
+ 	CHECK(be_mvp_stce_class(ALL_ONES) == BE_MVP_CLASS_CONTROLS);
+ }
+@@ -2011,7 +2019,8 @@ static void test_records(void)
+ 	be_mvp_control_init(&control, ENTRY_TIME - 0x100U, BE_MVP_RUN_BUDGET,
+ 			    BE_MVP_READY_TICKS);
+ 	CHECK(be_mvp_control_started(&control, 0U, 1U) == 1);
+-	controls.hedeleg = 0xb15cU;
++	/* beryllium-cheri: a WARL reading with cause 28, as it must hold. */
++	controls.hedeleg = 0x1000b15cU;
+ 	CHECK(be_mvp_post_ready(&outbound[0], &controls, ENTRY_TIME) == 1);
+ 	be_mvp_entry_frame(&entry, BE_MVP_KERNEL_GPA, BE_MVP_GUEST_HART,
+ 			   BE_MVP_DTB_GPA);
+@@ -2023,12 +2032,12 @@ static void test_records(void)
+ 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HGATP) ==
+ 	      BE_MVP_G0_HGATP);
+ 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HSTATUS) == 0x180U);
+-	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HEDELEG) == 0xb15cU);
++	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HEDELEG) == 0x1000b15cU);
+ 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HIDELEG) == 0x40U);
+ 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HCOUNTEREN) == 0x2U);
+ 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_SIE) == 0x2U);
+ 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HENVCFG) ==
+-	      BE_MVP_HENVCFG_STCE);
++	      BE_MVP_HENVCFG_ARMED);
+ 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_VSTIMECMP) == ALL_ONES);
+ 	CHECK(be_mvp_control_record(&control, 0U, &taken, &step) ==
+ 	      BE_MVP_STEP_READY);
+diff --git a/mvp/tests/session-typist.py b/mvp/tests/session-typist.py
+index 5abd21d5..8c4d4cfa 100644
+--- a/mvp/tests/session-typist.py
++++ b/mvp/tests/session-typist.py
+@@ -77,6 +77,14 @@ CHECKER = HERE / "check-capture.py"
+ MACHINE = "virt,aia=aplic-imsic,aia-guests=7"
+ CPU = ("rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,"
+        "smstateen=true")
++# beryllium-cheri: the CHERI QEMU (8.1) has no svade or svadu property;
++# BE_MVP_QEMU_K3_LIKE=plic types on the plic machine instead, as
++# tests/run-qemu.sh does.
++if os.environ.get("BE_MVP_QEMU_K3_LIKE") == "plic":
++    MACHINE, CPU = "virt", "rv64,h=true"
++# beryllium-cheri: the firmware's SBI version, the CHERI Alliance
++# OpenSBI's 3.0 (tests/run-qemu.sh's firmware_sbi).
++FIRMWARE_SBI = "3.0"
+ TERMINAL = re.compile(r"^(?:BE_MVP:14 SHUTDOWN|BE_MVP:FAIL|BE_K3_B3: FAIL)")
+ PREFIX = re.compile(r"^BE_MVP_G([0-9]): ")
+ NONCE = "NONCE"
+@@ -343,8 +351,9 @@ def judge(args, directory, session):
+     """The checker on DIRECTORY's capture: its verdict, the boot hart."""
+     command = [sys.executable, "-B", str(CHECKER),
+                str(directory / "console.log"), "--expect", args.expect,
+-               "--mode", "direct", "--sbi-version", "2.0", "--toolchain",
+-               args.toolchain, "--json", str(directory / "result.json"),
++               "--mode", "direct", "--sbi-version", FIRMWARE_SBI,
++               "--toolchain", args.toolchain, "--json",
++               str(directory / "result.json"),
+                "--typed", str(directory / "typed.txt"), "--nonce",
+                str(directory / "nonce.txt"), "--session", str(session)]
+     if args.report:
+diff --git a/mvp/tools/build-guest-cheri.sh b/mvp/tools/build-guest-cheri.sh
+index c4c2c46c..f0972cad 100755
+--- a/mvp/tools/build-guest-cheri.sh
++++ b/mvp/tools/build-guest-cheri.sh
+@@ -6,8 +6,13 @@
+ # v0.9.3 under emulation, the CHERI proof of concept): the same outputs,
+ # names, and initramfs list as tools/build-guest.sh, for CHERI-enabled
+ # guests. Every program is purecap:
+-#   - the init: guest/mvp-init.c and src/mvp-sha256.c, built against the
+-#     CHERI Alliance musl (the SDK's sysroot), not nolibc;
++#   - the userland's libraries, soft-float as tools/build-guest.sh's
++#     (the guest kernel has no FPU): the CHERI Alliance LLVM's compiler-rt
++#     builtins and CRT objects, and the CHERI Alliance musl, each built
++#     here for the purecap soft-float ABI (l64pc128), and a sysroot of
++#     them with the SDK's kernel headers;
++#   - the init: guest/mvp-init.c and src/mvp-sha256.c, built against that
++#     musl, not nolibc;
+ #   - BusyBox: the CHERI Alliance BusyBox (1.36.1, as guest/pins.txt's)
+ #     with guest/busybox.config, static against that musl;
+ #   - the kernel: CHERI Alliance Linux (v7.1), configured as
+@@ -24,20 +29,23 @@
+ #   build-guest-cheri.sh [--unpinned] MVP_DIR B6_DIR OUT
+ #
+ # Environment: CHERI_SDK, the CHERI Alliance SDK (cheribuild's output:
+-# bin/clang, and linux/linux-riscv64zcheri093-purecap, the musl sysroot);
++# bin/clang, lib/clang/20/include, and linux/linux-riscv64zcheri093-
++# purecap, whose usr/include gives the kernel headers);
+ # CHERI_LINUX_SRC and CHERI_LINUX_COMMIT, a clean checkout of CHERI
+ # Alliance Linux and its pinned commit; CHERI_BUSYBOX_SRC and
+-# CHERI_BUSYBOX_COMMIT, the same for CHERI Alliance BusyBox; PYTHON
++# CHERI_BUSYBOX_COMMIT, CHERI_MUSL_SRC and CHERI_MUSL_COMMIT, and
++# CHERI_LLVM_SRC and CHERI_LLVM_COMMIT, the same for CHERI Alliance
++# BusyBox, musl, and LLVM (its compiler-rt); cmake and ninja; PYTHON
+ # (default python3). None of them is in Beryllium's tool lock: the CHERI
+ # toolchain and sources stay outside this repository (beryllium-cheri's
+ # tools/pins.txt pins them).
+ #
+-# Floating point: the SDK's musl is built for the l64pc128d ABI, and the
+-# guest kernel has no FPU (B6's fragment), so a guest program that executes
+-# a floating-point instruction gets SIGILL. The init uses no floating-point
+-# conversion, the only place musl's printf would execute one; BusyBox's
+-# ash saves floating-point registers in setjmp, so the shell variants are
+-# expected to fail (not covered by the proof of concept).
++# Floating point: the guest kernel has no FPU (B6's fragment), and the
++# monitor keeps HS sstatus.FS off, so a guest program that executes a
++# floating-point instruction gets SIGILL. The SDK's musl and compiler-rt
++# are built for the hard-float l64pc128d ABI (BusyBox's ash, from its
++# first setjmp, got SIGILL with them), so the userland's are built here
++# soft-float, as tools/build-guest.sh builds musl for lp64.
+ set -euo pipefail
+ umask 022
+ 
+@@ -53,7 +61,8 @@ if [ "${1:-}" = --unpinned ]; then
+ fi
+ [ "$#" -eq 3 ] || { printf 'usage: %s [--unpinned] MVP_DIR B6_DIR OUT\n' "$0" >&2; exit 2; }
+ for name in CHERI_SDK CHERI_LINUX_SRC CHERI_LINUX_COMMIT CHERI_BUSYBOX_SRC \
+-	CHERI_BUSYBOX_COMMIT; do
++	CHERI_BUSYBOX_COMMIT CHERI_MUSL_SRC CHERI_MUSL_COMMIT CHERI_LLVM_SRC \
++	CHERI_LLVM_COMMIT; do
+ 	[ -n "${!name:-}" ] || die "$name is not set (see this script's header)"
+ done
+ 
+@@ -64,8 +73,11 @@ out=$(cd -- "$3" && pwd)
+ sdk=$(cd -- "$CHERI_SDK" && pwd)
+ src=$(cd -- "$CHERI_LINUX_SRC" && pwd)
+ bb_git=$(cd -- "$CHERI_BUSYBOX_SRC" && pwd)
++musl_git=$(cd -- "$CHERI_MUSL_SRC" && pwd)
++llvm_git=$(cd -- "$CHERI_LLVM_SRC" && pwd)
+ python=${PYTHON:-python3}
+-musl=$sdk/linux/linux-riscv64zcheri093-purecap
++sdk_sysroot=$sdk/linux/linux-riscv64zcheri093-purecap
++musl=$out/sysroot-cheri
+ clang=$sdk/bin/clang
+ obj=$out/kbuild
+ module_src=$mvp/guest/mgmt
+@@ -93,27 +105,80 @@ render() {
+ 	printf '%s\n' "${text//"$2"/"$3"}" >"$4"
+ }
+ 
+-for tree in "$src:$CHERI_LINUX_COMMIT" "$bb_git:$CHERI_BUSYBOX_COMMIT"; do
++for tree in "$src:$CHERI_LINUX_COMMIT" "$bb_git:$CHERI_BUSYBOX_COMMIT" \
++	"$musl_git:$CHERI_MUSL_COMMIT" "$llvm_git:$CHERI_LLVM_COMMIT"; do
+ 	[ "$(git -C "${tree%%:*}" rev-parse HEAD)" = "${tree#*:}" ] ||
+ 		die "${tree%%:*} is not at its pinned commit ${tree#*:}"
+ 	[ -z "$(git -C "${tree%%:*}" status --porcelain)" ] ||
+ 		die "${tree%%:*} has local changes"
+ done
+-[ -x "$clang" ] && [ -f "$musl/lib/libc.a" ] || die "$sdk is not the CHERI SDK"
++[ -x "$clang" ] && [ -d "$sdk_sysroot/usr/include/asm" ] ||
++	die "$sdk is not the CHERI SDK"
+ 
+-# The purecap user ABI's flags (the SDK's musl was built with the bounded
+-# argument features; without them printf reads its arguments wrongly), and
+-# the CPU's extensions without Zcherilevels, which QEMU's CPU lacks.
+-purecap=(--unwindlib=none -target riscv64-linux-musl "--sysroot=$musl"
+-	"-B$sdk/bin" -march=rv64imafdc_zcherihybrid -mabi=l64pc128d -mno-relax
++# The purecap user ABI's flags, soft-float (l64pc128, rv64imac as
++# tools/build-guest.sh's userland), with the bounded argument features the
++# CHERI Alliance musl is built with (without them printf reads its
++# arguments wrongly), and Zcherihybrid without Zcherilevels, which QEMU's
++# CPU lacks. abi is the compiler-only part, for the libraries' own builds.
++abi=(-target riscv64-linux-musl "-B$sdk/bin" -march=rv64imac_zcherihybrid
++	-mabi=l64pc128 -mno-relax
+ 	-Xclang -target-feature -Xclang +cheri-bounded-vararg
+ 	-Xclang -target-feature -Xclang +cheri-bounded-memarg-caller
+ 	-Xclang -target-feature -Xclang +cheri-bounded-memarg-callee)
++purecap=(--unwindlib=none "--sysroot=$musl" "${abi[@]}")
+ link=(-fuse-ld=lld "--ld-path=$sdk/bin/ld.lld" -static '-Wl,--build-id=none')
+ cc_version=$("$clang" --version | head -n 1)
+ epoch=$(git -C "$src" log -1 --format=%ct HEAD)
+ timestamp=$(LC_ALL=C date -u -d "@$epoch" '+%a %b %e %H:%M:%S UTC %Y')
+ 
++# The userland's libraries: compiler-rt's builtins and CRT objects, then
++# musl, out of tree, so both checkouts stay clean; then the sysroot: musl's
++# headers and libraries, the CRT objects under the names the driver looks
++# for, the builtins, and the SDK's kernel headers.
++rm -rf -- "$userland" "$musl"
++mkdir -p -- "$userland/compiler-rt" "$userland/musl-build" \
++	"$musl/lib/linux" "$musl/usr"
++(cmake -G Ninja -S "$llvm_git/compiler-rt" -B "$userland/compiler-rt" \
++	-DCMAKE_C_COMPILER="$clang" -DCMAKE_ASM_COMPILER="$clang" \
++	-DCMAKE_AR="$sdk/bin/llvm-ar" -DCMAKE_RANLIB="$sdk/bin/llvm-ranlib" \
++	-DCMAKE_NM="$sdk/bin/llvm-nm" "-DCMAKE_C_FLAGS=${abi[*]}" \
++	"-DCMAKE_ASM_FLAGS=${abi[*]}" -DCMAKE_C_COMPILER_TARGET=riscv64-linux-musl \
++	-DCMAKE_SYSROOT="$sdk_sysroot" -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
++	-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_BUILD_TYPE=Release \
++	-DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON -DCOMPILER_RT_BUILD_BUILTINS=ON \
++	-DCOMPILER_RT_BUILD_CRT=ON -DCOMPILER_RT_BUILD_SANITIZERS=OFF \
++	-DCOMPILER_RT_BUILD_XRAY=OFF -DCOMPILER_RT_BUILD_LIBFUZZER=OFF \
++	-DCOMPILER_RT_BUILD_PROFILE=OFF -DCOMPILER_RT_BUILD_MEMPROF=OFF \
++	-DCOMPILER_RT_BUILD_ORC=OFF -DCOMPILER_RT_BUILD_CTX_PROFILE=OFF \
++	-DCOMPILER_RT_BUILD_GWP_ASAN=OFF -DCOMPILER_RT_INCLUDE_TESTS=OFF \
++	-DCOMPILER_RT_BUILTINS_HIDE_SYMBOLS=ON \
++	-DCOMPILER_RT_CRT_USE_EH_FRAME_REGISTRY=ON -DLLVM_CONFIG_PATH=NOTFOUND &&
++	ninja -C "$userland/compiler-rt") >"$userland/compiler-rt.log" 2>&1 ||
++	{ tail -n 20 -- "$userland/compiler-rt.log" >&2; die "compiler-rt failed"; }
++rt=$userland/compiler-rt/lib/linux
++(cd -- "$userland/musl-build" && "$musl_git/configure" \
++	--target=riscv64-linux-musl --prefix="$musl" --disable-shared \
++	CC="$clang ${abi[*]}" CFLAGS="-I$sdk/lib/clang/20/include" \
++	AR="$sdk/bin/llvm-ar" RANLIB="$sdk/bin/llvm-ranlib" \
++	LIBCC="$rt/libclang_rt.builtins-riscv64.a" &&
++	make -s -j"$(nproc)" && make -s install) >"$userland/musl.log" 2>&1 ||
++	{ tail -n 20 -- "$userland/musl.log" >&2; die "the musl build failed"; }
++grep -qx 'SUBARCH = -sf' "$userland/musl-build/config.mak" ||
++	die "musl is not configured soft-float"
++cp -- "$rt/libclang_rt.builtins-riscv64.a" "$rt/clang_rt.crtbegin-riscv64.o" \
++	"$rt/clang_rt.crtend-riscv64.o" "$musl/lib/linux/"
++# The driver links -lgcc: as in the SDK's sysroot, that is the builtins.
++for name in libclang_rt.builtins-riscv64.a libgcc.a; do
++	cp -- "$rt/libclang_rt.builtins-riscv64.a" "$musl/lib/$name"
++done
++for name in crtbeginT.o crtbeginS.o; do
++	cp -- "$rt/clang_rt.crtbegin-riscv64.o" "$musl/lib/$name"
++done
++for name in crtend.o crtendS.o; do
++	cp -- "$rt/clang_rt.crtend-riscv64.o" "$musl/lib/$name"
++done
++cp -R -- "$sdk_sysroot/usr/include" "$musl/usr/include"
++
+ # The init: the same warnings as tools/build-guest.sh's, -Os, stripped.
+ # lld's two warnings about the SDK's own crt objects (__global_pointer$ and
+ # __EH_FRAME_LIST__) are the toolchain's and are recorded, not fatal.
+@@ -125,7 +190,6 @@ timestamp=$(LC_ALL=C date -u -d "@$epoch" '+%a %b %e %H:%M:%S UTC %Y')
+ cp -- "$musl/lib/libc.a" "$out/musl-libc.a"
+ 
+ # BusyBox, from a copy of the pinned commit, so the checkout stays clean.
+-rm -rf -- "$userland"
+ mkdir -p -- "$userland/busybox-src"
+ git -C "$bb_git" archive --format=tar HEAD | tar -x -C "$userland/busybox-src"
+ sed '1,/^$/d' -- "$mvp/guest/busybox.config" >"$userland/busybox.config"
+@@ -299,7 +363,9 @@ fi
+ 	printf 'cheri_sdk_clang=%s\n' "$cc_version"
+ 	printf 'cheri_linux_commit=%s\ncheri_busybox_commit=%s\n' \
+ 		"$CHERI_LINUX_COMMIT" "$CHERI_BUSYBOX_COMMIT"
+-	printf 'cheri_musl_libc_sha256=%s\n' "$(sha "$musl/lib/libc.a")"
++	printf 'cheri_musl_commit=%s\ncheri_llvm_commit=%s\n' \
++		"$CHERI_MUSL_COMMIT" "$CHERI_LLVM_COMMIT"
++	printf 'userland=compiler-rt builtins and CRT, musl: soft-float, built here\n'
+ 	printf 'purecap_flags=%s\n' "${purecap[*]}"
+ 	printf 'source_date_epoch=%s\nkbuild_build_timestamp=%s\n' "$epoch" "$timestamp"
+ 	printf 'fragments=tinyconfig b6-kernel.config mvp-kernel.config cheri-kernel.config\n'
+diff --git a/mvp/tools/make-control.py b/mvp/tools/make-control.py
+index 055a09bf..29565a53 100755
+--- a/mvp/tools/make-control.py
++++ b/mvp/tools/make-control.py
+@@ -39,8 +39,9 @@ Rules, each failing closed:
+     (planning/mvp-m5-plan.md): K3_PREFLIGHT (before or after),
+     K3_ENV_CONFIRM (12 lower-case hexadecimal digits), and K3_ENV_ACCEPT_V
+     (variable names, comma-separated); and (beryllium-cheri) CHERI_SDK,
+-    CHERI_LINUX_SRC, and CHERI_BUSYBOX_SRC (paths), and CHERI_LINUX_COMMIT
+-    and CHERI_BUSYBOX_COMMIT (40 hexadecimal digits);
++    CHERI_LINUX_SRC, CHERI_BUSYBOX_SRC, CHERI_MUSL_SRC, and
++    CHERI_LLVM_SRC (paths), and CHERI_LINUX_COMMIT, CHERI_BUSYBOX_COMMIT,
++    CHERI_MUSL_COMMIT, and CHERI_LLVM_COMMIT (40 hexadecimal digits);
+   - the environment may not set MAKEFILES, a variable any MVP makefile or the
+     tool lock assigns, or a variable that changes the compilers, the loader,
+     the shell, or Python; an allowlisted variable in the environment must
+@@ -84,6 +85,10 @@ CALLER = {
+     "CHERI_LINUX_COMMIT": re.compile(r"^[0-9a-f]{40}$"),
+     "CHERI_BUSYBOX_SRC": PATH_FORM,
+     "CHERI_BUSYBOX_COMMIT": re.compile(r"^[0-9a-f]{40}$"),
++    "CHERI_MUSL_SRC": PATH_FORM,
++    "CHERI_MUSL_COMMIT": re.compile(r"^[0-9a-f]{40}$"),
++    "CHERI_LLVM_SRC": PATH_FORM,
++    "CHERI_LLVM_COMMIT": re.compile(r"^[0-9a-f]{40}$"),
+ }
+ # Environment names that change Make, the shell, the compilers, the loader,
+ # Python, or the guest kernel build, beyond the makefiles' own variables.

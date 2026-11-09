@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Every external pin this repository's experiments use: one line per pin,
+#   <name> <kind: commit|tag|archive> <URL> <identifier> <sha256 or ->
+# A `-` SHA-256 marks a pin that is cited but not yet fetched and verified;
+# nothing is run from an unverified pin. For a commit pin, the SHA-256 is
+# that of `git archive --format=tar <commit>` in the fetched repository.
+# Beryllium's pins are commits of the repositories named in README.md.
+#
+# beryllium-m8-target is internal. It postdates console input (2026-11-01),
+# so its mvp-sbi.c, mvp-ring.c, and ring-test.c differ from
+# beryllium-snapshot's; deny-test.c is equal (git blob comparison,
+# 2026-11-03). beryllium-m8-digests, also internal and later, adds
+# mvp/verify/target-digests.txt, the frozen record of beryllium-m8-target.
+#
+# The experiment's route, the responsible human's choice of 2026-11-03
+# ("let's go with codasip-latest"): Codasip's CHERI-RISC-V v0.9.3 stack
+# under Codasip's QEMU branch. It replaces the provisional CHERI Alliance
+# QEMU main (937b306b). Each commit is its branch's head on 2026-11-03:
+#   cheri-alliance-qemu     codasip-latest (QEMU 8.1.0; riscv64cheristd)
+#   cheri-alliance-llvm     codasip-cheri-riscv-20
+#   cheri-alliance-linux    codasip-cheri-riscv-7.1
+#   cheri-alliance-musl     codasip-cheri-riscv
+#   cheri-alliance-opensbi  codasip-cheri-riscv-1.8.1
+#   cheri-alliance-busybox  codasip-cheri-riscv-1_36_1
+#   cheribuild              main (build orchestration only)
+# python-distlib (PyPI, released 2026-10-16) is only for configuring QEMU
+# 8.1, whose configure needs distlib; the host's Python 3.14 and pip 26
+# lack it.
+#
+# The monitor run (experiments/monitor-run.sh, 2026-11-04): the MVP monitor
+# from beryllium-dev-tip, unchanged. That commit was Beryllium's development
+# tip from 2026-11-02 until 2026-11-04 01:13 US Pacific, when the M9 and M8
+# lines were integrated; beryllium-integration is the development tip after
+# that integration (6ff17c67, 2026-11-04 02:48), with M9's measurement log.
+# beryllium-opensbi is upstream OpenSBI tag v1.6, as Beryllium's
+# bringup/k3-b1/Makefile pins it; beryllium-opensbi-fw is the firmware file
+# Beryllium's QEMU runs use, by the SHA-256 its records at beryllium-dev-tip
+# name (mvp/results/20261029-rc/host/rehearsal/*/rehearsal.txt).
+# qemu-upstream is QEMU tag v8.1.0, the base of cheri-alliance-qemu, built
+# only to compare the stall in experiments/monitor-repeat.sh.
+#
+# The proof of concept (experiments/be-cheri-poc.md, 2026-11-05):
+# beryllium-cheri-poc-base is Beryllium's development tip when it began
+# (2026-11-04 18:42 US Pacific), whose mvp/src equals
+# beryllium-integration's. The series experiments/be-cheri-poc/*.patch
+# applies to it.
+beryllium-rc3 commit https://github.com/beryllium-project/beryllium-hypervisor 89ef04e9354c08ebadbaeb88d553c5081a00b84d -
+beryllium-snapshot commit https://github.com/beryllium-project/beryllium-hypervisor 36e2590c36d101a7f30ff3c44372aa99148078cd -
+beryllium-m8-target commit (internal) 6fbcc3d1641a927984ae849623a1c767d5faf550 -
+beryllium-m8-digests commit (internal) 58ee7fd8a1a60d4eb3a12f5e6ef13f5cdfe878a3 -
+beryllium-dev-tip commit (internal) 55047781f7ca63e72ef04d4585d852698377670d a70e961bb3bb9d9daf669cfa7a9f154772e4302e089ebc5390b32a39f171538c
+beryllium-integration commit (internal) 6ff17c6777f932593af99f3e5689a1fb4391a7b6 9fc05036cf83d37f81fee0f3bd027d70c1e0c196cb386645a0db6a6564366082
+beryllium-cheri-poc-base commit (internal) d776f3240e938eb96c6ee789e589a0f6c93a1dbb 370af188cbe15d9cce6925a4b0fa797174dd9e455cbf39f47bd1f7a518efb289
+beryllium-opensbi commit https://github.com/riscv-software-src/opensbi bd613dd92113f683052acfb23d9dc8ba60029e0a fdc4df0e2a79e25e2f2da73f933b67141233e8a7de73f7cf6a30bde9271bf3e7
+beryllium-opensbi-fw archive (internal) fw_dynamic.bin 78f14d30c95181704b6163b4c114f88483cd6c2c89e642812cd3856d01c6a42b
+qemu-upstream commit https://github.com/qemu/qemu 7e5a8bb22368b3555644cb2debd3df24592f3a21 8b0ab2004c6a171729d8b687bad39b39a8f6468c45c4f178abdd0bf2936c420f
+riscv-cheri-spec tag https://github.com/riscv/riscv-cheri v0.9.10.1-ar20261013 -
+cheri-alliance-qemu commit https://github.com/CHERI-Alliance/qemu 008944fe62865260cd67fce32655f22ac87ff8a0 358b6c4e9d5809da7b49597fe95da40b9092e3a0aad055a21a2a18dac648b02c
+cheri-alliance-llvm commit https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d b608887ad3b7a6ea54425466faa535d3f5b682f3309e8dbac4fb7226fd55b5c1
+cheri-alliance-linux commit https://github.com/CHERI-Alliance/linux 3934c32fbb3ba1d7d5dffe117cb2eec5ab5e1c80 a33064a3485c6a740922fa328e21c21049d2d927515267a4738c993ab2fbff83
+cheri-alliance-musl commit https://github.com/CHERI-Alliance/musl 38bf75bb2efd4756d4c5295a98e62de0bd963390 f9d286a0c43be72b87092a4b72d1c55c4a004e987e0505889646f180e1d71e57
+cheri-alliance-opensbi commit https://github.com/CHERI-Alliance/opensbi c0575bc815ab5e2acf0138568e3b7cca80f35cef 0762f07839a8d147af3b331385f597904a121538c17a0048b4396712486b66f3
+cheri-alliance-busybox commit https://github.com/CHERI-Alliance/busybox 33383d196512cb40d8fe4a3bda8793651b5647dc b8a6904fa6616e3251b02c7bb6188a55547ab4e6e4e5503057cd73f90891b400
+cheribuild commit https://github.com/CTSRD-CHERI/cheribuild 846806019874fc6266e836c32f53f98b59c69eac 7e88975c0c296a29bb722d3dab962a4f0218dbe9b2bc731606a32fc2508573ee
+python-distlib archive https://files.pythonhosted.org/packages/c1/2b/238f02a4927fa2e27aa995371d240a468b52e42eae44a678434aff736b38/distlib-0.4.4-py2.py3-none-any.whl 0.4.4 cf09d55b1e85a89576b036aeb71550bfd68320f3f21761ca329eadadad918638

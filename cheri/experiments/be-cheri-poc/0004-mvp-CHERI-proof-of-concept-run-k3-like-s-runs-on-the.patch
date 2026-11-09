@@ -1,0 +1,40 @@
+From 9c111a4d545b5f295cbe75b2fa83a5d05e98aeff Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 5 Nov 2026 01:52:48 -0800
+Subject: [PATCH 4/5] mvp: CHERI proof of concept: run k3-like's runs on the
+ plic machine
+
+The CHERI QEMU (8.1) has no svade or svadu CPU property, so the k3-like
+machine cannot run there, nor rva23 (no rva23s64 model) or no-sstc (no
+svadu). BE_MVP_QEMU_K3_LIKE=plic runs the runs that use k3-like, the
+variants and the probes, on the plic machine (virt, rv64,h=true). With
+it, on the CHERI QEMU and the CHERI Alliance OpenSBI, every variant and
+probe passes for GCC and Clang: the ten monitor variants, the four
+probes, te-poc's reader-write and no-inject, and anchor's four runtime
+negatives and self-report-flip (BE_MVP_QEMU: PASS runs=35, and runs=7
+for GCC's te-poc and anchor negatives).
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+Copilot-Session: a7fa2f95-839f-4f32-a6fc-7415e24f2dbc
+---
+ mvp/tests/run-qemu.sh | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/mvp/tests/run-qemu.sh b/mvp/tests/run-qemu.sh
+index 73296804..0fa108c1 100755
+--- a/mvp/tests/run-qemu.sh
++++ b/mvp/tests/run-qemu.sh
+@@ -114,6 +114,13 @@ terminal_regex='BE_MVP:14 SHUTDOWN|BE_MVP:FAIL|BE_K3_B3: FAIL'
+ # The plan's k3-like machine and CPU (B6's).
+ k3_machine='virt,aia=aplic-imsic,aia-guests=7'
+ k3_cpu='rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true'
++# beryllium-cheri: the CHERI QEMU (8.1) has no svade or svadu property,
++# so k3-like cannot run there; BE_MVP_QEMU_K3_LIKE=plic runs the runs
++# that use k3-like (the variants and the probes) on the plic machine.
++if [ "${BE_MVP_QEMU_K3_LIKE:-}" = plic ]; then
++	k3_machine=virt
++	k3_cpu='rv64,h=true'
++fi
+ # The accepted R5 QEMU CPU profile (tests/r5/run-qemu.sh).
+ minimal='rv64,h=true,f=false,d=false,v=false,zfa=false,sv48=off,sv57=off,sstc=false,smstateen=false,svadu=false,debug=false'
+ # beryllium-cheri: OPENSBI_FW's SBI version, the CHERI Alliance OpenSBI's

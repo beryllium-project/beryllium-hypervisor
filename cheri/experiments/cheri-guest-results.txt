@@ -1,0 +1,622 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Results of experiments/cheri-guest-run.sh: the CHERI test guest as
+# both te-poc domains, and a minimal CHERI Linux guest as both
+# two-guests domains, under Beryllium's MVP monitor, unchanged and
+# with prototype changes, on the CHERI QEMU (v0.9.3, H on).
+# Paths are relative to this repository.
+run: 2026-11-05T07:25:39Z
+pin: beryllium-integration 6ff17c6777f932593af99f3e5689a1fb4391a7b6 9fc05036cf83d37f81fee0f3bd027d70c1e0c196cb386645a0db6a6564366082
+pin: cheri-alliance-qemu 008944fe62865260cd67fce32655f22ac87ff8a0 358b6c4e9d5809da7b49597fe95da40b9092e3a0aad055a21a2a18dac648b02c
+pin: cheri-alliance-llvm 65b9e7ef24a82d4d4e476a24620672113f6f462d b608887ad3b7a6ea54425466faa535d3f5b682f3309e8dbac4fb7226fd55b5c1
+pin: cheri-alliance-opensbi c0575bc815ab5e2acf0138568e3b7cca80f35cef 0762f07839a8d147af3b331385f597904a121538c17a0048b4396712486b66f3
+emulator: QEMU emulator version 8.1.0, cheri-alliance-qemu with the reset change (build/qemu-vs-reset)
+firmware: 73cab0618947f83f8351ba347d9745554872b017fd9dd8c695036bbc9d51bff5 (OpenSBI v1.6 with mseccfg.CRE and menvcfg.CRE set and cause 28 delegated, build/opensbi-v1.6/cre)
+CHERI firmware: e0aeeae9ac48ed52ec95188dd7cb9a415be266f182c70acb63b8a3c91d628c7d (cheri-alliance-opensbi, purecap generic fw_dynamic.bin from the CHERI Alliance SDK; SBI 3.0)
+guest basic: 95db75c8caaba9c6dc13a0c8ddf6492fc7a0a6a7d458c8334a9616d1e9174cb6 build/cheri-guest/basic/Image
+guest fault: e1b70508690565a1186f7687281660e9e293ccb6129fe776bfdff086f98fd72c build/cheri-guest/fault/Image
+guest ddc: b0cf466532d7aff06f38243e61b151240cdbde08b4b3d18ae9a5182ab9894f33 build/cheri-guest/ddc/Image
+patch monitor-cre: 6cdfeba3fb1b067f2aa0a5e0b0af7f7509df81b537605d9148d18ed342b588f0 +11 -6 lines
+patch monitor-fix: d19a21470e7f24c6ce13fee07b5139d4eb6ac36945c43badc05f5f320b5a3b5b +249 -87 lines
+patch monitor-sbi30: 8131f76915d02483b0d9d8fecdfb3571af8f414af23848fad45d6c93f01c618d +10 -0 lines
+
+== unchanged monitor, basic guest, te-poc (gcc; attempt 1; build/cheri-guest-run/unchanged-basic)
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x3268
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x3177
+BE_MVP_G0: CHERIGUEST 01 START guest=0 role=writer set=basic hart=0
+BE_MVP_G1: CHERIGUEST 01 START guest=1 role=reader set=basic hart=0
+BE_MVP_G0: CHERIGUEST 02 CHERI available=0 scause=0x0000000000000002
+BE_MVP_G1: CHERIGUEST 02 CHERI available=0 scause=0x0000000000000002
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0xa05a received=0xa2f0 answered=0xa3df spv=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0xa938 received=0xaabe answered=0xaafc spv=1
+BE_MVP_G0: CHERIGUEST 99 END
+BE_MVP_G1: CHERIGUEST 99 END
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=5 sbi=4 ipi=1 base=0 time=0 dbcn_write=3 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=3 ring_peak=0x78 entered=0x3177 ticks=0x131d604
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=5 sbi=4 ipi=1 base=0 time=0 dbcn_write=3 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=3 ring_peak=0x98 entered=0x3268 ticks=0x131d60b
+BE_MVP:13 RUN_COMPLETE domains=2 records=14 wakes=4 idle_ticks=0x131279f overlap_ticks=0x131a39c ticks=0x132006c
+BE_MVP:14 SHUTDOWN type=0 reason=0
+QEMU messages (unique):
+  qemu-system-riscv64cheristd: warning: RISCV_EXCP_ILLEGAL_INST: Could not read 4 bytes at vaddr 0x0000000080200120
+  predicted [yes]: ^BE_MVP:09 HART_READY .* henvcfg=0x8000000000000000
+  predicted [yes]: ^BE_MVP_G0: CHERIGUEST 02 CHERI available=0 scause=0x0000000000000002
+  predicted [yes]: ^BE_MVP_G1: CHERIGUEST 02 CHERI available=0 scause=0x0000000000000002
+  predicted [yes]: ^BE_MVP:14 SHUTDOWN
+
+== cre monitor, basic guest, te-poc (gcc; attempt 1; build/cheri-guest-run/cre-basic)
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x3646
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x365f
+BE_MVP_G0: CHERIGUEST 01 START guest=0 role=writer set=basic hart=0
+BE_MVP_G1: CHERIGUEST 01 START guest=1 role=reader set=basic hart=0
+BE_MVP_G0: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+BE_MVP_G1: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x90f3 received=0x92db answered=0x93bb spv=1
+BE_MVP_G1: CHERIGUEST 03 REGISTER tag_before=1 tag_after=0 address_kept=1
+BE_MVP_G0: CHERIGUEST 03 REGISTER tag_before=1 tag_after=0 address_kept=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0x9682 received=0x9786 answered=0x97c3 spv=1
+BE_MVP_G0: CHERIGUEST 04 CHANNEL sent tag=1 tag_in_page=1 address=0x0000000080206500 length=64 own_value=0x000000006730c0de
+BE_MVP_G1: CHERIGUEST 04 CHANNEL received=1 tag=1 address=0x0000000080206500 base=0x0000000080206500 length=64 perms=0x00000000000703ff
+BE_MVP_G1: CHERIGUEST 04 CHANNEL use via_capability=0x000000006731c0de own_value=0x000000006731c0de same=1
+BE_MVP_G0: CHERIGUEST 99 END
+BE_MVP_G1: CHERIGUEST 99 END
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=8 sbi=7 ipi=1 base=1 time=0 dbcn_write=5 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=5 ring_peak=0xf8 entered=0x365f ticks=0x131d64c
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=9 sbi=8 ipi=1 base=1 time=0 dbcn_write=6 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=6 ring_peak=0x178 entered=0x3646 ticks=0x131d9a9
+BE_MVP:13 RUN_COMPLETE domains=2 records=19 wakes=4 idle_ticks=0x1312021 overlap_ticks=0x1319fed ticks=0x131f2c4
+BE_MVP:14 SHUTDOWN type=0 reason=0
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP:09 HART_READY .* henvcfg=0x8000000010000000
+  predicted [yes]: ^BE_MVP_G0: CHERIGUEST 02 CHERI available=1 ddc_tag=1
+  predicted [yes]: ^BE_MVP_G0: CHERIGUEST 03 REGISTER tag_before=1 tag_after=0 address_kept=1
+  predicted [yes]: ^BE_MVP_G1: CHERIGUEST 03 REGISTER tag_before=1 tag_after=0 address_kept=1
+  predicted [yes]: ^BE_MVP_G0: CHERIGUEST 04 CHANNEL sent tag=1 tag_in_page=1
+  predicted [yes]: ^BE_MVP_G1: CHERIGUEST 04 CHANNEL received=1 tag=1
+  predicted [yes]: ^BE_MVP_G1: CHERIGUEST 04 CHANNEL use via_capability=0x000000006731c0de own_value=0x000000006731c0de same=1
+  predicted [yes]: ^BE_MVP:14 SHUTDOWN
+
+== cre monitor, fault guest, te-poc (gcc; attempt 1; build/cheri-guest-run/cre-fault)
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x13f60
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x13a1d
+BE_MVP_G0: CHERIGUEST 01 START guest=0 role=writer set=fault hart=0
+BE_MVP_G1: CHERIGUEST 01 START guest=1 role=reader set=fault hart=0
+BE_MVP_G0: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+BE_MVP_G1: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+BE_MVP:FAIL exception
+BE_MVP:DETAIL domain=0 hart=1 cause=0x1c pc=0x802001b8 tval=0x80205db0 htval=0x0 htinst=0x0 spvp=1 vsatp=0x0 exits=3
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP:FAIL
+  predicted absent [yes]: CHERIGUEST 06 BOUNDS
+
+== cre monitor, ddc guest, te-poc (gcc; attempt 2; build/cheri-guest-run/cre-ddc)
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x4026
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x3895
+BE_MVP_G0: CHERIGUEST 01 START guest=0 role=writer set=ddc hart=0
+BE_MVP_G1: CHERIGUEST 01 START guest=1 role=reader set=ddc hart=0
+BE_MVP_G0: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+BE_MVP_G1: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x90da received=0x92a9 answered=0x939c spv=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0x957f received=0x96cc answered=0x972b spv=1
+BE_MVP_G0: CHERIGUEST 07 DDC restrict target_hpa=0x0000000117f00800 word0=0xdd0c0ffee0000001 word1=0xdd0c0ffee0000002
+BE_MVP_G1: CHERIGUEST 07 DDC watch gpa=0x0000000083f00800 before0=0x0000000000000000 before1=0x0000000000000000 word0=0xdd0c0ffee0000001 word1=0xdd0c0ffee0000002 written_by_other_domain=1
+BE_MVP_G1: CHERIGUEST 99 END
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=6 sbi=5 ipi=1 base=0 time=0 dbcn_write=4 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=4 ring_peak=0xe8 entered=0x4026 ticks=0x2630400
+QEMU messages (unique):
+  qemu-system-riscv64cheristd: terminating on signal 15 from pid N (bash)
+  predicted [yes]: ^BE_MVP_G0: CHERIGUEST 07 DDC restrict
+  predicted [yes]: ^BE_MVP_G1: CHERIGUEST 07 DDC watch .* word0=0xdd0c0ffee0000001 word1=0xdd0c0ffee0000002 written_by_other_domain=1
+  predicted absent [yes]: CHERIGUEST 07 DDC monitor_returned
+
+== fix monitor, basic guest, te-poc (gcc; attempt 1; build/cheri-guest-run/fix-basic)
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x359e
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x322a
+BE_MVP_G0: CHERIGUEST 01 START guest=0 role=writer set=basic hart=0
+BE_MVP_G1: CHERIGUEST 01 START guest=1 role=reader set=basic hart=0
+BE_MVP_G0: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+BE_MVP_G1: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x9b2e received=0x9d25 answered=0x9e6f spv=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0xa09a received=0xa219 answered=0xa284 spv=1
+BE_MVP_G0: CHERIGUEST 03 REGISTER tag_before=1 tag_after=1 address_kept=1
+BE_MVP_G1: CHERIGUEST 03 REGISTER tag_before=1 tag_after=1 address_kept=1
+BE_MVP_G0: CHERIGUEST 04 CHANNEL sent tag=1 tag_in_page=1 address=0x0000000080206500 length=64 own_value=0x000000006730c0de
+BE_MVP_G1: CHERIGUEST 04 CHANNEL received=1 tag=1 address=0x0000000080206500 base=0x0000000080206500 length=64 perms=0x00000000000703ff
+BE_MVP_G1: CHERIGUEST 04 CHANNEL use via_capability=0x000000006731c0de own_value=0x000000006731c0de same=1
+BE_MVP_G0: CHERIGUEST 99 END
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=8 sbi=7 ipi=1 base=1 time=0 dbcn_write=5 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=5 ring_peak=0xf8 entered=0x322a ticks=0x131e2d5
+BE_MVP_G1: CHERIGUEST 99 END
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=9 sbi=8 ipi=1 base=1 time=0 dbcn_write=6 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=6 ring_peak=0x150 entered=0x359e ticks=0x131ea1e
+BE_MVP:13 RUN_COMPLETE domains=2 records=19 wakes=5 idle_ticks=0x1312e9c overlap_ticks=0x131ad37 ticks=0x1320019
+BE_MVP:14 SHUTDOWN type=0 reason=0
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP:09 HART_READY .* hedeleg=0x1000b15d .* henvcfg=0x8000000010000000
+  predicted [yes]: ^BE_MVP_G0: CHERIGUEST 03 REGISTER tag_before=1 tag_after=1 address_kept=1
+  predicted [yes]: ^BE_MVP_G1: CHERIGUEST 03 REGISTER tag_before=1 tag_after=1 address_kept=1
+  predicted [yes]: ^BE_MVP_G1: CHERIGUEST 04 CHANNEL received=1 tag=1
+  predicted [yes]: ^BE_MVP:14 SHUTDOWN
+
+== fix monitor, fault guest, te-poc (gcc; attempt 2; build/cheri-guest-run/fix-fault)
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x42c4
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x42c6
+BE_MVP_G0: CHERIGUEST 01 START guest=0 role=writer set=fault hart=0
+BE_MVP_G1: CHERIGUEST 01 START guest=1 role=reader set=fault hart=0
+BE_MVP_G1: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+BE_MVP_G1: CHERIGUEST 06 BOUNDS guest_took_fault=1 scause=0x000000000000001c stval=0x0000000080205db0
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0xa8ee received=0xab4f answered=0xad93 spv=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0xae62 received=0xaf62 answered=0xaf9f spv=1
+BE_MVP_G0: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+BE_MVP_G0: CHERIGUEST 06 BOUNDS guest_took_fault=1 scause=0x000000000000001c stval=0x0000000080205db0
+BE_MVP_G1: CHERIGUEST 99 END
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=6 sbi=5 ipi=1 base=0 time=0 dbcn_write=4 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=4 ring_peak=0x110 entered=0x42c4 ticks=0x131e270
+BE_MVP_G0: CHERIGUEST 99 END
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=6 sbi=5 ipi=1 base=0 time=0 dbcn_write=4 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=4 ring_peak=0x110 entered=0x42c6 ticks=0x131f7ae
+BE_MVP:13 RUN_COMPLETE domains=2 records=16 wakes=4 idle_ticks=0x1313159 overlap_ticks=0x1319faa ticks=0x13216a2
+BE_MVP:14 SHUTDOWN type=0 reason=0
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP_G0: CHERIGUEST 06 BOUNDS guest_took_fault=1 scause=0x000000000000001c
+  predicted [yes]: ^BE_MVP_G1: CHERIGUEST 06 BOUNDS guest_took_fault=1 scause=0x000000000000001c
+  predicted [yes]: ^BE_MVP:14 SHUTDOWN
+
+== fix monitor, ddc guest, te-poc (gcc; attempt 1; build/cheri-guest-run/fix-ddc)
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x45dd
+BE_MVP_G0: CHERIGUEST 01 START guest=0 role=writer set=ddc hart=0
+BE_MVP_G0: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x8be4 received=0x8df4 answered=0x8f95 spv=1
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x964a
+BE_MVP_G1: CHERIGUEST 01 START guest=1 role=reader set=ddc hart=0
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0xb26b received=0xb3ef answered=0xb44d spv=1
+BE_MVP_G1: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+BE_MVP_G0: CHERIGUEST 07 DDC restrict target_hpa=0x0000000117f00800 word0=0xdd0c0ffee0000001 word1=0xdd0c0ffee0000002
+BE_MVP_G0: CHERIGUEST 07 DDC monitor_returned=1 r=0
+BE_MVP_G0: CHERIGUEST 99 END
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=8 sbi=7 ipi=1 base=1 time=0 dbcn_write=5 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=5 ring_peak=0xa0 entered=0x45dd ticks=0x2631103
+BE_MVP_G1: CHERIGUEST 07 DDC watch gpa=0x0000000083f00800 before0=0x0000000000000000 before1=0x0000000000000000 word0=0x0000000000000000 word1=0x0000000000000000 written_by_other_domain=0
+BE_MVP_G1: CHERIGUEST 99 END
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=6 sbi=5 ipi=1 base=0 time=0 dbcn_write=4 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=4 ring_peak=0xc0 entered=0x964a ticks=0x13139b35
+BE_MVP:13 RUN_COMPLETE domains=2 records=17 wakes=10 idle_ticks=0x1312a73d overlap_ticks=0x2627ab9 ticks=0x1313b53d
+BE_MVP:14 SHUTDOWN type=0 reason=0
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP_G0: CHERIGUEST 07 DDC monitor_returned=1
+  predicted [yes]: ^BE_MVP_G1: CHERIGUEST 07 DDC watch .* written_by_other_domain=0
+  predicted [yes]: ^BE_MVP:14 SHUTDOWN
+
+== fix monitor: Beryllium's image check (make references; build/cheri-guest-run/fix-linux/references.log)
+BE_MVP_IMAGE_CHECK: FAIL be_mvp_trap_vector writes unlisted CSR 0x416
+  predicted [yes]: the image check refuses the vector's ddc write
+
+== fix monitor, Beryllium's Linux guests, two-guests (gcc; attempt 2; build/cheri-guest-run/fix-linux/two-guests)
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x386b
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x324e
+BE_MVP_G0: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP_G1: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x1acab received=0x1af0f answered=0x1b00a spv=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0x1b7ad received=0x1b96b answered=0x1ba30 spv=1
+BE_MVP_G1: [    0.059157] Run /init as init process
+BE_MVP_G0: [    0.060479] Run /init as init process
+BE_MVP_G1: MVPINIT 05 RESULT pass
+BE_MVP_G1: MVPINIT 06 POWER_OFF
+BE_MVP_G1: [    1.673378] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=158 sbi=157 ipi=1 base=14 time=0 dbcn_write=98 dbcn_read=44 dbcn_byte=0 srst=1 refused=0 lines=65 ring_peak=0x260 entered=0x386b ticks=0x26aad25
+BE_MVP_G0: MVPINIT 05 RESULT pass
+BE_MVP_G0: MVPINIT 06 POWER_OFF
+BE_MVP_G0: [    1.681140] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=157 sbi=156 ipi=1 base=14 time=0 dbcn_write=98 dbcn_read=43 dbcn_byte=0 srst=1 refused=0 lines=65 ring_peak=0x1c8 entered=0x324e ticks=0x26d91b9
+BE_MVP:13 RUN_COMPLETE domains=2 records=138 wakes=100 idle_ticks=0x26ac2da overlap_ticks=0x26a74ba ticks=0x26da1d5
+BE_MVP:14 SHUTDOWN type=0 reason=0
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP_G0: MVPINIT 05 RESULT pass
+  predicted [yes]: ^BE_MVP_G1: MVPINIT 05 RESULT pass
+  predicted [yes]: ^BE_MVP:14 SHUTDOWN
+
+== fix monitor, Beryllium's Linux guests, te-poc (gcc; attempt 1; build/cheri-guest-run/fix-linux/te-poc)
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x4430
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x4442
+BE_MVP_G0: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP_G1: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x1a946 received=0x1abb5 answered=0x1aca6 spv=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0x1b483 received=0x1b5a9 answered=0x1b649 spv=1
+BE_MVP_G0: [    0.058006] Run /init as init process
+BE_MVP_G1: [    0.058032] Run /init as init process
+BE_MVP_G0: MVPINIT 08 DENIED n=1 kind=load gpa=0x84001000 va=0x3f91fc0000 pc=0x127ec signo=11 code=2 observed=1
+BE_MVP_G1: MVPINIT 08 DENIED n=1 kind=store gpa=0x84000ff8 va=0x3f96aafff8 pc=0x127f8 signo=11 code=2 observed=1 unchanged=1
+BE_MVP_G1: MVPINIT 08 DENIED n=2 kind=load gpa=0x90000000 va=0x3f96aae000 pc=0x127ec signo=11 code=2 observed=1
+BE_MVP_G0: MVPINIT 05 RESULT pass
+BE_MVP_G0: MVPINIT 06 POWER_OFF
+BE_MVP_G1: MVPINIT 05 RESULT pass
+BE_MVP_G1: MVPINIT 06 POWER_OFF
+BE_MVP_G0: [    1.681132] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=164 sbi=162 ipi=1 base=14 time=0 dbcn_write=102 dbcn_read=45 dbcn_byte=0 srst=1 refused=0 lines=67 ring_peak=0x250 entered=0x4430 ticks=0x26d8913
+BE_MVP_G1: [    1.681273] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=167 sbi=164 ipi=1 base=14 time=0 dbcn_write=104 dbcn_read=45 dbcn_byte=0 srst=1 refused=0 lines=68 ring_peak=0x2f8 entered=0x4442 ticks=0x26d9785
+BE_MVP:13 RUN_COMPLETE domains=2 records=146 wakes=92 idle_ticks=0x26a8ec5 overlap_ticks=0x26d44d1 ticks=0x26da909
+BE_MVP:14 SHUTDOWN type=0 reason=0
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP_G0: MVPINIT 08 DENIED n=1 kind=load gpa=0x84001000 .* observed=1
+  predicted [yes]: ^BE_MVP_G1: MVPINIT 08 DENIED n=1 kind=store gpa=0x84000ff8 .* observed=1 unchanged=1
+  predicted [yes]: ^BE_MVP_G1: MVPINIT 08 DENIED n=2 kind=load gpa=0x90000000 .* observed=1
+  predicted [yes]: ^BE_MVP_G0: MVPINIT 05 RESULT pass
+  predicted [yes]: ^BE_MVP_G1: MVPINIT 05 RESULT pass
+  predicted [yes]: ^BE_MVP:14 SHUTDOWN
+
+== fix monitor, Beryllium's Linux guests, anchor (gcc; attempt 1; build/cheri-guest-run/fix-linux/anchor)
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x325d
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x3293
+BE_MVP_G0: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP_G1: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0x1cc9a received=0x1d165 answered=0x1d1a3 spv=1
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x1bcf7 received=0x1bfaf answered=0x1c16f spv=1
+BE_MVP_G0: [    0.057269] Run /init as init process
+BE_MVP_G1: [    0.057563] Run /init as init process
+BE_MVP_G0: MVPINIT 08 DENIED n=1 kind=store gpa=0x84001ff8 va=0x3fa13e6ff8 pc=0x127f8 signo=11 code=2 observed=1 unchanged=1
+BE_MVP_G0: MVPINIT 08 DENIED n=2 kind=load gpa=0x84002000 va=0x3fa13e5000 pc=0x127ec signo=11 code=2 observed=1
+BE_MVP_G0: MVPINIT 08 DENIED n=3 kind=load gpa=0x114000000 va=0x3fa13e4000 pc=0x127ec signo=11 code=2 observed=1
+BE_MVP_G1: MVPINIT 08 DENIED n=1 kind=store gpa=0x84000ff8 va=0x3fb6e5aff8 pc=0x127f8 signo=11 code=2 observed=1 unchanged=1
+BE_MVP_G0: MVPINIT 08 DENIED n=4 kind=load gpa=0x102064000 va=0x3fa13e3000 pc=0x127ec signo=11 code=2 observed=1
+BE_MVP_G1: MVPINIT 09 RESPONSE n=1 digest=cfa178e1a716ea360e7828e40d6d23fb0df925efc7d64693424ddfe8a0770251
+BE_MVP_G0: MVPINIT 09 REQUEST n=1 digest=cfa178e1a716ea360e7828e40d6d23fb0df925efc7d64693424ddfe8a0770251
+BE_MVP_G1: MVPINIT 09 RESPONSE n=2 digest=42c71c0db59009c19a93706addf15eff8c69c4452ed73c3abfea90b761b0aafc
+BE_MVP_G0: MVPINIT 09 REQUEST n=2 digest=42c71c0db59009c19a93706addf15eff8c69c4452ed73c3abfea90b761b0aafc
+BE_MVP_G1: MVPINIT 09 RESPONSE n=3 digest=6c3197da22d3a0797ae901b5b72d996e562b6a96bad43cd0173efa1e4767ea97
+BE_MVP_G0: MVPINIT 09 REQUEST n=3 digest=6c3197da22d3a0797ae901b5b72d996e562b6a96bad43cd0173efa1e4767ea97
+BE_MVP_G1: MVPINIT 09 RESPONSE n=4 digest=7ab0b990238029fe6b09d19e7d2c60090327da81450136ac0a11caf89b34e12b
+BE_MVP_G0: MVPINIT 09 REQUEST n=4 digest=7ab0b990238029fe6b09d19e7d2c60090327da81450136ac0a11caf89b34e12b
+BE_MVP:12 DOMAIN_PAUSED hart=2 domain=1 by=0 exits=125 ticks=0x26fbbc
+BE_MVP_G0: MVPINIT 09 REQUEST n=5 timeout=1
+BE_MVP:12 DOMAIN_TERMINATED hart=2 domain=1 by=0 exits=125 sha256=3d803ea2a1fd16ee84aaae561885b7fb25fbe9242e7efab4df6053133ba61185 ticks=0x1963786
+BE_MVP_G0: MVPINIT 05 RESULT pass
+BE_MVP_G0: MVPINIT 06 POWER_OFF
+BE_MVP_G0: [    2.704984] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=238 sbi=233 ipi=1 base=14 time=0 dbcn_write=137 dbcn_read=67 dbcn_byte=0 srst=1 refused=1 lines=83 ring_peak=0x1c8 entered=0x325d ticks=0x3e49fd6
+BE_MVP:13 RUN_COMPLETE domains=2 records=174 wakes=126 idle_ticks=0x3e08fb3 overlap_ticks=0x19604f3 ticks=0x3e4b501
+BE_MVP:14 SHUTDOWN type=0 reason=0
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP_G1: MVPINIT 09 RESPONSE n=4
+  predicted [yes]: ^BE_MVP:12 DOMAIN_TERMINATED hart=2 domain=1 by=0
+  predicted [yes]: ^BE_MVP_G0: MVPINIT 05 RESULT pass
+  predicted [yes]: ^BE_MVP:14 SHUTDOWN
+
+== CHERI Linux guest: build/cheri-linux/Image 74f3f8fbbe7fef54b5a32b999d7a088804a41a46f5b792d91c59f6459e37b2e3
+device trees: two-guests' pinned DTBs with "zcherihybrid", "zcheripurecap" added to riscv,isa-extensions (cheri_dtbs)
+OpenSBI v1.6's first M-mode register save (_trap_handler_hyp + 4): 0x00000000800004fc
+  dtb g0: 68cf8491748bdcb528a0d46d0d154b02fde1b46e4cfb01ecad3f1e0bc7774c16
+  dtb g1: 570b047047a43f1460f3992f0ea80fafc497ea9555540c4b0cd767d08244c706
+
+== unchanged monitor with monitor-sbi30.patch, CHERI Linux guest, two-guests, CHERI firmware (gcc; attempt 1; build/cheri-guest-run/cheri-linux-unchanged)
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x3ae2
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x486f
+BE_MVP:FAIL guest-page-fault
+BE_MVP:DETAIL domain=0 hart=1 cause=0x14 pc=0x0 tval=0x0 htval=0x0 htinst=0x0 spvp=1 vsatp=0x0 exits=1
+QEMU messages (unique):
+  qemu-system-riscv64cheristd: warning: RISCV_EXCP_ILLEGAL_INST: Could not read 4 bytes at vaddr 0x00000000802000dc
+  predicted [yes]: ^BE_MVP:09 HART_READY .* henvcfg=0x8000000000000000
+  predicted [yes]: ^BE_MVP:FAIL guest-page-fault
+  predicted [yes]: ^BE_MVP:DETAIL domain=[01] hart=[12] cause=0x14 pc=0x0 tval=
+  predicted absent [yes]: ^BE_MVP_G[01]:
+  dtb g0: 68cf8491748bdcb528a0d46d0d154b02fde1b46e4cfb01ecad3f1e0bc7774c16
+  dtb g1: 570b047047a43f1460f3992f0ea80fafc497ea9555540c4b0cd767d08244c706
+
+== cre monitor with monitor-sbi30.patch, CHERI Linux guest, two-guests, CHERI firmware (gcc; attempt 1; build/cheri-guest-run/cheri-linux-cre)
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x5dae
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x5708
+BE_MVP:FAIL exception
+BE_MVP:DETAIL domain=1 hart=2 cause=0x1c pc=0x803d3a18 tval=0x83e00004 htval=0x0 htinst=0x0 spvp=1 vsatp=0x0 exits=1
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP:09 HART_READY .* hedeleg=0xb15d .* henvcfg=0x8000000010000000
+  predicted [yes]: ^BE_MVP:10 DOMAIN_ENTERED hart=1 .* a1=0x83e00000 ticks=
+  predicted [yes]: ^BE_MVP:FAIL exception
+  predicted [yes]: ^BE_MVP:DETAIL domain=[01] hart=[12] cause=0x1c pc=0x[0-9a-f]+ tval=0x83e00004 .* exits=1$
+  predicted absent [yes]: ^BE_MVP_G[01]:
+  dtb g0: 68cf8491748bdcb528a0d46d0d154b02fde1b46e4cfb01ecad3f1e0bc7774c16
+  dtb g1: 570b047047a43f1460f3992f0ea80fafc497ea9555540c4b0cd767d08244c706
+
+== fix monitor with monitor-sbi30.patch, CHERI Linux guest, two-guests, CHERI firmware (gcc; attempt 1; build/cheri-guest-run/cheri-linux-fix)
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x4ad6
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x557c
+BE_MVP_G0: [    0.000000] CHERI: Root capability: 0xffffffff800001ec[V:1111:C:rwxCalse:1:.:0x0000000000000000-0xffffffffffffffff] (1:01e3f00000000000:ffffffff800001ec)
+BE_MVP_G1: [    0.000000] CHERI: Root capability: 0xffffffff800001ec[V:1111:C:rwxCalse:1:.:0x0000000000000000-0xffffffffffffffff] (1:01e3f00000000000:ffffffff800001ec)
+BE_MVP_G0: [    0.000000] Linux version 7.1.0+ (beryllium-cheri@localhost) (clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d), LLD 20.0.0 (https://github.com/CHERI-Al
+BE_MVP_G1: [    0.000000] Linux version 7.1.0+ (beryllium-cheri@localhost) (clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d), LLD 20.0.0 (https://github.com/CHERI-Al
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x28f38 received=0x2a574 answered=0x2a60e spv=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0x29c21 received=0x29dd0 answered=0x29f3c spv=1
+BE_MVP_G1: [    0.001596] CHERI: riscv cheri support
+BE_MVP_G1: [    0.002227] CHERI: Permission bits not supported by hardware: 0x1c
+BE_MVP_G0: [    0.001649] CHERI: riscv cheri support
+BE_MVP_G0: [    0.002348] CHERI: Permission bits not supported by hardware: 0x1c
+BE_MVP_G1: [    0.062991] Run /init as init process
+BE_MVP_G0: [    0.063520] Run /init as init process
+BE_MVP_G1: CHERILINUX 01 START guest=1 pid=1
+BE_MVP_G1: CHERILINUX 02 CAP stack tag=1 length=48 perms=0x4003f
+BE_MVP_G1: CHERILINUX 02 CAP argv tag=1 length=48 perms=0x4003f
+BE_MVP_G1: CHERILINUX 02 CAP string tag=1 length=11 perms=0x4001d
+BE_MVP_G0: CHERILINUX 01 START guest=0 pid=1
+BE_MVP_G0: CHERILINUX 02 CAP stack tag=1 length=48 perms=0x4003f
+BE_MVP_G0: CHERILINUX 02 CAP argv tag=1 length=48 perms=0x4003f
+BE_MVP_G0: CHERILINUX 02 CAP string tag=1 length=11 perms=0x4001d
+BE_MVP_G1: CHERILINUX 03 CHILD signaled=1 signal=11 exited=0
+BE_MVP_G1: CHERILINUX 04 POWER_OFF
+BE_MVP_G1: [    0.088358] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=513 sbi=512 ipi=1 base=14 time=0 dbcn_write=489 dbcn_read=8 dbcn_byte=0 srst=1 refused=0 lines=157 ring_peak=0x400 entered=0x557c ticks=0x29a7ec
+BE_MVP_G0: CHERILINUX 03 CHILD signaled=1 signal=11 exited=0
+BE_MVP_G0: CHERILINUX 04 POWER_OFF
+BE_MVP_G0: [    0.088656] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=514 sbi=513 ipi=1 base=14 time=0 dbcn_write=489 dbcn_read=9 dbcn_byte=0 srst=1 refused=0 lines=157 ring_peak=0x408 entered=0x4ad6 ticks=0x2ab291
+BE_MVP:13 RUN_COMPLETE domains=2 records=322 wakes=166 idle_ticks=0x21dd56 overlap_ticks=0x295270 ticks=0x2ad049
+BE_MVP:14 SHUTDOWN type=0 reason=0
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP:09 HART_READY .* hedeleg=0x1000b15d .* henvcfg=0x8000000010000000
+  predicted [yes]: ^BE_MVP:11 IPI_PROBE hart=1 domain=0 .* spv=1$
+  predicted [yes]: ^BE_MVP:11 IPI_PROBE hart=2 domain=1 .* spv=1$
+  predicted [yes]: ^BE_MVP_G0: \[ *[0-9.]+\] Linux version 7\.1\.
+  predicted [yes]: ^BE_MVP_G0: \[ *[0-9.]+\] CHERI: riscv cheri support
+  predicted [yes]: ^BE_MVP_G1: \[ *[0-9.]+\] CHERI: riscv cheri support
+  predicted [yes]: ^BE_MVP_G0: \[ *[0-9.]+\] Run /init as init process
+  predicted [yes]: ^BE_MVP_G0: CHERILINUX 01 START guest=0 pid=1
+  predicted [yes]: ^BE_MVP_G1: CHERILINUX 01 START guest=1 pid=1
+  predicted [yes]: ^BE_MVP_G0: CHERILINUX 02 CAP stack tag=1 length=48 perms=
+  predicted [yes]: ^BE_MVP_G1: CHERILINUX 02 CAP stack tag=1 length=48 perms=
+  predicted [yes]: ^BE_MVP_G0: CHERILINUX 02 CAP argv tag=1 length=
+  predicted [yes]: ^BE_MVP_G0: CHERILINUX 03 CHILD signaled=1 signal=11 exited=0
+  predicted [yes]: ^BE_MVP_G1: CHERILINUX 03 CHILD signaled=1 signal=11 exited=0
+  predicted [yes]: ^BE_MVP_G0: \[ *[0-9.]+\] reboot: Power down
+  predicted [yes]: ^BE_MVP_G1: \[ *[0-9.]+\] reboot: Power down
+  predicted [yes]: ^BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=
+  predicted [yes]: ^BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=
+  predicted [yes]: ^BE_MVP:14 SHUTDOWN
+  dtb g0: 68cf8491748bdcb528a0d46d0d154b02fde1b46e4cfb01ecad3f1e0bc7774c16
+  dtb g1: 570b047047a43f1460f3992f0ea80fafc497ea9555540c4b0cd767d08244c706
+
+== fix monitor, CHERI Linux guest, two-guests, OpenSBI v1.6 CRE firmware, run 1 (gcc; attempt 2; build/cheri-guest-run/cheri-linux-fix-opensbi-v1.6-1)
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x3bd5
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x49c6
+BE_MVP_G0: [    0.000000] CHERI: Root capability: 0xffffffff800001ec[V:1111:C:rwxCalse:1:.:0x0000000000000000-0xffffffffffffffff] (1:01e3f00000000000:ffffffff800001ec)
+BE_MVP_G1: [    0.000000] CHERI: Root capability: 0xffffffff800001ec[V:1111:C:rwxCalse:1:.:0x0000000000000000-0xffffffffffffffff] (1:01e3f00000000000:ffffffff800001ec)
+BE_MVP_G0: [    0.000000] Linux version 7.1.0+ (beryllium-cheri@localhost) (clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d), LLD 20.0.0 (https://github.com/CHERI-Al
+BE_MVP_G1: [    0.000000] Linux version 7.1.0+ (beryllium-cheri@localhost) (clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d), LLD 20.0.0 (https://github.com/CHERI-Al
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x26d7e received=0x27096 answered=0x271e6 spv=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0x2781d received=0x2799f answered=0x279db spv=1
+BE_MVP_G1: [    0.001601] CHERI: riscv cheri support
+BE_MVP_G0: [    0.001674] CHERI: riscv cheri support
+BE_MVP_G1: [    0.002218] CHERI: Permission bits not supported by hardware: 0x1c
+BE_MVP_G0: [    0.002296] CHERI: Permission bits not supported by hardware: 0x1c
+BE_MVP_G1: [    0.065108] Run /init as init process
+BE_MVP_G0: [    0.065061] Run /init as init process
+BE_MVP_G1: CHERILINUX 01 START guest=1 pid=1
+BE_MVP_G0: CHERILINUX 01 START guest=0 pid=1
+BE_MVP_G1: CHERILINUX 02 CAP stack tag=1 length=48 perms=0x4003f
+BE_MVP_G0: CHERILINUX 02 CAP stack tag=1 length=48 perms=0x4003f
+BE_MVP_G1: CHERILINUX 02 CAP argv tag=1 length=48 perms=0x4003f
+BE_MVP_G0: CHERILINUX 02 CAP argv tag=1 length=48 perms=0x4003f
+BE_MVP_G1: CHERILINUX 02 CAP string tag=1 length=11 perms=0x4001d
+BE_MVP_G0: CHERILINUX 02 CAP string tag=1 length=11 perms=0x4001d
+BE_MVP_G1: CHERILINUX 03 CHILD signaled=1 signal=11 exited=0
+BE_MVP_G0: CHERILINUX 03 CHILD signaled=1 signal=11 exited=0
+BE_MVP_G1: CHERILINUX 04 POWER_OFF
+BE_MVP_G0: CHERILINUX 04 POWER_OFF
+BE_MVP_G1: [    0.089057] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=514 sbi=513 ipi=1 base=14 time=0 dbcn_write=489 dbcn_read=9 dbcn_byte=0 srst=1 refused=0 lines=157 ring_peak=0x400 entered=0x49c6 ticks=0x29f912
+BE_MVP_G0: [    0.089186] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=514 sbi=513 ipi=1 base=14 time=0 dbcn_write=489 dbcn_read=9 dbcn_byte=0 srst=1 refused=0 lines=157 ring_peak=0x2f0 entered=0x3bd5 ticks=0x2a12ee
+BE_MVP:13 RUN_COMPLETE domains=2 records=322 wakes=121 idle_ticks=0x23cba6 overlap_ticks=0x29af4c ticks=0x2a1d84
+BE_MVP:14 SHUTDOWN type=0 reason=0
+no CSR reads
+QEMU messages (unique):
+  outcome hart 1: domain shut down
+  outcome hart 2: domain shut down
+  predicted [yes]: ^(BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 |csr p1\.2 mcause 0x000000000000001c$)
+  predicted [yes]: ^(BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 |csr p1\.2 mepc 0x00000000800004fc$)
+  predicted [yes]: ^(BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 |csr p1\.3 mcause 0x000000000000001c$)
+  predicted [yes]: ^(BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 |csr p1\.3 mepc 0x00000000800004fc$)
+  dtb g0: 68cf8491748bdcb528a0d46d0d154b02fde1b46e4cfb01ecad3f1e0bc7774c16
+  dtb g1: 570b047047a43f1460f3992f0ea80fafc497ea9555540c4b0cd767d08244c706
+
+== fix monitor, CHERI Linux guest, two-guests, OpenSBI v1.6 CRE firmware, run 2 (gcc; attempt 1; build/cheri-guest-run/cheri-linux-fix-opensbi-v1.6-2)
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x51cd
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x51d9
+BE_MVP_G0: [    0.000000] CHERI: Root capability: 0xffffffff800001ec[V:1111:C:rwxCalse:1:.:0x0000000000000000-0xffffffffffffffff] (1:01e3f00000000000:ffffffff800001ec)
+BE_MVP_G1: [    0.000000] CHERI: Root capability: 0xffffffff800001ec[V:1111:C:rwxCalse:1:.:0x0000000000000000-0xffffffffffffffff] (1:01e3f00000000000:ffffffff800001ec)
+BE_MVP_G0: [    0.000000] Linux version 7.1.0+ (beryllium-cheri@localhost) (clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d), LLD 20.0.0 (https://github.com/CHERI-Al
+BE_MVP_G1: [    0.000000] Linux version 7.1.0+ (beryllium-cheri@localhost) (clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d), LLD 20.0.0 (https://github.com/CHERI-Al
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0x2b3ab received=0x2c282 answered=0x2c794 spv=1
+BE_MVP_G1: [    0.001553] CHERI: riscv cheri support
+BE_MVP_G1: [    0.002162] CHERI: Permission bits not supported by hardware: 0x1c
+BE_MVP_G1: [    0.058927] Run /init as init process
+BE_MVP_G1: CHERILINUX 01 START guest=1 pid=1
+BE_MVP_G1: CHERILINUX 02 CAP stack tag=1 length=48 perms=0x4003f
+BE_MVP_G1: CHERILINUX 02 CAP argv tag=1 length=48 perms=0x4003f
+BE_MVP_G1: CHERILINUX 02 CAP string tag=1 length=11 perms=0x4001d
+BE_MVP_G1: CHERILINUX 03 CHILD signaled=1 signal=11 exited=0
+BE_MVP_G1: CHERILINUX 04 POWER_OFF
+BE_MVP_G1: [    0.083096] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=513 sbi=512 ipi=1 base=14 time=0 dbcn_write=489 dbcn_read=8 dbcn_byte=0 srst=1 refused=0 lines=157 ring_peak=0x300 entered=0x51cd ticks=0x281e36
+csr p1.2 pc 0x00000000800004f8
+csr p1.2 scause 0x000000000000000a
+csr p1.2 sepc 0xffffffff8000bdb0
+csr p1.2 stval 0x0000000000000000
+csr p1.2 stvec 0x0000000102002a9c
+csr p1.2 mcause 0x000000000000001c
+csr p1.2 mepc 0x00000000800004fc
+csr p1.3 pc 0x0000000102002a98
+csr p1.3 scause 0x000000000000000a
+csr p1.3 sepc 0xffffffff8000bdac
+csr p1.3 stval 0x0000000000000000
+csr p1.3 stvec 0x0000000102002a9c
+csr p1.3 mcause 0x0000000000000009
+csr p1.3 mepc 0x00000001020025a0
+QEMU messages (unique):
+  qemu-system-riscv64cheristd: terminating on signal 15 from pid N (bash)
+  outcome hart 1: stopped at OpenSBI v1.6's first M-mode register save
+  outcome hart 2: domain shut down
+  predicted [yes]: ^(BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 |csr p1\.2 mcause 0x000000000000001c$)
+  predicted [yes]: ^(BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 |csr p1\.2 mepc 0x00000000800004fc$)
+  predicted [yes]: ^(BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 |csr p1\.3 mcause 0x000000000000001c$)
+  predicted [yes]: ^(BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 |csr p1\.3 mepc 0x00000000800004fc$)
+  dtb g0: 68cf8491748bdcb528a0d46d0d154b02fde1b46e4cfb01ecad3f1e0bc7774c16
+  dtb g1: 570b047047a43f1460f3992f0ea80fafc497ea9555540c4b0cd767d08244c706
+
+== fix monitor, CHERI Linux guest, two-guests, OpenSBI v1.6 CRE firmware, run 3 (gcc; attempt 1; build/cheri-guest-run/cheri-linux-fix-opensbi-v1.6-3)
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x3eb8
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x3814
+BE_MVP_G0: [    0.000000] CHERI: Root capability: 0xffffffff800001ec[V:1111:C:rwxCalse:1:.:0x0000000000000000-0xffffffffffffffff] (1:01e3f00000000000:ffffffff800001ec)
+BE_MVP_G1: [    0.000000] CHERI: Root capability: 0xffffffff800001ec[V:1111:C:rwxCalse:1:.:0x0000000000000000-0xffffffffffffffff] (1:01e3f00000000000:ffffffff800001ec)
+BE_MVP_G0: [    0.000000] Linux version 7.1.0+ (beryllium-cheri@localhost) (clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d), LLD 20.0.0 (https://github.com/CHERI-Al
+BE_MVP_G1: [    0.000000] Linux version 7.1.0+ (beryllium-cheri@localhost) (clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d), LLD 20.0.0 (https://github.com/CHERI-Al
+csr p1.2 pc 0x00000000800004f8
+csr p1.2 scause 0x000000000000000a
+csr p1.2 sepc 0xffffffff8000bdb0
+csr p1.2 stval 0x0000000000000000
+csr p1.2 stvec 0x0000000102002a9c
+csr p1.2 mcause 0x000000000000001c
+csr p1.2 mepc 0x00000000800004fc
+csr p1.3 pc 0x00000000800004f8
+csr p1.3 scause 0x000000000000000a
+csr p1.3 sepc 0xffffffff8000bdb0
+csr p1.3 stval 0x0000000000000000
+csr p1.3 stvec 0x0000000102002a9c
+csr p1.3 mcause 0x000000000000001c
+csr p1.3 mepc 0x00000000800004fc
+QEMU messages (unique):
+  qemu-system-riscv64cheristd: terminating on signal 15 from pid N (bash)
+  outcome hart 1: stopped at OpenSBI v1.6's first M-mode register save
+  outcome hart 2: stopped at OpenSBI v1.6's first M-mode register save
+  predicted [yes]: ^(BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 |csr p1\.2 mcause 0x000000000000001c$)
+  predicted [yes]: ^(BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 |csr p1\.2 mepc 0x00000000800004fc$)
+  predicted [yes]: ^(BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 |csr p1\.3 mcause 0x000000000000001c$)
+  predicted [yes]: ^(BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 |csr p1\.3 mepc 0x00000000800004fc$)
+
+== fix monitor with monitor-sbi30.patch, CHERI firmware, Beryllium's Linux guests, two-guests (gcc; attempt 1; build/cheri-guest-run/fix-sbi30-linux/two-guests)
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x3c88
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x4215
+BE_MVP_G0: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP_G1: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x1c21e received=0x1c54c answered=0x1c635 spv=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0x1d896 received=0x1da55 answered=0x1da95 spv=1
+BE_MVP_G0: [    0.056706] Run /init as init process
+BE_MVP_G1: [    0.056878] Run /init as init process
+BE_MVP_G0: MVPINIT 05 RESULT pass
+BE_MVP_G0: MVPINIT 06 POWER_OFF
+BE_MVP_G0: [    1.677378] reboot: Power down
+BE_MVP_G1: MVPINIT 05 RESULT pass
+BE_MVP_G1: MVPINIT 06 POWER_OFF
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=157 sbi=156 ipi=1 base=14 time=0 dbcn_write=98 dbcn_read=43 dbcn_byte=0 srst=1 refused=0 lines=65 ring_peak=0x250 entered=0x3c88 ticks=0x26c2b5e
+BE_MVP_G1: [    1.677455] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=157 sbi=156 ipi=1 base=14 time=0 dbcn_write=98 dbcn_read=43 dbcn_byte=0 srst=1 refused=0 lines=65 ring_peak=0x2f8 entered=0x4215 ticks=0x26c4433
+BE_MVP:13 RUN_COMPLETE domains=2 records=138 wakes=86 idle_ticks=0x268bce4 overlap_ticks=0x26be949 ticks=0x26c534d
+BE_MVP:14 SHUTDOWN type=0 reason=0
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP_G0: MVPINIT 05 RESULT pass
+  predicted [yes]: ^BE_MVP_G1: MVPINIT 05 RESULT pass
+  predicted [yes]: ^BE_MVP:14 SHUTDOWN
+
+== fix monitor with monitor-sbi30.patch, CHERI firmware, Beryllium's Linux guests, te-poc (gcc; attempt 1; build/cheri-guest-run/fix-sbi30-linux/te-poc)
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x3d11
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x47ae
+BE_MVP_G0: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP_G1: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0x1ba42 received=0x1be09 answered=0x1bf63 spv=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0x1c85e received=0x1cca6 answered=0x1cd71 spv=1
+BE_MVP_G0: [    0.057358] Run /init as init process
+BE_MVP_G1: [    0.057500] Run /init as init process
+BE_MVP_G0: MVPINIT 08 DENIED n=1 kind=load gpa=0x84001000 va=0x3f8a31d000 pc=0x127ec signo=11 code=2 observed=1
+BE_MVP_G1: MVPINIT 08 DENIED n=1 kind=store gpa=0x84000ff8 va=0x3f93df1ff8 pc=0x127f8 signo=11 code=2 observed=1 unchanged=1
+BE_MVP_G1: MVPINIT 08 DENIED n=2 kind=load gpa=0x90000000 va=0x3f93df0000 pc=0x127ec signo=11 code=2 observed=1
+BE_MVP_G0: MVPINIT 05 RESULT pass
+BE_MVP_G0: MVPINIT 06 POWER_OFF
+BE_MVP_G1: MVPINIT 05 RESULT pass
+BE_MVP_G1: MVPINIT 06 POWER_OFF
+BE_MVP_G0: [    1.681362] reboot: Power down
+BE_MVP_G1: [    1.681390] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=164 sbi=162 ipi=1 base=14 time=0 dbcn_write=102 dbcn_read=45 dbcn_byte=0 srst=1 refused=0 lines=67 ring_peak=0x250 entered=0x3d11 ticks=0x26dcc93
+BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=167 sbi=164 ipi=1 base=14 time=0 dbcn_write=104 dbcn_read=45 dbcn_byte=0 srst=1 refused=0 lines=68 ring_peak=0x2b0 entered=0x47ae ticks=0x26dcb03
+BE_MVP:13 RUN_COMPLETE domains=2 records=146 wakes=78 idle_ticks=0x2696469 overlap_ticks=0x26d8355 ticks=0x26debbd
+BE_MVP:14 SHUTDOWN type=0 reason=0
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP_G0: MVPINIT 08 DENIED n=1 kind=load gpa=0x84001000 .* observed=1
+  predicted [yes]: ^BE_MVP_G1: MVPINIT 08 DENIED n=1 kind=store gpa=0x84000ff8 .* observed=1 unchanged=1
+  predicted [yes]: ^BE_MVP_G1: MVPINIT 08 DENIED n=2 kind=load gpa=0x90000000 .* observed=1
+  predicted [yes]: ^BE_MVP_G0: MVPINIT 05 RESULT pass
+  predicted [yes]: ^BE_MVP_G1: MVPINIT 05 RESULT pass
+  predicted [yes]: ^BE_MVP:14 SHUTDOWN
+
+== fix monitor with monitor-sbi30.patch, CHERI firmware, Beryllium's Linux guests, anchor (gcc; attempt 1; build/cheri-guest-run/fix-sbi30-linux/anchor)
+BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0x1000b15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x1a501
+BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x187a4
+BE_MVP_G0: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP_G1: [    0.000000] Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=0xc99cd received=0xcbd9d answered=0xcc81a spv=1
+BE_MVP:11 IPI_PROBE hart=2 domain=1 sent=0xd0d9a received=0xd2362 answered=0xd2c77 spv=1
+BE_MVP_G1: [    0.061815] Run /init as init process
+BE_MVP_G0: [    0.062439] Run /init as init process
+BE_MVP_G1: MVPINIT 08 DENIED n=1 kind=store gpa=0x84000ff8 va=0x3fa5d39ff8 pc=0x127f8 signo=11 code=2 observed=1 unchanged=1
+BE_MVP_G0: MVPINIT 08 DENIED n=1 kind=store gpa=0x84001ff8 va=0x3f97397ff8 pc=0x127f8 signo=11 code=2 observed=1 unchanged=1
+BE_MVP_G0: MVPINIT 08 DENIED n=2 kind=load gpa=0x84002000 va=0x3f97396000 pc=0x127ec signo=11 code=2 observed=1
+BE_MVP_G0: MVPINIT 08 DENIED n=3 kind=load gpa=0x114000000 va=0x3f97395000 pc=0x127ec signo=11 code=2 observed=1
+BE_MVP_G0: MVPINIT 08 DENIED n=4 kind=load gpa=0x102064000 va=0x3f97394000 pc=0x127ec signo=11 code=2 observed=1
+BE_MVP_G1: MVPINIT 09 RESPONSE n=1 digest=cfa178e1a716ea360e7828e40d6d23fb0df925efc7d64693424ddfe8a0770251
+BE_MVP_G0: MVPINIT 09 REQUEST n=1 digest=cfa178e1a716ea360e7828e40d6d23fb0df925efc7d64693424ddfe8a0770251
+BE_MVP_G1: MVPINIT 09 RESPONSE n=2 digest=42c71c0db59009c19a93706addf15eff8c69c4452ed73c3abfea90b761b0aafc
+BE_MVP_G0: MVPINIT 09 REQUEST n=2 digest=42c71c0db59009c19a93706addf15eff8c69c4452ed73c3abfea90b761b0aafc
+BE_MVP_G1: MVPINIT 09 RESPONSE n=3 digest=6c3197da22d3a0797ae901b5b72d996e562b6a96bad43cd0173efa1e4767ea97
+BE_MVP_G0: MVPINIT 09 REQUEST n=3 digest=6c3197da22d3a0797ae901b5b72d996e562b6a96bad43cd0173efa1e4767ea97
+BE_MVP_G1: MVPINIT 09 RESPONSE n=4 digest=7ab0b990238029fe6b09d19e7d2c60090327da81450136ac0a11caf89b34e12b
+BE_MVP_G0: MVPINIT 09 REQUEST n=4 digest=7ab0b990238029fe6b09d19e7d2c60090327da81450136ac0a11caf89b34e12b
+BE_MVP:12 DOMAIN_PAUSED hart=2 domain=1 by=0 exits=125 ticks=0x4d14b0
+BE_MVP_G0: MVPINIT 09 REQUEST n=5 timeout=1
+BE_MVP:12 DOMAIN_TERMINATED hart=2 domain=1 by=0 exits=125 sha256=3d803ea2a1fd16ee84aaae561885b7fb25fbe9242e7efab4df6053133ba61185 ticks=0x1bc3274
+BE_MVP_G0: MVPINIT 05 RESULT pass
+BE_MVP_G0: MVPINIT 06 POWER_OFF
+BE_MVP_G0: [    2.707689] reboot: Power down
+BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=238 sbi=233 ipi=1 base=14 time=0 dbcn_write=137 dbcn_read=67 dbcn_byte=0 srst=1 refused=1 lines=83 ring_peak=0x250 entered=0x187a4 ticks=0x40ac168
+BE_MVP:13 RUN_COMPLETE domains=2 records=174 wakes=115 idle_ticks=0x3fa9569 overlap_ticks=0x1ba8d73 ticks=0x40adb3c
+BE_MVP:14 SHUTDOWN type=0 reason=0
+QEMU messages (unique):
+  predicted [yes]: ^BE_MVP_G1: MVPINIT 09 RESPONSE n=4
+  predicted [yes]: ^BE_MVP:12 DOMAIN_TERMINATED hart=2 domain=1 by=0
+  predicted [yes]: ^BE_MVP_G0: MVPINIT 05 RESULT pass
+  predicted [yes]: ^BE_MVP:14 SHUTDOWN
+
+== code size (bytes, from the te-poc GCC monitor ELF; every instruction is 4 bytes)
+unchanged be_mvp_arch_arm_budget 24
+unchanged be_mvp_arch_arm_controls 364
+unchanged be_mvp_arch_resume 404
+unchanged be_mvp_trap_vector 396
+fix be_mvp_arch_arm_budget 44
+fix be_mvp_arch_arm_controls 436
+fix be_mvp_arch_resume 480
+fix be_mvp_trap_vector 672
+
+BE_CHERI_GUEST_RUN: every prediction holds

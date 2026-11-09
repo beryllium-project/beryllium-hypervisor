@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# One diagnostic run, 2026-11-04 evening, for experiments/cheri-guest.md
+# ("Firmware"): the step-1 monitor (monitor-cre.patch) with the fault test
+# guest of that time, booted with the CRE firmware as it then was. That
+# firmware set mseccfg.CRE and menvcfg.CRE but did not yet delegate cause 28
+# (the CHERI fault) to S-mode. QEMU's interrupt log was kept for about 25
+# seconds, summarized below, then deleted (1.1 GB). The inputs were local
+# builds; their digests follow. Not reproduced by a script.
+
+inputs:
+  boot image  1d421cd31cd629ec397ac15a53da87ff760ede2f9bf8a009950253b74806bae9  (te-poc, GCC, monitor-cre.patch, the fault guest)
+  firmware    65440e86771f548013636576b9f4de53cfd4e32041991feb9b111e947f4d90c0  (OpenSBI v1.6 with mseccfg.CRE and menvcfg.CRE, no cause-28 delegation)
+  emulator    dcb3b9355deb6971ed4f02c11a7687372f148fb70c01544d22a4418574cc1d83  (build/qemu-vs-reset, the pinned QEMU 8.1 with the reset fix)
+command:
+  qemu-system-riscv64cheristd -machine virt -cpu rv64,h=true -smp 8 -m 8G
+    -bios FIRMWARE -kernel BOOT_IMAGE -display none -serial file:console.log
+    -monitor none -no-reboot -d int -D int.log
+  (attempt 2; attempt 1's firmware started on a domain hart and was refused)
+
+console (monitor and guest lines; nothing followed):
+  BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+  BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000010000000 vstimecmp=0xffffffffffffffff
+  BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x5da2
+  BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x5d8d
+  BE_MVP_G0: CHERIGUEST 01 START guest=0 role=writer set=fault hart=0
+  BE_MVP_G1: CHERIGUEST 01 START guest=1 role=reader set=fault hart=0
+  BE_MVP_G0: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+  BE_MVP_G1: CHERIGUEST 02 CHERI available=1 ddc_tag=1 ddc_base=0x0000000000000000 ddc_length=0xffffffffffffffff ddc_perms=0x00000000000703ff pcc_tag=1
+
+int.log, synchronous traps with cause 0x1c (the CHERI fault), counted by hart and epc:
+  2567402 hart 1 epc 0x0000000102002a48
+  1745570 hart 2 epc 0x0000000102002a48
+        1 hart 2 epc 0x00000000802001b8
+        1 hart 1 epc 0x00000000802001b8
+  a sample line:
+  riscv_cpu_do_interrupt: hart:2, async:0, cause:000000000000001c, epc:0x0000000102002a48, tval:0x0000000102055ff0, desc=cheri_fault
+
+the monitor at those addresses (riscv64-linux-gnu-objdump of the step-1 be-mvp.elf):
+  102002a40 <be_mvp_trap_vector>: csrrw sp,sscratch,sp
+  102002a44:                      addi  sp,sp,-16
+  102002a48:                      sd    t0,0(sp)
+
+reading:
+  Each domain hart took one CHERI fault from its guest (epc 0x802001b8,
+  the test's out-of-bounds load, made in Capability Pointer Mode). After
+  that, both harts faulted at the vector's first store, over and over, at
+  their own trusted-stack top less 16 (tval 0x102055ff0 on hart 2). That
+  is consistent with OpenSBI v1.6 handing the undelegated fault to the
+  vector with the guest's Capability Pointer Mode, so that the store took
+  the stack pointer, made an integer by the addi, as its authority; that
+  reading is an inference. With cause 28 delegated (the firmware since
+  then), the step-1 monitor with the fault guest ends in BE_MVP:FAIL
+  exception instead (experiments/cheri-guest-results.txt, "cre monitor,
+  fault guest").

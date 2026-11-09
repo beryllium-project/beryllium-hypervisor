@@ -1,0 +1,156 @@
+From 0f161828084b43be460d519e42619770dd36476d Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 5 Nov 2026 01:32:26 -0800
+Subject: [PATCH 2/5] mvp: CHERI proof of concept: the init's signal path on
+ CHERI Linux
+
+With the purecap init on CHERI Alliance Linux v7.1 under the monitor,
+te-poc's and anchor's denied accesses were delivered (SIGSEGV,
+SEGV_ACCERR, at the access's own instruction) but not observed; two
+toolchain defects stood between the signal and the init's handler:
+
+- A page fault the guest kernel takes with the user pc in the vDSO
+  returns to that pc with its low 32 bits sign-extended (QEMU's
+  interrupt log: an instruction page fault on the rt_sigreturn
+  trampoline at 0x3f8c623530, then, with no trap to the monitor between
+  them, another at 0xffffffff8c623530). The kernel's signal return runs
+  that trampoline, so the child reads the vDSO's first page from its own
+  code before it arms its handler (touch_vdso, getauxptr). The same
+  defect is why CHERI musl's vDSO clock_gettime faulted at its first
+  vvar load. Whether QEMU or the kernel truncates is not established.
+- CHERI Alliance musl's ucontext_t has uc_mcontext at 0xc0; the kernel's
+  purecap struct ucontext keeps it at 0xb0, so musl's __gregs[REG_PC] is
+  the kernel's ra. The handler reads and steps pc at the kernel's offset.
+
+At this commit, under the monitor on QEMU's plic machine, te-poc's three
+denials and anchor's five are observed, the channel and the request and
+response digests match, the management calls return as anchor expects,
+and every init's RESULT is pass; Beryllium's checkers are not yet
+adapted.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+Copilot-Session: a7fa2f95-839f-4f32-a6fc-7415e24f2dbc
+---
+ mvp/guest/mvp-init.c | 51 +++++++++++++++++++++++++++++++++++---------
+ mvp/guest/pins.txt   |  4 ++--
+ 2 files changed, 43 insertions(+), 12 deletions(-)
+
+diff --git a/mvp/guest/mvp-init.c b/mvp/guest/mvp-init.c
+index bfa68054..980f72b7 100644
+--- a/mvp/guest/mvp-init.c
++++ b/mvp/guest/mvp-init.c
+@@ -197,6 +197,8 @@
+ #ifdef __CHERI_PURE_CAPABILITY__
+ #include <errno.h>
+ #include <signal.h>
++#include <stddef.h>
++#include <sys/auxv.h>
+ #include <ucontext.h>
+ #else
+ #include <asm/sigcontext.h>
+@@ -307,10 +309,16 @@ _Static_assert(sizeof(sigset_t) == SIGSET_BYTES, "sigset_t is one word");
+  */
+ typedef void (*__sighandler_t)(int);
+ 
+-/* musl's mcontext index of pc, which it names only for _GNU_SOURCE. */
+-#ifndef REG_PC
+-#define REG_PC	0
+-#endif
++/*
++ * The kernel's purecap struct ucontext (arch/riscv/include/uapi/asm/
++ * ucontext.h) keeps uc_mcontext at offset 0xb0, where a non-CHERI kernel
++ * has it, but CHERI Alliance musl's ucontext_t has it at 0xc0 (after its
++ * 128-byte sigset_t), so musl's __gregs[REG_PC] is the kernel's ra. The
++ * handler uses the kernel's layout: pc is sc_regs' first capability.
++ */
++#define MVP_KERNEL_UC_MCONTEXT	0xb0UL
++_Static_assert(offsetof(ucontext_t, uc_mcontext) == 0xc0UL,
++	       "musl's ucontext_t is the layout this workaround measured");
+ 
+ static long mvp_syscall_result(intptr_t result)
+ {
+@@ -715,15 +723,17 @@ static long set_segv(__sighandler_t handler, unsigned long flags)
+  * on its first fault. Any other fault restores the default action, so the
+  * instruction faults again and ends the child.
+  *
+- * beryllium-cheri: in the purecap init, the ucontext's pc is a capability
+- * (musl's __gregs[REG_PC]); its address is compared, and the step adds 4
+- * to the capability itself, which keeps it valid.
++ * beryllium-cheri: in the purecap init, the ucontext's pc is a capability,
++ * at the kernel's offset (MVP_KERNEL_UC_MCONTEXT); its address is
++ * compared, and the step adds 4 to the capability itself, which keeps it
++ * valid.
+  */
+ static void on_segv(int signo, siginfo_t *info, void *context)
+ {
+ #ifdef __CHERI_PURE_CAPABILITY__
+-	ucontext_t *frame = context;
+-	unsigned long pc = (unsigned long)frame->uc_mcontext.__gregs[REG_PC];
++	__uintcap_t *pc_slot = (__uintcap_t *)(void *)((char *)context +
++						       MVP_KERNEL_UC_MCONTEXT);
++	unsigned long pc = (unsigned long)*pc_slot;
+ #else
+ 	struct ucontext *frame = context;
+ 	unsigned long pc = frame->uc_mcontext.sc_regs.pc;
+@@ -736,7 +746,7 @@ static void on_segv(int signo, siginfo_t *info, void *context)
+ 	seen_pc = pc;
+ 	if (signo == SIGSEGV && pc == armed_pc && seen_count == 1UL)
+ #ifdef __CHERI_PURE_CAPABILITY__
+-		frame->uc_mcontext.__gregs[REG_PC] += 4;
++		*pc_slot += 4;
+ #else
+ 		frame->uc_mcontext.sc_regs.pc = pc + 4UL;
+ #endif
+@@ -823,6 +833,24 @@ static unsigned long deny_one(const struct mvp_role *role, unsigned long index,
+ 	return !observed || (store && !unchanged) ? 1UL : 0UL;
+ }
+ 
++#ifdef __CHERI_PURE_CAPABILITY__
++/*
++ * beryllium-cheri: under the proof of concept's stack, a page fault taken
++ * with the user pc in the vDSO returns to that pc with its low 32 bits
++ * sign-extended (cause not established), and the kernel's signal return
++ * runs the vDSO's rt_sigreturn trampoline, in the vDSO's first page. So
++ * the child reads that page from its own code before it arms its handler,
++ * and the trampoline's page is mapped before the trampoline runs.
++ */
++static void touch_vdso(void)
++{
++	const volatile char *vdso = getauxptr(AT_SYSINFO_EHDR);
++
++	if (vdso != NULL)
++		(void)vdso[0];
++}
++#endif
++
+ /*
+  * In the child: each denied access in be.deny's order (deny_one); the
+  * number of denials that failed (all of them when the handler cannot be
+@@ -833,6 +861,9 @@ static unsigned long make_denials(const struct mvp_role *role)
+ {
+ 	unsigned long index, failures = 0;
+ 
++#ifdef __CHERI_PURE_CAPABILITY__
++	touch_vdso();
++#endif
+ 	if (role->denials != 0UL &&
+ 	    set_segv((__sighandler_t)(void (*)(void))on_segv, SA_SIGINFO) != 0)
+ 		return role->denials;
+diff --git a/mvp/guest/pins.txt b/mvp/guest/pins.txt
+index 90e4c5d6..c14eae09 100644
+--- a/mvp/guest/pins.txt
++++ b/mvp/guest/pins.txt
+@@ -47,11 +47,11 @@ source musl version=1.2.6 tag=v1.2.6 commit=9fa28ece75d8a2191de7c5bb53bed224c594
+ # tools/build-guest-cheri.sh (CHERI Alliance Linux v7.1, BusyBox, and
+ # musl, purecap, built by the CHERI Alliance LLVM). The two source lines
+ # above are tools/build-guest.sh's, which this branch does not run.
+-file init sha256=6835cf3eb1e3da5acd483d83c84c01fd7634a4866a83f2588e4a1dd4de538227 bytes=70688
++file init sha256=adda80917bdc597bc63adc911dc6219e9bbcfb0dd7c92feefad74dd38b0dbfbc bytes=71248
+ file be-mgmt.ko sha256=3e7653f860479d127da091e3a249c95d3d1833f2783e679b1486466843a2391a bytes=7792
+ file busybox sha256=0afac45e79613971c8a58c877fde74c1ab5e79bbdf13d8d818702c54b0c9287b bytes=283272
+ file musl-libc.a sha256=e775da235e58886ba7edaf8143df213f7a12b0962a83a5015151b621b02651bc bytes=18591080
+-file Image sha256=bbc444bc418b79b3863713b235bd507a78dcc00b7c36ddecbb974e2b11efa9f2 bytes=3264512
++file Image sha256=b4b85b2a6b71f0c68a9b61b4cc65d66bf6156350e675d340fe0bf6ca0558d85c bytes=3264512
+ file mvp-guest-g0.dtb sha256=68cf8491748bdcb528a0d46d0d154b02fde1b46e4cfb01ecad3f1e0bc7774c16 bytes=4096
+ file mvp-guest-g1.dtb sha256=570b047047a43f1460f3992f0ea80fafc497ea9555540c4b0cd767d08244c706 bytes=4096
+ file mvp-guest-g1-init-exit.dtb sha256=418aab61389585056a4103ab3995b63f08ca7f235cece4dc439a1ecdd67e082b bytes=4096

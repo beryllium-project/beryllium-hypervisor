@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Results of experiments/run-tests.sh: Beryllium's host tests built as
+# static purecap CHERI Linux programs and run under the pinned QEMU.
+# Commands run in build/inputs/; $SDK is the cheribuild output.
+run: 2026-11-04T02:15:38Z
+pin: beryllium-m8-target 6fbcc3d1641a927984ae849623a1c767d5faf550
+pin: cheri-alliance-llvm 65b9e7ef24a82d4d4e476a24620672113f6f462d
+pin: cheri-alliance-musl 38bf75bb2efd4756d4c5295a98e62de0bd963390
+pin: cheri-alliance-linux 3934c32fbb3ba1d7d5dffe117cb2eec5ab5e1c80
+pin: cheri-alliance-opensbi c0575bc815ab5e2acf0138568e3b7cca80f35cef
+pin: cheri-alliance-busybox 33383d196512cb40d8fe4a3bda8793651b5647dc
+pin: cheri-alliance-qemu 008944fe62865260cd67fce32655f22ac87ff8a0
+pin: cheribuild 846806019874fc6266e836c32f53f98b59c69eac
+compiler: clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d)
+host compiler: clang version 22.1.8 (Fedora 22.1.8-4.fc44)
+emulator: QEMU emulator version 8.1.0, -cpu codasip-x730-lux
+
+== build purecap ring-test: exit 0
+$ $SDK/bin/clang --unwindlib=none -target riscv64-linux-musl --sysroot=$SDK/linux/linux-riscv64zcheri093-purecap -B$SDK/bin -march=rv64imafdczcherihybrid_zcherilevels -mabi=l64pc128d -mno-relax -Xclang -target-feature -Xclang +cheri-bounded-vararg -Xclang -target-feature -Xclang +cheri-bounded-memarg-caller -Xclang -target-feature -Xclang +cheri-bounded-memarg-callee -fuse-ld=lld --ld-path=$SDK/bin/ld.lld -static -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen mvp/tests/ring-test.c mvp/src/mvp-ring.c -o build/tests/purecap/ring-test
+ld.lld: warning: relocation R_RISCV_PCREL_HI20 against symbol '__global_pointer$' not in a PCC section
+>>> defined in <internal>
+>>> referenced by crt1.c
+>>>               $SDK/linux/linux-riscv64zcheri093-purecap/lib/crt1.o:(_start)
+
+ld.lld: warning: could not determine size of cap reloc against local object (in GOT) __EH_FRAME_LIST__
+>>> defined in crtbegin.c ($SDK/linux/linux-riscv64zcheri093-purecap/lib/crtbeginT.o:(.eh_frame+0x0))
+>>> referenced by <internal>:(.got+0x190)
+elf ring-test: 0x30005, RVC, double-float ABI, cheriabi, capability mode
+
+== build host ring-test: exit 0
+$ clang -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen mvp/tests/ring-test.c mvp/src/mvp-ring.c -o build/tests/host/ring-test
+
+== build purecap deny-test: exit 0
+$ $SDK/bin/clang --unwindlib=none -target riscv64-linux-musl --sysroot=$SDK/linux/linux-riscv64zcheri093-purecap -B$SDK/bin -march=rv64imafdczcherihybrid_zcherilevels -mabi=l64pc128d -mno-relax -Xclang -target-feature -Xclang +cheri-bounded-vararg -Xclang -target-feature -Xclang +cheri-bounded-memarg-caller -Xclang -target-feature -Xclang +cheri-bounded-memarg-callee -fuse-ld=lld --ld-path=$SDK/bin/ld.lld -static -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen mvp/tests/deny-test.c mvp/src/mvp-sbi.c mvp/src/mvp-ring.c mvp/src/mvp-gstage.c -o build/tests/purecap/deny-test
+ld.lld: warning: relocation R_RISCV_PCREL_HI20 against symbol '__global_pointer$' not in a PCC section
+>>> defined in <internal>
+>>> referenced by crt1.c
+>>>               $SDK/linux/linux-riscv64zcheri093-purecap/lib/crt1.o:(_start)
+
+ld.lld: warning: could not determine size of cap reloc against local object (in GOT) __EH_FRAME_LIST__
+>>> defined in crtbegin.c ($SDK/linux/linux-riscv64zcheri093-purecap/lib/crtbeginT.o:(.eh_frame+0x0))
+>>> referenced by <internal>:(.got+0x190)
+elf deny-test: 0x30005, RVC, double-float ABI, cheriabi, capability mode
+
+== build host deny-test: exit 0
+$ clang -std=gnu11 -O2 -g3 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen mvp/tests/deny-test.c mvp/src/mvp-sbi.c mvp/src/mvp-ring.c mvp/src/mvp-gstage.c -o build/tests/host/deny-test
+
+== run: qemu exit 0 after 19 s
+$ toolchains/cheri/output/qemu-codasip/bin/qemu-system-riscv64cheristd -M virt -cpu codasip-x730-lux -m 2048 -nographic -bios $SDK/opensbi/riscv64zcheri093-purecap/share/opensbi/l64pc128/generic/firmware/fw_dynamic.bin -kernel toolchains/cheri/build/linux-kernel-riscv64zcheri093-purecap-build/arch/riscv/boot/Image -initrd build/tests/initramfs.cpio.gz -append init=/init console=ttyS0 -device virtio-rng-pci -no-reboot
+BCHERI: kernel 7.1.0-g3934c32fbb3b riscv64
+BCHERI: isa		: rv64imafdc_zicbom_zicboz_zicntr_zicsr_zifencei_zihintpause_zihpm_zaamo_zalrsc_zfhmin_zca_zcb_zcd_zba_zbb_zbkb_zbkc_zbs_zcherihybrid_zcheripte_zcherilevels_zcheripurecap_zkt_sscofpmf_sstc_svinval_svnapot_svpbmt_zish4add
+BCHERI: dmesg: [    0.000000] CHERI: Root capability: 0xffffffff800002e8[V:1111:C:rwxCalse:1:.:0x0000000000000000-0xffffffffffffffff] (1:01eff80000000000:ffffffff800002e8)
+BCHERI: dmesg: [    0.000000] Pointer hashing is off (ok on CHERI). Use "hash_pointers=always" to force it on
+BCHERI: dmesg: [    0.016945] CHERI: riscv cheri support
+BCHERI: dmesg: [    0.017162] CHERI: Selected SATP mode: 0x8000000000000000 PTE.CW support: yes
+BCHERI: dmesg: [    0.017418] CHERI: kernel code cap: 0x8000000000000000[V:0000:C:r.xCal.e:0:.:0x8000000000000000-0xffffffffffffffff]
+BCHERI: ring-test exit=0
+BCHERI-OUT ring: BE_MVP_RING_CHECK: PASS
+BCHERI-OUT ring: BE_MVP_RING_CHECK: scenarios=160
+BCHERI-OUT ring: BE_MVP_RING_CHECK: assertions=409415
+BCHERI: deny-test exit=0
+BCHERI-OUT deny: BE_MVP_DENY_CHECK: PASS
+BCHERI-OUT deny: BE_MVP_DENY_CHECK: scenarios=38
+BCHERI-OUT deny: BE_MVP_DENY_CHECK: assertions=2933
+BCHERI: done
+verdict ring-test: PASS (three lines, BE_MVP_RING_CHECK PASS, scenarios=160 assertions=409415, exit 0; equal to the x86-64 host output: yes)
+verdict deny-test: PASS (three lines, BE_MVP_DENY_CHECK PASS, scenarios=38 assertions=2933, exit 0; equal to the x86-64 host output: yes)

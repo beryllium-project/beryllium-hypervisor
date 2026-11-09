@@ -1,0 +1,642 @@
+From 42600d6687158b4a9d9ecb8b9e0d9a50203c3b5e Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 5 Nov 2026 01:47:19 -0800
+Subject: [PATCH 3/5] mvp: CHERI proof of concept: Beryllium's checkers judge
+ the CHERI build
+
+Beryllium's image check, reference manifests, and QEMU capture checker
+now judge the CHERI proof of concept, with rules of their own for its
+CHERI code; on QEMU's plic machine, with the CHERI QEMU (v0.9.3, H) and
+the CHERI Alliance OpenSBI, tests/run-qemu.sh passes two-guests, te-poc,
+and anchor for GCC and Clang (BE_MVP_QEMU: PASS runs=6), twice in a row.
+
+tests/check-image.py, for the CHERI monitor:
+- ddc (CSR 0x416) is named, and written only by the vector and the
+  resume tail; the injection helper also writes sepc (sepcc, whole).
+- The trap entry: Capability Pointer Mode first, then the sscratch
+  exchange and ct0 and ct1 spilled below the top; every guest register
+  saved whole in the capability frame; the guest's ddc saved, and the
+  monitor's installed, before Integer Pointer Mode; each register's
+  address recorded in the integer record from the frame; then, as
+  before, the CSRs, SPV, and the dispatch call.
+- The resume tail: ct6 from sscratchc in Capability Pointer Mode, every
+  register and the guest's ddc restored whole, ct6 last before the one
+  SRET, the merge's untagging stores (the loop itself is not proved),
+  and henvcfg's STCE and CRE.
+- The helpers: henvcfg STCE and CRE, hedeleg with cause 28, sscratchc as
+  ddc at a1 (check_sscratchc, and SCADDR and SCBNDSR tracked as
+  addresses), and the injection helper's capability moves before its
+  readbacks.
+- Mutations: s2's whole save and its record word, Integer Pointer Mode
+  at entry, a null ddc installed or restored, the injection returning to
+  a2 in place of vstvecc, and s3's whole restore; every mutation is
+  rejected for its reason (127, 131, and 140 per scenario).
+The arm helper clears the capability frame straight-line (33 null
+capability stores) in place of its loop, whose label dropped the
+checker's tracked arguments.
+
+tests/check-capture.py: hedeleg is a WARL reading of 0x1000b15d holding
+0x1000b10c, and a banner longer than the monitor's console line
+(BE_MVP_CONSOLE_LINE_BYTES) is matched by its first piece, as the CHERI
+LLVM's version strings make the CHERI guest's. tools/gen-scenario.py:
+HART_READY's henvcfg is 0x8000000010000000. scenarios/*/scenario.json:
+the guests' kernel is 7.1.0. tools/gen-dts.py and check-image.py: the
+DTBs name Zcherihybrid and Zcheripurecap.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+Copilot-Session: a7fa2f95-839f-4f32-a6fc-7415e24f2dbc
+---
+ mvp/scenarios/anchor/scenario.json     |   8 +-
+ mvp/scenarios/te-poc/scenario.json     |   4 +-
+ mvp/scenarios/two-guests/scenario.json |   4 +-
+ mvp/src/mvp-trap.S                     |  41 +++-
+ mvp/tests/check-capture.py             |  19 +-
+ mvp/tests/check-image.py               | 253 ++++++++++++++++++++++---
+ mvp/tools/gen-scenario.py              |   3 +-
+ 7 files changed, 287 insertions(+), 45 deletions(-)
+
+diff --git a/mvp/scenarios/anchor/scenario.json b/mvp/scenarios/anchor/scenario.json
+index 9ac0c1c4..6440172d 100644
+--- a/mvp/scenarios/anchor/scenario.json
++++ b/mvp/scenarios/anchor/scenario.json
+@@ -132,14 +132,14 @@
+   "expect": {
+     "domain_lines": {
+       "host": [
+-        "[<s>] Linux version 7.2.0 <banner>",
++        "[<s>] Linux version 7.1.0 <banner>",
+         "[<s>] SBI implementation ID=0x4245 Version=0x6",
+         "[<s>] Kernel command line: <bootargs>",
+         "[<s>] riscv-timer: Timer interrupt in S-mode is available via sstc extension",
+         "[<s>] Memory: <m>K/65536K available <rest>",
+         "[<s>] Run /init as init process",
+         "MVPINIT 01 START guest=<g> pid=1",
+-        "MVPINIT 02 UNAME release=7.2.0 machine=riscv64",
++        "MVPINIT 02 UNAME release=7.1.0 machine=riscv64",
+         "MVPINIT 03 STEP n=<i>/8 rounds=<r> t_ms=<t>",
+         "MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=<e> ok=1",
+         "MVPINIT 05 RESULT pass",
+@@ -147,14 +147,14 @@
+         "[<s>] reboot: Power down"
+       ],
+       "prot": [
+-        "[<s>] Linux version 7.2.0 <banner>",
++        "[<s>] Linux version 7.1.0 <banner>",
+         "[<s>] SBI implementation ID=0x4245 Version=0x6",
+         "[<s>] Kernel command line: <bootargs>",
+         "[<s>] riscv-timer: Timer interrupt in S-mode is available via sstc extension",
+         "[<s>] Memory: <m>K/65536K available <rest>",
+         "[<s>] Run /init as init process",
+         "MVPINIT 01 START guest=<g> pid=1",
+-        "MVPINIT 02 UNAME release=7.2.0 machine=riscv64"
++        "MVPINIT 02 UNAME release=7.1.0 machine=riscv64"
+       ]
+     },
+     "rejected": [
+diff --git a/mvp/scenarios/te-poc/scenario.json b/mvp/scenarios/te-poc/scenario.json
+index 5b317bab..cff58d81 100644
+--- a/mvp/scenarios/te-poc/scenario.json
++++ b/mvp/scenarios/te-poc/scenario.json
+@@ -114,14 +114,14 @@
+   ],
+   "expect": {
+     "domain_lines": [
+-      "[<s>] Linux version 7.2.0 <banner>",
++      "[<s>] Linux version 7.1.0 <banner>",
+       "[<s>] SBI implementation ID=0x4245 Version=0x5",
+       "[<s>] Kernel command line: <bootargs>",
+       "[<s>] riscv-timer: Timer interrupt in S-mode is available via sstc extension",
+       "[<s>] Memory: <m>K/65536K available <rest>",
+       "[<s>] Run /init as init process",
+       "MVPINIT 01 START guest=<g> pid=1",
+-      "MVPINIT 02 UNAME release=7.2.0 machine=riscv64",
++      "MVPINIT 02 UNAME release=7.1.0 machine=riscv64",
+       "MVPINIT 03 STEP n=<i>/8 rounds=<r> t_ms=<t>",
+       "MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=<e> ok=1",
+       "MVPINIT 05 RESULT pass",
+diff --git a/mvp/scenarios/two-guests/scenario.json b/mvp/scenarios/two-guests/scenario.json
+index 709b65b9..0cf225a7 100644
+--- a/mvp/scenarios/two-guests/scenario.json
++++ b/mvp/scenarios/two-guests/scenario.json
+@@ -64,14 +64,14 @@
+   ],
+   "expect": {
+     "domain_lines": [
+-      "[<s>] Linux version 7.2.0 <banner>",
++      "[<s>] Linux version 7.1.0 <banner>",
+       "[<s>] SBI implementation ID=0x4245 Version=0x5",
+       "[<s>] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=<g>",
+       "[<s>] riscv-timer: Timer interrupt in S-mode is available via sstc extension",
+       "[<s>] Memory: <m>K/65536K available <rest>",
+       "[<s>] Run /init as init process",
+       "MVPINIT 01 START guest=<g> pid=1",
+-      "MVPINIT 02 UNAME release=7.2.0 machine=riscv64",
++      "MVPINIT 02 UNAME release=7.1.0 machine=riscv64",
+       "MVPINIT 03 STEP n=<i>/8 rounds=<r> t_ms=<t>",
+       "MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=<e> ok=1",
+       "MVPINIT 05 RESULT pass",
+diff --git a/mvp/src/mvp-trap.S b/mvp/src/mvp-trap.S
+index 3a88735f..b74d3409 100644
+--- a/mvp/src/mvp-trap.S
++++ b/mvp/src/mvp-trap.S
+@@ -215,12 +215,41 @@ be_mvp_arch_arm_controls:
+ 	.insn	r 0x33, 1, 0x06, t3, t0, t2
+ 	li	t2, BE_MVP_DTB_BYTES
+ 	.insn	r 0x33, 1, 0x07, t3, t3, t2
+-	addi	t2, a1, CF
+-	addi	t4, a1, CF_END
+-1:
+-	sd	zero, 0(t2)
+-	addi	t2, t2, 8
+-	bltu	t2, t4, 1b
++	/* The frame cleared, straight-line (no loop), each slot a null
++	 * capability: CF to CF_END is 33 slots. */
++	.insn	s 0x23, 4, zero, CF + 16 * 0(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 1(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 2(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 3(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 4(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 5(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 6(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 7(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 8(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 9(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 10(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 11(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 12(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 13(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 14(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 15(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 16(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 17(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 18(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 19(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 20(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 21(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 22(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 23(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 24(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 25(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 26(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 27(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 28(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 29(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 30(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 31(a1)
++	.insn	s 0x23, 4, zero, CF + 16 * 32(a1)
+ 	.4byte	MVP_INSN_MODESW_CAP
+ 	csrrw	zero, sscratch, t1
+ 	.insn	s 0x23, 4, t0, CF_MON_DDC(t1)
+diff --git a/mvp/tests/check-capture.py b/mvp/tests/check-capture.py
+index a1974646..a532d206 100755
+--- a/mvp/tests/check-capture.py
++++ b/mvp/tests/check-capture.py
+@@ -141,7 +141,7 @@ least K alternations between the domains' lines (Q5). With hart 0's
+ round-robin drain (Plan revision M0-C.2), two domains that produce lines at
+ once alternate on the console at least once per wake in which both rings
+ hold a record; a console-bound hart 0 lowers the wakes, not the alternation
+-within a wake. :09's hedeleg is a WARL reading of 0xb15d holding 0xb10c;
++within a wake. :09's hedeleg is a WARL reading of 0x1000b15d holding 0x1000b10c;
+ :04 and :06 carry the pinned kernel_bytes and image_size.
+ 
+ Fail (the variants): the first BE_MVP:FAIL has the declared class; the
+@@ -500,7 +500,13 @@ IPI_PROBE = re.compile(rf"BE_MVP:11 IPI_PROBE hart=({DEC}) domain=({DEC}) "
+                        rf"sent=({HEX}) received=({HEX}) answered=({HEX}) "
+                        r"spv=([01])")
+ # hedeleg is WARL (B6's fix-warl): a reading of 0xb15d that holds 0xb10c.
+-HEDELEG, HEDELEG_REQUIRED = 0xb15d, 0xb10c
++# beryllium-cheri: with cause 28, CHERI v0.9.3's CHERI fault, delegated
++# too, which a CHERI guest needs: 0x1000b15d holding 0x1000b10c.
++HEDELEG, HEDELEG_REQUIRED = 0x1000b15d, 0x1000b10c
++# beryllium-cheri: the monitor's console line (src/mvp.h,
++# BE_MVP_CONSOLE_LINE_BYTES) and Linux's boot timestamp, "[    0.000000] ".
++CONSOLE_LINE_BYTES = 256
++BOOT_STAMP_BYTES = 15
+ # The marker IDs whose lines name a domain, and those that run per domain
+ # in either hart order.
+ PER_DOMAIN = ("BE_MVP:03", "BE_MVP:05", "BE_MVP:06", "BE_MVP:08",
+@@ -797,7 +803,14 @@ def domain_pattern(template, domain, pins, extra=None):
+         if token == "<banner>":
+             prefix = template[:match.start()].split("] ", 1)[-1]
+             banner = pins["banner"]
+-            out.append(re.escape(banner[len(prefix):])
++            # beryllium-cheri: a guest line longer than the monitor's
++            # console line (src/mvp.h, BE_MVP_CONSOLE_LINE_BYTES) arrives in
++            # pieces, so a long banner's line holds its first piece: the
++            # boot timestamp "[    0.000000] ", the prefix, and what fits
++            # of the rest. The CHERI LLVM's version strings make the CHERI
++            # guest's banner such a line.
++            room = CONSOLE_LINE_BYTES - BOOT_STAMP_BYTES - len(prefix)
++            out.append(re.escape(banner[len(prefix):][:room])
+                        if banner.startswith(prefix) else r"\S.*")
+         elif token == "<g>":
+             out.append(str(domain))
+diff --git a/mvp/tests/check-image.py b/mvp/tests/check-image.py
+index d6a18820..f35c0e02 100755
+--- a/mvp/tests/check-image.py
++++ b/mvp/tests/check-image.py
+@@ -587,6 +587,8 @@ CSR_NAMES = {
+     0x608: "hvien", 0x609: "hvictl", 0x60A: "henvcfg", 0x60C: "hstateen0",
+     0x643: "htval", 0x644: "hip", 0x645: "hvip", 0x646: "hviprio1",
+     0x647: "hviprio2", 0x64A: "htinst", 0x680: "hgatp", 0xC01: "time",
++    # beryllium-cheri: CHERI v0.9.3's default data capability.
++    0x416: "ddc",
+ }
+ # Never accessed, read or written: the DT contract avoids what they gate.
+ FORBIDDEN_CSRS = {"hstateen0", "hvictl", "hvien", "hviprio1", "hviprio2"}
+@@ -605,7 +607,9 @@ CSR_WRITERS = {
+     "sstatus": {R3_RESET, R3_ENTER, B1_QUIESCE, B1_HALT, MVP_RESUME},
+     "stvec": {R3_RESET, B1_QUIESCE},
+     "sscratch": {R3_RESET, R3_ENTER, MVP_ARM, MVP_BUDGET, MVP_VECTOR},
+-    "sepc": {R3_RESET, R3_ENTER, B1_SKIP, MVP_RESUME},
++    # beryllium-cheri: the injection helper moves vstvecc into sepcc whole
++    # (src/mvp-trap.S), and the resume tail then sets its address.
++    "sepc": {R3_RESET, R3_ENTER, B1_SKIP, MVP_RESUME, MVP_INJECT},
+     "scause": {R3_RESET},
+     "stval": {R3_RESET},
+     "sie": {R3_RESET, R3_UNEXPECTED, R3_HALT, B1_QUIESCE, B1_HALT, MVP_ARM,
+@@ -629,6 +633,9 @@ CSR_WRITERS = {
+     "hgatp": {R3_RESET, R3_INSTALL},
+     "vstimecmp": {MVP_ARM, MVP_TIMER},
+     "vsip": {R3_RESET},
++    # beryllium-cheri: ddc, one register for every mode, switched by the
++    # vector (the monitor's) and the resume tail (the guest's).
++    "ddc": {MVP_VECTOR, MVP_RESUME},
+     **{name: {R3_RESET, MVP_ARM} for name in VS_LOADED},
+     **{name: {R3_RESET, MVP_ARM, MVP_INJECT} for name in INJECTED},
+ }
+@@ -649,6 +656,15 @@ NOP = 0x00000013
+ C_NOP = 0x0001
+ FENCE_I = 0x0000100F
+ CSRRW_SP_SSCRATCH_SP = 0x14011173
++# beryllium-cheri: CHERI v0.9.3's encodings in src/mvp-trap.S
++# (MVP_INSN_MODESW_CAP and _INT; SC and LC by opcode and funct3), and
++# the capability frame's offsets in the saved page (CF, CF_MON_DDC).
++MODESW_CAP = 0x12001033
++MODESW_INT = 0x14001033
++CAP_FRAME = 368
++CAP_MON_DDC = 880
++DDC_CSR = 0x416
++CSRRS_CT6_SSCRATCH = 0x14002FF3  # csrrs t6, sscratch, zero
+ SHF_WRITE, SHF_ALLOC, SHF_EXECINSTR = 1, 2, 4
+ # The accepted R5 checker's section table, without the fixture sections
+ # (planning/mvp-m6-plan.md, D-4), at the K3 addresses: (address or None,
+@@ -724,21 +740,33 @@ HSTATUS_CLEARED = 0x700000
+ SIE_SSIE = 0x2
+ SIE_STIE = 0x20
+ HELPER_WRITES = {
+-    MVP_STCE: [("henvcfg", "w", ("const", 1 << 63))],
++    # beryllium-cheri: STCE and CRE.
++    MVP_STCE: [("henvcfg", "w", ("const", 1 << 63 | 1 << 28))],
+     MVP_ARM: [("vstimecmp", "w", ("const", MASK64)),
+-              ("hedeleg", "w", ("const", 0xB15D)),
++              # beryllium-cheri: and cause 28, the CHERI fault.
++              ("hedeleg", "w", ("const", 0x1000B15D)),
+               ("hideleg", "w", ("const", 0x40)),
+               ("hcounteren", "w", ("const", 0x2)),
+               ("hstatus", "c", ("const", HSTATUS_CLEARED)),
+               ("sie", "s", ("const", SIE_SSIE)),
++              ("sscratch", "w", ARG_A1),
++              # beryllium-cheri: then sscratchc, ddc at a1, whole
++              # (check_sscratchc checks its source too).
+               ("sscratch", "w", ARG_A1)] +
+              [(name, "w", ("mem", "a2", index * 8, MASK64))
+               for index, name in enumerate(VCSRS)],
+     MVP_TIMER: [("vstimecmp", "w", ARG_A0)],
+-    MVP_INJECT: [(name, "w", argument) for name, argument in
+-                 zip(INJECTED, (ARG_A0, ARG_A1, ARG_A2, ARG_A3))],
++    # beryllium-cheri: between vstval and vsepc, vsepcc takes sepcc and
++    # sepcc vstvecc, whole, in Capability Pointer Mode; then vsepc's
++    # integer write sets only vsepcc's address.
++    MVP_INJECT: [("vscause", "w", ARG_A0), ("vstval", "w", ARG_A1),
++                 ("vsepc", "w", ("csr", "sepc", MASK64)),
++                 ("sepc", "w", ("csr", "vstvec", MASK64)),
++                 ("vsepc", "w", ARG_A2), ("vsstatus", "w", ARG_A3)],
+     MVP_BUDGET: [("stimecmp", "w", ARG_A0),
+                  ("sie", "s", ("const", SIE_SSIE | SIE_STIE)),
++                 ("sscratch", "w", ARG_A1),
++                 # beryllium-cheri: then sscratchc, ddc at a1, whole.
+                  ("sscratch", "w", ARG_A1)],
+     MVP_SSIP: [("sip", "c", ("const", SIE_SSIE))],
+     MVP_WAIT: [],
+@@ -763,8 +791,11 @@ INJECT_SLOTS = {index * 8: name for index, name in enumerate(INJECTED)}
+ # change each DTB variant makes to it, in which domain's DTB.
+ BOOTARGS = "earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1"
+ GUEST_ID_ARGS = " -- be.guest={}"
++# beryllium-cheri: the CHERI guest's DTBs also name Zcherihybrid and
++# Zcheripurecap (tools/gen-dts.py).
+ ISA_EXTENSIONS = ("i", "m", "a", "c", "zicsr", "zifencei", "zihintpause",
+-                  "zba", "zbb", "zbs", "sstc", "svade")
++                  "zba", "zbb", "zbs", "sstc", "svade", "zcherihybrid",
++                  "zcheripurecap")
+ DTB_VARIANTS = ("init-exit", "rdcycle", "sbi-time", "hostile")
+ # The guests whose DTB each DTB variant changes.
+ DTB_VARIANT_GUESTS = {"init-exit": (1,), "rdcycle": (0,), "sbi-time": (0, 1),
+@@ -1422,6 +1453,13 @@ def track(decoded):
+                 for x, y in ((a, b), (b, a)):
+                     if x and y and x[0] == "csr" and y[0] == "const":
+                         result = ("csr", x[1], x[2] & y[1])
++            # beryllium-cheri: SCADDR's result has rs2's value as its
++            # address, and SCBNDSR's keeps rs1's; a capability's tracked
++            # value is its address.
++            elif funct3 == 1 and word >> 25 == 0x06:
++                result = b
++            elif funct3 == 1 and word >> 25 == 0x07:
++                result = a
+         elif opcode == 0x73 and funct3 not in (0, 4):
+             csr = CSR_NAMES.get(word >> 20, f"0x{word >> 20:x}")
+             operation = {1: "w", 2: "s", 3: "c"}[funct3 & 3]
+@@ -1472,8 +1510,40 @@ def function_words(elf, flat, name, base):
+     return instructions(flat, found[0][0], found[0][0] + found[0][1], base)
+ 
+ 
++def check_sscratchc(name, decoded):
++    """beryllium-cheri: the helper's sscratchc is the monitor's ddc with its
++    address set to the incoming a1 (SCADDR rd, rs1, a1, rs1 read from
++    ddc), written whole in Capability Pointer Mode; nothing writes a1
++    before it, nor its result's register before the write."""
++    words = [word for _, _, word in decoded]
++    for index, word in enumerate(words):
++        if word & 0xFE00707F != 0x0C001033 or (word >> 20) & 0x1F != 11:
++            continue
++        source, result = (word >> 15) & 0x1F, (word >> 7) & 0x1F
++        if not any(ddc_access(earlier) == ("read", source)
++                   for earlier in words[:index]):
++            continue
++        if any((earlier & 0x7F) not in (0x23, 0x63) and
++               (earlier >> 7) & 0x1F == 11 for earlier in words[:index]):
++            continue
++        write = (0x140 << 20) | (result << 15) | (1 << 12) | 0x73
++        for later in range(index + 1, len(words)):
++            if words[later] == write:
++                if MODESW_CAP in words[index + 1:later] and \
++                        MODESW_INT not in words[words.index(
++                            MODESW_CAP, index + 1):later]:
++                    return
++                break
++            if (words[later] & 0x7F) not in (0x23, 0x63) and \
++                    (words[later] >> 7) & 0x1F == result:
++                break
++    require(False, f"{name} does not write sscratchc whole as ddc at a1")
++
++
+ def check_helpers(elf, flat, base, symbols):
+     """The values the MVP's helpers write, and what they read back."""
++    for name in (MVP_ARM, MVP_BUDGET):
++        check_sscratchc(name, function_words(elf, flat, name, base))
+     for name, expected in HELPER_WRITES.items():
+         decoded = function_words(elf, flat, name, base)
+         writes, reads, _, stores = track(decoded)
+@@ -1497,6 +1567,13 @@ def check_helpers(elf, flat, base, symbols):
+             inject_slots = {offset: value[1] for _, base_value, offset, value
+                             in stores if base_value == ARG_A4 and value and
+                             value[0] == "csr" and value[2] == MASK64}
++            # beryllium-cheri: sepcc and vstvecc are read, whole, for the
++            # capability moves; the four readbacks follow every write.
++            moves = [csr for _, csr in reads][:2]
++            reads = reads[2:]
++            require(moves == ["sepc", "vstvec"],
++                    f"{name} reads {moves} for its capability moves, "
++                    f"expected sepc and vstvec")
+             require([csr for _, csr in reads] == list(INJECTED) and
+                     max(index for index, _, _, _ in writes) <
+                     min(index for index, _ in reads) and
+@@ -1790,6 +1867,35 @@ def load_fields(word):
+     return (word >> 7) & 0x1F, (word >> 15) & 0x1F, signed(word >> 20, 12)
+ 
+ 
++def sc_fields(word):
++    """beryllium-cheri: (source, base, offset) of an SC, or None."""
++    if word & 0x707F != 0x4023:
++        return None
++    return ((word >> 20) & 0x1F, (word >> 15) & 0x1F,
++            signed((word >> 25) << 5 | (word >> 7) & 0x1F, 12))
++
++
++def lc_fields(word):
++    """beryllium-cheri: (destination, base, offset) of an LC, or None."""
++    if word & 0x707F != 0x400F:
++        return None
++    return (word >> 7) & 0x1F, (word >> 15) & 0x1F, signed(word >> 20, 12)
++
++
++def ddc_access(word):
++    """beryllium-cheri: ("read", rd) for csrrs rd, ddc, zero; ("write", rs1)
++    for csrrw zero, ddc, rs1; else None."""
++    if word & 0x7F != 0x73 or word >> 20 != DDC_CSR:
++        return None
++    funct3, rd, rs1 = (word >> 12) & 7, (word >> 7) & 0x1F, \
++        (word >> 15) & 0x1F
++    if funct3 == 2 and rs1 == 0:
++        return "read", rd
++    if funct3 == 1 and rd == 0:
++        return "write", rs1
++    return None
++
++
+ def check_structure(elf):
+     """The accepted R5 checker's structure rules, moved to the K3 base."""
+     require(3 not in elf.program_types, "image requests an interpreter")
+@@ -1857,22 +1963,60 @@ def check_structure(elf):
+ 
+ 
+ def check_trap_entry(decoded, symbols):
+-    """Sscratch pivot, the whole record, SPV, and the dispatch call."""
++    """Sscratch pivot, the whole record, SPV, and the dispatch call.
++
++    beryllium-cheri: the CHERI proof of concept's vector. It enters
++    Capability Pointer Mode first, then exchanges csp with sscratchc and
++    spills ct0 and ct1 below the trusted top; it saves every guest register
++    whole in the capability frame (CAP_FRAME + 16 * n) and the guest's ddc
++    in its slot 0, and installs the monitor's ddc (CAP_MON_DDC) before it
++    returns to Integer Pointer Mode, where a CSR write would set only an
++    address; and it writes each register's address into the integer
++    record, from the frame, before the CSRs.
++    """
+     require(all(size == 4 for _, size, _ in decoded),
+             "trap entry holds a compressed instruction")
+     words = [word for _, _, word in decoded]
+-    require(words[0] == CSRRW_SP_SSCRATCH_SP,
+-            "trap entry does not first exchange sp with sscratch")
++    require(words[0] == MODESW_CAP,
++            "trap entry does not first enter Capability Pointer Mode")
++    require(words[1] == CSRRW_SP_SSCRATCH_SP,
++            "trap entry does not then exchange sp with sscratch")
++    require(sc_fields(words[2]) == (5, 2, -32) and
++            sc_fields(words[3]) == (6, 2, -16),
++            "trap entry does not spill ct0 and ct1 below the trusted top")
++    integer_at = words.index(MODESW_INT) if MODESW_INT in words else 0
++    require(integer_at > 3, "trap entry never returns to Integer Pointer "
++            "Mode")
++    capabilities = {fields for fields in map(sc_fields, words[:integer_at])
++                    if fields}
++    for number in range(1, 32):
++        offset = CAP_FRAME + 16 * number
++        if number in (2, 5, 6):  # csp, ct0, ct1 arrive through scratch
++            saved = any(base == 2 and at == offset
++                        for _, base, at in capabilities)
++        else:
++            saved = (number, 2, offset) in capabilities
++        require(saved, f"trap entry does not save c{number} whole at "
++                f"{offset}")
++    pairs = list(zip(words[:integer_at], words[1:integer_at]))
++    require(any(ddc_access(first) == ("read", (first >> 7) & 0x1F) and
++                sc_fields(second) == ((first >> 7) & 0x1F, 2, CAP_FRAME)
++                for first, second in pairs),
++            "trap entry does not save the guest's ddc whole")
++    require(any(lc_fields(first) is not None and
++                lc_fields(first)[1:] == (2, CAP_MON_DDC) and
++                ddc_access(second) == ("write", lc_fields(first)[0])
++                for first, second in pairs),
++            "trap entry does not install the monitor's ddc in Capability "
++            "Pointer Mode")
+     stores = {fields for fields in map(store_fields, words) if fields}
+-    frame = 5  # t0 holds the saved page
+     for number in range(1, 32):
+         offset = (number - 1) * 8
+-        if number in (2, 5, 6):  # sp, t0, t1 arrive through scratch
+-            saved = any(base == frame and at == offset
+-                        for _, base, at in stores)
+-        else:
+-            saved = (number, frame, offset) in stores
+-        require(saved, f"trap entry does not save x{number} at {offset}")
++        require(any(load_fields(first) == (5, 2, CAP_FRAME + 16 * number) and
++                    store_fields(second) == (5, 2, offset)
++                    for first, second in pairs),
++                f"trap entry does not record x{number} at {offset}")
++    frame = 5  # t0 holds the saved page, from sp, in Integer Pointer Mode
+     # The saved page is the hart's own, from sscratch: each CSR is read
+     # into a register and stored from it at its offset in the record.
+     stored = set()
+@@ -1978,7 +2122,8 @@ def resume_checks(symbols):
+         ("eq", "hvip", 0x444, 0),
+         ("eq", "hcounteren", MASK64, 0x2),
+         ("eq", "htimedelta", MASK64, 0),
+-        ("eq", "henvcfg", MASK64, 1 << 63),
++        # beryllium-cheri: STCE and CRE.
++        ("eq", "henvcfg", MASK64, 1 << 63 | 1 << 28),
+         ("eq", "hgeie", MASK64, 0),
+         ("eq", "hgatp", MASK64, "arg:a1"),
+     }
+@@ -1991,9 +2136,37 @@ def check_resume(decoded, symbols, start, end):
+     words = [word for _, _, word in decoded]
+     loads = [load_fields(word) for word in words]
+     frame = 31  # t6 holds the saved page
++    # beryllium-cheri: every register returns whole from the capability
++    # frame, by LC through ct6, sscratchc, in Capability Pointer Mode, after
++    # the guest's ddc; a register the dispatch changed returns as its
++    # integer, untagged (the merge: an integer store over the slot's
++    # address and a zero store over its metadata). The merge's loop is
++    # checked for those two stores, not proved.
++    capability_at = max((index for index, word in enumerate(words)
++                         if word == MODESW_CAP), default=-1)
++    require(capability_at >= 0 and
++            capability_at + 1 < len(words) and
++            words[capability_at + 1] == CSRRS_CT6_SSCRATCH,
++            "resume tail does not take ct6 from sscratchc in Capability "
++            "Pointer Mode")
++    tail = [lc_fields(word) for word in words[capability_at + 2:]]
+     for number in range(1, 32):
+-        require((number, frame, (number - 1) * 8) in loads,
+-                f"resume tail does not restore x{number} from the frame")
++        require((number, frame, CAP_FRAME + 16 * number) in tail,
++                f"resume tail does not restore c{number} whole from the "
++                f"capability frame")
++    tail_pairs = list(zip(words[capability_at + 2:],
++                          words[capability_at + 3:]))
++    require(any(lc_fields(first) is not None and
++                lc_fields(first)[1:] == (frame, CAP_FRAME) and
++                ddc_access(second) == ("write", lc_fields(first)[0])
++                for first, second in tail_pairs),
++            "resume tail does not restore the guest's ddc whole")
++    merges = [store_fields(word) for word in words[:capability_at]]
++    require(any(fields and fields[0] == 0 and fields[2] == 8
++                for fields in merges) and
++            any(fields and fields[0] != 0 and fields[2] == 0
++                for fields in merges),
++            "resume tail does not untag a changed register's slot")
+     sepc = [index for index, fields in enumerate(loads)
+             if fields and fields[1:] == (frame, FRAME_SEPC)]
+     require(len(sepc) == 1 and index_writes(words, sepc[0] + 1, 0x141,
+@@ -2020,11 +2193,15 @@ def check_resume(decoded, symbols, start, end):
+                     f"resume tail leaves other than to the terminal at "
+                     f"0x{pc:x}")
+     srets = [index for index, word in enumerate(words) if word == 0x10200073]
+-    last_load = max(index for index, fields in enumerate(loads) if fields)
+-    require(len(srets) == 1 and srets[0] == last_load + 1,
+-            "resume tail does not end its GPR restore in its one SRET")
++    last_load = max(index for index, word in enumerate(words)
++                    if lc_fields(word))
++    require(len(srets) == 1 and srets[0] == last_load + 1 and
++            lc_fields(words[last_load]) == (frame, frame,
++                                             CAP_FRAME + 16 * frame),
++            "resume tail does not end its restore, ct6 last, in its one SRET")
+     writes, reads, checks, _ = track(decoded)
+-    require([(csr, operation, value) for _, csr, operation, value in writes]
++    require([(csr, operation, value) for _, csr, operation, value in writes
++             if csr != "ddc"]
+             == [("sstatus", "c", ("const", 0x100)),
+                 ("sstatus", "s", ("mem", "a0", EXIT_WORDS[0][1],
+                                   HSTATUS_SPVP)),
+@@ -4024,10 +4201,31 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
+          "differs from B2's"),
+         ("entry without quiesce", BASE, word(NOP) + word(NOP),
+          "first call be_b1_quiesce"),
++        # beryllium-cheri: s2 is saved whole in the capability frame, and
++        # its address recorded from there; and the CHERI rules' mutations.
+         ("vector skips s2", matching_word(
+             elf, flat, MVP_VECTOR, BASE,
+-            lambda value: store_fields(value) == (18, 5, 136))[0],
+-         word(NOP), "does not save x18"),
++            lambda value: sc_fields(value) == (18, 2, CAP_FRAME + 16 * 18))[0],
++         word(NOP), "does not save c18 whole"),
++        ("vector records no s2", matching_word(
++            elf, flat, MVP_VECTOR, BASE,
++            lambda value: store_fields(value) == (5, 2, 136))[0],
++         word(NOP), "does not record x18 at 136"),
++        ("vector stays in Integer Pointer Mode",
++         nth_word(elf, flat, MVP_VECTOR, BASE), word(NOP),
++         "does not first enter Capability Pointer Mode"),
++        ("vector installs a null ddc", matching_word(
++            elf, flat, MVP_VECTOR, BASE,
++            lambda value: value == 0x41629073)[0],
++         word(0x41601073), "does not install the monitor's ddc"),
++        ("resume restores a null ddc", matching_word(
++            elf, flat, MVP_RESUME, BASE,
++            lambda value: value == 0x41629073)[0],
++         word(0x41601073), "does not restore the guest's ddc whole"),
++        ("the injection helper returns to a2, not vstvecc", matching_word(
++            elf, flat, MVP_INJECT, BASE,
++            lambda value: value == 0x14129073)[0],
++         word(0x14161073), "sepc written as"),
+         ("vector skips htinst", matching_word(
+             elf, flat, MVP_VECTOR, BASE,
+             lambda value: store_fields(value) == (6, 5, 328))[0],
+@@ -4040,10 +4238,11 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
+          word(entry_word & 0xFFF | moved_top), "stack top"),
+         ("hart entry reads its block first", entry_top,
+          word(0x0005B283), "accesses memory"),
++        # beryllium-cheri: s3 returns whole, by LC from the capability frame.
+         ("resume skips s3", matching_word(
+             elf, flat, MVP_RESUME, BASE,
+-            lambda value: load_fields(value) == (19, 31, 144))[0],
+-         word(NOP), "does not restore x19"),
++            lambda value: lc_fields(value) == (19, 31, CAP_FRAME + 16 * 19))[0],
++         word(NOP), "does not restore c19 whole"),
+         ("resume calls out", nth_word(elf, flat, MVP_RESUME, BASE, 1),
+          word(0x000000EF), "calls or jumps out"),
+         ("exit path names the MVP pool", dispatch_slot,
+diff --git a/mvp/tools/gen-scenario.py b/mvp/tools/gen-scenario.py
+index 7a014d5d..2ca091a3 100755
+--- a/mvp/tools/gen-scenario.py
++++ b/mvp/tools/gen-scenario.py
+@@ -1327,7 +1327,8 @@ def control_lines(name, binding, layout, outbound, budget, time="0",
+                       f"domain={domain['index']} "
+                       f"hgatp=0x{domain['hgatp']:x} hstatus_controls=0x180 "
+                       "hedeleg=<h> hideleg=0x40 hcounteren=0x2 sie=0x2 "
+-                      "henvcfg=0x8000000000000000 "
++                      # beryllium-cheri: STCE and CHERI v0.9.3's CRE.
++                      "henvcfg=0x8000000010000000 "
+                       "vstimecmp=0xffffffffffffffff")
+     for domain in binding:
+         before.append(f"BE_MVP:10 DOMAIN_ENTERED hart={domain['hart']} "

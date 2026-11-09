@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Results of experiments/monitor-repeat.sh: repeated runs of today's
+# monitor's te-poc scenario (GCC image, plic machine), counting
+# terminal outcomes and reading the harts of every stalled run.
+run: 2026-11-04T11:24:53Z; runs per setup: 500; at a time: 24; interleaved: 1
+image: gcc/te-poc/be-mvp-boot.elf d42cbb92fdecf196c602105ca69595074231df411d24661942b3887d57e177ca
+
+cheri-cre: pass=397 refused=99 stall=4 fail=0 timeout=0
+  emulator: QEMU emulator version 8.1.0; firmware: 0733571585cd9a5a
+cheri: pass=387 refused=111 stall=2 fail=0 timeout=0
+  emulator: QEMU emulator version 8.1.0; firmware: 78f14d30c9518170
+upstream-8.1: pass=500 refused=0 stall=0 fail=0 timeout=0
+  emulator: QEMU emulator version 8.1.0, -accel tcg,thread=single; firmware: 78f14d30c9518170
+control: pass=396 refused=104 stall=0 fail=0 timeout=0
+  emulator: QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44); firmware: 78f14d30c9518170
+
+== each stall: the guests' last init lines, and the hart left in a guest
+cheri run 101:
+  BE_MVP_G0: MVPINIT 05 RESULT pass
+  BE_MVP_G0: MVPINIT 06 POWER_OFF
+  hart 2 (gdb thread p1.3) is in a guest at 0xffffffff800d7ba6 (arch_cpu_idle):
+    mip=0x0000000000000040 mie=0x000000000000004a hideleg=0x0000000000000040 vsip=0x0000000000000020 vsie=0x0000000000000020 vsstatus=0x0000000200000020
+cheri run 450:
+  BE_MVP_G0: MVPINIT 05 RESULT pass
+  BE_MVP_G0: MVPINIT 06 POWER_OFF
+  hart 2 (gdb thread p1.3) is in a guest at 0xffffffff800d7ba6 (arch_cpu_idle):
+    mip=0x0000000000000040 mie=0x000000000000004a hideleg=0x0000000000000040 vsip=0x0000000000000020 vsie=0x0000000000000020 vsstatus=0x0000000200000020
+cheri-cre run 9:
+  BE_MVP_G1: MVPINIT 05 RESULT pass
+  BE_MVP_G1: MVPINIT 06 POWER_OFF
+  hart 1 (gdb thread p1.2) is in a guest at 0xffffffff800d7ba6 (arch_cpu_idle):
+    mip=0x0000000000000040 mie=0x000000000000004a hideleg=0x0000000000000040 vsip=0x0000000000000020 vsie=0x0000000000000020 vsstatus=0x0000000200000020
+cheri-cre run 387:
+  BE_MVP_G0: MVPINIT 05 RESULT pass
+  BE_MVP_G0: MVPINIT 06 POWER_OFF
+  hart 2 (gdb thread p1.3) is in a guest at 0xffffffff800d7ba6 (arch_cpu_idle):
+    mip=0x0000000000000040 mie=0x000000000000004a hideleg=0x0000000000000040 vsip=0x0000000000000020 vsie=0x0000000000000020 vsstatus=0x0000000200000020
+cheri-cre run 430:
+  BE_MVP_G0: MVPINIT 05 RESULT pass
+  BE_MVP_G0: MVPINIT 06 POWER_OFF
+  hart 2 (gdb thread p1.3) is in a guest at 0xffffffff800d7ba6 (arch_cpu_idle):
+    mip=0x0000000000000040 mie=0x000000000000004a hideleg=0x0000000000000040 vsip=0x0000000000000020 vsie=0x0000000000000020 vsstatus=0x0000000200000020
+cheri-cre run 435:
+  BE_MVP_G1: MVPINIT 05 RESULT pass
+  BE_MVP_G1: MVPINIT 06 POWER_OFF
+  hart 1 (gdb thread p1.2) is in a guest at 0xffffffff800d7ba6 (arch_cpu_idle):
+    mip=0x0000000000000040 mie=0x000000000000004a hideleg=0x0000000000000040 vsip=0x0000000000000020 vsie=0x0000000000000020 vsstatus=0x0000000200000020

@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Written by experiments/fw-jump-fault.sh: the pinned CHERI Linux kernel
+# booted once with OpenSBI fw_jump under the pinned QEMU, with an
+# instruction trace of riscv_isa_set_ext. The run stops at a 60 s
+# timeout (exit 124) because the kernel halts after its panic.
+run: 2026-11-04T02:21:21Z; qemu exit 124; -cpu codasip-x730-lux
+
+== where OpenSBI puts the kernel and its device tree
+Domain0 Next Address        : 0x0000000080200000
+Domain0 Next Arg1           : 0x0000000082200000
+kernel image: physical 0x80200000 to 0x84909b61 (vmlinux _start 0xffffffff80000000, _end 0xffffffff84709b61, loaded at 0x80200000)
+
+== the kernel console
+[    0.000000] Memory Region 0x0000000082200000/0x000000000000223a already reserved?!
+[    0.000000] ===== CHERI exception: 0xffffffff80024d00[V:0000:C:r.xCal.e:0:.:0x8000000000000000-0xffffffffffffffff] riscv_isa_set_ext+0x80/0xa0
+[    0.000000] Unable to handle kernel paging request at virtual address ffffffff83028a80
+[    0.000000] Kernel panic - not syncing: Fatal exception in interrupt
+[    0.000000] ---[ end Kernel panic - not syncing: Fatal exception in interrupt ]---
+
+== riscv_a_exts (0xffffffff82000238), a read-only kernel table that lies in the device
+== tree's range: its first word as linked, then as read at the fault
+linked: 0x00000061 (first 32-bit entry, from vmlinux .rodata)
+    Memory Read [ffffffff82000238] = 02000000
+
+== the bitmap argument (ca1): a capability derived from it, earlier in the trace
+[0:0] 0xffffffff80024ca8:  0cd586b3          cadd                    ca3,ca1,a3
+    Write c13/ca3|v:1 CAP p:fcfc2f ct:0 b:ffffffff82807ac8 a:ffffffff82807ac8 t:ffffffff82807ad8 bv: 1
+
+== the instruction trace up to the fault
+    Write x14/a4 = 0000000002000000
+[0:0] 0xffffffff80024cde:  ff1705e3          beq                     a4,a7,-22               # 0xffffffff80024cc8
+[0:0] 0xffffffff80024ce2:  41f7561b          sraiw                   a2,a4,31
+    Write x12/a2 = 0000000000000000
+[0:0] 0xffffffff80024ce6:  01a6561b          srliw                   a2,a2,26
+    Write x12/a2 = 0000000000000000
+[0:0] 0xffffffff80024cea:  963a              add                     a2,a2,a4
+    Write x12/a2 = 0000000002000000
+[0:0] 0xffffffff80024cec:  4066579b          sraiw                   a5,a2,6
+    Write x15/a5 = 0000000000080000
+[0:0] 0xffffffff80024cf0:  fc067613          andi                    a2,a2,-64
+    Write x12/a2 = 0000000002000000
+[0:0] 0xffffffff80024cf4:  078e              slli                    a5,a5,3
+    Write x15/a5 = 0000000000400000
+[0:0] 0xffffffff80024cf6:  8f11              sub                     a4,a4,a2
+    Write x14/a4 = 0000000000000000
+[0:0] 0xffffffff80024cf8:  0cf58633          cadd                    ca2,ca1,a5
+    Write c12/ca2|v:0 CAP p:fcfc2f ct:0 b:ffffffff82c07ac8 a:ffffffff82c07ac8 t:ffffffff82c07ad8 bv: 1
+[0:0] 0xffffffff80024cfc:  00e81733          sll                     a4,a6,a4
+    Write x14/a4 = 0000000000000001
+[0:0] 0xffffffff80024d00:  40e6302f          amoor.d                 zero,a4,(a2)
+-> Switch to Supervisor mode
+-> Exception #28 vector 0xffffffff811a82c0 fault-addr 0xffffffff82c07ac8
