@@ -3,6 +3,25 @@
 
 # The CHERI platform branch
 
+> **On the public research branch `cheri-platform`.** This page is the
+> internal branch's page, `beryllium/cheri-platform` at its last
+> internal commit; the commits that it names are internal and do not
+> resolve in this repository. The public branch holds that branch's
+> change over MVP 1.0, the tag `mvp-1.0`, with these differences:
+>
+> - The branch's base holds the fixes made before MVP 1.0's release,
+>   among them S-01's digest pin on QEMU's firmware. The CHERI-aware
+>   monitor's firmware, the CHERI Alliance OpenSBI, is pinned the same
+>   way, by the `firmware` line of `mvp/guest/cheri-pins.txt`.
+> - The branch has no catch-up merge. Part 2 of
+>   `mvp/tools/cheri-check.sh` builds its reference at the branch's
+>   merge base with `main`, and compares the plain variant's boot images
+>   with the release's record, `mvp/results/20261108-release/`.
+> - Part 1 of `cheri-check.sh` runs 19 of `make check`'s steps here, not
+>   20: the release removed `snapshot-check`.
+> - The other planning pages are the release's, as they stood at the
+>   release's source commit.
+
 ## Status and scope
 
 The responsible human's direction of 2026-11-05: "for now, we will create
