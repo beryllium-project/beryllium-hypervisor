@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The te-poc scenario's policy (planning/mvp-m1-plan.md, "The policy, the
+# labeling, and the manifest"): Instance 2 of security model v1
+# (planning/security-model-v1.md, Part 2), verbatim, in Part 2's concrete
+# syntax. tools/policy-check.py parses it and runs A1 to A8 on it with the
+# scenario's labeling, need sets, and manifest; the monitor never reads it.
+# Its policy identity is the SHA-256 of this file's bytes, comments
+# included.
+
+type monitor_t;      type writer_t;       type reader_t;
+type writer_mem_t;   type reader_mem_t;   type shared_wr_t;
+type monitor_mem_t;
+
+class memory  { read write execute map }
+class channel { send receive }
+
+allow writer_t writer_mem_t : memory { read write execute map };
+allow writer_t shared_wr_t  : memory { read write map };
+allow writer_t shared_wr_t  : channel { send };
+
+allow reader_t reader_mem_t : memory { read write execute map };
+allow reader_t shared_wr_t  : memory { read map };
+allow reader_t shared_wr_t  : channel { receive };

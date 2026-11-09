@@ -1,0 +1,3 @@
+session=sessions/shell.json name=shell sha256=06ccc1f53a0eed19d3f4c28eb62ef213bc5cb1926cef8459c30f1df132cd4f63 steps=16
+expect=two-guests-shell.json image=two-guests-shell sha256=c7f91deb68e52bdfda12b91dbb179f3ab535b645e89354477730616e3767c646
+elf=<repo>/build/mvp/variants/gcc/two-guests-shell/be-mvp-boot.elf sha256=a194b45f23f5b2961aa0c8735ff6b48b4fc7cc5b7b9b8c1bc0953d04cf4083a2

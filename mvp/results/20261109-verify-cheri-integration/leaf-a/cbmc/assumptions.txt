@@ -1,0 +1,10 @@
+# planning/mvp-m8-plan.md D-7, M8-6; specification planning/mvp-m8-specifications.md Revision 1, sections 4 and 6, SHA-256 aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b, accepted at 93a8d136
+# CBMC on Leaf A: assumption inventory (D-7 item 4)
+tools: CBMC 6.8.0 (Fedora's cbmc-6.8.0-1.fc44) with its SAT solver MiniSAT 2.2.1 and with cvc5 1.3.4, from the verifier image (D-7 item 1; both pairs qualified in M8-5; CBMC with Z3 is not used)
+machine model: --arch riscv64 (LP64, unsigned char, the target's); the headers' _Static_asserts hold under it (CBMC's front end rejects a failing one)
+preprocessing: CBMC's own (gcc -E) with the target's -I list and -DLEAF=<the leaf's path>, which the harness #includes whole so that its static helpers can be called
+memory model: CBMC's (objects with 8 object bits and 56 offset bits); pointer, bounds, and overflow checks on every reached operation
+bounds: a bounded model check, never proof: the only loop of the five functions (leaf_at's, three entries) is unwound fully under --unwinding-assertions, so within CBMC's semantics every input is covered; memcmp's loop (the frame check) is unwound past every structure's size
+solver trust: MiniSAT 2.2.1 and cvc5 1.3.4; a property holds when one reports SUCCESS and none FAILURE; every FAILURE comes with a concrete trace
+ownership premise: section 4.3's validity and separation by construction (distinct locals); nothing at any caller
+not covered: the callers; compiled execution (claim class (d)): CBMC's C semantics, not the object code; time limits: a CBMC run is killed after 300 s (all of one entry point's properties are solved together, so the per-goal limit of 60 s is not CBMC's unit)

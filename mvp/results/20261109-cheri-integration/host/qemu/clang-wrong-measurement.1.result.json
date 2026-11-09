@@ -1,0 +1,212 @@
+{
+ "boot_marker": "PASS",
+ "capture": {
+  "bytes": 9444,
+  "sha256": "93b1a007474df54507d7a880329c16df8baeb0aeadfe1e7277bc7a10bef40647"
+ },
+ "costs": {},
+ "expect": {
+  "image": "wrong-measurement",
+  "scenario_sha256": "0a97a110dbfc44a5edf9591386f1a8ce788567693838037c4cc3839dcca293a9"
+ },
+ "fields": {
+  "base": "0x0000000108000000",
+  "boot_hart": "7",
+  "bytes": "0x00000000000a4000",
+  "dest": "0x0000000102000000",
+  "fdt": "0x000000027fe00000",
+  "hart": "0x0000000000000000",
+  "image": "wrong-measurement",
+  "mgmt_g0": "0",
+  "mgmt_g1": "0",
+  "mode": "direct",
+  "rule_hart": "7",
+  "sbi_version": "2.0",
+  "started": "7"
+ },
+ "findings": [],
+ "lines": {
+  "g0": 0,
+  "g1": 0
+ },
+ "log": {
+  "boot_image": "nominal",
+  "contract": {
+   "run": "gate-fail",
+   "sequence": "v3"
+  },
+  "count": 14,
+  "export_sha256": "1b4159f2f933906c4f3fde053d9402297318a474e22687628b57eca15f350228",
+  "launch": {
+   "0": "5e09164474def54f7644a55485c3a1860d71473bd2860e2481789877330429d8"
+  },
+  "lines": 15,
+  "r2": "kept",
+  "records": [
+   {
+    "fields": "equal",
+    "object": "monitor-text",
+    "recnum": 0,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "monitor-rodata",
+    "recnum": 1,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "monitor-input",
+    "recnum": 2,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "mvp-text",
+    "recnum": 3,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "mvp-rodata",
+    "recnum": 4,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "core-identity",
+    "recnum": 5,
+    "recomputed": "equal",
+    "stream": 1
+   },
+   {
+    "fields": "equal",
+    "object": "console-grants",
+    "recnum": 6,
+    "recomputed": "equal",
+    "stream": 1
+   },
+   {
+    "fields": "equal",
+    "object": "configuration-identity",
+    "recnum": 7,
+    "recomputed": "equal",
+    "stream": 1
+   },
+   {
+    "fields": "equal",
+    "object": "policy-identity",
+    "recnum": 8,
+    "recomputed": "equal",
+    "stream": 1
+   },
+   {
+    "fields": "equal",
+    "object": "kernel-image",
+    "recnum": 9,
+    "recomputed": "equal",
+    "stream": 2
+   },
+   {
+    "fields": "equal",
+    "object": "device-tree",
+    "recnum": 10,
+    "recomputed": "equal",
+    "stream": 2
+   },
+   {
+    "fields": "equal",
+    "object": "kernel-image",
+    "recnum": 11,
+    "recomputed": "equal",
+    "stream": 3
+   },
+   {
+    "fields": "equal",
+    "object": "device-tree",
+    "recnum": 12,
+    "recomputed": "equal",
+    "stream": 3
+   },
+   {
+    "fields": "equal",
+    "object": "secret-page",
+    "recnum": 13,
+    "recomputed": "equal",
+    "stream": 3
+   }
+  ],
+  "reference": "2b289ccf800d7e782c0635dca17cfbe622484d15125092b32a7346f2c0770526",
+  "registers": {
+   "barrier": null,
+   "replayed": [
+    "59151375e38e48d005d71d6bd051fc9e549d267ae40e203a4c30ed2261f34952",
+    "cc91394b7550f609b0efa684f1c7d480d808e553baf88e30a89e9c0646c97743",
+    "5e09164474def54f7644a55485c3a1860d71473bd2860e2481789877330429d8",
+    "3d803ea2a1fd16ee84aaae561885b7fb25fbe9242e7efab4df6053133ba61185"
+   ],
+   "replayed_label": "unprotected",
+   "terminal": null
+  },
+  "self_report": [],
+  "state": "open",
+  "ticks": {
+   "barrier": null,
+   "launch": {
+    "0": "0x59bb8"
+   }
+  },
+  "volume_bytes": 3948
+ },
+ "log_declared": [],
+ "markers": [
+  "BE_MVP_SHIM: boot_hart=0x7 starting hart 0",
+  "BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x000000027fe00000 dest=0x0000000102000000 bytes=0x00000000000a4000",
+  "BE_MVP:00 BOOT_VALIDATED",
+  "BE_MVP:00 CONFIG_SEALED inventory=17 authorities=7 roots=2 harts=0,1,2 identity=14bfd613098573f2",
+  "BE_MVP:01 SCENARIO name=anchor domains=2 harts=0,1,2 of=8 ring_bytes=0x8000 mvp_region=0x102064000 mvp_bytes=0x40000 image_bytes=0xa4000",
+  "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status=1:1,2:1,3:1,4:1,5:1,6:1,7:0 started=7",
+  "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 hart=1 gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 root=0x102034000 vmid=1",
+  "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 hart=2 gpa=0x80000000 hpa=0x114000000 size=0x4000000 leaves=32 root=0x10203c000 vmid=2",
+  "BE_MVP:03 PAGE_CHECKED page=0 kind=channel writer=0 reader=1 gpa=0x84000000 hpa=0x118000000 bytes=0x1000 level0=0x102039000,0x102041000 writer_pte=0x460000d7 reader_pte=0x46000053 config=769c374673a977e477e42d164274102052c2006ba0d4a6a1b03c40d932c610f4",
+  "BE_MVP:03 PAGE_CHECKED page=1 kind=channel writer=1 reader=0 gpa=0x84001000 hpa=0x118001000 bytes=0x1000 level0=0x102039000,0x102041000 writer_pte=0x460004d7 reader_pte=0x46000453 config=769c374673a977e477e42d164274102052c2006ba0d4a6a1b03c40d932c610f4",
+  "BE_MVP:03 PAGE_CHECKED page=2 kind=secret reader=1 gpa=0x84002000 hpa=0x118002000 bytes=0x1000 level0=0x102039000,0x102041000 reader_pte=0x46000853 config=769c374673a977e477e42d164274102052c2006ba0d4a6a1b03c40d932c610f4",
+  "BE_MVP:04 PAYLOAD_CHECKED kernel_bytes=0x1f7cc4 image_size=0x22bfb0",
+  "BE_MVP:05 DOMAIN_RAM_CLEARED domain=0 gpa=0x80000000 size=0x4000000 ticks=0x34301",
+  "BE_MVP:05 DOMAIN_RAM_CLEARED domain=1 gpa=0x80000000 size=0x4000000 ticks=0x32e83",
+  "BE_MVP:05 PAGE_CLEARED page=0 hpa=0x118000000 bytes=0x1000 ticks=0x691",
+  "BE_MVP:05 PAGE_CLEARED page=1 hpa=0x118001000 bytes=0x1000 ticks=0x88",
+  "BE_MVP:05 SECRET_PLACED page=2 hpa=0x118002000 bytes=0x20 ticks=0x12c",
+  "BE_MVP:06 PAYLOAD_PLACED domain=0 kernel=0x80200000 kernel_bytes=0x1f7cc4 image_size=0x22bfb0 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x248f",
+  "BE_MVP:06 PAYLOAD_PLACED domain=1 kernel=0x80200000 kernel_bytes=0x1f7cc4 image_size=0x22bfb0 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x1d34",
+  "BE_MVP:06 LAUNCH domain=0 hart=1 register=5e09164474def54f7644a55485c3a1860d71473bd2860e2481789877330429d8 expected=match ticks=0x59bb8",
+  "BE_MVP:19 LOG header magic=BEMVPLOG version=1 hlen=128 rlen=96 capacity=41 count=14 state=open alg=0x000b scenario=0a97a110dbfc44a5edf9591386f1a8ce788567693838037c4cc3839dcca293a9 config=769c374673a977e477e42d164274102052c2006ba0d4a6a1b03c40d932c610f4",
+  "BE_MVP:19 LOG record seq=0 producer=0 type=measured stream=0 object=monitor-text repr=as-placed outcome=recorded base=0x0000000102000000 length=0x0000000000002ff0 dlen=32 srec=0 expected=0 digest=05c83ee72aae68c36f68d857aecaa98d044305a167487f11376581fe9dc43aad",
+  "BE_MVP:19 LOG record seq=1 producer=0 type=measured stream=0 object=monitor-rodata repr=as-placed outcome=recorded base=0x0000000102008820 length=0x00000000000000d8 dlen=32 srec=1 expected=0 digest=d17358dc8526ebda4d3854bc7000176843563f5532918b482ed3bb09cf5c69b3",
+  "BE_MVP:19 LOG record seq=2 producer=0 type=measured stream=0 object=monitor-input repr=as-placed outcome=recorded base=0x0000000102008000 length=0x0000000000000820 dlen=32 srec=2 expected=0 digest=b0250b8e0caa20d143d4ccfbde22b6bab7c16afe5c582d1b786376d6528bb27d",
+  "BE_MVP:19 LOG record seq=3 producer=0 type=measured stream=0 object=mvp-text repr=as-placed outcome=recorded base=0x0000000102064000 length=0x00000000000084a0 dlen=32 srec=3 expected=0 digest=3ecf72309f71ebd482ed43ad1f0dd0f7cb485563738b7b8f018428e5d83d9997",
+  "BE_MVP:19 LOG record seq=4 producer=0 type=measured stream=0 object=mvp-rodata repr=as-placed outcome=recorded base=0x000000010206c4a0 length=0x00000000000019d0 dlen=32 srec=4 expected=0 digest=a8a4d38a38c94c00bab83b9d05e3062e565a991274bffbee52b01c1206c44bab",
+  "BE_MVP:19 LOG record seq=5 producer=0 type=measured stream=1 object=core-identity repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=0 digest=14bfd613098573f2d1ad1856ea419f97c2a8f230d9a103ac550f982a8eb4be87",
+  "BE_MVP:19 LOG record seq=6 producer=0 type=measured stream=1 object=console-grants repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=1 expected=0 digest=96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+  "BE_MVP:19 LOG record seq=7 producer=0 type=informational stream=1 object=configuration-identity repr=build-recorded outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=2 expected=0 digest=769c374673a977e477e42d164274102052c2006ba0d4a6a1b03c40d932c610f4",
+  "BE_MVP:19 LOG record seq=8 producer=0 type=informational stream=1 object=policy-identity repr=build-recorded outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=3 expected=0 digest=bfecfa923eaa64782cca2f662091de1329eba2c969408a59f04a8c0234fc79aa",
+  "BE_MVP:19 LOG record seq=9 producer=0 type=measured stream=2 object=kernel-image repr=as-placed outcome=recorded base=0x0000000110200000 length=0x00000000001f7cc4 dlen=32 srec=0 expected=0 digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+  "BE_MVP:19 LOG record seq=10 producer=0 type=measured stream=2 object=device-tree repr=as-placed outcome=gated-pass base=0x0000000113e00000 length=0x0000000000001000 dlen=32 srec=1 expected=0 digest=55acfb900d8e43daee8f5c3d2b1c13e624f8af7e8cc97dd900d6f23d8728c71b",
+  "BE_MVP:19 LOG record seq=11 producer=0 type=measured stream=3 object=kernel-image repr=as-placed outcome=recorded base=0x0000000114200000 length=0x00000000001f7cc4 dlen=32 srec=0 expected=0 digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+  "BE_MVP:19 LOG record seq=12 producer=0 type=measured stream=3 object=device-tree repr=as-placed outcome=recorded base=0x0000000117e00000 length=0x0000000000001000 dlen=32 srec=1 expected=0 digest=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025",
+  "BE_MVP:19 LOG record seq=13 producer=0 type=measured stream=3 object=secret-page repr=as-placed outcome=gated-fail base=0x0000000118002000 length=0x0000000000001000 dlen=32 srec=2 expected=0 digest=ec16dc05638fc3644b35a8cc6c50b79c637151b1e7cdd1684f55c57b4fefeefd",
+  "BE_MVP:FAIL measurement",
+  "BE_MVP:DETAIL domain=1 hart=2 computed=3d803ea2a1fd16ee84aaae561885b7fb25fbe9242e7efab4df6053133ba61185 expected=3c803ea2a1fd16ee84aaae561885b7fb25fbe9242e7efab4df6053133ba61185"
+ ],
+ "probe_values": {},
+ "result": "PASS",
+ "stops": [],
+ "terminal": "fail-marker",
+ "toolchain": "clang"
+}

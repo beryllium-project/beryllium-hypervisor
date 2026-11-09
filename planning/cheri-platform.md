@@ -45,6 +45,11 @@
 >     made the plain build's `MVP_HENVCFG_ARMED` in `mvp/src/mvp-trap.S`
 >     a preprocessor name, so that both plain monitor ELFs equal
 >     MVP 1.0's, as M8's sequences record requires (see "Checking it").
+>   - Its CI-6 ran the CHERI check and release candidate 4's eight
+>     gates at `759f9d88`, from clean clones, and all pass. The records
+>     are `mvp/results/20261109-cheri-integration/`,
+>     `mvp/results/20261109-verify-cheri-integration/`, and
+>     `mvp/results/20261109-cheri-check/`.
 
 ## Status and scope
 
@@ -507,7 +512,7 @@ checks, for each variant:
 | The `k3-like`, `rva23`, and `no-sstc` machines | Run in `qemu-test` | QEMU 8.1 lacks the CPU properties they need, so `k3-like`'s variants and probes run on `plic` |
 | `uboot-rehearsal` | Not run here: it needs B3's U-Boot build | Refused by `mvp/tools.mk` |
 | `live` | Prints the plain commands (see "Running it by hand") | Refused by `mvp/tools.mk`: `mvp/tools/cheri-live.sh` prints and runs the CHERI commands |
-| `./mvp/mvp evaluate`, `./mvp/mvp verify` | Not run: each takes hours | Not run |
+| `./mvp/mvp evaluate`, `./mvp/mvp verify` | Pass, among the CHERI integration's gates (`mvp/results/20261109-cheri-integration/`, `mvp/results/20261109-verify-cheri-integration/`) | Not run |
 
 M8's frozen records are two, and `./mvp/mvp verify` checks both
 before its arms run.
@@ -522,6 +527,13 @@ before its arms run.
   each plain monitor ELF without its debug sections. The plain build's
   `MVP_HENVCFG_ARMED` is a preprocessor name, not an assembler symbol,
   so that these ELFs equal MVP 1.0's and the record stays as released.
+
+`./mvp/mvp verify` passed among the CHERI integration's gates, at
+`759f9d88`. Each suite's verdict and counts equal those of release
+candidate 4's record and of the release's. Two files of its record
+differ from theirs in detail that depends on the solvers' runs. Its
+README, in `mvp/results/20261109-verify-cheri-integration/`, says which
+and why.
 
 ## The CHERI rules' review
 

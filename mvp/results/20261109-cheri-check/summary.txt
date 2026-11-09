@@ -1,0 +1,60 @@
+beryllium: 759f9d888fa9da065eb9132f6a232505b5f56e70
+CHERI stack: <stack-root>; pins: cheri/pins.txt, SHA-256 03b9cc42f2ca138d5db7e89e20faaf44b375257c3301f62ab7c09ce9309ea3f0
+emulator: QEMU emulator version 8.1.0, build/qemu-ia-fix
+firmware: e0aeeae9ac48ed52ec95188dd7cb9a415be266f182c70acb63b8a3c91d628c7d
+build: MVP_MONITOR=cheri MVP_GUEST_FLAVOUR=cheri-linux (build/mvp.cheri.cheri-linux)
+emulated hart (parts 1 and 3): rv64,h=true,cheri_pte=on; cap-store-control's: rv64,h=true
+make image references: PASS
+make image-check: PASS
+make reference-check: PASS
+make port-check: PASS
+make lint: PASS
+make policy-negatives: PASS
+make guest-self-test: PASS
+make host-test: PASS
+make target-check: PASS
+make budgets: PASS
+make tool-lock-check: PASS
+make platform-probe-check: PASS
+make partition-tool-check: PASS
+make evidence-check: PASS
+make rc-record-check: PASS
+make session-typist-check: PASS
+make verify-tools-check: PASS
+make platform-record-check: PASS
+make uboot-rehearsal-check: PASS
+  1 BE_MVP_GUEST_BUILD: PASS cheri pins=match
+  1 BE_MVP_HOST: PASS config scenarios=42 assertions=180 gcc=clang
+  1 BE_MVP_HOST: PASS deny scenarios=38 assertions=2933 gcc=clang
+  1 BE_MVP_HOST: PASS gstage scenarios=46 assertions=40765 gcc=clang
+  1 BE_MVP_HOST: PASS hart scenarios=843 assertions=176892 gcc=clang
+  1 BE_MVP_HOST: PASS input scenarios=17 assertions=5188 gcc=clang
+  1 BE_MVP_HOST: PASS log scenarios=47 assertions=874 gcc=clang
+  1 BE_MVP_HOST: PASS payload scenarios=8 assertions=706 gcc=clang
+  1 BE_MVP_HOST: PASS probe scenarios=65 assertions=779 gcc=clang
+  1 BE_MVP_HOST: PASS ring scenarios=160 assertions=409415 gcc=clang
+  1 BE_MVP_HOST: PASS sbi scenarios=133 assertions=16294 gcc=clang
+  1 BE_MVP_HOST: PASS sha256 scenarios=16 assertions=626 gcc=clang
+  2 BE_MVP_IMAGE_CHECK: PASS mutations=153
+  2 BE_MVP_IMAGE_CHECK: PASS mutations=157
+  2 BE_MVP_IMAGE_CHECK: PASS mutations=166
+BE_MVP_CHERI_FIRMWARE_PIN: PASS one byte changed: refused, exit 2, no QEMU start
+BE_MVP_QEMU: PASS runs=56 attempts=61 refused=5
+BE_MVP_CHERI_CAPTURE_MUTATIONS: PASS runs=14 mutations=94 rejected=94
+BE_MVP_SESSIONS: PASS sessions=6 attempts=7 refused=1
+plain make clean: PASS
+plain make image variants probes qemu-images: PASS
+plain reference make image variants probes qemu-images: PASS
+plain reference: main 0b2a4367363ab871bf5e84b00a80d38bb3d97221 (the merge base; no catch-up merge), built in 91 s
+BE_MVP_CHERI_PLAIN: PASS images=162 (be-mvp-boot-pic.img=52 be-mvp-boot-qemu.img=6 be-mvp-boot.img=54 be-mvp.bin=50) reference=0b2a4367363a records=20261108-release:162
+regression build: MVP_MONITOR=cheri MVP_GUEST_FLAVOUR=linux (build/mvp.cheri.linux)
+regression make image references: PASS
+regression make image-check: PASS
+  2 regression BE_MVP_IMAGE_CHECK: PASS mutations=153
+  2 regression BE_MVP_IMAGE_CHECK: PASS mutations=157
+  2 regression BE_MVP_IMAGE_CHECK: PASS mutations=166
+regression BE_MVP_QEMU: PASS runs=50 attempts=60 refused=10
+regression BE_MVP_CHERI_CAPTURE_MUTATIONS: PASS runs=2 mutations=10 rejected=10
+regression BE_MVP_SESSIONS: PASS sessions=6 attempts=6 refused=0
+time: cheri 587 s, plain 172 s, regression 483 s, total 1242 s
+BE_MVP_CHERI_CHECK: PASS

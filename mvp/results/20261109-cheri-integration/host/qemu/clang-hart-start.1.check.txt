@@ -1,0 +1,21 @@
+BE_MVP_COUNTS: boot_hart=4 rule_hart=4 started=4 g0=0 g1=0
+BE_MVP_LOG: contract=v1/post-launch-failure r2=kept state=closed count=13 lines=16 bytes=4272 boot_image=nominal reference=3d2eb5076c851045 export=ce3bf3b95e030dea
+BE_MVP_LOG_REGISTERS: at=barrier r0=0c83d7a84297131d91fedec560abb5f4db3e19c8f3e88ccb0359dbf045b8bee2 r1=3b46bdf83b540c1bcce1dcab1244bce0da9a123c2a7b0a45b0686dd1d952a21a r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+BE_MVP_LOG_REGISTERS: at=terminal r0=0c83d7a84297131d91fedec560abb5f4db3e19c8f3e88ccb0359dbf045b8bee2 r1=3b46bdf83b540c1bcce1dcab1244bce0da9a123c2a7b0a45b0686dd1d952a21a r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+BE_MVP_LOG_REGISTERS: at=replayed r0=0c83d7a84297131d91fedec560abb5f4db3e19c8f3e88ccb0359dbf045b8bee2 r1=3b46bdf83b540c1bcce1dcab1244bce0da9a123c2a7b0a45b0686dd1d952a21a r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b (unprotected)
+BE_MVP_LOG_TICKS: barrier=0xb6dd7 launch_g0=0x59a4f launch_g1=0x59c01
+BE_MVP_LOG_RECORD: seq=0 object=monitor-text stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=1 object=monitor-rodata stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=2 object=monitor-input stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=3 object=mvp-text stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=4 object=mvp-rodata stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=5 object=core-identity stream=1 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=6 object=console-grants stream=1 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=7 object=policy-absent stream=1 reference=equal recomputed=none
+BE_MVP_LOG_RECORD: seq=8 object=kernel-image stream=2 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=9 object=device-tree stream=2 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=10 object=kernel-image stream=3 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=11 object=device-tree stream=3 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=12 object=close stream=255 reference=equal recomputed=none
+BE_MVP_RESULT: PASS terminal=fail-marker
+BE_MVP_CAPTURE[direct hart-start]: PASS

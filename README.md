@@ -21,6 +21,12 @@
 >   `mvp/verify/target-digests.txt`, are re-written against this
 >   branch's commit `5980edff`, since the CHERI variant changes two of
 >   the files that they cover;
+> - release candidate 4's eight gates and the CHERI check pass on this
+>   branch, and `verify`'s verdicts equal those of release candidate 4's
+>   record. The records are
+>   [`mvp/results/20261109-cheri-integration/`](mvp/results/20261109-cheri-integration/)
+>   and, beside it, `20261109-verify-cheri-integration/` and
+>   `20261109-cheri-check/`;
 > - the CHERI variant's check, `mvp/tools/cheri-check.sh`, needs a
 >   CHERI toolchain, a CHERI QEMU with two local changes, and CHERI
 >   firmware, which the tools in [`cheri/`](cheri/README.md) build from
