@@ -35,15 +35,18 @@
 #    be-mvp-boot-qemu.img under gcc/, clang/, variants/, and probes/,
 #    with no image missing and none extra. The reference is the latest
 #    main commit merged into this branch: the second parent of the newest
-#    merge on HEAD's first-parent history (each a catch-up, the page's
-#    rule 1), which must be git merge-base's answer for HEAD and the
-#    development line (refs/heads/main, or refs/remotes/origin/main where
-#    there is no main). Where that history has no merge, on a branch that
-#    has never caught up, the reference is that merge base itself. It is
-#    built once, with the same tools and
-#    invocation, in a temporary clone under build/cheri-check/reference/
-#    SHA/, which then keeps only its digests and its build log, so that it
-#    is built again only when a catch-up brings a new main commit. While a
+#    merge on HEAD's first-parent history that the development line does
+#    not hold (each a catch-up, the page's rule 1), which must be git
+#    merge-base's answer for HEAD and the development line
+#    (refs/heads/main, or refs/remotes/origin/main where there is no main).
+#    Where there is no such merge, on a branch that has never caught up, on
+#    the development line itself, or on a branch from it without a
+#    catch-up merge, the reference is that merge base itself. It is built
+#    once, with the same tools and invocation, in a temporary clone under
+#    build/cheri-check/reference/SHA/, which then keeps only its digests
+#    and its build log, so that it is built again only when the reference
+#    changes, as after a catch-up that brings a new main commit or after
+#    each new commit on the development line itself. While a
 #    release-candidate record's candidate has the reference's build inputs
 #    (every path but planning/, .github/, mvp/results/, mvp/docs/, and
 #    Markdown equal), the reference must also equal that record's
@@ -321,11 +324,12 @@ fi
 	linux_git=(LINUX_GIT="$top/$plain/linux-src")
 images "$top/$plain" >"$out/plain-images.sha256"
 
-# The reference: the newest first-parent merge's second parent, which must
-# be the merge base of HEAD and the development line; with no merge on
-# HEAD's first-parent history, that merge base.
+# The reference: the second parent of the newest merge on HEAD's
+# first-parent history that the development line does not hold, which must
+# be the merge base of HEAD and the development line; with no such merge
+# (on a branch that has never caught up, on the development line itself,
+# or on a branch from it without a catch-up merge), that merge base.
 reference=
-merge=$(git -C "$top" log --first-parent --merges -1 --format=%H HEAD)
 line=
 for candidate in refs/heads/main refs/remotes/origin/main; do
 	if git -C "$top" rev-parse --verify -q "$candidate" >/dev/null; then
@@ -333,6 +337,9 @@ for candidate in refs/heads/main refs/remotes/origin/main; do
 		break
 	fi
 done
+merge=
+[ -z "$line" ] ||
+	merge=$(git -C "$top" log --first-parent --merges -1 --format=%H HEAD ^"$line")
 how="$merge's second parent"
 if [ -z "$line" ]; then
 	echo "plain reference: FAIL no development line (main, origin/main)" >>"$summary"
