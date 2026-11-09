@@ -84,7 +84,10 @@
 	/* beryllium-cheri: STCE and CHERI v0.9.3's VS-mode enable, CRE. */
 	.equ MVP_HENVCFG_ARMED, 0x8000000010000000
 #else
-	.equ MVP_HENVCFG_ARMED, MVP_HENVCFG_STCE
+	/* beryllium-cheri: a preprocessor name, not an assembler symbol, so
+	 * that the plain monitor's ELF keeps MVP 1.0's symbol table, which
+	 * M8's sequences record (verify/litmus/sequences.txt) pins. */
+#define MVP_HENVCFG_ARMED MVP_HENVCFG_STCE
 #endif
 	/* The IPI: the supervisor software interrupt, taken only while V=1. */
 	.equ MVP_SIE_SSIE, 0x2
