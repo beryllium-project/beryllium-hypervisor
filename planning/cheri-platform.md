@@ -21,6 +21,17 @@
 >   20: the release removed `snapshot-check`.
 > - The other planning pages are the release's, as they stood at the
 >   release's source commit.
+> - The CHERI research repository, beryllium-cheri, has joined this
+>   branch under `cheri/` (see `cheri/README.md`): the CHERI stack's
+>   pins, `cheri/pins.txt`; the tools that fetch and build the stack,
+>   `cheri/tools/`; the CHERI QEMU's two local changes,
+>   `cheri/patches/`; and its experiments, as records.
+>   `cheri-check.sh` and `cheri-live.sh` read the pins from
+>   `cheri/pins.txt`, and the stack from `build/cheri/` or from the
+>   stack root given as `CHERI_DIR`, which may still be a
+>   beryllium-cheri checkout. Where this page says that the CHERI inputs
+>   or beryllium-cheri's scripts come from `../beryllium-cheri`, read
+>   these places instead.
 
 ## Status and scope
 
@@ -1002,8 +1013,10 @@ clone of the canonical checkout, so that the shared checkout can stay on
 the development line while both lines move. The clone pushes the branch
 back to the canonical repository. Git refuses a push to the branch that
 a checkout has checked out, so switch the shared checkout to this branch
-only when no clone needs to push. The CHERI toolchain, its pins, the
-emulator builds, and the research stay in beryllium-cheri.
+only when no clone needs to push. The CHERI stack's pins, its build
+tools, the CHERI QEMU's patches, and the experiments' records are under
+`cheri/` (see `cheri/README.md`), and the stack is built under
+`build/cheri/`, outside the tracked tree.
 
 ## Gates
 
