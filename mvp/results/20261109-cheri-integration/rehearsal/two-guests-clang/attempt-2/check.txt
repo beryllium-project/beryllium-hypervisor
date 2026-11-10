@@ -1,0 +1,23 @@
+BE_MVP_COUNTS: boot_hart=7 rule_hart=7 started=7 exits_g0=157 exits_g1=157 records=138 wakes=127 overlap_ticks=0x26c2780 shorter_ticks=0x26c2780 alternations=59 g0=65 g1=65
+BE_MVP_COSTS: g0_ping_to_receipt_ticks=572 g0_receipt_to_pong_ticks=1453 g0_run_ticks=40642432 g0_run_ticks_per_exit=258868 g1_ping_to_receipt_ticks=1181 g1_receipt_to_pong_ticks=187 g1_run_ticks=40818526 g1_run_ticks_per_exit=259990 hart0_idle_permille=990 hart0_idle_ticks=40513016 hart0_records=138 hart0_run_ticks=40882395 hart0_wakes=127
+BE_MVP_UBOOT: load_bytes=2748416 load_digest_kind=crc32 load_digest=518c795d moving_from=0x140000000 moving_to=0x108000000 moving_end=0x10829f000 fdt_blob=0xff7383d0 fdt_loaded=0xff7383d0 fdt_end=0xff73edd8 fdt_in_place=true
+BE_MVP_LOG: contract=v1/complete r2=kept state=closed count=13 lines=16 bytes=4272 boot_image=qemu-only copy reference=89a5322dd283c148 export=c0475f0b227f9ac4
+BE_MVP_LOG_REGISTERS: at=barrier r0=636da00669904fb1a85ce55a8e1b844589e07af70a4b4f7b16d1c66e99f32882 r1=d8a23ef65f85d1c1c5071e53d01c555c94d96848dfdff096cb9d09c6c3e7eb87 r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+BE_MVP_LOG_REGISTERS: at=terminal r0=636da00669904fb1a85ce55a8e1b844589e07af70a4b4f7b16d1c66e99f32882 r1=d8a23ef65f85d1c1c5071e53d01c555c94d96848dfdff096cb9d09c6c3e7eb87 r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b
+BE_MVP_LOG_REGISTERS: at=replayed r0=636da00669904fb1a85ce55a8e1b844589e07af70a4b4f7b16d1c66e99f32882 r1=d8a23ef65f85d1c1c5071e53d01c555c94d96848dfdff096cb9d09c6c3e7eb87 r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b (unprotected)
+BE_MVP_LOG_TICKS: barrier=0xb743d launch_g0=0x59d2b launch_g1=0x59edd
+BE_MVP_LOG_RECORD: seq=0 object=monitor-text stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=1 object=monitor-rodata stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=2 object=monitor-input stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=3 object=mvp-text stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=4 object=mvp-rodata stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=5 object=core-identity stream=1 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=6 object=console-grants stream=1 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=7 object=policy-absent stream=1 reference=equal recomputed=none
+BE_MVP_LOG_RECORD: seq=8 object=kernel-image stream=2 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=9 object=device-tree stream=2 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=10 object=kernel-image stream=3 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=11 object=device-tree stream=3 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=12 object=close stream=255 reference=equal recomputed=none
+BE_MVP_RESULT: PASS terminal=shutdown-requested
+BE_MVP_CAPTURE[uboot two-guests]: PASS

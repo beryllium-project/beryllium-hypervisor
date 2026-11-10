@@ -1,0 +1,29 @@
+# planning/mvp-m8-plan.md D-7, M8-6; specification planning/mvp-m8-specifications.md Revision 1, sections 4 and 6, SHA-256 aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b, accepted at 93a8d136
+# CN arm: the qualification's ten cases with the arm's front-end settings, then the vacuity checks on the final copy (D-7 items 2 and 6)
+qualify solver=z3 case=known-pass expected=proved observed=proved ok=yes functions=1 fail=0 seconds=0.1
+qualify solver=z3 case=known-fail expected=unproved observed=failed ok=yes functions=1 fail=1 seconds=0.0
+qualify solver=z3 case=vacuity-requires expected=detected observed=detected ok=yes functions=1 fail=0 seconds=0.0
+qualify solver=z3 case=vacuity-ensures expected=unproved observed=failed ok=yes functions=1 fail=1 seconds=0.0
+qualify solver=z3 case=wrong-implementation expected=failed observed=failed ok=yes functions=1 fail=1 seconds=0.1
+qualify solver=cvc5 case=known-pass expected=proved observed=proved ok=yes functions=1 fail=0 seconds=0.1
+qualify solver=cvc5 case=known-fail expected=unproved observed=failed ok=yes functions=1 fail=1 seconds=0.1
+qualify solver=cvc5 case=vacuity-requires expected=detected observed=detected ok=yes functions=1 fail=0 seconds=0.1
+qualify solver=cvc5 case=vacuity-ensures expected=unproved observed=failed ok=yes functions=1 fail=1 seconds=0.1
+qualify solver=cvc5 case=wrong-implementation expected=failed observed=failed ok=yes functions=1 fail=1 seconds=0.1
+vacuity check=reach function=access_fault ok=yes z3=fail(unprovable-constraint) cvc5=fail(unprovable-constraint) wanted=fail
+vacuity check=contradiction function=access_fault ok=yes z3=pass cvc5=pass wanted=pass
+vacuity check=ensures-false function=access_fault ok=yes z3=fail(unprovable-constraint) cvc5=fail(unprovable-constraint) wanted=fail
+vacuity check=reach function=htinst_accepted ok=yes z3=fail(unprovable-constraint) cvc5=fail(unprovable-constraint) wanted=fail
+vacuity check=contradiction function=htinst_accepted ok=yes z3=pass cvc5=pass wanted=pass
+vacuity check=ensures-false function=htinst_accepted ok=yes z3=fail(unprovable-constraint) cvc5=fail(unprovable-constraint) wanted=fail
+vacuity check=reach function=inside ok=yes z3=fail(unprovable-constraint) cvc5=fail(unprovable-constraint) wanted=fail
+vacuity check=contradiction function=inside ok=yes z3=pass cvc5=pass wanted=pass
+vacuity check=ensures-false function=inside ok=yes z3=fail(unprovable-constraint) cvc5=fail(unprovable-constraint) wanted=fail
+vacuity check=reach function=leaf_at ok=yes z3=fail(unprovable-constraint) cvc5=fail(unprovable-constraint) wanted=fail
+vacuity check=contradiction function=leaf_at ok=yes z3=pass cvc5=pass wanted=pass
+vacuity check=ensures-false function=leaf_at ok=no z3=fail(pointer-liveness) cvc5=fail(pointer-liveness) wanted=fail
+vacuity check=reach function=be_mvp_denial_decide ok=yes z3=fail(unprovable-constraint) cvc5=fail(unprovable-constraint) wanted=fail
+vacuity check=contradiction function=be_mvp_denial_decide ok=yes z3=pass cvc5=pass wanted=pass
+vacuity check=ensures-false function=be_mvp_denial_decide ok=yes z3=fail(unprovable-constraint) cvc5=fail(unprovable-constraint) wanted=fail
+qualified=yes
+vacuity=not-ok

@@ -1,0 +1,1362 @@
+From 36eb3b08e71506db6b96ff2daa879efdd15ef142 Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 5 Nov 2026 01:22:46 -0800
+Subject: [PATCH 1/5] mvp: CHERI proof of concept: the monitor and CHERI guests
+ (work in progress)
+
+beryllium-cheri's CHERI proof of concept (CHERI v0.9.3 under emulation,
+QEMU 8.1 with the hypervisor extension), on a local branch of a clone,
+never pushed:
+
+- The monitor: henvcfg.CRE, a trap vector and resume tail that save and
+  restore every guest register as a capability and switch ddc on every
+  trap, hedeleg's cause 28, and the device tree passed to the guest as a
+  capability in ca1 (beryllium-cheri's monitor-fix.patch, unchanged); the
+  SBI 3.0 firmware contract (monitor-sbi30.patch, unchanged); and the
+  injection helper moving sepcc and vstvecc whole, so that a denial's
+  access fault reaches a CHERI guest's handler with its capabilities.
+- The guests: tools/build-guest-cheri.sh builds every guest output as a
+  CHERI program from the CHERI Alliance SDK and sources (outside the tool
+  lock; guest.mk passes them, tools/make-control.py allows them): the
+  init against CHERI musl, purecap; CHERI Alliance BusyBox with
+  guest/busybox.config; CHERI Alliance Linux v7.1 with B6's and the MVP's
+  fragments and guest/cheri-kernel.config, its exports trimmed to the
+  management module's six imports (guest/cheri-ksyms.txt) to fit the
+  kernel file budget; the module with a PCuABI ioctl argument; and the
+  DTBs naming Zcherihybrid and Zcheripurecap. guest/pins.txt pins its
+  outputs; two builds give the same bytes.
+- The init's purecap port (guest/mvp-init.c, under
+  __CHERI_PURE_CAPABILITY__): musl in place of nolibc, sigaction(), the
+  ucontext's capability pc, the expected release 7.1.0, and
+  clock_gettime by system call, since CHERI musl's vDSO call faults.
+- tests/run-qemu.sh: OPENSBI_FW's SBI version is 3.0.
+
+At this commit two-guests runs to RUN_COMPLETE with both inits' RESULT
+pass on QEMU's plic machine; Beryllium's checkers are not yet adapted.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+Copilot-Session: a7fa2f95-839f-4f32-a6fc-7415e24f2dbc
+---
+ mvp/guest.mk                   |  20 +-
+ mvp/guest/cheri-kernel.config  |  22 +++
+ mvp/guest/cheri-ksyms.txt      |   6 +
+ mvp/guest/mgmt/be-mgmt.c       |  13 +-
+ mvp/guest/mvp-init.c           |  67 +++++++
+ mvp/guest/pins.txt             |  56 +++---
+ mvp/src/mvp-hartmain.c         |   2 +-
+ mvp/src/mvp-runtime.c          |   2 +-
+ mvp/src/mvp-sbi.c              |   4 +-
+ mvp/src/mvp-trap.S             | 339 +++++++++++++++++++++++++--------
+ mvp/src/mvp.h                  |   6 +-
+ mvp/tests/run-qemu.sh          |  24 ++-
+ mvp/tools/build-guest-cheri.sh | 317 ++++++++++++++++++++++++++++++
+ mvp/tools/gen-dts.py           |  14 +-
+ mvp/tools/make-control.py      |  12 +-
+ mvp/tools/port.py              |  10 +
+ 16 files changed, 783 insertions(+), 131 deletions(-)
+ create mode 100644 mvp/guest/cheri-kernel.config
+ create mode 100644 mvp/guest/cheri-ksyms.txt
+ create mode 100755 mvp/tools/build-guest-cheri.sh
+
+diff --git a/mvp/guest.mk b/mvp/guest.mk
+index 737189f0..9419e0cf 100644
+--- a/mvp/guest.mk
++++ b/mvp/guest.mk
+@@ -152,7 +152,9 @@ MVP_GUEST_SOURCES = guest/mvp-init.c guest/mvp-guest-id.h guest/be/types.h \
+ 	guest/mgmt/be-mgmt.c guest/mgmt/Kbuild guest/pins.txt \
+ 	guest/busybox.config guest/keys/busybox.asc guest/keys/musl.asc \
+ 	src/mvp-layout.h src/mvp-sha256.h src/mvp-sha256.c \
+-	tools/build-guest.sh tools/gen-dts.py tools/guest-pins.py
++	tools/build-guest.sh tools/gen-dts.py tools/guest-pins.py \
++	guest/cheri-kernel.config guest/cheri-ksyms.txt \
++	tools/build-guest-cheri.sh
+ # B6's files that the MVP reuses unchanged (plan, Base and inputs).
+ MVP_GUEST_B6_SOURCES = guest/b6-kernel.config scripts/fetch-linux.sh
+ MVP_GUEST_ENV = LINUX_GIT='$(LINUX_GIT)' LINUX_TAG='$(LINUX_TAG)' \
+@@ -189,10 +191,22 @@ MVP_REPRO_CONFIG_NORMALIZE = sed 's|^CONFIG_INITRAMFS_SOURCE=.*|CONFIG_INITRAMFS
+ 
+ # One run of build-guest.sh makes or re-checks every output; it skips the
+ # kernel build when the pinned Image is already there.
++# beryllium-cheri: the CHERI proof of concept builds its guests as CHERI
++# programs (tools/build-guest-cheri.sh) from the CHERI Alliance SDK and
++# sources these variables name, which stay outside the tool lock.
++CHERI_SDK ?=
++CHERI_LINUX_SRC ?=
++CHERI_LINUX_COMMIT ?=
++CHERI_BUSYBOX_SRC ?=
++CHERI_BUSYBOX_COMMIT ?=
++MVP_GUEST_CHERI_ENV = CHERI_SDK='$(CHERI_SDK)' \
++	CHERI_LINUX_SRC='$(CHERI_LINUX_SRC)' CHERI_LINUX_COMMIT='$(CHERI_LINUX_COMMIT)' \
++	CHERI_BUSYBOX_SRC='$(CHERI_BUSYBOX_SRC)' \
++	CHERI_BUSYBOX_COMMIT='$(CHERI_BUSYBOX_COMMIT)' PYTHON='$(PYTHON)'
+ $(MVP_GUEST_OUTPUTS) &: $(addprefix $(MVP_DIR)/,$(MVP_GUEST_SOURCES)) \
+ 		$(addprefix $(B6_DIR)/,$(MVP_GUEST_B6_SOURCES))
+-	$(MVP_GUEST_ENV) $(MVP_DIR)/tools/build-guest.sh $(MVP_DIR) $(B6_DIR) \
+-		$(MVP_LINUX_SRC) $(GUEST_BUILD)
++	$(MVP_GUEST_CHERI_ENV) $(MVP_DIR)/tools/build-guest-cheri.sh $(MVP_DIR) \
++		$(B6_DIR) $(GUEST_BUILD)
+ 
+ guest: $(MVP_GUEST_OUTPUTS)
+ 
+diff --git a/mvp/guest/cheri-kernel.config b/mvp/guest/cheri-kernel.config
+new file mode 100644
+index 00000000..8a319f9a
+--- /dev/null
++++ b/mvp/guest/cheri-kernel.config
+@@ -0,0 +1,22 @@
++# SPDX-License-Identifier: GPL-3.0-only
++# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
++#
++# beryllium-cheri: the CHERI guest kernel's own Kconfig fragment
++# (tools/build-guest-cheri.sh), merged after B6's fragment and
++# guest/mvp-kernel.config over tinyconfig. CHERI Alliance Linux offers one
++# CHERI mode on RISC-V: the kernel itself built as purecap code, with the
++# purecap user ABI (arch/Kconfig, CHERI_UABI_AND_KERNEL), so the init,
++# BusyBox, and the management module are purecap too.
++CONFIG_RISCV_CHERI=y
++CONFIG_CHERI_UABI_AND_KERNEL=y
++# The CHERI port's stack walker without frame pointers does not compile
++# (arch/riscv/kernel/stacktrace.c: an int-to-pointer conversion in the
++# !CONFIG_FRAME_POINTER branch); Codasip's own configurations keep them.
++CONFIG_FRAME_POINTER=y
++# Loadable modules cost a CHERI kernel more than a plain one: each
++# exported symbol carries a capability relocation, and the exports cost
++# 530 KiB, which put the Image over the monitor's kernel file budget
++# (BE_MVP_KERNEL_FILE_MAX). Only the management module's six imports stay
++# exported (guest/cheri-ksyms.txt, rendered to its absolute path).
++CONFIG_TRIM_UNUSED_KSYMS=y
++CONFIG_UNUSED_KSYMS_WHITELIST="@CHERI_KSYMS@"
+diff --git a/mvp/guest/cheri-ksyms.txt b/mvp/guest/cheri-ksyms.txt
+new file mode 100644
+index 00000000..da2812ac
+--- /dev/null
++++ b/mvp/guest/cheri-ksyms.txt
+@@ -0,0 +1,6 @@
++__sbi_ecall
++_copy_from_user
++_copy_to_user
++_printk
++misc_deregister
++misc_register
+diff --git a/mvp/guest/mgmt/be-mgmt.c b/mvp/guest/mgmt/be-mgmt.c
+index 120aa732..aa9537d2 100644
+--- a/mvp/guest/mgmt/be-mgmt.c
++++ b/mvp/guest/mgmt/be-mgmt.c
+@@ -48,8 +48,19 @@ struct be_mgmt_call {
+ 
+ static_assert(BE_MGMT_IOC_CALL == 0xc0184242);
+ 
++/*
++ * beryllium-cheri: in CHERI Alliance Linux's purecap user ABI an ioctl's
++ * argument is a user capability, user_uintptr_t, which the cast below
++ * keeps whole.
++ */
++#ifdef CONFIG_CHERI_PURECAP_UABI
++typedef user_uintptr_t be_mgmt_arg_t;
++#else
++typedef unsigned long be_mgmt_arg_t;
++#endif
++
+ static long be_mgmt_ioctl(struct file *file, unsigned int cmd,
+-			  unsigned long arg)
++			  be_mgmt_arg_t arg)
+ {
+ 	void __user *user = (void __user *)arg;
+ 	struct be_mgmt_call call;
+diff --git a/mvp/guest/mvp-init.c b/mvp/guest/mvp-init.c
+index 8dd80eed..bfa68054 100644
+--- a/mvp/guest/mvp-init.c
++++ b/mvp/guest/mvp-init.c
+@@ -194,8 +194,14 @@
+ #include <sys/utsname.h>
+ #include <sys/wait.h>
+ #include <asm/ioctls.h>
++#ifdef __CHERI_PURE_CAPABILITY__
++#include <errno.h>
++#include <signal.h>
++#include <ucontext.h>
++#else
+ #include <asm/sigcontext.h>
+ #include <asm/ucontext.h>
++#endif
+ #include <linux/ioctl.h>
+ #include <linux/reboot.h>
+ #include <linux/types.h>
+@@ -204,7 +210,12 @@
+ #include "mvp-sha256.h"
+ 
+ /* The pinned guest kernel (Linux v7.2), and the plan's steps and sleep. */
++#ifdef __CHERI_PURE_CAPABILITY__
++/* beryllium-cheri: the CHERI guest's kernel is CHERI Alliance Linux v7.1. */
++#define EXPECTED_RELEASE	"7.1.0"
++#else
+ #define EXPECTED_RELEASE	"7.2.0"
++#endif
+ #define EXPECTED_MACHINE	"riscv64"
+ #define STEPS			8UL
+ #define STEP_COMPUTE_NS		25000000UL
+@@ -283,7 +294,45 @@ struct be_mgmt_call {
+ 
+ #define BE_MGMT_IOC_CALL	_IOWR('B', 0x42, struct be_mgmt_call)
+ 
++#ifndef __CHERI_PURE_CAPABILITY__
+ _Static_assert(sizeof(sigset_t) == SIGSET_BYTES, "sigset_t is one word");
++#else
++/*
++ * beryllium-cheri: the CHERI guest's init is a purecap program against the
++ * CHERI Alliance musl, not nolibc. nolibc's _syscall(), its syscall()
++ * without the errno conversion (0 or more, or a negative errno), is musl's
++ * syscall(), whose macro passes every argument as a capability-sized word,
++ * converted back; and SIGSEGV's action goes through musl's sigaction(),
++ * since the kernel's purecap struct sigaction is not nolibc's (set_segv).
++ */
++typedef void (*__sighandler_t)(int);
++
++/* musl's mcontext index of pc, which it names only for _GNU_SOURCE. */
++#ifndef REG_PC
++#define REG_PC	0
++#endif
++
++static long mvp_syscall_result(intptr_t result)
++{
++	return (long)result < 0 ? -(long)errno : (long)result;
++}
++
++#define _syscall(...)	mvp_syscall_result(syscall(__VA_ARGS__))
++
++/*
++ * CHERI Alliance musl's clock_gettime() calls the vDSO through a function
++ * capability that __vdsosym (src/internal/vdso.c) derives by arithmetic
++ * on uintptr_t; under this kernel it comes back untagged, with its
++ * address's low 32 bits sign-extended, and the first call faults.
++ * The init asks the kernel directly instead.
++ */
++static int mvp_clock_gettime(clockid_t clock, struct timespec *now)
++{
++	return (int)syscall(SYS_clock_gettime, clock, now);
++}
++
++#define clock_gettime(clock, now)	mvp_clock_gettime(clock, now)
++#endif
+ _Static_assert(BE_MGMT_IOC_CALL == 0xc0184242UL,
+ 	       "the management ioctl is be-mgmt.ko's");
+ 
+@@ -652,19 +701,33 @@ static long set_segv(__sighandler_t handler, unsigned long flags)
+ 
+ 	memset(&action, 0, sizeof(action));
+ 	action.sa_handler = handler;
++#ifdef __CHERI_PURE_CAPABILITY__
++	action.sa_flags = (int)flags;
++	return sigaction(SIGSEGV, &action, NULL) == 0 ? 0 : -(long)errno;
++#else
+ 	action.sa_flags = flags;
+ 	return _syscall(__NR_rt_sigaction, SIGSEGV, &action, NULL, SIGSET_BYTES);
++#endif
+ }
+ 
+ /*
+  * The handler: record the signal; step over the armed instruction alone,
+  * on its first fault. Any other fault restores the default action, so the
+  * instruction faults again and ends the child.
++ *
++ * beryllium-cheri: in the purecap init, the ucontext's pc is a capability
++ * (musl's __gregs[REG_PC]); its address is compared, and the step adds 4
++ * to the capability itself, which keeps it valid.
+  */
+ static void on_segv(int signo, siginfo_t *info, void *context)
+ {
++#ifdef __CHERI_PURE_CAPABILITY__
++	ucontext_t *frame = context;
++	unsigned long pc = (unsigned long)frame->uc_mcontext.__gregs[REG_PC];
++#else
+ 	struct ucontext *frame = context;
+ 	unsigned long pc = frame->uc_mcontext.sc_regs.pc;
++#endif
+ 
+ 	seen_count = seen_count + 1UL;
+ 	seen_signo = info->si_signo;
+@@ -672,7 +735,11 @@ static void on_segv(int signo, siginfo_t *info, void *context)
+ 	seen_addr = (unsigned long)info->si_addr;
+ 	seen_pc = pc;
+ 	if (signo == SIGSEGV && pc == armed_pc && seen_count == 1UL)
++#ifdef __CHERI_PURE_CAPABILITY__
++		frame->uc_mcontext.__gregs[REG_PC] += 4;
++#else
+ 		frame->uc_mcontext.sc_regs.pc = pc + 4UL;
++#endif
+ 	else
+ 		(void)set_segv(SIG_DFL, 0UL);
+ }
+diff --git a/mvp/guest/pins.txt b/mvp/guest/pins.txt
+index 64e111de..90e4c5d6 100644
+--- a/mvp/guest/pins.txt
++++ b/mvp/guest/pins.txt
+@@ -43,30 +43,34 @@
+ # output lines for a deliberate update.
+ source busybox version=1.36.1 tag=1_36_1 commit=1a64f6a20aaf6ea4dbba68bbfa8cc1ab7e5c57c4 url=https://busybox.net/downloads/busybox-1.36.1.tar.bz2 sha256=b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314 signature=https://busybox.net/downloads/busybox-1.36.1.tar.bz2.sig key=guest/keys/busybox.asc fingerprint=C9E9416F76E610DBD09D040F47B70C55ACC9965B license=GPL-2.0-only
+ source musl version=1.2.6 tag=v1.2.6 commit=9fa28ece75d8a2191de7c5bb53bed224c5947417 url=https://musl.libc.org/releases/musl-1.2.6.tar.gz sha256=d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a signature=https://musl.libc.org/releases/musl-1.2.6.tar.gz.asc key=guest/keys/musl.asc fingerprint=836489290BB6B70F99FFDA0556BCDB593020450F license=MIT
+-file init sha256=441a5006d87b251fa9e71cc966d0cb0fbb3ad025e4935c197f0326e9c83d9709 bytes=17176
+-file be-mgmt.ko sha256=67529a9dca0f682d4130993040fb7c17f88f75a823b96965b3b72da78ae439d1 bytes=5736
+-file busybox sha256=26591347cd7e5962e485011b402ea54cca0a2f594180087c894ed56ddcb80b90 bytes=141560
+-file musl-libc.a sha256=578556667ef60864f99e4bb57d150f5966138d6ce03cbe122ad37cebe21f6944 bytes=4300500
+-file Image sha256=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6 bytes=2063556
+-file mvp-guest-g0.dtb sha256=f51be0c7c1cf25f11eeb721dc4dcf19d34902794cf3f15cd43df0255523e0783 bytes=4096
+-file mvp-guest-g1.dtb sha256=ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea bytes=4096
+-file mvp-guest-g1-init-exit.dtb sha256=7cc47c2f65499ca72454588b181d7cf8ebf5a9b45818de2f0e054759a0684afd bytes=4096
+-file mvp-guest-g0-rdcycle.dtb sha256=4043572a9cbcdaee41c51d91ed83ebc0b622352167173f7ced97bbcc15c6de66 bytes=4096
+-file mvp-guest-g0-sbi-time.dtb sha256=568b90cee8cf8bb9a06f423a0efb212f9ffdd16b2a9384fac983bdf990b79cbf bytes=4096
+-file mvp-guest-g1-sbi-time.dtb sha256=d8c1f4d8f43b7ce569ebe5187237c2c21f945cf3eae8c05e27407d566e7d45e0 bytes=4096
+-file mvp-guest-g0-reference.dtb sha256=9a523ff8e0834bca6bc09b09aa43d6c7a0bc94fa307a88105c02ce5469a308e1 bytes=4096
+-file mvp-guest-g1-reference.dtb sha256=0e079e289a434d44d9c965617c136c8552de0d0ccad305a9e2ea249f044bceb5 bytes=4096
+-file mvp-guest-g0-te-poc.dtb sha256=5aca65d93e8488f44f0c8a746993ce8ceb231542fc9aa64bd491ede90fb9156b bytes=4096
+-file mvp-guest-g1-te-poc.dtb sha256=d761366dce46edb1fe2ecf17bc517c84f79b4630c1af332d5be58855c3cafef0 bytes=4096
+-file mvp-guest-g0-anchor.dtb sha256=55acfb900d8e43daee8f5c3d2b1c13e624f8af7e8cc97dd900d6f23d8728c71b bytes=4096
+-file mvp-guest-g1-anchor.dtb sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025 bytes=4096
+-file mvp-guest-g0-shell.dtb sha256=aabf721bc86adcd78d7bd6c91f081df15e3c564802c154f419647ab71ab749e7 bytes=4096
+-file mvp-guest-g1-shell.dtb sha256=ff9e5ca0f2ef0c978fac295c7de6da7137a61ee303ac860b0707df959c4f114c bytes=4096
+-file mvp-guest-g0-te-poc-shell.dtb sha256=777d225af04ad8336811a76ce944d6cdb0e6c298b6d2a10ed7d1adf867e987df bytes=4096
+-file mvp-guest-g1-te-poc-shell.dtb sha256=b408340c0babce04416957d053b1c23166b416c4b42ecde243f68b3959e817b6 bytes=4096
+-file mvp-guest-g0-anchor-shell.dtb sha256=9efc1d9df7f4936aa9efa2956abc1189f1829daa0c913e9e9c11d95debff727e bytes=4096
+-file mvp-guest-g0-hostile.dtb sha256=2cee0fc98003e17bbc98684a701a5c1b65752952392b342db00deea721ce9099 bytes=4096
+-kernel image_size=0x22bfb0
++# beryllium-cheri: the CHERI proof of concept's outputs, from
++# tools/build-guest-cheri.sh (CHERI Alliance Linux v7.1, BusyBox, and
++# musl, purecap, built by the CHERI Alliance LLVM). The two source lines
++# above are tools/build-guest.sh's, which this branch does not run.
++file init sha256=6835cf3eb1e3da5acd483d83c84c01fd7634a4866a83f2588e4a1dd4de538227 bytes=70688
++file be-mgmt.ko sha256=3e7653f860479d127da091e3a249c95d3d1833f2783e679b1486466843a2391a bytes=7792
++file busybox sha256=0afac45e79613971c8a58c877fde74c1ab5e79bbdf13d8d818702c54b0c9287b bytes=283272
++file musl-libc.a sha256=e775da235e58886ba7edaf8143df213f7a12b0962a83a5015151b621b02651bc bytes=18591080
++file Image sha256=bbc444bc418b79b3863713b235bd507a78dcc00b7c36ddecbb974e2b11efa9f2 bytes=3264512
++file mvp-guest-g0.dtb sha256=68cf8491748bdcb528a0d46d0d154b02fde1b46e4cfb01ecad3f1e0bc7774c16 bytes=4096
++file mvp-guest-g1.dtb sha256=570b047047a43f1460f3992f0ea80fafc497ea9555540c4b0cd767d08244c706 bytes=4096
++file mvp-guest-g1-init-exit.dtb sha256=418aab61389585056a4103ab3995b63f08ca7f235cece4dc439a1ecdd67e082b bytes=4096
++file mvp-guest-g0-rdcycle.dtb sha256=cc9f0cb4778d4ce9415afbe66efbd4a0966907de69909c5102a34cd58c209d0c bytes=4096
++file mvp-guest-g0-sbi-time.dtb sha256=49505ef2ee7f08ee4fdb77bf8dbd8e65f20935685fcb3cd702d8ab616904e32d bytes=4096
++file mvp-guest-g1-sbi-time.dtb sha256=67b2059a18c477ee04fb1e99b16aa5e542162bb3f6c321654954aec01af75eeb bytes=4096
++file mvp-guest-g0-reference.dtb sha256=87e8aed28607c60ef04179ebb72339fffe2cabd6147696ec6e2cf7e08a2316e6 bytes=4096
++file mvp-guest-g1-reference.dtb sha256=72b101100eacfc698461ab7637eabc60a123d37369a9874d03a2e7576c7c14c6 bytes=4096
++file mvp-guest-g0-te-poc.dtb sha256=12be76692763339aadc29299dfca2c94cd4e546f9494b2f2339a9172aff14a58 bytes=4096
++file mvp-guest-g1-te-poc.dtb sha256=c064c7633fd7e815843a8a95e3e9b1415d5933290cf10416a8cf465be26f362c bytes=4096
++file mvp-guest-g0-anchor.dtb sha256=070335109aea259623f23adbdbee5419daf4ac9e02a80f72e4b1c178e4158b40 bytes=4096
++file mvp-guest-g1-anchor.dtb sha256=1e1e2b70c87496c3d542440e4f77db50c704fbac125c25e28852437a6a892c8a bytes=4096
++file mvp-guest-g0-shell.dtb sha256=db49bb341612eb7b95ad3e44837f3d7b343fb1d5dc805234e8fb18998875f21b bytes=4096
++file mvp-guest-g1-shell.dtb sha256=05b04ebe88657879c2faf1b38f6058e8748413092b18eb937b4c65892ddbd0d9 bytes=4096
++file mvp-guest-g0-te-poc-shell.dtb sha256=eb2749fb2120c9755e4aa7b3fd180204c61a32e521181d6a399b8b50d68cfe29 bytes=4096
++file mvp-guest-g1-te-poc-shell.dtb sha256=b94070eb24ce1b3ca1da6fe08939bd625cfec3643085d043fc3dda9917682ac1 bytes=4096
++file mvp-guest-g0-anchor-shell.dtb sha256=2c961214d8fdfcb3f7cde7694dcbd52ad077f2f78f539b1579e5f3830f3be3d5 bytes=4096
++file mvp-guest-g0-hostile.dtb sha256=28403ebab895d3dce12b0d68e1f2aed4f50380a712ecb518082efc6ffc9a7823 bytes=4096
++kernel image_size=0x359229
+ kernel text_offset=0x200000
+-kernel banner=Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+-toolchain gcc=riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1)
++kernel banner=Linux version 7.1.0 (be@beryllium) (clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d), LLD 20.0.0 (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d)) #1 PREEMPT Wed Jul 15 14:28:33 UTC 2026
++toolchain clang=clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d)
+diff --git a/mvp/src/mvp-hartmain.c b/mvp/src/mvp-hartmain.c
+index efd2d6fb..0afaa87f 100644
+--- a/mvp/src/mvp-hartmain.c
++++ b/mvp/src/mvp-hartmain.c
+@@ -598,7 +598,7 @@ void be_mvp_hart_main(be_u64 hart_id, be_u64 block)
+ 	failure = be_mvp_stce_class(value);
+ 	if (failure != BE_MVP_CLASS_NONE)
+ 		register_fail(page, failure, BE_MVP_REGISTER_HENVCFG,
+-			      BE_MVP_HENVCFG_STCE, value);
++			      BE_MVP_HENVCFG_ARMED, value);
+ 	/* The hart's one install: its domain's root, fenced and read back. */
+ 	value = be_mvp_exec_install_hgatp(state->desc.hgatp);
+ 	if (value != state->desc.hgatp)
+diff --git a/mvp/src/mvp-runtime.c b/mvp/src/mvp-runtime.c
+index cdb15d19..8fbf17e5 100644
+--- a/mvp/src/mvp-runtime.c
++++ b/mvp/src/mvp-runtime.c
+@@ -183,7 +183,7 @@ _Static_assert(BE_MVP_SSTATUS_CONTROL_MASK == BE_U64_C(0xde722),
+ 	       "assembly sstatus mask mismatch");
+ _Static_assert(BE_MVP_SSTATUS_SPP == BE_MVP_HSTATUS_SPVP,
+ 	       "the tail sets SPP from SPVP in the same bit");
+-_Static_assert(BE_MVP_HEDELEG == BE_U64_C(0xb15d),
++_Static_assert(BE_MVP_HEDELEG == BE_U64_C(0x1000b15d),
+ 	       "assembly hedeleg mismatch");
+ _Static_assert(BE_MVP_SIE_SSIE == BE_U64_C(0x2) &&
+ 	       BE_MVP_SIE_CONTROL == BE_U64_C(0x22) &&
+diff --git a/mvp/src/mvp-sbi.c b/mvp/src/mvp-sbi.c
+index d80094b9..59e2c8f3 100644
+--- a/mvp/src/mvp-sbi.c
++++ b/mvp/src/mvp-sbi.c
+@@ -143,7 +143,7 @@ enum be_mvp_class be_mvp_stce_class(be_u64 henvcfg)
+ {
+ 	if ((henvcfg & BE_MVP_HENVCFG_STCE) == 0U)
+ 		return BE_MVP_CLASS_SSTC;
+-	if (henvcfg != BE_MVP_HENVCFG_STCE)
++	if (henvcfg != BE_MVP_HENVCFG_ARMED)
+ 		return BE_MVP_CLASS_CONTROLS;
+ 	return BE_MVP_CLASS_NONE;
+ }
+@@ -164,7 +164,7 @@ int be_mvp_controls_valid(const struct be_mvp_controls *controls,
+ 	       (controls->hvip & BE_MVP_HVIP_VS_BITS) == 0U &&
+ 	       controls->hcounteren == BE_MVP_HCOUNTEREN_TM &&
+ 	       controls->htimedelta == 0U &&
+-	       controls->henvcfg == BE_MVP_HENVCFG_STCE &&
++	       controls->henvcfg == BE_MVP_HENVCFG_ARMED &&
+ 	       controls->hgeie == 0U &&
+ 	       controls->vstimecmp == BE_MVP_VSTIMECMP_DISARMED &&
+ 	       controls->sie == BE_MVP_SIE_SSIE &&
+diff --git a/mvp/src/mvp-trap.S b/mvp/src/mvp-trap.S
+index 7ec30d4f..3a88735f 100644
+--- a/mvp/src/mvp-trap.S
++++ b/mvp/src/mvp-trap.S
+@@ -48,13 +48,16 @@
+ 	.equ MVP_SSTATUS_CONTROL_MASK, 0x00000000000de722
+ 	.equ MVP_SSTATUS_SPP, 0x100
+ 	/* Causes 0, 2, 3, 4, 6, 8, 12, 13, and 15 go to the guest, as in B6. */
+-	.equ MVP_HEDELEG, 0xb15d
++	/* beryllium-cheri: and cause 28, CHERI v0.9.3's CHERI fault. */
++	.equ MVP_HEDELEG, 0x1000b15d
+ 	.equ MVP_HIDELEG_VSTI, 0x40
+ 	.equ MVP_HIE_VSTIE, 0x40
+ 	/* VSSIP, VSTIP, and VSEIP: QEMU also shows a pending HS STIP. */
+ 	.equ MVP_HVIP_VS_BITS, 0x444
+ 	.equ MVP_HCOUNTEREN_TM, 0x2
+ 	.equ MVP_HENVCFG_STCE, 0x8000000000000000
++	/* beryllium-cheri: STCE and CHERI v0.9.3's VS-mode enable, CRE. */
++	.equ MVP_HENVCFG_ARMED, 0x8000000010000000
+ 	/* The IPI: the supervisor software interrupt, taken only while V=1. */
+ 	.equ MVP_SIE_SSIE, 0x2
+ 	/* Hart 0's wait: the IPI and its budget timer. */
+@@ -68,6 +71,25 @@
+ 	.equ MVP_REGION_SHIFT, 17
+ 	.equ MVP_BLOCK_SHIFT, 16
+ 
++	/*
++	 * beryllium-cheri: CHERI v0.9.3 (Zcherihybrid). Beryllium's
++	 * assemblers lack the extension, so its instructions are encoded:
++	 * MODESW.CAP and MODESW.INT whole; SC (store capability) as
++	 * .insn s 0x23, 4; LC (load capability) as .insn i 0x0f, 4; and
++	 * SCADDR as .insn r 0x33, 1, 0x06. In Capability Pointer Mode a
++	 * load or store takes its base register's capability as its
++	 * authority, and a CSRRW of sscratch or ddc moves a whole
++	 * capability. ddc (CSR 0x416) is one register for every mode.
++	 * The capability frame follows struct be_mvp_exit in the saved
++	 * page: slot 0 the guest's ddc, slot N (1 to 31) the guest's cN,
++	 * 16 bytes each; then the monitor's ddc.
++	 */
++	.equ MVP_INSN_MODESW_CAP, 0x12001033
++	.equ MVP_INSN_MODESW_INT, 0x14001033
++	.equ CF, 368
++	.equ CF_MON_DDC, 880
++	.equ CF_END, 896
++
+ 	/* enum be_mvp_class values; mvp-runtime.c asserts them. */
+ 	.equ MVP_CLASS_EXCEPTION, 11
+ 	.equ MVP_CLASS_RESUME, 14
+@@ -129,7 +151,7 @@
+ 	.section .text, "ax"
+ 
+ 	/*
+-	 * Arm helper: henvcfg = STCE only. STCE reads back 1 only when Sstc
++	 * Arm helper: henvcfg = STCE and CRE. STCE reads back 1 only when Sstc
+ 	 * exists and M-mode set menvcfg.STCE, so this probe cannot trap. Hart 0
+ 	 * runs it as its Sstc probe; each domain hart, before its arming.
+ 	 */
+@@ -139,7 +161,7 @@
+ be_mvp_arch_arm_stce:
+ 	.option push
+ 	.option arch, +h
+-	li	t0, MVP_HENVCFG_STCE
++	li	t0, MVP_HENVCFG_ARMED
+ 	csrw	henvcfg, t0
+ 	csrr	a0, henvcfg
+ 	.option pop
+@@ -177,6 +199,34 @@ be_mvp_arch_arm_controls:
+ 	li	t0, MVP_SIE_SSIE
+ 	csrs	sie, t0
+ 	csrw	sscratch, a1
++	/*
++	 * beryllium-cheri: sscratchc is the trusted top as a capability from
++	 * the monitor's ddc. The capability frame is cleared; the monitor's
++	 * ddc is kept for the vector and is the guest's first ddc. a1's
++	 * slot holds the device tree as a capability, the monitor's ddc at
++	 * BE_MVP_DTB_GPA bounded to BE_MVP_DTB_BYTES (SCBNDSR is .insn r
++	 * 0x33, 1, 0x07): a CHERI kernel takes its device tree from ca1, as
++	 * CHERI firmware passes it, and the first entry's a1 equals its
++	 * address, so the resume tail keeps the capability.
++	 */
++	csrrs	t0, 0x416, zero
++	.insn	r 0x33, 1, 0x06, t1, t0, a1
++	li	t2, BE_MVP_DTB_GPA
++	.insn	r 0x33, 1, 0x06, t3, t0, t2
++	li	t2, BE_MVP_DTB_BYTES
++	.insn	r 0x33, 1, 0x07, t3, t3, t2
++	addi	t2, a1, CF
++	addi	t4, a1, CF_END
++1:
++	sd	zero, 0(t2)
++	addi	t2, t2, 8
++	bltu	t2, t4, 1b
++	.4byte	MVP_INSN_MODESW_CAP
++	csrrw	zero, sscratch, t1
++	.insn	s 0x23, 4, t0, CF_MON_DDC(t1)
++	.insn	s 0x23, 4, t0, CF(t1)
++	.insn	s 0x23, 4, t3, CF + 16 * 11(t1)
++	.4byte	MVP_INSN_MODESW_INT
+ 	ld	t0, VC_VSSTATUS(a2)
+ 	csrw	vsstatus, t0
+ 	ld	t0, VC_VSIE(a2)
+@@ -274,6 +324,15 @@ be_mvp_arch_set_timer:
+ 	 * vsstatus; each is then read back into a4's four words, in the same
+ 	 * order, for C to compare with the values written. After arming it is
+ 	 * the only writer of the four, and it touches no other CSR.
++	 *
++	 * beryllium-cheri: with CHERI on, the guest's pc at the denied access
++	 * is sepcc, a capability, and the guest's handler is vstvecc. In
++	 * Capability Pointer Mode vsepcc becomes the former and sepcc the
++	 * latter, whole, so that the guest's handler runs with its own
++	 * capability and its sepcc is the faulting code's own. The integer
++	 * writes that follow set only addresses: vsepc's to a2, sepcc's own,
++	 * and the resume tail's sepc to the handler's. So this helper also
++	 * writes sepc, which the resume tail writes again.
+ 	 */
+ 	.align 2
+ 	.globl be_mvp_arch_inject
+@@ -283,6 +342,12 @@ be_mvp_arch_inject:
+ 	.option arch, +h
+ 	csrw	vscause, a0
+ 	csrw	vstval, a1
++	.4byte	MVP_INSN_MODESW_CAP
++	csrrs	t0, sepc, zero
++	csrrw	zero, vsepc, t0
++	csrrs	t0, vstvec, zero
++	csrrw	zero, sepc, t0
++	.4byte	MVP_INSN_MODESW_INT
+ 	csrw	vsepc, a2
+ 	csrw	vsstatus, a3
+ 	csrr	t0, vscause
+@@ -314,6 +379,13 @@ be_mvp_arch_arm_budget:
+ 	li	t0, MVP_SIE_CONTROL
+ 	csrs	sie, t0
+ 	csrw	sscratch, a1
++	/* beryllium-cheri: sscratchc is hart 0's top as a capability, as
++	 * the vector's Capability Pointer Mode entry needs. */
++	csrrs	t0, 0x416, zero
++	.insn	r 0x33, 1, 0x06, t0, t0, a1
++	.4byte	MVP_INSN_MODESW_CAP
++	csrrw	zero, sscratch, t0
++	.4byte	MVP_INSN_MODESW_INT
+ 	csrr	a0, sie
+ 	ret
+ 	.size be_mvp_arch_arm_budget, . - be_mvp_arch_arm_budget
+@@ -424,66 +496,137 @@ be_mvp_arch_park:
+ 	.globl be_mvp_trap_vector
+ 	.type be_mvp_trap_vector, @function
+ be_mvp_trap_vector:
+-	/* First instruction exchanges untrusted guest sp before any stack access. */
+-	csrrw	sp, sscratch, sp
+ 	/*
+-	 * The trusted-stack top is exclusive but not writable. Reserve a
+-	 * 16-byte-aligned spill frame before preserving t0/t1 for frame setup.
++	 * beryllium-cheri: enter Capability Pointer Mode first, so that every
++	 * access before ddc is switched takes the monitor's trusted-top
++	 * capability as its authority, never the guest's ddc. The swap is
++	 * then whole: csp is the trusted top and sscratchc the guest's csp.
+ 	 */
+-	addi	sp, sp, -16
+-	sd	t0, 0(sp)
+-	sd	t1, 8(sp)
++	.4byte	MVP_INSN_MODESW_CAP
++	csrrw	sp, sscratch, sp
++	/* The guest's ct0 and ct1, spilled below the top. */
++	.insn	s 0x23, 4, t0, -32(sp)
++	.insn	s 0x23, 4, t1, -16(sp)
+ 	/*
+ 	 * The top must be a block's 0x2000 offset in the hart region; the
+ 	 * saved page starts there. Anything else is terminal.
+ 	 */
+-	addi	t0, sp, 16
++	mv	t0, sp
+ 	la	t1, __be_mvp_hart_region_start
+ 	sub	t0, t0, t1
+ 	srli	t1, t0, MVP_REGION_SHIFT
+-	bnez	t1, .Lmvp_bad_stack
++	bnez	t1, .Lmvp_cap_bad_stack
+ 	slli	t0, t0, 64 - MVP_BLOCK_SHIFT
+ 	srli	t0, t0, 64 - MVP_BLOCK_SHIFT
+ 	li	t1, BE_MVP_BLOCK_STACK_TOP_OFFSET
+-	bne	t0, t1, .Lmvp_bad_stack
+-	addi	t0, sp, 16
+-	sd	ra, 0(t0)
+-	csrr	t1, sscratch
+-	sd	t1, 8(t0)
++	bne	t0, t1, .Lmvp_cap_bad_stack
++	/* Every guest capability register into the capability frame. */
++	.insn	i 0x0f, 4, t0, sp, -32
++	.insn	s 0x23, 4, t0, CF + 16 * 5(sp)
++	.insn	i 0x0f, 4, t0, sp, -16
++	.insn	s 0x23, 4, t0, CF + 16 * 6(sp)
++	.insn	s 0x23, 4, ra, CF + 16 * 1(sp)
++	.insn	s 0x23, 4, gp, CF + 16 * 3(sp)
++	.insn	s 0x23, 4, tp, CF + 16 * 4(sp)
++	.insn	s 0x23, 4, t2, CF + 16 * 7(sp)
++	.insn	s 0x23, 4, s0, CF + 16 * 8(sp)
++	.insn	s 0x23, 4, s1, CF + 16 * 9(sp)
++	.insn	s 0x23, 4, a0, CF + 16 * 10(sp)
++	.insn	s 0x23, 4, a1, CF + 16 * 11(sp)
++	.insn	s 0x23, 4, a2, CF + 16 * 12(sp)
++	.insn	s 0x23, 4, a3, CF + 16 * 13(sp)
++	.insn	s 0x23, 4, a4, CF + 16 * 14(sp)
++	.insn	s 0x23, 4, a5, CF + 16 * 15(sp)
++	.insn	s 0x23, 4, a6, CF + 16 * 16(sp)
++	.insn	s 0x23, 4, a7, CF + 16 * 17(sp)
++	.insn	s 0x23, 4, s2, CF + 16 * 18(sp)
++	.insn	s 0x23, 4, s3, CF + 16 * 19(sp)
++	.insn	s 0x23, 4, s4, CF + 16 * 20(sp)
++	.insn	s 0x23, 4, s5, CF + 16 * 21(sp)
++	.insn	s 0x23, 4, s6, CF + 16 * 22(sp)
++	.insn	s 0x23, 4, s7, CF + 16 * 23(sp)
++	.insn	s 0x23, 4, s8, CF + 16 * 24(sp)
++	.insn	s 0x23, 4, s9, CF + 16 * 25(sp)
++	.insn	s 0x23, 4, s10, CF + 16 * 26(sp)
++	.insn	s 0x23, 4, s11, CF + 16 * 27(sp)
++	.insn	s 0x23, 4, t3, CF + 16 * 28(sp)
++	.insn	s 0x23, 4, t4, CF + 16 * 29(sp)
++	.insn	s 0x23, 4, t5, CF + 16 * 30(sp)
++	.insn	s 0x23, 4, t6, CF + 16 * 31(sp)
++	csrrs	t0, sscratch, zero
++	.insn	s 0x23, 4, t0, CF + 16 * 2(sp)
+ 	/* sscratch names trusted storage again before C is reachable. */
+-	addi	t1, sp, 16
+-	csrw	sscratch, t1
+-	sd	gp, 16(t0)
+-	sd	tp, 24(t0)
+-	ld	t1, 0(sp)
+-	sd	t1, 32(t0)
+-	ld	t1, 8(sp)
+-	sd	t1, 40(t0)
+-	sd	t2, 48(t0)
+-	sd	s0, 56(t0)
+-	sd	s1, 64(t0)
+-	sd	a0, 72(t0)
+-	sd	a1, 80(t0)
+-	sd	a2, 88(t0)
+-	sd	a3, 96(t0)
+-	sd	a4, 104(t0)
+-	sd	a5, 112(t0)
+-	sd	a6, 120(t0)
+-	sd	a7, 128(t0)
+-	sd	s2, 136(t0)
+-	sd	s3, 144(t0)
+-	sd	s4, 152(t0)
+-	sd	s5, 160(t0)
+-	sd	s6, 168(t0)
+-	sd	s7, 176(t0)
+-	sd	s8, 184(t0)
+-	sd	s9, 192(t0)
+-	sd	s10, 200(t0)
+-	sd	s11, 208(t0)
+-	sd	t3, 216(t0)
+-	sd	t4, 224(t0)
+-	sd	t5, 232(t0)
+-	sd	t6, 240(t0)
++	csrrw	zero, sscratch, sp
++	/* The guest's ddc into slot 0; the monitor's ddc back. */
++	csrrs	t0, 0x416, zero
++	.insn	s 0x23, 4, t0, CF(sp)
++	.insn	i 0x0f, 4, t0, sp, CF_MON_DDC
++	csrrw	zero, 0x416, t0
++	/* The accepted integer frame: each register's address. */
++	ld	t0, CF + 16 * 1(sp)
++	sd	t0, 0(sp)
++	ld	t0, CF + 16 * 2(sp)
++	sd	t0, 8(sp)
++	ld	t0, CF + 16 * 3(sp)
++	sd	t0, 16(sp)
++	ld	t0, CF + 16 * 4(sp)
++	sd	t0, 24(sp)
++	ld	t0, CF + 16 * 5(sp)
++	sd	t0, 32(sp)
++	ld	t0, CF + 16 * 6(sp)
++	sd	t0, 40(sp)
++	ld	t0, CF + 16 * 7(sp)
++	sd	t0, 48(sp)
++	ld	t0, CF + 16 * 8(sp)
++	sd	t0, 56(sp)
++	ld	t0, CF + 16 * 9(sp)
++	sd	t0, 64(sp)
++	ld	t0, CF + 16 * 10(sp)
++	sd	t0, 72(sp)
++	ld	t0, CF + 16 * 11(sp)
++	sd	t0, 80(sp)
++	ld	t0, CF + 16 * 12(sp)
++	sd	t0, 88(sp)
++	ld	t0, CF + 16 * 13(sp)
++	sd	t0, 96(sp)
++	ld	t0, CF + 16 * 14(sp)
++	sd	t0, 104(sp)
++	ld	t0, CF + 16 * 15(sp)
++	sd	t0, 112(sp)
++	ld	t0, CF + 16 * 16(sp)
++	sd	t0, 120(sp)
++	ld	t0, CF + 16 * 17(sp)
++	sd	t0, 128(sp)
++	ld	t0, CF + 16 * 18(sp)
++	sd	t0, 136(sp)
++	ld	t0, CF + 16 * 19(sp)
++	sd	t0, 144(sp)
++	ld	t0, CF + 16 * 20(sp)
++	sd	t0, 152(sp)
++	ld	t0, CF + 16 * 21(sp)
++	sd	t0, 160(sp)
++	ld	t0, CF + 16 * 22(sp)
++	sd	t0, 168(sp)
++	ld	t0, CF + 16 * 23(sp)
++	sd	t0, 176(sp)
++	ld	t0, CF + 16 * 24(sp)
++	sd	t0, 184(sp)
++	ld	t0, CF + 16 * 25(sp)
++	sd	t0, 192(sp)
++	ld	t0, CF + 16 * 26(sp)
++	sd	t0, 200(sp)
++	ld	t0, CF + 16 * 27(sp)
++	sd	t0, 208(sp)
++	ld	t0, CF + 16 * 28(sp)
++	sd	t0, 216(sp)
++	ld	t0, CF + 16 * 29(sp)
++	sd	t0, 224(sp)
++	ld	t0, CF + 16 * 30(sp)
++	sd	t0, 232(sp)
++	ld	t0, CF + 16 * 31(sp)
++	sd	t0, 240(sp)
++	.4byte	MVP_INSN_MODESW_INT
++	mv	t0, sp
+ 	.option push
+ 	.option arch, +h
+ 	csrr	t1, vstvec
+@@ -527,6 +670,12 @@ be_mvp_trap_vector:
+ 	li	a1, MVP_CLASS_RESUME
+ 	tail	be_mvp_hart_terminal
+ 
++.Lmvp_cap_bad_stack:
++	/* beryllium-cheri: as before, with sp 16 below the top. */
++	.4byte	MVP_INSN_MODESW_INT
++	addi	sp, sp, -16
++	j	.Lmvp_bad_stack
++
+ .Lmvp_bad_stack:
+ 	/*
+ 	 * Hart 0's trusted top (its sscratch since the budget helper) means an
+@@ -624,7 +773,7 @@ be_mvp_arch_resume:
+ 	csrr	t0, htimedelta
+ 	bnez	t0, .Lmvp_resume_bad
+ 	csrr	t0, henvcfg
+-	li	t1, MVP_HENVCFG_STCE
++	li	t1, MVP_HENVCFG_ARMED
+ 	bne	t0, t1, .Lmvp_resume_bad
+ 	csrr	t0, hgeie
+ 	bnez	t0, .Lmvp_resume_bad
+@@ -634,37 +783,63 @@ be_mvp_arch_resume:
+ 	.option pop
+ 	ld	t0, FR_SEPC(t6)
+ 	csrw	sepc, t0
+-	ld	ra, 0(t6)
+-	ld	gp, 16(t6)
+-	ld	tp, 24(t6)
+-	ld	t0, 32(t6)
+-	ld	t1, 40(t6)
+-	ld	t2, 48(t6)
+-	ld	s0, 56(t6)
+-	ld	s1, 64(t6)
+-	ld	a0, 72(t6)
+-	ld	a1, 80(t6)
+-	ld	a2, 88(t6)
+-	ld	a3, 96(t6)
+-	ld	a4, 104(t6)
+-	ld	a5, 112(t6)
+-	ld	a6, 120(t6)
+-	ld	a7, 128(t6)
+-	ld	s2, 136(t6)
+-	ld	s3, 144(t6)
+-	ld	s4, 152(t6)
+-	ld	s5, 160(t6)
+-	ld	s6, 168(t6)
+-	ld	s7, 176(t6)
+-	ld	s8, 184(t6)
+-	ld	s9, 192(t6)
+-	ld	s10, 200(t6)
+-	ld	s11, 208(t6)
+-	ld	t3, 216(t6)
+-	ld	t4, 224(t6)
+-	ld	t5, 232(t6)
+-	ld	sp, 8(t6)
+-	ld	t6, 240(t6)
++	/*
++	 * beryllium-cheri: a register the dispatch changed (its frame word
++	 * no longer equals its capability's address) returns as that
++	 * integer, untagged; every other register returns as the guest's
++	 * capability. Integer stores clear a slot's tag.
++	 */
++	li	t0, 1
++	mv	t1, t6
++	addi	t2, t6, CF + 16
++1:
++	ld	t3, 0(t1)
++	ld	t4, 0(t2)
++	beq	t3, t4, 2f
++	sd	t3, 0(t2)
++	sd	zero, 8(t2)
++2:
++	addi	t0, t0, 1
++	addi	t1, t1, 8
++	addi	t2, t2, 16
++	li	t3, 32
++	bltu	t0, t3, 1b
++	/* Capability Pointer Mode; ct6 is the trusted top, from sscratchc. */
++	.4byte	MVP_INSN_MODESW_CAP
++	csrrs	t6, sscratch, zero
++	.insn	i 0x0f, 4, t0, t6, CF
++	csrrw	zero, 0x416, t0
++	.insn	i 0x0f, 4, ra, t6, CF + 16 * 1
++	.insn	i 0x0f, 4, sp, t6, CF + 16 * 2
++	.insn	i 0x0f, 4, gp, t6, CF + 16 * 3
++	.insn	i 0x0f, 4, tp, t6, CF + 16 * 4
++	.insn	i 0x0f, 4, t0, t6, CF + 16 * 5
++	.insn	i 0x0f, 4, t1, t6, CF + 16 * 6
++	.insn	i 0x0f, 4, t2, t6, CF + 16 * 7
++	.insn	i 0x0f, 4, s0, t6, CF + 16 * 8
++	.insn	i 0x0f, 4, s1, t6, CF + 16 * 9
++	.insn	i 0x0f, 4, a0, t6, CF + 16 * 10
++	.insn	i 0x0f, 4, a1, t6, CF + 16 * 11
++	.insn	i 0x0f, 4, a2, t6, CF + 16 * 12
++	.insn	i 0x0f, 4, a3, t6, CF + 16 * 13
++	.insn	i 0x0f, 4, a4, t6, CF + 16 * 14
++	.insn	i 0x0f, 4, a5, t6, CF + 16 * 15
++	.insn	i 0x0f, 4, a6, t6, CF + 16 * 16
++	.insn	i 0x0f, 4, a7, t6, CF + 16 * 17
++	.insn	i 0x0f, 4, s2, t6, CF + 16 * 18
++	.insn	i 0x0f, 4, s3, t6, CF + 16 * 19
++	.insn	i 0x0f, 4, s4, t6, CF + 16 * 20
++	.insn	i 0x0f, 4, s5, t6, CF + 16 * 21
++	.insn	i 0x0f, 4, s6, t6, CF + 16 * 22
++	.insn	i 0x0f, 4, s7, t6, CF + 16 * 23
++	.insn	i 0x0f, 4, s8, t6, CF + 16 * 24
++	.insn	i 0x0f, 4, s9, t6, CF + 16 * 25
++	.insn	i 0x0f, 4, s10, t6, CF + 16 * 26
++	.insn	i 0x0f, 4, s11, t6, CF + 16 * 27
++	.insn	i 0x0f, 4, t3, t6, CF + 16 * 28
++	.insn	i 0x0f, 4, t4, t6, CF + 16 * 29
++	.insn	i 0x0f, 4, t5, t6, CF + 16 * 30
++	.insn	i 0x0f, 4, t6, t6, CF + 16 * 31
+ 	sret
+ 
+ .Lmvp_resume_bad:
+diff --git a/mvp/src/mvp.h b/mvp/src/mvp.h
+index d1f58b78..64160326 100644
+--- a/mvp/src/mvp.h
++++ b/mvp/src/mvp.h
+@@ -177,6 +177,9 @@
+ 
+ /* Guest controls while a domain runs (planning/mvp-m0-plan.md). */
+ #define BE_MVP_HENVCFG_STCE		(BE_U64_C(1) << 63)
++/* beryllium-cheri: CHERI v0.9.3's enable for VS-mode, henvcfg.CRE. */
++#define BE_MVP_HENVCFG_CRE		(BE_U64_C(1) << 28)
++#define BE_MVP_HENVCFG_ARMED		(BE_MVP_HENVCFG_STCE | BE_MVP_HENVCFG_CRE)
+ /* VTVM, VTSR, and VTW stay clear, B6's value: a guest wfi runs natively. */
+ #define BE_MVP_HSTATUS_CLEARED_TRAPS \
+ 	(BE_R3_HSTATUS_VTVM | BE_R3_HSTATUS_VTSR | BE_R3_HSTATUS_VTW)
+@@ -191,7 +194,8 @@
+ #define BE_MVP_HSTATUS_RESUME_CONTROLS \
+ 	(BE_MVP_HSTATUS_GUEST_CONTROLS & ~BE_R3_HSTATUS_SPVP)
+ /* Causes 0, 2, 3, 4, 6, 8, 12, 13, and 15 go to the guest, as in B6. */
+-#define BE_MVP_HEDELEG			BE_U64_C(0xb15d)
++/* beryllium-cheri: and cause 28, CHERI v0.9.3's CHERI fault. */
++#define BE_MVP_HEDELEG			BE_U64_C(0x1000b15d)
+ /*
+  * hedeleg is WARL, as in B6 and B7 (responsible-human direction fix-warl,
+  * 2026-10-08): the readback may lack causes 0, 4, and 6; causes 2, 3, 8,
+diff --git a/mvp/tests/run-qemu.sh b/mvp/tests/run-qemu.sh
+index 326180b9..73296804 100755
+--- a/mvp/tests/run-qemu.sh
++++ b/mvp/tests/run-qemu.sh
+@@ -116,14 +116,18 @@ k3_machine='virt,aia=aplic-imsic,aia-guests=7'
+ k3_cpu='rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true'
+ # The accepted R5 QEMU CPU profile (tests/r5/run-qemu.sh).
+ minimal='rv64,h=true,f=false,d=false,v=false,zfa=false,sv48=off,sv57=off,sstc=false,smstateen=false,svadu=false,debug=false'
++# beryllium-cheri: OPENSBI_FW's SBI version, the CHERI Alliance OpenSBI's
++# 3.0, which this branch's monitor requires (tools/port.py's rule
++# cheri-firmware-sbi-3.0) in place of OpenSBI 1.6's 2.0.
++firmware_sbi=3.0
+ # Every scenario on each toolchain's boot ELF: the scenario, the QEMU
+ # machine and CPU, the firmware (opensbi: OPENSBI_FW; default: QEMU's
+ # bundled OpenSBI) and its SBI version, and the expectation file.
+ scenarios=(
+-	"k3-like $k3_machine $k3_cpu opensbi 2.0 two-guests"
+-	"rva23 virt,aia=aplic-imsic rva23s64 opensbi 2.0 two-guests"
+-	"plic virt rv64,h=true opensbi 2.0 two-guests"
+-	"no-sstc virt,aia=none $minimal opensbi 2.0 no-sstc"
++	"k3-like $k3_machine $k3_cpu opensbi $firmware_sbi two-guests"
++	"rva23 virt,aia=aplic-imsic rva23s64 opensbi $firmware_sbi two-guests"
++	"plic virt rv64,h=true opensbi $firmware_sbi two-guests"
++	"no-sstc virt,aia=none $minimal opensbi $firmware_sbi no-sstc"
+ 	"sbi-3.0 $k3_machine $k3_cpu default 3.0 sbi-3.0"
+ )
+ # The variants (planning/mvp-m0-plan.md, Negative images) and the probe
+@@ -171,39 +175,39 @@ done
+ for toolchain in "${variant_toolchains[@]}"; do
+ 	for name in "${variants[@]}"; do
+ 		wanted "variant/$toolchain/$name" || continue
+-		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware 2.0 $expect_dir/$name.json - -")
++		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $expect_dir/$name.json - -")
+ 	done
+ done
+ for toolchain in "${probe_toolchains[@]}"; do
+ 	for name in "${probes[@]}"; do
+ 		wanted "probe/$toolchain/$name" || continue
+-		runs+=("$toolchain/$name $build/probes/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware 2.0 $expect_dir/$name.json - -")
++		runs+=("$toolchain/$name $build/probes/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $expect_dir/$name.json - -")
+ 	done
+ done
+ for toolchain in "${toolchains[@]}"; do
+ 	for entry in "${te_poc_machines[@]}"; do
+ 		read -r name machine cpu <<<"$entry"
+ 		wanted "te-poc/$toolchain/$name" || continue
+-		runs+=("$toolchain/te-poc-$name $build/$toolchain/te-poc/be-mvp-boot.elf $machine $cpu $firmware 2.0 $te_poc_dir/expect/te-poc.json $te_poc_dir/authority-report.json -")
++		runs+=("$toolchain/te-poc-$name $build/$toolchain/te-poc/be-mvp-boot.elf $machine $cpu $firmware $firmware_sbi $te_poc_dir/expect/te-poc.json $te_poc_dir/authority-report.json -")
+ 	done
+ done
+ for toolchain in "${variant_toolchains[@]}"; do
+ 	for name in "${te_poc_variants[@]}"; do
+ 		wanted "te-poc/$toolchain/$name" || continue
+-		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware 2.0 $te_poc_dir/expect/$name.json $te_poc_dir/authority-report.json -")
++		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $te_poc_dir/expect/$name.json $te_poc_dir/authority-report.json -")
+ 	done
+ done
+ for toolchain in "${toolchains[@]}"; do
+ 	for entry in "${te_poc_machines[@]}"; do
+ 		read -r name machine cpu <<<"$entry"
+ 		wanted "anchor/$toolchain/$name" || continue
+-		runs+=("$toolchain/anchor-$name $build/$toolchain/anchor/be-mvp-boot.elf $machine $cpu $firmware 2.0 $anchor_dir/expect/anchor.json $anchor_dir/authority-report.json $measured")
++		runs+=("$toolchain/anchor-$name $build/$toolchain/anchor/be-mvp-boot.elf $machine $cpu $firmware $firmware_sbi $anchor_dir/expect/anchor.json $anchor_dir/authority-report.json $measured")
+ 	done
+ done
+ for toolchain in "${variant_toolchains[@]}"; do
+ 	for name in "${anchor_variants[@]}"; do
+ 		wanted "anchor/$toolchain/$name" || continue
+-		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware 2.0 $anchor_dir/expect/$name.json $anchor_dir/authority-report.json $measured")
++		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $anchor_dir/expect/$name.json $anchor_dir/authority-report.json $measured")
+ 	done
+ done
+ missing=()
+diff --git a/mvp/tools/build-guest-cheri.sh b/mvp/tools/build-guest-cheri.sh
+new file mode 100755
+index 00000000..c4c2c46c
+--- /dev/null
++++ b/mvp/tools/build-guest-cheri.sh
+@@ -0,0 +1,317 @@
++#!/usr/bin/env bash
++# SPDX-License-Identifier: GPL-3.0-only
++# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
++#
++# beryllium-cheri: build the MVP guest inputs as CHERI programs (CHERI
++# v0.9.3 under emulation, the CHERI proof of concept): the same outputs,
++# names, and initramfs list as tools/build-guest.sh, for CHERI-enabled
++# guests. Every program is purecap:
++#   - the init: guest/mvp-init.c and src/mvp-sha256.c, built against the
++#     CHERI Alliance musl (the SDK's sysroot), not nolibc;
++#   - BusyBox: the CHERI Alliance BusyBox (1.36.1, as guest/pins.txt's)
++#     with guest/busybox.config, static against that musl;
++#   - the kernel: CHERI Alliance Linux (v7.1), configured as
++#     tools/build-guest.sh configures v7.2 (tinyconfig, B6's fragment, then
++#     guest/mvp-kernel.config) and then guest/cheri-kernel.config, built
++#     with the CHERI Alliance LLVM: a purecap kernel with the purecap user
++#     ABI, with the initramfs embedded;
++#   - the management module, built out of tree against that kernel.
++# The DTBs are tools/gen-dts.py's, which names Zcherihybrid and
++# Zcheripurecap, compiled by the kernel's dtc. Each output is then checked
++# against guest/pins.txt: its SHA-256 and size, the Image's header facts
++# and banner. --unpinned prints the outputs' pin lines instead.
++#
++#   build-guest-cheri.sh [--unpinned] MVP_DIR B6_DIR OUT
++#
++# Environment: CHERI_SDK, the CHERI Alliance SDK (cheribuild's output:
++# bin/clang, and linux/linux-riscv64zcheri093-purecap, the musl sysroot);
++# CHERI_LINUX_SRC and CHERI_LINUX_COMMIT, a clean checkout of CHERI
++# Alliance Linux and its pinned commit; CHERI_BUSYBOX_SRC and
++# CHERI_BUSYBOX_COMMIT, the same for CHERI Alliance BusyBox; PYTHON
++# (default python3). None of them is in Beryllium's tool lock: the CHERI
++# toolchain and sources stay outside this repository (beryllium-cheri's
++# tools/pins.txt pins them).
++#
++# Floating point: the SDK's musl is built for the l64pc128d ABI, and the
++# guest kernel has no FPU (B6's fragment), so a guest program that executes
++# a floating-point instruction gets SIGILL. The init uses no floating-point
++# conversion, the only place musl's printf would execute one; BusyBox's
++# ash saves floating-point registers in setjmp, so the shell variants are
++# expected to fail (not covered by the proof of concept).
++set -euo pipefail
++umask 022
++
++die() {
++	printf 'BE_MVP_GUEST_BUILD: FAIL %s\n' "$*" >&2
++	exit 1
++}
++
++unpinned=0
++if [ "${1:-}" = --unpinned ]; then
++	unpinned=1
++	shift
++fi
++[ "$#" -eq 3 ] || { printf 'usage: %s [--unpinned] MVP_DIR B6_DIR OUT\n' "$0" >&2; exit 2; }
++for name in CHERI_SDK CHERI_LINUX_SRC CHERI_LINUX_COMMIT CHERI_BUSYBOX_SRC \
++	CHERI_BUSYBOX_COMMIT; do
++	[ -n "${!name:-}" ] || die "$name is not set (see this script's header)"
++done
++
++mvp=$(cd -- "$1" && pwd)
++b6=$(cd -- "$2" && pwd)
++mkdir -p -- "$3"
++out=$(cd -- "$3" && pwd)
++sdk=$(cd -- "$CHERI_SDK" && pwd)
++src=$(cd -- "$CHERI_LINUX_SRC" && pwd)
++bb_git=$(cd -- "$CHERI_BUSYBOX_SRC" && pwd)
++python=${PYTHON:-python3}
++musl=$sdk/linux/linux-riscv64zcheri093-purecap
++clang=$sdk/bin/clang
++obj=$out/kbuild
++module_src=$mvp/guest/mgmt
++module_out=$out/mgmt
++userland=$out/userland
++layout=$mvp/src/mvp-layout.h
++pins=$mvp/guest/pins.txt
++gen_dts=$mvp/tools/gen-dts.py
++fragment=$b6/guest/b6-kernel.config
++mvp_fragment=$mvp/guest/mvp-kernel.config
++cheri_fragment=$mvp/guest/cheri-kernel.config
++cheri_ksyms=$mvp/guest/cheri-ksyms.txt
++
++sha() {
++	sha256sum -- "$1" | cut -d' ' -f1
++}
++
++# Copy template $1 to $4, with its one $2 replaced by $3.
++render() {
++	local text count
++
++	text=$(<"$1")
++	count=$(grep -oF -- "$2" "$1" | wc -l || true)
++	[ "$count" = 1 ] || die "$1 holds $2 $count times, not once"
++	printf '%s\n' "${text//"$2"/"$3"}" >"$4"
++}
++
++for tree in "$src:$CHERI_LINUX_COMMIT" "$bb_git:$CHERI_BUSYBOX_COMMIT"; do
++	[ "$(git -C "${tree%%:*}" rev-parse HEAD)" = "${tree#*:}" ] ||
++		die "${tree%%:*} is not at its pinned commit ${tree#*:}"
++	[ -z "$(git -C "${tree%%:*}" status --porcelain)" ] ||
++		die "${tree%%:*} has local changes"
++done
++[ -x "$clang" ] && [ -f "$musl/lib/libc.a" ] || die "$sdk is not the CHERI SDK"
++
++# The purecap user ABI's flags (the SDK's musl was built with the bounded
++# argument features; without them printf reads its arguments wrongly), and
++# the CPU's extensions without Zcherilevels, which QEMU's CPU lacks.
++purecap=(--unwindlib=none -target riscv64-linux-musl "--sysroot=$musl"
++	"-B$sdk/bin" -march=rv64imafdc_zcherihybrid -mabi=l64pc128d -mno-relax
++	-Xclang -target-feature -Xclang +cheri-bounded-vararg
++	-Xclang -target-feature -Xclang +cheri-bounded-memarg-caller
++	-Xclang -target-feature -Xclang +cheri-bounded-memarg-callee)
++link=(-fuse-ld=lld "--ld-path=$sdk/bin/ld.lld" -static '-Wl,--build-id=none')
++cc_version=$("$clang" --version | head -n 1)
++epoch=$(git -C "$src" log -1 --format=%ct HEAD)
++timestamp=$(LC_ALL=C date -u -d "@$epoch" '+%a %b %e %H:%M:%S UTC %Y')
++
++# The init: the same warnings as tools/build-guest.sh's, -Os, stripped.
++# lld's two warnings about the SDK's own crt objects (__global_pointer$ and
++# __EH_FRAME_LIST__) are the toolchain's and are recorded, not fatal.
++"$clang" "${purecap[@]}" -std=gnu11 -Os -Wall -Wextra -Werror -Wconversion \
++	-Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef \
++	-I "$mvp/guest" -I "$mvp/src" "${link[@]}" -s -o "$out/init" \
++	"$mvp/guest/mvp-init.c" "$mvp/src/mvp-sha256.c" >"$out/init.log" 2>&1 ||
++	{ cat -- "$out/init.log" >&2; die "the init build failed"; }
++cp -- "$musl/lib/libc.a" "$out/musl-libc.a"
++
++# BusyBox, from a copy of the pinned commit, so the checkout stays clean.
++rm -rf -- "$userland"
++mkdir -p -- "$userland/busybox-src"
++git -C "$bb_git" archive --format=tar HEAD | tar -x -C "$userland/busybox-src"
++sed '1,/^$/d' -- "$mvp/guest/busybox.config" >"$userland/busybox.config"
++cp -- "$userland/busybox.config" "$userland/busybox-src/.config"
++bb_make=(CC="$clang ${purecap[*]}" HOSTCC=/usr/bin/gcc AR="$sdk/bin/llvm-ar"
++	NM="$sdk/bin/llvm-nm" STRIP="$sdk/bin/llvm-strip"
++	OBJCOPY="$sdk/bin/llvm-objcopy" OBJDUMP="$sdk/bin/llvm-objdump"
++	CFLAGS=-Os "LDFLAGS=${link[*]}")
++(cd -- "$userland/busybox-src" && KCONFIG_NOTIMESTAMP=1 \
++	SOURCE_DATE_EPOCH=$epoch make -s "${bb_make[@]}" oldconfig) </dev/null \
++	>"$userland/busybox.log" 2>&1 ||
++	{ tail -n 5 -- "$userland/busybox.log" >&2; die "BusyBox's oldconfig failed"; }
++cmp -s -- "$userland/busybox.config" "$userland/busybox-src/.config" ||
++	die "make oldconfig changed guest/busybox.config for CHERI BusyBox"
++(cd -- "$userland/busybox-src" && KCONFIG_NOTIMESTAMP=1 \
++	SOURCE_DATE_EPOCH=$epoch make -s -j"$(nproc)" "${bb_make[@]}" busybox) \
++	>>"$userland/busybox.log" 2>&1 ||
++	{ tail -n 30 -- "$userland/busybox.log" >&2; die "the BusyBox build failed"; }
++names=$(sed -n 's/^"\(.*\)" "\\0"$/\1/p' -- \
++	"$userland/busybox-src/include/applet_tables.h" | LC_ALL=C sort | paste -sd' ')
++links=$(sed -n 's|^slink /bin/\([^ ]*\) busybox .*|\1|p' -- \
++	"$mvp/guest/initramfs.list.in" | LC_ALL=C sort | paste -sd' ')
++[ -n "$names" ] && [ "$names" = "$links" ] ||
++	die "BusyBox's applets ($names) are not the list's /bin links ($links)"
++for symbol in regcomp regexec iconv iconv_open; do
++	if "$sdk/bin/llvm-nm" --defined-only \
++		"$userland/busybox-src/busybox_unstripped" | grep -q " $symbol\$"; then
++		die "BusyBox links musl's $symbol (guest/pins.txt's advisories)"
++	fi
++done
++cp -- "$userland/busybox-src/busybox" "$out/busybox"
++
++# The kernel: as tools/build-guest.sh, with the CHERI fragment last.
++render_list() {
++	if [ "$1" = without-module ]; then
++		grep -vF @MVP_GUEST_MODULE@ -- "$mvp/guest/initramfs.list.in" \
++			>"$out/initramfs.list.in"
++	else
++		render "$mvp/guest/initramfs.list.in" @MVP_GUEST_MODULE@ \
++			"$out/be-mgmt.ko" "$out/initramfs.list.in"
++	fi
++	render "$out/initramfs.list.in" @MVP_GUEST_BUSYBOX@ "$out/busybox" \
++		"$out/initramfs.list.busybox"
++	render "$out/initramfs.list.busybox" @MVP_GUEST_INIT@ "$out/init" \
++		"$out/initramfs.list"
++	rm -f -- "$out/initramfs.list.in" "$out/initramfs.list.busybox"
++}
++kbuild_tools=(RUSTC=/dev/null/rustc BINDGEN=/dev/null/bindgen
++	PAHOLE=/dev/null/pahole)
++llvm=(ARCH=riscv "LLVM=$sdk/bin/" "CROSS_COMPILE=$sdk/bin/"
++	HOSTCC=/usr/bin/clang HOSTCXX=/usr/bin/clang++ "${kbuild_tools[@]}")
++maps="-ffile-prefix-map=$src/= -ffile-prefix-map=$obj/="
++maps_module="$maps -ffile-prefix-map=$module_src/= -ffile-prefix-map=$module_out/="
++kbuild=(KBUILD_BUILD_TIMESTAMP="$timestamp" KBUILD_BUILD_USER=be
++	KBUILD_BUILD_HOST=beryllium KBUILD_BUILD_VERSION=1 LOCALVERSION=)
++render "$fragment" @B6_INITRAMFS_LIST@ "$out/initramfs.list" \
++	"$out/b6-kernel.config"
++render "$cheri_fragment" @CHERI_KSYMS@ "$cheri_ksyms" "$out/cheri-kernel.config"
++rm -rf -- "$obj"
++mkdir -p -- "$obj"
++make -s -C "$src" O="$obj" "${llvm[@]}" outputmakefile >"$out/kconfig.log" 2>&1 ||
++	{ tail -n 20 -- "$out/kconfig.log" >&2; die "outputmakefile failed"; }
++(cd -- "$obj" && env "${llvm[@]}" "$src/scripts/kconfig/merge_config.sh" -m \
++	-O "$obj" "$src/kernel/configs/tiny-base.config" \
++	"$src/kernel/configs/tiny.config" "$out/b6-kernel.config" \
++	"$mvp_fragment" "$out/cheri-kernel.config") >>"$out/kconfig.log" 2>&1 ||
++	{ tail -n 20 -- "$out/kconfig.log" >&2; die "merge_config.sh failed"; }
++mv -- "$obj/.config" "$obj/merged.config"
++make -s -C "$src" O="$obj" "${llvm[@]}" KCONFIG_ALLCONFIG="$obj/merged.config" \
++	allnoconfig >>"$out/kconfig.log" 2>&1 ||
++	{ tail -n 20 -- "$out/kconfig.log" >&2; die "allnoconfig failed"; }
++# Each fragment's values must be in the final .config, a later fragment's
++# value for a symbol replacing an earlier one's.
++"$python" -B - "$obj/.config" "$out/b6-kernel.config" "$mvp_fragment" \
++	"$out/cheri-kernel.config" >"$out/config-check.txt" <<'EOF' ||
++import re, sys
++config = open(sys.argv[1]).read().splitlines()
++want = {}
++for path in sys.argv[2:]:
++    for line in open(path):
++        line = line.strip()
++        m = re.fullmatch(r"(CONFIG_\w+)=.*", line) or \
++            re.fullmatch(r"# (CONFIG_\w+) is not set", line)
++        if m:
++            want[m.group(1)] = line
++bad = []
++for name, line in sorted(want.items()):
++    if line.startswith("#"):
++        if any(c.startswith(name + "=") for c in config):
++            bad.append(line)
++    elif line not in config:
++        bad.append(line)
++for line in bad:
++    print("not in the final .config:", line)
++print(f"config_values_checked={len(want)} missing={len(bad)}")
++sys.exit(1 if bad else 0)
++EOF
++	{ cat -- "$out/config-check.txt" >&2; die "a fragment's value is not in the .config"; }
++make_args=(-C "$src" O="$obj" "${llvm[@]}")
++render_list without-module
++SOURCE_DATE_EPOCH=$epoch make -s "${make_args[@]}" "${kbuild[@]}" \
++	KCFLAGS="$maps" KAFLAGS="$maps" -j"$(nproc)" vmlinux modules \
++	>"$out/kbuild.log" 2>&1 ||
++	{ tail -n 40 -- "$out/kbuild.log" >&2; die "the kernel build failed"; }
++rm -rf -- "$module_out"
++mkdir -p -- "$module_out"
++SOURCE_DATE_EPOCH=$epoch make -s -C "$obj" M="$module_src" MO="$module_out" \
++	"${llvm[@]}" "${kbuild[@]}" KCFLAGS="$maps_module" KAFLAGS="$maps_module" \
++	modules >"$out/module.log" 2>&1 ||
++	{ tail -n 40 -- "$out/module.log" >&2; die "the module build failed"; }
++[ ! -s "$out/module.log" ] ||
++	{ cat -- "$out/module.log" >&2; die "the module build warned"; }
++# The module imports exactly the kept exports.
++[ "$("$sdk/bin/llvm-nm" -u "$module_out/be-mgmt.ko" | awk '{ print $2 }' | LC_ALL=C sort)" = \
++	"$(LC_ALL=C sort -- "$cheri_ksyms")" ] ||
++	die "be-mgmt.ko's imports are not guest/cheri-ksyms.txt"
++cp -- "$module_out/be-mgmt.ko" "$out/be-mgmt.ko"
++render_list with-module
++rm -f -- "$obj/usr/initramfs_data.cpio"
++SOURCE_DATE_EPOCH=$epoch make -s "${make_args[@]}" "${kbuild[@]}" \
++	KCFLAGS="$maps" KAFLAGS="$maps" -j"$(nproc)" Image scripts_dtc \
++	>>"$out/kbuild.log" 2>&1 ||
++	{ tail -n 40 -- "$out/kbuild.log" >&2; die "the kernel build failed"; }
++cp -- "$obj/arch/riscv/boot/Image" "$out/Image"
++
++# The DTBs, as tools/build-guest.sh makes them.
++dtb_bytes=$("$python" -B "$gen_dts" --layout "$layout" --query dtb-bytes)
++while read -r name guest variant; do
++	stem=${name%.dtb}
++	"$python" -B "$gen_dts" --layout "$layout" \
++		--template "$mvp/guest/mvp-guest.dts.in" --guest "$guest" \
++		--variant "$variant" --output "$out/$stem.dts"
++	"$obj/scripts/dtc/dtc" -I dts -O dtb -S "$dtb_bytes" -o "$out/$stem.dtb" \
++		"$out/$stem.dts" 2>"$out/$stem.dtc.txt" ||
++		{ cat -- "$out/$stem.dtc.txt" >&2; die "dtc failed on $stem.dts"; }
++	[ ! -s "$out/$stem.dtc.txt" ] ||
++		{ cat -- "$out/$stem.dtc.txt" >&2; die "dtc warned on $stem.dts"; }
++done < <("$python" -B "$gen_dts" --layout "$layout" --query dtbs)
++
++# The pin lines: every output's SHA-256 and size, the Image's header facts
++# and banner, and the toolchain; then the comparison with guest/pins.txt.
++"$python" -B - "$out" "$cc_version" "$layout" "$gen_dts" >"$out/pins.cheri.txt" <<'EOF'
++import pathlib, re, struct, subprocess, sys, hashlib
++out, cc, layout, gen_dts = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4]
++dtbs = subprocess.run([sys.executable, "-B", gen_dts, "--layout", layout,
++                       "--query", "dtbs"], check=True, capture_output=True,
++                      text=True).stdout.split("\n")
++names = ["init", "be-mgmt.ko", "busybox", "musl-libc.a", "Image"] + \
++    [line.split()[0] for line in dtbs if line.strip()]
++for name in names:
++    data = (out / name).read_bytes()
++    print(f"file {name} sha256={hashlib.sha256(data).hexdigest()} bytes={len(data)}")
++image = (out / "Image").read_bytes()
++text_offset, image_size = struct.unpack_from("<QQ", image, 8)
++print(f"kernel image_size={image_size:#x}")
++print(f"kernel text_offset={text_offset:#x}")
++start = image.find(b"Linux version ")
++end = image.find(b"\n", start)
++print("kernel banner=" + image[start:end].decode("ascii"))
++print(f"toolchain clang={cc}")
++EOF
++if [ "$unpinned" = 1 ]; then
++	pin_status=unpinned
++else
++	diff <(grep -E '^(file|kernel|toolchain) ' -- "$pins") "$out/pins.cheri.txt" \
++		>"$out/pins-diff.txt" ||
++		{ cat -- "$out/pins-diff.txt" >&2; die "an output does not match guest/pins.txt"; }
++	pin_status=match
++fi
++{
++	printf 'cheri_sdk_clang=%s\n' "$cc_version"
++	printf 'cheri_linux_commit=%s\ncheri_busybox_commit=%s\n' \
++		"$CHERI_LINUX_COMMIT" "$CHERI_BUSYBOX_COMMIT"
++	printf 'cheri_musl_libc_sha256=%s\n' "$(sha "$musl/lib/libc.a")"
++	printf 'purecap_flags=%s\n' "${purecap[*]}"
++	printf 'source_date_epoch=%s\nkbuild_build_timestamp=%s\n' "$epoch" "$timestamp"
++	printf 'fragments=tinyconfig b6-kernel.config mvp-kernel.config cheri-kernel.config\n'
++	cat -- "$out/config-check.txt"
++	printf 'pins=%s\n' "$pin_status"
++	cat -- "$out/pins.cheri.txt"
++} >"$out/MVP-GUEST-BUILD.txt"
++touch -- "$out/init" "$out/busybox" "$out/musl-libc.a" "$out/Image" \
++	"$out/be-mgmt.ko" "$out"/mvp-guest*.dtb
++if [ "$unpinned" = 1 ]; then
++	printf 'BE_MVP_GUEST_BUILD: UNPINNED cheri; pin lines in %s\n' "$out/pins.cheri.txt"
++	cat -- "$out/pins.cheri.txt"
++else
++	printf 'BE_MVP_GUEST_BUILD: PASS cheri pins=match\n'
++fi
+diff --git a/mvp/tools/gen-dts.py b/mvp/tools/gen-dts.py
+index 444ace64..a9316852 100755
+--- a/mvp/tools/gen-dts.py
++++ b/mvp/tools/gen-dts.py
+@@ -120,8 +120,12 @@ MODEL = "Beryllium MVP guest"
+ COMPATIBLE = "beryllium,mvp-guest"
+ B6_MODEL = "Beryllium K3 B6 guest"
+ B6_COMPATIBLE = "beryllium,k3-b6-guest"
++# beryllium-cheri: the CHERI guest also names CHERI v0.9.3's Zcherihybrid
++# and Zcheripurecap, without which CHERI Alliance Linux never enables
++# CHERI for user space (senvcfg.CRE; arch/riscv/kernel/cpufeature.c).
+ ISA_EXTENSIONS = ("i", "m", "a", "c", "zicsr", "zifencei", "zihintpause",
+-                  "zba", "zbb", "zbs", "sstc", "svade")
++                  "zba", "zbb", "zbs", "sstc", "svade", "zcherihybrid",
++                  "zcheripurecap")
+ VARIANTS = ("base", "init-exit", "rdcycle", "sbi-time", "reference",
+             "te-poc", "anchor", "shell", "te-poc-shell", "anchor-shell",
+             "hostile")
+@@ -355,10 +359,13 @@ def replace_once(text, old, new):
+ 
+ 
+ def mvp_plan_dts(b6_plan_text, guest):
+-    """B6's accepted DTS with the MVP model, compatible, and bootargs."""
++    """B6's accepted DTS with the MVP model, compatible, and bootargs, and
++    (beryllium-cheri) the CHERI extensions after svade."""
+     text = plan_dts(b6_plan_text)
+     text = replace_once(text, f'"{B6_COMPATIBLE}"', f'"{COMPATIBLE}"')
+     text = replace_once(text, f'"{B6_MODEL}"', f'"{MODEL}"')
++    text = replace_once(text, '"svade";',
++                        '"svade", "zcherihybrid", "zcheripurecap";')
+     return replace_once(text, f'"{BOOTARGS}"', f'"{guest_bootargs(guest)}"')
+ 
+ 
+@@ -414,7 +421,8 @@ def self_test(template, layout_text, plan_text, b6_plan_text, id_header):
+                    '";')],
+         "hostile": [("bootargs", '"' + guest_bootargs("{g}", HOSTILE_ARG) +
+                      '";')],
+-        "sbi-time": [("riscv,isa-extensions", '"zbs", "svade";')],
++        "sbi-time": [("riscv,isa-extensions",
++                      '"zbs", "svade", "zcherihybrid", "zcheripurecap";')],
+         "reference": [("memory@", f"memory@{ref_base:x} {{"),
+                       ("reg", f"{ref_base & U32:#x} {ref_size >> 32:#x} "
+                        f"{ref_size & U32:#x}>;")],
+diff --git a/mvp/tools/make-control.py b/mvp/tools/make-control.py
+index 02f9a910..055a09bf 100755
+--- a/mvp/tools/make-control.py
++++ b/mvp/tools/make-control.py
+@@ -38,7 +38,9 @@ Rules, each failing closed:
+     M4-A.2: letters, digits, spaces, and . , -), and the board session's
+     (planning/mvp-m5-plan.md): K3_PREFLIGHT (before or after),
+     K3_ENV_CONFIRM (12 lower-case hexadecimal digits), and K3_ENV_ACCEPT_V
+-    (variable names, comma-separated);
++    (variable names, comma-separated); and (beryllium-cheri) CHERI_SDK,
++    CHERI_LINUX_SRC, and CHERI_BUSYBOX_SRC (paths), and CHERI_LINUX_COMMIT
++    and CHERI_BUSYBOX_COMMIT (40 hexadecimal digits);
+   - the environment may not set MAKEFILES, a variable any MVP makefile or the
+     tool lock assigns, or a variable that changes the compilers, the loader,
+     the shell, or Python; an allowlisted variable in the environment must
+@@ -74,6 +76,14 @@ CALLER = {
+     "K3_ENV_CONFIRM": re.compile(r"^[0-9a-f]{12}$"),
+     "K3_ENV_ACCEPT_V": re.compile(r"^[A-Za-z0-9_.-]{1,32}(?:,[A-Za-z0-9_.-]"
+                                   r"{1,32}){0,15}$"),
++    # beryllium-cheri: the CHERI proof of concept's guest inputs (guest.mk,
++    # tools/build-guest-cheri.sh), which stay outside the tool lock: the
++    # CHERI Alliance SDK, and the Linux and BusyBox checkouts and commits.
++    "CHERI_SDK": PATH_FORM,
++    "CHERI_LINUX_SRC": PATH_FORM,
++    "CHERI_LINUX_COMMIT": re.compile(r"^[0-9a-f]{40}$"),
++    "CHERI_BUSYBOX_SRC": PATH_FORM,
++    "CHERI_BUSYBOX_COMMIT": re.compile(r"^[0-9a-f]{40}$"),
+ }
+ # Environment names that change Make, the shell, the compilers, the loader,
+ # Python, or the guest kernel build, beyond the makefiles' own variables.
+diff --git a/mvp/tools/port.py b/mvp/tools/port.py
+index 29dcc03c..37c7aaad 100755
+--- a/mvp/tools/port.py
++++ b/mvp/tools/port.py
+@@ -673,6 +673,16 @@ RULES = {
+         ("region-bss-exclude", BSS_ANCHOR, BSS_EXCLUDED, 1),
+         ("mvp-region", ASSERT_ANCHOR, REGION_SECTION + ASSERT_ANCHOR, 1),
+     ],
++    # beryllium-cheri: include/be/r3.h pins SBI 3.0 and B2's port lowers it
++    # to 2.0 for OpenSBI v1.6; Codasip's CHERI OpenSBI reports 3.0.
++    "include/be/r3.h": [
++        ("cheri-firmware-sbi-3.0-doc",
++         "pinned firmware SBI specification version 2.0 */",
++         "pinned firmware SBI specification version 3.0 */", 1),
++        ("cheri-firmware-sbi-3.0",
++         "#define BE_R3_OPENSBI_SPEC_VERSION\tBE_U64_C(0x02000000)",
++         "#define BE_R3_OPENSBI_SPEC_VERSION\tBE_U64_C(0x03000000)", 1),
++    ],
+     **CORE_RULES,
+ }
+ 

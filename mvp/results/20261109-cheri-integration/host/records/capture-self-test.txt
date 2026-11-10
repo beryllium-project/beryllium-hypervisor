@@ -1,0 +1,303 @@
+ok   scenario, boot hart 0: PASS
+ok   scenario, CRLF: PASS
+ok   scenario, boot hart 6 and its start rule: PASS
+ok   shim-rule variant: PASS
+ok   a domain hart's boot, refused: REFUSED
+ok   ring-full, both fallbacks: PASS
+ok   ring-full, the second hart cut short: PASS
+ok   ring-full, the last DETAIL cut mid-line: PASS
+ok   rdcycle variant, cause 22: PASS
+ok   payload variant: PASS
+ok   exit-budget variant, synthetic: PASS
+ok   sbi-3.0 variant, synthetic: PASS
+ok   probe-platform: PASS
+ok   probe-vmid-distinct: PASS
+ok   probe-vmid-shared: PASS
+ok   probe-vmid-shared, A's value is a fact: PASS
+ok   probe stop: a stale translation under distinct VMIDs: STOP
+ok   probe stop: an IPI not delivered at V=1: STOP
+ok   probe stop: htval not GPA >> 2: STOP
+ok   probe stop: a stale read with fences: STOP
+ok   probe stop: a hart not STOPPED: STOP
+ok   probe: the unfenced stale count is a fact: PASS
+ok   kexec scenario, B7's recorded handoff: PASS
+ok   kexec scenario, the loader's FDT: PASS
+ok   kexec scenario, the image's FDT slot: PASS
+ok   kexec scenario from hart 6: PASS
+ok   kexec refusal from hart 1: REFUSED
+ok   kexec payload: PASS
+ok   kexec probe-platform: PASS
+ok   board run 1, hart 0's drain-batched order (stop 6): FAIL
+ok   te-poc: the channel and three denials: PASS
+ok   te-poc, B7's recorded handoff: PASS
+ok   reader-write: the channel check refuses the reader's W: PASS
+ok   no-inject: the first denied access ends the run: PASS
+ok   te-poc without its report: FAIL
+ok   the denials made by pid 1 (stop 6, Plan revision M1-A): FAIL
+ok   no-inject on the board, both domain harts' own FAIL lines (stop 6, Plan revision M1-B): FAIL
+ok   anchor: the pages, the measurement, four requests, fifteen requests on hart 0, the pause and the termination: PASS
+ok   anchor, B7's recorded handoff: PASS
+ok   secret-shared: the page check refuses the secret page in the host's root: PASS
+ok   response-writable: the page check refuses W in the host's response leaf: PASS
+ok   wrong-measurement: both values, before any hart starts: PASS
+ok   no-grant-check: the protected domain's terminate 0 ends the host, then run-timeout: PASS
+ok   anchor without its measured domain's kernel and DTB: FAIL
+ok   anchor on the board: hart 2's PONG spv=0 inside its request 1's wait (stop 6, Plan revision M2-A): PASS
+ok   anchor on the board, the PING received at its wait's first tick: PASS
+ok   anchor on the board, the PING received at its wait's last tick: PASS
+ok   uboot: the board from a reset, release candidate 1's GCC two-guests run: PASS
+ok   uboot: the board, CRLF, the stamped blank line's space: PASS
+ok   uboot: the board, the image unknown: PASS
+ok   uboot: the board, crc32's line of its image in place of md5sum's: PASS
+ok   uboot: QEMU, boot hart 6 and its start rule: PASS
+ok   uboot: QEMU, boot hart 3 and its start rule: PASS
+ok   uboot: QEMU, md5sum's line of its image in place of crc32's: PASS
+ok   uboot: QEMU, be_ld echoed before the boot: PASS
+ok   uboot: QEMU, a domain hart's boot, refused: REFUSED
+ok   uboot: B7's kexec handoff, no U-Boot boot: FAIL
+ok   M6 two-guests: PASS
+ok   M6 payload: PASS
+ok   M6 probe-platform: PASS
+ok   M6 probe-vmid-distinct: PASS
+ok   M6 probe-vmid-shared: PASS
+ok   M6 refused: REFUSED
+ok   M6 te-poc: PASS
+ok   M6 reader-write: PASS
+ok   M6 no-inject: PASS
+ok   M6 anchor: PASS
+ok   M6 wrong-measurement: PASS
+ok   M6 no-grant-check: PASS
+ok   M6 two-guests, B7's recorded handoff: PASS
+ok   M6 two-guests, the board's U-Boot form: PASS
+ok   M6 sbi-3.0, synthetic: PASS
+ok   M6 sbi-3.0, the failure after BOOT_VALIDATED: FAIL
+ok   M7 two-guests: PASS
+ok   M7 payload: PASS
+ok   M7 probe-platform: PASS
+ok   M7 probe-vmid-distinct: PASS
+ok   M7 probe-vmid-shared: PASS
+ok   M7 probe-console-input: PASS
+ok   M7 refused: REFUSED
+ok   M7 te-poc: PASS
+ok   M7 reader-write: PASS
+ok   M7 no-inject: PASS
+ok   M7 anchor: PASS
+ok   M7 wrong-measurement: PASS
+ok   M7 no-grant-check: PASS
+ok   M7 probe-console-input, 256 bytes behind B7's handoff: PASS
+ok   M7 probe-console-input, 256 bytes in the board's U-Boot form: PASS
+ok   M7 probe-console-input, bytes in a QEMU run, where nothing is typed: FAIL
+ok   M7 two-guests, B7's recorded handoff: PASS
+ok   M7 two-guests, the board's U-Boot form: PASS
+ok   M6 two-guests against M7's expectation: FAIL
+ok   M7-4 hostile: PASS
+ok   M7-4 two-guests-shell: PASS
+ok   M7-4 te-poc-shell: PASS
+ok   M7-4 anchor-shell: PASS
+ok   M7-4 two-guests-shell without its keys: FAIL
+ok   M7-4 two-guests-shell with another run's nonce: FAIL
+ok   M7-4 two-guests-shell against two-guests' expectation: FAIL
+ok   M7-4 hostile, a forged run line bare: FAIL
+ok   M7-4 hostile, a forged prefix bare: FAIL
+ok   M9 two-guests: PASS
+ok   M9 payload: PASS
+ok   M9 probe-platform: PASS
+ok   M9 probe-vmid-distinct: PASS
+ok   M9 probe-vmid-shared: PASS
+ok   M9 probe-console-input: PASS
+ok   M9 refused: REFUSED
+ok   M9 te-poc: PASS
+ok   M9 reader-write: PASS
+ok   M9 no-inject: PASS
+ok   M9 anchor: PASS
+ok   M9 wrong-measurement: PASS
+ok   M9 no-grant-check: PASS
+ok   M9 hostile: PASS
+ok   M9 self-report-flip: PASS
+ok   M9 two-guests-shell: PASS
+ok   M9 te-poc-shell: PASS
+ok   M9 anchor-shell: PASS
+ok   M7 two-guests against M9's expectation, no log: FAIL
+ok   anchor, a REQUEST's digest one digit off: FAIL
+ok   anchor, a BE_MVP:MGMT line removed: FAIL
+ok   anchor, a denied request's result -3 for -4: FAIL
+ok   anchor, FID 7's request on hart 0: FAIL
+ok   anchor, the host's refused=0: FAIL
+ok   anchor, MEASURED one digit off: FAIL
+ok   anchor, DOMAIN_TERMINATED's sha256 one digit off: FAIL
+ok   anchor, DOMAIN_TERMINATED after the host's shutdown: FAIL
+ok   anchor, a G0 line after the host's shutdown: FAIL
+ok   anchor, a RESULT line from the protected domain: FAIL
+ok   anchor, the protected domain's PONG spv=0 before its first request: FAIL
+ok   uboot, the 'bytes read' line missing: FAIL
+ok   uboot, the 'digest' line missing: FAIL
+ok   uboot, the 'Moving Image' line missing: FAIL
+ok   uboot, the 'Flattened Device Tree' line missing: FAIL
+ok   uboot, the 'Booting using' line missing: FAIL
+ok   uboot, the 'Device Tree' line missing: FAIL
+ok   uboot, the 'Starting kernel' line missing: FAIL
+ok   uboot, the load not the image's size: FAIL
+ok   uboot, an MD5 not the image's: FAIL
+ok   uboot, md5 from another address: FAIL
+ok   uboot, md5 over another length than the load's: FAIL
+ok   uboot, two digest lines, crc32's after md5sum's: FAIL
+ok   uboot, md5sum's line with a CRC-32's eight digits: FAIL
+ok   uboot, a CRC-32 not the image's: FAIL
+ok   uboot, booti's move to B3's 0x102200000: FAIL
+ok   uboot, booti's move from another address: FAIL
+ok   uboot, booti's end not L + N: FAIL
+ok   uboot, the shim's fdt not U-Boot's device tree: FAIL
+ok   uboot, the device tree in the core: FAIL
+ok   uboot, the device tree ending before it starts: FAIL
+ok   uboot, a second U-Boot banner: FAIL
+ok   uboot, no SPL banner on the board: FAIL
+ok   uboot, the shim on hart 1 on the board: FAIL
+ok   uboot, the start rule on the board: FAIL
+ok   uboot, the digest before the load: FAIL
+ok   uboot, no autoboot line: env_k3.txt's load counts: FAIL
+ok   uboot, no autoboot line, counted: FAIL
+ok   uboot, a forged loader block before the shim, with its own autoboot line and another MD5: FAIL
+ok   uboot, a forged loader block before the shim, the MD5 repeated: FAIL
+ok   uboot, a forged loader block before the shim in QEMU: FAIL
+ok   uboot, a line between Starting kernel ... and the shim: FAIL
+ok   uboot, in place at another address than the blob: FAIL
+ok   uboot, another blob booted: FAIL
+ok   uboot, two SPL banners in QEMU: FAIL
+ok   parse: both domains' lines
+ok   parse: hart 0's stream
+ok   parse: no line finding
+ok   parse: the loader's lines
+ok   parse: alternations
+ok   board stop 6: the alternation finding alone
+ok   pid 1's three handled faults, rejected 'unhandled signal' alone
+ok   board no-inject stop 6: both domain harts' fallback lines and the guest lines after the first FAIL, exactly
+ok   M0's capture fails the current pins on the kernel alone
+ok   M1's capture fails the current pins on the kernel alone
+ok   a domain line is never terminal
+ok   board anchor stop 6 (Plan revision M2-A): the probe in hart 2's request 1's wait among the costs, the counts as recorded
+ok   the uboot fixtures, uboot_form's of their sources
+ok   the board's U-Boot facts, as its lines give them
+ok   QEMU's U-Boot facts, the boot hart the banner's
+ok   M7-4: hostile, a forged run line bare, as hart 0's
+ok   M7-4: hostile, a forged prefix bare, as G1's
+ok   M7-4: the input table: no focus, a literal ~, an ungranted digit, bad sequences (a digit of no domain among them), a selection again, CR and LF
+BE_MVP_LOG_FIXTURES: complete=11 gate-fail=1 post-launch-failure=2 pre-measurement=2 refused=1 self-report-flip=1
+ok   log [vector] 2.10: the example's page has the profile's SHA-256
+ok   log [vector] 2.10: the header, record 9, and the close as dumped
+ok   log [vector] 5.4: the export, 8,153 bytes, the profile's SHA-256
+ok   log [vector] 5.4: the reference, 10,993 bytes, the profile's SHA-256, as build_reference() renders it
+ok   log [vector] 2.8: the four console-grant digests
+ok   log [vector] 4.5: 4,557 bytes of :19 and :20 text; no line above 319 characters
+ok   log [vector] 2.6: the registers replay to the printed ones
+ok   log [round-trip] page, lines, rebuild, log.json, rebuild: the page byte for byte
+ok   log [accept] te-poc: the profile's example, complete
+ok   log [reader] a duplicate key
+ok   log [reader] NaN
+ok   log [reader] a float
+ok   log [reader] a key the schema does not name
+ok   log [reader] above 262,144 bytes
+ok   log [reader] an ima_template content type
+ok   log [reader] a boot_aggregate object
+ok   log [reader] a platform fact as a source: the board's device tree
+ok   log [reader] a source that leaves build/mvp/
+ok   log [reader] another schema
+ok   log [reader] more than 41 records
+ok   log [reader] an export with a duplicate key
+ok   log [kind1] omission
+ok   log [kind1] duplication
+ok   log [kind1] reorder
+ok   log [kind1] a second producer
+ok   log [kind1] an IMA template name as the object
+ok   log [kind1] another object of the allowlist
+ok   log [kind1] SHA-1's algorithm
+ok   log [kind1] a range moved
+ok   log [kind1] a representation
+ok   log [kind1] an outcome
+ok   log [kind1] version 2
+ok   log [kind1] a record after the close
+ok   log [kind1] a close whose count is not the header's
+ok   log [kind1] truncation
+ok   log [kind1] overflow, with the log's 14 records
+ok   log [kind1] a register that does not replay
+ok   log [kind1] the reference of another image
+ok   log [kind1] the reference of another toolchain
+ok   log [kind1] the reference of another variant
+ok   log [kind1] a false platform-fact binding: the board's device tree as domain 0's
+ok   log [kind2] a type changed, the digests kept
+ok   log [kind2] a stream changed, the digests kept
+ok   log [kind2] two records of different streams swapped
+ok   log [kind2] a forged close and count
+ok   log [kind2] a record moved after the first HART_STARTED
+ok   log [kind2] the terminal registers changed
+ok   log [kind2] a guest-prefixed look-alike of a record line
+ok   log [kind3] a wrong digest at monitor-text
+ok   log [kind3] a wrong digest at monitor-rodata
+ok   log [kind3] a wrong digest at monitor-input
+ok   log [kind3] a wrong digest at mvp-text
+ok   log [kind3] a wrong digest at mvp-rodata
+ok   log [kind3] a wrong digest at core-identity
+ok   log [kind3] a wrong digest at console-grants
+ok   log [kind3] a wrong digest at kernel-image (domain 0)
+ok   log [kind3] a wrong digest at device-tree (domain 0)
+ok   log [kind3] a wrong digest at kernel-image (domain 1)
+ok   log [kind3] a wrong digest at device-tree (domain 1)
+ok   log [kind3] a wrong digest at the secret page
+ok   log [kind4] an overflowing log: the run ends at BE_MVP:FAIL log, and no hart starts
+ok   log [kind4] an overflowing log with a HART_STARTED after it
+ok   log [kind4] an overflow log of 39 records
+ok   log [kind5] wrong-measurement's gate-fail, accepted exactly
+ok   log [kind5] a gate-fail without the DETAIL
+ok   log [kind5] a gate-fail whose DETAIL expects the nominal value
+ok   log [kind5] a gate-fail with the barrier's registers
+ok   log [kind5] a gate-fail followed by a HART_STARTED
+ok   log [accept] anchor: complete, domain 1 terminated with its launch register
+ok   log [accept] anchor: DOMAIN_TERMINATED sha256=-, refused
+ok   log [accept] two-guests: complete
+ok   log [accept] exit-budget: a failure after the launch
+ok   log [accept] exit-budget without the terminal registers, refused
+ok   log [accept] ring-full's fallback: the barrier, no terminal
+ok   log [accept] ring-full's fallback with terminal registers, refused
+ok   log [accept] payload: pre-measurement, no log line
+ok   log [accept] payload with a block, refused
+ok   log [accept] probe-platform: complete, no LAUNCH
+ok   log [accept] probe-platform with a LAUNCH line, refused
+ok   log [accept] self-report-flip: exactly its one declared self-report finding
+ok   log [accept] self-report-flip with a second difference, refused
+ok   log [accept] two-guests with R2 dropped: no stream-0 record
+ok   log [accept] an expectation's R2 unlike the reference's, refused
+ok   log [accept] te-poc-shell: both domains' console grants
+ok   log [accept] console grants the canonical data does not give, refused
+ok   log [expect] every synthesis's section is its reference's
+ok   log [expect] a key the generator does not write, refused
+ok   log [expect] no lines, refused
+ok   log [expect] profile 2, refused
+ok   log [expect] a count other than the sequence's, refused
+ok   log [expect] a run class the outcome does not give, refused
+ok   log [expect] self-report-flip's finding in another image, refused
+ok   log [expect] a record's digest unlike the reference's
+ok   log [expect] a measured digest null, where only R2's are
+ok   log [expect] an R2 length the link fixes, given
+ok   log [expect] a range's source unlike the reference's
+ok   log [expect] r0 given with R2 kept
+ok   log [expect] a launch constant unlike the reference's
+ok   log [expect] a LAUNCH line on another hart
+ok   log [expect] a block line unlike the reference's
+ok   log [expect] the ring-full fallback with a terminal line
+ok   log [expect] a gate-fail's failing domain unlike the reference's
+ok   log [expect] a gate-fail's DETAIL unlike the reference's
+ok   log [expect] a v1 variant's own hart in its LAUNCH line: PASS
+ok   log [expect] that variant's LAUNCH line on the scenario's hart, refused
+ok   log [wiring] te-poc's M9 capture: PASS, closed, every digest recomputed equal, and its log.json rebuilds the page
+ok   log [wiring] anchor's M9 capture: PASS, no MEASURED line, DOMAIN_TERMINATED's digest the launch register
+ok   log [kind1] anchor's M9 capture with the pinned measurement of the retained fixtures, refused
+ok   log [kind5] self-report-flip's M9 capture: PASS with exactly its one declared finding
+ok   log [kind5] self-report-flip's capture judged as the nominal anchor's, refused for mvp-rodata alone: its printed digest not the nominal image's bytes, and the self-report
+ok   log [wiring] te-poc's M9 capture in the board's U-Boot form, its loader observation beside the log: PASS
+ok   log [kind1] a forged loader block before an M9 log, refused
+ok   log [kind2] a guest-prefixed look-alike of a record line, no record and a mixed line
+ok   log [kind3] te-poc's M9 capture with a wrong digest at domain 0's kernel, its registers recomputed: the replay passes, the recomputation does not
+ok   log [kind3] anchor's M9 capture with a wrong digest at the secret page, its registers recomputed: the replay passes, the recomputation does not
+ok   log [kind3] anchor's M9 capture with a wrong digest at mvp-text's range, its registers recomputed: the replay passes, the recomputation does not
+ok   log [wiring] log.json in the run record: beside result.json and STEM.result.json, or at --log-json
+BE_MVP_LOG_CASES: accept=18 expect=20 kind1=22 kind2=8 kind3=15 kind4=3 kind5=7 reader=12 round-trip=1 vector=7 wiring=4
+BE_MVP_CAPTURE_SELF_TEST: PASS cases=300 failed=0

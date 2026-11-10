@@ -4,11 +4,14 @@ LICENSES/GPL-3.0-only. Every source file carries an SPDX licence
 identifier line naming its licence and a copyright line naming the
 responsible human copyright holder, James Morris.
 
-One file is licensed under the GNU General Public License, version 2 only
-(SPDX identifier GPL-2.0-only; the text is LICENSES/GPL-2.0-only):
-mvp/guest/mgmt/be-mgmt.c, a guest kernel module built against Linux as a
-test input of the MVP's `anchor` scenario. It is not part of the monitor
-and is never linked into it.
+Two files are licensed under the GNU General Public License, version 2
+only (SPDX identifier GPL-2.0-only; the text is LICENSES/GPL-2.0-only),
+each a guest kernel module built against Linux as a test input:
+mvp/guest/mgmt/be-mgmt.c, of the MVP's `anchor` scenario, and, on the
+CHERI platform branch alone, mvp/guest/cheri/be-cheri-store.c, of te-poc's
+`cap-store` image for the CHERI Linux guest
+(planning/cheri-enforcement-plan.md, CE-4, Q11). Neither is part of the
+monitor, and neither is ever linked into it.
 
 The MVP guests' userland is built from two external inputs, never
 committed: BusyBox, licensed GPL-2.0-only (LICENSES/GPL-2.0-only), and

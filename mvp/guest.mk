@@ -46,6 +46,16 @@
 # scenario's, the host's and the protected domain's (planning/
 # mvp-m2-plan.md, Scenarios and the harness).
 # MVP_GUEST_PINS is guest/pins.txt.
+#
+# beryllium-cheri: MVP_GUEST_FLAVOUR selects the guests
+# (planning/cheri-platform.md): linux, the default, the guests above, by
+# tools/build-guest.sh, against guest/pins.txt; or cheri-linux, the CHERI
+# Linux guests, by tools/build-guest-cheri.sh from the CHERI_* inputs
+# (CHERI Alliance Linux v7.1, a purecap init against CHERI Alliance musl,
+# and CHERI Alliance BusyBox), against guest/cheri-pins.txt, under the same
+# output names. cheri-linux needs MVP_MONITOR=cheri, the CHERI-aware
+# monitor. guest-pin-check, reference-boot, kernel-repro, and
+# guest-shell-smoke are the Linux guest's, not adapted to the CHERI one.
 
 MVP_GUEST_MK := $(abspath $(lastword $(MAKEFILE_LIST)))
 MVP_DIR ?= $(abspath $(dir $(MVP_GUEST_MK)))
@@ -67,7 +77,28 @@ export PATH LC_ALL LANG
 endif
 REPO_ROOT ?= $(abspath $(MVP_DIR)/..)
 B6_DIR ?= $(REPO_ROOT)/bringup/k3-b6
-BUILD ?= $(REPO_ROOT)/build/mvp
+# beryllium-cheri: alone, this file reads the two build switches as
+# mvp/Makefile does, which reads them before including it.
+ifneq ($(MVP_GUEST_ALONE),)
+MVP_MONITORS := riscv cheri
+MVP_GUEST_FLAVOURS := linux cheri-linux
+MVP_MONITOR ?= riscv
+MVP_GUEST_FLAVOUR ?= linux
+ifneq ($(words $(MVP_MONITOR)) $(words $(MVP_GUEST_FLAVOUR)),1 1)
+$(error MVP_MONITOR must be one of: $(MVP_MONITORS); MVP_GUEST_FLAVOUR one of: $(MVP_GUEST_FLAVOURS))
+endif
+ifeq ($(filter $(MVP_MONITOR),$(MVP_MONITORS)),)
+$(error MVP_MONITOR must be one of: $(MVP_MONITORS))
+endif
+ifeq ($(filter $(MVP_GUEST_FLAVOUR),$(MVP_GUEST_FLAVOURS)),)
+$(error MVP_GUEST_FLAVOUR must be one of: $(MVP_GUEST_FLAVOURS))
+endif
+ifeq ($(MVP_MONITOR):$(MVP_GUEST_FLAVOUR),riscv:cheri-linux)
+$(error MVP_GUEST_FLAVOUR=cheri-linux needs MVP_MONITOR=cheri: a CHERI guest runs only under the CHERI-aware monitor)
+endif
+MVP_BUILD_NAME := $(if $(filter riscv:linux,$(MVP_MONITOR):$(MVP_GUEST_FLAVOUR)),mvp,mvp.$(MVP_MONITOR).$(MVP_GUEST_FLAVOUR))
+endif
+BUILD ?= $(REPO_ROOT)/build/$(MVP_BUILD_NAME)
 # Compiler and tool scratch stays in the build tree, never the host's /tmp.
 TMPDIR := $(BUILD)/tmp
 export TMPDIR
@@ -138,6 +169,15 @@ MVP_GUEST_DTBS = $(MVP_GUEST_DTB_G0) $(MVP_GUEST_DTB_G1) \
 MVP_GUEST_OUTPUTS = $(MVP_GUEST_INIT) $(MVP_GUEST_MODULE) \
 	$(MVP_GUEST_BUSYBOX) $(MVP_GUEST_MUSL_LIBC) $(MVP_GUEST_IMAGE) \
 	$(MVP_GUEST_DTBS)
+# beryllium-cheri: the CHERI Linux guest's own outputs (planning/
+# cheri-enforcement-plan.md, CE-4): the capability-store module and
+# cap-store's G0 DTB (tools/gen-dts.py's flavour DTB).
+ifeq ($(MVP_GUEST_FLAVOUR),cheri-linux)
+MVP_GUEST_STORE_MODULE ?= $(GUEST_BUILD)/be-cheri-store.ko
+MVP_GUEST_DTB_G0_CAP_STORE ?= $(GUEST_BUILD)/mvp-guest-g0-cap-store.dtb
+MVP_GUEST_DTBS += $(MVP_GUEST_DTB_G0_CAP_STORE)
+MVP_GUEST_OUTPUTS += $(MVP_GUEST_STORE_MODULE)
+endif
 ifneq ($(filter-out $(GUEST_BUILD)/%,$(MVP_GUEST_OUTPUTS)),)
 $(error guest.mk: override GUEST_BUILD, not the guest output names)
 endif
@@ -154,7 +194,10 @@ MVP_GUEST_DTB_G1_sbi-time = $(MVP_GUEST_DTB_G1_SBI_TIME)
 MVP_GUEST_DTB_G0_hostile = $(MVP_GUEST_DTB_G0_HOSTILE)
 MVP_GUEST_DTB_G1_hostile = $(MVP_GUEST_DTB_G1)
 
-MVP_GUEST_PINS ?= $(MVP_DIR)/guest/pins.txt
+# beryllium-cheri: each guest flavour's pins.
+MVP_GUEST_PINS_linux := $(MVP_DIR)/guest/pins.txt
+MVP_GUEST_PINS_cheri-linux := $(MVP_DIR)/guest/cheri-pins.txt
+MVP_GUEST_PINS ?= $(MVP_GUEST_PINS_$(MVP_GUEST_FLAVOUR))
 MVP_LAYOUT_H ?= $(MVP_DIR)/src/mvp-layout.h
 MVP_GUEST_SOURCES = guest/mvp-init.c guest/mvp-guest-id.h guest/be/types.h \
 	guest/initramfs.list.in guest/mvp-guest.dts.in guest/mvp-kernel.config \
@@ -162,6 +205,11 @@ MVP_GUEST_SOURCES = guest/mvp-init.c guest/mvp-guest-id.h guest/be/types.h \
 	guest/busybox.config guest/keys/busybox.asc guest/keys/musl.asc \
 	src/mvp-layout.h src/mvp-sha256.h src/mvp-sha256.c \
 	tools/build-guest.sh tools/gen-dts.py tools/guest-pins.py
+# beryllium-cheri: the CHERI Linux guest's own inputs.
+MVP_GUEST_CHERI_SOURCES = guest/cheri-kernel.config guest/cheri-ksyms.txt \
+	guest/cheri-pins.txt guest/cheri/cheri-tests.c guest/cheri/cheri-tests.h \
+	guest/cheri/be-cheri-store.c guest/cheri/Kbuild \
+	tools/build-guest-cheri.sh
 # B6's files that the MVP reuses unchanged (plan, Base and inputs).
 MVP_GUEST_B6_SOURCES = guest/b6-kernel.config scripts/fetch-linux.sh
 MVP_GUEST_ENV = LINUX_GIT='$(LINUX_GIT)' LINUX_TAG='$(LINUX_TAG)' \
@@ -169,7 +217,9 @@ MVP_GUEST_ENV = LINUX_GIT='$(LINUX_GIT)' LINUX_TAG='$(LINUX_TAG)' \
 	MVP_RPM_CACHE='$(MVP_RPM_CACHE)' MVP_HOST_TOOLS='$(MVP_HOST_TOOLS)' \
 	CROSS_COMPILE='$(CROSS_COMPILE)' PYTHON='$(PYTHON)'
 MVP_GUEST_QUERY = $(PYTHON) -B $(MVP_DIR)/tools/gen-dts.py \
-	--layout $(MVP_LAYOUT_H) --query
+	--layout $(MVP_LAYOUT_H) $(MVP_GUEST_DTS_ARGS) --query
+# beryllium-cheri: tools/gen-dts.py's guest flavour, beyond the default.
+MVP_GUEST_DTS_ARGS := $(if $(filter cheri-linux,$(MVP_GUEST_FLAVOUR)),--guest-flavour cheri-linux)
 
 # The init's guest-ID and role rules, host-tested with B6's host GCC and
 # Clang commands; both must print exactly this line.
@@ -198,15 +248,43 @@ MVP_REPRO_CONFIG_NORMALIZE = sed 's|^CONFIG_INITRAMFS_SOURCE=.*|CONFIG_INITRAMFS
 
 # One run of build-guest.sh makes or re-checks every output; it skips the
 # kernel build when the pinned Image is already there.
+# beryllium-cheri: the CHERI Linux guest is built as CHERI programs
+# (tools/build-guest-cheri.sh) from the CHERI Alliance SDK and sources
+# these variables name, which stay outside the tool lock.
+CHERI_SDK ?=
+CHERI_LINUX_SRC ?=
+CHERI_LINUX_COMMIT ?=
+CHERI_BUSYBOX_SRC ?=
+CHERI_BUSYBOX_COMMIT ?=
+CHERI_MUSL_SRC ?=
+CHERI_MUSL_COMMIT ?=
+CHERI_LLVM_SRC ?=
+CHERI_LLVM_COMMIT ?=
+MVP_GUEST_CHERI_ENV = CHERI_SDK='$(CHERI_SDK)' \
+	CHERI_LINUX_SRC='$(CHERI_LINUX_SRC)' CHERI_LINUX_COMMIT='$(CHERI_LINUX_COMMIT)' \
+	CHERI_BUSYBOX_SRC='$(CHERI_BUSYBOX_SRC)' \
+	CHERI_BUSYBOX_COMMIT='$(CHERI_BUSYBOX_COMMIT)' \
+	CHERI_MUSL_SRC='$(CHERI_MUSL_SRC)' CHERI_MUSL_COMMIT='$(CHERI_MUSL_COMMIT)' \
+	CHERI_LLVM_SRC='$(CHERI_LLVM_SRC)' CHERI_LLVM_COMMIT='$(CHERI_LLVM_COMMIT)' \
+	PYTHON='$(PYTHON)'
+ifeq ($(MVP_GUEST_FLAVOUR),cheri-linux)
+$(MVP_GUEST_OUTPUTS) &: $(addprefix $(MVP_DIR)/,$(MVP_GUEST_SOURCES) \
+		$(MVP_GUEST_CHERI_SOURCES)) \
+		$(addprefix $(B6_DIR)/,$(MVP_GUEST_B6_SOURCES))
+	$(MVP_GUEST_CHERI_ENV) $(MVP_DIR)/tools/build-guest-cheri.sh $(MVP_DIR) \
+		$(B6_DIR) $(GUEST_BUILD)
+else
 $(MVP_GUEST_OUTPUTS) &: $(addprefix $(MVP_DIR)/,$(MVP_GUEST_SOURCES)) \
 		$(addprefix $(B6_DIR)/,$(MVP_GUEST_B6_SOURCES))
 	$(MVP_GUEST_ENV) $(MVP_DIR)/tools/build-guest.sh $(MVP_DIR) $(B6_DIR) \
 		$(MVP_LINUX_SRC) $(GUEST_BUILD)
+endif
 
 guest: $(MVP_GUEST_OUTPUTS)
 
 guest-self-test:
 	$(PYTHON) -B $(MVP_DIR)/tools/gen-dts.py --layout $(MVP_LAYOUT_H) \
+		$(MVP_GUEST_DTS_ARGS) \
 		--template $(MVP_DIR)/guest/mvp-guest.dts.in --self-test \
 		--plan $(REPO_ROOT)/planning/mvp-m0-plan.md \
 		--b6-plan $(REPO_ROOT)/planning/k3-b6-plan.md

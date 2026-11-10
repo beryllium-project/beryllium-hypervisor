@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
+# The files that came from beryllium-cheri, the CHERI research repository,
+# at its commit 316ad8c48de39e97084d0bfaaf023ed61c88e1c8: one line per
+# file, with its SHA-256 there, its path there, and its path here. The
+# commit that added this list copied each file byte for byte, with its
+# mode; a later change to one of them is in this directory's Git history.
+# The research repository's docs/ (dossier, executive summary, reviews)
+# stayed with it, not public-safe or not yet reviewed by the responsible human.
+f4370de6173567b41881f2295140f1bb76bfa75a0b010d256746b19d813dc1d5 experiments/be-cheri-poc/0001-mvp-CHERI-proof-of-concept-the-monitor-and-CHERI-gue.patch cheri/experiments/be-cheri-poc/0001-mvp-CHERI-proof-of-concept-the-monitor-and-CHERI-gue.patch
+45e0fb4ab697f813f9ff26ea0ee2868254bfe50d49b1823c9a440c1ac740e584 experiments/be-cheri-poc/0002-mvp-CHERI-proof-of-concept-the-init-s-signal-path-on.patch cheri/experiments/be-cheri-poc/0002-mvp-CHERI-proof-of-concept-the-init-s-signal-path-on.patch
+f1eb1365ec23883715e60b40c7efc7b7a149ae795a227d8445287641e6e17262 experiments/be-cheri-poc/0003-mvp-CHERI-proof-of-concept-Beryllium-s-checkers-judg.patch cheri/experiments/be-cheri-poc/0003-mvp-CHERI-proof-of-concept-Beryllium-s-checkers-judg.patch
+624476086bdff826c71c85d1f21693c4085f4157f9e92faaf67f683cfb411435 experiments/be-cheri-poc/0004-mvp-CHERI-proof-of-concept-run-k3-like-s-runs-on-the.patch cheri/experiments/be-cheri-poc/0004-mvp-CHERI-proof-of-concept-run-k3-like-s-runs-on-the.patch
+d8556112895ed3e5323014deedef5bf734bb382882c48ea2340aa167648b10f9 experiments/be-cheri-poc/0005-mvp-CHERI-proof-of-concept-a-soft-float-userland-and.patch cheri/experiments/be-cheri-poc/0005-mvp-CHERI-proof-of-concept-a-soft-float-userland-and.patch
+3801f2398dd0a44208eacb3c6b6eb965f9dcce70ed14e91ecb4f3e782089cb5a experiments/be-cheri-poc.md cheri/experiments/be-cheri-poc.md
+264754929375817c8d0c9e450f2199480a5669116beacc3246265e24d5fcba1b experiments/be-cheri-poc-results.txt cheri/experiments/be-cheri-poc-results.txt
+6f5e6fc3a4d6e7ffb20f7b91a3ad7b060e86f22c4494921cff26530577cd76c3 experiments/be-cheri-poc-run.sh cheri/experiments/be-cheri-poc-run.sh
+40474ffc7d26272059297a3b642c6b10e7d1ac2f19767d2d56d21ccabc5f5a79 experiments/be-cheri-poc-vdso.txt cheri/experiments/be-cheri-poc-vdso.txt
+695e2073a491eca6cff2215490bad24138c39662289f2cb5cf25729d87bf6235 experiments/build-cheri-guest.sh cheri/experiments/build-cheri-guest.sh
+8dac1694dd22079a1dfca8c24e593138a3dfa1f9c9529db4b182b29e93acd7b4 experiments/build-cheri-linux.sh cheri/experiments/build-cheri-linux.sh
+12e26edd06fa073d170942b88d45256c8087688ac21343a1332ece068744aafe experiments/build-opensbi-cre.sh cheri/experiments/build-opensbi-cre.sh
+6c5f6d0fb4ec2b88417bb0bdaddf36407f4ad5de5314ff5b91fa9686e2d199fb experiments/build-qemu-upstream.sh cheri/experiments/build-qemu-upstream.sh
+b64eb2bfa8bd24157e7fd5a88700d0729df18a9f04bb8e51d7f16bf061370d9a experiments/cheri-guest-firmware-hang.txt cheri/experiments/cheri-guest-firmware-hang.txt
+6ccfe1683573672057883e8643f11ee0c9d4e3ad6a5866571d4293833acd4685 experiments/cheri-guest/guest.c cheri/experiments/cheri-guest/guest.c
+00887cc62e192ea24c87fc438c695ab31ce34d346a070c4023eb375676e308cd experiments/cheri-guest/guest.ld cheri/experiments/cheri-guest/guest.ld
+21d7f4d15767593ad42d1678e6bd5f77469754442fecb96e88e43d699d148bc9 experiments/cheri-guest/head.S cheri/experiments/cheri-guest/head.S
+6aa93f990895460c3bd5360a95d79149f87feff1f3a23e63440e34a00e89377f experiments/cheri-guest.md cheri/experiments/cheri-guest.md
+6cdfeba3fb1b067f2aa0a5e0b0af7f7509df81b537605d9148d18ed342b588f0 experiments/cheri-guest/monitor-cre.patch cheri/experiments/cheri-guest/monitor-cre.patch
+d19a21470e7f24c6ce13fee07b5139d4eb6ac36945c43badc05f5f320b5a3b5b experiments/cheri-guest/monitor-fix.patch cheri/experiments/cheri-guest/monitor-fix.patch
+8131f76915d02483b0d9d8fecdfb3571af8f414af23848fad45d6c93f01c618d experiments/cheri-guest/monitor-sbi30.patch cheri/experiments/cheri-guest/monitor-sbi30.patch
+d6bb984d5019f42924d6167ea04c8c5ec5d35309e3106e21fd8f61824aad07aa experiments/cheri-guest-results.txt cheri/experiments/cheri-guest-results.txt
+59d4125d1d0a25bfc8a4f0b3017ad42e9c551dd162d5977231e78c5964196604 experiments/cheri-guest-run.sh cheri/experiments/cheri-guest-run.sh
+3ff8b1b7338201459a0c029d6b948032551c6cc564d3b288fc0cae641d316948 experiments/cheri-linux-build.txt cheri/experiments/cheri-linux-build.txt
+c4f71908620cfa9f04be39b503b5c2a00214c86f12f771ca58e52cc4cbc6a04d experiments/cheri-linux/cheri-kernel.config cheri/experiments/cheri-linux/cheri-kernel.config
+f551b13c7fd9b3b939f4c9e88dccad8948e2df5d3649de16c53df61565930f65 experiments/cheri-linux/init.c cheri/experiments/cheri-linux/init.c
+1988d8e70b24cd54f4cb3322034db2b7bfab450bac9886296b382f99a36bada9 experiments/compile-leaves.sh cheri/experiments/compile-leaves.sh
+d786fe0f3982486ede7e4af01cf6474242eb23dae0898bdf7d2b445c36871bb7 experiments/csr-read.py cheri/experiments/csr-read.py
+bfb772c9ec55e2dc50ad32e78202cc4710b8728de9af208f1dd4485fdb8fec21 experiments/diagnostics.txt cheri/experiments/diagnostics.txt
+a46598b74fd44c16fdeb216ecdd57eb37b2861a85eb4b0eb064e1e58c1d2f733 experiments/extract-inputs.sh cheri/experiments/extract-inputs.sh
+08d4b784e8990c01110e4902e448c40965cfd8c8cac745b22fb84d4a0c650f8f experiments/fw-jump-fault.sh cheri/experiments/fw-jump-fault.sh
+c865f0c4f22e72a217ff50f85f6998c8230ebf4ce3ed1e77d121a339250f0d0d experiments/fw-jump-fault.txt cheri/experiments/fw-jump-fault.txt
+33cb77d7f77aae2168453a1dc5e55687a723f94f59e9242a219fe70bd6c4418a experiments/leaves.sha256 cheri/experiments/leaves.sha256
+92068910dc33e3418eabd2514211abf4bee3c4395e6b04f4277a9661fe992807 experiments/monitor-repeat-jobs24.txt cheri/experiments/monitor-repeat-jobs24.txt
+0a4de8730a3841e5c9834280c3a4268a1eb75e35b50e56380cd9671fedcfb285 experiments/monitor-repeat-jobs8.txt cheri/experiments/monitor-repeat-jobs8.txt
+8d76d8ae8190ed28ce9e6333fabdb93340cfdbb23d8766d86f3edce1411dd939 experiments/monitor-repeat.sh cheri/experiments/monitor-repeat.sh
+6cb0e65174d8451c15a7b46ca2174231a9fa8ebc4cabbcd462ed3cdd9dd91e61 experiments/monitor-results-beryllium-integration.txt cheri/experiments/monitor-results-beryllium-integration.txt
+f3c198e7b692ed00dd01e8b81f22883f443169a47d18b0acf889dc35a5004712 experiments/monitor-results-run1.txt cheri/experiments/monitor-results-run1.txt
+dc0f3285114cd40953957109ec1041248e3d026f120f8d66c40fc770131de87f experiments/monitor-results.txt cheri/experiments/monitor-results.txt
+3e098ce3e7986be165c4cf68bf50ba3d4ed8c780f8e358d2ef6e46e51606c4e1 experiments/monitor-run.md cheri/experiments/monitor-run.md
+fbaf0750c121b501d1bc08979117366893143d8f224c695cc75f9eac5dab11bb experiments/monitor-run.sh cheri/experiments/monitor-run.sh
+05faa43a6c89b77e4f265a34ae89d82565556ecceac54848af3e7f28f4139cbc experiments/README.md cheri/experiments/README.md
+670e4040c1c48d5003dadcf009bc38b345491c32bdf49f4d34b028af6fb6dda3 experiments/results.txt cheri/experiments/results.txt
+af2d5d3ea07ced7b1686559e524c1627c93f06f557812283df3bf5e9f10cbeb9 experiments/run-tests.sh cheri/experiments/run-tests.sh
+03b9cc42f2ca138d5db7e89e20faaf44b375257c3301f62ab7c09ce9309ea3f0 tools/pins.txt cheri/pins.txt
+ece4ca781c61a3959bc51b877abce381bdd81173f0364a87b1db653d6726c6f8 experiments/build-qemu.sh cheri/tools/build-qemu.sh
+d4a8ca43bf77fcb66eb87240bcfc173d5a03d560d973ad1f0dd8a389bc88c279 experiments/build-qemu-vs-reset.sh cheri/tools/build-qemu-vs-reset.sh
+803d61ff2413ba304755b44d53fe17630e7b1a70201d76d5aa8a5c93f1df9d10 experiments/build-stack.sh cheri/tools/build-stack.sh
+32ecc612f752eac8f0cb8d4d73ce72d75adc3e5be83ff765407eeac67d898170 experiments/fetch-stack.sh cheri/tools/fetch-stack.sh

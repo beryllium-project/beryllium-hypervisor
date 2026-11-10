@@ -26,6 +26,21 @@
 # scenario target's scenario, default two-guests), and, for later targets,
 # K3_SERIAL_LOG, K3_RUN_ROOT, K3_PREFLIGHT, K3_ENV_CONFIRM, K3_ENV_ACCEPT_V,
 # K3_RECORD_TITLE, and JOBS.
+#
+# beryllium-cheri: on the CHERI platform branch (planning/cheri-platform.md)
+# two more caller variables select what is built. MVP_MONITOR is the
+# monitor variant: riscv, the default, the RISC-V monitor, whose images are
+# the development line's byte for byte; or cheri, the CHERI-aware monitor
+# for CHERI v0.9.3 (BE_MVP_CHERI in the sources and host tests,
+# tools/port.py --cheri, and the checkers' --monitor cheri), which needs
+# CHERI firmware (SBI 3.0) and a CHERI emulator. MVP_GUEST_FLAVOUR is the
+# guest flavour (guest.mk): linux, the default, the development line's
+# guests; or cheri-linux, the CHERI Linux guests (tools/build-guest-cheri.sh,
+# from the CHERI_* inputs), which need the CHERI-aware monitor. Each pair
+# builds in its own tree, build/mvp for the defaults and
+# build/mvp.MONITOR.FLAVOUR for any other. tools/cheri-check.sh selects
+# MVP_MONITOR=cheri MVP_GUEST_FLAVOUR=cheri-linux; `make -C mvp check`, with
+# neither, is the development line's check.
 
 MVP_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 SHELL := /usr/bin/bash
@@ -47,7 +62,25 @@ B1_DIR := $(REPO_ROOT)/bringup/k3-b1
 B2_DIR := $(REPO_ROOT)/bringup/k3-b2
 B6_DIR := $(REPO_ROOT)/bringup/k3-b6
 B2_BUILD := $(REPO_ROOT)/build/k3-b2
-BUILD := $(REPO_ROOT)/build/mvp
+# beryllium-cheri: the build switches, as above, and their tree.
+MVP_MONITORS := riscv cheri
+MVP_GUEST_FLAVOURS := linux cheri-linux
+MVP_MONITOR ?= riscv
+MVP_GUEST_FLAVOUR ?= linux
+ifneq ($(words $(MVP_MONITOR)) $(words $(MVP_GUEST_FLAVOUR)),1 1)
+$(error MVP_MONITOR must be one of: $(MVP_MONITORS); MVP_GUEST_FLAVOUR one of: $(MVP_GUEST_FLAVOURS))
+endif
+ifeq ($(filter $(MVP_MONITOR),$(MVP_MONITORS)),)
+$(error MVP_MONITOR must be one of: $(MVP_MONITORS))
+endif
+ifeq ($(filter $(MVP_GUEST_FLAVOUR),$(MVP_GUEST_FLAVOURS)),)
+$(error MVP_GUEST_FLAVOUR must be one of: $(MVP_GUEST_FLAVOURS))
+endif
+ifeq ($(MVP_MONITOR):$(MVP_GUEST_FLAVOUR),riscv:cheri-linux)
+$(error MVP_GUEST_FLAVOUR=cheri-linux needs MVP_MONITOR=cheri: a CHERI guest runs only under the CHERI-aware monitor)
+endif
+MVP_BUILD_NAME := $(if $(filter riscv:linux,$(MVP_MONITOR):$(MVP_GUEST_FLAVOUR)),mvp,mvp.$(MVP_MONITOR).$(MVP_GUEST_FLAVOUR))
+BUILD := $(REPO_ROOT)/build/$(MVP_BUILD_NAME)
 # Compiler and tool scratch stays in the build tree, never the host's /tmp.
 TMPDIR := $(BUILD)/tmp
 export TMPDIR
@@ -107,6 +140,18 @@ LINK_FLAGS := -nostdlib -nostartfiles -static -Wl,--build-id=none \
 	-Wl,-z,max-page-size=4096 -Wl,-T,$(MVP_LDS)
 HOST_FLAGS := -std=gnu11 -O2 -g3 $(WARNINGS) -I$(PORT)/include \
 	-I$(PORT)/arch/riscv/be -I$(MVP_DIR)/src -I$(GEN)
+# beryllium-cheri: the CHERI-aware monitor's objects and host tests, and
+# only they, are compiled with BE_MVP_CHERI, by a pattern-specific value on
+# its build tree, so that the global TARGET_FLAGS and HOST_FLAGS stay the
+# development line's, as verify/tools/digests.py reads them for build/mvp;
+# and its port, expectations, and checks take its arguments.
+ifeq ($(MVP_MONITOR),cheri)
+$(BUILD)/%.o: TARGET_FLAGS += -DBE_MVP_CHERI
+$(BUILD)/host/%: HOST_FLAGS += -DBE_MVP_CHERI
+endif
+MVP_PORT_ARGS := $(if $(filter cheri,$(MVP_MONITOR)),--cheri)
+MVP_VARIANT_ARGS := $(if $(filter cheri,$(MVP_MONITOR)),--monitor cheri) \
+	$(if $(filter cheri-linux,$(MVP_GUEST_FLAVOUR)),--guest-flavour cheri-linux)
 
 # The MVP's pure-C mechanism (M0-2): the SBI core, the rings, the hart
 # blocks and control loop, the G-stage builder and walker, and the payload
@@ -161,7 +206,7 @@ gen_scenario = $(PYTHON) -B $(MVP_DIR)/tools/gen-scenario.py \
 	--scenario $(MVP_DIR)/scenarios/$(1)/scenario.json \
 	--layout $(MVP_DIR)/src/mvp-layout.h \
 	--dts-tool $(MVP_DIR)/tools/gen-dts.py --policy-tool $(MVP_POLICY_CHECK) \
-	--guest $(GUEST_BUILD)
+	--guest $(GUEST_BUILD) $(MVP_VARIANT_ARGS)
 # Each scenario's header, MVP core profile (mvp-config.c, M6), and
 # expectations; the te-poc and anchor reports too.
 MVP_SCENARIO_H := $(MVP_SCENARIO_GEN_two-guests)/mvp-scenario.h
@@ -220,8 +265,21 @@ HOST_SCENARIOS_hart := 843
 HOST_ASSERTIONS_hart := 176892
 HOST_SCENARIOS_sbi := 133
 HOST_ASSERTIONS_sbi := 16292
+# beryllium-cheri: the CHERI-aware monitor's SBI test makes two more
+# assertions: hedeleg without cause 28 refused, and henvcfg STCE without
+# CRE refused.
+ifeq ($(MVP_MONITOR),cheri)
+HOST_ASSERTIONS_sbi := 16294
+endif
 HOST_SCENARIOS_gstage := 44
 HOST_ASSERTIONS_gstage := 39647
+# beryllium-cheri: the CHERI-aware monitor's G-stage test checks CW in
+# every window leaf (planning/cheri-enforcement-plan.md, CE-2) in two more
+# scenarios: CW in no other entry, and the walker's refusals.
+ifeq ($(MVP_MONITOR),cheri)
+HOST_SCENARIOS_gstage := 46
+HOST_ASSERTIONS_gstage := 40765
+endif
 HOST_SCENARIOS_payload := 8
 HOST_ASSERTIONS_payload := 706
 HOST_SCENARIOS_deny := 38
@@ -298,13 +356,14 @@ $(B2_PORT_STAMP): | b2-port ;
 
 $(PORT_STAMP) $(PORT_FILES) &: $(MVP_DIR)/tools/port.py $(B2_PORT_STAMP)
 	rm -rf -- $(PORT)
-	$(PYTHON) -B $(MVP_DIR)/tools/port.py $(REPO_ROOT) $(B2_PORT) $(PORT)
+	$(PYTHON) -B $(MVP_DIR)/tools/port.py $(MVP_PORT_ARGS) $(REPO_ROOT) \
+		$(B2_PORT) $(PORT)
 
 port: $(PORT_STAMP)
 
 port-check: $(PORT_STAMP)
-	$(PYTHON) -B $(MVP_DIR)/tools/port.py --check $(REPO_ROOT) $(B2_PORT) \
-		$(PORT)
+	$(PYTHON) -B $(MVP_DIR)/tools/port.py $(MVP_PORT_ARGS) --check \
+		$(REPO_ROOT) $(B2_PORT) $(PORT)
 
 # -------------------------------------------------------- payload layout
 # The monitor's link-time payload constants, from the pinned kernel and
@@ -431,7 +490,7 @@ LD_gcc :=
 LD_clang := --ld-path=/usr/bin/ld.lld
 OBJCOPY := $(CROSS_COMPILE)objcopy
 OBJDUMP := $(CROSS_COMPILE)objdump
-IMAGE_CHECK := $(PYTHON) -B $(MVP_DIR)/tests/check-image.py
+IMAGE_CHECK := $(PYTHON) -B $(MVP_DIR)/tests/check-image.py $(MVP_VARIANT_ARGS)
 
 # The boot image: the MVP shim (a counted copy of B3's) wrapping the
 # monitor flat image, then the guest payload, linked by src/mvp-boot.lds at
@@ -513,6 +572,14 @@ TE_POC_FLAGS := -iquote $(TE_POC_GEN)
 TE_POC_VARIANTS := reader-write no-inject
 TE_POC_VARIANT_OBJECTS_reader-write := mvp-gstage.c
 TE_POC_VARIANT_OBJECTS_no-inject :=
+# beryllium-cheri: the CHERI-aware monitor's third, channel-cw
+# (planning/cheri-enforcement-plan.md, section 6, B2), whose root builder
+# also sets CW in each channel leaf (src/mvp-gstage.c), which the walker
+# refuses at boot. It runs in QEMU only, in tools/cheri-check.sh.
+ifeq ($(MVP_MONITOR),cheri)
+TE_POC_VARIANTS += channel-cw
+TE_POC_VARIANT_OBJECTS_channel-cw := mvp-gstage.c
+endif
 $(foreach t,$(TOOLCHAINS),$(eval TE_POC_DIR_$(t) := $(BUILD)/$(t)/te-poc))
 $(foreach t,$(TOOLCHAINS),$(eval TE_POC_ELF_$(t) := $(TE_POC_DIR_$(t))/be-mvp.elf))
 $(foreach t,$(TOOLCHAINS),$(eval TE_POC_BIN_$(t) := $(TE_POC_DIR_$(t))/be-mvp.bin))
@@ -589,6 +656,29 @@ $(foreach t,$(TOOLCHAINS),$(eval $(call mvp_monitor,$(BUILD)/$(t),$(t),,,$(MVP_S
 $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_MONITOR_VARIANTS) $(MVP_DTB_VARIANTS),$(eval $(call mvp_monitor,$(BUILD)/variants/$(t)/$(v),$(t),-D$(call variant_macro,$(v)),,$(MVP_SCENARIO_H),))))
 $(foreach t,$(TOOLCHAINS),$(eval $(call mvp_monitor,$(TE_POC_DIR_$(t)),$(t),$(TE_POC_FLAGS),,$(TE_POC_SCENARIO_H),)))
 $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(TE_POC_VARIANTS),$(eval $(call mvp_monitor,$(BUILD)/variants/$(t)/$(v),$(t),$(TE_POC_FLAGS) -D$(call variant_macro,$(v)),,$(TE_POC_SCENARIO_H),$(TE_POC_VARIANT_OBJECTS_$(v))))))
+# beryllium-cheri: the CHERI Linux guest's te-poc variant cheri-fault-hs
+# (planning/cheri-enforcement-plan.md, section 6, C3), whose switch leaves
+# cause 28, the CHERI fault, out of src/mvp.h's and src/mvp-trap.S's
+# hedeleg values, so that the guest's own CHERI fault reaches HS. Its
+# monitor is te-poc's with the SBI core, which checks the armed hedeleg,
+# and its own mvp-trap.o built with the switch: it links as for a
+# toolchain of its own, TOOLCHAIN-cheri-fault-hs, whose compiler is
+# TOOLCHAIN's and whose objects are TOOLCHAIN's but for that mvp-trap.o.
+# It runs in QEMU only, in tools/cheri-check.sh's part 1.
+ifeq ($(MVP_MONITOR):$(MVP_GUEST_FLAVOUR),cheri:cheri-linux)
+TE_POC_VARIANTS += cheri-fault-hs
+$(foreach t,$(VARIANT_TOOLCHAINS),$(eval MVP_VARIANT_BOOT_ELF_$(t)_cheri-fault-hs := $(BUILD)/variants/$(t)/cheri-fault-hs/be-mvp-boot.elf))
+$(foreach t,$(VARIANT_TOOLCHAINS),$(eval MVP_VARIANT_BOOT_IMG_$(t)_cheri-fault-hs := $(BUILD)/variants/$(t)/cheri-fault-hs/be-mvp-boot.img))
+$(foreach t,$(VARIANT_TOOLCHAINS),$(eval CC_$(t)-cheri-fault-hs := $(CC_$(t))) \
+	$(eval LD_$(t)-cheri-fault-hs := $(LD_$(t))) \
+	$(eval OBJECTS_$(t)-cheri-fault-hs := $(patsubst \
+	$(BUILD)/$(t)/obj/mvp/mvp-trap.o,$(BUILD)/variants/$(t)/cheri-fault-hs/obj/mvp/mvp-trap.o,$(OBJECTS_$(t)))))
+$(foreach t,$(VARIANT_TOOLCHAINS),$(eval $(call mvp_monitor,$(BUILD)/variants/$(t)/cheri-fault-hs,$(t)-cheri-fault-hs,$(TE_POC_FLAGS) -D$(call variant_macro,cheri-fault-hs),,$(TE_POC_SCENARIO_H),mvp-sbi.c)))
+$(BUILD)/variants/%/cheri-fault-hs/obj/mvp/mvp-trap.o: \
+		$(MVP_DIR)/src/mvp-trap.S $(MVP_DIR)/src/mvp-layout.h $(PORT_STAMP)
+	mkdir -p $(@D)
+	$(CC_$*) $(TARGET_FLAGS) -D$(call variant_macro,cheri-fault-hs) -c $< -o $@
+endif
 
 # ------------------------------------------------------------ boot image
 # $(1) output directory, $(2) toolchain, $(3) text_offset, $(4) monitor flat
@@ -644,6 +734,24 @@ $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_VARIANTS),$(eval $(call mvp_
 	variant_bin,$(t),$(v)),$(call variant_kernel,$(v)),$(call variant_dtb0,$(v)),$(call variant_dtb1,$(v)),$(call variant_shim,$(v))))))
 $(foreach t,$(TOOLCHAINS),$(eval $(call mvp_boot,$(TE_POC_DIR_$(t)),$(t),$(BOOT_TEXT_OFFSET),$(TE_POC_BIN_$(t)),$(MVP_GUEST_IMAGE),$(MVP_GUEST_DTB_G0_TE_POC),$(MVP_GUEST_DTB_G1_TE_POC),)))
 $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(TE_POC_VARIANTS),$(eval $(call mvp_boot,$(BUILD)/variants/$(t)/$(v),$(t),$(BOOT_TEXT_OFFSET),$(BUILD)/variants/$(t)/$(v)/be-mvp.bin,$(MVP_GUEST_IMAGE),$(MVP_GUEST_DTB_G0_TE_POC),$(MVP_GUEST_DTB_G1_TE_POC),))))
+# beryllium-cheri: the CHERI Linux guest's te-poc variant cap-store
+# (planning/cheri-enforcement-plan.md, CE-4; section 6, B3 and B4):
+# te-poc's monitor with its own launch registers, and G0's DTB cap-store's
+# (rdinit=/init-cap-store, TE_POC_DTB0_cap-store), whose init loads the
+# capability-store module, which stores a tagged capability into the
+# channel page. Its boot image runs twice in QEMU, in tools/cheri-check.sh's
+# part 1: with Zcheripte, against cap-store.json, and without it, the
+# control, against cap-store-control.json, whose reference is that image's.
+ifeq ($(MVP_MONITOR):$(MVP_GUEST_FLAVOUR),cheri:cheri-linux)
+TE_POC_VARIANTS += cap-store
+TE_POC_DTB0_cap-store := $(MVP_GUEST_DTB_G0_CAP_STORE)
+$(foreach t,$(VARIANT_TOOLCHAINS),$(eval MVP_VARIANT_BOOT_ELF_$(t)_cap-store := $(BUILD)/variants/$(t)/cap-store/be-mvp-boot.elf))
+$(foreach t,$(VARIANT_TOOLCHAINS),$(eval MVP_VARIANT_BOOT_IMG_$(t)_cap-store := $(BUILD)/variants/$(t)/cap-store/be-mvp-boot.img))
+$(foreach t,$(VARIANT_TOOLCHAINS),$(eval $(call mvp_monitor,$(BUILD)/variants/$(t)/cap-store,$(t),$(TE_POC_FLAGS) -D$(call variant_macro,cap-store),,$(TE_POC_SCENARIO_H),)))
+$(foreach t,$(VARIANT_TOOLCHAINS),$(eval $(call mvp_boot,$(BUILD)/variants/$(t)/cap-store,$(t),$(BOOT_TEXT_OFFSET),$(BUILD)/variants/$(t)/cap-store/be-mvp.bin,$(MVP_GUEST_IMAGE),$(TE_POC_DTB0_cap-store),$(MVP_GUEST_DTB_G1_TE_POC),)))
+endif
+# A te-poc variant's G0 DTB: te-poc's, or the variant's own. $(1) variant
+te_poc_dtb0 = $(or $(TE_POC_DTB0_$(1)),$(MVP_GUEST_DTB_G0_TE_POC))
 
 # --- anchor images (M2-2)
 # The anchor images (planning/mvp-m2-plan.md, M2-2): anchor's monitor,
@@ -971,7 +1079,8 @@ probes: $(foreach t,$(PROBE_TOOLCHAINS),$(foreach p,$(MVP_PROBES),\
 # another source state as stale, not compared, and a directory of mixed
 # provenance as a failure; mvp/README.md items 126 and 128).
 REFERENCES := $(BUILD)/references
-EVALUATOR_REFERENCES := $(REPO_ROOT)/build/mvp-evaluator/build/mvp/references
+# beryllium-cheri: the evaluator's tree of the same build name.
+EVALUATOR_REFERENCES := $(REPO_ROOT)/build/mvp-evaluator/build/$(MVP_BUILD_NAME)/references
 GEN_REFERENCE := $(PYTHON) -I -B $(MVP_DIR)/tools/gen-reference.py
 # NAME:EXPECT:ELF:BOOT:KERNEL:DTB0:DTB1 for each image of toolchain $(1).
 reference_spec = $(1):$(2):$(3):$(4):$(MVP_GUEST_IMAGE):$(5):$(6)
@@ -981,11 +1090,16 @@ reference_specs = \
 	$(foreach v,$(MVP_VARIANTS),$(v):$(MVP_SCENARIO_GEN_two-guests)/expect/$(v).json:$(call variant_elf,$(1),$(v)):$(MVP_VARIANT_BOOT_IMG_$(1)_$(v)):$(call variant_kernel,$(v)):$(call variant_dtb0,$(v)):$(call variant_dtb1,$(v))) \
 	$(foreach p,$(MVP_PROBES),$(call reference_spec,$(p),$(MVP_SCENARIO_GEN_two-guests)/expect/$(p).json,$(BUILD)/probes/$(1)/$(p)/be-mvp.elf,$(BUILD)/probes/$(1)/$(p)/be-mvp-boot.img,$(MVP_GUEST_DTB_G0),$(MVP_GUEST_DTB_G1))) \
 	$(call reference_spec,te-poc,$(TE_POC_EXPECT_DIR)/te-poc.json,$(TE_POC_ELF_$(1)),$(TE_POC_BOOT_IMG_$(1)),$(MVP_GUEST_DTB_G0_TE_POC),$(MVP_GUEST_DTB_G1_TE_POC)) \
-	$(foreach v,$(TE_POC_VARIANTS),$(call reference_spec,$(v),$(TE_POC_EXPECT_DIR)/$(v).json,$(BUILD)/variants/$(1)/$(v)/be-mvp.elf,$(MVP_VARIANT_BOOT_IMG_$(1)_$(v)),$(MVP_GUEST_DTB_G0_TE_POC),$(MVP_GUEST_DTB_G1_TE_POC))) \
+	$(foreach v,$(TE_POC_VARIANTS),$(call reference_spec,$(v),$(TE_POC_EXPECT_DIR)/$(v).json,$(BUILD)/variants/$(1)/$(v)/be-mvp.elf,$(MVP_VARIANT_BOOT_IMG_$(1)_$(v)),$(call te_poc_dtb0,$(v)),$(MVP_GUEST_DTB_G1_TE_POC))) \
 	$(call reference_spec,anchor,$(ANCHOR_EXPECT_DIR)/anchor.json,$(ANCHOR_ELF_$(1)),$(ANCHOR_BOOT_IMG_$(1)),$(ANCHOR_DTB0),$(ANCHOR_DTB1)) \
 	$(foreach v,$(ANCHOR_IMAGE_VARIANTS),$(call reference_spec,$(v),$(ANCHOR_EXPECT_DIR)/$(v).json,$(BUILD)/variants/$(1)/$(v)/be-mvp.elf,$(MVP_VARIANT_BOOT_IMG_$(1)_$(v)),$(ANCHOR_DTB0),$(ANCHOR_DTB1))) \
 	$(foreach v,$(MVP_FLIP_VARIANTS),$(call reference_spec,$(v),$(ANCHOR_EXPECT_DIR)/$(v).json,$(ANCHOR_ELF_$(1)),$(ANCHOR_BOOT_IMG_$(1)),$(ANCHOR_DTB0),$(ANCHOR_DTB1)):$(MVP_VARIANT_BOOT_IMG_$(1)_$(v))) \
 	$(foreach s,$(MVP_SHELL_SCENARIOS),$(call reference_spec,$(s)-shell,$(MVP_SCENARIO_GEN_$(s))/expect/$(s)-shell.json,$(call shell_dir,$(1),$(s))/be-mvp.elf,$(call shell_dir,$(1),$(s))/be-mvp-boot.img,$(MVP_SHELL_DTB0_$(s)),$(MVP_SHELL_DTB1_$(s))))
+# beryllium-cheri: cap-store's control run (CE-4, B4), whose reference is
+# cap-store's image's under the control's expectation.
+ifeq ($(MVP_MONITOR):$(MVP_GUEST_FLAVOUR),cheri:cheri-linux)
+reference_specs += $(call reference_spec,cap-store-control,$(TE_POC_EXPECT_DIR)/cap-store-control.json,$(BUILD)/variants/$(1)/cap-store/be-mvp.elf,$(MVP_VARIANT_BOOT_IMG_$(1)_cap-store),$(TE_POC_DTB0_cap-store),$(MVP_GUEST_DTB_G1_TE_POC))
+endif
 # $(1) toolchain, $(2) extra arguments
 gen_references = $(GEN_REFERENCE) --toolchain $(1) --build-root $(BUILD) \
 	--out $(REFERENCES)/$(1) $(2) \

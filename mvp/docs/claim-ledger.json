@@ -324,9 +324,9 @@
         },
         {
           "path": "mvp/tests/check-capture.py",
-          "sha256": "cc11527f3b3fd423745b09da9cda74a4ebdbe764e3db8356d51ee8156499b7ed",
+          "sha256": "189e0546ae254952082c37ec037c6910a69d4cc1792fe9a232e0a35b603f2400",
           "evidence_source_commit": "c56022e646f93b5452218aab0622ca7479dacddb",
-          "note": "--mode uboot: exactly one SPL and one U-Boot banner; be_ld's N bytes read and one digest line, md5 (the board) or crc32 (QEMU), equal to the image's; booti's move to 0x108000000; U-Boot's device tree outside every MVP extent; Starting kernel; the shim line's hart and fdt; since M6 it accepts either prelude form, the accepted BE_R3 sequence of the retained records or the MVP's BE_MVP:00 BOOT_VALIDATED and CONFIG_SEALED lines, exactly one, whole, before BE_MVP:01."
+          "note": "--mode uboot: exactly one SPL and one U-Boot banner; be_ld's N bytes read and one digest line, md5 (the board) or crc32 (QEMU), equal to the image's; booti's move to 0x108000000; U-Boot's device tree outside every MVP extent; Starting kernel; the shim line's hart and fdt; since M6 it accepts either prelude form, the accepted BE_R3 sequence of the retained records or the MVP's BE_MVP:00 BOOT_VALIDATED and CONFIG_SEALED lines, exactly one, whole, before BE_MVP:01. On the public research branch cheri-platform, the CHERI platform work (planning/cheri-platform.md) revised this file: --monitor cheri and --cheri-mutations judge the CHERI-aware monitor's captures by its own values and the CHERI rules' mutations, and a guest banner longer than the monitor's console line is matched by the piece that fits (the Linux guest's 175-byte banner fits whole); --monitor riscv, the default, keeps the RISC-V monitor's values. For the plain variant, CI-4 of the CHERI integration plan found its section 6 conditions 1 and 2 met: the 162 image files equal those of the release's record, release candidate 4's records, and an mvp-1.0 build, byte for byte, and 222 captures, judged again by this revision as each record's checker ran it, give the retained check.txt, result.json, and log.json byte for byte: the 197 captures with a checker output that those records retain (161 QEMU attempts, 14 typed-session attempts, and 22 U-Boot rehearsal attempts; the rehearsal's fall-through case has none) and the board record's 25 runs, whose raw serial captures its captures.txt names by SHA-256 and which are kept privately. Its self-test (300 cases) and mutation test (459 mutations rejected) records equal the records' byte for byte. This SHA-256 is that revision's, on the public branch; the internal CHERI platform branch holds the same bytes at c63499b7."
         },
         {
           "path": "mvp/tests/uboot-rehearsal.sh",
@@ -1040,9 +1040,9 @@
       "evidence": [
         {
           "path": "mvp/tools/port.py",
-          "sha256": "d1082f3da9dddb3743da653ce11399610ba82eaf7b1178d54537445bfbbb0abc",
+          "sha256": "ead04cad5a54b9919f021fdc053df271f7171e4e311f66ffb1d63efcdc267f64",
           "evidence_source_commit": "ba7d0f336b60324625c3f41ff8f4a85d0419f875",
-          "note": "The MVP core profile's counted rules on the ported manifest.h and manifest.c (the widened limits, the harts, the VMID bound, the validation of any number of monitor extents, guest-code windows, channels in either direction, disjoint guest-physical ranges), five of them whole-function replacements pinned by SHA-256; the port check counts them."
+          "note": "The MVP core profile's counted rules on the ported manifest.h and manifest.c (the widened limits, the harts, the VMID bound, the validation of any number of monitor extents, guest-code windows, channels in either direction, disjoint guest-physical ranges), five of them whole-function replacements pinned by SHA-256; the port check counts them. On the public research branch cheri-platform, the CHERI platform work (planning/cheri-platform.md) revised this file: --cheri adds CHERI_RULES, two counted rules on include/be/r3.h for the CHERI-aware monitor's firmware at SBI 3.0, after RULES' own; without --cheri the rules and their counts are unchanged. For the plain variant, CI-4 of the CHERI integration plan found its section 6 conditions 1 and 6 met: the 162 image files equal those of the release's record, release candidate 4's records, and an mvp-1.0 build, byte for byte, and the port tree this revision derives, 33 files with PORT-MANIFEST.txt, equals an mvp-1.0 build's file for file. This SHA-256 is that revision's, on the public branch; the internal CHERI platform branch holds the same bytes at c63499b7."
         },
         {
           "path": "mvp/src/mvp-core.c",
@@ -1052,9 +1052,9 @@
         },
         {
           "path": "mvp/tools/gen-scenario.py",
-          "sha256": "b87013ebdd0ea88c2b8f1ef2cd502638cc09a87ecaef6a3e8ec4f8aa6b147c65",
+          "sha256": "081df6528dc3d9534ae78bc95a4e766d98796d0dccec20504a8ce1515ded5f6b",
           "evidence_source_commit": "3957665baef8ea4acfc49528a92de6e0746d0afc",
-          "note": "mvp-config.c for each image from the layout and the authority report, refused unless the report's grants are the proposal's authorities exactly, every object is tiled by resources, and every resource has an owner; the CONFIG_SEALED line the expectation declares."
+          "note": "mvp-config.c for each image from the layout and the authority report, refused unless the report's grants are the proposal's authorities exactly, every object is tiled by resources, and every resource has an owner; the CONFIG_SEALED line the expectation declares. On the public research branch cheri-platform, the CHERI platform work (planning/cheri-platform.md) revised this file: --monitor and --guest-flavour, riscv and linux by default, add the CHERI-aware monitor's armed henvcfg and variants and the CHERI Linux guest's lines; with the defaults the generator writes what it wrote before. For the plain variant, CI-4 of the CHERI integration plan found its section 6 conditions 1 and 6 met: the 162 image files equal those of the release's record, release candidate 4's records, and an mvp-1.0 build, byte for byte; the gen/ tree, 41 files (the three scenarios' headers, mvp-config.c files, and expectations, te-poc's and anchor's authority reports, and the payload layout), and the guest's 54 device-tree files equal an mvp-1.0 build's file for file; and the 39 scenario files each record retains equal the plain build's and the tree's. This SHA-256 is that revision's, on the public branch; the internal CHERI platform branch holds the same bytes at c63499b7."
         },
         {
           "path": "mvp/tests/config-test.c",
@@ -1084,9 +1084,9 @@
         },
         {
           "path": "mvp/tests/check-image.py",
-          "sha256": "64e225f65a714969b3be0113886e3d0180d11fe191ecff5846e7fba31dd3142d",
+          "sha256": "bd7edca08416d1d776b91d7136908f90535f750e746e4cc8f9228467b906fb7d",
           "evidence_source_commit": "da4fd1b94f6eb8c94cfbb3e468e89f04bc58dddf",
-          "note": "The seam rule: no function in the MVP region's text but the executor's calls, tails, or forms the address of an assembly or accepted privileged helper; the install's and the injection's single call sites; a mutation that reads the time outside the executor is refused."
+          "note": "The seam rule: no function in the MVP region's text but the executor's calls, tails, or forms the address of an assembly or accepted privileged helper; the install's and the injection's single call sites; a mutation that reads the time outside the executor is refused. On the public research branch cheri-platform, the CHERI platform work (planning/cheri-platform.md) revised this file: --monitor cheri and --guest-flavour cheri-linux check the CHERI-aware monitor's trap entry, resume tail, arming values, and CHERI variants, with mutations of their own; --monitor riscv, the default, keeps the RISC-V monitor's rules and mutations. For the plain variant, CI-4 of the CHERI integration plan found its section 6 conditions 1 and 3 met: the 162 image files equal those of the release's record, release candidate 4's records, and an mvp-1.0 build, byte for byte; on them this revision and mvp-1.0's reject the same mutations, name for name with the same messages, 122 for two-guests, 126 for te-poc, and 135 for anchor, with GCC and with Clang; and make check's image-check record equals release candidate 4's and the release's byte for byte. This SHA-256 is that revision's, on the public branch; the internal CHERI platform branch holds the same bytes at c63499b7."
         }
       ],
       "non_claim": "The seam is a structure for later verification, not a verified property: no contract is written for any executor function, the trap assembly is unchanged and unproved, and the decision code's purity is a classification in the README's layer table (6,285 code lines proof-bearing, 1,105 support, 177 executor, 930 platform and assembly at the M6-3 merge), not a checked property.",
@@ -1206,9 +1206,9 @@
         },
         {
           "path": "mvp/tests/session-typist.py",
-          "sha256": "734f64845a08879ac274a6ae109b725ae99df89dc2f21d6c55c882e027538685",
+          "sha256": "a77eeacf839fd99875462d131fcc85c072a6b27369acdfd94936bc6833291c6d",
           "evidence_source_commit": "e357711e0598a0273f89547b0a35813f9d531df9",
-          "note": "The QEMU typist: a stdio chardev whose own log is the capture, one key per 10 ms, a per-run nonce from os.urandom, lockstep on the BE_MVP:16 and echo lines, every key recorded with its step in typed.txt. In the clean repository, F1 (the security review's S-01) revised this file: --firmware is refused before each QEMU start unless its SHA-256 is the lock's MVP_PIN_OPENSBI_BIN_SHA256; this SHA-256 is that revision's, which no internal commit holds."
+          "note": "The QEMU typist: a stdio chardev whose own log is the capture, one key per 10 ms, a per-run nonce from os.urandom, lockstep on the BE_MVP:16 and echo lines, every key recorded with its step in typed.txt. In the clean repository, F1 (the security review's S-01) revised this file: --firmware is refused before each QEMU start unless its SHA-256 is the lock's MVP_PIN_OPENSBI_BIN_SHA256. On the public research branch cheri-platform, the CHERI platform work (planning/cheri-platform.md) revised it again over F1's revision: BE_MVP_MONITOR, BE_MVP_GUEST_PINS, BE_MVP_QEMU_K3_LIKE, BE_MVP_QEMU_CHERI_CPU, and --build select the CHERI-aware monitor's sessions, whose firmware is refused unless its SHA-256 is guest/cheri-pins.txt's firmware line; the RISC-V monitor's sessions keep F1's pin and the checker's arguments, with one added: --build-root, the build tree, which is the checker's default. For the plain variant, CI-4 of the CHERI integration plan found its section 6 conditions 1 and 5 met: the 162 image files equal those of the release's record, release candidate 4's records, and an mvp-1.0 build, byte for byte, and the suite's six sessions pass with this revision (BE_MVP_SESSIONS: PASS sessions=6), as does its self-test (cases=16); the 14 typed-session attempts those records retain, judged again, give their retained output byte for byte (condition 2). This SHA-256 is that revision's, on the public branch, which no internal commit holds."
         },
         {
           "path": "mvp/tests/fixtures/qemu-te-poc-shell-gcc-m7.log",
@@ -1257,9 +1257,9 @@
       "evidence": [
         {
           "path": "mvp/tests/sbi-test.c",
-          "sha256": "992b8fa63850d2239b44b352802a6363d006c43a12e369ab8faa08d87d5fc398",
+          "sha256": "6f52c89eb33a61ffdf786cfa59bab699ad10daacf27c9165aa8cbc5e857bd727",
           "evidence_source_commit": "fac813f144a23d0720393bacbd5f64d286ecd526",
-          "note": "The console feed's cases: every byte value through be_mvp_console_feed, each outside 0x20 to 0x7e stored as ?, CR dropped, LF closing a line, a 256-byte line posted as its own; the flush of a partial line on pause and terminate."
+          "note": "The console feed's cases: every byte value through be_mvp_console_feed, each outside 0x20 to 0x7e stored as ?, CR dropped, LF closing a line, a 256-byte line posted as its own; the flush of a partial line on pause and terminate. On the public research branch cheri-platform, the CHERI platform work (planning/cheri-platform.md) revised this file: the controls tests' arming values are literals of their own for each monitor variant, the CHERI-aware monitor's (BE_MVP_CHERI) delegating cause 28 and setting CRE; without BE_MVP_CHERI they are the RISC-V monitor's values, as before. For the plain variant, CI-4 of the CHERI integration plan found its section 6 conditions 1 and 4 met: the 162 image files equal those of the release's record, release candidate 4's records, and an mvp-1.0 build, byte for byte, and this revision passes with the plain monitor's counts unchanged, scenarios=133 assertions=16292, GCC's output equal to Clang's. This SHA-256 is that revision's, on the public branch; the internal CHERI platform branch holds the same bytes at c63499b7."
         },
         {
           "path": "mvp/tests/fixtures/qemu-hostile-gcc-m7.log",
@@ -1269,9 +1269,9 @@
         },
         {
           "path": "mvp/tests/check-capture.py",
-          "sha256": "cc11527f3b3fd423745b09da9cda74a4ebdbe764e3db8356d51ee8156499b7ed",
+          "sha256": "189e0546ae254952082c37ec037c6910a69d4cc1792fe9a232e0a35b603f2400",
           "evidence_source_commit": "c56022e646f93b5452218aab0622ca7479dacddb",
-          "note": "The output invariants over every domain line of every capture (untagged text, a non-printable byte, a second tag inside a line, a line beyond 256 bytes are findings) and the console-input rules; 160 self-test cases and 395 mutations rejected, the forged bare line, the secret in hex, and the byte outside the printable range among them."
+          "note": "The output invariants over every domain line of every capture (untagged text, a non-printable byte, a second tag inside a line, a line beyond 256 bytes are findings) and the console-input rules; 160 self-test cases and 395 mutations rejected, the forged bare line, the secret in hex, and the byte outside the printable range among them. On the public research branch cheri-platform, the CHERI platform work (planning/cheri-platform.md) revised this file: --monitor cheri and --cheri-mutations judge the CHERI-aware monitor's captures by its own values and the CHERI rules' mutations, and a guest banner longer than the monitor's console line is matched by the piece that fits (the Linux guest's 175-byte banner fits whole); --monitor riscv, the default, keeps the RISC-V monitor's values. For the plain variant, CI-4 of the CHERI integration plan found its section 6 conditions 1 and 2 met: the 162 image files equal those of the release's record, release candidate 4's records, and an mvp-1.0 build, byte for byte, and 222 captures, judged again by this revision as each record's checker ran it, give the retained check.txt, result.json, and log.json byte for byte: the 197 captures with a checker output that those records retain (161 QEMU attempts, 14 typed-session attempts, and 22 U-Boot rehearsal attempts; the rehearsal's fall-through case has none) and the board record's 25 runs, whose raw serial captures its captures.txt names by SHA-256 and which are kept privately. Its self-test (300 cases) and mutation test (459 mutations rejected) records equal the records' byte for byte. This SHA-256 is that revision's, on the public branch; the internal CHERI platform branch holds the same bytes at c63499b7."
         },
         {
           "path": "mvp/results/20261102-com260-m7/MANIFEST.sha256",
@@ -1366,9 +1366,9 @@
         },
         {
           "path": "mvp/src/mvp-runtime.c",
-          "sha256": "6f7a3f82ace1fab3cabcdc2d54742da0fb68aed30714b3fee02a5aff3d997186",
+          "sha256": "718852f2a66b1f11327e8284c5bd1156aa8afe432c63fff5204a6c00297d2698",
           "evidence_source_commit": "fac813f144a23d0720393bacbd5f64d286ecd526",
-          "note": "measure_log() after the placement and before publish_blocks() and start_run(): R2 (five ranges of the monitor's and the MVP region's text and constants as loaded, by link symbols), R3 (the sealed core identity and the console grants measured; the configuration and policy identities build-recorded), each domain's R4 (kernel and device tree as placed, anchor's secret page) with the domain's gate on its last record; the close; the block and the barrier's registers rendered before BE_MVP:07; a page that cannot close, an overflow, or a refused record fails the run as class log before any hart starts; the terminal registers line rendered at the barrier."
+          "note": "measure_log() after the placement and before publish_blocks() and start_run(): R2 (five ranges of the monitor's and the MVP region's text and constants as loaded, by link symbols), R3 (the sealed core identity and the console grants measured; the configuration and policy identities build-recorded), each domain's R4 (kernel and device tree as placed, anchor's secret page) with the domain's gate on its last record; the close; the block and the barrier's registers rendered before BE_MVP:07; a page that cannot close, an overflow, or a refused record fails the run as class log before any hart starts; the terminal registers line rendered at the barrier. On the public research branch cheri-platform, the CHERI platform work (planning/cheri-platform.md) revised this file: a block under #if defined(BE_MVP_CHERI) && !defined(BE_MVP_VARIANT_CHERI_FAULT_HS) holds the CHERI-aware monitor's static assertions of its hedeleg and armed henvcfg, the RISC-V monitor's hedeleg assertion unchanged in its #else; no other line changed. For the plain variant, CI-4 of the CHERI integration plan found its section 6 conditions 1 and 6 met: the 162 image files equal those of the release's record, release candidate 4's records, and an mvp-1.0 build, byte for byte, and each of the plain build's 48 compiles of this file preprocesses to the translation unit that mvp-1.0's does. This SHA-256 is that revision's, on the public branch; the internal CHERI platform branch holds the same bytes at c63499b7."
         },
         {
           "path": "mvp/tests/log-test.c",
@@ -1423,21 +1423,21 @@
       "evidence": [
         {
           "path": "mvp/src/mvp-runtime.c",
-          "sha256": "6f7a3f82ace1fab3cabcdc2d54742da0fb68aed30714b3fee02a5aff3d997186",
+          "sha256": "718852f2a66b1f11327e8284c5bd1156aa8afe432c63fff5204a6c00297d2698",
           "evidence_source_commit": "fac813f144a23d0720393bacbd5f64d286ecd526",
-          "note": "The gate (be_mvp_log_gate on the domain's last launch record against be_mvp_log_constants' expected register) inside measure_log(), before publish_blocks() and start_run(), so every gate precedes the first SBI HSM start; BE_MVP:06 LAUNCH per passed gate; on a failed gate the block is rendered and the run fails as class measurement with DETAIL computed= and expected=."
+          "note": "The gate (be_mvp_log_gate on the domain's last launch record against be_mvp_log_constants' expected register) inside measure_log(), before publish_blocks() and start_run(), so every gate precedes the first SBI HSM start; BE_MVP:06 LAUNCH per passed gate; on a failed gate the block is rendered and the run fails as class measurement with DETAIL computed= and expected=. On the public research branch cheri-platform, the CHERI platform work (planning/cheri-platform.md) revised this file: a block under #if defined(BE_MVP_CHERI) && !defined(BE_MVP_VARIANT_CHERI_FAULT_HS) holds the CHERI-aware monitor's static assertions of its hedeleg and armed henvcfg, the RISC-V monitor's hedeleg assertion unchanged in its #else; no other line changed. For the plain variant, CI-4 of the CHERI integration plan found its section 6 conditions 1 and 6 met: the 162 image files equal those of the release's record, release candidate 4's records, and an mvp-1.0 build, byte for byte, and each of the plain build's 48 compiles of this file preprocesses to the translation unit that mvp-1.0's does. This SHA-256 is that revision's, on the public branch; the internal CHERI platform branch holds the same bytes at c63499b7."
         },
         {
           "path": "mvp/tests/check-image.py",
-          "sha256": "64e225f65a714969b3be0113886e3d0180d11fe191ecff5846e7fba31dd3142d",
+          "sha256": "bd7edca08416d1d776b91d7136908f90535f750e746e4cc8f9228467b906fb7d",
           "evidence_source_commit": "da4fd1b94f6eb8c94cfbb3e468e89f04bc58dddf",
-          "note": "The log rules with a mutation each: the page (4 KiB aligned) and the registers in hart 0's MVP-region BSS under the HART0_ONLY rule, the constants in .mvp.rodata matched to the image's sequence, count, and report, and the launch registers computed independently from the boot image's staged bytes and required equal to the constants; be_mvp_log_canary unreferenced; the R2 ranges their sections' extents."
+          "note": "The log rules with a mutation each: the page (4 KiB aligned) and the registers in hart 0's MVP-region BSS under the HART0_ONLY rule, the constants in .mvp.rodata matched to the image's sequence, count, and report, and the launch registers computed independently from the boot image's staged bytes and required equal to the constants; be_mvp_log_canary unreferenced; the R2 ranges their sections' extents. On the public research branch cheri-platform, the CHERI platform work (planning/cheri-platform.md) revised this file: --monitor cheri and --guest-flavour cheri-linux check the CHERI-aware monitor's trap entry, resume tail, arming values, and CHERI variants, with mutations of their own; --monitor riscv, the default, keeps the RISC-V monitor's rules and mutations. For the plain variant, CI-4 of the CHERI integration plan found its section 6 conditions 1 and 3 met: the 162 image files equal those of the release's record, release candidate 4's records, and an mvp-1.0 build, byte for byte; on them this revision and mvp-1.0's reject the same mutations, name for name with the same messages, 122 for two-guests, 126 for te-poc, and 135 for anchor, with GCC and with Clang; and make check's image-check record equals release candidate 4's and the release's byte for byte. This SHA-256 is that revision's, on the public branch; the internal CHERI platform branch holds the same bytes at c63499b7."
         },
         {
           "path": "mvp/tools/gen-scenario.py",
-          "sha256": "b87013ebdd0ea88c2b8f1ef2cd502638cc09a87ecaef6a3e8ec4f8aa6b147c65",
+          "sha256": "081df6528dc3d9534ae78bc95a4e766d98796d0dccec20504a8ce1515ded5f6b",
           "evidence_source_commit": "3957665baef8ea4acfc49528a92de6e0746d0afc",
-          "note": "Each image's expected records, launch registers by the profile's recurrence, count, and run class in its expectation and the scenario header's log constants; wrong-measurement flips bit 0 of the protected domain's expected launch register (the M9 plan's Q16) and is declared to fail at its gate; the generator refuses a variant whose log section is not its base's own."
+          "note": "Each image's expected records, launch registers by the profile's recurrence, count, and run class in its expectation and the scenario header's log constants; wrong-measurement flips bit 0 of the protected domain's expected launch register (the M9 plan's Q16) and is declared to fail at its gate; the generator refuses a variant whose log section is not its base's own. On the public research branch cheri-platform, the CHERI platform work (planning/cheri-platform.md) revised this file: --monitor and --guest-flavour, riscv and linux by default, add the CHERI-aware monitor's armed henvcfg and variants and the CHERI Linux guest's lines; with the defaults the generator writes what it wrote before. For the plain variant, CI-4 of the CHERI integration plan found its section 6 conditions 1 and 6 met: the 162 image files equal those of the release's record, release candidate 4's records, and an mvp-1.0 build, byte for byte; the gen/ tree, 41 files (the three scenarios' headers, mvp-config.c files, and expectations, te-poc's and anchor's authority reports, and the payload layout), and the guest's 54 device-tree files equal an mvp-1.0 build's file for file; and the 39 scenario files each record retains equal the plain build's and the tree's. This SHA-256 is that revision's, on the public branch; the internal CHERI platform branch holds the same bytes at c63499b7."
         },
         {
           "path": "mvp/tests/fixtures/qemu-wrong-measurement-gcc-m9.log",

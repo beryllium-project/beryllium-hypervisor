@@ -7,6 +7,10 @@
   port.py --check ROOT B2_PORT OUT   re-derive and require OUT to match exactly
   port.py --inputs                   print the ported paths (B2's)
 
+beryllium-cheri: --cheri before the others (port.py --cheri [--check] ROOT
+B2_PORT OUT) derives the CHERI-aware monitor's port (mvp/Makefile's
+MVP_MONITOR=cheri): every rule below and CHERI_RULES' too.
+
 The MVP line (planning/mvp-m0-plan.md, "Port and copies") reuses B2's K3
 port of accepted R5 (B2 accepted at 898af4e0) unchanged except for B7's five
 counted rules and seven substitutions (bringup/k3-b7/scripts/port.py), with
@@ -676,6 +680,21 @@ RULES = {
     **CORE_RULES,
 }
 
+# beryllium-cheri: the CHERI-aware monitor's rules (--cheri), after
+# RULES': include/be/r3.h pins SBI 3.0 and B2's port lowers it to 2.0 for
+# OpenSBI v1.6; the CHERI firmware the CHERI-aware monitor needs, the CHERI
+# Alliance SDK's purecap OpenSBI, reports 3.0.
+CHERI_RULES = {
+    "include/be/r3.h": [
+        ("cheri-firmware-sbi-3.0-doc",
+         "pinned firmware SBI specification version 2.0 */",
+         "pinned firmware SBI specification version 3.0 */", 1),
+        ("cheri-firmware-sbi-3.0",
+         "#define BE_R3_OPENSBI_SPEC_VERSION\tBE_U64_C(0x02000000)",
+         "#define BE_R3_OPENSBI_SPEC_VERSION\tBE_U64_C(0x03000000)", 1),
+    ],
+}
+
 
 def sha256(data):
     return hashlib.sha256(data).hexdigest()
@@ -707,11 +726,12 @@ def b2_listing(root, b2_port):
     return entries
 
 
-def derive(root, b2_port):
+def derive(root, b2_port, rules=None):
     """Return [(path, B2 sha256, MVP text, report lines)] or raise."""
+    rules = RULES if rules is None else rules
     entries = b2_listing(root, b2_port)
     paths = [path for path, _ in entries]
-    unknown = sorted(set(RULES) - set(paths))
+    unknown = sorted(set(rules) - set(paths))
     if unknown:
         raise ValueError(f"rules for paths outside B2's port: {unknown}")
     ported = []
@@ -721,7 +741,7 @@ def derive(root, b2_port):
             raise ValueError(f"{path}: B2 port file differs from its manifest")
         text = data.decode("utf-8")
         report = []
-        for rule, old, new, count in RULES.get(path, []):
+        for rule, old, new, count in rules.get(path, []):
             if isinstance(old, Span):
                 first, last, digest = old
                 start = text.find(first)
@@ -741,7 +761,19 @@ def derive(root, b2_port):
     return ported
 
 
+def with_cheri(rules):
+    """beryllium-cheri: RULES with CHERI_RULES after each path's own."""
+    merged = {path: list(entries) for path, entries in rules.items()}
+    for path, entries in CHERI_RULES.items():
+        merged.setdefault(path, []).extend(entries)
+    return merged
+
+
 def main(argv):
+    selected = RULES
+    if len(argv) > 1 and argv[1] == "--cheri":
+        selected = with_cheri(RULES)
+        argv = argv[:1] + argv[2:]
     if len(argv) == 2 and argv[1] == "--inputs":
         # The MVP ports exactly the files B2 ports, so B2's list is its.
         root = pathlib.Path(__file__).resolve().parents[2]
@@ -754,7 +786,7 @@ def main(argv):
         return 2
     root, b2_port, out = (pathlib.Path(argument) for argument in argv[-3:])
     try:
-        ported = derive(root.resolve(), b2_port.resolve())
+        ported = derive(root.resolve(), b2_port.resolve(), selected)
     except (OSError, ValueError, UnicodeDecodeError) as error:
         print(f"BE_MVP_PORT: FAIL {error}")
         return 1
@@ -790,8 +822,9 @@ def main(argv):
             return 1
     else:
         manifest_path.write_text(manifest_text)
-    rules = sum(len(RULES[path]) for path in RULES)
-    applied = sum(count for path in RULES for _, _, _, count in RULES[path])
+    rules = sum(len(selected[path]) for path in selected)
+    applied = sum(count for path in selected
+                  for _, _, _, count in selected[path])
     changed = sum(1 for _, _, _, report in ported if report)
     print(f"BE_MVP_PORT: {'CHECK ' if check else ''}PASS files={len(ported)} "
           f"changed={changed} rules={rules} substitutions={applied} "

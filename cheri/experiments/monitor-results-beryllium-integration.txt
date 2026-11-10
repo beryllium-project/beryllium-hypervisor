@@ -1,0 +1,180 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Results of experiments/monitor-run.sh: Beryllium's MVP monitor,
+# unchanged, on the pinned CHERI QEMU (v0.9.3, H on), judged by
+# Beryllium's own QEMU harness and checker. Paths are relative to
+# this repository; captures are under build/monitor-beryllium-integration/out-CONFIG/.
+run: 2026-11-05T03:17:56Z
+pin: beryllium-integration 6ff17c6777f932593af99f3e5689a1fb4391a7b6 9fc05036cf83d37f81fee0f3bd027d70c1e0c196cb386645a0db6a6564366082
+pin: beryllium-opensbi bd613dd92113f683052acfb23d9dc8ba60029e0a fdc4df0e2a79e25e2f2da73f933b67141233e8a7de73f7cf6a30bde9271bf3e7
+pin: beryllium-opensbi-fw fw_dynamic.bin 78f14d30c95181704b6163b4c114f88483cd6c2c89e642812cd3856d01c6a42b
+pin: cheri-alliance-qemu 008944fe62865260cd67fce32655f22ac87ff8a0 358b6c4e9d5809da7b49597fe95da40b9092e3a0aad055a21a2a18dac648b02c
+guest outputs: copied from the checkout, each equal to its pin: yes
+built: make -C mvp image references
+emulator control: QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44) (/usr/bin/qemu-system-riscv64, Beryllium's tool lock)
+emulator pinned: QEMU emulator version 8.1.0, cheri-alliance-qemu as pinned
+emulator fixed: QEMU emulator version 8.1.0, cheri-alliance-qemu with this change to target/riscv/cpu.c:
+  +    set_max_perms_capability(env, &env->vstvecc, 0);
+  -    env->vsepcc = make_null_capability(env);
+firmware plain: 78f14d30c95181704b6163b4c114f88483cd6c2c89e642812cd3856d01c6a42b (Beryllium's OpenSBI v1.6, rebuilt; equals beryllium-opensbi-fw)
+firmware cre: 73cab0618947f83f8351ba347d9745554872b017fd9dd8c695036bbc9d51bff5 (the same, with this change to lib/sbi/sbi_hart.c:)
+  +	/* beryllium-cheri: CHERI v0.9.3's S-mode enables, mseccfg.CRE
+  +	 * (bit 3) and menvcfg.CRE (bit 28) */
+  +	if (misa_extension('S')) {
+  +		struct sbi_trap_info trap = { 0 };
+  +		unsigned long seccfg = csr_read_allowed(CSR_MSECCFG, &trap);
+  +		if (!trap.cause)
+  +			csr_write_allowed(CSR_MSECCFG, &trap, seccfg | (1UL << 3));
+  +		csr_set(CSR_MENVCFG, 1UL << 28);
+  +	}
+  +	/* beryllium-cheri: CHERI v0.9.3's CHERI fault (cause 28) to
+  +	 * S-mode */
+  +	exceptions |= 1U << 28;
+compilers: riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1); clang version 22.1.8 (Fedora 22.1.8-4.fc44)
+
+== boot images against Beryllium's image records at 6ff17c67 (mvp/results/*/images.sha256)
+dc2b6dc4075a94d858ff68146692ce17733e9fe43bbde138c9d720f2259dca39 gcc/be-mvp-boot.elf in no record
+a1039fdcb0aeb20be328e9e7835a391cf1a8add5d182cb8a98ec5f84cdd03e94 gcc/te-poc/be-mvp-boot.elf in no record
+d1e1f15eb6b1bb38f44074b571f090df5b6e6f67b4a8b455f3781ad325694d46 gcc/anchor/be-mvp-boot.elf in no record
+9a0e6b4bc87329bca17d71ee12fc7ca0ed4d2e45255b9643fa35a1d5af4d9548 clang/be-mvp-boot.elf in no record
+9e7275af56f62ba212201043507654e1412e65df221e259cc2ce9edb1b8d87d2 clang/te-poc/be-mvp-boot.elf in no record
+2fc69fc16bfc4889ba5618be08419273ee7397c4349cec33f6ab1556d5f269fc clang/anchor/be-mvp-boot.elf in no record
+
+== control: firmware 78f14d30c9518170, expected PASS, got PASS
+emulator: qemu-system-riscv64 (/usr/bin/qemu-system-riscv64); runs: gcc/plic clang/plic te-poc/gcc/plic te-poc/clang/plic anchor/gcc/plic anchor/clang/plic; timeout 300s
+BE_MVP_QEMU[gcc/plic]: PASS attempts=4 refused=3 boot_harts=2,2,1,3 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[clang/plic]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[gcc/te-poc-plic]: PASS attempts=2 refused=1 boot_harts=2,7 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[clang/te-poc-plic]: PASS attempts=1 refused=0 boot_harts=4 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[gcc/anchor-plic]: PASS attempts=1 refused=0 boot_harts=7 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU[clang/anchor-plic]: PASS attempts=1 refused=0 boot_harts=4 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU_TOOLCHAIN[gcc]: runs=3 attempts=7 refused=4
+BE_MVP_QEMU_TOOLCHAIN[clang]: runs=3 attempts=3 refused=0
+BE_MVP_QEMU: PASS runs=6 attempts=10 refused=4
+toolchain  run          attempt  boot_hart  qemu_exit  verdict  capture_sha256
+gcc        plic         1        2          0          REFUSED  5d470eee9ffc3fc5ecaf6267f8194a818bdc5a9d1bdc740ab42b099b412e63b2
+gcc        plic         2        2          0          REFUSED  5d470eee9ffc3fc5ecaf6267f8194a818bdc5a9d1bdc740ab42b099b412e63b2
+gcc        plic         3        1          0          REFUSED  c8022945637dc0afd2cb6985f8693f497a1ad394fd1c6fb115f592ad9a8a63d5
+gcc        plic         4        3          0          PASS     997316d341713ca2c1305790b798dc89035a349450d6ff20e28f9dddac5de28b
+clang      plic         1        0          0          PASS     683b7fc5b0e13995a0fcfbeab15433c211e52e4189e0bacea104eb00b1853455
+gcc        te-poc-plic  1        2          0          REFUSED  70da5fe7b882e2147fd3b46dbe2f20e27a9768bc95237e54ea1a9ebaad75d543
+gcc        te-poc-plic  2        7          0          PASS     3c4e2a31f5fea8bc7cc482c368f2881d1bf3f80b512bcc002364f9f31eb92726
+clang      te-poc-plic  1        4          0          PASS     e9a12e3dba9a231d978ff9eb8ee30483c587b31dc69454e594bab92fd41de65b
+gcc        anchor-plic  1        7          0          PASS     1d9cde5fe02ac87fb598379044aefd92712096bf991a932d76a91c6572a5d90f
+clang      anchor-plic  1        4          0          PASS     797d60f2fc36e1c5726dee6c0cbcbeaf33faa60e608400a724c24fe39daa6e91
+QEMU messages (unique):
+
+== pinned: firmware 78f14d30c9518170, expected FAIL, got FAIL
+emulator: qemu-system-riscv64cheristd (toolchains/cheri/output/qemu-codasip/bin/qemu-system-riscv64cheristd); runs: gcc/plic clang/plic; timeout 120s
+BE_MVP_QEMU[gcc/plic]: FAIL attempts=1 refused=0 boot_harts=6 qemu_exit=killed (BE_MVP_CAPTURE[direct two-guests]: FAIL)
+BE_MVP_QEMU[clang/plic]: FAIL attempts=2 refused=1 boot_harts=1,0 qemu_exit=killed (BE_MVP_CAPTURE[direct two-guests]: FAIL)
+BE_MVP_QEMU_TOOLCHAIN[gcc]: runs=1 attempts=1 refused=0
+BE_MVP_QEMU_TOOLCHAIN[clang]: runs=1 attempts=2 refused=1
+BE_MVP_QEMU: FAIL runs=2 attempts=3 refused=1 failed=2
+toolchain  run   attempt  boot_hart  qemu_exit  verdict  capture_sha256
+gcc        plic  1        6          killed     FAIL     a29545f3a79783064b1267163a8e0be1a31e0cd93b03ad84fe7ccd55cbcd2db1
+clang      plic  1        1          0          REFUSED  37ee97cbc3aac14bbe5a1f7d48a215b1a345f7cc2672dbe6a3cdd23186f62dd4
+clang      plic  2        0          killed     FAIL     8984498a70d2d6afd3ddb7ca7e4f2d9ac0aa9644294cc00d82be3d57f180b5ab
+QEMU messages (unique):
+  qemu-system-riscv64cheristd: Attempting to set vector register with unrepresentable range (0x0000000000000000) on vstvecc: v:0 CAP p:f8fc1c ct:0 b:00000000000
+  qemu-system-riscv64cheristd: Invalid PCC in exception handler: v:0 CAP p:f8fc1c ct:0 b:0000000000000000 a:ffffffff80000088 t:ffffffffffffffff bv: 1
+  qemu-system-riscv64cheristd: terminating on signal 15 from pid N (bash)
+  qemu-system-riscv64cheristd: warning: Setting vstvecc without ASR permission (likely a bug)
+clang-plic.1: last monitor line: BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status=1:0,2:1,3:1,4:1,5:1,6:1,7:1 started=1
+  BE_MVP_RESULT: REFUSED terminal=fail-marker
+clang-plic.2: last monitor line: BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x530a
+  finding: the sequence stops before 'BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=<T> received=<T> answered=<T>'
+  finding: log: no terminal registers line, which the complete class requires before hart 0's terminal line
+  finding: G0 lacks the required line '[<s>] Linux version 7.2.0 <banner>' (or a later one is out of order)
+  finding: G1 lacks the required line '[<s>] Linux version 7.2.0 <banner>' (or a later one is out of order)
+  finding: 0 alternations between the domains' lines, fewer than K = 8 (Q5)
+  BE_MVP_RESULT: FAIL terminal=none
+gcc-plic.1: last monitor line: BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x2fd0
+  finding: the sequence stops before 'BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=<T> received=<T> answered=<T>'
+  finding: log: no terminal registers line, which the complete class requires before hart 0's terminal line
+  finding: G0 lacks the required line '[<s>] Linux version 7.2.0 <banner>' (or a later one is out of order)
+  finding: G1 lacks the required line '[<s>] Linux version 7.2.0 <banner>' (or a later one is out of order)
+  finding: 0 alternations between the domains' lines, fewer than K = 8 (Q5)
+  BE_MVP_RESULT: FAIL terminal=none
+
+== fixed: firmware 78f14d30c9518170, expected PASS, got PASS
+emulator: qemu-system-riscv64cheristd (build/qemu-vs-reset/install/bin/qemu-system-riscv64cheristd); runs: gcc/plic clang/plic te-poc/gcc/plic te-poc/clang/plic anchor/gcc/plic anchor/clang/plic; timeout 300s
+BE_MVP_QEMU[gcc/plic]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[clang/plic]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[gcc/te-poc-plic]: PASS attempts=2 refused=1 boot_harts=2,6 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[clang/te-poc-plic]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[gcc/anchor-plic]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU[clang/anchor-plic]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU_TOOLCHAIN[gcc]: runs=3 attempts=4 refused=1
+BE_MVP_QEMU_TOOLCHAIN[clang]: runs=3 attempts=3 refused=0
+BE_MVP_QEMU: PASS runs=6 attempts=7 refused=1
+toolchain  run          attempt  boot_hart  qemu_exit  verdict  capture_sha256
+gcc        plic         1        0          0          PASS     315f6c06eaa2e6400d2d5ad1e7cc991b936b9cb4449b28b9c96b681b3aff95ef
+clang      plic         1        5          0          PASS     351ac532c76fd3b14fb6440f6931ea0d3d5b7c5cd62e786ac248c7d86841d72c
+gcc        te-poc-plic  1        2          0          REFUSED  c9f77af3af067bf9d73583c58284d5ea94eb617d9f8c0f7a55e8c8d741d94abd
+gcc        te-poc-plic  2        6          0          PASS     a899a861d5a58125f578863bf3bb63bfa105e3dec34cbf9721c9e2d7686b99d2
+clang      te-poc-plic  1        6          0          PASS     e9b7348a5719a532a96af8fc1d488b8681c7cd0dd41387f0b754d5132c804434
+gcc        anchor-plic  1        5          0          PASS     ba2ba3aedf8fc95f28e8123597daedc6ec2656bf7fbd7876ebbe2b489ec70ad7
+clang      anchor-plic  1        5          0          PASS     1a2014330b8ad74d3e7e640fc7198ead1a03025eef636a4fb5f59f595624242c
+QEMU messages (unique):
+
+== fixed-cre: firmware 73cab0618947f83f, expected PASS, got PASS
+emulator: qemu-system-riscv64cheristd (build/qemu-vs-reset/install/bin/qemu-system-riscv64cheristd); runs: gcc/plic clang/plic te-poc/gcc/plic te-poc/clang/plic anchor/gcc/plic anchor/clang/plic; timeout 300s
+BE_MVP_QEMU[gcc/plic]: PASS attempts=1 refused=0 boot_harts=7 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[clang/plic]: PASS attempts=1 refused=0 boot_harts=4 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[gcc/te-poc-plic]: PASS attempts=1 refused=0 boot_harts=7 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[clang/te-poc-plic]: PASS attempts=1 refused=0 boot_harts=7 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[gcc/anchor-plic]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU[clang/anchor-plic]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU_TOOLCHAIN[gcc]: runs=3 attempts=3 refused=0
+BE_MVP_QEMU_TOOLCHAIN[clang]: runs=3 attempts=3 refused=0
+BE_MVP_QEMU: PASS runs=6 attempts=6 refused=0
+toolchain  run          attempt  boot_hart  qemu_exit  verdict  capture_sha256
+gcc        plic         1        7          0          PASS     059b30c59472b570b509c69a940338906eb941cc39d18ef200393a0c5b66d6eb
+clang      plic         1        4          0          PASS     41fe94b5650d50bc58c9dc793e4d805557719e7e20e4826766c3b47c5968fb8b
+gcc        te-poc-plic  1        7          0          PASS     ffbfccb444c5c08c0454fefd760c44a80d54eddbeedc3225a31d7b849bcaaefd
+clang      te-poc-plic  1        7          0          PASS     9c75900c8e608b1bc4782a88adf97367e2c8ede9e82b383e5bcdfbee34fb437c
+gcc        anchor-plic  1        0          0          PASS     06c1476d21be3971ae942122f013c5f656ae6ac158a51e1daf92bd8403ae6f33
+clang      anchor-plic  1        5          0          PASS     69f1df813bc3a9fd5fe5d2b6f9277d8027ee26546069cf3e8e33e8a2fc3f17ee
+QEMU messages (unique):
+
+== control-cre: firmware 73cab0618947f83f, expected PASS, got PASS
+emulator: qemu-system-riscv64 (/usr/bin/qemu-system-riscv64); runs: gcc/plic clang/plic te-poc/gcc/plic te-poc/clang/plic anchor/gcc/plic anchor/clang/plic; timeout 300s
+BE_MVP_QEMU[gcc/plic]: PASS attempts=1 refused=0 boot_harts=5 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[clang/plic]: PASS attempts=2 refused=1 boot_harts=2,0 qemu_exit=0 (BE_MVP_CAPTURE[direct two-guests]: PASS)
+BE_MVP_QEMU[gcc/te-poc-plic]: PASS attempts=1 refused=0 boot_harts=6 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[clang/te-poc-plic]: PASS attempts=1 refused=0 boot_harts=4 qemu_exit=0 (BE_MVP_CAPTURE[direct te-poc]: PASS)
+BE_MVP_QEMU[gcc/anchor-plic]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU[clang/anchor-plic]: PASS attempts=1 refused=0 boot_harts=0 qemu_exit=0 (BE_MVP_CAPTURE[direct anchor]: PASS)
+BE_MVP_QEMU_TOOLCHAIN[gcc]: runs=3 attempts=3 refused=0
+BE_MVP_QEMU_TOOLCHAIN[clang]: runs=3 attempts=4 refused=1
+BE_MVP_QEMU: PASS runs=6 attempts=7 refused=1
+toolchain  run          attempt  boot_hart  qemu_exit  verdict  capture_sha256
+gcc        plic         1        5          0          PASS     2f4cff3ca7e38dbb6ae206824970dd131e3272e54473a17d4fbe5be303515671
+clang      plic         1        2          0          REFUSED  5d470eee9ffc3fc5ecaf6267f8194a818bdc5a9d1bdc740ab42b099b412e63b2
+clang      plic         2        0          0          PASS     f9ff05cf50f16f346deeda01aac7117f52c57759d4bc9cfae2c87f663b9496b5
+gcc        te-poc-plic  1        6          0          PASS     ed2903066ab89c2916eed2b39a985a86c6212d17c8754b1f497b79ae18b2f6a7
+clang      te-poc-plic  1        4          0          PASS     a4e5f810441a788977a5b15e7a37faf4f3a581118e31d198a44366f7a3089528
+gcc        anchor-plic  1        0          0          PASS     ffed70cc811bdfd836b5844d7c40404a46ca4ed004e3f2a3e0fb5cb071d88d70
+clang      anchor-plic  1        0          0          PASS     55322217a1fe279d6857728e22d3ec69be353b9ac556ddb8f8faef90a686c314
+QEMU messages (unique):
+
+== CHERI enables while both guests run (fixed-cre, gcc two-guests; attempt 2)
+boot: boot_hart=0x7; end: BE_MVP:14 SHUTDOWN
+thread p1.N is hart N-1: hart 0 is the control hart, harts 1 and 2 run domains 0 and 1
+csr p1.1 mseccfg 0x0000000000000008
+csr p1.1 menvcfg 0xa0000000100000f0
+csr p1.1 henvcfg 0x8000000000000000
+csr p1.2 mseccfg 0x0000000000000008
+csr p1.2 menvcfg 0xa0000000100000f0
+csr p1.2 henvcfg 0x8000000000000000
+csr p1.3 mseccfg 0x0000000000000008
+csr p1.3 menvcfg 0xa0000000100000f0
+csr p1.3 henvcfg 0x8000000000000000
+
+== the hart's ISA string (the device tree QEMU generates for -cpu rv64,h=true)
+toolchains/cheri/output/qemu-codasip/bin/qemu-system-riscv64cheristd: riscv,isa = "rv64imafdch_zicbom_zicboz_zicsr_zifencei_zihintpause_zish4add_zawrs_zfa_zca_zcd_zcherihybrid_zcheripurecap_zba_zbb_zbc_zbs_sstc_svadu"
+build/qemu-vs-reset/install/bin/qemu-system-riscv64cheristd: riscv,isa = "rv64imafdch_zicbom_zicboz_zicsr_zifencei_zihintpause_zish4add_zawrs_zfa_zca_zcd_zcherihybrid_zcheripurecap_zba_zbb_zbc_zbs_sstc_svadu"
+
+BE_CHERI_MONITOR_RUN: PASS every configuration as expected

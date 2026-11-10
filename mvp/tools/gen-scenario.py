@@ -8,6 +8,23 @@
   gen-scenario.py --scenario JSON --layout H --dts-tool PY [--policy-tool PY]
                   --guest DIR --self-test
 
+beryllium-cheri: either form also takes --monitor riscv|cheri and
+--guest-flavour linux|cheri-linux (planning/cheri-platform.md; the
+defaults are riscv and linux): the monitor variant's armed henvcfg in
+each BE_MVP:09 line, and the guest flavour's kernel release in the domain
+lines (FLAVOUR_LINES). scenario.json is read, and its SHA-256 taken, as
+it is. For the CHERI enforcement plan (planning/cheri-enforcement-plan.md,
+CE-2), the CHERI Linux guest's images also require its root capability's
+line and its capability-write PTE line (FLAVOUR_ADDED), and the
+CHERI-aware monitor's te-poc has the variant channel-cw (CHANNEL_CW). For
+its CE-3, each CHERI Linux guest's domain with an M1 role also requires
+its init's lines of its own CHERI faults (CHERI_TEST_LINES), every CHERI
+Linux guest's lines reject the guest kernel's CHERI exception report, and
+that guest's te-poc has the variant cheri-fault-hs (CHERI_FAULT_HS). For
+its CE-4, that te-poc also has the variant cap-store (CHERI_CAP_STORE),
+whose G0's module stores a tagged capability into the channel page, and
+that image's control run, the expectation cap-store-control.
+
 Purpose: a scenario is data (planning/mvp-m0-plan.md, "Scenarios and the
 harness", Q9): scenarios/<name>/scenario.json names the domains, their harts,
 windows, roots, VMIDs, DTB bootargs, guest programs, and expected outcomes.
@@ -350,6 +367,143 @@ CONFIG_FILE = "mvp-config.c"
 MODULE_LINE = "[<s>] be_mgmt: loading out-of-tree module taints kernel."
 
 
+# beryllium-cheri: the monitor variant's armed henvcfg, which its
+# BE_MVP:09 HART_READY lines carry: the RISC-V monitor's STCE only, or the
+# CHERI-aware monitor's STCE and CHERI v0.9.3's CRE (src/mvp.h,
+# BE_MVP_HENVCFG_ARMED); main() selects it (--monitor).
+ARMED_HENVCFG = {"riscv": "0x8000000000000000",
+                 "cheri": "0x8000000010000000"}
+MONITOR = "riscv"
+# beryllium-cheri: the guest flavour's domain lines (--guest-flavour).
+# scenario.json states the Linux guest's kernel release, v7.2's, and the
+# CHERI Linux guest's, CHERI Alliance Linux v7.1's (guest/cheri-pins.txt's
+# banner; guest/mvp-init.c's EXPECTED_RELEASE), replaces it in the two
+# lines of each domain's that name it.
+FLAVOUR_LINES = {
+    "linux": (),
+    "cheri-linux": (("[<s>] Linux version 7.2.0 <banner>",
+                     "[<s>] Linux version 7.1.0 <banner>"),
+                    ("MVPINIT 02 UNAME release=7.2.0 machine=riscv64",
+                     "MVPINIT 02 UNAME release=7.1.0 machine=riscv64")),
+}
+# beryllium-cheri: the lines the guest flavour adds to each domain's lines
+# (planning/cheri-enforcement-plan.md, CE-2, Q6), each beside a line of
+# the scenario's, before it (0) or after it (1): the CHERI Linux guest's
+# root capability, which its kernel prints before its banner and requires
+# to be the whole address space with every permission, its address and
+# raw words the flavour's placeholders; and its kernel's probe of the
+# capability-write PTE bit, which the CHERI emulator's Zcheripte makes
+# yes, after its timer line. FLAVOUR_PLACEHOLDERS go into each
+# expectation's domain_placeholders, which the capture checker reads.
+FLAVOUR_ADDED = {
+    "linux": (),
+    "cheri-linux": (
+        ("[<s>] Linux version 7.1.0 <banner>", 0,
+         "[<s>] CHERI: Root capability: <capaddr>[V:1111:C:rwxCalse:1:.:"
+         "0x0000000000000000-0xffffffffffffffff] (1:<capword>:<capword>)"),
+        ("[<s>] riscv-timer: Timer interrupt in S-mode is available via "
+         "sstc extension", 1, "[<s>] CHERI: Selected SATP mode: "
+         "0x8000000000000000 PTE.CW support: yes")),
+}
+FLAVOUR_PLACEHOLDERS = {"linux": {},
+                        "cheri-linux": {"<capaddr>": r"0x[0-9a-f]{16}",
+                                        "<capword>": r"[0-9a-f]{16}"}}
+# beryllium-cheri: the CHERI-aware monitor's variant of a scenario with a
+# channel (--monitor cheri; planning/cheri-enforcement-plan.md, section 6,
+# B2), which monitor_variants() adds after the scenario's own: channel-cw,
+# whose root builder also sets CW in each channel leaf, which the walker
+# refuses at domain 0's root, before any root's line: BE_MVP:FAIL gstage
+# after BE_MVP:02, with no DETAIL line, and no domain hart started.
+CHANNEL_CW = {"name": "channel-cw", "toolchains": ["gcc", "clang"],
+              "where": ["qemu"],
+              "change": "the root builder also sets CW, the capability-"
+                        "write bit, in each channel leaf (a compile-time "
+                        "switch in src/mvp-gstage.c, under BE_MVP_CHERI); "
+                        "the sealed record is unchanged",
+              "fail": "gstage", "after": "BE_MVP:02"}
+# beryllium-cheri: te-poc's two roles' own CHERI faults (planning/
+# cheri-enforcement-plan.md, CE-3 and section 6, C1 and C2), which the
+# CHERI Linux guest's init makes after its line 02 in each domain with an
+# M1 role, whose lines name its channel (guest/cheri/cheri-tests.c): the
+# exception-trace sysctl written 0, so that the kernel prints no report of
+# the one user fault; a child's load one byte past a capability bounded to
+# 16 bytes at the probe page, delivered to its handler as SIGSEGV with
+# SEGV_CAPBOUNDSERR at the base plus 16; a write of 64 bytes from that
+# capability, EFAULT, and from one bounded to 64; and the sysctl written 1.
+# Every value is fixed, the probe page's address too. The report, which
+# begins with CHERI_REPORT, is rejected in every CHERI Linux guest's lines.
+CHERI_PROBE_VA = 0x100000000
+CHERI_TEST_LINES = (
+    "MVPINIT 14 CHERI exception-trace=0",
+    f"MVPINIT 14 CHERI bounds signo=11 code=12 base={CHERI_PROBE_VA:#x} "
+    f"addr={CHERI_PROBE_VA + 16:#x}",
+    "MVPINIT 14 CHERI write bound=16 bytes=64 result=-1 errno=14",
+    "MVPINIT 14 CHERI write bound=64 bytes=64 result=64 errno=0",
+    "MVPINIT 14 CHERI exception-trace=1")
+CHERI_TEST_ROLES = "MVPINIT 07 CHANNEL role="
+CHERI_TEST_AFTER = FLAVOUR_LINES["cheri-linux"][1][1]
+CHERI_REPORT = "===== CHERI exception"
+# beryllium-cheri: the CHERI Linux guest's te-poc variant (section 6, C3),
+# which monitor_variants() adds after channel-cw: cheri-fault-hs, whose
+# hedeleg leaves out cause 28, so that the first child's bounds fault
+# reaches HS: BE_MVP:FAIL exception after the domains' entries, with the
+# DETAIL of either domain's fault (CHERI_FAULT_DETAIL: cause 0x1c from VU
+# mode, tval the faulting address, and no guest-page fault's htval or
+# htinst), no line of its child, the faulting domain's last line its
+# exception-trace line, and each BE_MVP:09's hedeleg a WARL reading of
+# 0xb15d holding 0xb10c (cheri_fault_images()).
+CHERI_FAULT_HS = {"name": "cheri-fault-hs", "toolchains": ["gcc", "clang"],
+                  "where": ["qemu"],
+                  "change": "hedeleg and its required set leave out cause "
+                            "28, the CHERI fault (a compile-time switch over "
+                            "src/mvp.h's and src/mvp-trap.S's values, under "
+                            "BE_MVP_CHERI)",
+                  "fail": "exception", "after": "BE_MVP:10"}
+CHERI_FAULT_DETAIL = ("BE_MVP:DETAIL domain={index} hart={hart} cause=0x1c "
+                      f"pc=<X> tval={CHERI_PROBE_VA + 16:#x} htval=0x0 "
+                      "htinst=0x0 spvp=0 vsatp=<X> exits=<N>")
+# beryllium-cheri: the CHERI Linux guest's te-poc variant cap-store (CE-4;
+# section 6, B3), which monitor_variants() adds after cheri-fault-hs: G0's
+# device tree is tools/gen-dts.py's cap-store, whose init, /init-cap-store,
+# loads the capability-store module (guest/cheri/be-cheri-store.c) with the
+# channel's GPA before its pattern write. The module stores a tagged
+# capability into its own data, an integer at the channel page's offset 64,
+# and the mapping's tagged capability at offset 128, which the page's
+# G-stage leaf, without CW, faults under Zcheripte: BE_MVP:FAIL
+# guest-page-fault after the domains' entries, with G0's DETAIL
+# (CAP_STORE_DETAIL: cause 23 from VS mode, htval the store's GPA >> 2, no
+# transformed instruction, a nonzero vsatp, and tval's page offset 0x080),
+# and G0's last lines the kernel's taint line and the module's first two
+# (CAP_STORE_LINES), so that the module printed nothing after its store
+# (cap_store_images()). Its control, cap-store-control (B4), the same image
+# without Zcheripte, passes as te-poc does, with G0's lines its device
+# tree's and the module's and the init's after its own CHERI faults' lines,
+# the tag landing (cap_store_control()).
+CHERI_CAP_STORE = {"name": "cap-store", "toolchains": ["gcc", "clang"],
+                   "where": ["qemu"],
+                   "change": "G0's device tree names rdinit=/init-cap-store, "
+                             "whose init loads the capability-store module "
+                             "with the channel's GPA before its pattern "
+                             "write; the monitor is te-poc's with its own "
+                             "launch registers",
+                   "fail": "guest-page-fault", "after": "BE_MVP:10"}
+CAP_STORE_INIT, CAP_STORE_OFFSET = "/init-cap-store", 0x80
+CAP_STORE_LINES = (
+    "[<s>] be_cheri_store: loading out-of-tree module taints kernel.",
+    "[<s>] be_cheri_store: own tag=1",
+    f"[<s>] be_cheri_store: channel gpa={Q1_CHANNEL['gpa']:#x} offset=0x40 "
+    "value=0x5678",
+    f"[<s>] be_cheri_store: channel offset={CAP_STORE_OFFSET:#x} tag=1",
+    f"MVPINIT 14 CHERI cap-store gpa={Q1_CHANNEL['gpa']:#x} result=0 "
+    "errno=0")
+CAP_STORE_DETAIL = (
+    "BE_MVP:DETAIL domain=0 hart={hart} cause=0x17 pc=<X> tval=<O> "
+    f"htval={(Q1_CHANNEL['gpa'] + CAP_STORE_OFFSET) >> 2:#x} htinst=0x0 "
+    "spvp=1 vsatp=<V> exits=<N>")
+CAP_STORE_PLACEHOLDERS = dict(PLACEHOLDERS, **{
+    "<O>": r"0x[0-9a-f]*080", "<V>": r"0x[0-9a-f]*[1-9a-f][0-9a-f]*"})
+
+
 class ScenarioError(Exception):
     pass
 
@@ -357,6 +511,128 @@ class ScenarioError(Exception):
 def require(condition, message):
     if not condition:
         raise ScenarioError(message)
+
+
+def flavour_lines(scenario, flavour):
+    """beryllium-cheri: SCENARIO with FLAVOUR's domain lines: each line
+    FLAVOUR_LINES replaces, found once in each domain's lines."""
+    lines = scenario.get("expect", {}).get("domain_lines")
+    for own in lines.values() if isinstance(lines, dict) else [lines]:
+        for old, new in FLAVOUR_LINES[flavour]:
+            found = own.count(old) if isinstance(own, list) else 0
+            require(found == 1, f"expect.domain_lines holds {old!r} "
+                    f"{found} times, not once, for the {flavour} guest")
+            own[own.index(old)] = new
+    return scenario
+
+
+def flavour_images(images, flavour):
+    """beryllium-cheri: each image's domain lines with the lines
+    FLAVOUR_ADDED adds beside theirs, each found once in each domain's
+    lines, and its domain placeholders with FLAVOUR_PLACEHOLDERS beside its
+    own; for the CHERI Linux guest, each domain's lines with an M1 role's
+    with CHERI_TEST_LINES after its line 02, and each image's rejected
+    substrings with CHERI_REPORT. They are added to the images as
+    generated, so that the generator's rules and its self-test, which name
+    the scenario's lines' places, read the scenario's lines."""
+    for image in images.values() if FLAVOUR_ADDED[flavour] else ():
+        if "rejected" in image:
+            image["rejected"] = image["rejected"] + [CHERI_REPORT]
+        lines = image.get("domain_lines")
+        if lines is None:
+            continue
+        added = {}
+        for key, own in lines.items() if isinstance(lines, dict) else [
+                (None, lines)]:
+            own = list(own)
+            tests = ((CHERI_TEST_AFTER, 1, CHERI_TEST_LINES),) if any(
+                text.startswith(CHERI_TEST_ROLES) for text in own) else ()
+            for beside, after, new in FLAVOUR_ADDED[flavour] + tests:
+                found = own.count(beside)
+                require(found == 1, f"{image['image']}'s domain lines hold "
+                        f"{beside!r} {found} times, not once, for the "
+                        f"{flavour} guest")
+                at = own.index(beside) + after
+                own[at:at] = [new] if isinstance(new, str) else list(new)
+            added[key] = own
+        image["domain_lines"] = added if isinstance(lines, dict) else \
+            added[None]
+        image["domain_placeholders"] = dict(
+            image.get("domain_placeholders") or {},
+            **FLAVOUR_PLACEHOLDERS[flavour])
+    return images
+
+
+def cheri_fault_images(images):
+    """beryllium-cheri: cheri-fault-hs's outcome (CHERI_FAULT_HS): either
+    domain's DETAIL, its child's line absent, the faulting domain's last
+    line, and the hedeleg its BE_MVP:09 lines read, with what must hold."""
+    image = images.get(CHERI_FAULT_HS["name"])
+    if image is not None:
+        image["outcome"].update(
+            detail_lines=[line(CHERI_FAULT_DETAIL.format(**domain))
+                          for domain in image["domains"]],
+            absent=["MVPINIT 14 CHERI bounds"],
+            last_lines=[CHERI_TEST_LINES[0]], hedeleg=["0xb15d", "0xb10c"])
+    return images
+
+
+def cap_store_images(images):
+    """beryllium-cheri: cap-store's outcome (CHERI_CAP_STORE): G0's DETAIL,
+    and G0's last lines, the taint line and the module's first two."""
+    image = images.get(CHERI_CAP_STORE["name"])
+    if image is not None:
+        image["outcome"].update(
+            detail_lines=[line(CAP_STORE_DETAIL.format(
+                hart=image["domains"][0]["hart"]), CAP_STORE_PLACEHOLDERS)],
+            last_lines=list(CAP_STORE_LINES[:3]))
+    return images
+
+
+def cap_store_control(images):
+    """beryllium-cheri: cap-store's control (CE-4; section 6, B4), the same
+    image without Zcheripte, whose expectation is cap-store's with te-poc's
+    passing outcome, denials, and complete log; G0's lines with its device
+    tree's command line and init (console_head()) and, after its own CHERI
+    faults' lines, the module's four and the init's (CAP_STORE_LINES); and
+    each domain's capability-write PTE line reading no."""
+    image = images.get(CHERI_CAP_STORE["name"])
+    if image is None:
+        return images
+    control = copy.deepcopy(image)
+    control.update(
+        image=image["image"] + "-control", outcome={"pass": True},
+        denials=copy.deepcopy(images[image["scenario"]]["denials"]),
+        change="cap-store's image, run without the CHERI emulator's "
+               "Zcheripte: the module's capability store lands, and the "
+               "pattern's integer stores clear its tag")
+    control["log"].update(run="complete", terminal="before-shutdown")
+    own = control["domain_lines"]["0"]
+    bootargs = image["domains"][0]["bootargs"].replace(
+        " -- ", f" rdinit={CAP_STORE_INIT} -- ", 1)
+    after = own.index(CHERI_TEST_LINES[-1]) + 1
+    control["domain_lines"]["0"] = console_head(
+        own, CAP_STORE_INIT, bootargs, CHERI_TEST_LINES[-1]) + \
+        list(CAP_STORE_LINES) + own[after:]
+    for key, lines in control["domain_lines"].items():
+        control["domain_lines"][key] = [
+            text.replace("PTE.CW support: yes", "PTE.CW support: no")
+            for text in lines]
+    images[control["image"]] = control
+    return images
+
+
+def monitor_variants(scenario, flavour):
+    """beryllium-cheri: SCENARIO with the monitor variant's own variants
+    after its own: the CHERI-aware monitor's channel-cw in a scenario with
+    a channel (a v2 scenario, te-poc), and for its CHERI Linux guest,
+    cheri-fault-hs and cap-store."""
+    if MONITOR == "cheri" and version_of(scenario) == 2:
+        scenario["variants"] = scenario.get("variants", []) + [
+            copy.deepcopy(CHANNEL_CW)] + ([
+                copy.deepcopy(CHERI_FAULT_HS), copy.deepcopy(CHERI_CAP_STORE)]
+                if flavour == "cheri-linux" else [])
+    return scenario
 
 
 def layout_constants(path):
@@ -1327,7 +1603,8 @@ def control_lines(name, binding, layout, outbound, budget, time="0",
                       f"domain={domain['index']} "
                       f"hgatp=0x{domain['hgatp']:x} hstatus_controls=0x180 "
                       "hedeleg=<h> hideleg=0x40 hcounteren=0x2 sie=0x2 "
-                      "henvcfg=0x8000000000000000 "
+                      # beryllium-cheri: the monitor variant's.
+                      f"henvcfg={ARMED_HENVCFG[MONITOR]} "
                       "vstimecmp=0xffffffffffffffff")
     for domain in binding:
         before.append(f"BE_MVP:10 DOMAIN_ENTERED hart={domain['hart']} "
@@ -3272,10 +3549,11 @@ def scenario_logs(scenario, binding, layout, files, core_of, sealed, policy,
 
 
 def generate(scenario_path, layout_path, dts_path, out, policy_path=None,
-             negative=None, guest=None):
+             negative=None, guest=None, flavour="linux"):
     data = pathlib.Path(scenario_path).read_bytes()
     digest = hashlib.sha256(data).hexdigest()
-    scenario = json.loads(data)
+    scenario = monitor_variants(flavour_lines(json.loads(data), flavour),
+                                flavour)
     layout = layout_constants(layout_path)
     policy_bytes = None
     version = version_of(scenario)
@@ -3283,6 +3561,9 @@ def generate(scenario_path, layout_path, dts_path, out, policy_path=None,
             "tools/policy-check.py")
     policy = load_tool(policy_path, "mvp_policy_check")
     dts = load_tool(dts_path, "mvp_gen_dts")
+    # beryllium-cheri: the flavour's DTBs (cap-store's for the CHERI
+    # Linux guest).
+    dts.select_flavour(flavour)
     if version >= 2:
         scenario, policy_bytes = policy_input(scenario_path, scenario,
                                               policy, negative)
@@ -3335,6 +3616,9 @@ def generate(scenario_path, layout_path, dts_path, out, policy_path=None,
     images.update(console_images(
         scenario, scenario_path, images, binding, layout, dts, sealed,
         layout["RING_PEAK_BUDGET"], bin_count(layout_path)))
+    # beryllium-cheri: the guest flavour's added lines, and cheri-fault-hs's
+    # and cap-store's outcomes.
+    cap_store_images(cheri_fault_images(flavour_images(images, flavour)))
     # M9's log (mvp/docs/log-profile.md): each image's constants, records,
     # and lines; the header carries the constants.
     logs, bindings = scenario_logs(scenario, binding, layout, files, core_of,
@@ -3342,6 +3626,8 @@ def generate(scenario_path, layout_path, dts_path, out, policy_path=None,
     require(sorted(logs) == sorted(images), "the logs are not the images'")
     for name, image in images.items():
         apply_log(image, logs[name], bindings[name])
+    # beryllium-cheri: cap-store's control run, its image's, logged.
+    cap_store_control(images)
     (out / "mvp-scenario.h").write_text(
         header(scenario["name"], binding, digest, layout, sealed,
                log_header(scenario, logs, [probe["name"] for probe in
@@ -3565,12 +3851,16 @@ def log_self_test(scenario, scenario_path, binding, sealed, layout, files,
 
 
 def self_test(scenario_path, layout_path, dts_path, policy_path=None,
-              guest=None):
+              guest=None, flavour="linux"):
     """Each mutation of the scenario must be refused for its own reason."""
     data = pathlib.Path(scenario_path).read_bytes()
-    scenario = json.loads(data)
+    scenario = monitor_variants(flavour_lines(json.loads(data), flavour),
+                                flavour)
     layout = layout_constants(layout_path)
     dts = load_tool(dts_path, "mvp_gen_dts")
+    # beryllium-cheri: the flavour's DTBs (cap-store's for the CHERI
+    # Linux guest).
+    dts.select_flavour(flavour)
     require(policy_path, "the MVP core profile needs --policy-tool, "
             "tools/policy-check.py")
     policy = load_tool(policy_path, "mvp_policy_check")
@@ -4388,15 +4678,32 @@ def main(argv):
     parser.add_argument("--negative")
     parser.add_argument("--guest")
     parser.add_argument("--self-test", action="store_true")
+    # beryllium-cheri: the monitor variant and the guest flavour.
+    parser.add_argument("--monitor", choices=tuple(ARMED_HENVCFG),
+                        default="riscv")
+    parser.add_argument("--guest-flavour", choices=tuple(FLAVOUR_LINES),
+                        default="linux")
     args = parser.parse_args(argv[1:])
+    global MONITOR
+    MONITOR = args.monitor
+    # beryllium-cheri: the CHERI-aware monitor's channel-cw, a
+    # pre-measurement image by 3.2's rule (run_class()), and its CHERI Linux
+    # guest's cheri-fault-hs and cap-store, post-launch failures.
+    if MONITOR == "cheri":
+        PROFILE_RUNS["pre-measurement"] += (CHANNEL_CW["name"],)
+    if MONITOR == "cheri" and args.guest_flavour == "cheri-linux":
+        PROFILE_RUNS["post-launch-failure"] += (CHERI_FAULT_HS["name"],
+                                                CHERI_CAP_STORE["name"])
     try:
         if args.self_test:
             return self_test(args.scenario, args.layout, args.dts_tool,
-                             args.policy_tool, args.guest)
+                             args.policy_tool, args.guest,
+                             args.guest_flavour)
         if not args.out:
             parser.error("--out is required")
         generate(args.scenario, args.layout, args.dts_tool, args.out,
-                 args.policy_tool, args.negative, args.guest)
+                 args.policy_tool, args.negative, args.guest,
+                 args.guest_flavour)
     except (ScenarioError, OSError, ValueError, KeyError, TypeError,
             AttributeError, IndexError) as error:
         print(f"BE_MVP_SCENARIO: FAIL {error}")

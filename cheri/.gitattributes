@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
+# A unified diff writes a blank context line as a lone space, so Git's
+# whitespace checks skip the patch files here, as beryllium-cheri's own
+# .gitattributes had them skip its patch files.
+*.patch -whitespace

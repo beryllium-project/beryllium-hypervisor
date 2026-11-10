@@ -1,0 +1,22 @@
+BE_MVP_COUNTS: boot_hart=7 rule_hart=7 started=7 g0=54 g1=53
+BE_MVP_LOG: contract=v2/post-launch-failure r2=kept state=closed count=14 lines=17 bytes=4556 boot_image=nominal reference=5d90974514f79268 export=046967550abbe59b
+BE_MVP_LOG_REGISTERS: at=barrier r0=313e776bf1f3d0c6a76cfc4fd9d49e4cc559f71e248c3f3cfdf101b13895d2b6 r1=c1dbf437c16c772a5c261c3c22c023d7548fe1fe01646b297937bec516e46525 r2=d4a20b058b9a0f17a1ab30bb152c5bd6906204293a593713d3b6fe2e6a99d35e r3=050a0c56f991e333a6797785c607657dcba8baa494a0139fd5173919135db580
+BE_MVP_LOG_REGISTERS: at=terminal r0=313e776bf1f3d0c6a76cfc4fd9d49e4cc559f71e248c3f3cfdf101b13895d2b6 r1=c1dbf437c16c772a5c261c3c22c023d7548fe1fe01646b297937bec516e46525 r2=d4a20b058b9a0f17a1ab30bb152c5bd6906204293a593713d3b6fe2e6a99d35e r3=050a0c56f991e333a6797785c607657dcba8baa494a0139fd5173919135db580
+BE_MVP_LOG_REGISTERS: at=replayed r0=313e776bf1f3d0c6a76cfc4fd9d49e4cc559f71e248c3f3cfdf101b13895d2b6 r1=c1dbf437c16c772a5c261c3c22c023d7548fe1fe01646b297937bec516e46525 r2=d4a20b058b9a0f17a1ab30bb152c5bd6906204293a593713d3b6fe2e6a99d35e r3=050a0c56f991e333a6797785c607657dcba8baa494a0139fd5173919135db580 (unprotected)
+BE_MVP_LOG_TICKS: barrier=0xb67e8 launch_g0=0x59b93 launch_g1=0x59a69
+BE_MVP_LOG_RECORD: seq=0 object=monitor-text stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=1 object=monitor-rodata stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=2 object=monitor-input stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=3 object=mvp-text stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=4 object=mvp-rodata stream=0 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=5 object=core-identity stream=1 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=6 object=console-grants stream=1 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=7 object=configuration-identity stream=1 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=8 object=policy-identity stream=1 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=9 object=kernel-image stream=2 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=10 object=device-tree stream=2 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=11 object=kernel-image stream=3 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=12 object=device-tree stream=3 reference=equal recomputed=equal
+BE_MVP_LOG_RECORD: seq=13 object=close stream=255 reference=equal recomputed=none
+BE_MVP_RESULT: PASS terminal=fail-marker
+BE_MVP_CAPTURE[direct no-inject]: PASS

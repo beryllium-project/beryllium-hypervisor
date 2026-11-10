@@ -3,6 +3,35 @@
 
 # Beryllium MVP 1.0
 
+> **This is `main`, the development line after MVP 1.0.** MVP 1.0 is
+> the tag `mvp-1.0`, which this README describes. Since then, `main`
+> has gained the project's CHERI platform work, from the research
+> branch `cheri-platform`: a CHERI-aware variant of the monitor and
+> CHERI Linux guests, run on RISC-V CHERI v0.9.3 under emulation, as
+> [`planning/cheri-platform.md`](planning/cheri-platform.md) describes.
+> None of it is evidence for MVP 1.0's claim. On `main`:
+>
+> - the plain variant's boot images are MVP 1.0's, byte for byte, and
+>   `./mvp/mvp check` passes. The claim ledger pins by SHA-256 seven
+>   files that the CHERI variant changes. Its 11 pins of them are
+>   refreshed, each with its reason in the ledger, after checks that the
+>   plain variant's images, the checkers' judgements of the retained
+>   captures, and the generators' outputs are unchanged;
+> - the first verification plan's target digests,
+>   `mvp/verify/target-digests.txt`, are re-written against the
+>   research branch's commit `5980edff`, since the CHERI variant changes
+>   two of the files that they cover;
+> - release candidate 4's eight gates and the CHERI check passed on the
+>   research branch, and `verify`'s verdicts equal those of release
+>   candidate 4's record. The records are
+>   [`mvp/results/20261109-cheri-integration/`](mvp/results/20261109-cheri-integration/)
+>   and, beside it, `20261109-verify-cheri-integration/` and
+>   `20261109-cheri-check/`;
+> - the CHERI variant's check, `mvp/tools/cheri-check.sh`, needs a
+>   CHERI toolchain, a CHERI QEMU with two local changes, and CHERI
+>   firmware, which the tools in [`cheri/`](cheri/README.md) build from
+>   the pins there.
+
 Beryllium is an open-source defensive security project for Linux-oriented
 systems: a small RISC-V monitor that runs in HS mode and keeps each domain
 in its own G-stage (second-stage) address space. Its security properties
@@ -239,9 +268,13 @@ discloses that assistance.
 
 ## Licences
 
-Beryllium is `GPL-3.0-only` ([`COPYING`](COPYING)), but for the guest
-management module, [`mvp/guest/mgmt/be-mgmt.c`](mvp/guest/mgmt/be-mgmt.c),
-which is `GPL-2.0-only` because it is linked into the guest's Linux kernel.
+Beryllium is `GPL-3.0-only` ([`COPYING`](COPYING)), but for two guest
+kernel modules, the management module
+[`mvp/guest/mgmt/be-mgmt.c`](mvp/guest/mgmt/be-mgmt.c) and the CHERI
+guests' module
+[`mvp/guest/cheri/be-cheri-store.c`](mvp/guest/cheri/be-cheri-store.c),
+which are `GPL-2.0-only` because they are linked into the guest's Linux
+kernel.
 The licence texts are under [`LICENSES/`](LICENSES/), and the third-party
 sources the build uses, with their licences and pins, are listed in
 [`mvp/docs/licence-manifest.md`](mvp/docs/licence-manifest.md). Security

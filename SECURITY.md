@@ -8,9 +8,12 @@
 Beryllium is a research security monitor for RISC-V. This repository is
 MVP 1.0's clean repository: the selected tree of MVP 1.0 release candidate
 4, with the adaptations and the fixes after two reviews that `RELEASE.md`
-records, released as MVP 1.0 at the tag `mvp-1.0`. It is research
-software, not a product. Nothing in it is a security claim beyond the one
-statement in [`mvp/docs/claim.md`](mvp/docs/claim.md), read with its
+records, released as MVP 1.0 at the tag `mvp-1.0`. Its `main` is the
+development line after that tag, which adds the CHERI platform work
+([`planning/cheri-platform.md`](planning/cheri-platform.md)), run under
+emulation. It is research software, not a product. Nothing in it is a
+security claim beyond the one statement in
+[`mvp/docs/claim.md`](mvp/docs/claim.md), read with its
 required limit; every other property is unproved, untested, or out of
 scope, as the [claim ledger](mvp/docs/claim-ledger.md) records. Do not run
 it to protect anything.
@@ -23,7 +26,8 @@ repository. It does not mean that the version is fit to protect anything.
 
 | Version | Supported |
 | --- | --- |
-| MVP 1.0: the tag `mvp-1.0` and this repository's `main` | Yes |
+| MVP 1.0: the tag `mvp-1.0` | Yes |
+| `main`, the development line after MVP 1.0, with the CHERI platform work | Yes |
 | MVP 1.0 release candidates 1 to 3, the earlier review snapshots, and anything older | No |
 
 ## Reporting a security issue

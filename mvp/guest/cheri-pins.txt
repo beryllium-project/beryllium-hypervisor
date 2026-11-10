@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# beryllium-cheri: the CHERI Linux guest's pins (planning/cheri-platform.md;
+# mvp/guest.mk's MVP_GUEST_FLAVOUR=cheri-linux), as guest/pins.txt pins the
+# Linux guest's: the SHA-256 and size of every output that
+# tools/build-guest-cheri.sh makes, under the same names (the purecap init
+# against the CHERI Alliance musl, the management module, CHERI Alliance
+# BusyBox, the soft-float musl's libc.a, the CHERI Alliance Linux v7.1
+# Image, and every DTB, which names Zcherihybrid and Zcheripurecap; and,
+# under names of their own, the capability-store module and cap-store's
+# G0 DTB, planning/cheri-enforcement-plan.md's CE-4), the
+# Image header facts, and the kernel banner. They hold for the CHERI
+# Alliance LLVM named on the last line. The CHERI sources and the SDK are
+# never committed: cheri/pins.txt, the CHERI stack's lock, pins each by its
+# commit, and tools/build-guest-cheri.sh refuses any other. The script
+# compares its outputs with the `file`, `kernel`, and `toolchain` lines;
+# `build-guest-cheri.sh --unpinned` prints them for a deliberate update.
+# The `firmware` line pins the CHERI-aware monitor's firmware (the SDK's
+# purecap OpenSBI fw_dynamic.bin, which tools/cheri-check.sh boots), as
+# the tool lock's MVP_PIN_OPENSBI_BIN_SHA256 pins the RISC-V monitor's
+# (the release's security review, S-01).
+firmware fw_dynamic.bin sha256=e0aeeae9ac48ed52ec95188dd7cb9a415be266f182c70acb63b8a3c91d628c7d bytes=547680
+file init sha256=1f6311e245c63bc14dc2a795cc7826dd79fb7d43c8fcdfaa9f77d6049b4402cc bytes=77600
+file be-mgmt.ko sha256=3e7653f860479d127da091e3a249c95d3d1833f2783e679b1486466843a2391a bytes=7792
+file be-cheri-store.ko sha256=e69fb5787b2680a8fe372051eb5a523faa8873d290db369e77e7e8ff8347021b bytes=7120
+file busybox sha256=b03d709e56c128bf512d8998ca44c5af4c1ee9b8d3afd958abf69c3c1cb87577 bytes=286280
+file musl-libc.a sha256=afd9eab769778155aec3685786be47412a29dd3ab9b24c4a371368c24ef6826a bytes=3749616
+file Image sha256=bb9042732b60148e0ef4456cb5abeb056fbcfe76c0bb5300b200f0db86920bb7 bytes=3510272
+file mvp-guest-g0.dtb sha256=68cf8491748bdcb528a0d46d0d154b02fde1b46e4cfb01ecad3f1e0bc7774c16 bytes=4096
+file mvp-guest-g1.dtb sha256=570b047047a43f1460f3992f0ea80fafc497ea9555540c4b0cd767d08244c706 bytes=4096
+file mvp-guest-g1-init-exit.dtb sha256=418aab61389585056a4103ab3995b63f08ca7f235cece4dc439a1ecdd67e082b bytes=4096
+file mvp-guest-g0-rdcycle.dtb sha256=cc9f0cb4778d4ce9415afbe66efbd4a0966907de69909c5102a34cd58c209d0c bytes=4096
+file mvp-guest-g0-sbi-time.dtb sha256=49505ef2ee7f08ee4fdb77bf8dbd8e65f20935685fcb3cd702d8ab616904e32d bytes=4096
+file mvp-guest-g1-sbi-time.dtb sha256=67b2059a18c477ee04fb1e99b16aa5e542162bb3f6c321654954aec01af75eeb bytes=4096
+file mvp-guest-g0-reference.dtb sha256=87e8aed28607c60ef04179ebb72339fffe2cabd6147696ec6e2cf7e08a2316e6 bytes=4096
+file mvp-guest-g1-reference.dtb sha256=72b101100eacfc698461ab7637eabc60a123d37369a9874d03a2e7576c7c14c6 bytes=4096
+file mvp-guest-g0-te-poc.dtb sha256=12be76692763339aadc29299dfca2c94cd4e546f9494b2f2339a9172aff14a58 bytes=4096
+file mvp-guest-g1-te-poc.dtb sha256=c064c7633fd7e815843a8a95e3e9b1415d5933290cf10416a8cf465be26f362c bytes=4096
+file mvp-guest-g0-anchor.dtb sha256=070335109aea259623f23adbdbee5419daf4ac9e02a80f72e4b1c178e4158b40 bytes=4096
+file mvp-guest-g1-anchor.dtb sha256=1e1e2b70c87496c3d542440e4f77db50c704fbac125c25e28852437a6a892c8a bytes=4096
+file mvp-guest-g0-shell.dtb sha256=db49bb341612eb7b95ad3e44837f3d7b343fb1d5dc805234e8fb18998875f21b bytes=4096
+file mvp-guest-g1-shell.dtb sha256=05b04ebe88657879c2faf1b38f6058e8748413092b18eb937b4c65892ddbd0d9 bytes=4096
+file mvp-guest-g0-te-poc-shell.dtb sha256=eb2749fb2120c9755e4aa7b3fd180204c61a32e521181d6a399b8b50d68cfe29 bytes=4096
+file mvp-guest-g1-te-poc-shell.dtb sha256=b94070eb24ce1b3ca1da6fe08939bd625cfec3643085d043fc3dda9917682ac1 bytes=4096
+file mvp-guest-g0-anchor-shell.dtb sha256=2c961214d8fdfcb3f7cde7694dcbd52ad077f2f78f539b1579e5f3830f3be3d5 bytes=4096
+file mvp-guest-g0-hostile.dtb sha256=28403ebab895d3dce12b0d68e1f2aed4f50380a712ecb518082efc6ffc9a7823 bytes=4096
+file mvp-guest-g0-cap-store.dtb sha256=5d5b7fe0440ad631087ecc6d54b9c40f5745b6a7c377b39517d60df5a5817dd3 bytes=4096
+kernel image_size=0x396451
+kernel text_offset=0x200000
+kernel banner=Linux version 7.1.0 (be@beryllium) (clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d), LLD 20.0.0 (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d)) #1 PREEMPT Wed Jul 15 14:28:33 UTC 2026
+toolchain clang=clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d)

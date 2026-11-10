@@ -1,0 +1,724 @@
+{
+ "change": "block 1 names hart 9",
+ "concurrency": {
+  "alternations": 8,
+  "overlap": "half-of-shorter"
+ },
+ "control_lines": [
+  {
+   "regex": "^BE_K3_B3:\\ SHIM\\ hart=0x0000000000000000\\ shim=0x0000000108000000\\ fdt=0x[0-9a-f]{16}\\ dest=0x0000000102000000\\ bytes=0x00000000000a4000$",
+   "template": "BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x<f> dest=0x0000000102000000 bytes=0x00000000000a4000"
+  },
+  {
+   "regex": "^BE_MVP:00\\ BOOT_VALIDATED$",
+   "template": "BE_MVP:00 BOOT_VALIDATED"
+  },
+  {
+   "regex": "^BE_MVP:00\\ CONFIG_SEALED\\ inventory=14\\ authorities=2\\ roots=2\\ harts=0,1,9\\ identity=422647143fbf7ffc$",
+   "template": "BE_MVP:00 CONFIG_SEALED inventory=14 authorities=2 roots=2 harts=0,1,9 identity=422647143fbf7ffc"
+  },
+  {
+   "regex": "^BE_MVP:01\\ SCENARIO\\ name=two\\-guests\\ domains=2\\ harts=0,1,9\\ of=8\\ ring_bytes=0x8000\\ mvp_region=0x102064000\\ mvp_bytes=0x40000\\ image_bytes=0xa4000$",
+   "template": "BE_MVP:01 SCENARIO name=two-guests domains=2 harts=0,1,9 of=8 ring_bytes=0x8000 mvp_region=0x102064000 mvp_bytes=0x40000 image_bytes=0xa4000"
+  },
+  {
+   "regex": "^BE_MVP:02\\ FIRMWARE_PROBED\\ hsm=1\\ ipi=1\\ status=1:1,2:[01],3:[01],4:[01],5:[01],6:[01],7:[01]\\ started=(?:none|[0-9]+)$",
+   "template": "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status=1:1,2:<H>,3:<H>,4:<H>,5:<H>,6:<H>,7:<H> started=<W>"
+  },
+  {
+   "regex": "^BE_MVP:03\\ GSTAGE_BUILT_REWALKED\\ domain=0\\ hart=1\\ gpa=0x80000000\\ hpa=0x110000000\\ size=0x4000000\\ leaves=32\\ root=0x102034000\\ vmid=1$",
+   "template": "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 hart=1 gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 root=0x102034000 vmid=1"
+  },
+  {
+   "regex": "^BE_MVP:03\\ GSTAGE_BUILT_REWALKED\\ domain=1\\ hart=9\\ gpa=0x80000000\\ hpa=0x114000000\\ size=0x4000000\\ leaves=32\\ root=0x10203c000\\ vmid=2$",
+   "template": "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 hart=9 gpa=0x80000000 hpa=0x114000000 size=0x4000000 leaves=32 root=0x10203c000 vmid=2"
+  },
+  {
+   "regex": "^BE_MVP:04\\ PAYLOAD_CHECKED\\ kernel_bytes=0x[0-9a-f]+\\ image_size=0x[0-9a-f]+$",
+   "template": "BE_MVP:04 PAYLOAD_CHECKED kernel_bytes=<K> image_size=<S>"
+  },
+  {
+   "regex": "^BE_MVP:05\\ DOMAIN_RAM_CLEARED\\ domain=0\\ gpa=0x80000000\\ size=0x4000000\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:05 DOMAIN_RAM_CLEARED domain=0 gpa=0x80000000 size=0x4000000 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:05\\ DOMAIN_RAM_CLEARED\\ domain=1\\ gpa=0x80000000\\ size=0x4000000\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:05 DOMAIN_RAM_CLEARED domain=1 gpa=0x80000000 size=0x4000000 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:06\\ PAYLOAD_PLACED\\ domain=0\\ kernel=0x80200000\\ kernel_bytes=0x[0-9a-f]+\\ image_size=0x[0-9a-f]+\\ dtb=0x83e00000\\ dtb_bytes=0x1000\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:06 PAYLOAD_PLACED domain=0 kernel=0x80200000 kernel_bytes=<K> image_size=<S> dtb=0x83e00000 dtb_bytes=0x1000 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:06\\ PAYLOAD_PLACED\\ domain=1\\ kernel=0x80200000\\ kernel_bytes=0x[0-9a-f]+\\ image_size=0x[0-9a-f]+\\ dtb=0x83e00000\\ dtb_bytes=0x1000\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:06 PAYLOAD_PLACED domain=1 kernel=0x80200000 kernel_bytes=<K> image_size=<S> dtb=0x83e00000 dtb_bytes=0x1000 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:06\\ LAUNCH\\ domain=0\\ hart=1\\ register=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7\\ expected=match\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:06 LAUNCH domain=0 hart=1 register=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 expected=match ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:06\\ LAUNCH\\ domain=1\\ hart=9\\ register=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b\\ expected=match\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:06 LAUNCH domain=1 hart=9 register=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b expected=match ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ header\\ magic=BEMVPLOG\\ version=1\\ hlen=128\\ rlen=96\\ capacity=41\\ count=13\\ state=closed\\ alg=0x000b\\ scenario=87c6f18b6a18f99cad8604c796f88b9cab63c9c86f307f338a395894d9d3cc34\\ config=0000000000000000000000000000000000000000000000000000000000000000$",
+   "template": "BE_MVP:19 LOG header magic=BEMVPLOG version=1 hlen=128 rlen=96 capacity=41 count=13 state=closed alg=0x000b scenario=87c6f18b6a18f99cad8604c796f88b9cab63c9c86f307f338a395894d9d3cc34 config=0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=0\\ producer=0\\ type=measured\\ stream=0\\ object=monitor\\-text\\ repr=as\\-placed\\ outcome=recorded\\ base=0x0000000102000000\\ length=0x[0-9a-f]{16}\\ dlen=32\\ srec=0\\ expected=0\\ digest=[0-9a-f]{64}$",
+   "template": "BE_MVP:19 LOG record seq=0 producer=0 type=measured stream=0 object=monitor-text repr=as-placed outcome=recorded base=0x0000000102000000 length=<Y> dlen=32 srec=0 expected=0 digest=<Z>"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=1\\ producer=0\\ type=measured\\ stream=0\\ object=monitor\\-rodata\\ repr=as\\-placed\\ outcome=recorded\\ base=0x[0-9a-f]{16}\\ length=0x[0-9a-f]{16}\\ dlen=32\\ srec=1\\ expected=0\\ digest=[0-9a-f]{64}$",
+   "template": "BE_MVP:19 LOG record seq=1 producer=0 type=measured stream=0 object=monitor-rodata repr=as-placed outcome=recorded base=<Y> length=<Y> dlen=32 srec=1 expected=0 digest=<Z>"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=2\\ producer=0\\ type=measured\\ stream=0\\ object=monitor\\-input\\ repr=as\\-placed\\ outcome=recorded\\ base=0x0000000102008000\\ length=0x[0-9a-f]{16}\\ dlen=32\\ srec=2\\ expected=0\\ digest=[0-9a-f]{64}$",
+   "template": "BE_MVP:19 LOG record seq=2 producer=0 type=measured stream=0 object=monitor-input repr=as-placed outcome=recorded base=0x0000000102008000 length=<Y> dlen=32 srec=2 expected=0 digest=<Z>"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=3\\ producer=0\\ type=measured\\ stream=0\\ object=mvp\\-text\\ repr=as\\-placed\\ outcome=recorded\\ base=0x0000000102064000\\ length=0x[0-9a-f]{16}\\ dlen=32\\ srec=3\\ expected=0\\ digest=[0-9a-f]{64}$",
+   "template": "BE_MVP:19 LOG record seq=3 producer=0 type=measured stream=0 object=mvp-text repr=as-placed outcome=recorded base=0x0000000102064000 length=<Y> dlen=32 srec=3 expected=0 digest=<Z>"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=4\\ producer=0\\ type=measured\\ stream=0\\ object=mvp\\-rodata\\ repr=as\\-placed\\ outcome=recorded\\ base=0x[0-9a-f]{16}\\ length=0x[0-9a-f]{16}\\ dlen=32\\ srec=4\\ expected=0\\ digest=[0-9a-f]{64}$",
+   "template": "BE_MVP:19 LOG record seq=4 producer=0 type=measured stream=0 object=mvp-rodata repr=as-placed outcome=recorded base=<Y> length=<Y> dlen=32 srec=4 expected=0 digest=<Z>"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=5\\ producer=0\\ type=measured\\ stream=1\\ object=core\\-identity\\ repr=as\\-computed\\ outcome=recorded\\ base=0x0000000000000000\\ length=0x0000000000000000\\ dlen=32\\ srec=0\\ expected=0\\ digest=422647143fbf7ffc2648bef7a0e3048f51533db3ccf05023bd76b49bf7f2bc14$",
+   "template": "BE_MVP:19 LOG record seq=5 producer=0 type=measured stream=1 object=core-identity repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=0 digest=422647143fbf7ffc2648bef7a0e3048f51533db3ccf05023bd76b49bf7f2bc14"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=6\\ producer=0\\ type=measured\\ stream=1\\ object=console\\-grants\\ repr=as\\-computed\\ outcome=recorded\\ base=0x0000000000000000\\ length=0x0000000000000000\\ dlen=32\\ srec=1\\ expected=0\\ digest=96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7$",
+   "template": "BE_MVP:19 LOG record seq=6 producer=0 type=measured stream=1 object=console-grants repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=1 expected=0 digest=96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=7\\ producer=0\\ type=informational\\ stream=1\\ object=policy\\-absent\\ repr=build\\-recorded\\ outcome=recorded\\ base=0x0000000000000000\\ length=0x0000000000000000\\ dlen=32\\ srec=2\\ expected=0\\ digest=0000000000000000000000000000000000000000000000000000000000000000$",
+   "template": "BE_MVP:19 LOG record seq=7 producer=0 type=informational stream=1 object=policy-absent repr=build-recorded outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=2 expected=0 digest=0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=8\\ producer=0\\ type=measured\\ stream=2\\ object=kernel\\-image\\ repr=as\\-placed\\ outcome=recorded\\ base=0x0000000110200000\\ length=0x00000000001f7cc4\\ dlen=32\\ srec=0\\ expected=0\\ digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6$",
+   "template": "BE_MVP:19 LOG record seq=8 producer=0 type=measured stream=2 object=kernel-image repr=as-placed outcome=recorded base=0x0000000110200000 length=0x00000000001f7cc4 dlen=32 srec=0 expected=0 digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=9\\ producer=0\\ type=measured\\ stream=2\\ object=device\\-tree\\ repr=as\\-placed\\ outcome=gated\\-pass\\ base=0x0000000113e00000\\ length=0x0000000000001000\\ dlen=32\\ srec=1\\ expected=0\\ digest=f51be0c7c1cf25f11eeb721dc4dcf19d34902794cf3f15cd43df0255523e0783$",
+   "template": "BE_MVP:19 LOG record seq=9 producer=0 type=measured stream=2 object=device-tree repr=as-placed outcome=gated-pass base=0x0000000113e00000 length=0x0000000000001000 dlen=32 srec=1 expected=0 digest=f51be0c7c1cf25f11eeb721dc4dcf19d34902794cf3f15cd43df0255523e0783"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=10\\ producer=0\\ type=measured\\ stream=3\\ object=kernel\\-image\\ repr=as\\-placed\\ outcome=recorded\\ base=0x0000000114200000\\ length=0x00000000001f7cc4\\ dlen=32\\ srec=0\\ expected=0\\ digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6$",
+   "template": "BE_MVP:19 LOG record seq=10 producer=0 type=measured stream=3 object=kernel-image repr=as-placed outcome=recorded base=0x0000000114200000 length=0x00000000001f7cc4 dlen=32 srec=0 expected=0 digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=11\\ producer=0\\ type=measured\\ stream=3\\ object=device\\-tree\\ repr=as\\-placed\\ outcome=gated\\-pass\\ base=0x0000000117e00000\\ length=0x0000000000001000\\ dlen=32\\ srec=1\\ expected=0\\ digest=ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea$",
+   "template": "BE_MVP:19 LOG record seq=11 producer=0 type=measured stream=3 object=device-tree repr=as-placed outcome=gated-pass base=0x0000000117e00000 length=0x0000000000001000 dlen=32 srec=1 expected=0 digest=ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea"
+  },
+  {
+   "regex": "^BE_MVP:19\\ LOG\\ record\\ seq=12\\ producer=0\\ type=close\\ stream=255\\ object=close\\ repr=none\\ outcome=none\\ base=0x0000000000000000\\ length=0x0000000000000000\\ dlen=32\\ srec=0\\ expected=13\\ digest=0000000000000000000000000000000000000000000000000000000000000000$",
+   "template": "BE_MVP:19 LOG record seq=12 producer=0 type=close stream=255 object=close repr=none outcome=none base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=13 digest=0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  {
+   "regex": "^BE_MVP:20\\ REGISTERS\\ at=barrier\\ r0=[0-9a-f]{64}\\ r1=3b46bdf83b540c1bcce1dcab1244bce0da9a123c2a7b0a45b0686dd1d952a21a\\ r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7\\ r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b\\ ticks=0x(?:0|[1-9a-f][0-9a-f]{0,7})$",
+   "template": "BE_MVP:20 REGISTERS at=barrier r0=<Z> r1=3b46bdf83b540c1bcce1dcab1244bce0da9a123c2a7b0a45b0686dd1d952a21a r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b ticks=<U>"
+  },
+  {
+   "regex": "^BE_MVP:07\\ BLOCKS_PUBLISHED\\ region=0x102044000\\ bytes=0x20000\\ generation=1\\ budget_ticks=0x100000000$",
+   "template": "BE_MVP:07 BLOCKS_PUBLISHED region=0x102044000 bytes=0x20000 generation=1 budget_ticks=0x100000000"
+  },
+  {
+   "regex": "^BE_MVP:08\\ HART_STARTED\\ hart=1\\ domain=0\\ result=0\\ status=0\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:08 HART_STARTED hart=1 domain=0 result=0 status=0 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:08\\ HART_STARTED\\ hart=9\\ domain=1\\ result=0\\ status=0\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:08 HART_STARTED hart=9 domain=1 result=0 status=0 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:09\\ HART_READY\\ hart=1\\ domain=0\\ hgatp=0x8000100000102034\\ hstatus_controls=0x180\\ hedeleg=0x[0-9a-f]+\\ hideleg=0x40\\ hcounteren=0x2\\ sie=0x2\\ henvcfg=0x8000000000000000\\ vstimecmp=0xffffffffffffffff$",
+   "template": "BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102034 hstatus_controls=0x180 hedeleg=<h> hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff"
+  },
+  {
+   "regex": "^BE_MVP:09\\ HART_READY\\ hart=9\\ domain=1\\ hgatp=0x800020000010203c\\ hstatus_controls=0x180\\ hedeleg=0x[0-9a-f]+\\ hideleg=0x40\\ hcounteren=0x2\\ sie=0x2\\ henvcfg=0x8000000000000000\\ vstimecmp=0xffffffffffffffff$",
+   "template": "BE_MVP:09 HART_READY hart=9 domain=1 hgatp=0x800020000010203c hstatus_controls=0x180 hedeleg=<h> hideleg=0x40 hcounteren=0x2 sie=0x2 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff"
+  },
+  {
+   "regex": "^BE_MVP:10\\ DOMAIN_ENTERED\\ hart=1\\ domain=0\\ pc=0x80200000\\ a0=0x0\\ a1=0x83e00000\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:10\\ DOMAIN_ENTERED\\ hart=9\\ domain=1\\ pc=0x80200000\\ a0=0x0\\ a1=0x83e00000\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:10 DOMAIN_ENTERED hart=9 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=<T>"
+  }
+ ],
+ "counters": {
+  "dbcn_byte": {
+   "exact": 0
+  },
+  "exits": {
+   "max": 1048576,
+   "min": 1
+  },
+  "ipi": {
+   "exact": 1
+  },
+  "refused": {
+   "exact": 0
+  },
+  "ring_peak": {
+   "max": 16384,
+   "min": 16
+  },
+  "srst": {
+   "exact": 1
+  },
+  "time": {
+   "exact": 0
+  }
+ },
+ "domain_control_lines": {
+  "0": [
+   {
+    "regex": "^BE_MVP:11\\ IPI_PROBE\\ hart=1\\ domain=0\\ sent=0x[0-9a-f]+\\ received=0x[0-9a-f]+\\ answered=0x[0-9a-f]+\\ spv=1$",
+    "template": "BE_MVP:11 IPI_PROBE hart=1 domain=0 sent=<T> received=<T> answered=<T> spv=1"
+   },
+   {
+    "regex": "^BE_MVP:12\\ DOMAIN_SHUTDOWN\\ hart=1\\ domain=0\\ exits=[0-9]+\\ sbi=[0-9]+\\ ipi=1\\ base=[0-9]+\\ time=0\\ dbcn_write=[0-9]+\\ dbcn_read=[0-9]+\\ dbcn_byte=0\\ srst=1\\ refused=0\\ lines=[0-9]+\\ ring_peak=0x[0-9a-f]+\\ entered=0x[0-9a-f]+\\ ticks=0x[0-9a-f]+$",
+    "template": "BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=<N> sbi=<N> ipi=1 base=<N> time=0 dbcn_write=<N> dbcn_read=<N> dbcn_byte=0 srst=1 refused=0 lines=<N> ring_peak=<B> entered=<T> ticks=<T>"
+   }
+  ],
+  "1": [
+   {
+    "regex": "^BE_MVP:11\\ IPI_PROBE\\ hart=9\\ domain=1\\ sent=0x[0-9a-f]+\\ received=0x[0-9a-f]+\\ answered=0x[0-9a-f]+\\ spv=1$",
+    "template": "BE_MVP:11 IPI_PROBE hart=9 domain=1 sent=<T> received=<T> answered=<T> spv=1"
+   },
+   {
+    "regex": "^BE_MVP:12\\ DOMAIN_SHUTDOWN\\ hart=9\\ domain=1\\ exits=[0-9]+\\ sbi=[0-9]+\\ ipi=1\\ base=[0-9]+\\ time=0\\ dbcn_write=[0-9]+\\ dbcn_read=[0-9]+\\ dbcn_byte=0\\ srst=1\\ refused=0\\ lines=[0-9]+\\ ring_peak=0x[0-9a-f]+\\ entered=0x[0-9a-f]+\\ ticks=0x[0-9a-f]+$",
+    "template": "BE_MVP:12 DOMAIN_SHUTDOWN hart=9 domain=1 exits=<N> sbi=<N> ipi=1 base=<N> time=0 dbcn_write=<N> dbcn_read=<N> dbcn_byte=0 srst=1 refused=0 lines=<N> ring_peak=<B> entered=<T> ticks=<T>"
+   }
+  ]
+ },
+ "domain_lines": [
+  "[<s>] Linux version 7.2.0 <banner>",
+  "[<s>] SBI implementation ID=0x4245 Version=0x5",
+  "[<s>] Kernel command line: earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=<g>",
+  "[<s>] riscv-timer: Timer interrupt in S-mode is available via sstc extension",
+  "[<s>] Memory: <m>K/65536K available <rest>",
+  "[<s>] Run /init as init process",
+  "MVPINIT 01 START guest=<g> pid=1",
+  "MVPINIT 02 UNAME release=7.2.0 machine=riscv64",
+  "MVPINIT 03 STEP n=<i>/8 rounds=<r> t_ms=<t>",
+  "MVPINIT 04 SLEEP requested_ms=1000 elapsed_ms=<e> ok=1",
+  "MVPINIT 05 RESULT pass",
+  "MVPINIT 06 POWER_OFF",
+  "[<s>] reboot: Power down"
+ ],
+ "domains": [
+  {
+   "block": 4328800256,
+   "bootargs": "earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=0",
+   "bytes": 67108864,
+   "gpa": 2147483648,
+   "hart": 1,
+   "hgatp": 9223389629041877044,
+   "hpa": 4563402752,
+   "index": 0,
+   "prefix": "BE_MVP_G0: ",
+   "root": 4328734720,
+   "vmid": 1
+  },
+  {
+   "block": 4328865792,
+   "bootargs": "earlycon=sbi console=hvc0 panic=-1 oops=panic panic_on_warn=1 -- be.guest=1",
+   "bytes": 67108864,
+   "gpa": 2147483648,
+   "hart": 2,
+   "hgatp": 9223407221227921468,
+   "hpa": 4630511616,
+   "index": 1,
+   "prefix": "BE_MVP_G1: ",
+   "root": 4328767488,
+   "vmid": 2
+  }
+ ],
+ "exit_classes": [
+  "base",
+  "time",
+  "dbcn_write",
+  "dbcn_read",
+  "dbcn_byte",
+  "srst",
+  "refused",
+  "ipi"
+ ],
+ "final_lines": [
+  {
+   "regex": "^BE_MVP:13\\ RUN_COMPLETE\\ domains=2\\ records=[0-9]+\\ wakes=[0-9]+\\ idle_ticks=0x[0-9a-f]+\\ overlap_ticks=0x[0-9a-f]+\\ ticks=0x[0-9a-f]+$",
+   "template": "BE_MVP:13 RUN_COMPLETE domains=2 records=<N> wakes=<N> idle_ticks=<T> overlap_ticks=<T> ticks=<T>"
+  },
+  {
+   "regex": "^BE_MVP:20\\ REGISTERS\\ at=terminal\\ r0=[0-9a-f]{64}\\ r1=3b46bdf83b540c1bcce1dcab1244bce0da9a123c2a7b0a45b0686dd1d952a21a\\ r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7\\ r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b$",
+   "template": "BE_MVP:20 REGISTERS at=terminal r0=<Z> r1=3b46bdf83b540c1bcce1dcab1244bce0da9a123c2a7b0a45b0686dd1d952a21a r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b"
+  },
+  {
+   "regex": "^BE_MVP:14\\ SHUTDOWN\\ type=0\\ reason=0$",
+   "template": "BE_MVP:14 SHUTDOWN type=0 reason=0"
+  }
+ ],
+ "image": "hart-start",
+ "log": {
+  "count": 13,
+  "header": {
+   "capacity": 41,
+   "configuration_identity": "0000000000000000000000000000000000000000000000000000000000000000",
+   "count": 13,
+   "hashAlg": "sha256",
+   "header_length": 128,
+   "magic": "BEMVPLOG",
+   "record_length": 96,
+   "scenario_sha256": "87c6f18b6a18f99cad8604c796f88b9cab63c9c86f307f338a395894d9d3cc34",
+   "state": "closed",
+   "version": 1
+  },
+  "launch_expected": [
+   "1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7",
+   "f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b"
+  ],
+  "lines": {
+   "barrier": "BE_MVP:20 REGISTERS at=barrier r0=<Z> r1=3b46bdf83b540c1bcce1dcab1244bce0da9a123c2a7b0a45b0686dd1d952a21a r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b ticks=<U>",
+   "block": [
+    "BE_MVP:19 LOG header magic=BEMVPLOG version=1 hlen=128 rlen=96 capacity=41 count=13 state=closed alg=0x000b scenario=87c6f18b6a18f99cad8604c796f88b9cab63c9c86f307f338a395894d9d3cc34 config=0000000000000000000000000000000000000000000000000000000000000000",
+    "BE_MVP:19 LOG record seq=0 producer=0 type=measured stream=0 object=monitor-text repr=as-placed outcome=recorded base=0x0000000102000000 length=<Y> dlen=32 srec=0 expected=0 digest=<Z>",
+    "BE_MVP:19 LOG record seq=1 producer=0 type=measured stream=0 object=monitor-rodata repr=as-placed outcome=recorded base=<Y> length=<Y> dlen=32 srec=1 expected=0 digest=<Z>",
+    "BE_MVP:19 LOG record seq=2 producer=0 type=measured stream=0 object=monitor-input repr=as-placed outcome=recorded base=0x0000000102008000 length=<Y> dlen=32 srec=2 expected=0 digest=<Z>",
+    "BE_MVP:19 LOG record seq=3 producer=0 type=measured stream=0 object=mvp-text repr=as-placed outcome=recorded base=0x0000000102064000 length=<Y> dlen=32 srec=3 expected=0 digest=<Z>",
+    "BE_MVP:19 LOG record seq=4 producer=0 type=measured stream=0 object=mvp-rodata repr=as-placed outcome=recorded base=<Y> length=<Y> dlen=32 srec=4 expected=0 digest=<Z>",
+    "BE_MVP:19 LOG record seq=5 producer=0 type=measured stream=1 object=core-identity repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=0 digest=422647143fbf7ffc2648bef7a0e3048f51533db3ccf05023bd76b49bf7f2bc14",
+    "BE_MVP:19 LOG record seq=6 producer=0 type=measured stream=1 object=console-grants repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=1 expected=0 digest=96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+    "BE_MVP:19 LOG record seq=7 producer=0 type=informational stream=1 object=policy-absent repr=build-recorded outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=2 expected=0 digest=0000000000000000000000000000000000000000000000000000000000000000",
+    "BE_MVP:19 LOG record seq=8 producer=0 type=measured stream=2 object=kernel-image repr=as-placed outcome=recorded base=0x0000000110200000 length=0x00000000001f7cc4 dlen=32 srec=0 expected=0 digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+    "BE_MVP:19 LOG record seq=9 producer=0 type=measured stream=2 object=device-tree repr=as-placed outcome=gated-pass base=0x0000000113e00000 length=0x0000000000001000 dlen=32 srec=1 expected=0 digest=f51be0c7c1cf25f11eeb721dc4dcf19d34902794cf3f15cd43df0255523e0783",
+    "BE_MVP:19 LOG record seq=10 producer=0 type=measured stream=3 object=kernel-image repr=as-placed outcome=recorded base=0x0000000114200000 length=0x00000000001f7cc4 dlen=32 srec=0 expected=0 digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+    "BE_MVP:19 LOG record seq=11 producer=0 type=measured stream=3 object=device-tree repr=as-placed outcome=gated-pass base=0x0000000117e00000 length=0x0000000000001000 dlen=32 srec=1 expected=0 digest=ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea",
+    "BE_MVP:19 LOG record seq=12 producer=0 type=close stream=255 object=close repr=none outcome=none base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=13 digest=0000000000000000000000000000000000000000000000000000000000000000"
+   ],
+   "detail": null,
+   "launch": [
+    "BE_MVP:06 LAUNCH domain=0 hart=1 register=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 expected=match ticks=<T>",
+    "BE_MVP:06 LAUNCH domain=1 hart=9 register=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b expected=match ticks=<T>"
+   ],
+   "terminal": "BE_MVP:20 REGISTERS at=terminal r0=<Z> r1=3b46bdf83b540c1bcce1dcab1244bce0da9a123c2a7b0a45b0686dd1d952a21a r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b"
+  },
+  "profile": 1,
+  "r2": "kept",
+  "ranges": [
+   {
+    "base": "0x0000000102000000",
+    "digest": null,
+    "domain": null,
+    "length": null,
+    "object": "monitor-text",
+    "source": "boot-image"
+   },
+   {
+    "base": null,
+    "digest": null,
+    "domain": null,
+    "length": null,
+    "object": "monitor-rodata",
+    "source": "boot-image"
+   },
+   {
+    "base": "0x0000000102008000",
+    "digest": null,
+    "domain": null,
+    "length": null,
+    "object": "monitor-input",
+    "source": "boot-image"
+   },
+   {
+    "base": "0x0000000102064000",
+    "digest": null,
+    "domain": null,
+    "length": null,
+    "object": "mvp-text",
+    "source": "boot-image"
+   },
+   {
+    "base": null,
+    "digest": null,
+    "domain": null,
+    "length": null,
+    "object": "mvp-rodata",
+    "source": "boot-image"
+   },
+   {
+    "base": "0x0000000110200000",
+    "digest": "ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+    "domain": 0,
+    "length": "0x00000000001f7cc4",
+    "object": "kernel-image",
+    "source": "guest/Image"
+   },
+   {
+    "base": "0x0000000113e00000",
+    "digest": "f51be0c7c1cf25f11eeb721dc4dcf19d34902794cf3f15cd43df0255523e0783",
+    "domain": 0,
+    "length": "0x0000000000001000",
+    "object": "device-tree",
+    "source": "guest/mvp-guest-g0.dtb"
+   },
+   {
+    "base": "0x0000000114200000",
+    "digest": "ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+    "domain": 1,
+    "length": "0x00000000001f7cc4",
+    "object": "kernel-image",
+    "source": "guest/Image"
+   },
+   {
+    "base": "0x0000000117e00000",
+    "digest": "ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea",
+    "domain": 1,
+    "length": "0x0000000000001000",
+    "object": "device-tree",
+    "source": "guest/mvp-guest-g1.dtb"
+   }
+  ],
+  "records": [
+   {
+    "content": {
+     "base": "0x0000000102000000",
+     "expected": 0,
+     "length": null,
+     "object": "monitor-text",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": null,
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 0,
+    "register": 0,
+    "srec": 0
+   },
+   {
+    "content": {
+     "base": null,
+     "expected": 0,
+     "length": null,
+     "object": "monitor-rodata",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": null,
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 1,
+    "register": 0,
+    "srec": 1
+   },
+   {
+    "content": {
+     "base": "0x0000000102008000",
+     "expected": 0,
+     "length": null,
+     "object": "monitor-input",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": null,
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 2,
+    "register": 0,
+    "srec": 2
+   },
+   {
+    "content": {
+     "base": "0x0000000102064000",
+     "expected": 0,
+     "length": null,
+     "object": "mvp-text",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": null,
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 3,
+    "register": 0,
+    "srec": 3
+   },
+   {
+    "content": {
+     "base": null,
+     "expected": 0,
+     "length": null,
+     "object": "mvp-rodata",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": null,
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 4,
+    "register": 0,
+    "srec": 4
+   },
+   {
+    "content": {
+     "base": "0x0000000000000000",
+     "expected": 0,
+     "length": "0x0000000000000000",
+     "object": "core-identity",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-computed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "422647143fbf7ffc2648bef7a0e3048f51533db3ccf05023bd76b49bf7f2bc14",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 5,
+    "register": 1,
+    "srec": 0
+   },
+   {
+    "content": {
+     "base": "0x0000000000000000",
+     "expected": 0,
+     "length": "0x0000000000000000",
+     "object": "console-grants",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-computed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 6,
+    "register": 1,
+    "srec": 1
+   },
+   {
+    "content": {
+     "base": "0x0000000000000000",
+     "expected": 0,
+     "length": "0x0000000000000000",
+     "object": "policy-absent",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "build-recorded",
+     "type": "informational"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 7,
+    "register": 1,
+    "srec": 2
+   },
+   {
+    "content": {
+     "base": "0x0000000110200000",
+     "expected": 0,
+     "length": "0x00000000001f7cc4",
+     "object": "kernel-image",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 8,
+    "register": 2,
+    "srec": 0
+   },
+   {
+    "content": {
+     "base": "0x0000000113e00000",
+     "expected": 0,
+     "length": "0x0000000000001000",
+     "object": "device-tree",
+     "outcome": "gated-pass",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "f51be0c7c1cf25f11eeb721dc4dcf19d34902794cf3f15cd43df0255523e0783",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 9,
+    "register": 2,
+    "srec": 1
+   },
+   {
+    "content": {
+     "base": "0x0000000114200000",
+     "expected": 0,
+     "length": "0x00000000001f7cc4",
+     "object": "kernel-image",
+     "outcome": "recorded",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 10,
+    "register": 3,
+    "srec": 0
+   },
+   {
+    "content": {
+     "base": "0x0000000117e00000",
+     "expected": 0,
+     "length": "0x0000000000001000",
+     "object": "device-tree",
+     "outcome": "gated-pass",
+     "producer": 0,
+     "representation": "as-placed",
+     "type": "measured"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 11,
+    "register": 3,
+    "srec": 1
+   },
+   {
+    "content": {
+     "base": "0x0000000000000000",
+     "expected": 13,
+     "length": "0x0000000000000000",
+     "object": "close",
+     "outcome": "none",
+     "producer": 0,
+     "representation": "none",
+     "type": "close"
+    },
+    "content_type": "beryllium-log-v1",
+    "digests": [
+     {
+      "digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "hashAlg": "sha256"
+     }
+    ],
+    "recnum": 12,
+    "register": null,
+    "srec": 0
+   }
+  ],
+  "registers": [
+   null,
+   "3b46bdf83b540c1bcce1dcab1244bce0da9a123c2a7b0a45b0686dd1d952a21a",
+   "1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7",
+   "f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b"
+  ],
+  "run": "post-launch-failure",
+  "sequence": "v1",
+  "terminal": "before-fail"
+ },
+ "outcome": {
+  "after": "BE_MVP:07",
+  "detail": "domain",
+  "domain": 1,
+  "fail": "hart-start",
+  "hart": 9
+ },
+ "rejected": [
+  "panic",
+  "Oops",
+  "WARN",
+  "BUG:",
+  "kernel BUG",
+  "Attempted to kill init",
+  "cut here",
+  "Call Trace:",
+  "Unable to handle kernel",
+  "rcu: INFO:",
+  "soft lockup",
+  "blocked for more than",
+  "segfault",
+  "unhandled signal",
+  "extension is not available in SBI",
+  "sbi_srst_reset",
+  "No working init found",
+  "Failed to execute",
+  "Out of memory",
+  "RESULT fail"
+ ],
+ "scenario": "two-guests",
+ "scenario_sha256": "87c6f18b6a18f99cad8604c796f88b9cab63c9c86f307f338a395894d9d3cc34",
+ "schema": "be-mvp-expect-v1",
+ "terminal_regex": "BE_MVP:14 SHUTDOWN|BE_MVP:FAIL|BE_K3_B3: FAIL",
+ "toolchains": [
+  "gcc"
+ ],
+ "where": [
+  "qemu"
+ ]
+}

@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The evidence for the CHERI QEMU defect in experiments/be-cheri-poc.md,
+# "Findings" (2026-11-05): under a hypervisor, a valid user pc with bit 37
+# set comes back from the guest kernel invalid. Excerpts of runs made by
+# hand during the proof of concept, before the local change; the captures
+# are not kept.
+
+== under the MVP monitor (QEMU -d int, hart 1's consecutive lines)
+The guest's first instruction fetch of the vDSO's rt_sigreturn trampoline
+faults; the guest kernel handles the page fault in VS mode, with no trap
+to the monitor between, and returns to a different, invalid address:
+riscv_cpu_do_interrupt: hart:1, async:0, cause:000000000000000c, epc:0x0000003f8c623530, tval:0x0000003f8c623530, desc=exec_page_fault
+riscv_cpu_do_interrupt: hart:1, async:0, cause:000000000000000c, epc:0xffffffff8c623530, tval:0xffffffff8c623530, desc=exec_page_fault
+
+== the guest kernel's report, an M7 shell session (gcc, two-guests-shell, `ls /bin | wc -l`)
+pc has lost its tag, and its address and bounds moved together; ra, the
+trampoline the signal handler returned to, is intact:
+sh[16]: unhandled signal 11 code 0x1 at 0xffffffff8be0f530
+ epc: 0xffffffff8be0f530[I:1000:C:r.x.a.se:1:.:0xffffffff8be0b000-0xffffffff8be11000]
+ ra : 0x0000003f8be0f530[V:1000:C:r.x.a.se:1:.:0x0000003f8be0b000-0x0000003f8be11000]
+The other guest, the same session: unhandled signal 11 at 0xffffffffb9bbe530.
+
+== without a hypervisor
+The same kernel and initramfs on the same QEMU, -cpu rv64,h=false, with
+no4lvl so that the kernel uses Sv39 as under the monitor ("CHERI: Selected
+SATP mode: 0x8000000000000000"). The same fault on the trampoline returns
+to its own address, and the shell runs `ls /bin | wc -l` twice:
+riscv_cpu_do_interrupt: hart:0, async:0, cause:000000000000000c, epc:0x0000003f82e5a530, tval:0x0000003f82e5a530, desc=exec_page_fault
+
+== the cause: target/riscv/csr.c at cheri-alliance-qemu (008944fe)
+topbit_for_address_mode() returns 38 for Sv39 (47 for Sv48, 56 for Sv57),
+the index of the top valid bit, as the comment above
+is_address_valid_for_cap() says: "For Sv39, bits [63:39] must equal bit
+38". SignExtend64(X, B) takes a width of B bits:
+    return (int64_t)(X << (64 - B)) >> (64 - B);
+is_address_valid_for_cap() and get_valid_cap_address() each call
+SignExtend64(address, checkbit), which extends from bit 37:
+    SignExtend64(0x3f8c623530, 38) = 0xffffffff8c623530   as observed
+    SignExtend64(0x3f8be0f530, 38) = 0xffffffff8be0f530   as observed
+    SignExtend64(0x3fb9bbe530, 38) = 0xffffffffb9bbe530   as observed
+    SignExtend64(0x3f8c623530, 39) = 0x0000003f8c623530   unchanged
+A capability write to a CSR that the pin marks CSR_OP_IA_CONVERSION
+(mtvecc, stvecc, mepcc, sepcc, vsepcc, and ddc) takes this path when the
+address is found invalid, and cap_scaddr then sets the converted address,
+which is not representable, so the tag is cleared. Under Sv39 that is any
+address from 0x2000000000 to 0x3fffffffff, the top quarter of user space,
+where Linux maps the vDSO. Both functions read the translation mode from
+vsatp, which stays 0 unless a hypervisor writes it, so without one the
+conversion never runs. Under the monitor the guest's vsatp is Sv39, and
+the guest kernel's write of sepcc before its sret converts the pc.
+
+== the local change
+experiments/build-qemu-vs-reset.sh --ia-fix passes the width, checkbit +
+1, at both calls. With it, M7's six shell sessions pass
+(experiments/be-cheri-poc-results.txt), and the proof of concept's init
+needs neither of the workarounds it had carried for the symptom.
+
+== elsewhere (read on 2026-11-05, not run)
+codasip-latest's head is still the pin. The CHERI Alliance QEMU's main
+(937b306b, the RVY line) has the same three functions, with the same
+calls: SignExtend64(address, checkbit) and SignExtend64(addr, checkbit),
+the mode read from vsatp, and 38 for Sv39.

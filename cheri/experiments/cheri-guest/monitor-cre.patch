@@ -1,0 +1,85 @@
+diff -ruN a/mvp/src/mvp.h b/mvp/src/mvp.h
+--- a/mvp/src/mvp.h
++++ b/mvp/src/mvp.h
+@@ -177,6 +177,9 @@
+ 
+ /* Guest controls while a domain runs (planning/mvp-m0-plan.md). */
+ #define BE_MVP_HENVCFG_STCE		(BE_U64_C(1) << 63)
++/* beryllium-cheri: CHERI v0.9.3's enable for VS-mode, henvcfg.CRE. */
++#define BE_MVP_HENVCFG_CRE		(BE_U64_C(1) << 28)
++#define BE_MVP_HENVCFG_ARMED		(BE_MVP_HENVCFG_STCE | BE_MVP_HENVCFG_CRE)
+ /* VTVM, VTSR, and VTW stay clear, B6's value: a guest wfi runs natively. */
+ #define BE_MVP_HSTATUS_CLEARED_TRAPS \
+ 	(BE_R3_HSTATUS_VTVM | BE_R3_HSTATUS_VTSR | BE_R3_HSTATUS_VTW)
+diff -ruN a/mvp/src/mvp-hartmain.c b/mvp/src/mvp-hartmain.c
+--- a/mvp/src/mvp-hartmain.c
++++ b/mvp/src/mvp-hartmain.c
+@@ -598,7 +598,7 @@
+ 	failure = be_mvp_stce_class(value);
+ 	if (failure != BE_MVP_CLASS_NONE)
+ 		register_fail(page, failure, BE_MVP_REGISTER_HENVCFG,
+-			      BE_MVP_HENVCFG_STCE, value);
++			      BE_MVP_HENVCFG_ARMED, value);
+ 	/* The hart's one install: its domain's root, fenced and read back. */
+ 	value = be_mvp_exec_install_hgatp(state->desc.hgatp);
+ 	if (value != state->desc.hgatp)
+diff -ruN a/mvp/src/mvp-sbi.c b/mvp/src/mvp-sbi.c
+--- a/mvp/src/mvp-sbi.c
++++ b/mvp/src/mvp-sbi.c
+@@ -143,7 +143,7 @@
+ {
+ 	if ((henvcfg & BE_MVP_HENVCFG_STCE) == 0U)
+ 		return BE_MVP_CLASS_SSTC;
+-	if (henvcfg != BE_MVP_HENVCFG_STCE)
++	if (henvcfg != BE_MVP_HENVCFG_ARMED)
+ 		return BE_MVP_CLASS_CONTROLS;
+ 	return BE_MVP_CLASS_NONE;
+ }
+@@ -164,7 +164,7 @@
+ 	       (controls->hvip & BE_MVP_HVIP_VS_BITS) == 0U &&
+ 	       controls->hcounteren == BE_MVP_HCOUNTEREN_TM &&
+ 	       controls->htimedelta == 0U &&
+-	       controls->henvcfg == BE_MVP_HENVCFG_STCE &&
++	       controls->henvcfg == BE_MVP_HENVCFG_ARMED &&
+ 	       controls->hgeie == 0U &&
+ 	       controls->vstimecmp == BE_MVP_VSTIMECMP_DISARMED &&
+ 	       controls->sie == BE_MVP_SIE_SSIE &&
+diff -ruN a/mvp/src/mvp-trap.S b/mvp/src/mvp-trap.S
+--- a/mvp/src/mvp-trap.S
++++ b/mvp/src/mvp-trap.S
+@@ -55,6 +55,8 @@
+ 	.equ MVP_HVIP_VS_BITS, 0x444
+ 	.equ MVP_HCOUNTEREN_TM, 0x2
+ 	.equ MVP_HENVCFG_STCE, 0x8000000000000000
++	/* beryllium-cheri: STCE and CHERI v0.9.3's VS-mode enable, CRE. */
++	.equ MVP_HENVCFG_ARMED, 0x8000000010000000
+ 	/* The IPI: the supervisor software interrupt, taken only while V=1. */
+ 	.equ MVP_SIE_SSIE, 0x2
+ 	/* Hart 0's wait: the IPI and its budget timer. */
+@@ -129,7 +131,7 @@
+ 	.section .text, "ax"
+ 
+ 	/*
+-	 * Arm helper: henvcfg = STCE only. STCE reads back 1 only when Sstc
++	 * Arm helper: henvcfg = STCE and CRE. STCE reads back 1 only when Sstc
+ 	 * exists and M-mode set menvcfg.STCE, so this probe cannot trap. Hart 0
+ 	 * runs it as its Sstc probe; each domain hart, before its arming.
+ 	 */
+@@ -139,7 +141,7 @@
+ be_mvp_arch_arm_stce:
+ 	.option push
+ 	.option arch, +h
+-	li	t0, MVP_HENVCFG_STCE
++	li	t0, MVP_HENVCFG_ARMED
+ 	csrw	henvcfg, t0
+ 	csrr	a0, henvcfg
+ 	.option pop
+@@ -624,7 +626,7 @@
+ 	csrr	t0, htimedelta
+ 	bnez	t0, .Lmvp_resume_bad
+ 	csrr	t0, henvcfg
+-	li	t1, MVP_HENVCFG_STCE
++	li	t1, MVP_HENVCFG_ARMED
+ 	bne	t0, t1, .Lmvp_resume_bad
+ 	csrr	t0, hgeie
+ 	bnez	t0, .Lmvp_resume_bad

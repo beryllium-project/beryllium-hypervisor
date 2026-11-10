@@ -58,6 +58,19 @@ expectation's bytes, and reads no path from a record. FW is M-mode
 firmware that sees the whole run, so before every QEMU launch its SHA-256
 must be the tool lock's MVP_PIN_OPENSBI_BIN_SHA256, or the typist exits
 refusing it and no QEMU starts (the release's security review, S-01).
+
+beryllium-cheri: as tests/run-qemu.sh, it reads BE_MVP_MONITOR (riscv, the
+default, or cheri: the firmware's SBI version, 2.0 or 3.0, and the
+checker's --monitor), BE_MVP_GUEST_PINS (the guest flavour's pins for the
+checker, when set), and BE_MVP_QEMU_K3_LIKE=plic (planning/
+cheri-platform.md; tools/cheri-check.sh sets all three), and, for the
+CHERI-aware monitor only, BE_MVP_QEMU_CHERI_CPU, its addition to the CPU
+string (cheri_pte=on from tools/cheri-check.sh; planning/
+cheri-enforcement-plan.md, CE-2, Q7), which qemu.txt's command line
+shows. suite's --build, and run's optional --build, is the checker's
+--build-root, whose references it reads; without it, the checker's
+default, build/mvp, the RISC-V monitor's tree. Under cheri, FW's pin is
+the firmware line of guest/cheri-pins.txt in this tree, not the lock's.
 """
 
 import argparse
@@ -79,10 +92,34 @@ CHECKER = HERE / "check-capture.py"
 # The tool lock, whose MVP_PIN_OPENSBI_BIN_SHA256 FW must have.
 LOCK = HERE.parent / "tools" / "lock" / "tool-lock.conf"
 FIRMWARE_PIN = "MVP_PIN_OPENSBI_BIN_SHA256"
+# beryllium-cheri: the CHERI-aware monitor's FW pin, the firmware line of
+# guest/cheri-pins.txt in this tree (S-01 for that monitor).
+CHERI_PINS = HERE.parent / "guest" / "cheri-pins.txt"
 # tests/run-qemu.sh's k3-like machine and CPU, and its terminal markers.
 MACHINE = "virt,aia=aplic-imsic,aia-guests=7"
 CPU = ("rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,"
        "smstateen=true")
+# beryllium-cheri: the CHERI QEMU (8.1) has no svade or svadu property;
+# BE_MVP_QEMU_K3_LIKE=plic types on the plic machine instead, as
+# tests/run-qemu.sh does.
+if os.environ.get("BE_MVP_QEMU_K3_LIKE") == "plic":
+    MACHINE, CPU = "virt", "rv64,h=true"
+# beryllium-cheri: the monitor variant (tests/run-qemu.sh's
+# BE_MVP_MONITOR): its firmware's SBI version, OpenSBI 1.6's 2.0 or the
+# CHERI Alliance OpenSBI's 3.0, and the checker's arguments, with the
+# guest flavour's pins when BE_MVP_GUEST_PINS names them.
+MONITOR = os.environ.get("BE_MVP_MONITOR", "riscv")
+FIRMWARE_SBI = {"riscv": "2.0", "cheri": "3.0"}.get(MONITOR)
+CHECKED = (["--monitor", "cheri"] if MONITOR == "cheri" else []) + \
+    (["--pins", os.environ["BE_MVP_GUEST_PINS"]]
+     if os.environ.get("BE_MVP_GUEST_PINS") else [])
+# beryllium-cheri: tests/run-qemu.sh's BE_MVP_QEMU_CHERI_CPU, the CHERI-aware
+# monitor's addition to the CPU string (cheri_pte=on, the CHERI emulator's
+# Zcheripte; planning/cheri-enforcement-plan.md, CE-2, Q7), which main()
+# refuses for the RISC-V monitor and in any other form.
+CHERI_CPU = os.environ.get("BE_MVP_QEMU_CHERI_CPU", "")
+CHERI_CPU_FORM = re.compile(r"[a-z0-9_]+=[a-z0-9_]+"
+                            r"(?:,[a-z0-9_]+=[a-z0-9_]+)*")
 TERMINAL = re.compile(r"^(?:BE_MVP:14 SHUTDOWN|BE_MVP:FAIL|BE_K3_B3: FAIL)")
 PREFIX = re.compile(r"^BE_MVP_G([0-9]): ")
 NONCE = "NONCE"
@@ -123,12 +160,31 @@ def firmware_pin(lock=LOCK):
     raise SystemExit(f"{lock} pins no OpenSBI binary ({FIRMWARE_PIN})")
 
 
-def pinned_firmware(path, pin):
-    """Refuse FW at PATH unless its SHA-256 is PIN."""
+def cheri_firmware_pin(pins=CHERI_PINS):
+    """guest/cheri-pins.txt's one firmware line's SHA-256."""
+    found = [match[1] for match in (re.fullmatch(
+        r"firmware fw_dynamic\.bin sha256=([0-9a-f]{64}) bytes=[0-9]+", line)
+        for line in pins.read_text(encoding="utf-8").splitlines()) if match]
+    if len(found) != 1:
+        raise SystemExit(f"{pins} pins no CHERI firmware (one firmware line)")
+    return found[0]
+
+
+def expected_firmware(monitor, cheri_pins=CHERI_PINS, lock=LOCK):
+    """FW's pin for MONITOR, and whose it is: the lock's for the RISC-V
+    monitor, guest/cheri-pins.txt's for the CHERI-aware monitor."""
+    if monitor == "cheri":
+        return (cheri_firmware_pin(cheri_pins),
+                "guest/cheri-pins.txt's firmware pin")
+    return firmware_pin(lock), f"the lock's {FIRMWARE_PIN}"
+
+
+def pinned_firmware(path, pin, source=f"the lock's {FIRMWARE_PIN}"):
+    """Refuse FW at PATH unless its SHA-256 is PIN, SOURCE's."""
     digest = sha256(pathlib.Path(path).read_bytes())
     if digest != pin:
-        raise SystemExit(f"--firmware {path} has SHA-256 {digest}, not the "
-                         f"lock's {FIRMWARE_PIN} {pin}: refused")
+        raise SystemExit(f"--firmware {path} has SHA-256 {digest}, not "
+                         f"{source} {pin}: refused")
 
 
 class Lines:
@@ -294,11 +350,13 @@ def stop(process, grace=0.0):
         return "killed:none"
 
 
-def attempt(args, expect, directory, session_sha, elf_sha):
+def attempt(args, expect, directory, session_sha, elf_sha, monitor=MONITOR,
+            cheri_pins=CHERI_PINS, lock=LOCK):
     """One QEMU boot through the session into DIRECTORY; (QEMU's exit,
     the error that ended it early or None, keys, seconds). FW first, by
-    the lock's pin, before anything of the attempt is written."""
-    pinned_firmware(args.firmware, firmware_pin())
+    its pin for MONITOR, before anything of the attempt is written."""
+    pinned_firmware(args.firmware,
+                    *expected_firmware(monitor, cheri_pins, lock))
     if directory.exists():
         shutil.rmtree(directory)
     directory.mkdir(parents=True)
@@ -312,7 +370,8 @@ def attempt(args, expect, directory, session_sha, elf_sha):
         f"expect={pathlib.Path(args.expect).name} image={expect['image']} "
         f"sha256={sha256(pathlib.Path(args.expect).read_bytes())}\n"
         f"elf={args.elf} sha256={elf_sha}\n", encoding="utf-8")
-    argv = [args.qemu, "-machine", MACHINE, "-cpu", CPU, "-smp", "8", "-m",
+    argv = [args.qemu, "-machine", MACHINE, "-cpu",
+            CPU + (f",{CHERI_CPU}" if CHERI_CPU else ""), "-smp", "8", "-m",
             "8G", "-bios", args.firmware, "-kernel", args.elf, "-display",
             "none", "-monitor", "none", "-no-reboot", "-chardev",
             f"stdio,id=uart0,signal=off,logfile={directory / 'console.log'},"
@@ -368,14 +427,20 @@ def judge(args, directory, session):
     """The checker on DIRECTORY's capture: its verdict, the boot hart."""
     command = [sys.executable, "-B", str(CHECKER),
                str(directory / "console.log"), "--expect", args.expect,
-               "--mode", "direct", "--sbi-version", "2.0", "--toolchain",
-               args.toolchain, "--json", str(directory / "result.json"),
+               "--mode", "direct", *CHECKED, "--sbi-version", FIRMWARE_SBI,
+               "--toolchain", args.toolchain, "--json",
+               str(directory / "result.json"),
                "--typed", str(directory / "typed.txt"), "--nonce",
                str(directory / "nonce.txt"), "--session", str(session)]
     if args.report:
         command += ["--report", args.report]
     if args.kernel:
         command += ["--kernel", args.kernel, "--dtb", args.dtb]
+    # beryllium-cheri: --build, the suite's or run's, is the checker's build
+    # root, whose references it reads (its default, build/mvp, is the
+    # RISC-V monitor's tree).
+    if args.build:
+        command += ["--build-root", str(args.build)]
     with open(directory / "check.txt", "wb") as out:
         subprocess.run(command, stdout=out, stderr=subprocess.STDOUT,
                        check=False)
@@ -601,6 +666,37 @@ def firmware_self_test(scratch):
                   refused(lambda: attempt(args, {}, directory, "0" * 64,
                                           "0" * 64)) and
                   not started.exists() and not directory.exists()))
+    # beryllium-cheri: under cheri, FW by a scratch guest/cheri-pins.txt's
+    # firmware line, beside a scratch lock: the bytes it pins pass; that
+    # firmware with one byte changed, and the lock's pinned firmware, are
+    # refused before QEMU starts.
+    pinned, locked = scratch / "fw_cheri.bin", scratch / "fw_lock.bin"
+    pinned.write_bytes(bytes(range(256)) * 64)
+    locked.write_bytes(bytes(range(255, -1, -1)) * 64)
+    pins, lock = scratch / "cheri-pins.txt", scratch / "tool-lock.conf"
+    pins.write_text(f"firmware fw_dynamic.bin sha256={digest} bytes="
+                    f"{len(changed)}\n", encoding="ascii")
+    lock.write_text(f"{FIRMWARE_PIN}={sha256(locked.read_bytes())}\n",
+                    encoding="ascii")
+
+    def cheri_launch(path, name):
+        run = argparse.Namespace(firmware=str(path), qemu=str(qemu),
+                                 elf=str(path), expect=str(path),
+                                 run_timeout=1.0)
+        return refused(lambda: attempt(run, {}, scratch / name, "0" * 64,
+                                       "0" * 64, "cheri", pins, lock)) and \
+            not started.exists() and not (scratch / name).exists()
+    cases += [
+        ("under cheri, the firmware guest/cheri-pins.txt pins", not refused(
+            lambda: pinned_firmware(pinned, *expected_firmware(
+                "cheri", pins, lock)))),
+        ("under cheri, that firmware with one byte changed, refused before "
+         "QEMU starts", cheri_launch(firmware, "attempt-cheri-changed")),
+        ("under cheri, the lock's pinned firmware, refused before QEMU "
+         "starts", not refused(lambda: pinned_firmware(
+             locked, *expected_firmware("riscv", pins, lock))) and
+         cheri_launch(locked, "attempt-cheri-lock")),
+    ]
     return cases
 
 
@@ -632,6 +728,9 @@ def main(argv):
             command.add_argument("--report")
             command.add_argument("--kernel")
             command.add_argument("--dtb")
+            # beryllium-cheri: the build tree, as suite's --build, for the
+            # checker's build root.
+            command.add_argument("--build")
         else:
             command.add_argument("--build", required=True)
             command.add_argument("--scenarios", required=True)
@@ -641,6 +740,13 @@ def main(argv):
         return self_test()
     if args.command is None:
         parser.error("run, suite, or --self-test")
+    if FIRMWARE_SBI is None:
+        parser.error(f"BE_MVP_MONITOR={MONITOR} is neither riscv nor cheri")
+    if CHERI_CPU and (MONITOR != "cheri" or
+                      not CHERI_CPU_FORM.fullmatch(CHERI_CPU)):
+        parser.error(f"BE_MVP_QEMU_CHERI_CPU={CHERI_CPU} is not property="
+                     "value pairs for the CHERI-aware monitor "
+                     "(BE_MVP_MONITOR=cheri)")
     if args.attempts < 1:
         parser.error("--attempts must be at least 1")
     if args.command == "run":

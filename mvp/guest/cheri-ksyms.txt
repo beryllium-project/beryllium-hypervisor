@@ -1,0 +1,9 @@
+__sbi_ecall
+_copy_from_user
+_copy_to_user
+_printk
+memremap
+memunmap
+misc_deregister
+misc_register
+param_ops_ulong

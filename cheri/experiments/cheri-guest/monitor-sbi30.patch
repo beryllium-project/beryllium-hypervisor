@@ -1,0 +1,20 @@
+diff -ruN a/mvp/tools/port.py b/mvp/tools/port.py
+--- a/mvp/tools/port.py
++++ b/mvp/tools/port.py
+@@ -673,6 +673,16 @@
+         ("region-bss-exclude", BSS_ANCHOR, BSS_EXCLUDED, 1),
+         ("mvp-region", ASSERT_ANCHOR, REGION_SECTION + ASSERT_ANCHOR, 1),
+     ],
++    # beryllium-cheri: include/be/r3.h pins SBI 3.0 and B2's port lowers it
++    # to 2.0 for OpenSBI v1.6; Codasip's CHERI OpenSBI reports 3.0.
++    "include/be/r3.h": [
++        ("cheri-firmware-sbi-3.0-doc",
++         "pinned firmware SBI specification version 2.0 */",
++         "pinned firmware SBI specification version 3.0 */", 1),
++        ("cheri-firmware-sbi-3.0",
++         "#define BE_R3_OPENSBI_SPEC_VERSION\tBE_U64_C(0x02000000)",
++         "#define BE_R3_OPENSBI_SPEC_VERSION\tBE_U64_C(0x03000000)", 1),
++    ],
+     **CORE_RULES,
+ }
+ 

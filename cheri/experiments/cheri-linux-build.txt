@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Results of experiments/build-cheri-linux.sh: a minimal CHERI Linux
+# guest kernel, configured as Beryllium configures its guest kernel,
+# against the MVP monitor's guest limits. Paths are relative to this
+# repository.
+built: 2026-11-05T06:58:41Z
+pin: beryllium-integration 6ff17c6777f932593af99f3e5689a1fb4391a7b6 9fc05036cf83d37f81fee0f3bd027d70c1e0c196cb386645a0db6a6564366082
+pin: cheri-alliance-linux 3934c32fbb3ba1d7d5dffe117cb2eec5ab5e1c80 a33064a3485c6a740922fa328e21c21049d2d927515267a4738c993ab2fbff83
+pin: cheri-alliance-llvm 65b9e7ef24a82d4d4e476a24620672113f6f462d b608887ad3b7a6ea54425466faa535d3f5b682f3309e8dbac4fb7226fd55b5c1
+pin: cheri-alliance-musl 38bf75bb2efd4756d4c5295a98e62de0bd963390 f9d286a0c43be72b87092a4b72d1c55c4a004e987e0505889646f180e1d71e57
+compiler: clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d)
+fragments: tinyconfig (kernel/configs/tiny-base.config, tiny.config); Beryllium bringup/k3-b6/guest/b6-kernel.config at 6ff17c67 (sha256 957cc25d92df532a); experiments/cheri-linux/cheri-kernel.config
+final .config: 7d1138c6ea12601660be1040b6a5de09c5cc5d87b0823cb860dbeec84927e0f7 (349 options =y)
+  CONFIG_CC_OPTIMIZE_FOR_SIZE=y
+  CONFIG_RISCV_CHERI=y
+  CONFIG_ARCH_HAS_CHERI_CAPABILITIES=y
+  CONFIG_ARCH_HAS_CHERI_UABI_AND_KERNEL=y
+  CONFIG_CHERI_PURECAP_UABI=y
+  CONFIG_CHERI_KERNEL=y
+  CONFIG_CHERI_UABI_AND_KERNEL=y
+init: 59e71003b4e847b50bcf6e652c9301a4b0c4208b2dc566ec53bc4ea0cc813d5a 279256 bytes (build/cheri-linux/init)
+Image: 74f3f8fbbe7fef54b5a32b999d7a088804a41a46f5b792d91c59f6459e37b2e3 (build/cheri-linux/Image)
+kernel file: 3096576 bytes (2.95 MiB); limit 3510272 bytes (3.35 MiB): fits
+image_size: 3338537 bytes (3.18 MiB); limit 8388608 bytes (8.00 MiB): fits
+window: 67108864 bytes (64.00 MiB); text_offset 0x200000
+BE_CHERI_LINUX_SIZE: FITS the monitor's guest limits
+vmlinux sections over 64 KiB (bytes):
+  .text                       1427986
+  .init.text                   116290
+  .init.data                   356968
+  __cap_relocs                 290280
+  .rodata                      165424
+  .data                        639520
+  .got                          68176
+  .bss                         241961

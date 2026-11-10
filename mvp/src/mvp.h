@@ -177,6 +177,20 @@
 
 /* Guest controls while a domain runs (planning/mvp-m0-plan.md). */
 #define BE_MVP_HENVCFG_STCE		(BE_U64_C(1) << 63)
+/*
+ * The armed henvcfg, which the arm helper writes and the resume tail
+ * requires: STCE only. beryllium-cheri: the three arming values
+ * (BE_MVP_HENVCFG_ARMED, BE_MVP_HEDELEG, and BE_MVP_HEDELEG_REQUIRED)
+ * are set per monitor variant; in the CHERI-aware monitor (BE_MVP_CHERI,
+ * mvp/Makefile's MVP_MONITOR=cheri) the armed henvcfg also holds CHERI
+ * v0.9.3's enable for VS-mode, henvcfg.CRE.
+ */
+#ifdef BE_MVP_CHERI
+#define BE_MVP_HENVCFG_CRE		(BE_U64_C(1) << 28)
+#define BE_MVP_HENVCFG_ARMED		(BE_MVP_HENVCFG_STCE | BE_MVP_HENVCFG_CRE)
+#else
+#define BE_MVP_HENVCFG_ARMED		BE_MVP_HENVCFG_STCE
+#endif
 /* VTVM, VTSR, and VTW stay clear, B6's value: a guest wfi runs natively. */
 #define BE_MVP_HSTATUS_CLEARED_TRAPS \
 	(BE_R3_HSTATUS_VTVM | BE_R3_HSTATUS_VTSR | BE_R3_HSTATUS_VTW)
@@ -191,14 +205,31 @@
 #define BE_MVP_HSTATUS_RESUME_CONTROLS \
 	(BE_MVP_HSTATUS_GUEST_CONTROLS & ~BE_R3_HSTATUS_SPVP)
 /* Causes 0, 2, 3, 4, 6, 8, 12, 13, and 15 go to the guest, as in B6. */
+#if defined(BE_MVP_CHERI) && !defined(BE_MVP_VARIANT_CHERI_FAULT_HS)
+/*
+ * beryllium-cheri: and cause 28, CHERI v0.9.3's CHERI fault. The CHERI
+ * Linux guest's te-poc variant cheri-fault-hs (planning/
+ * cheri-enforcement-plan.md, section 6, C3) leaves it out of both values,
+ * so that the guest's own CHERI fault reaches HS and ends the run.
+ */
+#define BE_MVP_HEDELEG			BE_U64_C(0x1000b15d)
+#else
 #define BE_MVP_HEDELEG			BE_U64_C(0xb15d)
+#endif
 /*
  * hedeleg is WARL, as in B6 and B7 (responsible-human direction fix-warl,
  * 2026-10-08): the readback may lack causes 0, 4, and 6; causes 2, 3, 8,
  * 12, 13, and 15 must stick, and no other bit may appear. The resume tail
- * then requires the armed readback.
+ * then requires the armed readback. beryllium-cheri: in the CHERI-aware
+ * monitor cause 28 must stick too, since a CHERI guest takes its own CHERI
+ * faults; a hart that cannot delegate it is refused at arming, not failed
+ * at the guest's first fault.
  */
+#if defined(BE_MVP_CHERI) && !defined(BE_MVP_VARIANT_CHERI_FAULT_HS)
+#define BE_MVP_HEDELEG_REQUIRED		BE_U64_C(0x1000b10c)
+#else
 #define BE_MVP_HEDELEG_REQUIRED		BE_U64_C(0xb10c)
+#endif
 #define BE_MVP_HIDELEG_VSTI		(BE_U64_C(1) << 6)
 #define BE_MVP_HIE_VSTIE		(BE_U64_C(1) << 6)
 /*
@@ -912,6 +943,9 @@ struct be_mvp_ring;
  *
  * Return: NONE when it reads back exactly STCE, SSTC when STCE reads 0
  *         (no Sstc, or M-mode left menvcfg.STCE clear), otherwise CONTROLS.
+ *         beryllium-cheri: the helper writes the armed henvcfg
+ *         (BE_MVP_HENVCFG_ARMED), so in the CHERI-aware monitor NONE needs
+ *         exactly STCE and CRE.
  */
 enum be_mvp_class be_mvp_stce_class(be_u64 henvcfg);
 
@@ -928,7 +962,10 @@ enum be_mvp_class be_mvp_stce_class(be_u64 henvcfg);
  *         0; hcounteren TM only; henvcfg STCE only; vstimecmp ~0; sie SSIE
  *         only; sstatus SIE, SPIE, SPP, FS, VS, XS, SUM, and MXR 0;
  *         @expected_hgatp; Bare vsatp; and sscratch the trusted top.
- *         Otherwise 0.
+ *         Otherwise 0. beryllium-cheri: in the CHERI-aware monitor,
+ *         hedeleg within 0x1000b15d and holding 0x1000b10c, and henvcfg
+ *         STCE and CRE only (BE_MVP_HEDELEG, BE_MVP_HEDELEG_REQUIRED, and
+ *         BE_MVP_HENVCFG_ARMED).
  */
 int be_mvp_controls_valid(const struct be_mvp_controls *controls,
 			  be_u64 expected_hgatp, be_u64 trusted_top);

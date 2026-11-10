@@ -1,0 +1,20 @@
+label=anchor/clang
+kind=scenario
+file=anchor-clang.img
+stage=done
+error=-
+qemu_exit=0
+seconds=5.6
+sbi_version=2.0
+boot_hart=1
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2748416
+crc32=a063f17d
+fdt=0xff7383d0
+fdt_end=0xff73edd8
+rule_hart=1
+shim_fdt=0xff7383d0
+terminal=BE_MVP:FAIL firmware
+console_bytes=4808
+console_sha256=6ac38b8ba466ad83ca711a9ad84884a19eb6a5d0f13ae1e8abfcd943ddd23798
+BE_MVP_UBOOT_SESSION[anchor/clang]: REFUSED boot_hart=1 qemu_exit=0 fdt=0xff7383d0 crc32=a063f17d seconds=5.6

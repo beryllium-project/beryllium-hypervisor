@@ -100,6 +100,25 @@ static unsigned long scenarios;
 #define EID_UNASSIGNED		BE_U64_C(0x42453535)
 #define HIGH_BIT		(BE_U64_C(1) << 32)
 #define ALL_ONES		(~BE_U64_C(0))
+/*
+ * The arming values the controls tests expect, per monitor variant, as
+ * literals of their own, not mvp.h's: hedeleg 0xb15d holding 0xb10c
+ * (WARL), a WARL reading 0xb15c, and the armed henvcfg STCE only.
+ * beryllium-cheri: in the CHERI-aware monitor (BE_MVP_CHERI), hedeleg
+ * delegates cause 28, CHERI v0.9.3's CHERI fault, too, and the armed
+ * henvcfg holds CRE, CHERI's enable for VS-mode, beside STCE.
+ */
+#ifdef BE_MVP_CHERI
+#define ARMED_HEDELEG		0x1000b15dU
+#define ARMED_HEDELEG_REQUIRED	0x1000b10cU
+#define ARMED_HEDELEG_WARL	0x1000b15cU
+#define ARMED_HENVCFG		BE_U64_C(0x8000000010000000)
+#else
+#define ARMED_HEDELEG		0xb15dU
+#define ARMED_HEDELEG_REQUIRED	0xb10cU
+#define ARMED_HEDELEG_WARL	0xb15cU
+#define ARMED_HENVCFG		BE_U64_C(0x8000000000000000)
+#endif
 
 static be_u8 pool[BE_MVP_GSTAGE_POOL_BYTES];
 static struct be_mvp_gstage_map windows[2];
@@ -360,13 +379,13 @@ static struct be_mvp_controls armed_controls(void)
 	return (struct be_mvp_controls) {
 		.hip = 0U,
 		.hstatus = BE_U64_C(0x200000180),
-		.hedeleg = 0xb15dU,
+		.hedeleg = ARMED_HEDELEG,
 		.hideleg = 0x40U,
 		.hie = 0U,
 		.hvip = 0U,
 		.hcounteren = 0x2U,
 		.htimedelta = 0U,
-		.henvcfg = BE_U64_C(0x8000000000000000),
+		.henvcfg = ARMED_HENVCFG,
 		.hgeie = 0U,
 		.vstimecmp = ALL_ONES,
 		.sie = 0x2U,
@@ -398,7 +417,7 @@ static void test_controls(void)
 	CHECK(BE_MVP_SIE_SSIE == 0x2U && BE_MVP_SIE_STIE == 0x20U);
 	CHECK(BE_MVP_SIE_CONTROL == 0x22U);
 	CHECK(BE_MVP_HVIP_VS_BITS == 0x444U);
-	CHECK(BE_MVP_HEDELEG == 0xb15dU);
+	CHECK(BE_MVP_HEDELEG == ARMED_HEDELEG);
 	CHECK(BE_MVP_HIDELEG_VSTI == 0x40U && BE_MVP_HIE_VSTIE == 0x40U);
 	CHECK(BE_MVP_HCOUNTEREN_TM == 0x2U);
 	CHECK(BE_MVP_HENVCFG_STCE == BE_U64_C(0x8000000000000000));
@@ -442,6 +461,21 @@ static void test_controls(void)
 		      (bit == 0U || bit == 4U || bit == 6U ? 1 : 0));
 	}
 	{
+#ifdef BE_MVP_CHERI
+		/*
+		 * beryllium-cheri: each with cause 28, which must stick; B6's
+		 * 0xb15d, without it, fails.
+		 */
+		static const be_u64 warl_good[] = {
+			0x1000b15dU, 0x1000b15cU, 0x1000b14dU, 0x1000b14cU,
+			0x1000b11dU, 0x1000b11cU, 0x1000b10dU, 0x1000b10cU,
+		};
+		static const be_u64 warl_bad[] = {
+			0x1000b17dU, 0x1000b15fU, 0x1000315dU, 0x1000a15dU,
+			0x1000915dU, 0x1000b05dU, 0x1000b155U, 0x1000b159U,
+			0x1000b10bU, 0xb15dU, 0U, ALL_ONES,
+		};
+#else
 		static const be_u64 warl_good[] = {
 			0xb15dU, 0xb15cU, 0xb14dU, 0xb14cU,
 			0xb11dU, 0xb11cU, 0xb10dU, 0xb10cU,
@@ -451,8 +485,9 @@ static void test_controls(void)
 			0xb05dU, 0xb155U, 0xb159U, 0xb10bU, 0U,
 			ALL_ONES,
 		};
+#endif
 
-		CHECK(BE_MVP_HEDELEG_REQUIRED == 0xb10cU);
+		CHECK(BE_MVP_HEDELEG_REQUIRED == ARMED_HEDELEG_REQUIRED);
 		CHECK((BE_MVP_HEDELEG & BE_MVP_HEDELEG_REQUIRED) ==
 		      BE_MVP_HEDELEG_REQUIRED);
 		for (index = 0U; index < BE_ARRAY_SIZE(warl_good); ++index) {
@@ -535,12 +570,15 @@ static void test_controls(void)
 	controls.sstatus |= BE_U64_C(1) << 10;
 	CHECK(armed_valid(&controls) == 0);
 
-	CHECK(be_mvp_stce_class(BE_MVP_HENVCFG_STCE) == BE_MVP_CLASS_NONE);
+	CHECK(be_mvp_stce_class(ARMED_HENVCFG) == BE_MVP_CLASS_NONE);
+#ifdef BE_MVP_CHERI
+	/* beryllium-cheri: armed is STCE and CRE; STCE alone fails. */
+	CHECK(be_mvp_stce_class(BE_MVP_HENVCFG_STCE) == BE_MVP_CLASS_CONTROLS);
+#endif
 	CHECK(be_mvp_stce_class(0U) == BE_MVP_CLASS_SSTC);
 	CHECK(be_mvp_stce_class(1U) == BE_MVP_CLASS_SSTC);
 	CHECK(be_mvp_stce_class(ALL_ONES >> 1) == BE_MVP_CLASS_SSTC);
-	CHECK(be_mvp_stce_class(BE_MVP_HENVCFG_STCE | 1U) ==
-	      BE_MVP_CLASS_CONTROLS);
+	CHECK(be_mvp_stce_class(ARMED_HENVCFG | 1U) == BE_MVP_CLASS_CONTROLS);
 	CHECK(be_mvp_stce_class(ALL_ONES) == BE_MVP_CLASS_CONTROLS);
 }
 
@@ -2011,7 +2049,7 @@ static void test_records(void)
 	be_mvp_control_init(&control, ENTRY_TIME - 0x100U, BE_MVP_RUN_BUDGET,
 			    BE_MVP_READY_TICKS);
 	CHECK(be_mvp_control_started(&control, 0U, 1U) == 1);
-	controls.hedeleg = 0xb15cU;
+	controls.hedeleg = ARMED_HEDELEG_WARL;
 	CHECK(be_mvp_post_ready(&outbound[0], &controls, ENTRY_TIME) == 1);
 	be_mvp_entry_frame(&entry, BE_MVP_KERNEL_GPA, BE_MVP_GUEST_HART,
 			   BE_MVP_DTB_GPA);
@@ -2023,12 +2061,13 @@ static void test_records(void)
 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HGATP) ==
 	      BE_MVP_G0_HGATP);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HSTATUS) == 0x180U);
-	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HEDELEG) == 0xb15cU);
+	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HEDELEG) ==
+	      ARMED_HEDELEG_WARL);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HIDELEG) == 0x40U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HCOUNTEREN) == 0x2U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_SIE) == 0x2U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HENVCFG) ==
-	      BE_MVP_HENVCFG_STCE);
+	      ARMED_HENVCFG);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_VSTIMECMP) == ALL_ONES);
 	CHECK(be_mvp_control_record(&control, 0U, &taken, &step) ==
 	      BE_MVP_STEP_READY);

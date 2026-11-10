@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# Every diagnostic from compiling the two leaves with the pinned CHERI
+# LLVM, written by experiments/compile-leaves.sh; commands run in
+# build/inputs/. "beryllium" is Beryllium's recorded compile_flags with
+# only -march/-mabi changed; "cheri-all" drops -Werror and adds the
+# CHERI warning groups the compiler accepts (sub-object bounds off).
+# Each "object:" line gives the ELF flags and the number of instructions
+# naming a capability register; the last entry is a positive control.
+compiler: clang version 20.0.0git (https://github.com/CHERI-Alliance/llvm-project 65b9e7ef24a82d4d4e476a24620672113f6f462d)
+pin: cheri-alliance-llvm 65b9e7ef24a82d4d4e476a24620672113f6f462d
+inputs: beryllium-m8-target 6fbcc3d1641a927984ae849623a1c767d5faf550 (experiments/leaves.sha256)
+CHERI warning groups accepted: -Wcheri -Wcheri-pedantic -Wcheri-capability-misuse -Wcheri-provenance -Wcheri-provenance-pedantic -Wcheri-bitwise-operations -Wcheri-prototypes -Wcheri-implicit-conversion -Wcheri-inefficient -Wcapability-to-integer-cast -Wshorten-cap-to-int
+
+== purecap beryllium mvp/src/mvp-sbi.c: exit 0, 0 warnings, 0 errors
+$ clang --target=riscv64-unknown-elf -std=gnu11 -march=rv64imac_zicsr_zifencei_zcherihybrid_zcherilevels -mabi=l64pc128 -mcmodel=medany -mno-relax -msmall-data-limit=0 -ffreestanding -fno-builtin -fno-common -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -ffunction-sections -fdata-sections -g3 -gdwarf-4 -O2 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen -Os  -c mvp/src/mvp-sbi.c -o build/leaves/purecap-beryllium/mvp-sbi.o
+object: ELF flags 0x30001, RVC, cheriabi, capability mode; instructions naming a capability register: 823
+
+== purecap beryllium mvp/src/mvp-ring.c: exit 0, 0 warnings, 0 errors
+$ clang --target=riscv64-unknown-elf -std=gnu11 -march=rv64imac_zicsr_zifencei_zcherihybrid_zcherilevels -mabi=l64pc128 -mcmodel=medany -mno-relax -msmall-data-limit=0 -ffreestanding -fno-builtin -fno-common -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -ffunction-sections -fdata-sections -g3 -gdwarf-4 -O2 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen -Os  -c mvp/src/mvp-ring.c -o build/leaves/purecap-beryllium/mvp-ring.o
+object: ELF flags 0x30001, RVC, cheriabi, capability mode; instructions naming a capability register: 221
+
+== purecap cheri-all mvp/src/mvp-sbi.c: exit 0, 0 warnings, 0 errors
+$ clang --target=riscv64-unknown-elf -std=gnu11 -march=rv64imac_zicsr_zifencei_zcherihybrid_zcherilevels -mabi=l64pc128 -mcmodel=medany -mno-relax -msmall-data-limit=0 -ffreestanding -fno-builtin -fno-common -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -ffunction-sections -fdata-sections -g3 -gdwarf-4 -O2 -Wall -Wextra -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen -Os -Wcheri -Wcheri-pedantic -Wcheri-capability-misuse -Wcheri-provenance -Wcheri-provenance-pedantic -Wcheri-bitwise-operations -Wcheri-prototypes -Wcheri-implicit-conversion -Wcheri-inefficient -Wcapability-to-integer-cast -Wshorten-cap-to-int -c mvp/src/mvp-sbi.c -o build/leaves/purecap-cheri-all/mvp-sbi.o
+object: ELF flags 0x30001, RVC, cheriabi, capability mode; instructions naming a capability register: 823
+
+== purecap cheri-all mvp/src/mvp-ring.c: exit 0, 0 warnings, 0 errors
+$ clang --target=riscv64-unknown-elf -std=gnu11 -march=rv64imac_zicsr_zifencei_zcherihybrid_zcherilevels -mabi=l64pc128 -mcmodel=medany -mno-relax -msmall-data-limit=0 -ffreestanding -fno-builtin -fno-common -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -ffunction-sections -fdata-sections -g3 -gdwarf-4 -O2 -Wall -Wextra -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen -Os -Wcheri -Wcheri-pedantic -Wcheri-capability-misuse -Wcheri-provenance -Wcheri-provenance-pedantic -Wcheri-bitwise-operations -Wcheri-prototypes -Wcheri-implicit-conversion -Wcheri-inefficient -Wcapability-to-integer-cast -Wshorten-cap-to-int -c mvp/src/mvp-ring.c -o build/leaves/purecap-cheri-all/mvp-ring.o
+object: ELF flags 0x30001, RVC, cheriabi, capability mode; instructions naming a capability register: 221
+
+== hybrid beryllium mvp/src/mvp-sbi.c: exit 0, 0 warnings, 0 errors
+$ clang --target=riscv64-unknown-elf -std=gnu11 -march=rv64imac_zicsr_zifencei_zcherihybrid_zcherilevels -mabi=lp64 -mcmodel=medany -mno-relax -msmall-data-limit=0 -ffreestanding -fno-builtin -fno-common -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -ffunction-sections -fdata-sections -g3 -gdwarf-4 -O2 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen -Os  -c mvp/src/mvp-sbi.c -o build/leaves/hybrid-beryllium/mvp-sbi.o
+object: ELF flags 0x1, RVC; instructions naming a capability register: 0
+
+== hybrid beryllium mvp/src/mvp-ring.c: exit 0, 0 warnings, 0 errors
+$ clang --target=riscv64-unknown-elf -std=gnu11 -march=rv64imac_zicsr_zifencei_zcherihybrid_zcherilevels -mabi=lp64 -mcmodel=medany -mno-relax -msmall-data-limit=0 -ffreestanding -fno-builtin -fno-common -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -ffunction-sections -fdata-sections -g3 -gdwarf-4 -O2 -Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen -Os  -c mvp/src/mvp-ring.c -o build/leaves/hybrid-beryllium/mvp-ring.o
+object: ELF flags 0x1, RVC; instructions naming a capability register: 0
+
+== hybrid cheri-all mvp/src/mvp-sbi.c: exit 0, 0 warnings, 0 errors
+$ clang --target=riscv64-unknown-elf -std=gnu11 -march=rv64imac_zicsr_zifencei_zcherihybrid_zcherilevels -mabi=lp64 -mcmodel=medany -mno-relax -msmall-data-limit=0 -ffreestanding -fno-builtin -fno-common -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -ffunction-sections -fdata-sections -g3 -gdwarf-4 -O2 -Wall -Wextra -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen -Os -Wcheri -Wcheri-pedantic -Wcheri-capability-misuse -Wcheri-provenance -Wcheri-provenance-pedantic -Wcheri-bitwise-operations -Wcheri-prototypes -Wcheri-implicit-conversion -Wcheri-inefficient -Wcapability-to-integer-cast -Wshorten-cap-to-int -c mvp/src/mvp-sbi.c -o build/leaves/hybrid-cheri-all/mvp-sbi.o
+object: ELF flags 0x1, RVC; instructions naming a capability register: 0
+
+== hybrid cheri-all mvp/src/mvp-ring.c: exit 0, 0 warnings, 0 errors
+$ clang --target=riscv64-unknown-elf -std=gnu11 -march=rv64imac_zicsr_zifencei_zcherihybrid_zcherilevels -mabi=lp64 -mcmodel=medany -mno-relax -msmall-data-limit=0 -ffreestanding -fno-builtin -fno-common -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables -ffunction-sections -fdata-sections -g3 -gdwarf-4 -O2 -Wall -Wextra -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef -Ibuild/mvp/port/include -Ibuild/mvp/port/arch/riscv/be -Imvp/src -Ibuild/mvp/gen -Os -Wcheri -Wcheri-pedantic -Wcheri-capability-misuse -Wcheri-provenance -Wcheri-provenance-pedantic -Wcheri-bitwise-operations -Wcheri-prototypes -Wcheri-implicit-conversion -Wcheri-inefficient -Wcapability-to-integer-cast -Wshorten-cap-to-int -c mvp/src/mvp-ring.c -o build/leaves/hybrid-cheri-all/mvp-ring.o
+object: ELF flags 0x1, RVC; instructions naming a capability register: 0
+
+== control purecap cheri-all build/leaves/control.c: exit 0, 2 warnings, 0 errors
+| char *from_int(long x) { return (char *)x; }
+| long to_int(char *p) { return (long)p; }
+$ clang --target=riscv64-unknown-elf -std=gnu11 -ffreestanding -march=rv64imac_zicsr_zifencei_zcherihybrid_zcherilevels -mabi=l64pc128 -Wcheri -Wcheri-pedantic -Wcheri-capability-misuse -Wcheri-provenance -Wcheri-provenance-pedantic -Wcheri-bitwise-operations -Wcheri-prototypes -Wcheri-implicit-conversion -Wcheri-inefficient -Wcapability-to-integer-cast -Wshorten-cap-to-int -c build/leaves/control.c -o build/leaves/control.o
+build/leaves/control.c:1:33: warning: cast from provenance-free integer type to pointer type will give pointer that can not be dereferenced [-Wcheri-capability-misuse]
+    1 | char *from_int(long x) { return (char *)x; }
+      |                                 ^
+build/leaves/control.c:2:31: warning: cast from capability type 'char *' to non-capability, non-address type 'long' is most likely an error [-Wcapability-to-integer-cast]
+    2 | long to_int(char *p) { return (long)p; }
+      |                               ^~~~~~~
+2 warnings generated.

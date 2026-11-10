@@ -2206,6 +2206,19 @@ public push now.
   mechanisms: what fits today, what CHERI-enabled guests would change, a
   purecap compile-and-test of M8's two leaves on a v0.9.3 stack, and
   questions for CHERITech, from the beryllium-cheri investigation.
+- `cheri-platform.md`: the CHERI platform, from the long-lived CHERI
+  platform branch, which the CHERI integration merged into `main`: what
+  it carries, its check, and, as history, how the branch was kept in
+  step with the development line.
+- `cheri-enforcement-plan.md` (from the CHERI platform branch's line;
+  accepted 2026-11-06 at `9ec57998`): what CHERI enforced on that branch
+  when the plan was written, why
+  bounded first capabilities do not suit Linux guests, and the bounded
+  plan for the G-stage capability-write control and the tests that must
+  fault; `cheri-enforcement-plan-review-summary.md` is its review and
+  acceptance record, and `cheri-enforcement-result-review-summary.md` the
+  result review and acceptance record of its work packages CE-2 to CE-5
+  (exact result commit `3998e34e`, accepted 2026-11-07).
 - `session-analysis-transcripts-2026-07-20.md`: index of verbatim significant
   session outputs retained as research provenance, with separate full-text
   pages for TE/VBS assessment, HS isolation, and CAP+TE/CHERI composition.

@@ -143,7 +143,7 @@ enum be_mvp_class be_mvp_stce_class(be_u64 henvcfg)
 {
 	if ((henvcfg & BE_MVP_HENVCFG_STCE) == 0U)
 		return BE_MVP_CLASS_SSTC;
-	if (henvcfg != BE_MVP_HENVCFG_STCE)
+	if (henvcfg != BE_MVP_HENVCFG_ARMED)
 		return BE_MVP_CLASS_CONTROLS;
 	return BE_MVP_CLASS_NONE;
 }
@@ -164,7 +164,7 @@ int be_mvp_controls_valid(const struct be_mvp_controls *controls,
 	       (controls->hvip & BE_MVP_HVIP_VS_BITS) == 0U &&
 	       controls->hcounteren == BE_MVP_HCOUNTEREN_TM &&
 	       controls->htimedelta == 0U &&
-	       controls->henvcfg == BE_MVP_HENVCFG_STCE &&
+	       controls->henvcfg == BE_MVP_HENVCFG_ARMED &&
 	       controls->hgeie == 0U &&
 	       controls->vstimecmp == BE_MVP_VSTIMECMP_DISARMED &&
 	       controls->sie == BE_MVP_SIE_SSIE &&
