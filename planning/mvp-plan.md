@@ -2105,3 +2105,585 @@ s3_revision_s3c_m7_plan=accepted-4f4d094e-2026-11-01
 s3_revision_s3c_m7_result=accepted-e1a6395e038d4dd095960f7a942a87399bdbce18;parent-8418a377;2026-11-02;instruction-accept-e1a6395e-move-k3ctl-pin-to-v1.1-pin-part-reversed;record-mvp-m7-result-review-summary.md
 s3_revision_s3c_m8_m9_plans=not-started;on-go-either-first
 ```
+
+## Plan revision S3-D: a physical boundary under the monitor first, supervisor-domain alignment, and the domain terminology rule
+
+**Status.** Directed, and proposed by the commit that adds this section.
+This revision is made on the public development line, `main` after the
+tag `mvp-1.0`, where each commit is prepared unsigned and the responsible
+human signs it off and pushes it. So: if the commit that adds this
+section is on the public `main` with the responsible human's
+`Signed-off-by`, this revision is accepted as written, with Q52 to Q57 at
+their defaults. Any other answer needs a revised commit before the
+sign-off. The signed commit differs from the one reviewed only by that
+line and its committer date; if it must be rebased first, the internal
+record says so. Both commit IDs and the instruction are kept in the
+project's internal records, as the CHERI integration's were. Line
+references are to this document at `a0d0b78b`.
+
+MVP 1.0 was published on 2026-11-08 at the tag `mvp-1.0`, so the rung
+after it may now be planned (S3-C.2, L1262-L1265). On 2026-11-09 and
+2026-11-10 the responsible human reviewed how the policy is enforced and
+directed, in these words:
+
+- `we need to use assume breach model`, and `I don't feel comfortable
+  with the lack of a boundary between HS domains` ("HS domains" there
+  means the monitor's per-hart parts in HS mode; S3-D.2 gives the terms
+  used from here on);
+- `part of the purpose of this project is to utilize & validate platform
+  features, so we should plan to integrate PMP possibly as the next
+  step, and update the plan`;
+- `we should also ensure we are aligned with supervisor domains
+  architecture, and can readily implement it (initially via emulation)`;
+- `we should also make changes now to avoid clashes with SD
+  terminology`;
+- `we will change the NOR policy, and we can always reset the K3 to
+  factory when/if needed`;
+- `if any policies seem to forbid a direction, stop and raise that with
+  me (e.g. the NOR policy)`;
+- and, on reading a draft of this revision, `re M12 waiting on mem
+  protection tables, any reason we can't implement that and contribute?`
+
+A session plan built on the first six directions was reviewed
+independently, and the human approved it on 2026-11-10 with five form
+answers: `ladder=boundary_first`, `board_firmware=staged`,
+`naming=profile`, `attacker=post_activation`, and
+`m11_steps=domain_harts_first`. To the last direction he gave three
+more: `m12=lane_now`, `qemu=fork`, and `upstream_model=nameable`. When
+the state of others' work had been read in full (S3-D.4), he answered
+again: `m12_shape=build_on` and `first_contact=work_first`, which
+replace `qemu=fork`. Three candidates of this revision were reviewed
+independently before this text, which answers those reviews; none was
+signed.
+
+This revision turns the directions and the answers into plan text. It is
+deliberately narrow. It records the direction, re-orders the ladder,
+fixes a terminology rule, and names two milestones in outline. It selects
+no design. It changes no claim text, no identifier, no image, no item of
+the board policy, and no accepted document other than this plan.
+
+### S3-D.1 Why: what MVP 1.0 leaves open inside the monitor
+
+MVP 1.0's monitor is one HS-mode image that runs on harts 0 to 2. The
+G-stage bounds each guest. Nothing that the monitor controls bounds the
+monitor's own code: PMP belongs to the firmware, MVP 1.0 does not use
+it, and what the board's firmware programs was never recorded. The
+[security model](security-model-v1.md) records this as open (L217): "The
+sealed manifest's protection inside HS | none: the seal is an API
+property, and any HS C code can write the sealed state (S1 H05)". A flaw
+in one hart's trap path that gave a guest control of HS-mode code there
+would reach every VS domain's memory, the other harts' state, the sealed
+configuration, and the secret page. MVP 1.0's claim does not say
+otherwise: its threat model trusts the monitor's code whole.
+
+"Assume breach" adds an attacker that the model does not have: **HS-mode
+code on a hart, after that hart's activation**. Activation is a VS-domain
+hart's first guest entry, and the control hart's boot barrier. Boot code
+before that stays in the trusted base, and its inputs stay untrusted and
+checked, as today (`attacker=post_activation`).
+
+HS-mode code cannot bound itself. The mechanism this hardware has for the
+purpose is physical memory protection (PMP): per-hart rules that only
+M-mode programs. The [hardware roadmap](riscv-security-hardware.md)'s
+principle applies: every relevant platform security feature is to be
+"inventoried and assigned an explicit use, deferral, verification, or
+unsupported status", and used "when it strengthens a stated property
+without obscuring the reference monitor or inflating the TCB". PMP has
+had no use so far.
+
+What such a boundary could and could not do is stated here, so that no
+later text overstates it. Against a breached hart it would protect:
+
+- the other VS domains' memory;
+- pages that the breached hart's VS domain has no right to, the secret
+  page among them;
+- the other harts' private monitor state;
+- the sealed configuration and every G-stage table.
+
+It would not protect:
+
+- the breached hart's own VS domain, or whatever that VS domain may
+  already write;
+- the mailboxes between harts, which both ends write by design. The
+  control hart stays a hub: a breached VS-domain hart can attack the
+  control hart through them, and through it the other hart;
+- the evidence lines: a breached hart can print forged text;
+- availability;
+- anything against cache or timing channels between harts.
+
+M-mode's own memory is the firmware's to protect, as it is today. The
+firmware's call interface becomes the next thing that a breached hart
+attacks. That is why the firmware is in scope (S3-D.5, S3-D.6).
+
+### S3-D.2 The terminology rule (D24)
+
+"Domain" occurs 3,882 times in the planning pages, the MVP's documents,
+and its sources (2,308, 476, and 1,098; `git grep -I -i -o -E
+'\bdomains?\b'` at `a0d0b78b`), and "domain hart" 461 times. Three other
+things that this revision brings into view use the same word: the
+firmware's OpenSBI domains; the supervisor domains of the RISC-V
+Supervisor Domains Access Protection specification (v0.9.0 of
+2026-08-19, not ratified: the document calls itself a draft, and a
+release script added to its repository later names v0.9 the "frozen"
+milestone); and the interrupt domains of the Advanced Interrupt
+Architecture. The rule: the specification's words keep the
+specification's meanings, and ours are qualified.
+
+| Term | Meaning from this revision on |
+| --- | --- |
+| **supervisor domain** (the specification's "SD"), **RDSM**, **SDSM**, **SDID**, **MPT** | The specification's meanings only. No Beryllium unit is named one, or given one, before M11's or M12's plan records that mapping as a decision (stop (k)). The reading below is of MVP 1.0 as a whole |
+| **OpenSBI domain** | The firmware's construct, always written in full |
+| **interrupt domain** | AIA's APLIC domains and the specification's supervisor interrupt domains: always qualified |
+| **VS domain** | Beryllium's policy subject: a VS-mode guest with one G-stage root, one VMID, and, where the scenario has a policy, one type; the security model's `domain`. New and maintained text writes "VS domain" wherever M-mode, PMP, OpenSBI, or the specification is in view. "Domain" alone, in a document accepted before this rule, means VS domain |
+| **VS-domain hart** | The accepted "domain hart", written in full wherever firmware constructs are in view |
+| **host VS domain** | `anchor`'s untrusted Linux guest; never "host domain" |
+| Compound names | "Protected domain" and "service domain" keep their accepted form, and are written "protected VS domain" and "service VS domain" wherever M-mode, PMP, OpenSBI, or the specification is in view |
+| **physical access profile** | The new thing: the set of physical extents, with rights, that one hart may reach after its activation, enforced by M-mode. A hart under one is **confined**. No new noun is introduced for "the unit" (`naming=profile`) |
+| **G-stage root** | Never "root" alone near M-mode text: the firmware's default OpenSBI domain is named ROOT |
+| **microSD card** | Never "SD" for a card: "SD" is the specification's abbreviation |
+
+How the specification's model reads on MVP 1.0, as a reading and not a
+decision: the whole of MVP 1.0, the monitor with both guests, sits in one
+hosting supervisor domain, with OpenSBI in the RDSM's role and the
+monitor in the SDSM's, and a VS domain is a virtual machine hosted inside
+it. Whether M11's confined harts are to be called supervisor domains is
+for M11's plan. The specification's motivation says that PMP can be used
+for "creating isolated supervisor domains", but that "this approach is
+typically suitable only for simple systems with statically allocated
+resources". Its operative text is "The RDSM may utilize `Smepmp` ... -
+or equivalent and/or the `Smsd` (Supervisor Domains) extension". Whether
+a design on plain PMP qualifies, and what differs, would have to be
+stated there.
+
+**What changes with this revision:** the rule; the
+[glossary](glossary.md)'s rows for the terms above and its stale rows
+(hart, control hart, domain hart, PMP, protected domain); and the
+hardware roadmap's stale names and statuses.
+
+**What does not change:** no identifier, no image byte, no accepted
+text, and nothing at the tag `mvp-1.0`. New identifiers arrive with M11's
+code. Renaming the policy types `prot_t` and `prot_mem_t` is not a clash
+with the specification, and `policy.te`'s hash is in every `te-poc` and
+`anchor` image: it is a separate, later sweep (Q52).
+
+### S3-D.3 The ladder, re-cut (D23, D27)
+
+MVP 2.0 keeps the focus that S3-C.2 gave it, "finalize core architecture
+and formalize", and its seven steps in their order. M11 now comes before
+them, and M12 runs beside M11 (`ladder=boundary_first`, `m12=lane_now`):
+
+| Order | Milestone | What | Why here |
+| --- | --- | --- | --- |
+| First | **M11**, the physical boundary | Each hart that the monitor uses is confined by a physical access profile owned by M-mode, and every other hart is parked | The device path, the service VS domain, and dynamic management all add HS-mode code and shared state. A boundary under that code costs less before it exists than after, and the memory layout that the boundary needs (S3-D.5) would otherwise be redone |
+| Beside M11 | **M12**, the supervisor-domain lane | Memory protection tables under emulation, outside the claim: contributions to the specification, the reference model, the emulator, and the firmware that others have in progress; then M11's descriptor enforced by the tables | It keeps M11's descriptor honest: a descriptor that only PMP could enforce would not be aligned. It does not wait, and it does not duplicate (D27) |
+| After M11 | S3-C.2's steps (1) to (7) | Unchanged, in their order. They do not wait for M12 | |
+
+M12 gates one thing only: S3-C.2's "compatibility analysis of MPT's and
+CoVE's identity, ownership, measurement, and ABI boundaries", which
+stays MVP 2.0's last step and builds on M12. MVP 3.0 keeps memory
+protection tables on hardware, and CoVE, as research tracks.
+
+Each milestone gets its own bounded plan, as M0 to M10 did. The release
+process for the rungs after 1.0 stays unplaced (S3-C.2, L1283-L1292):
+M11's result is a new candidate on the development line, not a release.
+
+### S3-D.4 Milestones M11 and M12 in outline
+
+**M11, the physical boundary. Goal.** After its activation, each hart
+that the monitor uses can reach only the physical memory that its role
+needs, under rules that M-mode programs from a description built offline
+and that HS-mode code on that hart cannot change. The harts that the
+monitor does not use are parked under rules that deny them the monitor's
+memory. Every scenario still passes; hostile test images show that a
+forbidden access has no effect.
+
+**Requirements.** M11-R1 to M11-R9 are adopted from the independent
+review of the session plan, and M11-R10 follows from the human's
+alignment direction. The prefix keeps them apart from the runtime
+packages R0 to R8. M11's plan may refine them, and returns to the human
+before it drops one.
+
+| # | Requirement |
+| --- | --- |
+| M11-R1 | One immutable partition descriptor, generated offline from the scenario and the layout, with an identity. M-mode installs a profile from it and never takes a range, a profile, or a hart from HS-mode code |
+| M11-R2 | A complete allowlist of M-mode calls for each hart and phase. Everything else is absent from the firmware or refused after activation. Every call that takes an address is checked against the caller's profile. Suspend, stop, and start paths that would reprogram PMP are closed |
+| M11-R3 | Every execution context that can address physical memory is accounted for: confined, parked, or named in the trusted base. All eight X100 harts are tested |
+| M11-R4 | A new memory layout: each hart's private state, each ring's words by writer, and each shared mailbox in its own extent, aligned as the mechanism needs. Shared regions are listed exceptions |
+| M11-R5 | An exact PMP entry table for each hart, read back after it is programmed |
+| M11-R6 | The control hart's narrowing is a one-way move out of its boot profile. Its evidence is a record held in M-mode, or an oracle outside the monitor |
+| M11-R7 | A negative test passes when the forbidden access has no effect, with M-mode's own count of denials as the witness. A hart that merely stops is not a pass |
+| M11-R8 | Security model v1 Part 1 Revision 4 first, as its own exact commit: the attacker of S3-D.1, the profile and the shared regions as objects, the activation phase, M-mode's services, the unused harts, and numbered invariants |
+| M11-R9 | A proof-impact review before any M8 proof is re-run. A newly accepted M8 specification where an interface changes. The CHERI check as a gate, with the boundary off for that variant |
+| M11-R10 | Alignment: the descriptor names no PMP-specific fact above its backend (no power-of-two assumption), lists shared memory, hart membership, and lifecycle explicitly, has a stable identity that the measurement can bind, and says how interrupts and devices would be assigned, so that memory protection tables could enforce it unchanged |
+
+**The design is not chosen here.** M11's plan chooses it on the
+characterization's facts (S3-D.5), among at least: one OpenSBI domain
+with an activation call; one OpenSBI domain per hart; per-hart OpenSBI
+domains with a small amount of M-mode code of ours; and a minimal M-mode
+runtime. It also makes, for this static profile, the three-way
+comparison that the [implementation plan](implementation-plan.md)
+requires of a later runtime plan (L467-L471): "OpenSBI below Beryllium
+HS", "a Beryllium-owned M-mode component", and "a separately maintained
+minimal M-mode runtime". The accepted decisions that a design would
+change are named and decided there (S3-D.8). Before any M-mode code of
+ours is committed, the plan fixes its language rules, its licence
+(OpenSBI is BSD-2-Clause; `COPYING` makes GPL-3.0-only the project's
+default), where it lives, and how the firmware is built reproducibly
+(stop (m)).
+
+**Order of work.** Revision 4, then the plan. Under emulation, two
+steps: the VS-domain harts confined first, observed by the control hart
+and the checker; then the control hart narrowed
+(`m11_steps=domain_harts_first`). The board comes last, after the
+amendment of S3-D.6.
+
+**Evidence, in outline.** Host tests of the derivation; image-checker
+rules; every scenario passing with the boundary on; and hostile-monitor
+negative images under M11-R7, each also run with the boundary off, to
+show that the test discriminates. PMP cannot stop a write to `hgatp`, so
+a forged `hgatp` is tested by the access that follows it.
+
+**Exit.** Responsible-human acceptance of M11's exact result commit. The
+plain images of MVP 1.0, its claim, and its tag are not changed by it.
+
+**M12, the supervisor-domain lane. Goal.** M11's partition descriptor
+enforced by the specification's memory protection tables under
+emulation, on a reference model, an emulator, and a firmware that others
+can run too; and, on the way, contributions to the work that others have
+in progress on each. It is a variant with its own check, outside the
+tool lock and the claim, as the CHERI variant is.
+
+It does not wait, and it does not start a parallel implementation where
+one is in progress (D27, `m12_shape=build_on`). When read on 2026-11-10,
+no upstream reference model, emulator, or firmware had merged support
+for the tables, and no end-to-end stack ran. Work was in progress in
+each project:
+
+- the specification, v0.9.0, still a draft: it leaves several
+  behaviours that a model needs unspecified, and its instruction
+  encodings are not settled;
+- the Sail RISC-V model's pull request #1727: the registers and the
+  fence instructions, without the table walk and without tests;
+- a QEMU series, at version 8 and written to draft v0.49 (its cover
+  letter's "v0.4.9"), which its author has said he will update to
+  v0.9.0;
+- an OpenSBI series, posted as an RFC at version 7, which builds one
+  table for each OpenSBI domain;
+- Spike's pull request #2336, for one table mode;
+- no shared test suite.
+
+The lane's steps, each bounded by M12's plan:
+
+1. **Questions to the specification's authors**: the behaviours that a
+   model needs and the text leaves open.
+2. **Directed tests** that run unchanged on each implementation that
+   supports the case, among the Sail model, QEMU, and Spike, once the
+   instruction encodings are settled (step 1).
+3. **The table walk for the Sail model**, on top of pull request #1727,
+   with those tests. A model that the project helps to write is a
+   reference only through its review by Sail's maintainers, and through
+   cross-checks against the implementations that others wrote.
+4. **Testing and review of the QEMU series' next version and of the
+   OpenSBI series**, with a per-hart descriptor as the workload. A fork
+   of the emulator is kept only for what M12 needs and the posted series
+   still lacks, and none before its author's update is posted.
+5. **M11's descriptor under the tables**, once that descriptor is
+   stable and the pieces run together.
+
+The project prepares steps 2 and 3 first, and drafts step 1's questions
+with them. The responsible human writes to the people whose work they
+build on when there is something to show, and the questions go with
+that first contact (`first_contact=work_first`). Nothing is offered to
+another project before he has.
+
+Rules for anything bound for another project: code, tests, device
+trees, documentation, and the text of a submission (stop (o)).
+
+- That project's contribution policy is read at the time, and followed.
+  As read on 2026-11-10:
+  - QEMU: "Current QEMU project policy is to DECLINE any contributions
+    which are believed to include or derive from AI generated content."
+    The policy leaves other uses free, "such as researching APIs or
+    algorithms, static analysis, or debugging, provided their output is
+    not included in contributions", and it invites discussion of
+    exceptions on QEMU's list. So nothing written with AI assistance is
+    offered to QEMU. What is offered there is test results, defect
+    reports, and review, in the responsible human's own writing.
+  - The Sail RISC-V model requires that any use of generative AI be
+    disclosed, and a sign-off.
+  - The specification's repository requires a sign-off in the
+    submitter's real name; its text is under CC-BY-4.0.
+  - OpenSBI requires a sign-off.
+- It is written only with AI tools that can be disclosed by name, and it
+  derives from no work that was written with one that cannot
+  (`upstream_model=nameable`).
+- The characterization's scratch is never a source for it: that scratch
+  is uncommitted and unreviewed, and has no provenance record. M12
+  writes afresh what it needs.
+- It is written under the destination's licence, with no text of this
+  repository copied in. M12's plan decides where it lives.
+- Each change records the tool that wrote it. AI-written commits in any
+  public fork are marked as such, so that no one offers them to a
+  project that declines them.
+- Every submission is the responsible human's: his name, his sign-off,
+  and his correspondence. Automation sends nothing to another project.
+- Existing work is built on and credited, not duplicated.
+- `LLM_POLICY_ALIGNMENT.md` is rechecked for each destination first.
+
+**Order.** Steps 1 to 4 do not wait for M11; step 5 does.
+
+**Exit.** Acceptance of M12's plan, and then of each step's result, at
+exact commits. What another project accepts is that project's decision,
+and is not an exit condition.
+
+### S3-D.5 The characterization, and what it has found so far
+
+The characterization began on 2026-11-10 on the human's instruction
+(`start stage 1`). It is reading of sources and documents, and emulation
+in scratch space outside the repository. That scratch holds bare-metal
+M-mode test harnesses, OpenSBI builds from changed configurations, and
+prototype patches to OpenSBI. They run only under emulation. They are
+never committed, never run on the board, and never cited as evidence for
+a claim (stop (m)). The characterization changes no file here. Its
+findings are recorded, with their evidence, in M11's and M12's plans;
+until then they are inputs to those plans. To date:
+
+- Under emulation, PMP gives each hart its own view: the same page was
+  readable and writable on one hart, read-only on a second, and
+  unreachable on a third.
+- OpenSBI domains, described in the firmware's device tree, provide such
+  a view for each hart. Across OpenSBI domains the firmware refuses a
+  hart start and does not deliver an IPI. D15's hart start and IPIs both
+  cross harts, so one OpenSBI domain for each hart breaks D15 as
+  accepted.
+- The firmware matters as much as PMP does, because its calls act in
+  M-mode on a caller's behalf. Upstream OpenSBI v1.6, which the project
+  pins for emulation, predates a correction to the address-range check
+  that those calls use (upstream commit `9595829a3367`, "lib:
+  sbi_domain: reject overflowing address range in check_addr_range()",
+  first released in v1.9). The gap was read in source, and reproduced
+  under emulation with plain PMP between two test OpenSBI domains. MVP
+  1.0's claim is unaffected: its threat model trusts the monitor's
+  HS-mode code, and no guest reaches a firmware call. The vendor's
+  published source for the board's firmware carries an equivalent
+  check; whether the board's binary is built from that source is not
+  established. A boundary against a breached hart needs a firmware
+  build of ours in every candidate design: for M11-R2's allowlist, and
+  so as not to rely on a correction that the board's binary is not
+  shown to carry.
+- Today's memory layout fits no candidate's PMP entry budget, and it
+  keeps the secret's source among constants that the monitor's HS-mode
+  code reads on every hart. The new layout (M11-R4) comes first.
+- The monitor touches no device, so a confined hart's profile can deny
+  every device range.
+- By the vendor's documents and upstream OpenSBI's K3 support, the K3
+  has more execution contexts than the eight X100 harts: eight A100
+  harts without the H extension, and RCPU cores that run the vendor's
+  real-time firmware from memory beside the monitor's. Whether this
+  board runs them, and what they can reach, is not established
+  (M11-R3).
+- No upstream emulator, firmware, or reference model had merged
+  support for the supervisor-domain extensions when read on 2026-11-10.
+  Work was in progress in each (S3-D.4, M12).
+
+### S3-D.6 The board firmware (D25)
+
+Only M-mode programs PMP. The resident firmware could in principle
+program a profile for each hart from its device tree. But a boundary
+against a breached hart needs a firmware build of ours: for M11-R2's
+allowlist, and so as not to rely on a correction that the board's
+binary is not shown to carry (S3-D.5). S3-A.1 rules that out today.
+Item 1 boots by "the board's resident firmware (SPL, OpenSBI, U-Boot in
+the QSPI NOR)". Item 3 says "The NOR firmware is never written". Item 4
+says "No other partition, the UFS, `env_k3.txt`, or the human's boot
+files are written". The M5 plan uses no card, and stop (a) bars any NOR
+write other than the recorded `saveenv`. The human's direction is `we
+will change the NOR policy, and we can always reset the K3 to factory
+when/if needed`.
+
+This revision records the direction. It changes no item of S3-A.1, and
+it adds stop (j). **S3-A.1's items 1 to 8 and stop (a) stand until an
+amendment is accepted at its own exact commit**
+(`board_firmware=staged`). The staging is fixed now:
+
+1. **Read-only first, before the amendment, under S3-A.1 as it
+   stands.** The boot chain as this board runs it; where its SPL takes
+   OpenSBI, and OpenSBI's device tree, from; the state of its signature
+   checks; the NOR's layout and hashes; the other execution contexts.
+   From documents and sources pinned by commit, and then from a
+   read-only inventory taken from the board's own Linux, in sessions
+   that the human opens. The inventory is read as one of S3-A.1 item
+   1's read-only preflight checks. Its outputs are copied off the
+   board, or written only to the Beryllium partition (item 4). Records
+   that hold the environment stay private (item 7). Stop (j) does not
+   cover these reads.
+2. **The amendment**, proposed when step 1's facts are known. Steps 3
+   to 5 run only under it, each on the human's own word, with him
+   present.
+3. **A recovery rehearsal that writes nothing.**
+4. **A microSD card that carries our firmware build**, with the NOR
+   untouched. PMP's grain is readable only from M-mode, so our build
+   reads it here. The card slot's pins are the board's only JTAG pins
+   (`mvp/README.md`, item 129), so a card and the read-only debug probe
+   exclude each other.
+5. **A NOR write last**, under its own authorization. Its first
+   instance writes back, to each partition that is to change, the bytes
+   that step 1 read from it.
+
+Which PMP entries the resident firmware programs is learned from the
+vendor's published source and, if M11's plan asks for it, from probe
+images run as the MVP's are. Neither needs the amendment.
+
+Never, under any amendment this revision foresees: a write to the NOR's
+`bootinfo` or `fsbl` areas; an eFuse or any other one-time-programmable
+bit (stop (a)); or a closed flashing tool. Cards and recovery use the
+open `dd` and `fastboot` only; the R8 H0 freeze already excluded the
+vendor's closed tool. The M1 plan's rule that `k3ctl`'s `recovery` is
+never sent stands until the amendment decides it.
+
+### S3-D.7 The claim
+
+Unchanged by this revision, and S3-C's stop (d) stands. This revision
+pre-authorizes a subject only: M11's plan may propose one clause about
+the physical boundary, with its words fixed there and a form for each
+outcome. The claim's present sentences about "the board's installed
+firmware", which "no campaign step wrote", describe MVP 1.0 and stay
+true of it. A board result under other firmware would need words of its
+own, which M11's plan would fix with the clause.
+
+### S3-D.8 Decisions D23 to D27, and the stops this revision adds
+
+| ID | Open item and its source | Decision |
+| --- | --- | --- |
+| D23 | What MVP 2.0 starts with (S3-C.2; the human's directions of 2026-11-09 and 10; `ladder=boundary_first`) | M11, the physical boundary; then S3-C.2's seven steps in their order. M12 runs beside M11 (D27) and gates only MVP 2.0's last step. Memory protection tables on hardware, and CoVE, stay in MVP 3.0 |
+| D24 | The word "domain" (the human: `make changes now to avoid clashes with SD terminology`; `naming=profile`) | The rule of S3-D.2, in documentation now. No identifier, image, or accepted text changes; new identifiers arrive with M11's code |
+| D25 | The board's firmware (S3-A.1 items 1, 3, and 4; stop (a); the human: `we will change the NOR policy`; `board_firmware=staged`) | The direction is recorded, and no item of S3-A.1 changes. The amendment is its own exact commit, proposed when step 1's facts are known, with the staging of S3-D.6 |
+| D26 | The attacker (the human: `we need to use assume breach model`; `attacker=post_activation`) | HS-mode code on a hart after that hart's activation joins the threat model, by security model v1 Part 1 Revision 4, as its own exact commit before M11's plan. Boot code before activation stays in the trusted base |
+| D27 | Supervisor-domain support, which no upstream project had merged (the human: `any reason we can't implement that and contribute?`; `m12=lane_now`, `upstream_model=nameable`; then, with others' work read, `m12_shape=build_on` and `first_contact=work_first`) | The lane of S3-D.4: build on the work in progress, and contribute what it lacks. Questions on the specification, directed tests, and the table walk for the Sail model come first; then testing and review of the emulator and firmware series. No parallel implementation. Each destination's contribution policy is followed; anything bound for another project is written only with AI tools that can be disclosed by name; every submission is the responsible human's |
+
+**Stop condition 1 amended by name.** Its exception list gains the
+additive security model v1 Part 1 Revision 4 that M11 needs (M11-R8),
+which goes to the responsible human as its own exact commit.
+
+**The stops that stay.** The plan's stop conditions 1 to 7 and (a) to
+(i) stand. M11 will run into several accepted rules. Its plan names each
+one that its design would change, for the human's decision there: D8
+("no HS time slice", and the monitor's firmware call surface); D15 (hart
+start and IPIs); D16 and stop condition 3 (harts 3 to 7 never started,
+against M11-R3's test of all eight); and S3-C's stops (e) and (i), with
+the rule that the plain images equal MVP 1.0's byte for byte.
+
+Stop conditions this revision adds to the plan's list (each returns the
+work to the responsible human):
+
+- **(j)** any board firmware step before the amendment of S3-D.6 is
+  accepted: a write to the NOR other than S3-A.1 item 3's recorded
+  `saveenv`, a card inserted to boot the board, a recovery or download
+  mode entered, or a boot of the board under firmware, or a firmware
+  device tree, other than its resident ones. The read-only inventory of
+  S3-D.6's step 1 is not such a step;
+- **(k)** naming a Beryllium unit a supervisor domain (or "SD"), an
+  RDSM, or an SDSM, or giving one an SDID or an MPT, before M11's or
+  M12's plan records that mapping as a decision. S3-D.2's reading of
+  MVP 1.0 as a whole is not such a naming;
+- **(l)** any change to an identifier, an image byte, an accepted text,
+  or anything at the tag `mvp-1.0` in the name of terminology;
+- **(m)** any M-mode code of ours, or firmware build of ours, that is
+  committed here, run on the board, or cited as evidence for a claim,
+  before M11's plan has fixed its language rules, licence, location,
+  and build. The characterization's scratch harnesses, builds, and
+  prototypes, run only under emulation, are not;
+- **(n)** a boundary design in which M-mode takes a physical range, a
+  profile, or a hart from HS-mode code after activation, or in which a
+  confined hart can widen its own profile by any firmware call;
+- **(o)** anything sent to another project other than by the
+  responsible human; anything offered to a project whose contribution
+  policy declines it; or anything bound for another project that was
+  written with, or derives from work written with, an AI tool that
+  cannot be disclosed by name, that carries text of this repository, or
+  that has no record of the tool that wrote it.
+
+### Accepted lines this revision supersedes
+
+| Where | Text | Now |
+| --- | --- | --- |
+| S3-C.2, MVP 2.0's contents (L1279) | "In this order, each step a precondition of the next: (1) characterize the IOMMU/IOPMP, interrupt, reset, and device-ownership facts of the board; …" | M11 comes before step (1). M12 runs beside M11 and gates only the last step. Steps (1) to (7) keep their order (D23, D27) |
+| S3-C.2, MVP 3.0's contents (L1280) | "MPT (memory protection tables), CoVE, CHERI, and policy composition", and the compatibility analysis as "2.0's last step" | Unchanged for hardware and for CoVE. Memory protection tables under emulation are MVP 2.0's M12; the compatibility analysis stays 2.0's last step and builds on it |
+| Stop condition 1 (L692-L695), as S3-C amended it | the exception list | gains Part 1 Revision 4 (S3-D.8) |
+| Glossary (a maintained document): hart, control hart, domain hart, protected domain | "not yet implemented", "not implemented", "Beryllium has never started a second hart" | implemented since M0 and M2; "VS-domain hart" beside "domain hart" |
+| Glossary: PMP / Smepmp / ePMP | "Firmware PMP handoff and locks remain uncharacterized since R8 H1 was dropped; current work does not add broad HS PMP programming" | not used by MVP 1.0; the subject of M11 |
+| Hardware roadmap (a maintained document): "Current R8 boundary"; "PoC records and validates the OpenSBI PMP/Smepmp handoff …"; "Smmtt or successor memory-tracking mechanisms" | | marked as history; PMP's planned use; the specification's present name |
+| Roadmap, "Later phases" | MVP 2.0 named as "the device path and service domain, dynamic management, the policy questions H06 to H09, attestation with a simulated root of trust" | preceded by M11, with M12 beside it; that page carries a reading note and follows at its next status refresh |
+
+Not superseded, each decided where shown: S3-A.1's items 1 to 8, the M5
+plan's "No SD card", the M1 plan's `k3ctl` rule, and stop (a) (with the
+amendment, D25); D8, D15, D16, stop condition 3, and S3-C's stops (e)
+and (i) (in M11's plan, by name); the threat model's trust in the
+monitor's code (with Revision 4); the claim (S3-D.7); and every accepted
+record.
+
+### Open questions and defaults
+
+The numbering continues S3-C's (Q27 to Q46).
+
+| ID | Question | Default | Alternative |
+| --- | --- | --- | --- |
+| Q47 | The naming rule | S3-D.2: "VS domain" for ours, "physical access profile" for the new thing, the specification's words in its sense only. **Answered:** `naming=profile` | A new noun for the unit; or "supervisor domain (static, PMP-backed)" now |
+| Q48 | Where the attacker begins | HS-mode code after the hart's activation; boot code before it trusted, its inputs untrusted and checked. **Answered:** `attacker=post_activation` | Boot code on a hart is an attacker too, which needs profiles that M-mode derives with no HS-mode part |
+| Q49 | M11's steps under emulation | The VS-domain harts first, then the control hart. **Answered:** `m11_steps=domain_harts_first` | Both in one step |
+| Q50 | The ladder | The boundary first in MVP 2.0. **Answered:** `ladder=boundary_first` | After the device path |
+| Q51 | The board's firmware | The direction now; the amendment after the board's facts; a card before any NOR write. **Answered:** `board_firmware=staged` | Amend now; or emulation only |
+| Q52 | Renaming `prot_t` and `prot_mem_t` | A separate, later sweep that changes images, with the new names decided then | Inside M11; or never |
+| Q53 | The design | Chosen in M11's plan on the characterization's facts | Fixed now |
+| Q54 | The CHERI check during M11 | A gate at M11's result; it may fail on the working branch in between | A gate throughout |
+| Q55 | M-mode code of ours | The project's restricted-C and evidence rules; licence and location decided in M11's plan, before any is committed | Decided now |
+| Q56 | Names | S3-D, M11, M12 | The human's |
+| Q57 | How this revision's decision is recorded | As the status paragraph says: the sign-off of the proposing commit, with the record kept internally | A second commit here that sets a decision record, as S3-A to S3-C have |
+| Q58 | M12 without a merged upstream stack | A lane beside M11 that builds on the work in progress and contributes what it lacks. **Answered:** `m12=lane_now`, then `m12_shape=build_on` | Our own implementations in parallel; or wait for the upstream pieces |
+| Q59 | The emulator, given QEMU's contribution policy | The posted series' next version, pinned; a fork only for what M12 needs and the series still lacks; QEMU is offered test results, defect reports, and review, in the human's own writing. **Answered:** `m12_shape=build_on`, which replaces an earlier `qemu=fork` | Our own fork now; or ask QEMU's list for an exception |
+| Q60 | Who writes what is bound for another project | Only AI tools that can be disclosed by name. **Answered:** `upstream_model=nameable` | Disclose AI use without naming a tool |
+| Q61 | Who moves first on the lane | The project prepares the tests and the Sail table walk; the human writes to the authors when there is something to show. **Answered:** `first_contact=work_first` | The human writes first, and no work starts before that |
+
+### What acceptance would authorize
+
+Accepting this revision would record D23 to D27, the amended stop
+condition 1, stops (j) to (o), the superseded lines, and Q47 to Q61 as
+answered or at their defaults. It would authorize:
+
+- the terminology rule and this commit's documentation changes;
+- the characterization to its end, as S3-D.5 describes it, with reading
+  for the supervisor-domain lane, and with a read-only inventory of the
+  board from its own Linux in sessions that the human opens;
+- the writing of security model v1 Part 1 Revision 4, of M11's bounded
+  plan, and of M12's bounded plan, each as a proposal at its own exact
+  commit. M12's plan may be proposed before M11's result.
+
+It would authorize no implementation here; no M-mode code or firmware
+build outside the characterization's emulation scratch; nothing written
+for another project before M12's plan is accepted, and nothing sent to
+one; no board command other than
+that read-only inventory; no firmware write and no card; no claim-text
+change; no change to an identifier, an image, or an accepted text; and
+no push, merge, tag, or release step.
+
+### Status record addendum
+
+```text
+s3_revision_s3d=accepted-if-its-proposing-commit-is-on-the-public-main-with-the-responsible-human's-sign-off;otherwise-proposed
+s3_revision_s3d_base=a0d0b78b0ca83c4a084701f10ff2e1c9ce433a35
+s3_revision_s3d_direction_dates=2026-11-09;2026-11-10
+s3_revision_s3d_directions=assume-breach;a-boundary-between-the-monitor's-HS-parts;use-and-validate-platform-features-PMP-next;align-with-supervisor-domains-emulation-first;avoid-terminology-clashes-now;the-NOR-policy-will-change;raise-any-policy-that-forbids-a-direction;implement-memory-protection-tables-and-contribute
+s3_revision_s3d_form_answers=ladder=boundary_first;board_firmware=staged;naming=profile;attacker=post_activation;m11_steps=domain_harts_first;m12=lane_now;upstream_model=nameable;m12_shape=build_on-replacing-qemu=fork;first_contact=work_first
+s3_revision_s3d_decisions=D23-boundary-first-in-MVP-2.0;D24-domain-terminology-rule;D25-board-firmware-direction-staged-no-item-changed;D26-attacker-post-activation-by-Revision-4;D27-supervisor-domain-lane-builds-on-the-work-in-progress-and-contributes-what-it-lacks
+s3_revision_s3d_milestones=M11-the-physical-boundary;M12-the-supervisor-domain-lane-beside-M11
+s3_revision_s3d_requirements=M11-R1..M11-R10
+s3_revision_s3d_stops=stop-1-amended-by-name;stops-1-7-and-a-to-i-stand;j-to-o-added
+s3_revision_s3d_open_questions=Q47-Q61;answered-Q47-Q51-and-Q58-Q61;Q52-Q57-defaults
+s3_revision_s3d_board_policy=unchanged;S3-A.1-items-1-8-and-stop-a-stand-until-the-amendment;read-only-inventory-before-it
+s3_revision_s3d_claim=unchanged;subject-of-one-M11-clause-pre-authorized
+s3_revision_s3d_design=not-selected;chosen-in-the-M11-plan
+s3_revision_s3d_characterization=started-2026-11-10;reading-and-emulation-scratch-only;findings-recorded-in-the-M11-and-M12-plans
+s3_revision_s3d_review=three-candidates-reviewed-independently-never-signed;this-text-answers-those-reviews
+s3_revision_s3d_authorization_if_accepted=terminology-and-documentation;characterization-with-read-only-board-inventory;write-Revision-4-the-M11-plan-and-the-M12-plan;nothing-else
+s3_revision_s3d_release=MVP-1.0-published-2026-11-08-tag-mvp-1.0-unchanged
+```

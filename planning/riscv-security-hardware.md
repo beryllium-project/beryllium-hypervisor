@@ -6,7 +6,15 @@ Beryllium is primarily a RISC-V security research hypervisor. Every relevant pla
 
 Using every feature in the minimal core is not the goal. The goal is to use hardware when it strengthens a stated property without obscuring the reference monitor or inflating the TCB.
 
-## Current R8 boundary
+## The R8 boundary (history)
+
+**Status, 2026-11.** This section is history. R8's stages H1 to H4 were
+dropped on 2026-10-08 and never run. The B-series bring-up and the MVP
+milestones M0 to M10 became the K3 path, and MVP 1.0 was published on
+2026-11-08. What the section says about blocked pushes and an undecided
+development kernel describes September 2026. The ladder after MVP 1.0
+is in the [MVP plan](mvp-plan.md): its Plan revision S3-D puts a
+PMP-based physical boundary under the monitor first in MVP 2.0.
 
 Responsible-human direction on 2026-08-07 authorized R8 planning and selected
 single-hart K3 core validation before OS support. The
@@ -91,7 +99,9 @@ Disposition:
 
 Disposition:
 
-- PoC records and validates the OpenSBI PMP/Smepmp handoff but does not depend on new PMP programming from HS-mode.
+- MVP 1.0 does not use PMP. It depends on whatever the board's firmware programs, which was never recorded: the handoff observation planned for the pathfinder and for R8 H1 did not happen.
+- Planned use (Plan revision S3-D, milestone M11): a physical access profile for each hart, programmed by M-mode, which bounds the monitor's own HS code as well as its guests. HS-mode code cannot program PMP: M-mode does, from a description that it is given. What firmware that needs is decided in M11's plan.
+- The X100's entry count is documented. Its PMP grain, the entries that the board's firmware uses or locks, and Smepmp's state after handoff are not established.
 - IOMMU and IOPMP are not PoC requirements because the PoC has no DMA.
 - K3 bring-up must inventory firmware ownership, register access, SIDs, locked regions, and default-deny behavior.
 - Device-domain work requires IOMMU/IOPMP enforcement and violation tests.
@@ -191,7 +201,8 @@ Disposition:
 
 - CHERI-RISC-V and application-class CHERI cores.
 - CoVE/AP-TEE.
-- Smmtt or successor memory-tracking mechanisms.
+- Supervisor domains: the RISC-V Supervisor Domains Access Protection specification (the `Smsd` extension with its memory protection tables, `Smsdia`, and IO-MPT), v0.9.0 of 2026-08-19, not ratified. Its repository is still named `riscv-smmtt`. No upstream emulator, firmware, or reference model had merged it when read on 2026-11-10; work was in progress in each. Milestone M12 builds on that work and contributes to it (Plan revision S3-D).
+- SPMP (`Sspmp`), S-mode physical memory protection. S or HS software programs it, so it cannot bound a breached monitor, which is that software. Tracked only.
 - RISC-V IOMMU ecosystem maturity and device assignment.
 - QoS/capacity and bandwidth identifiers.
 - Confidential-computing attestation.
@@ -209,8 +220,10 @@ These features may become future targets but do not define the K3 PoC.
 - PMP/Smepmp handoff observation.
 - Security-feature inventory.
 
-### R8 single-hart K3 core validation
+### R8 single-hart K3 core validation (dropped 2026-10-08)
 
+- History: stages H1 to H4 were dropped before any ran; no item below
+  was executed under R8.
 - Preserve exact accepted H0/R8-C target
   `1999ee70084a0f3bb9bb943b5d1f13e99d6b59a4` and its blocked,
   not-exit-ready evidence.
@@ -257,7 +270,9 @@ These features may become future targets but do not define the K3 PoC.
 - Exact VMID width and usable AIA guest-file count.
 - Mainline and vendor IOMMU description.
 - IOPMP ownership and firmware interface.
-- PMP/Smepmp lock state after OpenSBI handoff.
+- PMP/Smepmp lock state after OpenSBI handoff; the X100's PMP grain and the entries the vendor's firmware uses. These are preconditions of M11's board step.
+- By the vendor's documents and upstream OpenSBI's K3 support, the K3 has other execution contexts: eight A100 harts, which lack the H extension, and RCPU cores, which run the vendor's real-time firmware from memory beside the monitor's. Whether this board runs them, what each can address, and what parks it.
+- Which firmware image and which device tree the boot chain hands to OpenSBI, and from where.
 - Secure-boot key provisioning and lifecycle state.
 - Debug-lockdown behavior.
 - TRNG and crypto-engine software interfaces.
@@ -272,4 +287,5 @@ Primary sources:
 
 Controlling project plan:
 
-- [R8 single-hart K3 core-validation plan (accepted incl. R8-A and R8-C)](single-hart-runtime-r8-plan.md)
+- [MVP plan](mvp-plan.md): Plan revisions S3-A (the board policy), S3-C (the MVP ladder), and S3-D (the physical boundary first)
+- [R8 single-hart K3 core-validation plan (accepted incl. R8-A and R8-C; history)](single-hart-runtime-r8-plan.md)
