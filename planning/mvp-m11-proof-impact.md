@@ -15,6 +15,22 @@ those of that commit.
 It decides nothing that the plan leaves to the responsible human.
 Where it finds such a thing, section 7 says so.
 
+**Decided.** On 2026-11-11 the responsible human answered section 7's
+three items together.
+
+- Item 1: the reading of "the state's configuration" is condition 1's
+  recommendation. Hart 0 publishes the four configuration words
+  read-only, and the hart keeps a working copy in its own state.
+- Item 2 was seen.
+- Item 3: the direction is given. The litmus tests' record of compiled
+  sequences, with its excerpts, the tests' comments, and the scan of
+  the other two scenarios' call sites, is re-derived at each of
+  D-11's points, and the one line number in WP's record is corrected
+  when the line moves. No test's program, premise, statement, verdict,
+  or count changes that way.
+
+The sections below are as they were put to him.
+
 **Terms.**
 
 - *Stage 1* is the M8 plan's concrete model of the monitor's three
