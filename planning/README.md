@@ -1644,6 +1644,12 @@ public push now.
 - `mvp-m10-result-review-summary.md`: the M10 result's review and
   acceptance record (RC4 `d70a8535` over X4 `a6eaa885`; accepted
   2026-11-05, `accept d70a8535`).
+- `mvp-m11-plan.md`: the bounded plan of milestone M11, the physical
+  boundary under the monitor (Plan revision S3-D's D23; security model
+  v1 Part 1 Revision 4): per-hart OpenSBI domains entered by a guarded
+  one-way firmware call, the partition descriptor, the new layout,
+  signalling by timer ticks, and the evidence under emulation; D-1 to
+  D-15, M11-1 to M11-9, eighteen stops, Q1 to Q22. Proposed 2026-11-11.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and
