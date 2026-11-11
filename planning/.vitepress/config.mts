@@ -588,6 +588,10 @@ export default defineConfig({
             link: '/mvp-m11-evidence'
           },
           {
+            text: 'MVP M12 plan: the supervisor-domain lane (proposed 2026-11-11)',
+            link: '/mvp-m12-plan'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1224,6 +1228,10 @@ export default defineConfig({
             link: '/mvp-m11-evidence'
           },
           {
+            text: 'MVP M12 plan: the supervisor-domain lane (proposed 2026-11-11)',
+            link: '/mvp-m12-plan'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1743,6 +1751,10 @@ export default defineConfig({
           {
             text: 'MVP M11 evidence record',
             link: '/mvp-m11-evidence'
+          },
+          {
+            text: 'MVP M12 plan: the supervisor-domain lane (proposed 2026-11-11)',
+            link: '/mvp-m12-plan'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',

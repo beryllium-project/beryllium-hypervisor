@@ -1662,6 +1662,12 @@ public push now.
   it printed, starting with M11-2 (the tool locks on the development
   host, the firmware base, the switch, the oracle, and the re-proof
   point).
+- `mvp-m12-plan.md`: the bounded plan of milestone M12, the
+  supervisor-domain lane beside M11 (Plan revision S3-D's D27): the
+  questions for the specification's authors, directed tests, the table
+  walk for the Sail model, and testing of the emulator and firmware
+  series, each offered by the responsible human alone; eleven rules,
+  M12-1 to M12-5, fourteen stops, Q1 to Q12. Proposed 2026-11-11.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and
