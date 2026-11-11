@@ -400,7 +400,7 @@ EXPECTED = {
         ("constant", "constant-plus-one", 23, 25, "1U", "2U")],
 }
 # The places, in the 41 sorted candidates, that seed 0x4d38 chooses 24
-# of, under the locked Python 3.14.8's random.Random(seed).sample: a set
+# of, under the locked Python 3.14.10's random.Random(seed).sample: a set
 # chosen in advance must not move with the interpreter unnoticed.
 SELECTION = (2, 4, 7, 9, 10, 11, 12, 14, 15, 16, 17, 19, 21, 22, 24, 26, 29,
              33, 34, 36, 37, 38, 39, 40)
@@ -473,7 +473,7 @@ def self_test(scratch):
         row.split("\t") for row in runs["a"][2:])]
     case("selection-golden", tuple(chosen) == SELECTION and runs["a"][
         0].endswith(" candidates=41 operator=16 constant=19 dropped-check=6 "
-                    "python=3.14.8"), (chosen, runs["a"][:1]))
+                    "python=3.14.10"), (chosen, runs["a"][:1]))
     changes = []
     for directory in sorted((scratch / "a").glob("m[0-9][0-9]")):
         fields = dict(line.split("=", 1) for line in (

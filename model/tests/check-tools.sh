@@ -49,7 +49,7 @@ check_version "GNU Make" "GNU Make 4.4.1" make --version
 check_version "GCC" "16.2.1" gcc --version
 check_version "Clang" "22.1.8" clang --version
 check_version "Node.js" "v22.23.1" node --version
-check_version "Python" "Python 3.14.8" python3 --version
+check_version "Python" "Python 3.14.10" python3 --version
 check_version "Rocq" "version 9.3" rocq --version
 
 printf 'Beryllium Architecture Model 0.2 tools: PASS\n'
