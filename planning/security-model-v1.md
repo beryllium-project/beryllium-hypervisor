@@ -1510,3 +1510,580 @@ security_model_v1_revision_3_accepted_text_changed=none
 security_model_v1_revision_3_code_change=none
 security_model_v1_revision_3_model_change=none
 ```
+
+## Revision 4 (2026-11-11): the physical boundary under the monitor
+
+**Status.** Proposed by the commit that adds this section, on the public
+development line, where each commit is prepared unsigned and the
+responsible human signs it off and pushes it. If the commit that adds
+this section is on the public `main` with the responsible human's
+`Signed-off-by`, this revision is accepted as written. Any other answer
+needs a revised commit before the sign-off. The signed commit differs
+from the one reviewed only by that line and its committer date; if it
+must be rebased first, the internal record says so. The project's
+internal records keep both commit IDs and the instruction, as they do
+for Plan revision S3-D. This document's decision record, above, is not
+updated for a revision accepted this way: the signed commit on the
+public `main` is the record.
+
+This section is the Part 1 revision that Plan revision S3-D of the
+[MVP plan](mvp-plan.md) calls for in its decision D26 and its
+requirement M11-R8. S3-D's amendment of stop condition 1 admits it by
+name: "the additive security model v1 Part 1 Revision 4 that M11 needs
+(M11-R8), which goes to the responsible human as its own exact commit".
+It comes before M11's plan.
+
+- It is appended to this document's accepted text, which it quotes
+  and does not edit. Every change below is stated as an addition to a
+  named part, or as a reading of an accepted sentence; R4.5 lists the
+  readings. The accepted parts, Revisions 1 to 3, the analyses,
+  instances, claims, and status records above keep their text. One
+  pin of the claim ledger changes with it (R4.6).
+- It adds one attacker, four object classes, and eight invariants to
+  Part 1. It adds no class to Part 2's notation, and it changes no
+  analysis, instance, or claim.
+- It selects no design. It says what any design of the boundary has to
+  provide, in terms that do not depend on the mechanism. M11's plan
+  chooses the mechanism and names the evidence.
+- It implements, runs, proves, and tests nothing. Its invariants are
+  specification.
+
+**Terms.** S3-D.2's, and these. "Domain" alone, in the accepted text
+above, means VS domain.
+
+- A **VS domain** is the security model's `domain`. A **VS-domain
+  hart** is the accepted "domain hart".
+- A **physical access profile**, or **profile**, is "the set of
+  physical extents, with rights, that one hart may reach after its
+  activation, enforced by M-mode" (S3-D.2). A hart is **confined** from
+  the moment M-mode installs its profile. Before that it has its
+  **boot access**: whatever the boot gives it. M11-R6 calls that the
+  hart's "boot profile".
+- **A hart's activation** is the event after which its HS-mode code is
+  S3-D.1's attacker. The word is used here of a hart only. Model 0.2
+  uses "active" and "activation" of the whole configuration; that use
+  is unchanged.
+  - A VS-domain hart's activation is its first guest entry.
+  - The control hart's activation is, in S3-D.1's words, "the control
+    hart's boot barrier". This revision reads that as **the end of the
+    control hart's boot work, the hart starts included**. In I15 and
+    I16, in Revision 3 (I19's `BE_MVP:07`), and in R4.1's `hart` row,
+    "the barrier" stays the publication of the blocks.
+  - The plans use the words in this revision's sense. D15 has "SBI
+    HSM `hart_start` once per domain hart before the boot barrier".
+    Stop condition 3 excludes "a hart started or stopped after the
+    boot barrier". The M0 plan says of its step of hart starts: "After
+    this step no hart is started or stopped".
+  - *Fact*: the source gives the name to an earlier event, the
+    publication of the blocks (`BE_MVP:07`), and the control hart
+    starts the VS-domain harts after it (`mvp-runtime.c`:
+    `publish_blocks()`, then `start_harts()`). Revision 1's acceptance
+    record notes the same order.
+  - Why the reading matters: a hart start names a hart and the address
+    at which it begins. Made by boot code, that is trusted. Made after
+    the control hart's activation, it would be an attacker's choice.
+  - The bounds. The reading puts the event after the hart starts. I26
+    puts it no earlier than the control hart's confinement, where a
+    configuration confines that hart, and no later than the first
+    input that the control hart takes from an activated VS-domain
+    hart. M11's plan fixes the event.
+- A **parked** hart is one that the configuration does not use. It
+  executes nothing outside M-mode, or it is confined to parking code
+  that lies outside the monitor's memory: its rules deny it the
+  monitor's memory and every VS domain's. S3-D.4: such harts "are
+  parked under rules that deny them the monitor's memory". A VS-domain
+  hart that the monitor "parks" after a pause, a terminate, a
+  shutdown, or a failure is not parked in this sense: it keeps its
+  role and its profile (I25).
+- A **shared region** is a physical extent that more than one hart may
+  reach after their activations: under its profile, or, for a hart that
+  a configuration leaves unconfined, without one.
+- A **mailbox** is an extent of a shared region that one hart writes
+  and other harts read. A ring is two mailboxes: its records and head,
+  which its writer writes, and its tail, which its reader writes (I16).
+  S3-D.1's "mailboxes between harts, which both ends write by design"
+  are the rings.
+- The **partition descriptor**, or **descriptor**, is M11-R1's: it is
+  "generated offline from the scenario and the layout, with an
+  identity".
+- A **firmware call** is a service that M-mode performs for a hart at
+  that hart's request. What M-mode does for a hart in handling a trap,
+  such as an access that it emulates, is treated beside it
+  (I27 (e)).
+- The **boundary** is the whole arrangement: the descriptor, the
+  profiles, and M-mode's enforcement of them.
+
+**Facts.** *Fact* marks what a source shows. The sources are the
+accepted S3-D text, the M0 plan, Revision 1's acceptance record, and
+the MVP line at this revision's base, `b332f658` (under `mvp/src`:
+`mvp-layout.h`, `mvp-runtime.c`, `mvp-hartmain.c`, `mvp-hart.h`,
+`mvp-executor.c`, `mvp.h`), which this revision does not change. The
+characterization that S3-D.5 describes is reading, and
+emulation in scratch outside the repository. It informed this text and
+is not evidence for it.
+
+### R4.1 Part 1, object classes: the profile, the shared region, the descriptor, and the firmware call
+
+Part 1's table gains four rows, and the `hart` row's instances column
+grows. The other rows are unchanged.
+
+| Class | Instances today | Authority recorded in |
+| --- | --- | --- |
+| `profile` (new) | none. MVP 1.0 uses no physical memory protection (*fact*: no source under `mvp/src` names it), and what the board's firmware programs was never recorded. M11 is to give one to each hart that the monitor uses, and to park the rest | the descriptor; the rules that M-mode installs from it |
+| `shared_region` (new) | none as an object. What the harts share today, they share by convention: the monitor's code and constants; what the control hart publishes before the VS-domain harts start; the rings between the control hart and each VS-domain hart (I16); and the declared pages that two VS domains map | the descriptor: for each region, the harts that are party to it, each party's rights, and its one writer, if any |
+| `descriptor` (new) | none | itself: built offline, immutable from the build on, with an identity |
+| `firmware_call` (new) | the calls that the monitor makes to the firmware below it, listed under this table. No record says which hart may make which call | after M11, the allowlist of M11-R2: for each hart, by its role and whether it is confined, the calls that M-mode performs |
+| `hart` (instances column, added) | … and, under the boundary, each hart's **role** (the control hart, a VS-domain hart, or parked) and whether it is confined yet. *Fact*: the monitor starts only the harts of its binding. Before the barrier it asks the firmware once for the state of every hart but itself (`BE_MVP:02`), and accepts at most one other started hart: the boot hart that the shim's start rule left idle (the M0 plan's revision M0-A). The board has execution contexts beyond the eight harts that the monitor counts; R4.3 and R4.4 name them | unchanged, and the descriptor |
+
+The firmware calls that the monitor makes today (*fact*:
+`mvp-executor.c`, `mvp-runtime.c`, `mvp-hartmain.c`, `mvp.h`):
+
+- the control hart: the version and probe calls, the hart status and
+  hart start calls, the IPI, the console's write and read, and the
+  system reset;
+- a VS-domain hart: the IPI, and, on its failure path, the console's
+  write and the system reset;
+- no guest request is forwarded to the firmware.
+
+Four things about these classes.
+
+- **A profile is not policy.** It is not a `domain`, it has no type,
+  and no `allow` rule names it. It is mechanism under the policy, as
+  the hart binding is (Revision 1). The accepted text says that "the
+  monitor's own access is outside the policy's subject set", and that
+  stays so.
+- **It stands beside the order of authority, not in it.** That order
+  is "policy, then manifest, then mappings", and it bounds each guest.
+  The descriptor and its profiles bound each hart. I22 (a) ties the
+  two: a profile gives a hart no more of a VS domain's memory than the
+  mappings give that VS domain.
+- **A profile is not a supervisor domain.** This revision names no
+  Beryllium unit a supervisor domain, an RDSM, or an SDSM, and gives
+  none an SDID or a memory protection table (S3-D's stop (k)).
+- **Identifiers are still not authority** (S1 H03). A hart number, a
+  profile's place in the descriptor, and a region's name each name
+  something. For a confined hart, only the descriptor, as M-mode
+  installed it, gives access.
+
+### R4.2 Part 1, invariants: I21 to I28
+
+Part 1's invariant table gains eight rows after Revision 3's I20.
+
+- **Scope.** The MVP's static-binding configurations that are built
+  with the boundary: the images that M11's plan, or a later plan such
+  as M12's, defines. They are not asserted of an image without it.
+  MVP 1.0's images are without it, and so is any variant that a plan
+  builds with the boundary off. M11's plan lists the images. The probe
+  images, in which two harts write one structure, are among those that
+  it has to decide.
+- **Fixed-instance status:** "not applicable". The fixed profile of
+  R0 to R7 runs on one hart and has no boundary under the monitor. No
+  Model 0.1 or 0.2 obligation exists.
+- **Evidence:** none. No configuration with a profile exists. M11's
+  plan names the evidence, under M11-R5 to M11-R7, which include: "A
+  hart that merely stops is not a pass". Until M11's result is
+  accepted, nothing here is claimed of any image.
+
+I22, I23, I26, and I27 have clauses, which follow the table.
+
+| # | Invariant | Fixed-instance obligation | Status beyond the fixed instance |
+| --- | --- | --- | --- |
+| I21 | **Confinement.** From the moment it is confined, a hart can read, write, or execute only the physical memory that its profile allows, with the profile's rights. This holds for every access made on the hart, in HS, VS, or VU mode. An access that the profile forbids reads nothing and changes nothing. The rule is enforced below HS mode, and nothing that HS-mode code can execute changes it | not applicable | none; M11 |
+| I22 | **What a profile may hold.** A profile allows only what its hart's role needs from its confinement on: clauses (a) to (f) | not applicable | none; M11. Clause (d) is how I8 is to hold against the HS-mode code of a confined hart |
+| I23 | **Shared regions.** Every extent that more than one hart may reach after their activations is a shared region that the descriptor lists, with its parties, each party's rights, and its one writer, if any | not applicable | none; M11. I16 states the one-writer rule for words; this states it for the extents that a profile can tell apart. *Fact*: today one state page holds both writers' ring words and the control hart's published words (`mvp-hart.h`), so I22 and I23 need the layout of M11-R4 |
+| I24 | **The descriptor, and where a profile comes from.** The descriptor is built offline from the same scenario and layout as the image's sealed configuration. It is immutable from the build on, and it has an identity. Its profiles satisfy I22 and I23 against that configuration. M-mode installs a profile only from the descriptor. It selects the profile from what it knows itself: the hart that it is running on, and whether it has confined that hart. In installing or selecting a profile, it takes no range, no profile, and no hart from HS-mode code | not applicable | none; M11. M11-R1 says the same. S3-D's stop (n) bars a design that does it after activation |
+| I25 | **Confinement is one-way.** Within one boot, nothing gives a confined hart its boot access back, or any other profile: no firmware call, no trap, no interrupt, and no suspend, resume, stop, or start of that hart or of another. A system reset ends the boot, and the next boot begins in boot code | not applicable | none; M11 |
+| I26 | **Order.** Confinement comes before exposure: clauses (a) to (d) | not applicable | none; M11 |
+| I27 | **Firmware calls.** For a confined hart, M-mode performs only the calls that the allowlist gives the hart's role, and touches for it only memory that its profile allows: clauses (a) to (e) | not applicable | none; M11 |
+| I28 | **Every context is accounted for.** Every execution context that can address physical memory is one of three things: a confined hart; a parked hart; or a context named in the trusted computing base, with the evidence for what it can reach | not applicable | none; M11. I13 and I14 "say nothing about harts that run no domain"; this does |
+
+**I22, the clauses.** A profile allows only the following.
+
+- (a) Of VS domains' memory and declared pages: a VS-domain hart's
+  profile allows no frame and no right beyond what the sealed
+  configuration's mappings give the VS domain bound to that hart. The
+  control hart's profile allows none.
+- (b) Of the monitor's memory:
+  - the code and constants of the hart's role;
+  - read-only, the data that was fixed before the hart's activation
+    and that its role reads. For a VS-domain hart that is what the
+    control hart published to it (I16), its own G-stage tables among
+    them. For the control hart it is the sealed configuration, and
+    the log page and its registers (I19);
+  - the hart's own private state (I15, as Revision 1's acceptance
+    record corrects it; for the control hart, I16's "own state");
+  - the hart's side of each shared region that it is party to.
+- (c) A device's registers, only where the descriptor assigns that
+  device to the hart's role. No scenario assigns one.
+
+A parked hart's profile allows its parking code alone, to read and
+execute, and nothing of (a) to (c).
+
+Nothing else. In particular, no profile allows:
+
+- (d) a write to the monitor's code or constants, to the sealed
+  configuration, to a G-stage table, or to the log page or its
+  registers (I19);
+- (e) any place where the boot chain or boot code put a copy of a
+  secret, other than the declared page that the secret's VS domain may
+  read: neither its source among the monitor's constants, nor a copy
+  of the boot image that a loader left in memory;
+- (f) M-mode's memory, or another hart's private state.
+
+In (b) and (d), "the sealed configuration" is what the control hart
+validated, sealed, and derived before any VS-domain hart started: the
+sealed state and its identity, and the derived maps and page leaves.
+*Fact*: today those lie among the control hart's mutable data
+(`mvp-runtime.c`), so (d) needs the layout of M11-R4 too.
+
+**I23, the kinds.** A shared region of the monitor's memory is of one
+of two kinds.
+
+- An **immutable** region is one that no party's profile allows a
+  write to.
+- A **mailbox** has one writing hart. The writer's profile allows the
+  write, and every other party's profile allows reading only.
+
+A declared page that two VS domains map is shared with each VS
+domain's rights (I22 (a)). What a hart reads from a region that another
+hart can write is untrusted input, checked before use (I9). The reader
+attributes it to the region's writer, never to a field that the writer
+supplied.
+
+**I26, the clauses.**
+
+- (a) Every hart that a configuration confines is confined no later
+  than its activation. For a VS-domain hart, that is before its first
+  guest entry.
+- (b) Every such hart is confined before it takes as input anything
+  that another confined hart can write after that other hart's
+  activation.
+- (c) Before its activation, a hart's HS-mode code is boot code: it
+  runs no guest, and every input that it takes is checked (I9).
+- (d) The control hart's activation comes no later than the first
+  input that it takes that a VS-domain hart can write after that
+  hart's activation.
+
+In (b) and (d), an input counts once it is taken after the activation
+of a hart that can write it. Console input counts as written by each
+hart whose allowlist keeps the console write (R4.3).
+
+**I27, the clauses.** For a confined hart:
+
+- (a) M-mode performs only the calls on the allowlist for the hart's
+  role, as confined. Any other call is absent or refused.
+- (b) A call that reads or writes memory for its caller touches only
+  memory that the caller's profile allows, with the right that the
+  access needs. That holds for every address and length that the
+  caller can give, at the call and whenever M-mode later acts on what
+  the call registered.
+- (c) No call changes another hart's profile, private state, or run
+  state, unless the descriptor names that effect for that pair of
+  harts. A system reset, where the allowlist has it, is the one
+  exception: it ends the boot (I25).
+- (d) A refused call changes no memory, in whole or in part.
+- (e) What M-mode does for the hart in handling a trap obeys (b) to
+  (d) as a call does. The allowlist of (a) is of calls, and does not
+  apply to it.
+
+Eight readings that keep these exact.
+
+- **I21 and the G-stage.** I21 adds a bound and removes none. The
+  G-stage still bounds each guest (I1 to I4). A profile bounds the
+  hart, and so also what a forged `hgatp` can reach: the write to the
+  register is not stopped, and the accesses that follow it are.
+- **I21 is about memory, not about what happens next.** Whether a
+  forbidden access is reported to the hart's own HS-mode code, stops
+  the hart, or is counted is the design's. M11-R7 asks for M-mode's
+  count as the witness of a test.
+- **I22 (d) and I8.** The accepted TCB table says of "The sealed
+  manifest's protection inside HS": "none: the seal is an API
+  property, and any HS C code can write the sealed state (S1 H05)",
+  and its note calls that an "open obligation on the first
+  protected-domain milestone". I22 (d) states that obligation for a
+  confined hart. For HS-mode code that is not confined, the accepted
+  row stands.
+- **I22 (e) and the test secret.** The MVP's secret is a public test
+  value (Revision 3, R3.1). The clause is about structure: a real
+  secret placed the same way would be covered.
+- **I22 (f) and M-mode's memory.** Keeping M-mode's memory out of
+  every profile is the firmware's work, as it is today (S3-D.1). It is
+  listed so that no descriptor may say otherwise.
+- **I23 and the hub.** A mailbox is written by a hart that may be
+  breached, so its reader's parser is attack surface, in both
+  directions.
+  - A breached VS-domain hart can attack the control hart through the
+    mailboxes that it writes. A breached control hart can attack every
+    VS-domain hart through the mailboxes that it writes, and a
+    VS-domain hart breached that way reaches its own VS domain.
+  - I21 and I22 bound what each confined hart that such an attack
+    breaches can reach to that hart's own profile. They do not prevent
+    the attack or its continuation. S3-D.1 says as much: "The control
+    hart stays a hub".
+  - What the boundary changes: where the control hart is confined,
+    reaching another VS domain's memory directly takes a breach of a
+    reader in the control hart, and then of that VS domain's own hart.
+    Where the control hart is not confined, the first breach is
+    enough. Without the boundary, one breached trap path is enough.
+  - What it does not change: a VS domain whose sealed configuration
+    grants console input is open to a breached control hart through
+    that console, as it is to the operator. While it has the focus, it
+    is also open to what a breached hart's console write makes the
+    operator's terminal answer (R4.3).
+- **I24, I27, and what M-mode can know.** M-mode does not see a
+  VS-domain hart's first guest entry. What it knows of a hart's phase
+  is its own record: whether it has confined that hart. The allowlist
+  of I27 (a) is therefore keyed by that. Confinement comes no later
+  than activation (I26 (a)), so whatever M-mode refuses a confined
+  hart, it refuses after the hart's activation, as M11-R2 asks.
+- **A hart that is not confined.** S3-D orders M11's work under
+  emulation: "the VS-domain harts confined first … then the control
+  hart narrowed". In a configuration of the first kind, the control
+  hart is not confined, and no profile bounds it. I21, I22, and I27
+  say nothing of what it reaches or calls, and I26 (a) and (b) nothing
+  of its order. I23, I24, I25, I26 (c) and (d), and I28 still apply:
+  I28 has it named in the trusted computing base (R4.4). I26 (b)
+  speaks of input from confined harts only, because nothing contains
+  an unconfined one in any case (R4.3).
+
+I21 to I28 are mechanism invariants of M-mode and of the offline
+derivation. None is a policy statement, and none is an obligation of
+Part 3's analyses, which do not see profiles.
+
+**The control hart's own invariants.** I17 and I18, the routing of
+typed bytes and the form of printed lines, are kept by HS-mode code,
+the control hart's last; so is the rendering of the log (I19). The
+boundary does not keep them for a control hart that is breached. R4.3
+lists that as an allowed effect, and R4.5 as a limit on evidence.
+
+### R4.3 Part 1, threat model: the breached hart
+
+The threat model's lists gain the following. Nothing in them is removed
+or reworded.
+
+- **Attackers** (added). **HS-mode code on a hart, after that hart's
+  activation** (S3-D's D26, on the human's direction to "assume
+  breach").
+  - It may execute any instruction that HS mode allows, write any
+    register that HS mode can write, access any address, and make any
+    firmware call with any argument.
+  - Several harts may be breached at once, and may cooperate with each
+    other and with any VS domain.
+  - How a hart comes to be breached is not modelled. The expected
+    routes are these: a flaw in a hart's trap path that its guest
+    exploits; for any hart, a flaw in what reads a mailbox that a
+    breached hart writes; and, for the control hart, a flaw in what
+    reads console input, which a breached hart that has the console
+    write can shape through the operator's terminal.
+  - **Containment is required against such code on a confined hart.**
+    Against such code on a hart that a configuration leaves
+    unconfined, nothing is contained: that code is named in the
+    trusted computing base of that configuration (R4.4). That is a
+    limit of the configuration, and not a change of the attacker.
+- **How this reads with the accepted text.**
+  - The accepted list begins "Every non-Beryllium domain, from its
+    first instruction". That stands. The new attacker is Beryllium's
+    own code, on one hart, after a point in time.
+  - Revision 3 says: "Code able to alter the monitor is outside the
+    model's attackers as before (the deferred "firmware-hostile
+    launch")". That stands.
+    - In an image with the boundary, the new attacker on a confined
+      hart alters the monitor's behaviour on its own hart and no more.
+      It is not code able to alter the monitor in Revision 3's sense.
+    - On a hart that a configuration leaves unconfined, the new
+      attacker is such code. As in Revision 3, its effect is named and
+      not defended, and R4.4 names that code in the trusted computing
+      base.
+    - Boot code writes the log page and the registers before any
+      hart's activation (I19), and I22 (d) keeps every confined hart
+      from writing them later. What a breached control hart prints of
+      them is evidence of nothing.
+  - Boot code on a hart before its activation is not an attacker, and
+    its inputs stay untrusted and checked, as today. M-mode's firmware
+    and the offline tools are not attackers either (R4.4).
+- **Assets** (added): the profiles as installed; the descriptor;
+  M-mode's own state. Where the descriptor lies at run time decides
+  which clause protects it: I22 (f) in M-mode's memory, and I22 (d)
+  among the monitor's constants.
+- **Allowed effects** (added). A breached hart may:
+  - do whatever its own VS domain may do, and read or damage that VS
+    domain;
+  - write anything into the mailboxes that it writes, or nothing;
+  - stop, spin, or withhold its work;
+  - make any firmware call that its role's allowlist keeps. Where that
+    includes the system reset, it can end the boot;
+  - falsify what it reports. A breached VS-domain hart's ring records
+    still reach the console only through the control hart, under its
+    VS domain's prefix (I18). Where its role's allowlist keeps the
+    firmware's console write, as today's failure path has it, the hart
+    can also print anything directly. That bypasses I18: it can forge
+    any line, and it can send bytes that make the operator's terminal
+    answer into the VS domain that has the focus.
+
+  A breached control hart may also:
+  - pause or terminate a VS domain. The accepted model already allows
+    management that much: it "may pause, starve, or terminate
+    protected work";
+  - use the console path as the operator can: see every line that any
+    VS domain prints, and supply input to any VS domain whose sealed
+    configuration grants console input. Where that VS domain's guest
+    offers a shell on its console, it can do whatever that shell can;
+  - print anything. The console is then evidence of no hart's
+    containment.
+
+  None of these lets a breached, confined hart itself read or write
+  another VS domain's memory, or a declared page beyond the rights of
+  I22 (a). What it sends reaches another VS domain only as that VS
+  domain's console input, under its grant, or through a further breach
+  (the hub, above).
+- **Required containment** (added). A breached, confined hart does not
+  read or write:
+  - another VS domain's memory;
+  - a declared page beyond its own VS domain's rights, the secret page
+    among them;
+  - another hart's private state;
+  - M-mode's memory.
+
+  It does not write the monitor's code or constants, the sealed
+  configuration, a G-stage table, or the log page or its registers. It
+  does not change its own profile or another hart's. A breached,
+  confined control hart reads and writes no VS domain's memory at all.
+
+  S3-D.1 lists what a boundary would protect, "so that no later text
+  overstates it". Four items here are not in that list:
+  - the monitor's code and constants. Unless they are protected, none
+    of S3-D.1's items holds: a hart that could rewrite them would run
+    as every hart;
+  - the log page and its registers, from I19;
+  - the profiles, from S3-D's stop (n);
+  - M-mode's memory, which S3-D.1 leaves "the firmware's to protect".
+- **Deferred, unchanged**, with three named additions:
+  - cache and timing channels between harts, which the boundary does
+    nothing against;
+  - a defective or hostile M-mode firmware, and a boot chain that
+    delivers another firmware or another descriptor. The firmware's
+    role grows with this revision. Its trust is stated in R4.4, and it
+    is not defended;
+  - the board's other execution contexts, and whatever addresses
+    memory without one, such as a device that masters the bus or the
+    debug module, until an inventory shows what they can reach.
+
+### R4.4 Part 1, trusted computing base: what the boundary trusts
+
+The TCB table gains the rows below. The existing rows are unchanged.
+Revision 3's distinction applies: the **running TCB** is trusted for
+containment, and the **offline evidence TCB** for the evidence.
+
+| Trusted element | Evidence class today | Note |
+| --- | --- | --- |
+| The M-mode firmware that installs and enforces the profiles, serves the firmware calls, and handles a forbidden access | none for this role. The accepted row for the board's firmware describes MVP 1.0, which asks no boundary of it | running TCB. S3-D.5: a boundary against a breached hart needs a firmware build of the project's own. M11's plan fixes its language rules, licence, location, and build first (S3-D's stop (m)) |
+| The hardware's physical memory protection as the board implements it: the number of rules, their grain, their locking, and their application to every access of I21, the implicit accesses of both translation stages among them | none. The characterization's emulation only; the board's is unread | running TCB |
+| The monitor's boot code on each hart, before that hart's activation | as the monitor's code today | running TCB of every profile: until the hart is confined, it runs with the hart's boot access |
+| HS-mode code on a hart of the monitor that a configuration leaves unconfined | as the monitor's code today | running TCB of every profile in that configuration. S3-D's attacker on that hart is not contained (R4.3) |
+| The descriptor's generator | none; M11 | running TCB, by its output: a profile that is too wide weakens containment with no sign at run time |
+| The offline check of the descriptor against the image | none; M11 | offline evidence TCB. It has to be independent of the generator |
+| The boot chain that delivers the firmware and the descriptor | assumed. No stage of it is measured (Revision 3, R3.3), and the state of the board's signature checks is unread | running TCB |
+| The board's other execution contexts. By the vendor's documents and published source: a second cluster of eight harts without the H extension, and cores that run the vendor's real-time firmware | none. Whether this board runs them, and what they can reach, is not established (S3-D.5) | named here under I28, with that evidence once an inventory, or a rule that M-mode holds, gives it |
+
+Two accepted rows are read with this revision, and neither is edited.
+
+- **"The Beryllium HS code of the configuration in use".** For an
+  image with the boundary, this row is read by phase. Boot code before
+  a hart's activation is trusted as before. The HS-mode code of a
+  confined hart after its activation stays trusted for these: the
+  containment of its own guest by the G-stage; its own VS domain's
+  protection from the hart itself; availability; what it reports; and,
+  on the control hart, I17, I18, and the rendering of the log. It is
+  no longer trusted for the containment that R4.3 adds.
+- **"The sealed manifest's protection inside HS".** For an image with
+  the boundary, the row's open obligation is I22 (d) for a confined
+  hart. Its evidence class stays "none" until M11's result is
+  accepted.
+
+Revision 3 defines the running TCB as "HS code and the hardware and
+firmware beneath it, trusted for the claim's containment". For the
+containment that R4.3 adds, the running TCB is the rows above, with
+the accepted rows for the hardware and the toolchains. It does not
+include the HS-mode code of a confined hart after its activation. The
+TCB still does not include the guests.
+
+### R4.5 Scope, and what this revision does not say
+
+- **The readings.** This revision reads four accepted texts and edits
+  none of them: S3-D.1's "the control hart's boot barrier" (the terms);
+  two rows of the trusted computing base (R4.4); and Revision 3's
+  sentence on code able to alter the monitor (R4.3). D26's attacker is
+  taken as written, and containment is required for confined harts.
+- **Images without the boundary.** MVP 1.0's images, and any image
+  built with the boundary off, keep the accepted threat model: the
+  monitor's HS-mode code is trusted whole, and I21 to I28 are not
+  asserted of them. MVP 1.0's claim is unchanged.
+- **No mechanism, and no firmware.** "M-mode" and "profile" are all
+  that this text assumes. Whether profiles are PMP rules or OpenSBI
+  domains, how many rules a profile takes, and which firmware installs
+  them is for M11's plan. Memory protection tables are M12's lane, and
+  M11-R10 asks that the descriptor carry over to them unchanged. The
+  accepted claim boundary says that this document does not "select a
+  runtime mechanism, a protected service, an SBI or firmware
+  boundary"; that stays so.
+- **Not proved.** The invariants are specification. Nothing here is a
+  theorem of the abstract model or of M8's stage 1. Stage 1's premises
+  on hart start and on IPIs may not survive M11's design; M11-R9's
+  proof-impact review decides what is re-read and re-proved.
+- **Parts 2 to 7 are unchanged.** Profiles are outside the policy's
+  notation and its analyses, and "Nothing in this pipeline runs in HS"
+  stays true of the descriptor's derivation too. This revision
+  evaluates neither trigger of Part 5. If M11's design adds a decision
+  at run time, M11's plan evaluates them.
+- **No measurement is added.** The descriptor has an identity that a
+  measurement could bind (M11-R10). Whether and where it is measured
+  is for M11's plan. I19 and I20 are unchanged.
+- **No device and no injected-interrupt object.** Part 2 adds notation
+  classes for "Device, DMA, IOMMU, or interrupt-injection objects"
+  when the first of them exists; none does. Part 1's `interrupt` row
+  is unchanged. Meanwhile I22 (c) says what a profile may hold of a
+  device, and I27 (a) keeps whatever M-mode does about interrupts at a
+  hart's request to the allowlist. What addresses memory without an
+  execution context is outside I28, as devices are outside the
+  accepted model.
+- **Availability and side channels** are outside it, as they are
+  outside the accepted model.
+- **Evidence.** What a breached hart prints proves nothing about that
+  hart, and what a breached control hart prints proves nothing about
+  any hart. What counts as evidence of containment is for M11's plan,
+  under M11-R6 and M11-R7.
+
+### R4.6 What this revision does not change
+
+The text above this section is byte-identical to its accepted form:
+Parts 1 to 7, Revisions 1 to 3, the decision record, and the status
+records. This section is appended. No code, no model file, no claim
+text, and no accepted plan changes with it.
+
+One accepted document does change, by one pin. Appending this section
+changes this file's SHA-256. The claim ledger records that value as
+evidence for its row on the launch gate (I19 and I20), and the
+ledger's check compares it. The same commit therefore refreshes that
+pin and its note. S3-D did not authorize a change to the ledger: the
+refresh is here for the responsible human's decision with the
+revision. The row's claim, methods, and non-claim are unchanged.
+
+### Status record addendum (Revision 4)
+
+```text
+security_model_v1_revision_4=accepted-if-its-proposing-commit-is-on-the-public-main-with-the-responsible-human's-sign-off;otherwise-proposed
+security_model_v1_revision_4_base=b332f65854a20c641a251852ee8b991f84515120
+security_model_v1_revision_4_plan=mvp-plan.md;Plan-revision-S3-D;D26;M11-R8;before-the-M11-plan
+security_model_v1_revision_4_admitted_by=mvp-plan.md-S3-D-stop-condition-1-amended-by-name
+security_model_v1_revision_4_classes_added=profile;shared_region;descriptor;firmware_call;hart-instances-role-and-confinement
+security_model_v1_revision_4_invariants_added=I21,I22,I23,I24,I25,I26,I27,I28
+security_model_v1_revision_4_threat_model_added=attacker-HS-mode-code-on-a-hart-after-its-activation;containment-required-for-confined-harts;assets-profiles-descriptor-M-mode-state;allowed-effects-own-VS-domain-mailboxes-availability-firmware-calls-of-the-allowlist-console-path-evidence;containment-other-VS-domains-declared-pages-other-harts-M-mode-monitor-code-and-constants-sealed-configuration-G-stage-tables-log-page-and-registers-profiles;deferred-side-channels-firmware-and-boot-chain-other-contexts
+security_model_v1_revision_4_tcb_rows_added=M-mode-firmware;physical-memory-protection-hardware;boot-code-before-activation;unconfined-HS-mode-code;descriptor-generator;offline-check-of-the-descriptor;boot-chain;other-execution-contexts
+security_model_v1_revision_4_readings=control-hart-activation-as-the-end-of-its-boot-work-the-plans'-sense-of-the-boot-barrier;the-HS-code-TCB-row-by-phase;the-sealed-manifest-TCB-row-as-I22d;Revision-3's-code-able-to-alter-the-monitor
+security_model_v1_revision_4_scope=mvp-static-binding-configurations-built-with-the-boundary;images-without-it-keep-the-accepted-threat-model
+security_model_v1_revision_4_design=not-selected;mechanism-neutral;chosen-in-the-M11-plan
+security_model_v1_revision_4_accepted_text_changed=none-in-this-document;the-claim-ledger's-pin-of-this-file-and-its-note-in-the-same-commit-for-the-responsible-human's-decision
+security_model_v1_revision_4_code_change=none
+security_model_v1_revision_4_model_change=none
+security_model_v1_revision_4_claim_change=none
+```

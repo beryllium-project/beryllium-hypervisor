@@ -1447,9 +1447,9 @@
         },
         {
           "path": "planning/security-model-v1.md",
-          "sha256": "ccce905d7acdf48b09e80f713b0f2b65e554507e4e5ae3ccc8cf0e871a4f37a8",
+          "sha256": "c1489bbac3a12180ba175e081b58b048690f55a6bf6f704329b42c0650ef91ed",
           "evidence_source_commit": "f4f9cbfb31442bd205ebea69c4d37693eaf320c4",
-          "note": "Part 1 Revision 3 (accepted 2026-11-03 at 4bc079db): I19 (hart 0 alone writes the log and the registers, before any domain hart starts, and closes it with the expected count) and I20 (no domain hart starts unless every required launch comparison has succeeded and the log is closed), each marked unproved; the running and the offline evidence TCBs."
+          "note": "Part 1 Revision 3 (accepted 2026-11-03 at 4bc079db): I19 (hart 0 alone writes the log and the registers, before any domain hart starts, and closes it with the expected count) and I20 (no domain hart starts unless every required launch comparison has succeeded and the log is closed), each marked unproved; the running and the offline evidence TCBs. On the public development line after MVP 1.0, Part 1 Revision 4 (the physical boundary under the monitor) is appended to this file; the text above it, I19 and I20 among it, is byte-identical. This SHA-256 is the file's with Revision 4; the source commit named here holds the file without it (SHA-256 ccce905d7acd…)."
         },
         {
           "path": "mvp/results/20261105-com260-rc4/platform-record.md",
