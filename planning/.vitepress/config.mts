@@ -576,8 +576,12 @@ export default defineConfig({
             link: '/mvp-m10-result-review-summary'
           },
           {
-            text: 'MVP M11 plan: the physical boundary under the monitor (proposed 2026-11-11)',
+            text: 'MVP M11 plan: the physical boundary under the monitor (accepted 2026-11-11)',
             link: '/mvp-m11-plan'
+          },
+          {
+            text: 'MVP M11 proof-impact review (M11-2)',
+            link: '/mvp-m11-proof-impact'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',
@@ -1204,8 +1208,12 @@ export default defineConfig({
             link: '/mvp-m10-result-review-summary'
           },
           {
-            text: 'MVP M11 plan: the physical boundary under the monitor (proposed 2026-11-11)',
+            text: 'MVP M11 plan: the physical boundary under the monitor (accepted 2026-11-11)',
             link: '/mvp-m11-plan'
+          },
+          {
+            text: 'MVP M11 proof-impact review (M11-2)',
+            link: '/mvp-m11-proof-impact'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',
@@ -1717,8 +1725,12 @@ export default defineConfig({
             link: '/mvp-m10-result-review-summary'
           },
           {
-            text: 'MVP M11 plan: the physical boundary under the monitor (proposed 2026-11-11)',
+            text: 'MVP M11 plan: the physical boundary under the monitor (accepted 2026-11-11)',
             link: '/mvp-m11-plan'
+          },
+          {
+            text: 'MVP M11 proof-impact review (M11-2)',
+            link: '/mvp-m11-proof-impact'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',

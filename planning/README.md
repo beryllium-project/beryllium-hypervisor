@@ -1649,7 +1649,14 @@ public push now.
   v1 Part 1 Revision 4): per-hart OpenSBI domains entered by a guarded
   one-way firmware call, the partition descriptor, the new layout,
   signalling by timer ticks, and the evidence under emulation; D-1 to
-  D-15, M11-1 to M11-9, eighteen stops, Q1 to Q22. Proposed 2026-11-11.
+  D-15, M11-1 to M11-9, eighteen stops, Q1 to Q22. Accepted 2026-11-11
+  by the responsible human's sign-off of its proposing commit.
+- `mvp-m11-proof-impact.md`: the review that the M11 plan's D-11 asks
+  of M11-2 before any proof is re-run: for the M8 specification's nine
+  properties, the two leaves, stage 1's modules, constants, and
+  readings, the ordering premises, and the lineage table, whether M11
+  changes each and why; seven conditions on the later work packages;
+  and three items for the responsible human.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and
