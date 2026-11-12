@@ -1623,9 +1623,9 @@
         },
         {
           "path": "mvp/verify/litmus/sequences.txt",
-          "sha256": "8a583b590d2a56a7a19489f712202bf530b00650cc980d1bd8c6cfe0c2b96b3f",
+          "sha256": "bf4fdb4c8b19492f3cfcab00579ac148e1c04afbee46ebfcf98bac65ab2fbae7",
           "evidence_source_commit": "5e4110eb3af89674acaf4370f160fa5c18594df6",
-          "note": "The compiled sequences the litmus tests mirror, per toolchain: the ELF without debug sections by SHA-256, each cited symbol's section, address, size, bytes' SHA-256, and the excerpt compared with the disassembly; a changed compile fails the check (the sequences suite, the first of ./mvp/mvp verify)."
+          "note": "The compiled sequences the litmus tests mirror, per toolchain: the ELF without debug sections by SHA-256, each cited symbol's section, address, size, bytes' SHA-256, and the excerpt compared with the disassembly; a changed compile fails the check (the sequences suite, the first of ./mvp/mvp verify). M11-2's re-proof point (planning/mvp-m11-plan.md, D-11) wrote it again at 9e0563d7, as the plan's decision record directs: the target commit and both ELFs' digests change, because the firmware's SBI version is a constant of each monitor and the two-guests scenario's SHA-256 is part of its image; no recorded symbol, address, size, byte, or excerpt changes. This SHA-256 is that revision's, which no internal commit holds."
         },
         {
           "path": "mvp/verify/litmus/L3.litmus",

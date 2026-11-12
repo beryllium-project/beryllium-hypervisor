@@ -8,12 +8,12 @@
 # them, and the pins. A proved result holds for these bytes only; a merge
 # that changes one of them without the re-proof rule run first is stop (i)
 # (D-2). Re-written only on the responsible human's direction.
-# Target commit: 5980edff28d768a7dc77c090ce023b9efb1f5144 (its mvp/src and mvp/Makefile equal this tree's)
+# Target commit: 9e0563d72ae3cf2d1ef021a107809a9171afe46d (its mvp/src and mvp/Makefile equal this tree's)
 unit leaf=A file=mvp/src/mvp-sbi.c sha256=6a7b7007393b330b7537e37a331180a73ed350163d99d2d76b623057c7b229c5
 unit leaf=B file=mvp/src/mvp-ring.c sha256=432dbc511397da4b051da37f3860b1f8d078ef87fa175ea47d7b3c7a1bc267ba
 header file=build/mvp/port/include/be/manifest.h sha256=f3aeb609348850d3c5051d6ffdcb2ef68f0c7a03ce5034fbf0aa655448d7b57d included_by=A,B port=rewrite
 header file=build/mvp/port/include/be/r2.h sha256=348ec6ba84d978e06c0c2c1c0b9a78cabd90a16348e3e58878ffa635de932e07 included_by=A,B port=equal-to:include/be/r2.h
-header file=build/mvp/port/include/be/r3.h sha256=861be3f6f7c8eec1dc4cc4c2fa80f019b4fe025424a6335509f281c2532cf536 included_by=A,B port=rewrite
+header file=build/mvp/port/include/be/r3.h sha256=47fa56dfd9a4d8960155d8778cc76298b2a17e62e3e892d3afc773c5a1e094c2 included_by=A,B port=rewrite
 header file=build/mvp/port/include/be/r4.h sha256=61265a300d734dd0066692f2e31adf92f4031222df785f7959dbab4adf6e906d included_by=A,B port=equal-to:include/be/r4.h
 header file=build/mvp/port/include/be/state.h sha256=206a5e1df4abfab7177a7ee04b63c2f4747e379cc57ff617c144f37d9c9370a7 included_by=A,B port=equal-to:include/be/state.h
 header file=build/mvp/port/include/be/types.h sha256=9977f54f8dd0cfb119c9eedbb03105f53b9d1a6f249caa8ad94ea4b13754597c included_by=A,B port=equal-to:include/be/types.h
