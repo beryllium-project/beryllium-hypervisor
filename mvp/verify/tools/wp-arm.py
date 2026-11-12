@@ -18,10 +18,13 @@ on the unmodified mvp/src/mvp-sbi.c, compiled with the target's include
 directories and the LP64 machdep gcc_x86_64, and WP proves every goal of
 the five functions with -wp-rte, -warn-unsigned-overflow, and
 -warn-unsigned-downcast, Alt-Ergo through mvp/verify/wp/why3.conf, 60 s per
-goal. A round file's `// wp-options:` line sets that round's WP options
-and `// wp-lemma-options:` the options of its lemmas' own run (lemmas do
-not depend on the code); a round's `at N:` placement is resolved from
-its `// anchor:` line for each source (the leaf, each mutant). In order:
+goal. The arm derives -wp-par and its default mutant-job count from the
+host's physical cores, leaving one core free and capping them at six
+provers and two jobs; --jobs overrides only the mutant-job count. A round
+file's `// wp-options:` line sets that round's WP options and
+`// wp-lemma-options:` the options of its lemmas' own run (lemmas do not
+depend on the code); a round's `at N:` placement is resolved from its
+`// anchor:` line for each source (the leaf, each mutant). In order:
 the target digests (D-7 item 3); the
 WP qualification cases re-run under this configuration (item 2); every
 round, its goal counts and wall time (item 5); the vacuity checks on the
@@ -41,6 +44,8 @@ run's command, output, and report under runs/; last the line
 rounds=R solvers=alt-ergo mutants=K killed=A unobservable=B
 contract-findings=C vacuity=ok|not-ok pair=not-formed`. CLOSED means every
 goal of the final round proved; OPEN is the arm's recorded non-result.
+Before the first Frama-C job, `BE_MVP_WP_ARM_HOST` reports the physical
+core source, the prover count, and the mutant-job count.
 --retain DIR copies the six records to DIR (mvp/results/<date>-verify/
 leaf-a/wp/). --self-test checks the parsing and the judging on recorded
 outputs, on the host.
@@ -53,6 +58,7 @@ import collections
 import concurrent.futures
 import importlib.util
 import json
+import os
 import pathlib
 import re
 import sys
@@ -73,6 +79,7 @@ LIB = load("arm_lib", "arm-lib.py")
 QUALIFY = load("qualify", "qualify.py")
 REPO = LIB.REPO
 TAG = "BE_MVP_WP_ARM"
+HOST_TAG = "BE_MVP_WP_ARM_HOST"
 WP_DIR = REPO / "mvp" / "verify" / "wp"
 BASE = WP_DIR / "mvp-sbi-leaf.acsl"
 WHY3 = WP_DIR / "why3.conf"
@@ -80,9 +87,9 @@ MARKER = ".wp-arm-run"
 MACHDEP = "gcc_x86_64"
 KERNEL = ("-machdep", MACHDEP, "-warn-unsigned-overflow",
           "-warn-unsigned-downcast")
-PAR = "6"
-PROVE = ("-wp-prover", "alt-ergo", "-wp-timeout", str(LIB.GOAL_SECONDS),
-         "-wp-par", PAR, "-wp-cache", "none")
+MAX_PROVERS = 6
+MAX_MUTANT_JOBS = 2
+PROVE = ("-wp-prover", "alt-ergo", "-wp-timeout", str(LIB.GOAL_SECONDS))
 # Only the smoke tests: every category of property left out.
 SMOKE = ("-wp-smoke-tests", "-wp-smoke-timeout", str(LIB.GOAL_SECONDS),
          "-wp-prop=-@ensures,-@assigns,-@exits,-@terminates,-@assert,"
@@ -98,6 +105,53 @@ CONTRADICTION = {
     "inside": "bytes < 1 && bytes > 1",
     "leaf_at": "leaves->page[0].bytes < 1 && leaves->page[0].bytes > 1",
     "be_mvp_denial_decide": "map->size < 1 && map->size > 1"}
+
+
+def core_count(cpuinfo, fallback):
+    """(physical cores, source), from CPUINFO's distinct package/core pairs,
+    or FALLBACK when it has no complete pair."""
+    pairs = set()
+    physical_id = core_id = None
+    for line in [*cpuinfo.splitlines(), ""]:
+        if not line.strip():
+            if physical_id is not None and core_id is not None:
+                pairs.add((physical_id, core_id))
+            physical_id = core_id = None
+            continue
+        key, separator, value = line.partition(":")
+        if not separator or not value.strip():
+            continue
+        if key.strip() == "physical id":
+            physical_id = value.strip()
+        elif key.strip() == "core id":
+            core_id = value.strip()
+    if pairs:
+        return len(pairs), "cpuinfo"
+    return max(1, fallback or 1), "os.cpu_count"
+
+
+def host_cores():
+    try:
+        cpuinfo = pathlib.Path("/proc/cpuinfo").read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        cpuinfo = ""
+    return core_count(cpuinfo, os.cpu_count())
+
+
+def parallelism(cores, jobs=None):
+    """(provers per Frama-C job, mutant jobs) for CORES physical cores: one
+    core left free, at least one and at most six provers, and a second
+    mutant job only when another six cores are free; JOBS, when given,
+    replaces the mutant jobs."""
+    cores = max(1, cores)
+    provers = min(MAX_PROVERS, max(1, cores - 1))
+    default_jobs = min(
+        MAX_MUTANT_JOBS, max(1, (cores - 1) // provers))
+    return provers, default_jobs if jobs is None else jobs
+
+
+def prove_options(provers):
+    return (*PROVE, "-wp-par", str(provers), "-wp-cache", "none")
 
 
 class Refusal(Exception):
@@ -282,7 +336,8 @@ def includes():
 
 
 def commands(files, source, scratch, options, lemma_options, lemmas,
-             functions=LIB.FUNCTIONS, select=None, exclude=(),
+             provers, functions=LIB.FUNCTIONS, select=None,
+             exclude=(),
              lemma_run=True):
     """{kind: command}: the main run (every goal of FUNCTIONS but the
     lemmas when they have a run of their own, and EXCLUDE's names; or
@@ -297,12 +352,13 @@ def commands(files, source, scratch, options, lemma_options, lemmas,
     if select is None:
         select = ["-wp-prop=" + ",".join(props)] if props else []
     found = {"main": head + ["-wp", "-wp-rte", "-wp-fct=" + ",".join(
-        functions), *PROVE, *options, *select, "-wp-out",
+        functions), *prove_options(provers), *options, *select, "-wp-out",
         str(scratch / "main-out"), "-wp-report-json",
         str(scratch / "main.json")]}
     if split and lemma_run:
-        found["lemma"] = head + ["-wp", "-wp-prop=@lemma", *PROVE,
-                                 *lemma_options, "-wp-out",
+        found["lemma"] = head + ["-wp", "-wp-prop=@lemma",
+                                 *prove_options(provers), *lemma_options,
+                                 "-wp-out",
                                  str(scratch / "lemma-out"),
                                  "-wp-report-json",
                                  str(scratch / "lemma.json")]
@@ -343,12 +399,13 @@ def state(goal):
     return next(v for v in goal["verdicts"] if v != "valid")
 
 
-def run(files, source, scratch, options, lemma_options, lemmas, **keys):
+def run(files, source, scratch, options, lemma_options, lemmas, provers,
+        **keys):
     """(goals, seconds, problems): every job's report merged."""
     scratch.mkdir(parents=True, exist_ok=True)
     files, _ = place(files, source, scratch / "placed")
     jobs = commands(files, source, scratch, options, lemma_options, lemmas,
-                    **keys)
+                    provers=provers, **keys)
     environment = LIB.environment(WHY3CONFIG=str(WHY3),
                                   TMPDIR=str(scratch))
     started = time.monotonic()
@@ -394,7 +451,7 @@ def tallies(goals):
 
 
 # ---------------------------------------------------------- qualification
-def requalify(scratch, options):
+def requalify(scratch, options, provers):
     """The WP qualification's five Alt-Ergo cases (mvp/verify/qualify/,
     read only) under this arm's Why3 configuration and OPTIONS, judged by
     qualify.py's own rule: [(case, expected, observed, ok, detail)]."""
@@ -405,7 +462,8 @@ def requalify(scratch, options):
     for _, solver, case, path, expected in rows:
         directory = scratch / case
         directory.mkdir(parents=True, exist_ok=True)
-        command = ["frama-c", "-wp", "-wp-rte", *PROVE, "-wp-out",
+        command = ["frama-c", "-wp", "-wp-rte",
+                   *prove_options(provers), "-wp-out",
                    str(directory / "wp-out"), "-machdep", MACHDEP,
                    *options] + (["-wp-smoke-tests"] if case ==
                                 "vacuity-requires" else []) + [str(path)]
@@ -472,12 +530,12 @@ def smoke_check(function, smoke, requiring, expected, problems):
                 f"{' (the null tests D_valid excludes)' if dead and excused else ''}")
 
 
-def vacuity(files, scratch, options, lemma_options, lemmas):
+def vacuity(files, scratch, options, lemma_options, lemmas, provers):
     """[(check, function, ok, detail)] on the final annotations."""
     found = []
     goals, _, problems = run(files, LIB.LEAF, scratch / "smoke", options,
                              lemma_options, lemmas, select=list(SMOKE),
-                             lemma_run=False)
+                             lemma_run=False, provers=provers)
     requiring, expected = with_requires(files), null_tests()
     for function in LIB.FUNCTIONS:
         smoke = {n: g for n, g in goals.items()
@@ -498,7 +556,8 @@ def vacuity(files, scratch, options, lemma_options, lemmas):
                 goals, _, problems = run(
                     files + [extra_file], LIB.LEAF, directory, options,
                     lemma_options, lemmas, functions=(function,),
-                    select=["-wp-prop=VACUITY_false"], lemma_run=False)
+                    select=["-wp-prop=VACUITY_false"], lemma_run=False,
+                    provers=provers)
                 goal = goals.get(f"{function}_ensures_VACUITY_false")
                 ok = goal is not None and state(goal) != "proved" and \
                     not problems
@@ -508,7 +567,7 @@ def vacuity(files, scratch, options, lemma_options, lemmas):
                 goals, _, problems = run(
                     files + [extra_file], LIB.LEAF, directory, options,
                     lemma_options, lemmas, functions=(function,),
-                    select=list(SMOKE), lemma_run=False)
+                    select=list(SMOKE), lemma_run=False, provers=provers)
                 doomed = [n for n, g in goals.items() if g["smoke"] and
                           g["function"] == function and
                           "_wp_smoke_default_requires" in n and
@@ -529,7 +588,7 @@ def exclusions(function, opened):
                    not name.startswith(f"{function}_assert_rte_")})
 
 
-def mutant_run(mutant, files, scratch, settings_, baseline):
+def mutant_run(mutant, files, scratch, settings_, baseline, provers):
     """The record line of one mutant: its function's goals under the
     final annotations (the other functions use its contract, not its
     body), those the unmutated leaf leaves open left out by name."""
@@ -542,7 +601,7 @@ def mutant_run(mutant, files, scratch, settings_, baseline):
     goals, _, problems = run(files, mutant["path"], scratch / mutant["id"],
                              options, lemma_options, lemmas,
                              functions=(function,), exclude=exclude,
-                             lemma_run=False)
+                             lemma_run=False, provers=provers)
     closed = {n for n, g in mine.items() if state(g) == "proved"}
     killed = sorted(f"{n}:{state(g)}" for n, g in goals.items()
                     if not g["smoke"] and state(g) != "proved" and
@@ -618,21 +677,26 @@ def q17(scratch):
 
 
 def run_arm(out, jobs):
+    cores, source = host_cores()
+    provers, mutant_jobs = parallelism(cores, jobs)
     out = LIB.prepare(out, MARKER)
     runs = out / "runs"
+    print(f"{HOST_TAG}: cores={cores} source={source} provers={provers} "
+          f"mutant_jobs={mutant_jobs}", flush=True)
     started = time.monotonic()
     before = LIB.digests()
     files = round_files()
     final = settings(files)
-    qualification = requalify(runs / "qualify", final[0]) + [
+    qualification = requalify(runs / "qualify", final[0], provers) + [
         (f"{case}+lemma-options", expected, observed, ok, detail) for
         case, expected, observed, ok, detail in requalify(
-            runs / "qualify-lemma", final[0] + final[1])]
+            runs / "qualify-lemma", final[0] + final[1], provers)]
     rounds, results = [], []
     # One round at a time: a prover's limit is time, so a run beside
     # others on a loaded host would lose goals near it.
     ran = [run(files[:number + 1], LIB.LEAF, runs / f"round-{number}",
-               *settings(files[:number + 1])) for number in range(len(files))]
+               *settings(files[:number + 1]), provers=provers)
+           for number in range(len(files))]
     for number, (goals, seconds, problems) in enumerate(ran):
         options, lemma_options, _ = settings(files[:number + 1])
         total, proved, opened, obligations, valid = counts(goals)
@@ -653,12 +717,12 @@ def run_arm(out, jobs):
         f"obligations={goal['valid']}/{goal['obligations']} closed_by="
         f"{','.join(sorted(goal['provers'])) or 'none'}"
         for name, goal in sorted(final_goals.items()) if not goal["smoke"]]
-    checks = vacuity(files, runs / "vacuity", *final)
+    checks = vacuity(files, runs / "vacuity", *final, provers=provers)
     _, placed = place(files, LIB.LEAF, runs / "placement")
     found, generator = LIB.mutants(out / "mutants")
-    with concurrent.futures.ThreadPoolExecutor(jobs) as pool:
+    with concurrent.futures.ThreadPoolExecutor(mutant_jobs) as pool:
         lines = list(pool.map(lambda m: mutant_run(
-            m, files, runs / "mutants", final, final_goals), found))
+            m, files, runs / "mutants", final, final_goals, provers), found))
     statuses = [status for status, _ in lines]
     killed, unobservable, findings, errors, masked, _ = LIB.tally(statuses)
     after = LIB.digests()
@@ -768,6 +832,34 @@ def self_test():
         print(f"{'ok  ' if passed else 'FAIL'} {name}"
               f"{'' if passed else ': ' + str(detail)[-600:]}")
 
+    for cores, wanted in ((1, (1, 1)), (2, (1, 1)), (4, (3, 1)),
+                          (32, (6, 2))):
+        case(f"{cores} physical cores derive {wanted[0]} provers and "
+             f"{wanted[1]} mutant jobs",
+             parallelism(cores) == wanted, parallelism(cores))
+    case("an explicit --jobs overrides only the mutant jobs",
+         parallelism(4, 2) == (3, 2), parallelism(4, 2))
+    cpuinfo = """\
+processor : 0
+physical id : 0
+core id : 0
+
+processor : 1
+physical id : 0
+core id : 0
+
+processor : 2
+physical id : 1
+core id : 0
+"""
+    case("cpuinfo counts distinct physical/core pairs",
+         core_count(cpuinfo, 99) == (2, "cpuinfo"),
+         core_count(cpuinfo, 99))
+    no_pairs = "processor : 0\ncore id : 0\n\nprocessor : 1\n"
+    case("cpuinfo without complete pairs uses the logical fallback",
+         core_count(no_pairs, 7) == (7, "os.cpu_count"),
+         core_count(no_pairs, 7))
+
     goals = parse(REPORT)
     case("a property is proved only with every obligation",
          state(goals["f_ensures_A"]) == "timeout" and
@@ -816,13 +908,14 @@ def self_test():
                 case(f"option {word} is refused", True)
         made = commands(files, REPO / "mvp/src/mvp-sbi.c", directory,
                         ["-wp-split"], ["-wp-auto=wp:split"], True,
-                        exclude=("D_E3",))
+                        provers=3, exclude=("D_E3",))
         main = " ".join(made["main"])
         case("the main run excludes the lemmas and open names, proves the "
              "five functions with RTE and the overflow warnings",
              "-wp-prop=-@lemma,-D_E3" in main and "-wp-rte" in main and
              "-warn-unsigned-overflow" in main and "-machdep gcc_x86_64" in
-             main and "-wp-timeout 60" in main and "-wp-fct=access_fault,"
+             main and "-wp-timeout 60" in main and "-wp-par 3" in main and
+             "-wp-fct=access_fault,"
              "htinst_accepted,inside,leaf_at,be_mvp_denial_decide" in main,
              main)
         case("the lemmas run alone with their options", "-wp-prop=@lemma"
@@ -936,12 +1029,12 @@ def main(argv):
     parser.add_argument("--run", action="store_true")
     parser.add_argument("--out", type=pathlib.Path,
                         default=REPO / "build" / "mvp" / "verify" / "wp")
-    parser.add_argument("--jobs", type=int, default=2)
+    parser.add_argument("--jobs", type=int)
     parser.add_argument("--retain", type=pathlib.Path)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv[1:])
     if sum((args.run, args.self_test, args.retain is not None)) != 1 or \
-            args.jobs < 1:
+            (args.jobs is not None and args.jobs < 1):
         parser.error("give --run [--out DIR] [--jobs N], --retain DIR, or "
                      "--self-test")
     if args.self_test:

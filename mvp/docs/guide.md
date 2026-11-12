@@ -1625,6 +1625,14 @@ the M8 plan's decision rule, and it is re-run verdict for verdict at each
 release candidate's tree (the M10 plan's D-2); it proves no monitor
 function's C-level contract, and the claim says so.
 
+The WP arm sizes its parallelism from the host's physical cores, which
+it counts in `/proc/cpuinfo` (or takes as `os.cpu_count()` when that file
+names no cores): each Frama-C job runs one prover fewer than that count,
+at least one and at most six, and the mutants run two jobs at once only
+on a host of thirteen or more physical cores, one otherwise; `--jobs`
+sets the mutant jobs alone. Its `BE_MVP_WP_ARM_HOST` line, printed before
+the first Frama-C job, records the counts in `build/mvp/verify/wp-arm.log`.
+
 ### The licence manifest
 
 [`licence-manifest.md`](licence-manifest.md) names every component of
