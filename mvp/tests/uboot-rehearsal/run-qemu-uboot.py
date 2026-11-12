@@ -46,7 +46,7 @@ verdict; session.txt, the session's facts, the findings, and last
 Exit 0 PASS, 3 REFUSED, 1 FAIL, 2 usage.
 
 The rehearsal's own checks (judge), independent of tests/check-capture.py
-and kept beside it: OpenSBI's banner names one boot hart and SBI 2.0; one
+and kept beside it: OpenSBI's banner names one boot hart and SBI 3.0; one
 U-Boot banner and one autoboot line; the prompt lines are exactly the typed
 lines in order (and, for the fall-through, a fresh prompt last); then, for
 a scenario, after `boot`, once each and in order: `N bytes read` with N the
@@ -220,9 +220,9 @@ def judge(data, lines, image, values, expect=None):
     sbi = single(SBI_LINE, "OpenSBI 'Runtime SBI Version'")
     if sbi:
         facts["sbi_version"] = sbi.group(1)
-        if sbi.group(1) != "2.0":
+        if sbi.group(1) != "3.0":
             findings.append(f"the firmware's SBI version is {sbi.group(1)}, "
-                            f"not OpenSBI v1.6's 2.0")
+                            f"not the firmware base's 3.0")
     hart = single(BOOT_HART, "OpenSBI 'Boot HART ID'")
     if hart:
         facts["boot_hart"] = hart.group(1)
@@ -613,7 +613,7 @@ def synthetic(lines, image, values, rule=3, opensbi=None, fdt=0xff7383d0,
               tail=("BE_MVP:14 SHUTDOWN type=0 reason=0",)):
     """A scenario capture of the shape QEMU's U-Boot and the MVP print."""
     base, size = values["STAGING_HPA"], len(image)
-    rows = ["OpenSBI v1.6", "Runtime SBI Version         : 2.0",
+    rows = ["OpenSBI", "Runtime SBI Version         : 3.0",
             f"Domain0 Boot HART           : {rule}",
             f"Boot HART ID                : "
             f"{rule if opensbi is None else opensbi}",
@@ -700,7 +700,7 @@ def self_test():
              "fdt=0x00000000ff7393d0", "SHIM line"),
             ("a second U-Boot banner", "Hit any key",
              "U-Boot 2022.10 (Oct 03 2022)\r\nHit any key", "U-Boot banner"),
-            ("SBI 3.0", ": 2.0", ": 3.0", "SBI version"),
+            ("SBI 2.0", ": 3.0", ": 2.0", "SBI version"),
             ("an echo that differs", "=> setenv be_part 1",
              "=> setenv be_part 2", "typed lines"),
             ("a fall-through in a booted run", "Starting kernel ...",

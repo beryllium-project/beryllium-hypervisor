@@ -5,8 +5,8 @@
 D-9): the guest Image booted directly under QEMU and plain OpenSBI, with no
 monitor, through /init-shell, its console typed into.
 
-  guest-shell-smoke.py --qemu QEMU --firmware FW --kernel IMAGE
-      --output DIR [--timeout S]
+  guest-shell-smoke.py --qemu QEMU --firmware FW --firmware-sha256 HEX
+      --kernel IMAGE --output DIR [--timeout S]
 
 Purpose: each of BOOTS runs IMAGE under FW on QEMU virt with one hart, its
 UART on QEMU's stdin and stdout, the kernel reading and writing it through
@@ -34,6 +34,7 @@ PASS|FAIL). Exit 0 PASS, 1 FAIL, 2 usage.
 
 import argparse
 import datetime
+import hashlib
 import os
 import pathlib
 import re
@@ -105,6 +106,16 @@ REJECTED = (b"unhandled signal", b"Kernel panic", b"Oops")
 
 class Stop(Exception):
     """The smoke test cannot go on."""
+
+
+def pinned_firmware(args):
+    """Refuse the firmware before each boot unless it still has its pin."""
+    digest = hashlib.sha256(args.firmware.read_bytes()).hexdigest()
+    if digest != args.firmware_sha256:
+        print(f"--firmware {args.firmware} has SHA-256 {digest}, "
+              "not the lock's MVP_PIN_FIRMWARE_BIN_SHA256 "
+              f"{args.firmware_sha256}: refused", file=sys.stderr)
+        raise SystemExit(2)
 
 
 class Console:
@@ -191,6 +202,7 @@ def expect_lines(console, start, patterns, timeout, stage):
 
 def run(args, boot):
     """One boot; its verdicts, each "ok STEP" or "FAIL WHY"."""
+    pinned_firmware(args)
     name, memory, kernel_args, init_args, steps = boot
     directory = args.output / name
     directory.mkdir(parents=True, exist_ok=True)
@@ -253,10 +265,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--qemu", required=True)
     parser.add_argument("--firmware", required=True, type=pathlib.Path)
+    parser.add_argument("--firmware-sha256", required=True)
     parser.add_argument("--kernel", required=True, type=pathlib.Path)
     parser.add_argument("--output", required=True, type=pathlib.Path)
     parser.add_argument("--timeout", type=float, default=60.0)
     args = parser.parse_args()
+    if not re.fullmatch(r"[0-9a-f]{64}", args.firmware_sha256):
+        parser.error("--firmware-sha256 is not a lowercase SHA-256")
     args.output.mkdir(parents=True, exist_ok=True)
     verdicts = []
     for boot in BOOTS:

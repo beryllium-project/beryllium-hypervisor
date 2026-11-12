@@ -71,14 +71,16 @@
 #                     2) and named, and no make run; `check JOBS=2` and
 #                     `k3-env install K3_ENV_CONFIRM=...`: make runs with
 #                     the assignment
-#   firmware-pin      OPENSBI_FW, the pinned firmware, with one byte
-#                     changed (the release's security review, S-01):
-#                     refused by tests/run-qemu.sh, tests/uboot-rehearsal.sh,
-#                     and tools/run-reference-boot.sh before a stand-in QEMU
-#                     starts, and by the evaluator before it records or
-#                     runs anything; the pinned bytes passed to each next
-#                     step; and a suite whose firmware changes as its first
-#                     QEMU run starts refused before its second
+#   firmware-pin      FIRMWARE_BIN, the pinned firmware base, and
+#                     OPENSBI_FW, the pinned earlier firmware, each with one
+#                     byte changed (the release's security review, S-01):
+#                     refused by every launcher that boots it before a
+#                     stand-in QEMU starts, and the earlier firmware by the
+#                     evaluator before it records or runs anything; the
+#                     pinned bytes passed to each next step; a suite whose
+#                     selected firmware changes as its first QEMU run starts
+#                     refused before its second; firmware-version without
+#                     BE_MVP_EARLIER_FIRMWARE refused before QEMU
 #   evaluate-environment  ./mvp/mvp evaluate on the wrapper's copy with a
 #                     stand-in evaluate.sh: only the wrapper's variables,
 #                     the evaluator's settings, and the admitted arguments
@@ -244,8 +246,9 @@
 #
 #   run-tool-dry-run.sh BUILD_DIR OUT
 #
-# with OPENSBI_FW, the pinned firmware the firmware-pin case changes a copy
-# of, in the environment (make -C mvp run-tool-check passes it).
+# with FIRMWARE_BIN and OPENSBI_FW, the pinned base and earlier firmware
+# whose copies the firmware-pin case changes, in the environment
+# (make -C mvp run-tool-check passes them).
 # shellcheck disable=SC2016 # U-Boot's ${...}, as typed
 set -euo pipefail
 
@@ -522,25 +525,25 @@ group_of() {
 captures() {
 	"$python" -B -c 'import json, sys
 print(json.dumps(dict(zip(sys.argv[1::2], sys.argv[2::2]))))' \
-		"$(sha "$build/gcc/be-mvp-boot.img")" "$fixtures/kexec-two-guests.console.log" \
-		"$(sha "$build/clang/be-mvp-boot.img")" "$fixtures/kexec-two-guests.console.log" \
-		"$(sha "$build/variants/gcc/payload/be-mvp-boot.img")" "$fixtures/kexec-payload.console.log" \
-		"$(sha "$build/probes/gcc/probe-platform/be-mvp-boot.img")" "$fixtures/kexec-probe-platform.console.log" \
-		"$(sha "$build/probes/gcc/probe-vmid-distinct/be-mvp-boot.img")" "$fixtures/kexec-probe-vmid-distinct.console.log" \
-		"$(sha "$build/probes/gcc/probe-vmid-shared/be-mvp-boot.img")" "$fixtures/kexec-probe-vmid-shared.console.log" \
-		"$(sha "$build/probes/gcc/probe-console-input/be-mvp-boot.img")" "$fixtures/kexec-probe-console-input.console.log" \
-		"$(sha "$shell_image")" "$here/fixtures/qemu-two-guests-shell-gcc-m9.log" \
-		"$(sha "$build/variants/gcc/te-poc-shell/be-mvp-boot.img")" "$here/fixtures/qemu-te-poc-shell-gcc-m9.log" \
-		"$(sha "$build/variants/gcc/anchor-shell/be-mvp-boot.img")" "$here/fixtures/qemu-anchor-shell-gcc-m9.log" \
-		"$(sha "$build/variants/gcc/self-report-flip/be-mvp-boot.img")" "$here/fixtures/qemu-self-report-flip-gcc-m9.log" \
-		"$(sha "$build/gcc/te-poc/be-mvp-boot.img")" "$fixtures/kexec-te-poc.console.log" \
-		"$(sha "$build/clang/te-poc/be-mvp-boot.img")" "$fixtures/kexec-te-poc.console.log" \
-		"$(sha "$build/variants/gcc/reader-write/be-mvp-boot.img")" "$fixtures/kexec-reader-write.console.log" \
-		"$(sha "$build/variants/gcc/no-inject/be-mvp-boot.img")" "$fixtures/kexec-no-inject.console.log" \
-		"$(sha "$build/gcc/anchor/be-mvp-boot.img")" "$fixtures/kexec-anchor.console.log" \
-		"$(sha "$build/clang/anchor/be-mvp-boot.img")" "$fixtures/kexec-anchor.console.log" \
-		"$(sha "$build/variants/gcc/wrong-measurement/be-mvp-boot.img")" "$fixtures/kexec-wrong-measurement.console.log" \
-		"$(sha "$build/variants/gcc/no-grant-check/be-mvp-boot.img")" "$fixtures/kexec-no-grant-check.console.log"
+		"$(sha "$build/gcc/be-mvp-boot.img")" "$fixtures/standin-kexec-two-guests.console.log" \
+		"$(sha "$build/clang/be-mvp-boot.img")" "$fixtures/standin-kexec-two-guests.console.log" \
+		"$(sha "$build/variants/gcc/payload/be-mvp-boot.img")" "$fixtures/standin-kexec-payload.console.log" \
+		"$(sha "$build/probes/gcc/probe-platform/be-mvp-boot.img")" "$fixtures/standin-kexec-probe-platform.console.log" \
+		"$(sha "$build/probes/gcc/probe-vmid-distinct/be-mvp-boot.img")" "$fixtures/standin-kexec-probe-vmid-distinct.console.log" \
+		"$(sha "$build/probes/gcc/probe-vmid-shared/be-mvp-boot.img")" "$fixtures/standin-kexec-probe-vmid-shared.console.log" \
+		"$(sha "$build/probes/gcc/probe-console-input/be-mvp-boot.img")" "$fixtures/standin-kexec-probe-console-input.console.log" \
+		"$(sha "$shell_image")" "$fixtures/standin-qemu-two-guests-shell-gcc-m9.log" \
+		"$(sha "$build/variants/gcc/te-poc-shell/be-mvp-boot.img")" "$fixtures/standin-qemu-te-poc-shell-gcc-m9.log" \
+		"$(sha "$build/variants/gcc/anchor-shell/be-mvp-boot.img")" "$fixtures/standin-qemu-anchor-shell-gcc-m9.log" \
+		"$(sha "$build/variants/gcc/self-report-flip/be-mvp-boot.img")" "$fixtures/standin-qemu-self-report-flip-gcc-m9.log" \
+		"$(sha "$build/gcc/te-poc/be-mvp-boot.img")" "$fixtures/standin-kexec-te-poc.console.log" \
+		"$(sha "$build/clang/te-poc/be-mvp-boot.img")" "$fixtures/standin-kexec-te-poc.console.log" \
+		"$(sha "$build/variants/gcc/reader-write/be-mvp-boot.img")" "$fixtures/standin-kexec-reader-write.console.log" \
+		"$(sha "$build/variants/gcc/no-inject/be-mvp-boot.img")" "$fixtures/standin-kexec-no-inject.console.log" \
+		"$(sha "$build/gcc/anchor/be-mvp-boot.img")" "$fixtures/standin-kexec-anchor.console.log" \
+		"$(sha "$build/clang/anchor/be-mvp-boot.img")" "$fixtures/standin-kexec-anchor.console.log" \
+		"$(sha "$build/variants/gcc/wrong-measurement/be-mvp-boot.img")" "$fixtures/standin-kexec-wrong-measurement.console.log" \
+		"$(sha "$build/variants/gcc/no-grant-check/be-mvp-boot.img")" "$fixtures/standin-kexec-no-grant-check.console.log"
 }
 all_captures=$(captures)
 # The human's saved environment, as the fake U-Boot holds it: a MAC address
@@ -1036,20 +1039,25 @@ goal=k3-env-install K3_ENV_CONFIRM=0123456789ab' ] ||
 pass wrapper-arguments "a file name and a misspelled variable after k3-env install: refused, exit 2, named, no make run; check JOBS=2 and k3-env install K3_ENV_CONFIRM=...: make runs with them"
 
 # ---------------------------------------------------------- the firmware
-# OPENSBI_FW by the tool lock's MVP_PIN_OPENSBI_BIN_SHA256 (the release's
-# security review, S-01): a copy of the pinned firmware with one byte
-# changed is refused before QEMU starts, or the evaluator records or runs
-# anything, by tests/run-qemu.sh, tests/uboot-rehearsal.sh,
-# tools/run-reference-boot.sh, and tools/evaluator/evaluate.sh; the pinned
-# bytes pass each check, to the step after it; and tests/run-qemu.sh
-# refuses the second run of a suite whose firmware changed during its
-# first. QEMU is a stand-in that logs each start and, given
-# FAKE_QEMU_FLIP, changes a byte of that file as it starts.
-# (tests/session-typist.py's check is its self-test's, session-typist-check.)
+# FIRMWARE_BIN by MVP_PIN_FIRMWARE_BIN_SHA256, and OPENSBI_FW, the earlier
+# firmware, by MVP_PIN_OPENSBI_BIN_SHA256 (the release's security review,
+# S-01): one changed byte is refused before QEMU starts. The base is checked
+# by tests/run-qemu.sh, tests/uboot-rehearsal.sh,
+# tools/run-reference-boot.sh, and tests/guest-shell-smoke.py; the earlier
+# firmware by run-qemu.sh's firmware-version row and by the evaluator. The
+# pinned bytes pass each check to the step after it, and run-qemu.sh refuses
+# the second run of a suite whose selected firmware changed during its
+# first. QEMU is a stand-in that logs each start and, given FAKE_QEMU_FLIP,
+# changes a byte of that file as it starts. tests/session-typist.py covers
+# the base pin in its self-test.
 fw=$out/firmware
 mkdir -p -- "$fw"
+[ -f "${FIRMWARE_BIN:-}" ] && [ -r "$FIRMWARE_BIN" ] ||
+	fail "firmware-pin: FIRMWARE_BIN, the pinned firmware base, is not readable (make -C mvp run-tool-check passes it)"
 [ -f "${OPENSBI_FW:-}" ] && [ -r "$OPENSBI_FW" ] ||
-	fail "firmware-pin: OPENSBI_FW, the pinned firmware, is not readable (make -C mvp run-tool-check passes it)"
+	fail "firmware-pin: OPENSBI_FW, the pinned earlier firmware, is not readable (make -C mvp run-tool-check passes it)"
+cp -- "$FIRMWARE_BIN" "$fw/base-pinned.bin"
+cp -- "$FIRMWARE_BIN" "$fw/base-changed.bin"
 cp -- "$OPENSBI_FW" "$fw/pinned.bin"
 cp -- "$OPENSBI_FW" "$fw/changed.bin"
 flip_byte() {
@@ -1060,6 +1068,7 @@ with open(sys.argv[1], "r+b") as handle:
     handle.seek(4096)
     handle.write(bytes([byte ^ 0x01]))' "$1"
 }
+flip_byte "$fw/base-changed.bin"
 flip_byte "$fw/changed.bin"
 cat >"$fw/qemu" <<'EOF'
 #!/usr/bin/env bash
@@ -1075,50 +1084,113 @@ fi
 EOF
 chmod +x -- "$fw/qemu"
 changed_sha=$(sha "$fw/changed.bin")
+base_changed_sha=$(sha "$fw/base-changed.bin")
 pin_line="not the lock's MVP_PIN_OPENSBI_BIN_SHA256 $(sha "$fw/pinned.bin")"
-# tests/run-qemu.sh: the changed firmware, no QEMU start; then a suite of
-# two runs on the pinned bytes, changed as its first QEMU starts: the first
-# run starts, the second is refused before its start.
-expect firmware-qemu-changed 2 env QEMU="$fw/qemu" FAKE_QEMU_LOG="$fw/qemu-changed.log" \
-	"$here/run-qemu.sh" "$build" "$fw/changed.bin" "$fw/qemu-changed" gcc/k3-like
-grep -qF "OPENSBI_FW $fw/changed.bin has SHA-256 $changed_sha, $pin_line: refused" \
-	"$out/firmware-qemu-changed.txt" || fail "firmware-pin: run-qemu.sh did not refuse the changed firmware"
-[ ! -e "$fw/qemu-changed.log" ] || fail "firmware-pin: run-qemu.sh started QEMU with the changed firmware"
-cp -- "$fw/pinned.bin" "$fw/suite.bin"
-expect firmware-qemu-suite 2 env QEMU="$fw/qemu" FAKE_QEMU_LOG="$fw/qemu-suite.log" \
-	FAKE_QEMU_FLIP="$fw/suite.bin" \
-	"$here/run-qemu.sh" "$build" "$fw/suite.bin" "$fw/qemu-suite" gcc/k3-like gcc/rva23
-[ "$(wc -l <"$fw/qemu-suite.log")" = 1 ] ||
-	fail "firmware-pin: run-qemu.sh did not start QEMU once, with the pinned firmware, and then stop"
-grep -qF "OPENSBI_FW $fw/suite.bin has SHA-256 $(sha "$fw/suite.bin"), $pin_line: refused" \
-	"$out/firmware-qemu-suite.txt" || fail "firmware-pin: run-qemu.sh did not refuse the firmware changed during its suite"
-# tests/uboot-rehearsal.sh, with no U-Boot binary: the changed firmware
-# refused, the pinned one passed on to the U-Boot check.
+base_pin_line="not the lock's MVP_PIN_FIRMWARE_BIN_SHA256 $(sha "$fw/base-pinned.bin")"
+# tests/run-qemu.sh: the changed base, no QEMU start; then two base runs on
+# pinned bytes, changed as the first starts: the second is refused.
+expect firmware-qemu-base-changed 2 env QEMU="$fw/qemu" \
+	FAKE_QEMU_LOG="$fw/qemu-base-changed.log" \
+	"$here/run-qemu.sh" "$build" "$fw/base-changed.bin" \
+	"$fw/qemu-base-changed" gcc/k3-like
+grep -qF "FIRMWARE_BIN $fw/base-changed.bin has SHA-256 $base_changed_sha, $base_pin_line: refused" \
+	"$out/firmware-qemu-base-changed.txt" ||
+	fail "firmware-pin: run-qemu.sh did not refuse the changed firmware base"
+[ ! -e "$fw/qemu-base-changed.log" ] ||
+	fail "firmware-pin: run-qemu.sh started QEMU with the changed firmware base"
+cp -- "$fw/base-pinned.bin" "$fw/base-suite.bin"
+expect firmware-qemu-base-suite 2 env QEMU="$fw/qemu" \
+	FAKE_QEMU_LOG="$fw/qemu-base-suite.log" \
+	FAKE_QEMU_FLIP="$fw/base-suite.bin" \
+	"$here/run-qemu.sh" "$build" "$fw/base-suite.bin" \
+	"$fw/qemu-base-suite" gcc/k3-like gcc/rva23
+[ "$(wc -l <"$fw/qemu-base-suite.log")" = 1 ] ||
+	fail "firmware-pin: run-qemu.sh did not start QEMU once with the base and then stop"
+grep -qF "FIRMWARE_BIN $fw/base-suite.bin has SHA-256 $(sha "$fw/base-suite.bin"), $base_pin_line: refused" \
+	"$out/firmware-qemu-base-suite.txt" ||
+	fail "firmware-pin: run-qemu.sh did not refuse the base changed during its suite"
+# firmware-version requires the earlier firmware; changed bytes are refused
+# before QEMU, and a two-run suite rechecks them before its second start.
+expect firmware-qemu-earlier-missing 2 env QEMU="$fw/qemu" \
+	FAKE_QEMU_LOG="$fw/qemu-earlier-missing.log" \
+	"$here/run-qemu.sh" "$build" "$fw/base-pinned.bin" \
+	"$fw/qemu-earlier-missing" gcc/firmware-version
+grep -qF "firmware-version requires BE_MVP_EARLIER_FIRMWARE" \
+	"$out/firmware-qemu-earlier-missing.txt" ||
+	fail "firmware-pin: run-qemu.sh did not require the earlier firmware"
+[ ! -e "$fw/qemu-earlier-missing.log" ] ||
+	fail "firmware-pin: run-qemu.sh started QEMU without the earlier firmware"
+expect firmware-qemu-earlier-changed 2 env QEMU="$fw/qemu" \
+	FAKE_QEMU_LOG="$fw/qemu-earlier-changed.log" \
+	BE_MVP_EARLIER_FIRMWARE="$fw/changed.bin" \
+	"$here/run-qemu.sh" "$build" "$fw/base-pinned.bin" \
+	"$fw/qemu-earlier-changed" gcc/firmware-version
+grep -qF "BE_MVP_EARLIER_FIRMWARE $fw/changed.bin has SHA-256 $changed_sha, $pin_line: refused" \
+	"$out/firmware-qemu-earlier-changed.txt" ||
+	fail "firmware-pin: run-qemu.sh did not refuse the changed earlier firmware"
+[ ! -e "$fw/qemu-earlier-changed.log" ] ||
+	fail "firmware-pin: run-qemu.sh started QEMU with the changed earlier firmware"
+cp -- "$fw/pinned.bin" "$fw/earlier-suite.bin"
+expect firmware-qemu-earlier-suite 2 env QEMU="$fw/qemu" \
+	FAKE_QEMU_LOG="$fw/qemu-earlier-suite.log" \
+	FAKE_QEMU_FLIP="$fw/earlier-suite.bin" \
+	BE_MVP_EARLIER_FIRMWARE="$fw/earlier-suite.bin" \
+	"$here/run-qemu.sh" "$build" "$fw/base-pinned.bin" \
+	"$fw/qemu-earlier-suite" gcc/firmware-version clang/firmware-version
+[ "$(wc -l <"$fw/qemu-earlier-suite.log")" = 1 ] ||
+	fail "firmware-pin: run-qemu.sh did not start QEMU once with the earlier firmware and then stop"
+grep -qF "BE_MVP_EARLIER_FIRMWARE $fw/earlier-suite.bin has SHA-256 $(sha "$fw/earlier-suite.bin"), $pin_line: refused" \
+	"$out/firmware-qemu-earlier-suite.txt" ||
+	fail "firmware-pin: run-qemu.sh did not refuse the earlier firmware changed during its suite"
+# tests/uboot-rehearsal.sh, with no U-Boot binary: the changed base refused,
+# the pinned one passed on to the U-Boot check.
 expect firmware-rehearsal-changed 1 env QEMU="$fw/qemu" FAKE_QEMU_LOG="$fw/rehearsal.log" \
 	UBOOT_BIN="$fw/no-u-boot.bin" \
-	"$here/uboot-rehearsal.sh" "$build" "$fw/changed.bin" "$fw/rehearsal-changed" fallthrough
-grep -qF "BE_MVP_UBOOT_REHEARSAL: FAIL OPENSBI_FW $fw/changed.bin has SHA-256 $changed_sha, not the lock's " \
-	"$out/firmware-rehearsal-changed.txt" || fail "firmware-pin: the rehearsal did not refuse the changed firmware"
+	"$here/uboot-rehearsal.sh" "$build" "$fw/base-changed.bin" "$fw/rehearsal-changed" fallthrough
+grep -qF "BE_MVP_UBOOT_REHEARSAL: FAIL FIRMWARE_BIN $fw/base-changed.bin has SHA-256 $base_changed_sha, $base_pin_line" \
+	"$out/firmware-rehearsal-changed.txt" ||
+	fail "firmware-pin: the rehearsal did not refuse the changed firmware base"
 expect firmware-rehearsal-pinned 1 env QEMU="$fw/qemu" FAKE_QEMU_LOG="$fw/rehearsal.log" \
 	UBOOT_BIN="$fw/no-u-boot.bin" \
-	"$here/uboot-rehearsal.sh" "$build" "$fw/pinned.bin" "$fw/rehearsal-pinned" fallthrough
+	"$here/uboot-rehearsal.sh" "$build" "$fw/base-pinned.bin" "$fw/rehearsal-pinned" fallthrough
 grep -qF "BE_MVP_UBOOT_REHEARSAL: FAIL no U-Boot binary $fw/no-u-boot.bin;" \
 	"$out/firmware-rehearsal-pinned.txt" || fail "firmware-pin: the rehearsal did not pass the pinned firmware"
 [ ! -e "$fw/rehearsal.log" ] || fail "firmware-pin: the rehearsal started QEMU"
 # tools/run-reference-boot.sh, its other inputs any readable file: the
-# changed firmware refused, the pinned one passed on to the Image's pin.
+# changed base refused, the pinned one passed on to the Image's pin.
 expect firmware-reference-changed 1 env QEMU="$fw/qemu" FAKE_QEMU_LOG="$fw/reference.log" \
 	"$tools/run-reference-boot.sh" 0 "$fw/pinned.bin" "$fw/pinned.bin" \
-	"$fw/pinned.bin" "$fw/changed.bin" "$mvp_dir/guest/pins.txt" "$fw/reference"
-grep -qF "BE_MVP_REFERENCE: FAIL guest=0 $fw/changed.bin has SHA-256 $changed_sha, not the lock's " \
-	"$out/firmware-reference-changed.txt" || fail "firmware-pin: the reference boot did not refuse the changed firmware"
+	"$fw/pinned.bin" "$fw/base-changed.bin" "$mvp_dir/guest/pins.txt" "$fw/reference"
+grep -qF "BE_MVP_REFERENCE: FAIL guest=0 $fw/base-changed.bin has SHA-256 $base_changed_sha, $base_pin_line" \
+	"$out/firmware-reference-changed.txt" ||
+	fail "firmware-pin: the reference boot did not refuse the changed firmware base"
 expect firmware-reference-pinned 1 env QEMU="$fw/qemu" FAKE_QEMU_LOG="$fw/reference.log" \
 	"$tools/run-reference-boot.sh" 0 "$fw/pinned.bin" "$fw/pinned.bin" \
-	"$fw/pinned.bin" "$fw/pinned.bin" "$mvp_dir/guest/pins.txt" "$fw/reference"
+	"$fw/pinned.bin" "$fw/base-pinned.bin" "$mvp_dir/guest/pins.txt" "$fw/reference"
 grep -qF "BE_MVP_REFERENCE: FAIL guest=0 $fw/pinned.bin does not match the Image pin" \
 	"$out/firmware-reference-pinned.txt" || fail "firmware-pin: the reference boot did not pass the pinned firmware"
 [ ! -e "$fw/reference.log" ] || fail "firmware-pin: the reference boot started QEMU"
-# The evaluator: MVP_OPENSBI_FW changed, refused before a record or podman.
+# tests/guest-shell-smoke.py: the changed base is refused before QEMU, and
+# the pinned base reaches the stand-in.
+expect firmware-shell-changed 2 env FAKE_QEMU_LOG="$fw/shell-changed.log" \
+	"$python" -B "$here/guest-shell-smoke.py" --qemu "$fw/qemu" \
+	--firmware "$fw/base-changed.bin" \
+	--firmware-sha256 "$(sha "$fw/base-pinned.bin")" \
+	--kernel "$fw/pinned.bin" --output "$fw/shell-changed"
+grep -qF "not the lock's MVP_PIN_FIRMWARE_BIN_SHA256 $(sha "$fw/base-pinned.bin"): refused" \
+	"$out/firmware-shell-changed.txt" ||
+	fail "firmware-pin: the guest shell smoke test did not refuse the changed base"
+[ ! -e "$fw/shell-changed.log" ] ||
+	fail "firmware-pin: the guest shell smoke test started QEMU with the changed base"
+expect firmware-shell-pinned 1 env FAKE_QEMU_LOG="$fw/shell-pinned.log" \
+	"$python" -B "$here/guest-shell-smoke.py" --qemu "$fw/qemu" \
+	--firmware "$fw/base-pinned.bin" \
+	--firmware-sha256 "$(sha "$fw/base-pinned.bin")" \
+	--kernel "$fw/pinned.bin" --output "$fw/shell-pinned" --timeout 0.1
+[ "$(wc -l <"$fw/shell-pinned.log")" = 3 ] ||
+	fail "firmware-pin: the guest shell smoke test did not recheck and start each pinned boot"
+# The evaluator: MVP_OPENSBI_FW is the earlier firmware. Changed bytes are
+# refused before a record or podman.
 evaluator_records=$repo_root/build/mvp-evaluator/record
 records_before=$(find "$evaluator_records" -mindepth 1 -maxdepth 1 2>/dev/null | LC_ALL=C sort || true)
 expect firmware-evaluate-changed 1 env MVP_OPENSBI_FW="$fw/changed.bin" \
@@ -1127,7 +1199,7 @@ grep -qF "BE_MVP_EVALUATE: FAIL MVP_OPENSBI_FW $fw/changed.bin has SHA-256 $chan
 	"$out/firmware-evaluate-changed.txt" || fail "firmware-pin: the evaluator did not refuse the changed firmware"
 [ "$(find "$evaluator_records" -mindepth 1 -maxdepth 1 2>/dev/null | LC_ALL=C sort || true)" = "$records_before" ] ||
 	fail "firmware-pin: the evaluator made a record for the firmware it refused"
-pass firmware-pin "one changed byte of OPENSBI_FW: refused before QEMU by run-qemu.sh, the U-Boot rehearsal, and the reference boot, and by the evaluator before a record; the pinned bytes passed to each next step; a firmware changed during a suite refused before its next run"
+pass firmware-pin "one changed byte of the base and of the earlier firmware: each refused by its launchers before QEMU, the earlier firmware by the evaluator before a record; pinned bytes passed to each next step; each selected firmware rechecked before the next run; firmware-version without the earlier firmware refused"
 
 # ------------------------------------------------- the evaluator's environment
 # ./mvp/mvp evaluate and tools/evaluator/evaluate.sh keep the clean

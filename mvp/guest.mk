@@ -14,7 +14,7 @@
 #
 #   make -f mvp/guest.mk guest            init, userland, module, Image, DTBs (cached by pin)
 #   make -f mvp/guest.mk guest-pin-check  self-tests; every output against its pin
-#   make -f mvp/guest.mk reference-boot   the Image under plain OpenSBI v1.6, once per guest
+#   make -f mvp/guest.mk reference-boot   the Image under the firmware base, once per guest
 #   make -f mvp/guest.mk kernel-repro     a second full build elsewhere, compared
 #   make -f mvp/guest.mk guest-shell-smoke the Image's shell typed into, no monitor
 #
@@ -26,8 +26,9 @@
 # (tools/lock/tool-lock.conf).
 # LINUX_GIT may name a local mirror, as a path or a URL. MVP_RPM_CACHE may
 # name a directory holding B3's pinned m4, bison, and flex RPMs, searched
-# before `dnf download`. OPENSBI_FW is the pinned OpenSBI v1.6
-# fw_dynamic.bin (B1's build when present, otherwise B2's, as B6 and B7 do).
+# before `dnf download`. FIRMWARE_BIN is M11's pinned firmware base.
+# OPENSBI_FW keeps its accepted name for the earlier OpenSBI v1.6 binary,
+# used by the firmware-version negative outside this file.
 #
 # Outputs for the including Makefile and tools.mk: MVP_GUEST_IMAGE, the two
 # guests' DTBs MVP_GUEST_DTB_G0 and MVP_GUEST_DTB_G1, MVP_GUEST_INIT,
@@ -110,13 +111,19 @@ B1_OPENSBI_FW ?= $(REPO_ROOT)/build/k3-b1/opensbi-build/platform/generic/firmwar
 B2_OPENSBI_FW ?= $(REPO_ROOT)/build/k3-b2/opensbi-build/platform/generic/firmware/fw_dynamic.bin
 OPENSBI_FW ?= $(if $(wildcard $(B1_OPENSBI_FW)),$(B1_OPENSBI_FW),$(B2_OPENSBI_FW))
 # OPENSBI_FW's bytes against the tool lock's MVP_PIN_OPENSBI_BIN_SHA256:
-# M-mode firmware sees the whole of a QEMU run (the release's security
-# review, S-01), so every recipe that boots it, or prints it for a human to
-# boot, runs this first; mvp/Makefile's opensbi target is this check.
+# M-mode firmware sees the whole firmware-version run (the release's
+# security review, S-01), so mvp/Makefile's opensbi target and the launcher
+# for that negative run this check.
 MVP_OPENSBI_PIN_CHECK = @digest=$$(sha256sum <'$(OPENSBI_FW)' | cut -d' ' -f1) && \
 	[ "$$digest" = '$(MVP_PIN_OPENSBI_BIN_SHA256)' ] && \
 	echo "BE_MVP_OPENSBI: PASS $(OPENSBI_FW) sha256=$$digest" || \
 	{ echo "BE_MVP_OPENSBI: FAIL $(OPENSBI_FW) has SHA-256 $${digest:-none}, not the lock's MVP_PIN_OPENSBI_BIN_SHA256 $(MVP_PIN_OPENSBI_BIN_SHA256)" >&2; \
+	exit 1; }
+FIRMWARE_BIN ?= $(BUILD)/firmware/platform/generic/firmware/fw_dynamic.bin
+MVP_FIRMWARE_PIN_CHECK = @digest=$$(sha256sum <'$(FIRMWARE_BIN)' | cut -d' ' -f1) && \
+	[ "$$digest" = '$(MVP_PIN_FIRMWARE_BIN_SHA256)' ] && \
+	echo "BE_MVP_FIRMWARE: PASS $(FIRMWARE_BIN) sha256=$$digest" || \
+	{ echo "BE_MVP_FIRMWARE: FAIL $(FIRMWARE_BIN) has SHA-256 $${digest:-none}, not the lock's MVP_PIN_FIRMWARE_BIN_SHA256 $(MVP_PIN_FIRMWARE_BIN_SHA256)" >&2; \
 	exit 1; }
 
 # The guest kernel source: upstream v7.2, B6's external input under BUILD,
@@ -325,13 +332,13 @@ $(MVP_REF_STUB): $(MVP_DIR)/guest/ref-stub.S $(MVP_LAYOUT_H) \
 # Both guests, one after the other; each must reach RESULT pass with its own
 # guest ID.
 reference-boot: $(MVP_GUEST_IMAGE) $(MVP_REF_DTB_G0) $(MVP_REF_DTB_G1) \
-		$(MVP_REF_STUB) $(OPENSBI_FW)
-	$(MVP_OPENSBI_PIN_CHECK)
+		$(MVP_REF_STUB) $(FIRMWARE_BIN)
+	$(MVP_FIRMWARE_PIN_CHECK)
 	set -e; for guest in 0 1; do \
 		case $$guest in 0) dtb=$(MVP_REF_DTB_G0) ;; *) dtb=$(MVP_REF_DTB_G1) ;; esac; \
 		QEMU='$(QEMU)' PYTHON='$(PYTHON)' \
 			$(MVP_DIR)/tools/run-reference-boot.sh $$guest \
-			$(MVP_GUEST_IMAGE) $$dtb $(MVP_REF_STUB) $(OPENSBI_FW) \
+			$(MVP_GUEST_IMAGE) $$dtb $(MVP_REF_STUB) $(FIRMWARE_BIN) \
 			$(MVP_GUEST_PINS) $(GUEST_BUILD)/reference-boot/g$$guest; \
 	done
 	@echo "BE_MVP_REFERENCE: PASS guests=2 ($(GUEST_BUILD)/reference-boot)"
@@ -373,15 +380,17 @@ kernel-repro: guest
 		"$$(grep '^kernel_build_seconds=' $(MVP_REPRO)/out/MVP-GUEST-BUILD.txt)"
 
 # The shell's smoke test (planning/mvp-m7-plan.md, M7-2's exit and D-9):
-# the Image booted directly under QEMU and OPENSBI_FW, with no monitor,
+# the Image booted directly under QEMU and the firmware base, with no monitor,
 # through /init-shell with te-poc's and anchor's role arguments, its
 # console typed into (tests/guest-shell-smoke.py). Not part of check.
 MVP_SHELL_SMOKE ?= $(BUILD)/guest-shell-smoke
-guest-shell-smoke: $(MVP_GUEST_IMAGE) $(OPENSBI_FW)
-	$(MVP_OPENSBI_PIN_CHECK)
+guest-shell-smoke: $(MVP_GUEST_IMAGE) $(FIRMWARE_BIN)
+	$(MVP_FIRMWARE_PIN_CHECK)
 	rm -rf -- $(MVP_SHELL_SMOKE)
 	$(PYTHON) -B $(MVP_DIR)/tests/guest-shell-smoke.py --qemu $(QEMU) \
-		--firmware $(OPENSBI_FW) --kernel $(MVP_GUEST_IMAGE) \
+		--firmware $(FIRMWARE_BIN) \
+		--firmware-sha256 $(MVP_PIN_FIRMWARE_BIN_SHA256) \
+		--kernel $(MVP_GUEST_IMAGE) \
 		--output $(MVP_SHELL_SMOKE)
 
 guest-clean:

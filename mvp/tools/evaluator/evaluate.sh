@@ -28,16 +28,18 @@
 #          host directory mounted over the source's build/, so the host's
 #          build products stay hidden; the guest kernel's source comes from a
 #          local git mirror mounted read-only; the only host build products it
-#          reads are B1's OpenSBI v1.6 firmware for the QEMU profile, mounted
-#          read-only, the pinned M11 OpenSBI source, mounted as an offline
-#          local mirror and built again inside, and the guest userland's release tarballs and
+#          reads are the earlier OpenSBI v1.6 firmware for the
+#          firmware-version negative, mounted read-only, the pinned M11
+#          OpenSBI source, mounted as an offline local mirror and built again
+#          inside for every other plain run, and the guest userland's release tarballs and
 #          signatures (planning/mvp-m7-plan.md, D-9), copied into the hidden
-#          tree, where the guest build checks them again. The firmware is
+#          tree, where the guest build checks them again. The earlier firmware is
 #          refused, before anything is recorded, unless its SHA-256
 #          is the lock's MVP_PIN_OPENSBI_BIN_SHA256 (M-mode firmware sees
-#          every QEMU run whole; the release's security review, S-01), and
-#          mvp check inside checks the mounted bytes again before each QEMU
-#          run boots them. The gates run
+#          its QEMU run whole; the release's security review, S-01), and
+#          mvp check inside checks the mounted bytes again before each
+#          firmware-version run. The base is checked against
+#          MVP_PIN_FIRMWARE_BIN_SHA256 before every other run. The gates run
 #          under env -i with PATH=/usr/bin, LC_ALL=C, LANG=C,
 #          SHELL=/bin/bash, and GIT_OPTIONAL_LOCKS=0. Inside, the tool
 #          lock must pass with the same lock (mvp check runs it first), with
@@ -53,7 +55,7 @@
 #          build.log, swap.txt (the base packages removed by name), rpms.txt
 #          (the image's rpm -qa), check.log (mvp check inside), and
 #          image-identity.txt. A run whose lock check passes and whose
-#          input (the firmware, the mirror, the hidden build tree, the
+#          input (the earlier firmware, the mirror, the hidden build tree, the
 #          closure, or podman) is refused has no record.
 #
 #   evaluate.sh [MAKE_ARGS ...]
@@ -65,8 +67,9 @@
 # (default build/mvp/linux-src, the host's own fetched checkout);
 # MVP_FIRMWARE_MIRROR, a local git repository holding M11's pinned OpenSBI
 # commit (default build/mvp/firmware-src, the host's fetched checkout);
-# MVP_OPENSBI_FW, the OpenSBI firmware (default B1's build), which must
-# have the lock's MVP_PIN_OPENSBI_BIN_SHA256; and
+# MVP_OPENSBI_FW, the earlier OpenSBI firmware (default B1's build), which
+# must have the lock's MVP_PIN_OPENSBI_BIN_SHA256 and is mounted for the
+# firmware-version negative; and
 # MVP_RPM_CACHE, a directory of exact RPMs the fetch tries first. MAKE_ARGS
 # go to `mvp check`, under the Make controls; an MVP_RPM_CACHE=DIR among
 # them (the wrapper's VAR=VALUE form, which reaches here as an argument and
@@ -201,8 +204,8 @@ while read -r line; do
 done <<<"$lock_output"
 note "host $lock_line"
 
-# The inputs, each refused before the run is recorded: the firmware by the
-# lock's pin, first (M-mode firmware sees every QEMU run whole; the
+# The inputs, each refused before the run is recorded: the earlier firmware
+# by its lock pin, first (M-mode firmware sees its QEMU run whole; the
 # release's security review, S-01); the Linux mirror; the hidden build
 # tree; the closure; the lock's podman.
 [[ $firmware_pin =~ ^[0-9a-f]{64}$ ]] ||
@@ -241,7 +244,7 @@ esac
 [ -f "$closure" ] || refuse "$closure is missing"
 [ -x "${podman:-/nonexistent}" ] || refuse "the lock's podman (${podman:-none}) is missing"
 start_record
-note "opensbi sha256=$firmware_sha256 (the lock's MVP_PIN_OPENSBI_BIN_SHA256)"
+note "earlier_firmware sha256=$firmware_sha256 (the lock's MVP_PIN_OPENSBI_BIN_SHA256)"
 note "firmware_source commit=$firmware_commit tree=$firmware_tree"
 
 # The host side first: its last check's bundle, with its images as now.

@@ -309,11 +309,11 @@ record its log; the rebuilt log (log.json) is written in the run record,
 beside --json's result.json as log.json (STEM.result.json, STEM.log.json),
 or to --log-json. The pinned
 M2 measurement of the retained fixtures serves no such capture. The
-self-test and the mutations judge M9's fixtures against the current
-expectations, each image's reference, and the build at --build-root, and
-M7's against the expectations of their time (tests/fixtures/pre-m9/);
-the self-test adds the log module's cases and its wiring on M9's
-fixtures.
+self-test and mutations judge retained M9 fixtures against the pinned
+pre-M11 era set, and exercise recomputation on synthetic stand-ins whose
+whole log surface comes from the current reference; M7's stay against
+the expectations of their time (tests/fixtures/pre-m9/). The self-test
+also adds the log module's own cases.
 
 --check-image runs tests/check-image.py's boot-image rules (B3's header and
 descriptor, the shim, the ranges, the payload, the DTBs and kernel against
@@ -3257,8 +3257,10 @@ def log_judgement(capture, expect, report, options):
     build's for the image (log_module.default_paths()); the canonical
     inputs the scenario file, the policy tool's core identity, the grants,
     and the report's identities (log_module.scenario_inputs()). The
-    self-test gives its own (reference_data, log_inputs)."""
+    self-test gives its own (reference_data, log_inputs), or its internal
+    retained_era flag for a pinned saved-capture set."""
     findings, toolchain = [], options.get("toolchain")
+    retained = bool(options.get("retained_era"))
     root = pathlib.Path(options.get("build_root") or DEFAULT_BUILD)
     reference_path = boot_path = None
     if toolchain:
@@ -3276,8 +3278,8 @@ def log_judgement(capture, expect, report, options):
             reference = LOG.Reference(data)
         except LOG.Refused as error:
             findings.append(f"log: the reference is refused: {error}")
-    inputs = options.get("log_inputs")
-    if inputs is None:
+    inputs = None if retained else options.get("log_inputs")
+    if not retained and inputs is None:
         boot = options.get("image_data")
         if boot is None and boot_path is not None and boot_path.is_file():
             boot = boot_path.read_bytes()
@@ -3288,8 +3290,10 @@ def log_judgement(capture, expect, report, options):
             findings.append(f"log: the canonical inputs cannot be read: "
                             f"{error}")
             inputs = LOG.Inputs(boot=boot)
+    if retained and options.get("reference_data") is None:
+        findings.append("log: retained-era mode needs its pinned reference")
     found, declared, record, exported = LOG.judge(
-        capture.monitor, expect, reference, inputs, toolchain)
+        capture.monitor, expect, reference, inputs, toolchain, retained)
     return findings + found, declared, record, exported
 
 
@@ -3477,9 +3481,9 @@ PRE_M7_SHA256 = \
 # M9's (planning/mvp-m9-plan.md, D-2 to D-4): M7's set made again from
 # tests/run-qemu.sh and tests/session-typist.py on M9-3's images, each
 # capture carrying its image's measurement log, and self-report-flip's
-# beside them; each judged against the current expectations, its image's
-# reference manifest (BUILD/references/TOOLCHAIN/IMAGE.json), and the
-# build's inputs, by tests/log_module.py. M7's and M7-4's fixtures keep
+# beside them; each judged against the pinned pre-M11 era set. Synthetic
+# stand-ins rendered from the current references keep recomputation
+# coverage. M7's and M7-4's fixtures keep
 # the expectations of their time: every scenario's and te-poc's and
 # anchor's authority reports at ca48456f, verbatim (PRE_M9), before M9
 # added the log and dropped the report's measurement.
@@ -3505,6 +3509,9 @@ M9_SESSION_FIXTURES = {"two-guests-shell": "qemu-two-guests-shell-gcc-m9",
 PRE_M9 = FIXTURES / "pre-m9"
 PRE_M9_SHA256 = \
     "19d0cbd43424333e363a53cac52bf443a419e100a4086adb6adf4a7faec9586f"
+PRE_M11 = FIXTURES / "pre-m11"
+PRE_M11_SHA256 = \
+    "dd6e8c1072d1c65466858ff6e29c3854af3f2532eb302c5644d551e2c21a388a"
 # The uboot form's U-Boot lines (uboot_lines), a fixed template until the
 # characterization (M5-6a) and the rehearsal (M5-3) record a boot from the
 # Beryllium partition: the board's after B6's U-Boot run
@@ -3635,6 +3642,29 @@ def pre_m9():
         data = (PRE_M9 / scenario / "authority-report.json").read_bytes()
         reports[hashlib.sha256(data).hexdigest()] = data
     return expects, reports
+
+
+def pre_m11():
+    """The lock-commit expectations, reports, and references for M9's
+    retained captures, pinned as one set by its listing SHA-256."""
+    listing = "".join(
+        f"{hashlib.sha256(path.read_bytes()).hexdigest()}  "
+        f"{path.relative_to(PRE_M11)}\n"
+        for path in sorted(PRE_M11.rglob("*.json")))
+    if hashlib.sha256(listing.encode()).hexdigest() != PRE_M11_SHA256:
+        raise ValueError(f"{PRE_M11} is not the pinned pre-M11 era set")
+    expects, reports = {}, {}
+    for scenario in ("two-guests", "te-poc", "anchor"):
+        expects.update(load_expects(PRE_M11 / scenario / "expect"))
+        if scenario == "two-guests":
+            continue
+        data = (PRE_M11 / scenario / "authority-report.json").read_bytes()
+        reports[hashlib.sha256(data).hexdigest()] = data
+    references = {
+        path.stem: path.read_bytes()
+        for path in sorted((PRE_M11 / "references" / "gcc").glob("*.json"))
+    }
+    return expects, reports, references
 
 
 def load_expects(directory):
@@ -3772,13 +3802,98 @@ def uboot_options(name):
                 image_crc32=crc, image_md5=md5)
 
 
+def current_log_standin(text, expect, root):
+    """TEXT with its whole measurement-log surface rendered for the
+    current image from its reference, preserving only the retained run's
+    ticks. The result is a synthetic stand-in, never a captured log."""
+    if "BE_MVP:19 LOG record seq=0 " not in text:
+        return text
+    reference_path, boot_path = LOG.default_paths(root, "gcc", expect)
+    reference = LOG.Reference(reference_path.read_bytes())
+    rendered = LOG.expected_lines(reference, LOG.log_harts(expect))
+    boot = boot_path.read_bytes()
+    standin_records = [dict(record) for record in reference.records]
+    for record in standin_records:
+        if record["object"] in LOG.R2:
+            offset = record["base"] - LOG.MONITOR_HPA + LOG.MONITOR_OFFSET
+            record["digest"] = hashlib.sha256(
+                boot[offset:offset + record["length"]]).hexdigest()
+    standin_registers = LOG.replay(standin_records)
+    parts = lines(text)
+
+    launch_ticks = {}
+    for line_ in parts:
+        match = re.fullmatch(
+            r"BE_MVP:06 LAUNCH domain=([0-9]+) .* ticks=(0x[0-9a-f]+)",
+            line_)
+        if match:
+            launch_ticks[int(match.group(1))] = match.group(2)
+    barrier = next((re.search(r" ticks=(0x[0-9a-f]+)$", line_).group(1)
+                    for line_ in parts
+                    if line_.startswith("BE_MVP:20 REGISTERS at=barrier ")),
+                   None)
+
+    def filled(line_):
+        match = re.search(r" record seq=([0-9]+) ", line_)
+        if match:
+            record = standin_records[int(match.group(1))]
+            line_ = line_.replace(" base=<Y> ",
+                                  f" base={LOG.hex64(record['base'])} ", 1)
+            line_ = line_.replace(" length=<Y> ",
+                                  f" length={LOG.hex64(record['length'])} ",
+                                  1)
+            line_ = line_.replace(" digest=<Z>",
+                                  f" digest={record['digest']}", 1)
+        return line_.replace("r0=<Z>", f"r0={standin_registers[0]}")
+
+    launches = {}
+    for line_ in rendered["launch"]:
+        domain = int(re.search(r"domain=([0-9]+)", line_).group(1))
+        if domain not in launch_ticks:
+            raise ValueError(
+                f"{expect['image']}'s retained capture has no launch tick "
+                f"for domain {domain}")
+        launches[domain] = line_.replace("<T>", launch_ticks[domain])
+    for index, line_ in enumerate(parts):
+        match = re.match(r"BE_MVP:06 LAUNCH domain=([0-9]+) ", line_)
+        if match and int(match.group(1)) in launches:
+            parts[index] = launches[int(match.group(1))]
+
+    starts = [index for index, line_ in enumerate(parts)
+              if line_.startswith("BE_MVP:19 LOG header ")]
+    if len(starts) != 1:
+        raise ValueError(
+            f"{expect['image']}'s retained capture has {len(starts)} "
+            "measurement-log blocks, not one")
+    start = starts[0]
+    end = start
+    while end < len(parts) and parts[end].startswith("BE_MVP:19 LOG "):
+        end += 1
+    parts[start:end] = [filled(line_) for line_ in rendered["block"]]
+
+    for index, line_ in enumerate(parts):
+        if line_.startswith("BE_MVP:20 REGISTERS at=barrier "):
+            if barrier is None:
+                raise ValueError(
+                    f"{expect['image']}'s retained capture has no barrier "
+                    "tick")
+            parts[index] = filled(rendered["barrier"]).replace(
+                "<U>", barrier)
+        elif line_.startswith("BE_MVP:20 REGISTERS at=terminal "):
+            parts[index] = filled(rendered["terminal"])
+        elif rendered["detail"] and line_.startswith(
+                "BE_MVP:DETAIL domain="):
+            parts[index] = rendered["detail"]
+    return text_of(parts)
+
+
 def write_fixtures(directory, expects, pins, reports=None, measured=None,
                    images=None, root=DEFAULT_BUILD):
-    """The board-tool dry run's kexec captures (B7's handoff, the fixtures'
-    markers), one per board image kind, from M9's QEMU fixtures, which the
-    current pins and images made, each behind a handoff from its boot hart
-    and judged with its image's reference manifest and the build's inputs
-    under ROOT: the scenario's, payload's, and the probe images', and a
+    """The board-tool dry run's synthetic stand-ins, one per board image
+    kind, from M9's retained QEMU fixtures with the whole log surface
+    rendered from the current reference, each behind a handoff from its
+    boot hart and judged with the current image's reference manifest and
+    build inputs under ROOT: the scenario's, payload's, probe images', and a
     refused one; with te-poc's expectations (and its authority report
     among REPORTS), te-poc's passing capture and its two board variants',
     each failing as declared; and with anchor's (its report, and MEASURED,
@@ -3805,16 +3920,23 @@ def write_fixtures(directory, expects, pins, reports=None, measured=None,
         print(f"BE_MVP_CAPTURE_FIXTURES: FAIL no kind {' '.join(unknown)}")
         return 1
     built = {"toolchain": "gcc", "build_root": root}
+    standins = [
+        "# Synthetic stand-ins derived from retained captures.",
+        "# Each measurement-log surface is rendered from the current "
+        "reference; these files are not captures.",
+    ]
     for name, image, source, hart, wanted in kinds:
-        text = kexec_form(fixture(source), hart)
+        text = kexec_form(current_log_standin(
+            fixture(source), expects[image], root), hart)
         verdict, _ = evaluate(text, expects[image], "kexec", pins,
                               report_for(expects[image], reports),
                               measured=measured, **built)
         if verdict != wanted:
             print(f"BE_MVP_CAPTURE_FIXTURES: FAIL {name} is {verdict}")
             return 1
-        (out / f"kexec-{name}.console.log").write_text(text,
-                                                        encoding="ascii")
+        output = out / f"standin-kexec-{name}.console.log"
+        output.write_text(text, encoding="ascii")
+        standins.append(f"{output.name} source={source}.log image={image}")
         if name not in images:
             continue
         size, crc = len(images[name]), zlib.crc32(images[name])
@@ -3829,8 +3951,20 @@ def write_fixtures(directory, expects, pins, reports=None, measured=None,
         if verdict != ("FAIL" if name == "refused" else wanted):
             print(f"BE_MVP_CAPTURE_FIXTURES: FAIL uboot {name} is {verdict}")
             return 1
-        (out / f"uboot-{name}.console.log").write_text(text,
-                                                        encoding="ascii")
+        output = out / f"standin-uboot-{name}.console.log"
+        output.write_text(text, encoding="ascii")
+        standins.append(f"{output.name} source={source}.log image={image}")
+    current = dict(M9_SESSION_FIXTURES,
+                   **{"self-report-flip": M9_FIXTURES["self-report-flip"]})
+    for image, source in current.items():
+        if image in expects:
+            text = current_log_standin(fixture(source), expects[image], root)
+            output = out / f"standin-{source}.log"
+            output.write_text(text, encoding="ascii")
+            standins.append(
+                f"{output.name} source={source}.log image={image}")
+    (out / "STANDINS.txt").write_text(
+        "\n".join(standins) + "\n", encoding="utf-8")
     before = pre_m7()[0]
     for name in UBOOT_FIXTURES:
         text = uboot_fixture(name)
@@ -3842,6 +3976,7 @@ def write_fixtures(directory, expects, pins, reports=None, measured=None,
             return 1
         (out / f"{name}.log").write_text(text, encoding="ascii")
     print(f"BE_MVP_CAPTURE_FIXTURES: PASS {out} captures={len(kinds)} "
+          f"current_standins={len(current)} "
           f"kexec_fdt=0x{STAGING + align_up(BOARD_IMAGE_BYTES, FDT_ALIGN):x} "
           f"uboot={len(images)} uboot_fixtures={len(UBOOT_FIXTURES)}")
     return 0
@@ -3961,9 +4096,8 @@ def self_cases():
     payload = fixture("qemu-payload-gcc")
     v2 = {"sbi_version": "2.0"}
     banner_end = where(lines(payload), SHIM_TAG)
-    sbi3 = text_of([line.replace(": 2.0", ": 3.0") if "Runtime SBI" in line
-                    else line for line in lines(payload)[:banner_end + 1]] +
-                   ["BE_MVP:FAIL boot", ""])
+    firmware_version = text_of(lines(payload)[:banner_end + 1] +
+                               ["BE_MVP:FAIL boot", ""])
     exit_budget = text_of(lines(two)[:where(lines(two), "MVPINIT 03", 4)] + [
         "BE_MVP:FAIL exit-budget", "BE_MVP:DETAIL domain=0 hart=1 cause=0xa "
         "pc=0xffffffff800071ec tval=0x0 htval=0x0 htinst=0x0 spvp=1 "
@@ -3989,8 +4123,8 @@ def self_cases():
         ("payload variant", "payload", "direct", payload, v2, "PASS"),
         ("exit-budget variant, synthetic", "exit-budget", "direct",
          exit_budget, v2, "PASS"),
-        ("sbi-3.0 variant, synthetic", "sbi-3.0", "direct", sbi3,
-         {"sbi_version": "3.0"}, "PASS"),
+        ("firmware-version variant, synthetic", "firmware-version", "direct",
+         firmware_version, v2, "PASS"),
         ("probe-platform", "probe-platform", "direct", platform, v2, "PASS"),
         ("probe-vmid-distinct", "probe-vmid-distinct", "direct", distinct,
          v2, "PASS"),
@@ -4255,38 +4389,61 @@ def m7_cases(expects, reports, measured):
 PROBE_TEXT = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-="
 
 
-def m9_options(root, **extra):
-    """A QEMU capture's options for its GCC build at ROOT (M9): the
-    toolchain and the build root, whose reference manifests and boot
-    images the log module reads by the build's layout
-    (tests/log_module.py's default_paths())."""
+def retained_options(expect, references, **extra):
+    """The pinned era reference for one retained M9 capture."""
     return dict({"sbi_version": "2.0", "toolchain": "gcc",
-                 "build_root": root}, **extra)
+                 "reference_data": references[expect["image"]],
+                 "retained_era": True}, **extra)
 
 
-def m9_fixture_cases(expects, reports, root):
+def m9_fixture_cases(expects, reports, references):
     """M9's cases (planning/mvp-m9-plan.md, D-4), judged against the
-    current expectations EXPECTS, each image's reference manifest, and the
-    build's inputs under ROOT: each M9 fixture as captured; each console
+    pinned pre-M11 era set: each M9 fixture as captured; each console
     variant's session with its keys, nonce, and session file; and M7's
     scenario capture, which prints no log, against M9's expectation."""
     cases = []
     for kind, name in M9_FIXTURES.items():
         image = "two-guests" if kind == "refused" else kind
         cases.append((f"M9 {kind}", image, "direct", fixture(name),
-                      m9_options(root, report=report_for(expects[image],
-                                                         reports)),
+                      retained_options(
+                          expects[image], references,
+                          report=report_for(expects[image], reports)),
                       "REFUSED" if kind == "refused" else "PASS"))
     for image, name in M9_SESSION_FIXTURES.items():
         cases.append((f"M9 {image}", image, "direct", fixture(name),
-                      session_options(image, M9_SESSION_FIXTURES,
-                                      toolchain="gcc", build_root=root,
-                                      report=report_for(expects[image],
-                                                        reports)), "PASS"))
+                      session_options(
+                          image, M9_SESSION_FIXTURES,
+                          **retained_options(
+                              expects[image], references,
+                              report=report_for(expects[image], reports))),
+                      "PASS"))
     return cases + [
         ("M7 two-guests against M9's expectation, no log", "two-guests",
-         "direct", fixture(M7_FIXTURES["two-guests"]), m9_options(root),
+         "direct", fixture(M7_FIXTURES["two-guests"]),
+         retained_options(expects["two-guests"], references),
          "FAIL")]
+
+
+def current_m9_fixture_cases(expects, reports, root):
+    """M9's retained cases as current synthetic stand-ins, through the live
+    recomputing path so none of recompute()'s coverage is lost."""
+    cases = []
+    base = {"sbi_version": "2.0", "toolchain": "gcc",
+            "build_root": root}
+    for kind, name in M9_FIXTURES.items():
+        image = "two-guests" if kind == "refused" else kind
+        text = current_log_standin(fixture(name), expects[image], root)
+        cases.append((f"M11 stand-in {kind}", image, "direct", text,
+                      dict(base, report=report_for(expects[image], reports)),
+                      "REFUSED" if kind == "refused" else "PASS"))
+    for image, name in M9_SESSION_FIXTURES.items():
+        text = current_log_standin(fixture(name), expects[image], root)
+        cases.append((
+            f"M11 stand-in {image}", image, "direct", text,
+            session_options(
+                image, M9_SESSION_FIXTURES, **base,
+                report=report_for(expects[image], reports)), "PASS"))
+    return cases
 
 
 def relogged(text, change):
@@ -4327,12 +4484,14 @@ def log_json_path(log_json, result_json):
 
 def m9_cases(expects, reports, pins, root):
     """The checker's wiring of the log module (planning/mvp-m9-plan.md,
-    D-4) on M9's fixtures, each reference the build's: [(kind, name, ok,
-    detail)]."""
+    D-4) on current synthetic stand-ins, each reference the current build's:
+    [(kind, name, ok, detail)]."""
     te_poc = report_for(expects["te-poc"], reports)
     anchor = report_for(expects["anchor"], reports)
-    plain = fixture(M9_FIXTURES["te-poc"])
-    held = fixture(M9_FIXTURES["anchor"])
+    plain = current_log_standin(
+        fixture(M9_FIXTURES["te-poc"]), expects["te-poc"], root)
+    held = current_log_standin(
+        fixture(M9_FIXTURES["anchor"]), expects["anchor"], root)
     boot = LOG.default_paths(root, "gcc", expects["te-poc"])[1].read_bytes()
     board = uboot_form(hart_zero(plain), len(boot), zlib.crc32(boot),
                        hashlib.md5(boot).hexdigest())
@@ -4341,11 +4500,18 @@ def m9_cases(expects, reports, pins, root):
     looks = plain.replace(record_line, g(0, record_line))
 
     def judged(image, text, report_data, mode="direct", **options):
-        options = dict(m9_options(root) if mode == "direct" else {
-            "toolchain": "gcc", "build_root": root,
-            "image_bytes": len(boot), "image_crc32": zlib.crc32(boot),
-            "image_md5": hashlib.md5(boot).hexdigest(), "image_data": boot},
-            **options)
+        if mode == "direct":
+            defaults = {"sbi_version": "2.0", "toolchain": "gcc",
+                        "build_root": root}
+        else:
+            image_data = LOG.default_paths(
+                root, "gcc", expects[image])[1].read_bytes()
+            defaults = {"toolchain": "gcc", "build_root": root,
+                        "image_data": image_data,
+                        "image_bytes": len(image_data),
+                        "image_crc32": zlib.crc32(image_data),
+                        "image_md5": hashlib.md5(image_data).hexdigest()}
+        options = dict(defaults, **options)
         return evaluate(text, expects[image], mode, pins, report_data,
                         **options)
 
@@ -4382,7 +4548,9 @@ def m9_cases(expects, reports, pins, root):
                   any("the pinned measurement serves" in finding
                       for finding in record["findings"]),
                   record["findings"]))
-    flip = fixture(M9_FIXTURES["self-report-flip"])
+    flip = current_log_standin(
+        fixture(M9_FIXTURES["self-report-flip"]),
+        expects["self-report-flip"], root)
     verdict, record = judged("self-report-flip", flip, anchor)
     cases.append(("kind5", "self-report-flip's M9 capture: PASS with exactly "
                   "its one declared finding", verdict == "PASS" and
@@ -4519,19 +4687,26 @@ def m74_cases(expects, reports, measured):
 
 
 def self_test(expects, pins, reports, measured, current, prior, latest,
-              root):
+              era, era_references, root):
     """The cases, each fixture against the expectations its capture was
     made with: EXPECTS (te-poc's and anchor's at 366c8af4, PRE_M6, and
     two-guests' at ae3e9537, PRE_M7), for M6's fixtures CURRENT (every
     scenario's at ae3e9537, PRE_M7), for M7's PRIOR (every scenario's at
-    ca48456f, PRE_M9), and for M9's LATEST, with the build at ROOT (its
-    reference manifests, boot images, and inputs)."""
+    ca48456f, PRE_M9), and for M9's retained captures against ERA; current
+    stand-ins use LATEST and the build at ROOT."""
     failed = 0
     previous, m1, m2 = m0_pins(), m1_pins(), m2_pins()
     report = report_for(expects["te-poc"], reports)
     anchor = report_for(expects["anchor"], reports)
     pinned = PINNED_MEASUREMENT
-    cases = [case + (previous, expects) for case in self_cases()] + \
+    base_cases = []
+    for name, image, mode, text, options, wanted in self_cases():
+        table = latest if image == "firmware-version" else expects
+        if image == "firmware-version":
+            options = dict(options, toolchain="gcc", build_root=root)
+        base_cases.append((name, image, mode, text, options, wanted,
+                           previous, table))
+    cases = base_cases + \
         [case + (m1, expects) for case in te_poc_cases(report)] + \
         [case + (m2, expects) for case in anchor_cases(anchor, pinned)] + \
         [case + (expects,) for case in uboot_cases(m2, previous)] + \
@@ -4541,8 +4716,10 @@ def self_test(expects, pins, reports, measured, current, prior, latest,
          for case in m7_cases(prior, reports, measured)] + \
         [case + (pins, prior)
          for case in m74_cases(prior, reports, measured)] + \
+        [case + (pins, era)
+         for case in m9_fixture_cases(era, reports, era_references)] + \
         [case + (pins, latest)
-         for case in m9_fixture_cases(latest, reports, root)]
+         for case in current_m9_fixture_cases(latest, reports, root)]
     classes = {}
     for name, image, mode, text, options, wanted, case_pins, table in cases:
         verdict, record = evaluate(text, table[image], mode, case_pins,
@@ -5080,6 +5257,13 @@ BASES = {"two": ("qemu-two-guests-gcc", "two-guests", "direct"),
          "m9wrongm": (M9_FIXTURES["wrong-measurement"],
                       "wrong-measurement", "direct"),
          "m9flip": (M9_FIXTURES["self-report-flip"], "self-report-flip",
+                    "direct"),
+         "c9two": (M9_FIXTURES["two-guests"], "two-guests", "direct"),
+         "c9tepoc": (M9_FIXTURES["te-poc"], "te-poc", "direct"),
+         "c9anchor": (M9_FIXTURES["anchor"], "anchor", "direct"),
+         "c9wrongm": (M9_FIXTURES["wrong-measurement"],
+                      "wrong-measurement", "direct"),
+         "c9flip": (M9_FIXTURES["self-report-flip"], "self-report-flip",
                     "direct")}
 # Each mode's options, or a base's own (the uboot fixtures' images).
 BASE_OPTIONS = {"direct": {"sbi_version": "2.0"},
@@ -5089,16 +5273,18 @@ BASE_OPTIONS = {"direct": {"sbi_version": "2.0"},
                 "quboot": uboot_options(QEMU_UBOOT)}
 
 
-def seeded_mutations(seed=MUTATION_SEED):
+def seeded_mutations(seed=MUTATION_SEED, current=None):
     """Single defects at seeded places: a line of either stream deleted or
     repeated, two neighbouring fixed lines swapped, the capture cut short
     at a line, and stray text inserted."""
     chooser = random.Random(seed)
     out = []
     for base in ("two", "hart6", "kexec", "anchor", "uboot", "m6two",
-                 "m7two", "m74tepoc", "m9tepoc", "m9anchor"):
+                 "m7two", "m74tepoc", "c9tepoc", "c9anchor"):
         text = kexec_form(fixture(BASES[base][0])) if base == "kexec" \
             else fixture(BASES[base][0])
+        if base.startswith("c9"):
+            text = current(BASES[base][1], text)
         parts = text.split("\n")
         first = next(index for index, line in enumerate(parts)
                      if line.startswith((RULE_TAG, SHIM_TAG)))
@@ -5656,7 +5842,7 @@ def m74_mutations():
     ]
 
 
-def m9_mutations():
+def m9_mutations(current=None, prefix="m9"):
     """M9's log (planning/mvp-m9-plan.md, D-4), each a single defect of an
     M9 fixture, judged against its image's reference: a line of the block
     or a registers line deleted, two record lines swapped, a LAUNCH line
@@ -5665,11 +5851,16 @@ def m9_mutations():
     recomputation fails), DOMAIN_TERMINATED's digest another, a gate-fail
     without its DETAIL, and self-report-flip with a second difference:
     (claim, base, name, text, a finding the rejection names)."""
-    two = fixture(M9_FIXTURES["two-guests"])
-    tepoc = fixture(M9_FIXTURES["te-poc"])
-    anchor = fixture(M9_FIXTURES["anchor"])
-    wrong = fixture(M9_FIXTURES["wrong-measurement"])
-    flipped = fixture(M9_FIXTURES["self-report-flip"])
+    def source(image):
+        text = fixture(M9_FIXTURES[image])
+        return current(image, text) if current else text
+
+    two = source("two-guests")
+    tepoc = source("te-poc")
+    anchor = source("anchor")
+    wrong = source("wrong-measurement")
+    flipped = source("self-report-flip")
+    base = lambda name: f"{prefix}{name}"
 
     def record(seq):
         return f"BE_MVP:19 LOG record seq={seq} "
@@ -5696,40 +5887,56 @@ def m9_mutations():
     terminated = next(line for line in lines(anchor) if line.startswith(
         "BE_MVP:12 DOMAIN_TERMINATED "))
     return [
-        ("log", "m9tepoc", "a record line deleted", delete(tepoc, record(9)),
+        ("log", base("tepoc"), "a record line deleted", delete(tepoc, record(9)),
          "is not the line's position"),
-        ("log", "m9tepoc", "two record lines swapped", swapped(
+        ("log", base("tepoc"), "two record lines swapped", swapped(
             tepoc, record(9), record(10)), "is not the line's position"),
-        ("log", "m9tepoc", "the barrier's registers line deleted", delete(
+        ("log", base("tepoc"), "the barrier's registers line deleted", delete(
             tepoc, "BE_MVP:20 REGISTERS at=barrier"),
          "no barrier registers line"),
-        ("log", "m9tepoc", "the terminal registers line deleted", delete(
+        ("log", base("tepoc"), "the terminal registers line deleted", delete(
             tepoc, "BE_MVP:20 REGISTERS at=terminal"),
          "no terminal registers line"),
-        ("log", "m9tepoc", "domain 1's LAUNCH line deleted", delete(
+        ("log", base("tepoc"), "domain 1's LAUNCH line deleted", delete(
             tepoc, "BE_MVP:06 LAUNCH domain=1 "), "LAUNCH lines for domains"),
-        ("log", "m9two", "a record line after BE_MVP:07", moved(
+        ("log", base("two"), "a record line after BE_MVP:07", moved(
             two, record(5), "BE_MVP:07 "), "a log line after BE_MVP:07"),
-        ("log", "m9tepoc", "a kernel digest another, the registers as "
+        ("log", base("tepoc"), "a kernel digest another, the registers as "
          "printed", replace_in(tepoc, record(9), tepoc.split(record(9))[1]
                                .split("digest=")[1][:64],
                                hashlib.sha256(b"wrong").hexdigest()),
          "does not replay"),
-        ("log", "m9tepoc", "a kernel digest another, the registers "
+        ("log", base("tepoc"), "a kernel digest another, the registers "
          "recomputed", relogged(tepoc, digest_of(9)),
          "kernel-image's printed digest"),
-        ("log", "m9anchor", "the secret page's digest another, the "
+        ("log", base("anchor"), "the secret page's digest another, the "
          "registers recomputed", relogged(anchor, digest_of(13)),
          "secret-page's printed digest"),
-        ("log", "m9anchor", "DOMAIN_TERMINATED's digest another", replace_in(
+        ("log", base("anchor"), "DOMAIN_TERMINATED's digest another", replace_in(
             anchor, terminated, re.search(r"sha256=([0-9a-f]{64})",
                                           terminated).group(1),
             hashlib.sha256(b"wrong").hexdigest()), "DOMAIN_TERMINATED"),
-        ("log", "m9wrongm", "the gate-fail's DETAIL line deleted", delete(
+        ("log", base("wrongm"), "the gate-fail's DETAIL line deleted", delete(
             wrong, "BE_MVP:DETAIL "), "no DETAIL line"),
-        ("log", "m9flip", "self-report-flip with a second difference, the "
+        ("log", base("flip"), "self-report-flip with a second difference, the "
          "registers recomputed", relogged(flipped, digest_of(0)),
          "not exactly"),
+    ]
+
+
+def retained_m9_mutations():
+    """Two single defects judged only against the pinned pre-M11 era
+    reference, proving that retained mode is active in the mutation test."""
+    tepoc = fixture(M9_FIXTURES["te-poc"])
+    record = "BE_MVP:19 LOG record seq=9 "
+    digest = tepoc.split(record)[1].split("digest=")[1][:64]
+    return [
+        ("retained log", "m9tepoc", "a retained record line deleted",
+         delete(tepoc, record), "is not the line's position"),
+        ("retained log", "m9tepoc", "a retained digest unlike its era "
+         "reference", replace_in(
+             tepoc, record, digest, hashlib.sha256(b"wrong").hexdigest()),
+         "kernel-image digest="),
     ]
 
 
@@ -5746,7 +5953,7 @@ def sbi_version_line(text, domain, before, after):
 
 
 def mutation_test(expects, pins, reports, measured, current, prior, latest,
-                  root):
+                  era, era_references, root):
     """Every mutation of a passing capture must be rejected for its own
     reason (S1 H39): a verdict other than the base's, and the named
     finding. M0's bases are judged with M0's guest pins, te-poc's with
@@ -5755,9 +5962,9 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
     measured domain's kernel and DTB, and the uboot fixtures' with their
     markers' pins and their images' sizes and digests; each against
     EXPECTS, the expectations its capture was made with, but M6's against
-    CURRENT (PRE_M7's), M7's against PRIOR (PRE_M9's), and M9's against
-    LATEST with the build at ROOT (its references, boot images, and
-    inputs)."""
+    CURRENT (PRE_M7's), M7's against PRIOR (PRE_M9's), retained M9
+    captures against ERA, and current M9 stand-ins against LATEST with the
+    build at ROOT."""
     failed = count = 0
     verdicts = {}
     previous, m1, m2 = m0_pins(), m1_pins(), m2_pins()
@@ -5766,31 +5973,41 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
         name, image, mode = BASES[base]
         base_pins = previous if name in M0_FIXTURES else m1 \
             if name in M1_FIXTURES else m2 if m2_fixture(name) else pins
-        m9 = name in M9_FIXTURES.values()
-        table = latest if m9 else prior if name in M7_FIXTURES.values() or \
+        retained = base.startswith("m9")
+        current_m9 = base.startswith("c9")
+        table = era if retained else latest if current_m9 else prior \
+            if name in M7_FIXTURES.values() or \
             name in M74_FIXTURES else current \
             if name in M6_FIXTURES.values() else expects
         if report_data is None:
             report_data = report_for(table[image], reports)
-        # A session's keys, nonce, and session file, or a mutation's; an
-        # M9 capture's build.
+        # A session's keys, nonce, and session file, a retained era
+        # reference, or a current stand-in's build.
         options = dict(session_options(image) if image in SESSION_FIXTURES
-                       and not m9 else BASE_OPTIONS.get(
+                       and not (retained or current_m9) else BASE_OPTIONS.get(
                            base, BASE_OPTIONS[mode]),
-                       **(m9_options(root) if m9 else {}), **(extra or {}))
+                       **(retained_options(table[image], era_references)
+                          if retained else {}),
+                       **({"toolchain": "gcc", "build_root": root}
+                          if current_m9 else {}),
+                       **(extra or {}))
         return evaluate(text, table[image], mode, base_pins, report_data,
                         measured=PINNED_MEASUREMENT if m2_fixture(name)
                         else measured, **options)
     for base, (name, image, mode) in BASES.items():
         text = kexec_form(fixture(name)) if mode == "kexec" and \
             name not in BOARD_CAPTURES else fixture(name)
+        if base.startswith("c9"):
+            text = current_log_standin(text, latest[image], root)
         verdicts[base] = judge(base, text)[0]
     for claim, base, name, text, wanted, *rest in named_mutations() + \
             prelude_mutations() + \
             te_poc_mutations(report_for(expects["te-poc"], reports)) + \
             anchor_mutations(report_for(expects["anchor"], reports)) + \
             uboot_mutations() + m7_mutations() + m74_mutations() + \
-            m9_mutations():
+            retained_m9_mutations() + m9_mutations(
+                lambda image, text: current_log_standin(
+                    text, latest[image], root), "c9"):
         verdict, record = judge(base, text, *rest)
         named = [finding for finding in record["findings"] + record["stops"]
                  if wanted in finding]
@@ -5799,7 +6016,9 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
         failed += not ok
         print(f"{'ok  ' if ok else 'FAIL'} [{claim}] {base}: {name}: "
               f"{verdict} {named[:1] if ok else record['findings'][:3]}")
-    for base, name, text in seeded_mutations():
+    for base, name, text in seeded_mutations(
+            current=lambda image, data: current_log_standin(
+                data, latest[image], root)):
         verdict, record = judge(base, text)
         ok = verdict != verdicts[base] and bool(record["findings"])
         count += 1
@@ -5821,7 +6040,9 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
                             "m74anchor": "PASS", "m74hostile": "PASS",
                             "m9two": "PASS", "m9tepoc": "PASS",
                             "m9anchor": "PASS", "m9wrongm": "PASS",
-                            "m9flip": "PASS"}
+                            "m9flip": "PASS", "c9two": "PASS",
+                            "c9tepoc": "PASS", "c9anchor": "PASS",
+                            "c9wrongm": "PASS", "c9flip": "PASS"}
     failed += not bases_ok
     print(f"BE_MVP_CAPTURE_MUTATIONS: {'PASS' if not failed else 'FAIL'} "
           f"mutations={count} rejected={count - failed + (not bases_ok)} "
@@ -6386,15 +6607,19 @@ def main(argv):
         old, old_reports = pre_m6()
         before, before_reports = pre_m7()
         prior, prior_reports = pre_m9()
+        era, era_reports, era_references = pre_m11()
         reports.update(old_reports)
         reports.update(before_reports)
         reports.update(prior_reports)
+        reports.update(era_reports)
         root = pathlib.Path(args.build_root or DEFAULT_BUILD)
         if args.self_test:
             return self_test(dict(before, **old), pins, reports, measured,
-                             before, prior, expects, root)
+                             before, prior, expects, era, era_references,
+                             root)
         return mutation_test(dict(before, **old), pins, reports, measured,
-                             before, prior, expects, root)
+                             before, prior, expects, era, era_references,
+                             root)
     if not args.capture or not args.expect:
         parser.error("a capture and --expect are required")
     expect = json.loads(pathlib.Path(args.expect).read_text(encoding="utf-8"))

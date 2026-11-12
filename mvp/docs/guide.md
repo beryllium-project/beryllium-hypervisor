@@ -63,10 +63,12 @@ six host-only roles: podman, ssh, and scp, and, since M5, mke2fs and sfdisk
 role it records the
 absolute command, the resolved executable, the version arguments and first
 version line, the executable's SHA-256, and the owning package's exact
-NEVRA. It pins the Linux and OpenSBI sources, Linux `v7.2`
+NEVRA. It pins the Linux and both OpenSBI sources, Linux `v7.2`
 (`MVP_PIN_LINUX_COMMIT`, `MVP_PIN_LINUX_TAG_OBJECT`) and OpenSBI `v1.6`
-(`MVP_PIN_OPENSBI_COMMIT`), and the SHA-256 of the OpenSBI firmware QEMU
-runs (`MVP_PIN_OPENSBI_BIN_SHA256`); the U-Boot rehearsal's U-Boot,
+(`MVP_PIN_OPENSBI_COMMIT`), and the SHA-256 of the earlier firmware used
+by `firmware-version` (`MVP_PIN_OPENSBI_BIN_SHA256`); the firmware base's
+source and binary (`mvp/firmware/pins.mk`,
+`MVP_PIN_FIRMWARE_BIN_SHA256`); the U-Boot rehearsal's U-Boot,
 v2022.10, by its commit, defconfig, and build script (`MVP_PIN_UBOOT_*`)
 and its binary's SHA-256 (`MVP_PIN_UBOOT_BIN_SHA256`); and it binds the
 evaluator's package closure, `mvp/tools/lock/closure.txt` (each package by
@@ -123,14 +125,19 @@ firmware are built from pinned sources on each host and never committed:
   three are installed. Otherwise it unpacks B3's pinned RPMs of them, each
   checked against its SHA-256, from the directory `MVP_RPM_CACHE` names, or
   downloads them when that directory lacks them.
-- **OpenSBI `v1.6`.** QEMU's firmware is `fw_dynamic.bin` built from the
-  lock's OpenSBI commit: B1's build under `build/k3-b1/` when present,
-  otherwise the one B2's target builds. It is M-mode code that sees all of
-  a run's memory and its console, so its SHA-256 must be the lock's
-  `MVP_PIN_OPENSBI_BIN_SHA256`: `./mvp/mvp check` checks it beside the
-  lock, and each QEMU run, typed session, reference boot, and U-Boot
-  rehearsal attempt, and the evaluator, refuse other bytes before they boot
-  them.
+- **The firmware base.** Every plain emulated run except
+  `firmware-version` boots `build/mvp/firmware/platform/generic/firmware/fw_dynamic.bin`,
+  built from the exact source commit and tree in
+  `mvp/firmware/pins.mk`. Its SHA-256 must be
+  `MVP_PIN_FIRMWARE_BIN_SHA256`; every launcher checks it before every
+  run. The evaluator receives the source through a read-only offline
+  mirror, builds it again, and compares the binary with the host's.
+- **The earlier firmware, OpenSBI `v1.6`.** The `firmware-version`
+  negative alone boots the `fw_dynamic.bin` built from the lock's OpenSBI
+  commit: B1's build under `build/k3-b1/` when present, otherwise the one
+  B2's target builds. Its SHA-256 must be
+  `MVP_PIN_OPENSBI_BIN_SHA256`; the negative and the evaluator refuse
+  other bytes before they use it.
 - **U-Boot v2022.10**, for the U-Boot rehearsal only: B3's pinned upstream
   build, `qemu-riscv64_smode_defconfig`, at
   `build/k3-b3/u-boot-build/u-boot.bin`, with the SHA-256 the lock pins
@@ -213,7 +220,7 @@ the `Makefile` pins.
 `./mvp/mvp check` runs the off-board stages that the `check` target of
 `mvp/Makefile` lists as prerequisites, among them the lock, lint, the
 build-time policy negatives, the port, the guest pins, the host tests, a
-reference boot of each guest under plain OpenSBI, the image checks, the
+reference boot of each guest under the firmware base, the image checks, the
 variants, the probes, the tools' own checks (among them the partition
 tool's self-test, the board tools' dry run on a fake U-Boot, and the U-Boot
 rehearsal driver's self-test), the QEMU suite, the budgets, and the
@@ -231,7 +238,7 @@ of every image and guest input, by path relative to `build/mvp/`
 
 runs `mvp/tests/run-qemu.sh`: every scenario, variant, and probe image of
 both toolchains, booted directly under QEMU (the boot ELF as the kernel,
-OpenSBI `v1.6` as the firmware) on the `virt` machine with eight harts and
+the firmware base as the firmware) on the `virt` machine with eight harts and
 8 GiB. The QEMU oracle requires the guest's shutdown, reads every hart and
 a word of the boot image while the machine is stopped, and quits QEMU;
 the capture checker, `mvp/tests/check-capture.py`, still judges the capture.
@@ -244,7 +251,7 @@ caching, console, and timing are not the board's.
 | `rva23` | QEMU's RVA23S64 profile CPU, with AIA | each scenario |
 | `plic` | an `rv64` CPU with H, and the PLIC | each scenario |
 | `no-sstc` | the accepted R5 QEMU CPU profile, without Sstc | `two-guests`, which must fail as `sstc` |
-| `sbi-3.0` | `k3-like` with QEMU's bundled OpenSBI 1.7 (SBI 3.0) | `two-guests`, which must fail as `boot` |
+| `firmware-version` | `k3-like` with the earlier firmware, OpenSBI v1.6 as pinned by `MVP_PIN_OPENSBI_*` (SBI 2.0) | `two-guests`, which must fail as `boot` |
 
 For each attempt, `build/mvp/qemu/suite/` keeps the capture,
 `<toolchain>-<run>.<attempt>.console.log`; the checker's output,
@@ -527,7 +534,7 @@ BE_MVP:DETAIL channel=0 domain=1 hart=2 walked=0x460000d7 declared=0x46000053
 | | `wrong-measurement` | the protected domain's expected launch register differs in one bit (since M9; before M9, the expected measurement) | `FAIL measurement` at the domain's gate, before any domain hart starts | QEMU and the board |
 | | `no-grant-check` | hart 0 decides management requests without the grants; the run budget is 2^27 ticks | the protected domain terminates the host, then `FAIL run-timeout` | QEMU and the board |
 
-The `no-sstc` and `sbi-3.0` runs above are two more `two-guests` negatives,
+The `no-sstc` and `firmware-version` runs above are two more `two-guests` negatives,
 made with the scenario image under another CPU or firmware. Four negatives
 stop at the offline policy check and build no image: `undeclared-flow` and
 `grant-without-rule` for `te-poc` (`MVP_POLICY_NEGATIVES`), and
@@ -729,7 +736,7 @@ inside a guest are never measured (IMA is never used: `tools/guest-pins.py
 
 runs `mvp/tests/uboot-rehearsal.sh`: release candidate 2's boot path from
 U-Boot's prompt to the monitor's SRST shutdown, under QEMU on the
-`k3-like` machine with eight harts and 8 GiB. OpenSBI `v1.6` is the
+`k3-like` machine with eight harts and 8 GiB. The firmware base is the
 firmware, B3's pinned upstream U-Boot v2022.10
 (`qemu-riscv64_smode_defconfig`) the kernel QEMU loads, and a raw disk,
 made with the lock's `sfdisk` and `mke2fs`, holds a GPT with one ext4
@@ -1549,8 +1556,9 @@ runs `mvp/tools/evaluator/evaluate.sh`, which runs `./mvp/mvp check` again in
 a clean container and compares the images it builds with the host's. The
 wrapper runs it as it runs make, under `env -i` with its fixed variables,
 the caller variables, and the evaluator's own settings (`MVP_EVALUATOR_BUILD`,
-`MVP_EVALUATOR_RPMS`, `MVP_LINUX_MIRROR`, and `MVP_OPENSBI_FW`, from the
-environment only), its arguments under `check`'s rule; the script clears
+`MVP_EVALUATOR_RPMS`, `MVP_LINUX_MIRROR`, `MVP_FIRMWARE_MIRROR`, and
+`MVP_OPENSBI_FW`, the earlier firmware, from the environment only), its
+arguments under `check`'s rule; the script clears
 every `PYTHON*` variable, names each command by its absolute path, and runs
 each Python tool as `/usr/bin/python3 -I -B`:
 
@@ -1578,10 +1586,12 @@ each Python tool as `/usr/bin/python3 -I -B`:
 5. **The check inside, with no network.** The source tree is mounted
    read-only at its own path, a separate writable build tree
    (`build/mvp-evaluator/build`) is mounted over `build/` so that the host's
-   build products stay hidden, and the local Linux mirror and B1's OpenSBI
-   firmware, refused unless its SHA-256 is the lock's pin, are mounted
-   read-only; the environment is as clean as the wrapper's. The lock check
-   passes inside with its host-only roles skipped.
+   build products stay hidden, and the local Linux mirror, the firmware
+   base's source mirror, and B1's earlier OpenSBI firmware, refused unless
+   its SHA-256 is the lock's pin, are mounted read-only; the base is built
+   inside and every run checks the firmware it boots. The environment is
+   as clean as the wrapper's. The lock check passes inside with its
+   host-only roles skipped.
 6. **The comparison.** The evaluator's `images.sha256` against the host's,
    image by image, ending `BE_MVP_IMAGE_IDENTITY: PASS` with no image
    differing.

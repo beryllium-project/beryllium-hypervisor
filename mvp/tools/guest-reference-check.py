@@ -9,12 +9,12 @@ B7's scripts/guest-reference-check.py with the MVP init's lines).
                            [--memory-kib N] [--sbi-version V] [--json OUT]
   guest-reference-check.py --self-test
 
-The reference boot runs the pinned Image under plain OpenSBI with guest G's
+The reference boot runs the pinned Image under the firmware base with guest G's
 reference DTB and no monitor, so the console holds OpenSBI's banner, then
 the kernel's log and the init's lines, untagged; carriage returns are
 dropped. It passes when:
-  - OpenSBI reports the runtime SBI version --sbi-version (default 2.0, as
-    OpenSBI v1.6 does; QEMU's bundled 1.7 reports 3.0);
+  - OpenSBI reports the runtime SBI version --sbi-version (default 3.0, as
+    the firmware base does);
   - from the kernel banner on, these lines appear in order, with any other
     lines between them: exactly one banner, equal to --banner when given;
     the plan's command line for guest G (B6's, then `-- be.guest=G`); the
@@ -81,7 +81,7 @@ def required(guest, banner, memory_kib):
     ]
 
 
-def evaluate(text, guest, banner=None, memory_kib=65536, sbi_version="2.0"):
+def evaluate(text, guest, banner=None, memory_kib=65536, sbi_version="3.0"):
     """Return (findings, matched lines, elapsed_ms)."""
     lines = text.replace("\r", "").split("\n")
     while lines and not lines[-1].strip():
@@ -149,8 +149,8 @@ STEP_LINES = "\n".join(f"MVPINIT 03 STEP n={n}/8 rounds={4000 + n} "
 
 def pass_log(guest):
     return f"""
-OpenSBI v1.6
-Runtime SBI Version         : 2.0
+OpenSBI
+Runtime SBI Version         : 3.0
 Domain0 SysReset            : yes
 [    0.000000] {BANNER}
 [    0.000000] Machine model: Beryllium MVP guest
@@ -190,7 +190,7 @@ def self_test():
            "the command line's ID differs from the init's")
     expect(log, False, "banner pin", banner=BANNER + "x")
     expect(log, False, "memory size", memory_kib=131072)
-    expect(log, False, "SBI 3.0", sbi_version="3.0")
+    expect(log, False, "SBI 2.0", sbi_version="2.0")
     for index, line in enumerate(lines):
         if line.startswith(("[", "MVPINIT")) and "Machine model" not in line:
             expect("\r\n".join(lines[:index] + lines[index + 1:]), False,
@@ -217,8 +217,8 @@ def self_test():
                      ("t_ms=500", "t_ms=494"), ("t_ms=500", "t_ms=419"),
                      ("RESULT pass", "RESULT fail"),
                      ("Power down", "Restarting system"),
-                     ("Runtime SBI Version         : 2.0",
-                      "Runtime SBI Version         : 3.0")):
+                     ("Runtime SBI Version         : 3.0",
+                      "Runtime SBI Version         : 2.0")):
         expect(log.replace(old, new), False, f"{old} -> {new}")
     expect(log.replace("t_ms=500", "t_ms=495"), True, "steps 75 ms apart")
     power = "[    1.900000] reboot: Power down"
@@ -243,7 +243,7 @@ def main():
     parser.add_argument("--guest", type=int, choices=(0, 1))
     parser.add_argument("--banner")
     parser.add_argument("--memory-kib", type=int, default=65536)
-    parser.add_argument("--sbi-version", default="2.0")
+    parser.add_argument("--sbi-version", default="3.0")
     parser.add_argument("--json", type=pathlib.Path)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()

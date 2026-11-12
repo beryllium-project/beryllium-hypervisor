@@ -73,6 +73,13 @@ or a canonical binding whose grant is neither, carries the grant into
 the binding and the root, includes it in the canonical identity, and
 requires each derived root's to be its binding's.
 
+M11 (planning/mvp-m11-plan.md, D-2) adds two counted rules for every port:
+include/be/r3.h's comment and BE_R3_OPENSBI_SPEC_VERSION are raised from
+the accepted B2 port's SBI 2.0 to the firmware base's SBI 3.0. The
+CHERI-aware monitor used to add the same two changes after the plain port;
+those CHERI-only rules are retired because the common rules now make them.
+The --cheri option stays accepted and keeps every other effect unchanged.
+
 Every other byte, including every other accepted ASSERT and the management
 fixture in its page, is B2's. --check re-derives the tree and requires OUT
 to hold exactly those bytes, the same manifest, and no other file.
@@ -92,6 +99,7 @@ B2_MANIFEST_SHA256 = \
 B2_PORTED_FILES = 32
 ENTRY = "arch/riscv/be/r5-entry.S"
 LDS = "arch/riscv/be/r5-beryllium.lds"
+R3_H = "include/be/r3.h"
 
 PHDR_ANCHOR = "\tguest_protected PT_LOAD FLAGS(5);\n"
 POOL_PHDR = PHDR_ANCHOR + "\tmvp_pool PT_LOAD FLAGS(6);\n"
@@ -677,23 +685,22 @@ RULES = {
         ("region-bss-exclude", BSS_ANCHOR, BSS_EXCLUDED, 1),
         ("mvp-region", ASSERT_ANCHOR, REGION_SECTION + ASSERT_ANCHOR, 1),
     ],
-    **CORE_RULES,
-}
-
-# beryllium-cheri: the CHERI-aware monitor's rules (--cheri), after
-# RULES': include/be/r3.h pins SBI 3.0 and B2's port lowers it to 2.0 for
-# OpenSBI v1.6; the CHERI firmware the CHERI-aware monitor needs, the CHERI
-# Alliance SDK's purecap OpenSBI, reports 3.0.
-CHERI_RULES = {
-    "include/be/r3.h": [
-        ("cheri-firmware-sbi-3.0-doc",
-         "pinned firmware SBI specification version 2.0 */",
-         "pinned firmware SBI specification version 3.0 */", 1),
-        ("cheri-firmware-sbi-3.0",
+    R3_H: [
+        ("firmware-sbi-version-doc",
+         "/** @BE_R3_OPENSBI_SPEC_VERSION: pinned firmware SBI "
+         "specification version 2.0 */",
+         "/** @BE_R3_OPENSBI_SPEC_VERSION: pinned firmware SBI "
+         "specification version 3.0 */", 1),
+        ("firmware-sbi-version",
          "#define BE_R3_OPENSBI_SPEC_VERSION\tBE_U64_C(0x02000000)",
          "#define BE_R3_OPENSBI_SPEC_VERSION\tBE_U64_C(0x03000000)", 1),
     ],
+    **CORE_RULES,
 }
+
+# beryllium-cheri: --cheri keeps its interface and other effects, but the
+# common M11 rules now select SBI 3.0, so no CHERI-only port rule remains.
+CHERI_RULES = {}
 
 
 def sha256(data):
@@ -762,7 +769,7 @@ def derive(root, b2_port, rules=None):
 
 
 def with_cheri(rules):
-    """beryllium-cheri: RULES with CHERI_RULES after each path's own."""
+    """beryllium-cheri: RULES with any CHERI_RULES after each path's own."""
     merged = {path: list(entries) for path, entries in rules.items()}
     for path, entries in CHERI_RULES.items():
         merged.setdefault(path, []).extend(entries)

@@ -62,9 +62,10 @@
 #
 # The checks read the scenario's expectation files (tools/gen-scenario.py,
 # the Makefile's scenario target) and the images the Makefile builds.
-# OPENSBI_FW is the pinned OpenSBI v1.6 fw_dynamic.bin (B1's build, or
-# B2's), which the Makefile's opensbi target checks against the lock's
-# MVP_PIN_OPENSBI_BIN_SHA256 before any target here boots it.
+# FIRMWARE_BIN is the pinned firmware base, which every plain run boots.
+# OPENSBI_FW keeps its accepted name for the earlier OpenSBI v1.6 binary,
+# used only by the firmware-version negative. Each is checked against its
+# own lock pin before a run boots it.
 
 ifneq ($(origin MVP_MAKE_CONTROL),file)
 $(error mvp/tools.mk is read through mvp/Makefile: make -C mvp TARGET)
@@ -243,11 +244,12 @@ rc-record-check:
 # and staging list that the board targets run, which the dry run requires
 # to be the ones it derives; and with the pinned firmware, whose one-byte
 # change every QEMU path must refuse (its firmware-pin case).
-run-tool-check: image variants probes opensbi $(MVP_EXPECT_STAMP) \
+run-tool-check: image variants probes firmware opensbi $(MVP_EXPECT_STAMP) \
 		$(TE_POC_EXPECT_STAMP) $(ANCHOR_EXPECT_STAMP) $(MEASURED_INPUTS) \
 		policy-negatives references
 	mkdir -p $(RECORDS)
-	set -o pipefail; PYTHON=$(PYTHON) OPENSBI_FW=$(OPENSBI_FW) \
+	set -o pipefail; PYTHON=$(PYTHON) FIRMWARE_BIN=$(FIRMWARE_BIN) \
+		OPENSBI_FW=$(OPENSBI_FW) \
 		K3_SELECTOR_PLAN='$(K3_PLAN)' K3_SELECTOR_STAGE='$(K3_STAGE)' \
 		$(MVP_DIR)/tests/run-tool-dry-run.sh \
 		$(BUILD) $(BUILD)/run-tool-check 2>&1 | \
@@ -358,22 +360,24 @@ endif
 
 # ------------------------------------------------------ QEMU scenarios
 # Every scenario, negative variant, and probe image of the plan by direct
-# firmware boot of the boot ELF at L (QEMU 10.2.2, OpenSBI v1.6 fw_dynamic
+# firmware boot of the boot ELF at L (QEMU 10.2.2, the firmware base
 # as -bios, -smp 8 -m 8G, 300 s per attempt), each judged by
 # tests/check-capture.py, te-poc's with its report, anchor's with its
 # report and measured inputs; a REFUSED attempt (a domain hart's boot, Plan
 # revision M0-A.2) is made again, up to eight attempts.
-qemu-test: image variants probes opensbi $(MVP_EXPECT_STAMP) \
+qemu-test: image variants probes firmware opensbi $(MVP_EXPECT_STAMP) \
 		$(TE_POC_EXPECT_STAMP) $(ANCHOR_EXPECT_STAMP) $(MEASURED_INPUTS) \
 		references
-	QEMU=$(QEMU) PYTHON=$(PYTHON) $(MVP_DIR)/tests/run-qemu.sh $(BUILD) \
-		$(OPENSBI_FW) $(BUILD)/qemu/suite
+	QEMU=$(QEMU) PYTHON=$(PYTHON) \
+		BE_MVP_EARLIER_FIRMWARE=$(OPENSBI_FW) \
+		$(MVP_DIR)/tests/run-qemu.sh $(BUILD) \
+		$(FIRMWARE_BIN) $(BUILD)/qemu/suite
 
 # ------------------------------------------------------- M7-4: sessions
 # Every console variant's session (planning/mvp-m7-plan.md, D-11, Q8, Q15;
 # tests/session-typist.py suite): each scenario's SCENARIO-shell image for
-# each toolchain in VARIANT_TOOLCHAINS, typed under QEMU (k3-like, OpenSBI
-# v1.6 fw_dynamic as -bios, eight harts, 8 GiB) a key per 10 ms with the
+# each toolchain in VARIANT_TOOLCHAINS, typed under QEMU (k3-like, the
+# firmware base as -bios, eight harts, 8 GiB) a key per 10 ms with the
 # run's nonce, each run judged by tests/check-capture.py with its keys,
 # nonce, and session file, te-poc's and anchor's with their reports,
 # anchor's with its measured inputs; a refused boot (a domain hart's) is
@@ -381,10 +385,10 @@ qemu-test: image variants probes opensbi $(MVP_EXPECT_STAMP) \
 # $(BUILD)/qemu/TOOLCHAIN/SCENARIO-shell/attempt-N, the table and the
 # summary in $(BUILD)/qemu/sessions.tsv and sessions.txt, last its
 # BE_MVP_SESSIONS: line.
-sessions: variants opensbi $(MVP_EXPECT_STAMP) $(TE_POC_EXPECT_STAMP) \
+sessions: variants firmware $(MVP_EXPECT_STAMP) $(TE_POC_EXPECT_STAMP) \
 		$(ANCHOR_EXPECT_STAMP) $(MEASURED_INPUTS) references
 	mkdir -p $(BUILD)/qemu
-	$(SESSION_TYPIST) suite --qemu $(QEMU) --firmware $(OPENSBI_FW) \
+	$(SESSION_TYPIST) suite --qemu $(QEMU) --firmware $(FIRMWARE_BIN) \
 		--build $(BUILD) --scenarios $(MVP_DIR)/scenarios \
 		--output $(BUILD)/qemu --toolchains "$(VARIANT_TOOLCHAINS)"
 
@@ -519,7 +523,7 @@ board-evidence: firmware image variants probes $(MVP_EXPECT_STAMP) \
 # rehearsal in QEMU (M5-3)"; tests/uboot-rehearsal.sh), which replaces the
 # kexec rehearsal: each toolchain's two-guests, te-poc, and anchor images,
 # each as its QEMU-only image on a GPT disk's ext4 partition, loaded and
-# booted by B3's pinned upstream U-Boot v2022.10 (Q9) under OpenSBI v1.6 on
+# booted by B3's pinned upstream U-Boot v2022.10 (Q9) under the firmware base on
 # the k3-like machine with eight harts, through the session's be_* lines
 # and bootcmd typed at its prompt and a typed `boot`, each capture judged by
 # the driver's own checks and by tests/check-capture.py --mode uboot; then
@@ -544,13 +548,13 @@ uboot-rehearsal-check:
 	set -o pipefail; $(PYTHON) -B $(UBOOT_DRIVER) self-test | \
 		tee $(RECORDS)/uboot-rehearsal-self-test.txt
 
-uboot-rehearsal: image-check qemu-images uboot-rehearsal-check opensbi \
+uboot-rehearsal: image-check qemu-images uboot-rehearsal-check firmware \
 		$(MVP_EXPECT_STAMP) $(TE_POC_EXPECT_STAMP) $(ANCHOR_EXPECT_STAMP) \
 		$(MEASURED_INPUTS) references $(if $(filter 1,$(UBOOT_REHEARSAL_ALL)),variants \
 		probes)
 	QEMU=$(QEMU) PYTHON=$(PYTHON) SFDISK=$(MVP_TOOL_sfdisk_command) \
 		MKE2FS=$(MVP_TOOL_mke2fs_command) UBOOT_BIN=$(UBOOT_BIN) \
-		$(MVP_DIR)/tests/uboot-rehearsal.sh $(BUILD) $(OPENSBI_FW) \
+		$(MVP_DIR)/tests/uboot-rehearsal.sh $(BUILD) $(FIRMWARE_BIN) \
 		$(BUILD)/uboot-rehearsal
 
 # B3's pinned U-Boot (bringup/k3-b3/tests/build-uboot.sh, from a pinned

@@ -4,8 +4,8 @@
 #
 # One MVP guest's QEMU reference boot (planning/mvp-m0-plan.md, Guest
 # software; B7's scripts/run-reference-boot.sh with MVP names): the pinned
-# Image under the pinned stock OpenSBI v1.6 fw_dynamic, with no monitor, on
-# B6's k3-like machine and CPU (QEMU 10.2.2, -smp 1 -m 8G).
+# Image under the pinned firmware base, with no monitor, on B6's k3-like
+# machine and CPU (QEMU 10.2.2, -smp 1 -m 8G).
 # guest/ref-stub.S, OpenSBI's next stage, enters the kernel with a0 = 0 and
 # a1 = guest GUEST's reference DTB. That DTB's memory node starts at the
 # kernel, 0x8020_0000, because QEMU's OpenSBI owns 0x8000_0000; it is
@@ -15,26 +15,26 @@
 # the start of its last 2 MiB. The run separates guest problems from
 # monitor problems.
 #
-# The Image and the DTB must match their pins, and OPENSBI_FW, checked
-# first, the tool lock's MVP_PIN_OPENSBI_BIN_SHA256: M-mode firmware sees
+# The Image and the DTB must match their pins, and FIRMWARE_BIN, checked
+# first, the tool lock's MVP_PIN_FIRMWARE_BIN_SHA256: M-mode firmware sees
 # the whole run (the release's security review, S-01). The run passes when
 # QEMU exits by itself with status 0, after OpenSBI's SRST shutdown powers it
 # off, within BE_MVP_REF_TIMEOUT seconds (default 300), and
 # tools/guest-reference-check.py accepts the console for that guest:
-# OpenSBI's SBI 2.0, the pinned banner, the guest's command line, the
+# the firmware base's SBI 3.0, the pinned banner, the guest's command line, the
 # MVPINIT lines with its own guest ID ending RESULT pass, the power-down line
 # last, and no rejected pattern. QEMU's timer runs at 10 MHz under the
 # 24 MHz DTB, so guest time runs slow, but the init's times stay
 # self-consistent; only the timeout uses wall time.
 #
-#   run-reference-boot.sh GUEST IMAGE DTB STUB_ELF OPENSBI_FW PINS OUT_DIR
+#   run-reference-boot.sh GUEST IMAGE DTB STUB_ELF FIRMWARE_BIN PINS OUT_DIR
 #
 # OUT_DIR receives console.log, qemu.stderr, check.txt, result.json, and
 # run.txt (inputs, addresses, command, exit status, wall time, result).
 set -euo pipefail
 
 if [ "$#" -ne 7 ] || ! [[ "$1" =~ ^[01]$ ]]; then
-	printf 'usage: %s GUEST(0|1) IMAGE DTB STUB_ELF OPENSBI_FW PINS OUT_DIR\n' \
+	printf 'usage: %s GUEST(0|1) IMAGE DTB STUB_ELF FIRMWARE_BIN PINS OUT_DIR\n' \
 		"$0" >&2
 	exit 2
 fi
@@ -62,13 +62,14 @@ for file in "$image" "$dtb" "$stub" "$firmware" "$pins"; do
 	[ -r "$file" ] || fail "$file is not readable"
 done
 
-# The firmware, by the lock's pin.
+# The firmware base, by its lock pin.
 lock=$mvp/tools/lock/tool-lock.conf
-firmware_pin=$(sed -n 's/^MVP_PIN_OPENSBI_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' -- "$lock")
-[ -n "$firmware_pin" ] || fail "$lock pins no OpenSBI binary (MVP_PIN_OPENSBI_BIN_SHA256)"
+firmware_pin=$(sed -n 's/^MVP_PIN_FIRMWARE_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' -- "$lock")
+[ -n "$firmware_pin" ] ||
+	fail "$lock pins no firmware base binary (MVP_PIN_FIRMWARE_BIN_SHA256)"
 firmware_sha256=$(sha256sum -- "$firmware" | cut -d' ' -f1)
 [ "$firmware_sha256" = "$firmware_pin" ] ||
-	fail "$firmware has SHA-256 $firmware_sha256, not the lock's MVP_PIN_OPENSBI_BIN_SHA256 $firmware_pin"
+	fail "$firmware has SHA-256 $firmware_sha256, not the lock's MVP_PIN_FIRMWARE_BIN_SHA256 $firmware_pin"
 
 # The two payloads must be the pinned ones.
 pinned() {

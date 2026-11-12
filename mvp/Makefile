@@ -105,13 +105,16 @@ ifeq ($(filter $(TOOLCHAIN),$(TOOLCHAINS)),)
 $(error TOOLCHAIN must be one of: $(TOOLCHAINS))
 endif
 
-# OpenSBI v1.6 (SBI 2.0, as on K3), as B2 builds it: B1's build when
-# present, otherwise B2's target builds it. Both pin the lock's commit.
+# The earlier firmware, OpenSBI v1.6 (SBI 2.0), as B2 builds it: B1's build
+# when present, otherwise B2's target builds it. Both pin the lock's commit.
+# It is retained for the firmware-version negative alone; these accepted
+# identifiers keep their names.
 B1_OPENSBI_FW := $(REPO_ROOT)/build/k3-b1/opensbi-build/platform/generic/firmware/fw_dynamic.bin
 B2_OPENSBI_FW := $(B2_BUILD)/opensbi-build/platform/generic/firmware/fw_dynamic.bin
 OPENSBI_FW := $(if $(wildcard $(B1_OPENSBI_FW)),$(B1_OPENSBI_FW),$(B2_OPENSBI_FW))
 
-# M11's firmware base. Existing runs keep using OPENSBI_FW above.
+# M11's firmware base. Every plain run boots this binary except the
+# firmware-version negative, which boots OPENSBI_FW above.
 FIRMWARE_GIT ?= $(MVP_FIRMWARE_URL)
 FIRMWARE_SRC := $(BUILD)/firmware-src
 FIRMWARE_BUILD := $(BUILD)/firmware
@@ -549,7 +552,7 @@ $(foreach t,$(TOOLCHAINS),$(eval MVP_BOOT_IMG_$(t) := $(BUILD)/$(t)/be-mvp-boot.
 # The negative variants built as images for each toolchain in
 # VARIANT_TOOLCHAINS, each one change (plan, Platform record: negative
 # images): a monitor switch, the staged kernel, the DTB pair, or the shim.
-# no-sstc and sbi-3.0 run the main images under another QEMU CPU or
+# no-sstc and firmware-version run the main images under another QEMU CPU or
 # firmware. M7-4's hostile (planning/mvp-m7-plan.md, D-4) is a DTB
 # variant too, G0's with rdinit=/init-hostile, and passes. Since M9
 # (planning/mvp-m9-plan.md, D-3) each image carries its domains' expected
@@ -979,9 +982,9 @@ variants: image $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_VARIANTS) \
 # board, about 7 minutes at QEMU's timebase). The images' paths and a
 # QEMU command line for each are printed.
 .PHONY: live
-live: variants opensbi
+live: variants firmware
 	@$(foreach t,$(VARIANT_TOOLCHAINS),$(foreach s,$(MVP_SHELL_SCENARIOS),echo \
-		"BE_MVP_LIVE: $(t)/$(s) image=$(call shell_dir,$(t),$(s))/be-mvp-boot.img qemu: $(QEMU) -machine virt,aia=aplic-imsic,aia-guests=7 -cpu rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true -smp 8 -m 8G -bios $(OPENSBI_FW) -kernel $(call shell_dir,$(t),$(s))/be-mvp-boot.elf -nographic -monitor none -no-reboot";))
+		"BE_MVP_LIVE: $(t)/$(s) image=$(call shell_dir,$(t),$(s))/be-mvp-boot.img qemu: $(QEMU) -machine virt,aia=aplic-imsic,aia-guests=7 -cpu rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true -smp 8 -m 8G -bios $(FIRMWARE_BIN) -kernel $(call shell_dir,$(t),$(s))/be-mvp-boot.elf -nographic -monitor none -no-reboot";))
 	@echo "BE_MVP_LIVE: a demonstration, never evidence; run budget 0x100000000 ticks, not Q12's 2^35 (a monitor switch M7-4 does not make)"
 
 # ---------------------------------------------------------------- probes
@@ -1096,7 +1099,7 @@ GEN_REFERENCE := $(PYTHON) -I -B $(MVP_DIR)/tools/gen-reference.py
 reference_spec = $(1):$(2):$(3):$(4):$(MVP_GUEST_IMAGE):$(5):$(6)
 variant_elf = $(if $(filter $(2),$(MVP_OWN_MONITOR_VARIANTS)),$(BUILD)/variants/$(1)/$(2)/be-mvp.elf,$(MVP_ELF_$(1)))
 reference_specs = \
-	$(foreach e,two-guests no-sstc sbi-3.0,$(call reference_spec,$(e),$(MVP_SCENARIO_GEN_two-guests)/expect/$(e).json,$(MVP_ELF_$(1)),$(MVP_BOOT_IMG_$(1)),$(MVP_GUEST_DTB_G0),$(MVP_GUEST_DTB_G1))) \
+	$(foreach e,two-guests no-sstc firmware-version,$(call reference_spec,$(e),$(MVP_SCENARIO_GEN_two-guests)/expect/$(e).json,$(MVP_ELF_$(1)),$(MVP_BOOT_IMG_$(1)),$(MVP_GUEST_DTB_G0),$(MVP_GUEST_DTB_G1))) \
 	$(foreach v,$(MVP_VARIANTS),$(v):$(MVP_SCENARIO_GEN_two-guests)/expect/$(v).json:$(call variant_elf,$(1),$(v)):$(MVP_VARIANT_BOOT_IMG_$(1)_$(v)):$(call variant_kernel,$(v)):$(call variant_dtb0,$(v)):$(call variant_dtb1,$(v))) \
 	$(foreach p,$(MVP_PROBES),$(call reference_spec,$(p),$(MVP_SCENARIO_GEN_two-guests)/expect/$(p).json,$(BUILD)/probes/$(1)/$(p)/be-mvp.elf,$(BUILD)/probes/$(1)/$(p)/be-mvp-boot.img,$(MVP_GUEST_DTB_G0),$(MVP_GUEST_DTB_G1))) \
 	$(call reference_spec,te-poc,$(TE_POC_EXPECT_DIR)/te-poc.json,$(TE_POC_ELF_$(1)),$(TE_POC_BOOT_IMG_$(1)),$(MVP_GUEST_DTB_G0_TE_POC),$(MVP_GUEST_DTB_G1_TE_POC)) \
@@ -1177,18 +1180,15 @@ budgets: image variants probes \
 $(B2_OPENSBI_FW):
 	$(MAKE) -C $(B2_DIR) opensbi
 
-# OPENSBI_FW against the lock's pin (guest.mk's MVP_OPENSBI_PIN_CHECK; the
-# release's security review, S-01): check runs it beside the lock, and
-# every target that boots the firmware, or prints it for a human, depends
-# on it or runs the same check; tests/run-qemu.sh, tests/session-typist.py,
-# tests/uboot-rehearsal.sh, and tools/run-reference-boot.sh check again
-# before each QEMU run.
+# OPENSBI_FW, the earlier firmware used only by firmware-version, against
+# the lock's pin (guest.mk's MVP_OPENSBI_PIN_CHECK; the release's security
+# review, S-01). tests/run-qemu.sh checks it again before each negative run.
 opensbi: $(OPENSBI_FW)
 	$(MVP_OPENSBI_PIN_CHECK)
 
 # The M11 base is fetched by exact commit and tree, built unmodified with
 # upstream's default generic configuration, and pinned separately from the
-# OpenSBI v1.6 binary that every existing run still uses.
+# earlier OpenSBI v1.6 binary.
 $(FIRMWARE_SOURCE_STAMP): $(MVP_DIR)/firmware/pins.mk \
 		$(MVP_DIR)/firmware/fetch.sh
 	FIRMWARE_GIT='$(FIRMWARE_GIT)' \
@@ -1215,12 +1215,6 @@ $(FIRMWARE_BIN): $(FIRMWARE_SOURCE_STAMP) \
 		MVP_FIRMWARE_TOOL_OBJCOPY='$(MVP_TOOL_cross_objcopy_command)' \
 		MVP_FIRMWARE_TOOL_DTC='$(MVP_TOOL_dtc_command)' \
 		$(MVP_DIR)/firmware/build.sh $(FIRMWARE_SRC) $(FIRMWARE_BUILD)
-
-MVP_FIRMWARE_PIN_CHECK = @digest=$$(sha256sum <'$(FIRMWARE_BIN)' | cut -d' ' -f1) && \
-	[ "$$digest" = '$(MVP_PIN_FIRMWARE_BIN_SHA256)' ] && \
-	echo "BE_MVP_FIRMWARE: PASS $(FIRMWARE_BIN) sha256=$$digest" || \
-	{ echo "BE_MVP_FIRMWARE: FAIL $(FIRMWARE_BIN) has SHA-256 $${digest:-none}, not the lock's MVP_PIN_FIRMWARE_BIN_SHA256 $(MVP_PIN_FIRMWARE_BIN_SHA256)" >&2; \
-	exit 1; }
 
 .PHONY: firmware-source firmware
 firmware-source: $(FIRMWARE_SOURCE_STAMP)

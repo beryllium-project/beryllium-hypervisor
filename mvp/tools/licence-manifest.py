@@ -200,8 +200,9 @@ def components(known):
          f"{known['opensbi_git']}, tag `{lock['OPENSBI_TAG']}`, commit "
          f"`{lock['OPENSBI_COMMIT']}` (`{B1_MAKEFILE}`, `{LOCK}`)",
          f"{none}: B1's `fw_dynamic.bin` is built under `build/k3-b1` for "
-         "QEMU; the board's resident OpenSBI is the human's firmware, which "
-         "the MVP neither builds nor distributes"),
+         "the `firmware-version` QEMU negative alone; the board's resident "
+         "OpenSBI is the human's firmware, which the MVP neither builds nor "
+         "distributes"),
         ("OpenSBI firmware base", "firmware-base", "pin:FIRMWARE", (),
          f"unreleased development commit `{known['firmware']['commit']}` "
          f"(tree `{known['firmware']['tree']}`; `fw_dynamic.bin` SHA-256 "
@@ -212,8 +213,8 @@ def components(known):
          f"{known['firmware']['url']}, commit "
          f"`{known['firmware']['commit']}`, tree "
          f"`{known['firmware']['tree']}` (`{FIRMWARE_PINS}`, `{LOCK}`)",
-         f"{none}: built under `build/mvp/firmware` as M11's base; no image "
-         "or run uses it yet"),
+         f"{none}: built under `build/mvp/firmware` as M11's base; every "
+         "plain emulated run except `firmware-version` boots it"),
         ("U-Boot", "u-boot", "pin:UBOOT", (),
          f"`{lock['UBOOT_TAG']}`, commit `{lock['UBOOT_COMMIT']}` "
          f"(`{lock['UBOOT_DEFCONFIG']}`; `u-boot.bin` SHA-256 "

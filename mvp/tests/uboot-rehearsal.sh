@@ -7,8 +7,8 @@
 # replaces the kexec rehearsal: release candidate 2's boot path from
 # U-Boot's prompt to the MVP's SRST shutdown, on QEMU virt with
 # tests/run-qemu.sh's k3-like machine and CPU (read from that file, their
-# one source), eight harts, and 8 GiB; OpenSBI v1.6 fw_dynamic (OPENSBI_FW)
-# as -bios, which must have the lock's MVP_PIN_OPENSBI_BIN_SHA256 before
+# one source), eight harts, and 8 GiB; the firmware base's fw_dynamic
+# as -bios, which must have the lock's MVP_PIN_FIRMWARE_BIN_SHA256 before
 # anything else is read and again before each attempt (M-mode firmware sees
 # every byte and the console; the release's security review, S-01); B3's
 # pinned upstream U-Boot v2022.10,
@@ -98,7 +98,7 @@
 # Trust: a test driver. It runs QEMU, sfdisk, and mke2fs on files under
 # BUILD_DIR, never a device, and writes only OUT_DIR and its scratch.
 #
-#   uboot-rehearsal.sh BUILD_DIR OPENSBI_FW OUT_DIR [CASE ...]
+#   uboot-rehearsal.sh BUILD_DIR FIRMWARE_BIN OUT_DIR [CASE ...]
 #   UBOOT_BIN                    U-Boot (default
 #                                build/k3-b3/u-boot-build/u-boot.bin; when
 #                                missing, the command that builds it)
@@ -113,7 +113,7 @@
 set -euo pipefail
 
 if [ "$#" -lt 3 ]; then
-	printf 'usage: %s BUILD_DIR OPENSBI_FW OUT_DIR [CASE ...]\n' "$0" >&2
+	printf 'usage: %s BUILD_DIR FIRMWARE_BIN OUT_DIR [CASE ...]\n' "$0" >&2
 	exit 2
 fi
 build=$(cd -- "$1" && pwd)
@@ -175,16 +175,17 @@ case $image_source in
 auto | built | derive) ;;
 *) usage_error 'UBOOT_REHEARSAL_QEMU_IMAGES must be built or derive' ;;
 esac
-[ -r "$firmware" ] || usage_error "OPENSBI_FW $firmware is not readable"
-# OpenSBI, by the lock's pin, before anything boots it.
-opensbi_pin=$(sed -n 's/^MVP_PIN_OPENSBI_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' -- "$lock")
-[ -n "$opensbi_pin" ] || fail "$lock pins no OpenSBI binary (MVP_PIN_OPENSBI_BIN_SHA256)"
+[ -r "$firmware" ] || usage_error "FIRMWARE_BIN $firmware is not readable"
+# The firmware base, by its lock pin, before anything boots it.
+firmware_pin=$(sed -n 's/^MVP_PIN_FIRMWARE_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' -- "$lock")
+[ -n "$firmware_pin" ] ||
+	fail "$lock pins no firmware base binary (MVP_PIN_FIRMWARE_BIN_SHA256)"
 pinned_firmware() {
 	local digest
 
 	digest=$(sha "$firmware")
-	[ "$digest" = "$opensbi_pin" ] ||
-		fail "OPENSBI_FW $firmware has SHA-256 $digest, not the lock's $opensbi_pin"
+	[ "$digest" = "$firmware_pin" ] ||
+		fail "FIRMWARE_BIN $firmware has SHA-256 $digest, not the lock's MVP_PIN_FIRMWARE_BIN_SHA256 $firmware_pin"
 }
 pinned_firmware
 # The k3-like machine and CPU, from tests/run-qemu.sh.

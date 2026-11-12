@@ -6,7 +6,8 @@
 # changes listed in mvp/README.md.
 #
 # Purpose: boot the MVP boot ELF (linked at the staging address L) directly
-# under QEMU virt with eight harts and OpenSBI fw_dynamic as its next stage
+# under QEMU virt with eight harts and the firmware base's fw_dynamic as its
+# next stage
 # (8 GiB RAM covers L, the monitor's flat image at 0x1_0200_0000-
 # 0x1_020a_3fff with the pool, the hart region, and the MVP region, and both
 # domain windows), and judge each run with tests/check-capture.py against
@@ -25,21 +26,24 @@
 # BE_MVP_QEMU_TOOLCHAINS (default gcc clang):
 #   k3-like  AIA/IMSIC with 7 guest interrupt lines, and QEMU's rv64 CPU
 #            with Sstc, Svade without Svadu, Sv39 only, and Smstateen, as
-#            recorded for the COM260; OpenSBI 1.6 (SBI 2.0): two-guests
-#   rva23    QEMU's RVA23S64 profile CPU with AIA/IMSIC; OpenSBI 1.6:
+#            recorded for the COM260; the firmware base (SBI 3.0):
 #            two-guests
-#   plic     QEMU's rv64,h=true CPU with the PLIC; OpenSBI 1.6: two-guests
-#   no-sstc  the accepted R5 QEMU CPU profile (no Sstc); OpenSBI 1.6: the
+#   rva23    QEMU's RVA23S64 profile CPU with AIA/IMSIC; the firmware base:
+#            two-guests
+#   plic     QEMU's rv64,h=true CPU with the PLIC; the firmware base:
+#            two-guests
+#   no-sstc  the accepted R5 QEMU CPU profile (no Sstc); the firmware base:
 #            no-sstc expectation
-#   sbi-3.0  k3-like with QEMU's bundled OpenSBI 1.7 (SBI 3.0): the sbi-3.0
+#   firmware-version  k3-like with the earlier firmware, OpenSBI v1.6 as
+#            pinned by MVP_PIN_OPENSBI_* (SBI 2.0): the firmware-version
 #            expectation
 # then each variant BUILD_DIR/variants/TOOLCHAIN/VARIANT/be-mvp-boot.elf on
-# k3-like with OpenSBI 1.6, against its own expectation, for each toolchain
+# k3-like with the firmware base, against its own expectation, for each toolchain
 # in BE_MVP_QEMU_VARIANT_TOOLCHAINS (default gcc clang, beyond the plan's
 # GCC rows), M7-4's hostile guest among them (planning/mvp-m7-plan.md,
 # D-4; its console variants' sessions are tests/session-typist.py's), and
 # each probe image BUILD_DIR/probes/TOOLCHAIN/PROBE/
-# be-mvp-boot.elf on k3-like with OpenSBI 1.6 for each toolchain in
+# be-mvp-boot.elf on k3-like with the firmware base for each toolchain in
 # BE_MVP_QEMU_PROBE_TOOLCHAINS (default gcc clang), probe-console-input's
 # window 2^29 ticks (54 s at QEMU's timebase) with nothing typed (M7-5;
 # planning/mvp-m7-plan.md, D-12). Then M1's te-poc
@@ -78,22 +82,25 @@
 # (relative to BUILD_DIR) and that ELF's SHA-256, which bind the run to its
 # image (tools/evidence.py).
 #
-#   run-qemu.sh BUILD_DIR OPENSBI_FW OUT_DIR [RUN ...]
+#   run-qemu.sh BUILD_DIR FIRMWARE_BIN OUT_DIR [RUN ...]
 #
-# OPENSBI_FW is M-mode firmware that sees all of a run's memory and its
-# console, so its SHA-256 must be the tool lock's
-# MVP_PIN_OPENSBI_BIN_SHA256 (the release's security review, S-01): checked
-# before anything else, and again before every QEMU run that boots it; a
-# firmware with other bytes is refused (exit 2) and no QEMU run boots it.
+# FIRMWARE_BIN is the firmware base for the plain monitor. It is M-mode
+# firmware that sees all of a run's memory and its console, so its SHA-256
+# must be the tool lock's MVP_PIN_FIRMWARE_BIN_SHA256 (the release's security
+# review, S-01): checked before anything else, and again before every QEMU
+# run that boots it; other bytes are refused (exit 2) and no QEMU run boots
+# them. BE_MVP_EARLIER_FIRMWARE names OpenSBI v1.6, checked against
+# MVP_PIN_OPENSBI_BIN_SHA256, and is required exactly when the selected runs
+# include firmware-version. No run uses QEMU's bundled firmware.
 # beryllium-cheri: for the CHERI-aware monitor (BE_MVP_MONITOR=cheri,
-# below), the pin is instead the firmware line of guest/cheri-pins.txt in
-# this script's tree, checked in the same way.
+# below), FIRMWARE_BIN is its own firmware and the pin is instead the
+# firmware line of guest/cheri-pins.txt in this script's tree, checked in
+# the same way. It has no firmware-version row.
 #
 # beryllium-cheri: BE_MVP_MONITOR names the monitor variant BUILD_DIR holds
-# (planning/cheri-platform.md): riscv, the default, whose firmware is
-# OpenSBI 1.6 (SBI 2.0), as above; or cheri, the CHERI-aware monitor, whose
-# firmware is the CHERI Alliance OpenSBI (SBI 3.0, tools/port.py's CHERI
-# rule cheri-firmware-sbi-3.0), and whose captures the checker judges with
+# (planning/cheri-platform.md): riscv, the default, whose firmware is the
+# base (SBI 3.0), as above; or cheri, the CHERI-aware monitor, whose
+# firmware is its own OpenSBI (SBI 3.0), and whose captures the checker judges with
 # --monitor cheri. BE_MVP_GUEST_PINS, when set, names the guest flavour's
 # pins for the checker (guest/cheri-pins.txt for the CHERI Linux guest).
 # The checker's build root is BUILD_DIR, whose references, boot images, and
@@ -128,7 +135,7 @@
 set -euo pipefail
 
 if [ "$#" -lt 3 ]; then
-	printf 'usage: %s BUILD_DIR OPENSBI_FW OUT_DIR [RUN ...]\n' "$0" >&2
+	printf 'usage: %s BUILD_DIR FIRMWARE_BIN OUT_DIR [RUN ...]\n' "$0" >&2
 	exit 2
 fi
 
@@ -167,12 +174,11 @@ if [ "${BE_MVP_QEMU_K3_LIKE:-}" = plic ]; then
 fi
 # The accepted R5 QEMU CPU profile (tests/r5/run-qemu.sh).
 minimal='rv64,h=true,f=false,d=false,v=false,zfa=false,sv48=off,sv57=off,sstc=false,smstateen=false,svadu=false,debug=false'
-# beryllium-cheri: the monitor variant, OPENSBI_FW's SBI version, which the
-# monitor requires (tools/port.py's CHERI rule cheri-firmware-sbi-3.0 for
-# the CHERI-aware monitor's 3.0), and the checker's variant arguments.
+# beryllium-cheri: the monitor variant, its firmware's SBI version, and the
+# checker's variant arguments.
 monitor=${BE_MVP_MONITOR:-riscv}
 case $monitor in
-riscv) firmware_sbi=2.0 checked=() ;;
+riscv) firmware_sbi=3.0 checked=() ;;
 cheri) firmware_sbi=3.0 checked=(--monitor cheri --cheri-mutations) ;;
 *)
 	printf 'BE_MVP_MONITOR=%s is neither riscv nor cheri\n' "$monitor" >&2
@@ -204,17 +210,20 @@ if [ "$monitor" = cheri ]; then
 fi
 # Every scenario on each toolchain's boot ELF: the scenario, the QEMU
 # machine and CPU, the oracle's machine class and three register classes
-# and boundary state, the firmware (opensbi: OPENSBI_FW; default: QEMU's
-# bundled OpenSBI), its SBI version, and the expectation file.
+# and boundary state, the firmware role (base or earlier), its SBI version,
+# and the expectation file.
 scenarios=(
-	"k3-like $k3_machine $k3_cpu $oracle_k3 opensbi $firmware_sbi two-guests"
-	"rva23 virt,aia=aplic-imsic rva23s64 $oracle_rva23 opensbi $firmware_sbi two-guests"
-	"plic virt rv64,h=true $oracle_plic opensbi $firmware_sbi two-guests"
-	"no-sstc virt,aia=none $minimal $oracle_minimal opensbi $firmware_sbi no-sstc"
-	"sbi-3.0 $k3_machine $k3_cpu $oracle_k3 default 3.0 sbi-3.0"
+	"k3-like $k3_machine $k3_cpu $oracle_k3 base $firmware_sbi two-guests"
+	"rva23 virt,aia=aplic-imsic rva23s64 $oracle_rva23 base $firmware_sbi two-guests"
+	"plic virt rv64,h=true $oracle_plic base $firmware_sbi two-guests"
+	"no-sstc virt,aia=none $minimal $oracle_minimal base $firmware_sbi no-sstc"
 )
+# The plain monitor's firmware-version negative alone boots the earlier
+# firmware. The CHERI-aware monitor has its own run matrix and no such row.
+[ "$monitor" != riscv ] ||
+	scenarios+=("firmware-version $k3_machine $k3_cpu $oracle_k3 earlier 2.0 firmware-version")
 # The variants (planning/mvp-m0-plan.md, Negative images) and the probe
-# images (Platform record: probes), on k3-like with OpenSBI 1.6, each
+# images (Platform record: probes), on k3-like with the base, each
 # against the expectation file of its own name.
 variants=(payload exit-budget run-timeout ring-full hart-start init-exit
 	rdcycle sbi-time shim-rule hostile)
@@ -245,32 +254,41 @@ cap_store_control=
 # self-report-flip.
 anchor_variants=(secret-shared response-writable wrong-measurement
 	no-grant-check self-report-flip)
-[ -r "$firmware" ] || { printf 'OPENSBI_FW %s is not readable\n' "$firmware" >&2; exit 2; }
-firmware_pin=$(sed -n 's/^MVP_PIN_OPENSBI_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' -- "$lock")
-[ -n "$firmware_pin" ] ||
-	{ printf '%s pins no OpenSBI binary (MVP_PIN_OPENSBI_BIN_SHA256)\n' "$lock" >&2; exit 2; }
-pin_source="the lock's MVP_PIN_OPENSBI_BIN_SHA256"
 # beryllium-cheri: the CHERI-aware monitor's firmware has its own pin, the
 # firmware line of guest/cheri-pins.txt in this script's tree (S-01).
 if [ "$monitor" = cheri ]; then
+	[ -r "$firmware" ] ||
+		{ printf 'firmware %s is not readable\n' "$firmware" >&2; exit 2; }
 	cheri_pins=$(dirname -- "$here")/guest/cheri-pins.txt
 	firmware_pin=$(sed -n 's/^firmware fw_dynamic\.bin sha256=\([0-9a-f]\{64\}\) bytes=[0-9]\{1,\}$/\1/p' \
 		-- "$cheri_pins")
 	[[ $firmware_pin =~ ^[0-9a-f]{64}$ ]] ||
 		{ printf '%s pins no CHERI firmware (one firmware line)\n' "$cheri_pins" >&2; exit 2; }
 	pin_source="guest/cheri-pins.txt's firmware pin"
+	pin_label=firmware
+else
+	[ -r "$firmware" ] ||
+		{ printf 'FIRMWARE_BIN %s is not readable\n' "$firmware" >&2; exit 2; }
+	firmware_pin=$(sed -n 's/^MVP_PIN_FIRMWARE_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' -- "$lock")
+	[ -n "$firmware_pin" ] ||
+		{ printf '%s pins no firmware base binary (MVP_PIN_FIRMWARE_BIN_SHA256)\n' "$lock" >&2; exit 2; }
+	pin_source="the lock's MVP_PIN_FIRMWARE_BIN_SHA256"
+	pin_label=FIRMWARE_BIN
 fi
-# The firmware's bytes, its pin, or the suite ends here (exit 2).
+# A firmware's bytes, its own pin, or the suite ends here (exit 2).
 pinned_firmware() {
-	local digest
+	local path=$1 pin=$2 source=$3 label=$4 digest
 
-	digest=$(sha256sum -- "$firmware" | cut -d' ' -f1)
-	[ "$digest" = "$firmware_pin" ] && return 0
-	printf 'OPENSBI_FW %s has SHA-256 %s, not %s %s: refused\n' \
-		"$firmware" "$digest" "$pin_source" "$firmware_pin" >&2
+	digest=$(sha256sum -- "$path" | cut -d' ' -f1)
+	[ "$digest" = "$pin" ] && return 0
+	printf '%s %s has SHA-256 %s, not %s %s: refused\n' \
+		"$label" "$path" "$digest" "$source" "$pin" >&2
 	exit 2
 }
-pinned_firmware
+pinned_base() {
+	pinned_firmware "$firmware" "$firmware_pin" "$pin_source" "$pin_label"
+}
+pinned_base
 case $max_attempts in
 '' | *[!0-9]* | 0) printf 'BE_MVP_QEMU_ATTEMPTS must be a positive integer\n' >&2; exit 2 ;;
 esac
@@ -284,28 +302,27 @@ wanted() {
 	return 1
 }
 # The runs, each "label elf machine cpu machine-class pmp menvcfg mseccfg
-# boundary bios sbi expectation report measured", the expectation a file,
-# the report one or "-", and the measured inputs KERNEL:DTB or "-".
+# boundary firmware-role sbi expectation report measured", the expectation
+# a file, the report one or "-", and the measured inputs KERNEL:DTB or "-".
 runs=()
 for toolchain in "${toolchains[@]}"; do
 	for entry in "${scenarios[@]}"; do
 		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
-			bios sbi expect <<<"$entry"
+			firmware_role sbi expect <<<"$entry"
 		wanted "$toolchain/$name" || continue
-		[ "$bios" = opensbi ] && bios=$firmware
-		runs+=("$toolchain/$name $build/$toolchain/be-mvp-boot.elf $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary $bios $sbi $expect_dir/$expect.json - -")
+		runs+=("$toolchain/$name $build/$toolchain/be-mvp-boot.elf $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary $firmware_role $sbi $expect_dir/$expect.json - -")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do
 	for name in "${variants[@]}"; do
 		wanted "variant/$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 $firmware $firmware_sbi $expect_dir/$name.json - -")
+		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 base $firmware_sbi $expect_dir/$name.json - -")
 	done
 done
 for toolchain in "${probe_toolchains[@]}"; do
 	for name in "${probes[@]}"; do
 		wanted "probe/$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/probes/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 $firmware $firmware_sbi $expect_dir/$name.json - -")
+		runs+=("$toolchain/$name $build/probes/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 base $firmware_sbi $expect_dir/$name.json - -")
 	done
 done
 for toolchain in "${toolchains[@]}"; do
@@ -313,17 +330,17 @@ for toolchain in "${toolchains[@]}"; do
 		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
 			<<<"$entry"
 		wanted "te-poc/$toolchain/$name" || continue
-		runs+=("$toolchain/te-poc-$name $build/$toolchain/te-poc/be-mvp-boot.elf $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary $firmware $firmware_sbi $te_poc_dir/expect/te-poc.json $te_poc_dir/authority-report.json -")
+		runs+=("$toolchain/te-poc-$name $build/$toolchain/te-poc/be-mvp-boot.elf $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $te_poc_dir/expect/te-poc.json $te_poc_dir/authority-report.json -")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do
 	for name in "${te_poc_variants[@]}"; do
 		wanted "te-poc/$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 $firmware $firmware_sbi $te_poc_dir/expect/$name.json $te_poc_dir/authority-report.json -")
+		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 base $firmware_sbi $te_poc_dir/expect/$name.json $te_poc_dir/authority-report.json -")
 	done
 	if [ -n "$cap_store_control" ] &&
 		wanted "te-poc/$toolchain/$cap_store_control"; then
-		runs+=("$toolchain/$cap_store_control $build/variants/$toolchain/cap-store/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 $firmware $firmware_sbi $te_poc_dir/expect/$cap_store_control.json $te_poc_dir/authority-report.json -")
+		runs+=("$toolchain/$cap_store_control $build/variants/$toolchain/cap-store/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 base $firmware_sbi $te_poc_dir/expect/$cap_store_control.json $te_poc_dir/authority-report.json -")
 	fi
 done
 for toolchain in "${toolchains[@]}"; do
@@ -331,15 +348,38 @@ for toolchain in "${toolchains[@]}"; do
 		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
 			<<<"$entry"
 		wanted "anchor/$toolchain/$name" || continue
-		runs+=("$toolchain/anchor-$name $build/$toolchain/anchor/be-mvp-boot.elf $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary $firmware $firmware_sbi $anchor_dir/expect/anchor.json $anchor_dir/authority-report.json $measured")
+		runs+=("$toolchain/anchor-$name $build/$toolchain/anchor/be-mvp-boot.elf $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $anchor_dir/expect/anchor.json $anchor_dir/authority-report.json $measured")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do
 	for name in "${anchor_variants[@]}"; do
 		wanted "anchor/$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 $firmware $firmware_sbi $anchor_dir/expect/$name.json $anchor_dir/authority-report.json $measured")
+		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 base $firmware_sbi $anchor_dir/expect/$name.json $anchor_dir/authority-report.json $measured")
 	done
 done
+earlier_firmware=${BE_MVP_EARLIER_FIRMWARE:-}
+needs_earlier=0
+for entry in "${runs[@]}"; do
+	read -r _ _ _ _ _ _ _ _ _ firmware_role _ _ _ _ <<<"$entry"
+	case $firmware_role in
+	base) ;;
+	earlier) needs_earlier=1 ;;
+	*) printf 'unknown firmware role %s\n' "$firmware_role" >&2; exit 2 ;;
+	esac
+done
+if [ "$needs_earlier" = 1 ]; then
+	[ "$monitor" = riscv ] ||
+		{ printf 'the CHERI-aware monitor has no firmware-version run\n' >&2; exit 2; }
+	[ -n "$earlier_firmware" ] ||
+		{ printf 'firmware-version requires BE_MVP_EARLIER_FIRMWARE\n' >&2; exit 2; }
+	[ -r "$earlier_firmware" ] ||
+		{ printf 'BE_MVP_EARLIER_FIRMWARE %s is not readable\n' "$earlier_firmware" >&2; exit 2; }
+	earlier_pin=$(sed -n 's/^MVP_PIN_OPENSBI_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' -- "$lock")
+	[ -n "$earlier_pin" ] ||
+		{ printf '%s pins no earlier firmware binary (MVP_PIN_OPENSBI_BIN_SHA256)\n' "$lock" >&2; exit 2; }
+	pinned_firmware "$earlier_firmware" "$earlier_pin" \
+		"the lock's MVP_PIN_OPENSBI_BIN_SHA256" BE_MVP_EARLIER_FIRMWARE
+fi
 missing=()
 for entry in "${runs[@]}"; do
 	read -r _ elf _ _ _ _ _ _ _ _ _ expect report inputs <<<"$entry"
@@ -364,19 +404,39 @@ attempts_file=$output/attempts.tsv
 printf 'toolchain\trun\tattempt\tboot_hart\tqemu_exit\tverdict\tcapture_sha256\telf\telf_sha256\n' \
 	>"$attempts_file"
 
+# Check and select the firmware for one run immediately before QEMU starts.
+pinned_role() {
+	case $1 in
+	base)
+		pinned_base
+		run_firmware=$firmware
+		;;
+	earlier)
+		pinned_firmware "$earlier_firmware" "$earlier_pin" \
+			"the lock's MVP_PIN_OPENSBI_BIN_SHA256" \
+			BE_MVP_EARLIER_FIRMWARE
+		run_firmware=$earlier_firmware
+		;;
+	*)
+		printf 'unknown firmware role %s\n' "$1" >&2
+		exit 2
+		;;
+	esac
+}
+
 # One QEMU boot into STEM.console.log; its exit status in STEM.exit.txt.
 boot() {
-	local stem=$1 elf=$2 machine=$3 cpu=$4 bios=$5 machine_class=$6
+	local stem=$1 elf=$2 machine=$3 cpu=$4 firmware_role=$5 machine_class=$6
 	local pmp=$7 menvcfg=$8 mseccfg=$9 boundary=${10}
 	local console=$stem.console.log
 	local boundary_arg=()
 	local qemu_pid deadline terminal_at status
 
-	[ "$bios" != "$firmware" ] || pinned_firmware
+	pinned_role "$firmware_role"
 	: >"$console"
 	if [ "$monitor" = cheri ]; then
 		"$qemu" -machine "$machine" -cpu "$cpu" \
-			-smp 8 -m 8G -bios "$bios" \
+			-smp 8 -m 8G -bios "$run_firmware" \
 			-kernel "$elf" -display none -serial "file:$console" \
 			-monitor none -no-reboot </dev/null >"$stem.qemu.txt" 2>&1 &
 		qemu_pid=$!
@@ -424,7 +484,7 @@ boot() {
 		--ram-base 0x80000000 --ram-size 0x200000000 \
 		--elf-word "boot-entry=$elf" -- \
 		"$qemu" -machine "$machine" -cpu "$cpu" -smp 8 -m 8G \
-		-bios "$bios" -kernel "$elf" -display none \
+		-bios "$run_firmware" -kernel "$elf" -display none \
 		-serial "file:$console" -no-reboot || true
 }
 
@@ -433,7 +493,7 @@ boot() {
 # attempts, the refused attempts, and each attempt's boot hart.
 run() {
 	local label=$1 elf=$2 machine=$3 cpu=$4 machine_class=$5 pmp=$6
-	local menvcfg=$7 mseccfg=$8 boundary=$9 bios=${10} sbi=${11}
+	local menvcfg=$7 mseccfg=$8 boundary=$9 firmware_role=${10} sbi=${11}
 	local expect=${12} report=${13} inputs=${14}
 	local toolchain=${label%%/*} name=${label#*/}
 	local attempt=0 refusals=0 harts='' verdict=none status stem
@@ -456,7 +516,8 @@ run() {
 		attempt=$((attempt + 1))
 		oracle_failure=
 		stem=$output/$toolchain-$name.$attempt
-		boot "$stem" "$elf" "$machine" "$cpu${addition:+,$addition}" "$bios" \
+		boot "$stem" "$elf" "$machine" "$cpu${addition:+,$addition}" \
+			"$firmware_role" \
 			"$machine_class" "$pmp" "$menvcfg" "$mseccfg" "$boundary"
 		status=$(cat -- "$stem.exit.txt")
 		set +e
@@ -517,12 +578,12 @@ total_refused=0
 declare -A tc_runs=() tc_attempts=() tc_refused=()
 for entry in "${runs[@]}"; do
 	read -r label elf machine cpu machine_class pmp menvcfg mseccfg boundary \
-		bios sbi expect report inputs <<<"$entry"
+		firmware_role sbi expect report inputs <<<"$entry"
 	toolchain=${label%%/*}
 	run_attempts=0
 	run_refusals=0
 	run "$label" "$elf" "$machine" "$cpu" "$machine_class" "$pmp" \
-		"$menvcfg" "$mseccfg" "$boundary" "$bios" "$sbi" "$expect" \
+		"$menvcfg" "$mseccfg" "$boundary" "$firmware_role" "$sbi" "$expect" \
 		"$report" "$inputs" || failed=$((failed + 1))
 	total_runs=$((total_runs + 1))
 	total_attempts=$((total_attempts + run_attempts))

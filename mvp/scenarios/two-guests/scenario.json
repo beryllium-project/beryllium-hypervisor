@@ -124,7 +124,7 @@
     {"name": "init-exit", "toolchains": ["gcc"], "where": ["qemu"], "change": "G1's DTB has rdinit=/init-exit", "fail": "guest-reboot", "after": "BE_MVP:10", "detail": "domain", "domain": 1},
     {"name": "rdcycle", "toolchains": ["gcc"], "where": ["qemu"], "change": "G0's DTB has rdinit=/init-rdcycle", "fail": "virtual-instruction", "after": "BE_MVP:10", "detail": "domain", "domain": 0, "cause": 22},
     {"name": "no-sstc", "toolchains": ["gcc", "clang"], "where": ["qemu"], "change": "the accepted R5 QEMU CPU, without Sstc", "fail": "sstc", "after": "BE_MVP:02"},
-    {"name": "sbi-3.0", "toolchains": ["gcc", "clang"], "where": ["qemu"], "change": "QEMU's bundled OpenSBI 1.7 (SBI 3.0)", "fail": "boot", "after": "none"},
+    {"name": "firmware-version", "toolchains": ["gcc", "clang"], "where": ["qemu"], "change": "the earlier firmware, OpenSBI v1.6 as pinned by MVP_PIN_OPENSBI_*, reports SBI 2.0", "fail": "boot", "after": "none"},
     {"name": "sbi-time", "toolchains": ["gcc"], "where": ["qemu"], "change": "both DTBs without sstc", "pass": true, "time_above_zero": true},
     {"name": "shim-rule", "toolchains": ["gcc"], "where": ["qemu"], "change": "the shim starts hart 1 at its entry and stops the hart that booted", "pass": true, "shim_line": "BE_MVP_SHIM: boot_hart=0x1 starting hart 0"},
     {"name": "two-guests-shell", "toolchains": ["gcc", "clang"], "where": ["qemu"], "change": "each domain's DTB has rdinit=/init-shell and the sealed configuration grants each console input (planning/mvp-m7-plan.md, Q4); tests/session-typist.py types sessions/shell.json", "pass": true, "rdinit": ["/init-shell", "/init-shell"], "console_input": [true, true], "session": "sessions/shell.json"},

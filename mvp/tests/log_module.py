@@ -33,6 +33,13 @@ self-test of this module: the profile's test vectors, section 5.4's te-poc
 example and the round trip, and the plan's five kinds of negatives (D-4) on
 that example and on this module's own anchor and two-guests syntheses, each
 with its reference frozen.
+
+Retained-era mode is a separate self-test-only reading for saved captures
+whose image bytes are no longer kept. It still rebuilds the log and compares
+every printed field and digest with a pinned reference manifest, but it does
+not recompute from the current build or bind to a current boot image. Only
+tests/check-capture.py's internal self-test and mutation paths can select it;
+live capture checking always uses the recomputing path above.
 """
 
 import hashlib
@@ -146,7 +153,7 @@ LOG_TAGS = ("BE_MVP:19", "BE_MVP:20", "BE_MVP:06 LAUNCH")
 LOG_MARKERS = ("BE_MVP:19", "BE_MVP:20")
 # The expectations the profile's 3.2 assigns to the run class whose boot
 # image is their scenario's own (tests/run-qemu.sh runs both on it).
-SCENARIO_IMAGE_RUNS = ("no-sstc", "sbi-3.0")
+SCENARIO_IMAGE_RUNS = ("no-sstc", "firmware-version", "sbi-3.0")
 # 5.1 and section 7's forms.
 DIGEST_FORM = re.compile(r"[0-9a-f]{64}")
 HEX64_FORM = re.compile(r"0x[0-9a-f]{16}")
@@ -1402,10 +1409,12 @@ def without_log(expect):
 def default_paths(root, toolchain, expect):
     """The reference and boot image of EXPECT's image as the build lays
     them out (mvp/Makefile): references/TOOLCHAIN/IMAGE.json, and the
-    boot image of the scenario (two-guests', no-sstc's, and sbi-3.0's
-    under TOOLCHAIN/, te-poc's and anchor's under TOOLCHAIN/SCENARIO/), a
-    variant (variants/TOOLCHAIN/VARIANT/), or a probe (probes/TOOLCHAIN/
-    PROBE/); an explicit --reference or --image takes their place."""
+    boot image of the scenario (two-guests', no-sstc's, and the live
+    firmware-version negative's under TOOLCHAIN/; retained sbi-3.0 records
+    have the same shape; te-poc's and anchor's under TOOLCHAIN/SCENARIO/),
+    a variant (variants/TOOLCHAIN/VARIANT/), or a probe
+    (probes/TOOLCHAIN/PROBE/); an explicit --reference or --image takes
+    their place."""
     root, image = pathlib.Path(root), expect["image"]
     scenario = expect["scenario"]
     if (expect.get("outcome") or {}).get("probe"):
@@ -1424,11 +1433,12 @@ def first(texts, prefix, start=0):
                  if texts[index].startswith(prefix)), None)
 
 
-def judge(monitor, expect, reference, inputs, toolchain):
+def judge(monitor, expect, reference, inputs, toolchain, retained=False):
     """The log module's judgment of one capture: (findings, the self-report
     findings this run declares, the record, the export or None). MONITOR,
     hart 0's unprefixed lines; EXPECT, the expectation with M9's log data;
-    REFERENCE, a Reference or None; INPUTS, an Inputs."""
+    REFERENCE, a Reference or None; INPUTS, an Inputs. RETAINED is the
+    self-test-only era-reference mode described in this module's header."""
     findings, self_report = [], []
     record = {"reference": None if reference is None else reference.sha256,
               "registers": None, "export_sha256": None}
@@ -1460,7 +1470,7 @@ def judge(monitor, expect, reference, inputs, toolchain):
         return findings, self_report, record, None
     record["r2"] = reference.r2
     findings += binding_findings(expect, reference, contract, inputs,
-                                 toolchain, record)
+                                 toolchain, record, retained)
     if reference.contract != contract:
         return findings, self_report, record, None
     run = contract[1]
@@ -1488,7 +1498,12 @@ def judge(monitor, expect, reference, inputs, toolchain):
                                              want, run)
     findings += found
     record["records"] = comparison
-    findings += recompute(rebuilt, monitor, reference, inputs, record)
+    if retained:
+        record["retained_era"] = True
+        for row in record["records"]:
+            row["recomputed"] = "era-reference"
+    else:
+        findings += recompute(rebuilt, monitor, reference, inputs, record)
     findings += launch_findings(rebuilt, monitor, expect, reference,
                                 contract)
     findings += class_findings(rebuilt, monitor, texts, expect, reference,
@@ -1559,7 +1574,7 @@ def order_findings(rebuilt, monitor, texts):
 
 
 def binding_findings(expect, reference, contract, inputs, toolchain,
-                     record):
+                     record, retained=False):
     """4.7's last rule and the reference's identity: the image, scenario,
     variant, toolchain, contract, R2 state, report, scenario digest, and
     boot image are this run's."""
@@ -1601,10 +1616,17 @@ def binding_findings(expect, reference, contract, inputs, toolchain,
     if reference.report != (expect.get("report") or {}).get("sha256"):
         out.append("log: the reference's authority report is not the "
                    "expectation's")
-    if reference.header["scenario"] != expect.get("scenario_sha256") or \
-            inputs.scenario not in (None, expect.get("scenario_sha256")):
+    scenario_differs = reference.header["scenario"] != \
+        expect.get("scenario_sha256")
+    if not retained:
+        scenario_differs = scenario_differs or inputs.scenario not in (
+            None, expect.get("scenario_sha256"))
+    if scenario_differs:
         out.append("log: the scenario digest of the reference, the "
                    "expectation, or the scenario file differs")
+    if retained:
+        record["boot_image"] = "retained-era"
+        return out
     boot = inputs.boot_sha256()
     record["boot_image"] = "absent"
     if boot is None:

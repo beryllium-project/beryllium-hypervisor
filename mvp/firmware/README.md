@@ -4,7 +4,9 @@
 # M11 firmware base
 
 This directory pins and builds the unmodified upstream OpenSBI source that
-M11 uses as its firmware base. It is an unreleased development commit,
+M11 uses as its firmware base. Every plain run boots this base except the
+`firmware-version` negative, which boots the earlier firmware, OpenSBI v1.6
+as pinned by `MVP_PIN_OPENSBI_*`. The base is an unreleased development commit,
 `ed70256dd22c09962d146e433834239825ef0616`, pinned with its Git tree in
 `pins.mk`. The external source stays under `build/` and is never committed.
 
@@ -23,7 +25,7 @@ enabled. The `firmware` target checks the result against
 evaluator receives the source through a read-only offline mount, rebuilds
 it, and compares the binary with the host's through `images.sha256`.
 
-Nothing boots this firmware yet. Existing runs continue to use the separately
-pinned OpenSBI v1.6 binary. Patches, the M11 boundary extension, a reduced
-configuration, and the switch of any image or run to this base belong to
+The separately pinned OpenSBI v1.6 binary stays built as `OPENSBI_FW` and
+checked by the `opensbi` target for the `firmware-version` negative alone.
+Patches, the M11 boundary extension, and a reduced configuration belong to
 later M11 work.

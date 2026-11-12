@@ -144,13 +144,14 @@ PINS = {
     # QEMU's OpenSBI firmware, fw_dynamic.bin built from that commit (B1's
     # build): M-mode code that sees every byte and the console of a run, so
     # each consumer refuses other bytes before it boots them (the release's
-    # security review, S-01). An external input, never committed; the
-    # digest release candidate 4's records name (opensbi=78f14d30c951).
+    # security review, S-01). The earlier firmware, retained for the
+    # firmware-version negative alone; an external input, never committed;
+    # the digest release candidate 4's records name (opensbi=78f14d30c951).
     "MVP_PIN_OPENSBI_BIN_SHA256":
         "78f14d30c95181704b6163b4c114f88483cd6c2c89e642812cd3856d01c6a42b",
     # M11's unmodified upstream OpenSBI base (firmware/pins.mk), built with
-    # the lock's tools on the host and inside the evaluator. It is not yet
-    # used by an image or run.
+    # the lock's tools on the host and inside the evaluator. Every plain
+    # run except firmware-version boots it.
     "MVP_PIN_FIRMWARE_BIN_SHA256":
         "ebd912c6e687b472564d737ea360d1723120e1a904d92e08e8ffc0a2d86bbd70",
     # The U-Boot rehearsal's U-Boot (planning/mvp-m5-plan.md, Q9): B3's

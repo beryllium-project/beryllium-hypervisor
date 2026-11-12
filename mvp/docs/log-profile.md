@@ -403,7 +403,7 @@ this table, decides each one):
 | Run class | Expectations |
 | --- | --- |
 | `complete` | `two-guests`, `te-poc`, `anchor`; `sbi-time`, `shim-rule`, `hostile`, `two-guests-shell`, `te-poc-shell`, `anchor-shell`, and the `live` builds of the shell images; the probe images |
-| `pre-measurement` | `payload` (`payload`), `no-sstc` (`sstc`), `sbi-3.0` (`boot`), `reader-write`, `secret-shared`, and `response-writable` (`gstage`) |
+| `pre-measurement` | `payload` (`payload`), `no-sstc` (`sstc`), `firmware-version` (`boot`), `reader-write`, `secret-shared`, and `response-writable` (`gstage`) |
 | `gate-fail` | `wrong-measurement` |
 | `post-launch-failure` | `exit-budget`, `run-timeout`, `ring-full`, `hart-start`, `init-exit`, `rdcycle`, `no-inject`, `no-grant-check` |
 | `self-report-flip` | the variant M9-3 adds (D-4) |

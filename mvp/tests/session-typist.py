@@ -60,11 +60,11 @@ sessions=N attempts=A refused=R. Exit 0 PASS, 1 FAIL, 2 usage.
 Trust: a test driver; it writes only under DIR or ROOT, types only the
 expectation's bytes, and reads no path from a record. FW is M-mode
 firmware that sees the whole run, so before every QEMU launch its SHA-256
-must be the tool lock's MVP_PIN_OPENSBI_BIN_SHA256, or the typist exits
+must be the tool lock's MVP_PIN_FIRMWARE_BIN_SHA256, or the typist exits
 refusing it and no QEMU starts (the release's security review, S-01).
 
 beryllium-cheri: as tests/run-qemu.sh, it reads BE_MVP_MONITOR (riscv, the
-default, or cheri: the firmware's SBI version, 2.0 or 3.0, and the
+default, or cheri: each firmware's SBI version is 3.0, and the
 checker's --monitor), BE_MVP_GUEST_PINS (the guest flavour's pins for the
 checker, when set), and BE_MVP_QEMU_K3_LIKE=plic (planning/
 cheri-platform.md; tools/cheri-check.sh sets all three), and, for the
@@ -99,9 +99,9 @@ sys.path.insert(0, str(HERE))
 import qemu_oracle  # noqa: E402 pylint: disable=wrong-import-position
 
 CHECKER = HERE / "check-capture.py"
-# The tool lock, whose MVP_PIN_OPENSBI_BIN_SHA256 FW must have.
+# The tool lock, whose MVP_PIN_FIRMWARE_BIN_SHA256 FW must have.
 LOCK = HERE.parent / "tools" / "lock" / "tool-lock.conf"
-FIRMWARE_PIN = "MVP_PIN_OPENSBI_BIN_SHA256"
+FIRMWARE_PIN = "MVP_PIN_FIRMWARE_BIN_SHA256"
 # beryllium-cheri: the CHERI-aware monitor's FW pin, the firmware line of
 # guest/cheri-pins.txt in this tree (S-01 for that monitor).
 CHERI_PINS = HERE.parent / "guest" / "cheri-pins.txt"
@@ -115,11 +115,11 @@ CPU = ("rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,"
 if os.environ.get("BE_MVP_QEMU_K3_LIKE") == "plic":
     MACHINE, CPU = "virt", "rv64,h=true"
 # beryllium-cheri: the monitor variant (tests/run-qemu.sh's
-# BE_MVP_MONITOR): its firmware's SBI version, OpenSBI 1.6's 2.0 or the
-# CHERI Alliance OpenSBI's 3.0, and the checker's arguments, with the
-# guest flavour's pins when BE_MVP_GUEST_PINS names them.
+# BE_MVP_MONITOR): its firmware's SBI version, 3.0 for both variants, and
+# the checker's arguments, with the guest flavour's pins when
+# BE_MVP_GUEST_PINS names them.
 MONITOR = os.environ.get("BE_MVP_MONITOR", "riscv")
-FIRMWARE_SBI = {"riscv": "2.0", "cheri": "3.0"}.get(MONITOR)
+FIRMWARE_SBI = {"riscv": "3.0", "cheri": "3.0"}.get(MONITOR)
 CHECKED = (["--monitor", "cheri"] if MONITOR == "cheri" else []) + \
     (["--pins", os.environ["BE_MVP_GUEST_PINS"]]
      if os.environ.get("BE_MVP_GUEST_PINS") else [])
@@ -162,7 +162,7 @@ def utc():
 
 
 def firmware_pin(lock=LOCK):
-    """The lock's MVP_PIN_OPENSBI_BIN_SHA256."""
+    """The lock's MVP_PIN_FIRMWARE_BIN_SHA256."""
     for line in lock.read_text(encoding="utf-8").splitlines():
         name, _, value = line.partition("=")
         if name == FIRMWARE_PIN and re.fullmatch(r"[0-9a-f]{64}", value):
