@@ -22,8 +22,9 @@
 # (tools/lock/tool-lock.conf), run with PATH=/usr/bin. guest.mk builds the
 # guest inputs (Linux, the init, the DTBs); tools.mk, when present, adds the
 # capture, QEMU, and board tools. Caller variables: TOOLCHAIN,
-# LINUX_GIT (a local mirror), MVP_RPM_CACHE, MVP_SCENARIO_NAME (the
-# scenario target's scenario, default two-guests), and, for later targets,
+# LINUX_GIT and FIRMWARE_GIT (local mirrors), MVP_RPM_CACHE,
+# MVP_SCENARIO_NAME (the scenario target's scenario, default two-guests),
+# and, for later targets,
 # K3_SERIAL_LOG, K3_RUN_ROOT, K3_PREFLIGHT, K3_ENV_CONFIRM, K3_ENV_ACCEPT_V,
 # K3_RECORD_TITLE, and JOBS.
 #
@@ -52,6 +53,8 @@ $(error $(MVP_MAKE_CONTROL))
 endif
 # The tool lock: the roles every recipe runs, and the source pins.
 include $(MVP_DIR)/tools/lock/tool-lock.conf
+# M11's unmodified upstream OpenSBI base, whose binary pin is in the lock.
+include $(MVP_DIR)/firmware/pins.mk
 PATH := $(MVP_EXECUTION_PATH)
 LC_ALL := C
 LANG := C
@@ -107,6 +110,13 @@ endif
 B1_OPENSBI_FW := $(REPO_ROOT)/build/k3-b1/opensbi-build/platform/generic/firmware/fw_dynamic.bin
 B2_OPENSBI_FW := $(B2_BUILD)/opensbi-build/platform/generic/firmware/fw_dynamic.bin
 OPENSBI_FW := $(if $(wildcard $(B1_OPENSBI_FW)),$(B1_OPENSBI_FW),$(B2_OPENSBI_FW))
+
+# M11's firmware base. Existing runs keep using OPENSBI_FW above.
+FIRMWARE_GIT ?= $(MVP_FIRMWARE_URL)
+FIRMWARE_SRC := $(BUILD)/firmware-src
+FIRMWARE_BUILD := $(BUILD)/firmware
+FIRMWARE_SOURCE_STAMP := $(BUILD)/firmware-source.txt
+FIRMWARE_BIN := $(FIRMWARE_BUILD)/platform/generic/firmware/fw_dynamic.bin
 
 .DEFAULT_GOAL := all
 -include $(MVP_DIR)/guest.mk
@@ -1176,6 +1186,48 @@ $(B2_OPENSBI_FW):
 opensbi: $(OPENSBI_FW)
 	$(MVP_OPENSBI_PIN_CHECK)
 
+# The M11 base is fetched by exact commit and tree, built unmodified with
+# upstream's default generic configuration, and pinned separately from the
+# OpenSBI v1.6 binary that every existing run still uses.
+$(FIRMWARE_SOURCE_STAMP): $(MVP_DIR)/firmware/pins.mk \
+		$(MVP_DIR)/firmware/fetch.sh
+	FIRMWARE_GIT='$(FIRMWARE_GIT)' \
+		FIRMWARE_COMMIT='$(MVP_FIRMWARE_COMMIT)' \
+		FIRMWARE_TREE='$(MVP_FIRMWARE_TREE)' \
+		$(MVP_DIR)/firmware/fetch.sh $(FIRMWARE_SRC)
+	@set -eu; \
+		/usr/bin/mkdir -p -- '$(@D)'; \
+		{ printf 'commit=%s\n' '$(MVP_FIRMWARE_COMMIT)'; \
+		  printf 'tree=%s\n' '$(MVP_FIRMWARE_TREE)'; } >'$@.part'; \
+		/usr/bin/mv -- '$@.part' '$@'
+
+$(FIRMWARE_BIN): $(FIRMWARE_SOURCE_STAMP) \
+		$(MVP_DIR)/firmware/build.sh $(MVP_DIR)/firmware/pins.mk \
+		$(MVP_DIR)/tools/lock/tool-lock.conf
+	FIRMWARE_COMMIT='$(MVP_FIRMWARE_COMMIT)' \
+		FIRMWARE_TREE='$(MVP_FIRMWARE_TREE)' \
+		MVP_FIRMWARE_TOOL_MAKE='$(MVP_TOOL_make_command)' \
+		MVP_FIRMWARE_TOOL_SHELL='$(MVP_TOOL_shell_command)' \
+		MVP_FIRMWARE_TOOL_GIT='$(MVP_TOOL_git_command)' \
+		MVP_FIRMWARE_TOOL_CC='$(MVP_TOOL_cross_gcc_command)' \
+		MVP_FIRMWARE_TOOL_AR='$(MVP_TOOL_cross_ar_command)' \
+		MVP_FIRMWARE_TOOL_LD='$(MVP_TOOL_cross_ld_command)' \
+		MVP_FIRMWARE_TOOL_OBJCOPY='$(MVP_TOOL_cross_objcopy_command)' \
+		MVP_FIRMWARE_TOOL_DTC='$(MVP_TOOL_dtc_command)' \
+		$(MVP_DIR)/firmware/build.sh $(FIRMWARE_SRC) $(FIRMWARE_BUILD)
+
+MVP_FIRMWARE_PIN_CHECK = @digest=$$(sha256sum <'$(FIRMWARE_BIN)' | cut -d' ' -f1) && \
+	[ "$$digest" = '$(MVP_PIN_FIRMWARE_BIN_SHA256)' ] && \
+	echo "BE_MVP_FIRMWARE: PASS $(FIRMWARE_BIN) sha256=$$digest" || \
+	{ echo "BE_MVP_FIRMWARE: FAIL $(FIRMWARE_BIN) has SHA-256 $${digest:-none}, not the lock's MVP_PIN_FIRMWARE_BIN_SHA256 $(MVP_PIN_FIRMWARE_BIN_SHA256)" >&2; \
+	exit 1; }
+
+.PHONY: firmware-source firmware
+firmware-source: $(FIRMWARE_SOURCE_STAMP)
+
+firmware: tool-lock-check $(FIRMWARE_BIN)
+	$(MVP_FIRMWARE_PIN_CHECK)
+
 # -------------------------------------------------------------- the lock
 # Every role of the tool lock, the pins, and the evaluator's closure,
 # before anything is built (planning/mvp-m0-plan.md, "Tool lock and the
@@ -1193,7 +1245,8 @@ tool-lock-check:
 # every component the guest build touches, every licence's text, and
 # docs/licence-manifest.md a fresh generation), each with its self-test,
 # then the policy check's self-test and mutations.
-MVP_SHELL_SCRIPTS = $(wildcard $(MVP_DIR)/mvp $(MVP_DIR)/tools/*.sh \
+MVP_SHELL_SCRIPTS = $(wildcard $(MVP_DIR)/mvp $(MVP_DIR)/firmware/*.sh \
+	$(MVP_DIR)/tools/*.sh \
 	$(MVP_DIR)/tools/evaluator/*.sh $(MVP_DIR)/tests/*.sh)
 MVP_PYTHON = $(wildcard $(MVP_DIR)/tools/*.py $(MVP_DIR)/tools/lock/*.py \
 	$(MVP_DIR)/tools/evaluator/*.py $(MVP_DIR)/tests/*.py)
@@ -1312,7 +1365,7 @@ claim-ledger-check: $(if $(filter check,$(MAKECMDGOALS)),$(TOOLS_EVIDENCE))
 		$(RECORDS)/claim-ledger/self-test.txt \
 		$(RECORDS)/claim-ledger/check.txt
 
-check: tool-lock-check opensbi lint policy-negatives port-check \
+check: tool-lock-check opensbi firmware lint policy-negatives port-check \
 	guest-pin-check host-test target-check reference-boot image-check \
 	variants probes reference-check $(TOOLS_CHECKS) budgets $(TOOLS_EVIDENCE) \
 	claim-ledger-check
@@ -1321,4 +1374,4 @@ check: tool-lock-check opensbi lint policy-negatives port-check \
 clean:
 	rm -rf -- $(PORT) $(GEN) $(BUILD)/host $(BUILD)/gcc $(BUILD)/clang \
 		$(BUILD)/variants $(BUILD)/probes $(BUILD)/budgets $(RECORDS) \
-		$(BUILD)/policy-negatives
+		$(BUILD)/policy-negatives $(FIRMWARE_BUILD) $(FIRMWARE_SOURCE_STAMP)

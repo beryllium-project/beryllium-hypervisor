@@ -29,8 +29,8 @@ Rules, each failing closed:
     mvp/tools.mk; with no -f, Make must run in mvp/;
   - a variable assignment, on the command line or in a flags variable, may
     set only an allowlisted caller variable, to a value of its own form:
-    TOOLCHAIN (gcc or clang), LINUX_GIT (a URL or an absolute path),
-    MVP_RPM_CACHE and, for the M8 verifier's sources (planning/
+    TOOLCHAIN (gcc or clang), LINUX_GIT and FIRMWARE_GIT (a URL or an
+    absolute path), MVP_RPM_CACHE and, for the M8 verifier's sources (planning/
     mvp-m8-plan.md, D-10), MVP_SRC_CACHE, K3_SERIAL_LOG, and K3_RUN_ROOT
     (absolute paths), JOBS
     (a small positive integer), MVP_SCENARIO_NAME (a short lower-case
@@ -68,6 +68,7 @@ SOURCE_FORM = re.compile(rf"^(?:/|https://|file:///){SAFE}*$")
 CALLER = {
     "TOOLCHAIN": re.compile(r"^(?:gcc|clang)$"),
     "LINUX_GIT": SOURCE_FORM,
+    "FIRMWARE_GIT": SOURCE_FORM,
     "MVP_RPM_CACHE": PATH_FORM,
     "MVP_SRC_CACHE": PATH_FORM,
     "K3_SERIAL_LOG": PATH_FORM,
@@ -462,9 +463,11 @@ def self_test():
     expect("toolchain", ["image", "TOOLCHAIN=clang"])
     expect("allowlist", ["k3-campaign", "TOOLCHAIN=gcc", "JOBS=8",
                          "LINUX_GIT=/srv/mirror/linux",
+                         "FIRMWARE_GIT=/srv/mirror/opensbi",
                          "K3_SERIAL_LOG=/home/x/k3.log",
                          "K3_RUN_ROOT=/home/x/runs"])
-    expect("url", ["guest", "LINUX_GIT=https://git.kernel.org/x/linux.git"])
+    expect("url", ["guest", "LINUX_GIT=https://git.kernel.org/x/linux.git",
+                   "FIRMWARE_GIT=https://github.com/x/opensbi"])
     expect("verifier caches", ["verify", "MVP_RPM_CACHE=/srv/rpms",
                                "MVP_SRC_CACHE=/srv/sources"])
     expect("scenario", ["scenario", "MVP_SCENARIO_NAME=te-poc"])

@@ -41,7 +41,8 @@ the last step of `check`) holds:
                     te-poc and anchor images', each variant's and probe's,
                     and the guest inputs and separately pinned userland
                     outputs (the Image, the init, the management module,
-                    BusyBox, musl's libc archive, and every DTB)
+                    BusyBox, musl's libc archive, and every DTB), plus
+                    M11's unmodified OpenSBI firmware base binary
   records/          the checks' outputs: the image checker on the images,
                     the variants, and the probes, with its mutation tests;
                     the budgets; the loader's layout rule; the board-tool
@@ -265,6 +266,9 @@ IMAGE_NAMES = ("be-mvp.elf", "be-mvp.bin", "be-mvp-boot.elf",
 # The guest inputs and userland outputs, M2's management module
 # (be-mgmt.ko) and M7's BusyBox and musl archive among them.
 GUEST_PATTERNS = ("Image", "init", "busybox", "musl-libc.a", "*.ko", "*.dtb")
+# M11's unmodified OpenSBI base, built by Makefile's firmware target.
+FIRMWARE_IMAGE = pathlib.Path(
+    "firmware/platform/generic/firmware/fw_dynamic.bin")
 # A v3 expectation's measured input's file name in BUILD/guest.
 GUEST_NAME_FORM = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 ATTEMPT_COLUMNS = ("toolchain", "run", "attempt", "boot_hart", "qemu_exit",
@@ -459,7 +463,8 @@ def source_state():
 
 
 def image_manifest(build):
-    """(SHA-256, path relative to BUILD) of every image and guest input."""
+    """(SHA-256, path relative to BUILD) of every image, firmware binary,
+    and guest input."""
     paths = []
     for toolchain in TOOLCHAINS:
         directories = [build / toolchain] + [build / toolchain / name
@@ -472,6 +477,10 @@ def image_manifest(build):
                       if (directory / name).is_file()]
     for pattern in GUEST_PATTERNS:
         paths += sorted((build / "guest").glob(pattern))
+    firmware = build / FIRMWARE_IMAGE
+    if not firmware.is_file():
+        raise Refused(f"{firmware} is missing; run make -C mvp firmware")
+    paths.append(firmware)
     if not any(path.name == "be-mvp-boot.img" for path in paths):
         raise Refused(f"no boot image under {build}")
     return [(file_sha(path), str(path.relative_to(build))) for path in paths]
@@ -1483,6 +1492,9 @@ def synthetic_build(root):
     (build / "guest" / "be-mgmt.ko").write_bytes(b"module\n")
     (build / "guest" / "mvp-guest-g0.dtb").write_bytes(b"dtb\n")
     (build / "guest" / "mvp-guest-g1-anchor.dtb").write_bytes(b"g1\n")
+    firmware = build / FIRMWARE_IMAGE
+    firmware.parent.mkdir(parents=True)
+    firmware.write_bytes(b"firmware\n")
     expect = build / "gen" / "expect"
     expect.mkdir(parents=True)
     source = MVP_DIR / "scenarios" / "two-guests" / "scenario.json"
@@ -1652,6 +1664,10 @@ def self_test(scratch):
             "qemu/gcc-k3-like.1.console.log", "refusals.tsv", "costs.tsv",
             "rehearsal/two-guests-gcc/status.txt",
             "rehearsal/two-guests-gcc/attempt-2/console.log")))
+    case("the firmware base is an identity input",
+         any(line.endswith(f"  {FIRMWARE_IMAGE}") for line in
+             (first / "images.sha256").read_text(
+                 encoding="ascii").splitlines()))
     case("te-poc's scenario, policy, report, records, run, and rehearsal",
          all((first / name).is_file() for name in (
              "scenario/te-poc/scenario.json", "scenario/te-poc/policy.te",

@@ -27,6 +27,8 @@
 #   ./mvp check [VAR=VALUE ...]        every off-board check (make check)
 #   ./mvp port                         the port, re-derived byte for byte
 #   ./mvp host-test                    the host tests, GCC = Clang
+#   ./mvp firmware [FIRMWARE_GIT=...]  build and pin-check M11's unmodified
+#                                      upstream OpenSBI base
 #   ./mvp tool-lock check|refresh      verify, or rewrite, the tool lock
 #   ./mvp evaluate [VAR=VALUE ...]     mvp check in the clean evaluator
 #   ./mvp verify [VAR=VALUE ...]       the M8 verification suites in the
@@ -80,15 +82,16 @@
 # and gives them to mvp check in the evaluator, where the rule holds again.
 #
 # Caller variables, as VAR=VALUE arguments or in the environment: TOOLCHAIN,
-# LINUX_GIT, MVP_RPM_CACHE, MVP_SRC_CACHE (a directory of the M8 verifier's
-# exact source archives), K3_SERIAL_LOG, K3_RUN_ROOT (the board session's
-# directory), K3_PREFLIGHT (before or after), K3_ENV_CONFIRM (the human's
+# LINUX_GIT, FIRMWARE_GIT, MVP_RPM_CACHE, MVP_SRC_CACHE (a directory of the
+# M8 verifier's exact source archives), K3_SERIAL_LOG, K3_RUN_ROOT (the board
+# session's directory), K3_PREFLIGHT (before or after), K3_ENV_CONFIRM (the human's
 # confirmation of the recorded bootcmd, at the install), K3_ENV_ACCEPT_V
 # (the human's acceptance of the names in V, at the records),
 # K3_RECORD_TITLE (board-evidence's title; default MVP COM260 campaign),
 # and JOBS. evaluate also passes the evaluator's own settings from the
 # environment (MVP_EVALUATOR_BUILD, MVP_EVALUATOR_RPMS, MVP_LINUX_MIRROR,
-# and MVP_OPENSBI_FW; tools/evaluator/evaluate.sh), never as arguments, and
+# MVP_FIRMWARE_MIRROR, and MVP_OPENSBI_FW; tools/evaluator/evaluate.sh),
+# never as arguments, and
 # no other variable. The k3-* commands also pass the board tools' own
 # settings from the environment (K3_SSH, K3_SSH_OPTIONS, K3_SUDO,
 # K3_WAIT_SECONDS,
@@ -112,7 +115,7 @@ set -euo pipefail
 here=$(cd -- "$(dirname -- "$0")" && pwd)
 make=/usr/bin/make
 python=/usr/bin/python3
-callers=(TOOLCHAIN LINUX_GIT MVP_RPM_CACHE MVP_SRC_CACHE K3_SERIAL_LOG
+callers=(TOOLCHAIN LINUX_GIT FIRMWARE_GIT MVP_RPM_CACHE MVP_SRC_CACHE K3_SERIAL_LOG
 	K3_RUN_ROOT K3_PREFLIGHT K3_ENV_CONFIRM K3_ENV_ACCEPT_V K3_RECORD_TITLE
 	JOBS)
 # The board tools' settings; no makefile assigns them. K3CTL_PIN is not one:
@@ -127,7 +130,7 @@ board=(K3_SSH K3_SSH_OPTIONS K3_SUDO K3_WAIT_SECONDS K3_TAIL_SECONDS
 # The evaluator's own settings (tools/evaluator/evaluate.sh), from the
 # environment only: its arguments are mvp check's.
 evaluator=(MVP_EVALUATOR_BUILD MVP_EVALUATOR_RPMS MVP_LINUX_MIRROR
-	MVP_OPENSBI_FW)
+	MVP_FIRMWARE_MIRROR MVP_OPENSBI_FW)
 
 usage() {
 	sed -n '/^#   \.\/mvp help/,/SSH agent\.$/s/^# \{0,1\}//p' -- "$0"
@@ -213,6 +216,9 @@ port)
 	;;
 host-test)
 	run_make host-test "$@"
+	;;
+firmware)
+	run_make firmware "$@"
 	;;
 tool-lock)
 	[ "$#" -eq 1 ] || { usage; exit 2; }

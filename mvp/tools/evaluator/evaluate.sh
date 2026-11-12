@@ -12,7 +12,8 @@
 #          it built with the host's, byte for byte: the host's last `mvp
 #          check` bundle (build/mvp/evidence/check) must verify and hold the
 #          host's images as they are now, and its images.sha256 must equal
-#          the evaluator's (tools/evidence.py --compare-images).
+#          the evaluator's, including M11's firmware base binary
+#          (tools/evidence.py --compare-images).
 # Trust:   podman is the lock's host-only role, checked with the rest of the
 #          host's lock first. ./mvp/mvp evaluate runs this script under
 #          env -i with only its documented settings (below), as it runs
@@ -28,7 +29,8 @@
 #          build products stay hidden; the guest kernel's source comes from a
 #          local git mirror mounted read-only; the only host build products it
 #          reads are B1's OpenSBI v1.6 firmware for the QEMU profile, mounted
-#          read-only, and the guest userland's release tarballs and
+#          read-only, the pinned M11 OpenSBI source, mounted as an offline
+#          local mirror and built again inside, and the guest userland's release tarballs and
 #          signatures (planning/mvp-m7-plan.md, D-9), copied into the hidden
 #          tree, where the guest build checks them again. The firmware is
 #          refused, before anything is recorded, unless its SHA-256
@@ -61,6 +63,8 @@
 # cache of the closure's RPMs (default build/mvp-evaluator/rpms);
 # MVP_LINUX_MIRROR, a local git repository holding the pinned Linux tag
 # (default build/mvp/linux-src, the host's own fetched checkout);
+# MVP_FIRMWARE_MIRROR, a local git repository holding M11's pinned OpenSBI
+# commit (default build/mvp/firmware-src, the host's fetched checkout);
 # MVP_OPENSBI_FW, the OpenSBI firmware (default B1's build), which must
 # have the lock's MVP_PIN_OPENSBI_BIN_SHA256; and
 # MVP_RPM_CACHE, a directory of exact RPMs the fetch tries first. MAKE_ARGS
@@ -98,6 +102,7 @@ python=(/usr/bin/python3 -I -B)
 evidence=$tools/evidence.py
 lock=$tools/lock/tool-lock.conf
 closure=$tools/lock/closure.txt
+firmware_pins=$mvp/firmware/pins.mk
 
 # The host's tools, podman included (a host-only role), before any other
 # command runs: the lock's Python under env -i, in isolated mode.
@@ -117,16 +122,32 @@ lock_value() {
 	return 1
 }
 podman=$(lock_value MVP_TOOL_podman_command || true)
+git=$(lock_value MVP_TOOL_git_command || true)
 firmware_pin=$(lock_value MVP_PIN_OPENSBI_BIN_SHA256 || true)
 firmware_build=k3-b1/opensbi-build/platform/generic/firmware/fw_dynamic.bin
 hidden=${MVP_EVALUATOR_BUILD:-$tree/build/mvp-evaluator/build}
 mirror=${MVP_LINUX_MIRROR:-$tree/build/mvp/linux-src}
+firmware_mirror=${MVP_FIRMWARE_MIRROR:-$tree/build/mvp/firmware-src}
 cache=${MVP_EVALUATOR_RPMS:-$tree/build/mvp-evaluator/rpms}
 firmware=${MVP_OPENSBI_FW:-$tree/build/$firmware_build}
 host_bundle=$tree/build/mvp/evidence/check
 records=$tree/build/mvp-evaluator/record
 record=
 early=()
+
+# firmware_pin_value NAME: one simple NAME := VALUE pin.
+firmware_pin_value() {
+	local name operator value
+
+	while read -r name operator value; do
+		[ "$name" != "$1" ] || {
+			[ "$operator" = ":=" ] && [ -n "$value" ] || return 1
+			printf '%s\n' "$value"
+			return 0
+		}
+	done <"$firmware_pins"
+	return 1
+}
 
 # note TEXT: a line of the output and of the run's record, evaluate.txt;
 # kept for the record until it exists.
@@ -194,6 +215,25 @@ firmware_sha256=${firmware_sha256%% *}
 	refuse "MVP_OPENSBI_FW $firmware has SHA-256 $firmware_sha256, not the lock's MVP_PIN_OPENSBI_BIN_SHA256 $firmware_pin"
 [ -d "$mirror/.git" ] || [ -f "$mirror/HEAD" ] ||
 	refuse "$mirror is not a git repository (set MVP_LINUX_MIRROR)"
+[ -d "$firmware_mirror/.git" ] || [ -f "$firmware_mirror/HEAD" ] ||
+	refuse "$firmware_mirror is not a git repository (set MVP_FIRMWARE_MIRROR)"
+firmware_commit=$(firmware_pin_value MVP_FIRMWARE_COMMIT || true)
+firmware_tree=$(firmware_pin_value MVP_FIRMWARE_TREE || true)
+[[ $firmware_commit =~ ^[0-9a-f]{40}$ ]] ||
+	refuse "$firmware_pins has no full MVP_FIRMWARE_COMMIT"
+[[ $firmware_tree =~ ^[0-9a-f]{40}$ ]] ||
+	refuse "$firmware_pins has no full MVP_FIRMWARE_TREE"
+[ -x "${git:-/nonexistent}" ] || refuse "the lock's git (${git:-none}) is missing"
+mirror_commit=$("$git" -C "$firmware_mirror" rev-parse --verify -q \
+	"$firmware_commit^{commit}") ||
+	refuse "$firmware_mirror does not hold firmware commit $firmware_commit"
+mirror_tree=$("$git" -C "$firmware_mirror" rev-parse --verify -q \
+	"$firmware_commit^{tree}") ||
+	refuse "$firmware_mirror has no tree for firmware commit $firmware_commit"
+[ "$mirror_commit" = "$firmware_commit" ] ||
+	refuse "$firmware_mirror resolves firmware commit $firmware_commit to $mirror_commit"
+[ "$mirror_tree" = "$firmware_tree" ] ||
+	refuse "$firmware_mirror firmware tree is $mirror_tree, not $firmware_tree"
 case $hidden in
 "$tree"/build/*) ;;
 *) refuse "the hidden build tree $hidden is not under $tree/build" ;;
@@ -202,6 +242,7 @@ esac
 [ -x "${podman:-/nonexistent}" ] || refuse "the lock's podman (${podman:-none}) is missing"
 start_record
 note "opensbi sha256=$firmware_sha256 (the lock's MVP_PIN_OPENSBI_BIN_SHA256)"
+note "firmware_source commit=$firmware_commit tree=$firmware_tree"
 
 # The host side first: its last check's bundle, with its images as now.
 "${python[@]}" "$evidence" --verify "$host_bundle" >"$record/host-bundle.txt" ||
@@ -276,10 +317,11 @@ set +e
 	-v "$hidden:$tree/build" \
 	-v "$firmware:$tree/build/$firmware_build:ro" \
 	-v "$mirror:/mnt/linux-mirror:ro" \
+	-v "$firmware_mirror:/mnt/firmware-mirror:ro" \
 	-w "$tree" "$tag" \
 	/usr/bin/env -i PATH=/usr/bin LC_ALL=C LANG=C SHELL=/bin/bash \
 	GIT_OPTIONAL_LOCKS=0 HOME="$tree/build/mvp/evaluator-home" \
-	LINUX_GIT=/mnt/linux-mirror \
+	LINUX_GIT=/mnt/linux-mirror FIRMWARE_GIT=/mnt/firmware-mirror \
 	/usr/bin/bash "$mvp/mvp" check "$@" 2>&1 | /usr/bin/tee -- "$record/check.log"
 status=${PIPESTATUS[0]}
 set -e

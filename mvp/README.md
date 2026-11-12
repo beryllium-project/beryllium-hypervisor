@@ -894,6 +894,7 @@ plan, "Architecture" and "The triggers for Instance 3").
 | `src/mvp-layout.h` | The layout: the flat image and the accepted image in it, pool, hart region and blocks, MVP region, harts, windows, VMIDs, run limits, waits, SBI identity; the channel page and each root's level-0 page (M1-2); the three shared pages (M2-2) | M0-1, M1-2, M2-2 |
 | `src/mvp-gstage.{h,c}`, `src/mvp-payload.{h,c}` | B7's G-stage and payload checks with a hart per root, the hart region, and the MVP region; the channel leaf, its walk, and the channel check (M1-2); the staged image off the channel page (M1-3); the page records, their build, walk, and check, the two builder variants, and the staged image off the shared pages (M2-2) | M0-1, M1-2, M1-3, M2-2 |
 | `guest/`, `guest.mk`, `tools/{build-guest.sh,gen-dts.py,gen-payload.py,guest-pins.py,guest-reference-check.py,run-reference-boot.sh}` | Guest inputs, pins, reference boots, and the repeat build; the init's role arguments and te-poc's DTBs (M1-1, M1-3); the MVP's Kconfig fragment with the `.config` delta check, the init's roles, and its forked child (M1-4, M1-A); anchor's DTBs (M2-1); the management module (`guest/mgmt/`, `guest/be/types.h`), `CONFIG_MODULES=y` and its `.config` delta, the init's `host` and `prot` roles, and the module in the pins (M2-4) | M0-1, M1-1, M1-3, M1-4, M2-1, M2-4 |
+| `firmware/` | M11's upstream OpenSBI base pin, verified fetch, reproducible default-`generic` build, and build instructions; the source stays under `build/`, and no image uses the binary yet | M11-2 |
 | `tools/make-control.py` | The Make controls (S1 H33); `MVP_SCENARIO_NAME` and `SCENARIO` (M1-1, M1-5) | M0-1, M1-1, M1-5 |
 | `tools/lock/` | The tool lock, its tool, and the evaluator's closure; the closure's RPM digests, the host-only roles, and schema v2 (M0-B.1, M0-B.4); refreshed under direction for host updates (`804fa95f`; on `l1` for M0-6; on `lx2` for M11-2) | M0-1, M0-B |
 | `tools/evaluator/` | The clean evaluator's Containerfile and runner; the closure fetcher and the build from its verified cache with repositories disabled (M0-B.2, M0-B.3) | M0-1, M0-B |
@@ -1632,13 +1633,14 @@ given. `make -C mvp <target>` works too, from a clean environment:
 
 | Target | What it does |
 | --- | --- |
-| `check` | `tool-lock-check`, `lint`, `policy-negatives` (M1-1), `port-check`, `guest-pin-check`, `host-test`, `target-check`, `reference-boot`, `image-check`, `variants`, `probes`, `tools-check`, `qemu-test`, `budgets`, `evidence`, and (M4-1) `claim-ledger-check` after the evidence bundle, then `BE_MVP_CHECK: PASS` |
+| `check` | `tool-lock-check`, `opensbi`, `firmware` (M11-2), `lint`, `policy-negatives` (M1-1), `port-check`, `guest-pin-check`, `host-test`, `target-check`, `reference-boot`, `image-check`, `variants`, `probes`, `tools-check`, `qemu-test`, `budgets`, `evidence`, and (M4-1) `claim-ledger-check` after the evidence bundle, then `BE_MVP_CHECK: PASS` |
 | `claim-ledger-check` | `tools/claim-ledger.py`'s self-test, then its `check`, each recorded under `records/claim-ledger/`; in `check`, after `evidence`, whose bundle both records then join (`claim-ledger.py join`, the bundle's manifest written again); alone, it joins the last bundle (M4-1) |
 | `tool-lock-check` | The lock tool's and the closure fetcher's self-tests, then every role and pin |
 | `lint` | `bash -n` and `shellcheck` on every shell script, a Python parse of every Python file, the Make controls' self-test, and the policy checker's self-test and mutations, recorded (M1-1) |
 | `policy-negatives` | `tools/policy-check.py` on `te-poc`, recorded with its report, which must equal the generator's byte for byte; then the two build-time negatives, `undeclared-flow` and `grant-without-rule`, each failing exactly its declared analyses, with no header written (M1-1, M1-4); since M2-1 the same for `anchor`, given the measured kernel and DTB, and its two, `grant-without-rule` and `secret-flow`, recorded as `anchor-<name>`: four negatives in all |
 | `port`, `port-check` | The port, and its byte-for-byte re-derivation |
 | `guest`, `guest-pin-check` | The guest outputs (cached by pin), and the self-tests and every output against its pin |
+| `firmware` | M11's unmodified upstream OpenSBI base: fetch by commit and tree, the default `generic` `fw_dynamic.bin` built reproducibly, and its tool-lock pin checked; no run uses it yet (M11-2) |
 | `reference-boot` | Each guest's Image and DTB under plain OpenSBI v1.6 in QEMU, no monitor |
 | `kernel-repro` | A second full guest build elsewhere, compared byte for byte (not in `check`: about 70 s of kernel build) |
 | `payload-layout` | The monitor's generated payload layout |
@@ -1658,9 +1660,10 @@ given. `make -C mvp <target>` works too, from a clean environment:
 | `k3-preflight`, `k3-stage`, `k3-env-record`, `k3-env-install`, `k3-env-restore`, `k3-characterize`, `k3-campaign`, `k3-probe` | The board tools of a session from system reset (M5-2; the M5 plan, "The session protocol (M5-6)"). Every target but `k3-preflight` needs `K3_RUN_ROOT`, the session's directory; `k3-preflight` takes `K3_PREFLIGHT=before` or `after`; `k3-stage` and `k3-campaign` take the session's plan from `tools.mk` (`K3_STAGE`, `K3_PLAN`: 14 images, 14 groups, 20 runs) and no selector; `k3-env-install` needs `K3_ENV_CONFIRM`. With `K3_RESET=k3ctl` the console tool resets the board through the pinned client under the port-open rule; without it the human does. Until M5-2, `k3-load-check` and `k3-campaign` took `SCENARIO`, `VARIANT`, `TOOLCHAIN`, and `RUNS` for a kexec campaign |
 | `board-evidence` | The board record of the campaign `K3_RUN_ROOT` under `mvp/results/`, never over an existing one, with its platform record (`tools/platform-record.py`, M0-6); since M1-5 also each run's `reset.txt`, the policy check on `te-poc` and its report, and the campaign's `serial-log-note.txt`, which must be written by hand first; since M2-5 also the policy check on `anchor` and its report, and each `anchor` run's measured inputs checked; since Plan revision M4-A the board's ssh target and IPv4 address only as `<board-ssh>` and `<ip>`, every file checked for both, and the title `K3_RECORD_TITLE`; since M5-2 a session's record: `launcher=uboot-autoboot-nvme`, each run's whole capture judged again in `uboot` mode and its excerpt from `Autoboot in`, the session's keystroke log, resets, staging record, environment verdicts, and preflight after, and a MAC address and a `serial#` value as `<mac>` and `<serial>` |
 
-Caller variables are `TOOLCHAIN` (`gcc` or `clang`), `LINUX_GIT` (a local
-mirror, path or URL), `MVP_RPM_CACHE` (a directory with B3's pinned `m4`,
-`bison`, and `flex` RPMs), and `K3_SERIAL_LOG`, `K3_RUN_ROOT`, (Plan
+Caller variables are `TOOLCHAIN` (`gcc` or `clang`), `LINUX_GIT` and
+`FIRMWARE_GIT` (local mirrors, paths or URLs), `MVP_RPM_CACHE` (a directory
+with B3's pinned `m4`, `bison`, and `flex` RPMs), and `K3_SERIAL_LOG`,
+`K3_RUN_ROOT`, (Plan
 revision M4-A.2) `K3_RECORD_TITLE`, the board record's title before the
 campaign's name (default `MVP COM260 campaign`; letters, digits, spaces,
 and `.`, `,`, `-`), and (M5-2) `K3_PREFLIGHT`, `K3_ENV_CONFIRM`, and
@@ -1971,13 +1974,15 @@ recorded under `build/mvp-evaluator/record/<UTC stamp>/` and its result in
    --network=none --security-opt label=disable`: the source tree
    read-only at its own path, a separate writable build tree
    (`build/mvp-evaluator/build`) mounted over `build/`, B1's OpenSBI
-   firmware read-only, and a local Linux mirror read-only at
-   `/mnt/linux-mirror` as `LINUX_GIT`, under `env -i PATH=/usr/bin
+   firmware read-only, a local Linux mirror read-only at
+   `/mnt/linux-mirror` as `LINUX_GIT`, and M11's OpenSBI source read-only at
+   `/mnt/firmware-mirror` as `FIRMWARE_GIT`, under `env -i PATH=/usr/bin
    LC_ALL=C LANG=C SHELL=/bin/bash GIT_OPTIONAL_LOCKS=0`. It runs the tool
    lock first, against the same lock, its host-only roles skipped, and
    ends with its own bundle.
 6. **The comparison** (`image-identity.txt`): the evaluator's
-   `images.sha256` must equal the host's, image by image
+   `images.sha256` must equal the host's, image by image, including M11's
+   firmware base binary
    (`tools/evidence.py --compare-images`).
 
 `tools/evaluator/Containerfile` starts from the same digest-pinned base as

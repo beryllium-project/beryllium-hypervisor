@@ -390,7 +390,7 @@ sessions: variants opensbi $(MVP_EXPECT_STAMP) $(TE_POC_EXPECT_STAMP) \
 # manifest.
 # In `check` it follows every stage it records; alone, it bundles the last
 # check's records and refuses stale or missing ones.
-EVIDENCE_STAGES := $(if $(filter check,$(MAKECMDGOALS)),tool-lock-check \
+EVIDENCE_STAGES := $(if $(filter check,$(MAKECMDGOALS)),tool-lock-check firmware \
 	lint policy-negatives image-check variants probes tools-check \
 	qemu-test sessions budgets)
 evidence: $(EVIDENCE_STAGES)
@@ -499,7 +499,7 @@ k3-input-characterize: probes variants $(MVP_EXPECT_STAMP)
 # <board-ssh> and <ip>, a MAC address <mac>, and a serial# <serial> (Plan
 # revision M4-A.1; planning/mvp-m5-plan.md, Q8), and the summary is titled
 # K3_RECORD_TITLE and the session's name. A record is never overwritten.
-board-evidence: image variants probes $(MVP_EXPECT_STAMP) \
+board-evidence: firmware image variants probes $(MVP_EXPECT_STAMP) \
 		$(TE_POC_EXPECT_STAMP) $(ANCHOR_EXPECT_STAMP) policy-negatives
 	$(EVIDENCE) --board $(K3_RUN_ROOT) --build $(BUILD) \
 		--out $(MVP_DIR)/results/$(notdir $(K3_RUN_ROOT)) \

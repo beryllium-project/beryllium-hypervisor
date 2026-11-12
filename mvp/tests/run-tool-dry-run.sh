@@ -1155,12 +1155,13 @@ chmod +x -- "$wrapper/tools/evaluator/evaluate.sh"
 expect evaluate-wrapper 0 env -i PATH=/usr/bin HOME="$out/home" \
 	PYTHONPATH="$hostile" PYTHONSTARTUP="$hostile/json.py" UNLISTED=1 \
 	MVP_EVALUATOR_BUILD="$out/evaluator-build" MVP_RPM_CACHE="$out/rpm-cache" \
+	MVP_FIRMWARE_MIRROR="$out/firmware-mirror" \
 	"$wrapper/mvp" evaluate MVP_RPM_CACHE="$out/rpm-argument" TOOLCHAIN=gcc
 [ "$(sed -n 's/^args://p' "$out/evaluate-stand-in.txt")" = \
 	" MVP_RPM_CACHE=$out/rpm-argument TOOLCHAIN=gcc" ] ||
 	fail "evaluate-environment: the stand-in's arguments: $(head -n 1 "$out/evaluate-stand-in.txt")"
 [ "$(grep -vE '^(args:|PWD=|OLDPWD=|SHLVL=|_=)' "$out/evaluate-stand-in.txt" | LC_ALL=C sort | tr '\n' ' ')" = \
-	"HOME=$out/home LANG=C LC_ALL=C MVP_EVALUATOR_BUILD=$out/evaluator-build MVP_RPM_CACHE=$out/rpm-cache PATH=/usr/bin SHELL=/bin/bash " ] ||
+	"HOME=$out/home LANG=C LC_ALL=C MVP_EVALUATOR_BUILD=$out/evaluator-build MVP_FIRMWARE_MIRROR=$out/firmware-mirror MVP_RPM_CACHE=$out/rpm-cache PATH=/usr/bin SHELL=/bin/bash " ] ||
 	fail "evaluate-environment: the stand-in's environment: $(grep -v '^args:' "$out/evaluate-stand-in.txt" | tr '\n' ' ')"
 rm -f -- "$out/evaluate-stand-in.txt"
 expect evaluate-stray 2 "$wrapper/mvp" evaluate stray
@@ -1192,9 +1193,19 @@ cp -- "$tools/evaluator/evaluate.sh" "$evaluator_tree/mvp/tools/evaluator/"
 cp -- "$tools/evidence.py" "$hostile/hashlib.py" "$hostile/json.py" \
 	"$evaluator_tree/mvp/tools/"
 ln -s -- "$tools/lock" "$evaluator_tree/mvp/tools/lock"
+ln -s -- "$mvp_dir/firmware" "$evaluator_tree/mvp/firmware"
 : >"$fw/mirror/HEAD"
+(cd -- "$hostile" && expect evaluate-hostile-firmware-mirror 1 \
+	env PATH="$hostile_bin:/usr/bin" PYTHONPATH="$hostile" \
+	MVP_OPENSBI_FW="$fw/pinned.bin" MVP_LINUX_MIRROR="$fw/mirror" \
+	MVP_FIRMWARE_MIRROR="$fw/no-firmware-mirror" \
+	/usr/bin/bash "$tools/evaluator/evaluate.sh")
+grep -qF "BE_MVP_EVALUATE: FAIL $fw/no-firmware-mirror is not a git repository (set MVP_FIRMWARE_MIRROR); nothing was recorded" \
+	"$out/evaluate-hostile-firmware-mirror.txt" ||
+	fail "evaluate-environment: the firmware mirror was not refused before a record"
 (cd -- "$hostile" && expect evaluate-hostile-python 1 env PATH="$hostile_bin:/usr/bin" \
 	PYTHONPATH="$hostile" MVP_OPENSBI_FW="$fw/pinned.bin" MVP_LINUX_MIRROR="$fw/mirror" \
+	MVP_FIRMWARE_MIRROR="$repo_root/build/mvp/firmware-src" \
 	/usr/bin/bash "$evaluator_tree/mvp/tools/evaluator/evaluate.sh")
 lock_podman=$(sed -n 's/^MVP_TOOL_podman_command=//p' "$tools/lock/tool-lock.conf")
 if [ -x "$lock_podman" ]; then
@@ -1209,7 +1220,7 @@ else
 	evaluate_python="no $lock_podman here, so the copy stopped at podman before its first Python tool"
 fi
 hostile_clean evaluate-environment
-pass evaluate-environment "./mvp/mvp evaluate: PYTHONPATH, PYTHONSTARTUP, and an unlisted variable cleared, the evaluator's settings and the admitted arguments passed, a stray word and a setting given as an argument refused before evaluate.sh runs; evaluate.sh with a hostile PATH and PYTHONPATH: the lock first, then a changed firmware and a missing mirror refused before any record, no hostile command or module reached; $evaluate_python"
+pass evaluate-environment "./mvp/mvp evaluate: PYTHONPATH, PYTHONSTARTUP, and an unlisted variable cleared, the evaluator's settings and the admitted arguments passed, a stray word and a setting given as an argument refused before evaluate.sh runs; evaluate.sh with a hostile PATH and PYTHONPATH: the lock first, then a changed firmware, a missing Linux mirror, and a missing firmware mirror refused before any record, no hostile command or module reached; $evaluate_python"
 
 # ------------------------------------------------------- the root wrapper
 # ./be and the root Makefile, gates 6 and 7 (the release's security review,
