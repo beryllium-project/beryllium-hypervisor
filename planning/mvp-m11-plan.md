@@ -1629,3 +1629,15 @@ text above as it says; the text above is otherwise as accepted.
   scenarios' generator, the ledger's tool, and the model's tools" is
   7,000 counted lines, in place of 3,500: M11-2 alone reached the
   earlier limit.
+- **2026-11-12, `fw: 800, fw-tests: 3000, monitor: 6000`** (stop 16).
+  Three soft limits are re-set:
+  - "The firmware additions": 800 counted lines, in place of 600.
+    M11-6's patch series adds 690: 431 of code, 156 of comment, and
+    103 blank, each addition a row of D-2.
+  - "The firmware's own tests, and the firmware's build rules": 3,000,
+    in place of 2,500. They stood at 2,243 before the host unit test.
+  - "The monitor: the layout, signalling, the stub and entries, the
+    failure path, the test hook; with the image checker's rules and
+    the board tools' layout rule": 6,000, in place of 3,500. M11-3's
+    content adds 1,914, and M11-4's design about 1,790, most of them
+    host tests and the image checker's rules; M11-7 and M11-8 follow.
