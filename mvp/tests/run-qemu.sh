@@ -11,12 +11,14 @@
 # 0x1_020a_3fff with the pool, the hart region, and the MVP region, and both
 # domain windows), and judge each run with tests/check-capture.py against
 # its image's expectation file (BUILD_DIR/gen/expect/IMAGE.json, from the
-# scenario). A run ends with the allowlisted SBI SRST shutdown, which powers
-# QEMU off, so each run must also end with QEMU exiting by itself with
-# status 0; one still running BE_MVP_QEMU_GRACE seconds after its terminal
-# marker, or BE_MVP_QEMU_TIMEOUT seconds (default 300) after start, is
-# killed and fails. The checker requires the run's firmware (its banner's
-# SBI version). Outcomes are judged in guest terms, never by wall time.
+# scenario). A plain-monitor run ends with the allowlisted SBI SRST
+# shutdown. With -no-shutdown, tests/qemu_oracle.py sees that guest request,
+# reads all eight harts and the boot ELF's first loadable word while the
+# machine is stopped, then quits QEMU. One still running
+# BE_MVP_QEMU_GRACE seconds after its terminal marker, or
+# BE_MVP_QEMU_TIMEOUT seconds (default 300) after start, is stopped, read,
+# and failed. The checker requires the run's firmware (its banner's SBI
+# version). Outcomes are judged in guest terms, never by wall time.
 # Trust: a test driver; it writes only under OUT_DIR.
 # Scope: M0's QEMU scenarios (planning/mvp-m0-plan.md, QEMU scenarios), on
 # the images BUILD_DIR/TOOLCHAIN/be-mvp-boot.elf for each toolchain in
@@ -68,11 +70,13 @@
 # outcome. Such a run is made again, up to BE_MVP_QEMU_ATTEMPTS attempts in
 # all (default 8), until one completes; a run whose every attempt is
 # refused fails. A run passes only when an attempt completes and its
-# verdict is PASS. Every attempt's capture, checker output, and record are
-# kept: OUT_DIR/TOOLCHAIN-NAME.ATTEMPT.{console.log,check.txt,result.json},
-# and OUT_DIR/attempts.tsv lists each attempt's boot hart and verdict, with
-# the boot ELF it ran (relative to BUILD_DIR) and that ELF's SHA-256, which
-# bind the run to its image (tools/evidence.py).
+# verdict is PASS. Every attempt's capture, checker output, checker record,
+# and oracle record (a full read, or CHERI's fixed NOT-ATTACHED record) are
+# kept: OUT_DIR/TOOLCHAIN-NAME.ATTEMPT.
+# {console.log,check.txt,result.json,oracle.json}, and OUT_DIR/attempts.tsv
+# lists each attempt's boot hart and verdict, with the boot ELF it ran
+# (relative to BUILD_DIR) and that ELF's SHA-256, which bind the run to its
+# image (tools/evidence.py).
 #
 #   run-qemu.sh BUILD_DIR OPENSBI_FW OUT_DIR [RUN ...]
 #
@@ -97,6 +101,10 @@
 # tree, and the CHERI-aware monitor's is build/mvp.cheri.cheri-linux).
 # BE_MVP_QEMU_K3_LIKE=plic runs the k3-like runs on the plic machine.
 # tools/cheri-check.sh sets all three. For the CHERI-aware monitor only,
+# the existing exit rule remains: its emulator's test finisher exits
+# directly, outside QEMU's shutdown-request path, so no oracle is attached.
+# Each attempt keeps the fixed NOT-ATTACHED oracle record instead.
+# For the CHERI-aware monitor only,
 # BE_MVP_QEMU_CHERI_CPU, when set, is an addition to every run's CPU
 # string, property=value pairs joined by commas: tools/cheri-check.sh gives
 # cheri_pte=on, the CHERI emulator's Zcheripte, under which every
@@ -131,6 +139,7 @@ shift 3
 selected=("$@")
 here=$(cd -- "$(dirname -- "$0")" && pwd)
 checker=$here/check-capture.py
+oracle=$here/qemu_oracle.py
 lock=$(dirname -- "$here")/tools/lock/tool-lock.conf
 expect_dir=$build/gen/expect
 te_poc_dir=$build/gen/te-poc
@@ -184,15 +193,25 @@ if [ -n "$cheri_cpu" ]; then
 		exit 2
 	fi
 fi
+# The oracle's declared register classes for each plain machine row.
+oracle_k3='k3-like readable readable absent off'
+oracle_rva23='rva23 absent readable absent off'
+oracle_plic='plic readable readable absent off'
+oracle_minimal='no-sstc readable readable absent off'
+if [ "$monitor" = cheri ]; then
+	oracle_k3='cheri not-attached not-attached not-attached off'
+	oracle_plic=$oracle_k3
+fi
 # Every scenario on each toolchain's boot ELF: the scenario, the QEMU
-# machine and CPU, the firmware (opensbi: OPENSBI_FW; default: QEMU's
-# bundled OpenSBI) and its SBI version, and the expectation file.
+# machine and CPU, the oracle's machine class and three register classes
+# and boundary state, the firmware (opensbi: OPENSBI_FW; default: QEMU's
+# bundled OpenSBI), its SBI version, and the expectation file.
 scenarios=(
-	"k3-like $k3_machine $k3_cpu opensbi $firmware_sbi two-guests"
-	"rva23 virt,aia=aplic-imsic rva23s64 opensbi $firmware_sbi two-guests"
-	"plic virt rv64,h=true opensbi $firmware_sbi two-guests"
-	"no-sstc virt,aia=none $minimal opensbi $firmware_sbi no-sstc"
-	"sbi-3.0 $k3_machine $k3_cpu default 3.0 sbi-3.0"
+	"k3-like $k3_machine $k3_cpu $oracle_k3 opensbi $firmware_sbi two-guests"
+	"rva23 virt,aia=aplic-imsic rva23s64 $oracle_rva23 opensbi $firmware_sbi two-guests"
+	"plic virt rv64,h=true $oracle_plic opensbi $firmware_sbi two-guests"
+	"no-sstc virt,aia=none $minimal $oracle_minimal opensbi $firmware_sbi no-sstc"
+	"sbi-3.0 $k3_machine $k3_cpu $oracle_k3 default 3.0 sbi-3.0"
 )
 # The variants (planning/mvp-m0-plan.md, Negative images) and the probe
 # images (Platform record: probes), on k3-like with OpenSBI 1.6, each
@@ -202,9 +221,9 @@ variants=(payload exit-budget run-timeout ring-full hart-start init-exit
 probes=(probe-platform probe-vmid-distinct probe-vmid-shared probe-console-input)
 # te-poc's machines (its QEMU table's rows) and its two variants.
 te_poc_machines=(
-	"k3-like $k3_machine $k3_cpu"
-	"rva23 virt,aia=aplic-imsic rva23s64"
-	"plic virt rv64,h=true"
+	"k3-like $k3_machine $k3_cpu $oracle_k3"
+	"rva23 virt,aia=aplic-imsic rva23s64 $oracle_rva23"
+	"plic virt rv64,h=true $oracle_plic"
 )
 te_poc_variants=(reader-write no-inject)
 # beryllium-cheri: and the CHERI-aware monitor's channel-cw (planning/
@@ -264,63 +283,66 @@ wanted() {
 	done
 	return 1
 }
-# The runs, each "label elf machine cpu bios sbi expectation report
-# measured", the expectation a file, the report one or "-", and the
-# measured inputs KERNEL:DTB or "-".
+# The runs, each "label elf machine cpu machine-class pmp menvcfg mseccfg
+# boundary bios sbi expectation report measured", the expectation a file,
+# the report one or "-", and the measured inputs KERNEL:DTB or "-".
 runs=()
 for toolchain in "${toolchains[@]}"; do
 	for entry in "${scenarios[@]}"; do
-		read -r name machine cpu bios sbi expect <<<"$entry"
+		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
+			bios sbi expect <<<"$entry"
 		wanted "$toolchain/$name" || continue
 		[ "$bios" = opensbi ] && bios=$firmware
-		runs+=("$toolchain/$name $build/$toolchain/be-mvp-boot.elf $machine $cpu $bios $sbi $expect_dir/$expect.json - -")
+		runs+=("$toolchain/$name $build/$toolchain/be-mvp-boot.elf $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary $bios $sbi $expect_dir/$expect.json - -")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do
 	for name in "${variants[@]}"; do
 		wanted "variant/$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $expect_dir/$name.json - -")
+		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 $firmware $firmware_sbi $expect_dir/$name.json - -")
 	done
 done
 for toolchain in "${probe_toolchains[@]}"; do
 	for name in "${probes[@]}"; do
 		wanted "probe/$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/probes/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $expect_dir/$name.json - -")
+		runs+=("$toolchain/$name $build/probes/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 $firmware $firmware_sbi $expect_dir/$name.json - -")
 	done
 done
 for toolchain in "${toolchains[@]}"; do
 	for entry in "${te_poc_machines[@]}"; do
-		read -r name machine cpu <<<"$entry"
+		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
+			<<<"$entry"
 		wanted "te-poc/$toolchain/$name" || continue
-		runs+=("$toolchain/te-poc-$name $build/$toolchain/te-poc/be-mvp-boot.elf $machine $cpu $firmware $firmware_sbi $te_poc_dir/expect/te-poc.json $te_poc_dir/authority-report.json -")
+		runs+=("$toolchain/te-poc-$name $build/$toolchain/te-poc/be-mvp-boot.elf $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary $firmware $firmware_sbi $te_poc_dir/expect/te-poc.json $te_poc_dir/authority-report.json -")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do
 	for name in "${te_poc_variants[@]}"; do
 		wanted "te-poc/$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $te_poc_dir/expect/$name.json $te_poc_dir/authority-report.json -")
+		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 $firmware $firmware_sbi $te_poc_dir/expect/$name.json $te_poc_dir/authority-report.json -")
 	done
 	if [ -n "$cap_store_control" ] &&
 		wanted "te-poc/$toolchain/$cap_store_control"; then
-		runs+=("$toolchain/$cap_store_control $build/variants/$toolchain/cap-store/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $te_poc_dir/expect/$cap_store_control.json $te_poc_dir/authority-report.json -")
+		runs+=("$toolchain/$cap_store_control $build/variants/$toolchain/cap-store/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 $firmware $firmware_sbi $te_poc_dir/expect/$cap_store_control.json $te_poc_dir/authority-report.json -")
 	fi
 done
 for toolchain in "${toolchains[@]}"; do
 	for entry in "${te_poc_machines[@]}"; do
-		read -r name machine cpu <<<"$entry"
+		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
+			<<<"$entry"
 		wanted "anchor/$toolchain/$name" || continue
-		runs+=("$toolchain/anchor-$name $build/$toolchain/anchor/be-mvp-boot.elf $machine $cpu $firmware $firmware_sbi $anchor_dir/expect/anchor.json $anchor_dir/authority-report.json $measured")
+		runs+=("$toolchain/anchor-$name $build/$toolchain/anchor/be-mvp-boot.elf $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary $firmware $firmware_sbi $anchor_dir/expect/anchor.json $anchor_dir/authority-report.json $measured")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do
 	for name in "${anchor_variants[@]}"; do
 		wanted "anchor/$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $firmware $firmware_sbi $anchor_dir/expect/$name.json $anchor_dir/authority-report.json $measured")
+		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 $firmware $firmware_sbi $anchor_dir/expect/$name.json $anchor_dir/authority-report.json $measured")
 	done
 done
 missing=()
 for entry in "${runs[@]}"; do
-	read -r _ elf _ _ _ _ expect report inputs <<<"$entry"
+	read -r _ elf _ _ _ _ _ _ _ _ _ expect report inputs <<<"$entry"
 	[ -r "$elf" ] || missing+=("$elf")
 	[ -r "$expect" ] || missing+=("$expect")
 	[ "$report" = - ] || [ -r "$report" ] || missing+=("$report")
@@ -344,55 +366,79 @@ printf 'toolchain\trun\tattempt\tboot_hart\tqemu_exit\tverdict\tcapture_sha256\t
 
 # One QEMU boot into STEM.console.log; its exit status in STEM.exit.txt.
 boot() {
-	local stem=$1 elf=$2 machine=$3 cpu=$4 bios=$5
+	local stem=$1 elf=$2 machine=$3 cpu=$4 bios=$5 machine_class=$6
+	local pmp=$7 menvcfg=$8 mseccfg=$9 boundary=${10}
 	local console=$stem.console.log
+	local boundary_arg=()
 	local qemu_pid deadline terminal_at status
 
 	[ "$bios" != "$firmware" ] || pinned_firmware
 	: >"$console"
-	"$qemu" -machine "$machine" -cpu "$cpu" \
-		-smp 8 -m 8G -bios "$bios" \
-		-kernel "$elf" -display none -serial "file:$console" \
-		-monitor none -no-reboot </dev/null >"$stem.qemu.txt" 2>&1 &
-	qemu_pid=$!
-	deadline=$((SECONDS + timeout_seconds))
-	terminal_at=
-	while kill -0 "$qemu_pid" 2>/dev/null; do
-		if [ -z "$terminal_at" ] &&
-			grep -aqE "$terminal_regex" -- "$console"; then
-			terminal_at=$SECONDS
+	if [ "$monitor" = cheri ]; then
+		"$qemu" -machine "$machine" -cpu "$cpu" \
+			-smp 8 -m 8G -bios "$bios" \
+			-kernel "$elf" -display none -serial "file:$console" \
+			-monitor none -no-reboot </dev/null >"$stem.qemu.txt" 2>&1 &
+		qemu_pid=$!
+		deadline=$((SECONDS + timeout_seconds))
+		terminal_at=
+		while kill -0 "$qemu_pid" 2>/dev/null; do
+			if [ -z "$terminal_at" ] &&
+				grep -aqE "$terminal_regex" -- "$console"; then
+				terminal_at=$SECONDS
+			fi
+			if [ -n "$terminal_at" ] &&
+				[ $((SECONDS - terminal_at)) -ge "$grace_seconds" ]; then
+				break
+			fi
+			if [ "$SECONDS" -ge "$deadline" ]; then
+				break
+			fi
+			sleep 0.2
+		done
+		if kill -0 "$qemu_pid" 2>/dev/null; then
+			kill "$qemu_pid" 2>/dev/null || true
+			wait "$qemu_pid" 2>/dev/null || true
+			status=killed
+		else
+			set +e
+			wait "$qemu_pid"
+			status=$?
+			set -e
 		fi
-		if [ -n "$terminal_at" ] &&
-			[ $((SECONDS - terminal_at)) -ge "$grace_seconds" ]; then
-			break
-		fi
-		if [ "$SECONDS" -ge "$deadline" ]; then
-			break
-		fi
-		sleep 0.2
-	done
-	if kill -0 "$qemu_pid" 2>/dev/null; then
-		kill "$qemu_pid" 2>/dev/null || true
-		wait "$qemu_pid" 2>/dev/null || true
-		status=killed
-	else
-		set +e
-		wait "$qemu_pid"
-		status=$?
-		set -e
+		printf '%s\n' "$status" >"$stem.exit.txt"
+		"$python" -I -B "$oracle" not-attached "$stem.oracle.json"
+		return
 	fi
-	printf '%s\n' "$status" >"$stem.exit.txt"
+	case $boundary in
+	on) boundary_arg=(--boundary-on) ;;
+	off) ;;
+	*) printf 'oracle boundary declaration %s is not on or off\n' "$boundary" >&2; return 2 ;;
+	esac
+	"$python" -I -B "$oracle" run --record "$stem.oracle.json" \
+		--exit-file "$stem.exit.txt" --qemu-output "$stem.qemu.txt" \
+		--terminal-file "$console" --terminal-regex "$terminal_regex" \
+		--timeout "$timeout_seconds" --grace "$grace_seconds" --harts 8 \
+		--machine-class "$machine_class" "${boundary_arg[@]}" \
+		--pmp "$pmp" --menvcfg "$menvcfg" --mseccfg "$mseccfg" \
+		--ram-base 0x80000000 --ram-size 0x200000000 \
+		--elf-word "boot-entry=$elf" -- \
+		"$qemu" -machine "$machine" -cpu "$cpu" -smp 8 -m 8G \
+		-bios "$bios" -kernel "$elf" -display none \
+		-serial "file:$console" -no-reboot || true
 }
 
 # One run: attempts until one completes (PASS, or another verdict that
 # ends it), or every attempt is refused. Its summary line names the
 # attempts, the refused attempts, and each attempt's boot hart.
 run() {
-	local label=$1 elf=$2 machine=$3 cpu=$4 bios=$5 sbi=$6 expect=$7
-	local report=$8 inputs=$9
+	local label=$1 elf=$2 machine=$3 cpu=$4 machine_class=$5 pmp=$6
+	local menvcfg=$7 mseccfg=$8 boundary=$9 bios=${10} sbi=${11}
+	local expect=${12} report=${13} inputs=${14}
 	local toolchain=${label%%/*} name=${label#*/}
 	local attempt=0 refusals=0 harts='' verdict=none status stem
 	local hart sha check elf_sha reported=() addition=$cheri_cpu
+	local oracle_verdict oracle_detail oracle_failure=''
 
 	[ "$report" = - ] || reported=(--report "$report")
 	[ "$inputs" = - ] ||
@@ -408,8 +454,10 @@ run() {
 	elf_sha=$(sha256sum -- "$elf" | cut -d' ' -f1)
 	while [ "$attempt" -lt "$max_attempts" ]; do
 		attempt=$((attempt + 1))
+		oracle_failure=
 		stem=$output/$toolchain-$name.$attempt
-		boot "$stem" "$elf" "$machine" "$cpu${addition:+,$addition}" "$bios"
+		boot "$stem" "$elf" "$machine" "$cpu${addition:+,$addition}" "$bios" \
+			"$machine_class" "$pmp" "$menvcfg" "$mseccfg" "$boundary"
 		status=$(cat -- "$stem.exit.txt")
 		set +e
 		"$python" -B "$checker" "$stem.console.log" \
@@ -423,16 +471,30 @@ run() {
 		hart=$("$python" -B -c 'import json, sys
 fields = json.load(open(sys.argv[1]))["fields"]
 print(fields.get("boot_hart", "none"))' "$stem.result.json" 2>/dev/null || echo none)
+		if ! IFS=$'\t' read -r oracle_verdict oracle_detail < <(
+			"$python" -I -B "$oracle" result "$stem.oracle.json"); then
+			oracle_verdict=FAIL
+			oracle_detail='record unavailable'
+		fi
 		sha=$(sha256sum -- "$stem.console.log" | cut -d' ' -f1)
 		printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$toolchain" \
 			"$name" "$attempt" "$hart" "$status" "${verdict:-none}" "$sha" \
 			"${elf#"$build"/}" "$elf_sha" >>"$attempts_file"
 		harts=${harts:+$harts,}$hart
 		[ "$status" = 0 ] || verdict=FAIL
+		if { [ "$monitor" = cheri ] &&
+			[ "$oracle_verdict" != NOT-ATTACHED ]; } ||
+			{ [ "$monitor" != cheri ] &&
+				[ "$oracle_verdict" != PASS ]; }; then
+			oracle_failure=$oracle_detail
+			verdict=FAIL
+		fi
 		[ "$verdict" = REFUSED ] || break
 		refusals=$((refusals + 1))
 	done
 	check=$(tail -n 1 -- "$stem.check.txt")
+	[ -z "$oracle_failure" ] ||
+		check="oracle: $oracle_failure; checker: $check"
 	if [ "$verdict" = REFUSED ]; then
 		verdict=FAIL
 		check="every attempt refused"
@@ -454,11 +516,13 @@ total_attempts=0
 total_refused=0
 declare -A tc_runs=() tc_attempts=() tc_refused=()
 for entry in "${runs[@]}"; do
-	read -r label elf machine cpu bios sbi expect report inputs <<<"$entry"
+	read -r label elf machine cpu machine_class pmp menvcfg mseccfg boundary \
+		bios sbi expect report inputs <<<"$entry"
 	toolchain=${label%%/*}
 	run_attempts=0
 	run_refusals=0
-	run "$label" "$elf" "$machine" "$cpu" "$bios" "$sbi" "$expect" \
+	run "$label" "$elf" "$machine" "$cpu" "$machine_class" "$pmp" \
+		"$menvcfg" "$mseccfg" "$boundary" "$bios" "$sbi" "$expect" \
 		"$report" "$inputs" || failed=$((failed + 1))
 	total_runs=$((total_runs + 1))
 	total_attempts=$((total_attempts + run_attempts))

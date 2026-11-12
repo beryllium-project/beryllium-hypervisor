@@ -28,9 +28,12 @@ step's lines in order: a focus pair's BE_MVP:16 FOCUS line, a line's echo
 from its focused domain and the text the session expects, a negative's
 BE_MVP:17 INPUT_DROP line (the reason's first) or, for a literal ~~, the
 guest's echo. Then it waits for the run's end, hart 0's BE_MVP:14 or a
-failure, and QEMU's exit, within the run's timeout (300 s by default,
-inside the run budget of 2^32 ticks, 429 s at QEMU's timebase), and runs
-the checker on console.log with typed.txt, nonce.txt, and the session.
+failure. For the plain monitor, the oracle sees the guest's shutdown
+within the run's timeout (300 s by default, inside the run budget of 2^32
+ticks, 429 s at QEMU's timebase), reads all eight harts and the boot ELF's
+first loadable word while the machine is stopped, then quits QEMU. The
+typist runs the checker on console.log with typed.txt, nonce.txt, and the
+session.
 A run whose boot hart is a domain hart (the checker's REFUSED, Plan
 revision M0-A.2) is made again, up to --attempts (8) in all.
 
@@ -40,8 +43,9 @@ QEMU's messages), exit.txt (QEMU's status), typed.txt (every key with
 its time after QEMU's start, its UTC time, its step, and its byte),
 steps.txt (each wait's line and time), nonce.txt, session.txt (the
 session's file and SHA-256, the expectation's, and the ELF's), check.txt
-and result.json (the checker's); in DIR, attempts.tsv and result.txt, last
-its BE_MVP_SESSION[TOOLCHAIN/IMAGE]: line.
+and result.json (the checker's), and oracle.json (a full read, or CHERI's
+fixed NOT-ATTACHED record); in DIR, attempts.tsv and result.txt, last its
+BE_MVP_SESSION[TOOLCHAIN/IMAGE]: line.
 
 suite runs every console variant whose expectation the generator wrote
 (BUILD/gen/expect, BUILD/gen/te-poc/expect, BUILD/gen/anchor/expect: each
@@ -71,6 +75,9 @@ shows. suite's --build, and run's optional --build, is the checker's
 --build-root, whose references it reads; without it, the checker's
 default, build/mvp, the RISC-V monitor's tree. Under cheri, FW's pin is
 the firmware line of guest/cheri-pins.txt in this tree, not the lock's.
+The CHERI emulator's test finisher exits directly, outside QEMU's shutdown
+request path, so its sessions keep the existing self-exit rule with no
+oracle attached and the fixed NOT-ATTACHED record.
 """
 
 import argparse
@@ -88,6 +95,9 @@ import sys
 import time
 
 HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import qemu_oracle  # noqa: E402 pylint: disable=wrong-import-position
+
 CHECKER = HERE / "check-capture.py"
 # The tool lock, whose MVP_PIN_OPENSBI_BIN_SHA256 FW must have.
 LOCK = HERE.parent / "tools" / "lock" / "tool-lock.conf"
@@ -336,9 +346,8 @@ def run_steps(console, record, section, nonce, args):
             cursor = found + 1
 
 
-def stop(process, grace=0.0):
-    """PROCESS's exit status, after GRACE seconds for it to exit (its
-    stdout closes as it exits), and after killing it if it still runs."""
+def stop_process(process, grace=0.0):
+    """The legacy CHERI path's exit status, killing after GRACE."""
     try:
         return str(process.wait(timeout=grace))
     except subprocess.TimeoutExpired:
@@ -357,6 +366,14 @@ def attempt(args, expect, directory, session_sha, elf_sha, monitor=MONITOR,
     its pin for MONITOR, before anything of the attempt is written."""
     pinned_firmware(args.firmware,
                     *expected_firmware(monitor, cheri_pins, lock))
+    cpu = CPU + (f",{CHERI_CPU}" if CHERI_CPU else "")
+    config = None
+    if monitor != "cheri":
+        word = qemu_oracle.word_from_elf("boot-entry", args.elf)
+        config = qemu_oracle.OracleConfig(
+            8, "k3-like", False, "readable", "readable", "absent",
+            0x80000000, 0x200000000, (word,))
+        config.validate()
     if directory.exists():
         shutil.rmtree(directory)
     directory.mkdir(parents=True)
@@ -370,12 +387,13 @@ def attempt(args, expect, directory, session_sha, elf_sha, monitor=MONITOR,
         f"expect={pathlib.Path(args.expect).name} image={expect['image']} "
         f"sha256={sha256(pathlib.Path(args.expect).read_bytes())}\n"
         f"elf={args.elf} sha256={elf_sha}\n", encoding="utf-8")
-    argv = [args.qemu, "-machine", MACHINE, "-cpu",
-            CPU + (f",{CHERI_CPU}" if CHERI_CPU else ""), "-smp", "8", "-m",
+    argv = [args.qemu, "-machine", MACHINE, "-cpu", cpu, "-smp", "8", "-m",
             "8G", "-bios", args.firmware, "-kernel", args.elf, "-display",
-            "none", "-monitor", "none", "-no-reboot", "-chardev",
+            "none", "-no-reboot", "-chardev",
             f"stdio,id=uart0,signal=off,logfile={directory / 'console.log'},"
             "logappend=off", "-serial", "chardev:uart0"]
+    if monitor == "cheri":
+        argv += ["-monitor", "none"]
     error, status = None, "none"
     with open(directory / "qemu.txt", "wb") as qemu_out, \
             open(directory / "stdout.log", "wb") as log:
@@ -383,9 +401,33 @@ def attempt(args, expect, directory, session_sha, elf_sha, monitor=MONITOR,
         qemu_out.flush()
         started = time.monotonic()
         record = Record(directory, started)
-        qemu = subprocess.Popen(argv, stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE, stderr=qemu_out)
+        try:
+            if monitor == "cheri":
+                qemu_oracle.write_not_attached_record(
+                    directory / "oracle.json")
+                oracle = None
+                qemu = subprocess.Popen(
+                    argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=qemu_out)
+            else:
+                oracle = qemu_oracle.OracleProcess.launch(
+                    argv, config, directory / "oracle.json",
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=qemu_out)
+                qemu = oracle.process
+        except (qemu_oracle.OracleError, OSError):
+            if monitor != "cheri":
+                qemu_oracle.write_failure_record(
+                    directory / "oracle.json", "QEMU or QMP setup failed")
+            record.close()
+            status = "killed:none"
+            (directory / "exit.txt").write_text(status + "\n",
+                                                encoding="ascii")
+            detail = ("QEMU setup failed" if monitor == "cheri" else
+                      "oracle: QEMU or QMP setup failed")
+            return status, detail, 0, time.monotonic() - started
         console = Console(qemu, log)
+        end_state, harness_reason = None, None
         try:
             try:
                 run_steps(console, record, section, nonce, args)
@@ -395,18 +437,40 @@ def attempt(args, expect, directory, session_sha, elf_sha, monitor=MONITOR,
                 record.note(f"stopped: {error}")
             deadline = started + args.run_timeout
             ended = None
-            while not console.closed and time.monotonic() < deadline:
+            while not console.closed:
+                if oracle is not None:
+                    try:
+                        end_state = oracle.poll_end()
+                    except qemu_oracle.OracleError as failure:
+                        error = (error + "; " if error else "") + str(failure)
+                        break
+                    if end_state is not None:
+                        break
                 console.read_some(0.1)
                 if ended is None and console.lines.terminal():
                     ended = time.monotonic()
                 if ended is not None and time.monotonic() - ended >= GRACE:
+                    harness_reason = "grace period after terminal marker"
                     break
-            if not console.closed:
-                record.note("QEMU still runs after the run's end or its "
-                            "timeout")
+                if time.monotonic() >= deadline:
+                    harness_reason = "run timeout"
+                    break
+            if harness_reason:
+                record.note(("oracle stop: " if oracle is not None else
+                             "launcher stop: ") + harness_reason)
         finally:
-            status = stop(qemu, GRACE if console.closed else 0.0)
-            while not console.closed:
+            if oracle is None:
+                status = stop_process(
+                    qemu, GRACE if console.closed else 0.0)
+            else:
+                outcome = oracle.finish(end=end_state,
+                                        harness_reason=harness_reason)
+                if not outcome.passed:
+                    error = (error + "; " if error else "") + \
+                        f"oracle: {outcome.detail}"
+                status = qemu_oracle.launcher_exit(qemu.returncode)
+            drain_deadline = time.monotonic() + 2
+            while not console.closed and time.monotonic() < drain_deadline:
                 console.read_some(0.1)
             for pipe in (qemu.stdin, qemu.stdout):
                 try:
@@ -486,6 +550,8 @@ def run(args):
         total += seconds
         if status != "0" and verdict == "PASS":
             verdict, check = "FAIL", f"QEMU's exit {status}"
+        if error and "oracle:" in error:
+            verdict, check = "FAIL", error
         if error and verdict == "PASS":
             verdict, check = "FAIL", error
         rows.append((args.toolchain, expect["image"], str(number), hart,

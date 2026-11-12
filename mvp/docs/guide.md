@@ -232,10 +232,11 @@ of every image and guest input, by path relative to `build/mvp/`
 runs `mvp/tests/run-qemu.sh`: every scenario, variant, and probe image of
 both toolchains, booted directly under QEMU (the boot ELF as the kernel,
 OpenSBI `v1.6` as the firmware) on the `virt` machine with eight harts and
-8 GiB, each attempt judged by the capture checker,
-`mvp/tests/check-capture.py`. These runs are emulation: QEMU's harts, IPIs,
-memory ordering, translation caching, console, and timing are not the
-board's.
+8 GiB. The QEMU oracle requires the guest's shutdown, reads every hart and
+a word of the boot image while the machine is stopped, and quits QEMU;
+the capture checker, `mvp/tests/check-capture.py`, still judges the capture.
+These runs are emulation: QEMU's harts, IPIs, memory ordering, translation
+caching, console, and timing are not the board's.
 
 | Machine | QEMU configuration | Runs |
 | --- | --- | --- |
@@ -247,11 +248,12 @@ board's.
 
 For each attempt, `build/mvp/qemu/suite/` keeps the capture,
 `<toolchain>-<run>.<attempt>.console.log`; the checker's output,
-`.check.txt`; and its JSON record, `.result.json`. `attempts.tsv` lists each
-attempt's boot hart, verdict, and capture SHA-256, with the boot ELF it ran
-and that ELF's SHA-256. `summary.txt` has one line per run and ends with the
-totals line, `BE_MVP_QEMU: PASS` followed by the numbers of runs, attempts,
-and refused attempts.
+`.check.txt`; its JSON record, `.result.json`; and the oracle's
+`.oracle.json`. `attempts.tsv` lists each attempt's boot hart, verdict, and
+capture SHA-256, with the boot ELF it ran and that ELF's SHA-256.
+`summary.txt` has one line per run and ends with the totals line,
+`BE_MVP_QEMU: PASS` followed by the numbers of runs, attempts, and refused
+attempts.
 
 **Refused attempts.** QEMU chooses its boot hart. When it is not hart 0, the
 shim's start rule starts hart 0 and parks the boot hart. If that boot hart is
@@ -420,7 +422,8 @@ BE_MVP:14 SHUTDOWN type=0 reason=0
 - **`:13 RUN_COMPLETE` and `:14 SHUTDOWN`.** The records hart 0 drained, its
   wakes and idle ticks, `overlap_ticks` (the overlap of the two domains'
   entered-to-shutdown intervals), and the run's ticks; then hart 0's SRST
-  shutdown, after which QEMU exits with status 0.
+  shutdown, after which QEMU stops, the oracle reads it, and QMP `quit`
+  ends QEMU with status 0.
 
 For this attempt, the checker's output ends:
 
@@ -765,8 +768,8 @@ needs the network once, when it is missing or differs. The records are
 under `build/mvp/uboot-rehearsal/`: `summary.txt`, whose last line is
 `BE_MVP_UBOOT_REHEARSAL: PASS` or `FAIL`, and for each case `status.txt`
 and each attempt's `console.log`, `uart.log`, `qemu.txt`, `typed.txt`,
-`session.txt`, `check.txt`, and `result.json`. The rehearsal is not part
-of `check`; its driver's self-test is.
+`session.txt`, `check.txt`, `result.json`, and `oracle.json`. The rehearsal
+is not part of `check`; its driver's self-test is.
 
 **The `uboot` mode.** For a boot by U-Boot's `booti`, the capture checker's
 `--mode uboot` requires, before the shim's first line, exactly one U-Boot
@@ -1427,12 +1430,12 @@ missing reference or export. The bundle holds:
 | `scenario/` | `two-guests`' `scenario.json` and expectation files, and `scenario/te-poc/` and `scenario/anchor/`, each with its `scenario.json`, `policy.te`, `authority-report.json`, and expectation files, each bound by SHA-256 to the generator's `SCENARIO.txt` |
 | `images.sha256` | The image manifest: every image and guest input, by SHA-256 and path relative to `build/mvp/` |
 | `records/` | The checks' outputs: the image checker on the images, variants, and probes with its mutation tests; the budgets; the platform probe's layout rule; the partition tool's self-test; the board tools' dry run; the capture checker's self-test and mutations; and `records/policy/`, the policy check on each scenario with its report, its self-test and mutations, and the build-time negatives. The QEMU-only image check's record and the rehearsal driver's self-test stay under `build/mvp/records/`; the bundle does not keep them |
-| `qemu/` | Every QEMU attempt's capture, checker output, and record, with `attempts.tsv` and `summary.txt`, and the log's export, `<stem>.log.json`, beside each record that has one (below) |
-| `sessions/` | M7's typed sessions: `sessions.txt`, `sessions.tsv`, and each attempt's capture, checker output, record, keys, nonce, session record, and waits, and its export, `log.json` (below), under `<toolchain>/<image>/attempt-<n>/` |
+| `qemu/` | Every QEMU attempt's capture, checker output, checker record, and oracle record, with `attempts.tsv` and `summary.txt`, and the log's export, `<stem>.log.json`, beside each checker record that has one (below) |
+| `sessions/` | M7's typed sessions: `sessions.txt`, `sessions.tsv`, and each attempt's capture, checker output, checker record, oracle record, keys, nonce, session record, and waits, and its export, `log.json` (below), under `<toolchain>/<image>/attempt-<n>/` |
 | `references/` | Every post-link reference manifest with its pin, `<toolchain>/<image>.json` and `.sha256`, as `build/mvp/references/` holds them |
 | `refusals.tsv` | For each QEMU run and U-Boot rehearsal case: the attempts, the refused attempts, the boot harts, and the final verdict |
 | `costs.tsv` | The costs the capture checker derives from each passing run's tick fields, recorded only |
-| `rehearsal/` | Each U-Boot rehearsal case made on the current board image and judged against the current reference: its `status.txt` and each attempt's `console.log`, `check.txt`, `result.json`, `session.txt`, `typed.txt`, and `log.json`; and `summary.txt` when every case was |
+| `rehearsal/` | Each U-Boot rehearsal case made on the current board image and judged against the current reference: its `status.txt` and each attempt's `console.log`, `check.txt`, `result.json`, `oracle.json`, `session.txt`, `typed.txt`, and `log.json`; and `summary.txt` when every case was |
 | `MANIFEST.sha256` | Every other file's SHA-256 |
 
 An attempt's export is required where its image's reference says the image

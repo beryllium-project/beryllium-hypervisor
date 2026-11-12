@@ -89,11 +89,12 @@
 #   CASE/attempt-N/qemu.txt     the QEMU command line and QEMU's messages
 #   CASE/attempt-N/typed.txt    every key and line typed, with its times
 #   CASE/attempt-N/session.txt  the driver's facts, findings, and verdict
+#   CASE/attempt-N/oracle.json  the stopped machine's harts and named words
 #   CASE/attempt-N/check.txt    the checker's output (not for fallthrough)
 #   CASE/attempt-N/result.json  the checker's record (not for fallthrough)
 # where CASE is the label with / as -: two-guests-gcc, ..., anchor-clang,
 # fallthrough. Scratch, each case's QEMU-only image and disk, is
-# BUILD_DIR/tmp/uboot-rehearsal, removed after a pass.
+# OUT_DIR/.scratch, removed after a pass.
 # Trust: a test driver. It runs QEMU, sfdisk, and mke2fs on files under
 # BUILD_DIR, never a device, and writes only OUT_DIR and its scratch.
 #
@@ -101,6 +102,7 @@
 #   UBOOT_BIN                    U-Boot (default
 #                                build/k3-b3/u-boot-build/u-boot.bin; when
 #                                missing, the command that builds it)
+#   UBOOT_ELF                    its ELF, default beside UBOOT_BIN
 #   QEMU, PYTHON, SFDISK, MKE2FS the tools (tools.mk passes the lock's)
 #   UBOOT_REHEARSAL_ALL=1        the optional cases too
 #   UBOOT_REHEARSAL_QEMU_IMAGES  built or derive (default: built if present)
@@ -126,6 +128,7 @@ driver=$here/uboot-rehearsal/run-qemu-uboot.py
 checker=$here/check-capture.py
 lock=$mvp/tools/lock/tool-lock.conf
 uboot=${UBOOT_BIN:-$repo/build/k3-b3/u-boot-build/u-boot.bin}
+uboot_elf=${UBOOT_ELF:-${uboot%.bin}}
 qemu=${QEMU:-qemu-system-riscv64}
 python=${PYTHON:-python3}
 sfdisk=${SFDISK:-sfdisk}
@@ -134,7 +137,7 @@ max_attempts=${BE_MVP_UBOOT_ATTEMPTS:-8}
 run_timeout=${BE_MVP_UBOOT_TIMEOUT:-300}
 image_source=${UBOOT_REHEARSAL_QEMU_IMAGES:-auto}
 all=${UBOOT_REHEARSAL_ALL:-0}
-scratch_root=$build/tmp/uboot-rehearsal
+scratch_root=$output/.scratch
 
 fail() {
 	printf 'BE_MVP_UBOOT_REHEARSAL: FAIL %s\n' "$*" >&2
@@ -203,6 +206,7 @@ fi
 uboot_sha256=$(sha "$uboot")
 [ "$uboot_sha256" = "$pin" ] ||
 	fail "U-Boot $uboot has SHA-256 $uboot_sha256, not the lock's $pin"
+[ -r "$uboot_elf" ] || fail "no U-Boot ELF $uboot_elf"
 
 # The cases, each "LABEL IMAGE EXPECT REPORT MEASURED KIND", paths relative
 # to BUILD_DIR, - for none, and KIND default or optional.
@@ -263,6 +267,7 @@ summary=$output/summary.txt
 qemu_version=$("$qemu" --version | sed -n 1p)
 {
 	printf 'uboot_bin_sha256=%s\n' "$uboot_sha256"
+	printf 'uboot_elf_sha256=%s\n' "$(sha "$uboot_elf")"
 	grep '^MVP_PIN_UBOOT_' -- "$lock"
 	printf 'opensbi_fw_sha256=%s\n' "$(sha "$firmware")"
 	printf 'qemu=%s\nmachine=%s\ncpu=%s\nsmp=8\nmemory=8G\n' \
@@ -284,7 +289,7 @@ run_case() {
 	local toolchain=${label#*/} kind_args=() reported=() attempt=0
 	local refused=0 harts='' verdict=FAIL session=none check=- check_exit=-
 	local qemu_exit=none adir boot_hart line built path key note='' disk_sha
-	local disk=same
+	local disk=same oracle_status=none oracle_detail=
 
 	dir=$output/$name
 	scratch=$scratch_root/$name
@@ -352,7 +357,8 @@ run_case() {
 		adir=$dir/attempt-$attempt
 		pinned_firmware
 		"$python" -B "$driver" session --label "$label" --firmware "$firmware" \
-			--uboot "$uboot" --disk "$scratch/disk.img" --image "$qemu_image" \
+			--uboot "$uboot" --uboot-elf "$uboot_elf" \
+			--disk "$scratch/disk.img" --image "$qemu_image" \
 			--file "$be_image" "${kind_args[@]}" --machine "$machine" \
 			--cpu "$cpu" --qemu "$qemu" --run-timeout "$run_timeout" \
 			--output "$adir" >/dev/null || true
@@ -361,11 +367,17 @@ run_case() {
 		session=${session:-none}
 		boot_hart=$(sed -n 's/^boot_hart=//p' "$adir/session.txt" 2>/dev/null || true)
 		qemu_exit=$(sed -n 's/^qemu_exit=//p' "$adir/session.txt" 2>/dev/null || true)
+		oracle_status=$(sed -n 's/^oracle_verdict=//p' "$adir/session.txt" \
+			2>/dev/null || true)
+		oracle_detail=$(sed -n 's/^oracle=//p' "$adir/session.txt" \
+			2>/dev/null || true)
+		oracle_status=${oracle_status:-none}
 		if [ "$label" != fallthrough ]; then
 			set +e
 			"$python" -B "$checker" "$adir/console.log" --mode uboot \
 				--expect "$build/$expect" "${reported[@]}" --image "$qemu_image" \
-				--toolchain "$toolchain" --json "$adir/result.json" \
+				--toolchain "$toolchain" --build-root "$build" \
+				--json "$adir/result.json" \
 				>"$adir/check.txt" 2>&1
 			check_exit=$?
 			set -e
@@ -374,9 +386,9 @@ run_case() {
 		fi
 		# The disk is the attempts' input: nothing may write it.
 		[ "$(sha "$scratch/disk.img")" = "$disk_sha" ] || disk=changed
-		printf 'attempt=%s session=%s check=%s check_exit=%s boot_hart=%s qemu_exit=%s disk=%s console_sha256=%s\n' \
+		printf 'attempt=%s session=%s check=%s check_exit=%s boot_hart=%s qemu_exit=%s oracle=%s disk=%s console_sha256=%s\n' \
 			"$attempt" "$session" "$check" "$check_exit" "${boot_hart:-none}" \
-			"${qemu_exit:-none}" "$disk" \
+			"${qemu_exit:-none}" "$oracle_status" "$disk" \
 			"$(sha "$adir/console.log" 2>/dev/null || echo none)" >>"$dir/status.txt"
 		harts=${harts:+$harts,}${boot_hart:-none}
 		if [ "$session" = REFUSED ] &&
@@ -395,7 +407,9 @@ run_case() {
 		verdict=PASS
 	fi
 	[ "$refused" != "$attempt" ] || note=' (every attempt refused)'
-	line="BE_MVP_UBOOT_REHEARSAL[$label]: $verdict attempts=$attempt refused=$refused boot_harts=$harts session=$session check=$check check_exit=$check_exit qemu_exit=${qemu_exit:-none} image=$(sha "$qemu_image" | cut -c1-12) crc32=$(sed -n 's/^qemu_image_crc32=//p' <<<"$facts")$note"
+	[ "$oracle_status" = PASS ] ||
+		note="$note (oracle: ${oracle_detail:-record unavailable})"
+	line="BE_MVP_UBOOT_REHEARSAL[$label]: $verdict attempts=$attempt refused=$refused boot_harts=$harts session=$session check=$check check_exit=$check_exit qemu_exit=${qemu_exit:-none} oracle=$oracle_status image=$(sha "$qemu_image" | cut -c1-12) crc32=$(sed -n 's/^qemu_image_crc32=//p' <<<"$facts")$note"
 	printf '%s\n' "$line" | tee -a -- "$dir/status.txt" "$summary"
 	total_attempts=$((total_attempts + attempt))
 	total_refused=$((total_refused + refused))

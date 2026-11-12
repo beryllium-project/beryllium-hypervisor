@@ -50,16 +50,19 @@ the last step of `check`) holds:
                     and records/policy/, the policy check on te-poc and on
                     anchor, each with its report, its self-test and
                     mutations, and the build-time negatives
-  qemu/             every QEMU attempt's capture, checker output, and
-                    record, with the log's export (STEM.log.json) where
-                    the rule below wants one, the attempts table, and the
-                    suite's summary
+  qemu/             every QEMU attempt's capture, checker output, checker
+                    record, and oracle record (a full read, or CHERI's
+                    fixed NOT-ATTACHED record), with the log's export
+                    (STEM.log.json) where the rule below wants one, the
+                    attempts table, and the suite's summary
   sessions/         M7-4's typed sessions (tests/session-typist.py,
                     planning/mvp-m7-plan.md, D-11): sessions.txt and
                     sessions.tsv, and each attempt's capture, checker
-                    output and record, keys (typed.txt), nonce, session
-                    record (session.txt), and waits (steps.txt), and its
-                    export (log.json) by the rule below, as
+                    output, checker record, oracle record (a full read, or
+                    CHERI's fixed NOT-ATTACHED record), keys (typed.txt),
+                    nonce, session record (session.txt), and
+                    waits (steps.txt), and its export (log.json) by the
+                    rule below, as
                     TOOLCHAIN/IMAGE/attempt-N/
   references/       M9's post-link reference manifests, every one, with
                     their pins (BUILD/references/TOOLCHAIN/IMAGE.json and
@@ -71,9 +74,9 @@ the last step of `check`) holds:
   rehearsal/        the U-Boot rehearsal (tests/uboot-rehearsal.sh, M5-3):
                     each case that ran on its current board image
                     (rehearsal/CASE: status.txt and each attempt's
-                    console.log, check.txt, result.json, session.txt, and
-                    typed.txt, and its export, log.json, by the rule
-                    below), and summary.txt when every case did
+                    console.log, check.txt, result.json, oracle.json,
+                    session.txt, and typed.txt, and its export, log.json,
+                    by the rule below), and summary.txt when every case did
                     (bundle.txt says which did not)
   MANIFEST.sha256   every other file's SHA-256
 
@@ -273,13 +276,13 @@ FIRMWARE_IMAGE = pathlib.Path(
 GUEST_NAME_FORM = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 ATTEMPT_COLUMNS = ("toolchain", "run", "attempt", "boot_hart", "qemu_exit",
                    "verdict", "capture_sha256", "elf", "elf_sha256")
-ATTEMPT_FILES = ("console.log", "check.txt", "result.json")
+ATTEMPT_FILES = ("console.log", "check.txt", "result.json", "oracle.json")
 # M7-4's sessions (tests/session-typist.py suite), under BUILD/qemu: the
 # summary, the attempts table, and each attempt's records, in
 # TOOLCHAIN/IMAGE/attempt-N/.
 TYPED_COLUMNS = ATTEMPT_COLUMNS + ("keys", "steps", "seconds")
-TYPED_FILES = ("console.log", "check.txt", "result.json", "typed.txt",
-                 "nonce.txt", "session.txt", "steps.txt")
+TYPED_FILES = ("console.log", "check.txt", "result.json", "oracle.json",
+               "typed.txt", "nonce.txt", "session.txt", "steps.txt")
 TYPED_ELF = re.compile(r"^variants/(?:gcc|clang)/[a-z0-9][a-z0-9.-]{0,63}/"
                          r"be-mvp-boot\.elf$")
 # The U-Boot rehearsal's records (planning/mvp-m5-plan.md, "The U-Boot
@@ -292,8 +295,8 @@ TYPED_ELF = re.compile(r"^variants/(?:gcc|clang)/[a-z0-9][a-z0-9.-]{0,63}/"
 # REHEARSAL_FILES under attempt-N/. The default cases, by their board
 # images: each toolchain's scenario images, and the fall-through.
 REHEARSALS = "uboot-rehearsal"
-REHEARSAL_FILES = ("console.log", "check.txt", "result.json", "session.txt",
-                   "typed.txt")
+REHEARSAL_FILES = ("console.log", "check.txt", "result.json", "oracle.json",
+                   "session.txt", "typed.txt")
 REHEARSAL_CASES = {
     **{f"{name}-{toolchain}": f"{toolchain}/"
        f"{'' if name == 'two-guests' else name + '/'}be-mvp-boot.img"
@@ -714,6 +717,11 @@ def rehearsal_cases(build):
         image = build / fields["image"]
         current = image.is_file() and file_sha(image) == fields.get(
             "image_sha256")
+        for number in re.findall(r"^attempt=(\d+) ", text, re.M):
+            oracle = status.parent / f"attempt-{number}" / "oracle.json"
+            if not oracle.is_file():
+                raise Refused(f"rehearsal {status.parent.name}/attempt-"
+                              f"{number}/oracle.json is missing")
         cases[status.parent.name] = ("current" if current else "stale", text,
                                      fields)
     return cases
@@ -1561,6 +1569,7 @@ def synthetic_build(root):
         (suite / f"{stem}.console.log").write_bytes(b"BE_MVP:01\r\n")
         (suite / f"{stem}.check.txt").write_text(
             f"capture {suite}/{stem}.console.log\n", encoding="ascii")
+        (suite / f"{stem}.oracle.json").write_text("{}\n", encoding="ascii")
         judged(build, suite / f"{stem}.result.json", image, verdict,
                {"hart0_idle_ticks": 7} if verdict == "PASS" else {})
         rows.append("\t".join((toolchain, run_name, str(attempt), hart, "0",
@@ -1607,6 +1616,8 @@ def synthetic_build(root):
             (directory / f"attempt-{number}").mkdir(parents=True)
             (directory / f"attempt-{number}" / "console.log").write_bytes(
                 f"{name} {number}\n".encode("ascii"))
+            (directory / f"attempt-{number}" / "oracle.json").write_text(
+                "{}\n", encoding="ascii")
             lines.append(f"attempt={number} session={session} check={check} "
                          f"check_exit=0 boot_hart={hart} qemu_exit=0 "
                          f"disk=same console_sha256={'0' * 64}")
@@ -1829,6 +1840,25 @@ def self_test(scratch):
          "typed.txt is missing" in
          (refused(development, build, scratch / "bundle-3", home) or ""))
     record.write_text("typed\n", encoding="ascii")
+    record = build / "qemu" / "suite" / "gcc-k3-like.2.oracle.json"
+    record.unlink()
+    case("a QEMU attempt's missing oracle refuses the bundle",
+         "oracle.json is missing" in
+         (refused(development, build, scratch / "bundle-3", home) or ""))
+    record.write_text("{}\n", encoding="ascii")
+    record = build / "qemu" / "gcc" / "te-poc-shell" / "attempt-2" / \
+        "oracle.json"
+    record.unlink()
+    case("a session attempt's missing oracle refuses the bundle",
+         "oracle.json is missing" in
+         (refused(development, build, scratch / "bundle-3", home) or ""))
+    record.write_text("{}\n", encoding="ascii")
+    record = build / REHEARSALS / "te-poc-gcc" / "attempt-1" / "oracle.json"
+    record.unlink()
+    case("a rehearsal attempt's missing oracle refuses the bundle",
+         "rehearsal te-poc-gcc/attempt-1/oracle.json is missing" in
+         (refused(development, build, scratch / "bundle-3", home) or ""))
+    record.write_text("{}\n", encoding="ascii")
     table = build / "qemu" / "suite" / "attempts.tsv"
     original = table.read_text(encoding="ascii")
     table.write_text(original.replace("variants/gcc/payload/be-mvp-boot.elf",

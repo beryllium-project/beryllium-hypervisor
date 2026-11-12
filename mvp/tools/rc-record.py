@@ -300,6 +300,9 @@ def make(args, state=None, big=BIG):
         rehearsals.append((f"rehearsal/{name}/status.txt", status))
         for number in re.findall(r"^attempt=(\d+) ", "\n".join(text), re.M):
             attempt = rehearsal / name / f"attempt-{number}"
+            if not (attempt / "oracle.json").is_file():
+                raise Refused(f"the rehearsal attempt {attempt} has no "
+                              "oracle.json")
             kept = [attempt / file for file in evidence.REHEARSAL_FILES]
             # Its export, by the bundle's rule against the bundle's
             # references (item 122); an attempt with no result.json (the
@@ -476,6 +479,7 @@ def synthetic(root, out, x, source, home):
             f"BE_MVP_UBOOT_REHEARSAL[{name}]: PASS attempts=1\n")
         texts[f"rehearsal/{name}/attempt-1/console.log"] = (
             "Linux version 7.3.0 (dev@box.example) (gcc)\n")
+        texts[f"rehearsal/{name}/attempt-1/oracle.json"] = "{}\n"
         if name != "fallthrough":
             (texts[f"rehearsal/{name}/attempt-1/result.json"],
              texts[f"rehearsal/{name}/attempt-1/log.json"]) = judged(
@@ -625,6 +629,9 @@ def self_test(scratch):
             root / "rehearsal" / "anchor-clang")),
         ("a rehearsal that did not pass", "no passing summary.txt",
          "rehearsal/summary.txt", "PASS", "FAIL"),
+        ("a rehearsal attempt without its oracle", "has no oracle.json",
+         lambda root, argv: (
+             root / "rehearsal/two-guests-gcc/attempt-1/oracle.json").unlink()),
         ("a kernel-repro pin that differs", "kernel-repro record",
          "repro/out/MVP-GUEST-BUILD.txt", image, "0" * 64),
         ("model evidence of a dirty tree", "model evidence",

@@ -19,8 +19,9 @@
 #                               the partition tool's self-test, the evidence
 #                               bundler's self-test, the release-candidate
 #                               record tool's self-test, the board-tool dry
-#                               run, the QEMU typist's self-test, the M8
-#                               verifier tools' self-tests and lint
+#                               run, the QEMU typist's and oracle's
+#                               self-tests, the M8 verifier tools' self-tests
+#                               and lint
 #   make -C mvp qemu-test       every scenario, variant, and probe in QEMU
 #   make -C mvp sessions        every console variant's session typed in
 #                               QEMU (M7-4)
@@ -87,6 +88,7 @@ CAPTURE_CHECK := $(PYTHON) -B $(MVP_DIR)/tests/check-capture.py \
 	$(if $(filter cheri,$(MVP_MONITOR)),--monitor cheri)
 EVIDENCE := $(PYTHON) -B $(MVP_DIR)/tools/evidence.py
 SESSION_TYPIST := $(PYTHON) -B $(MVP_DIR)/tests/session-typist.py
+QEMU_ORACLE := $(PYTHON) -I -B $(MVP_DIR)/tests/qemu_oracle.py
 
 # The board record's title, before the campaign's name (Plan revision
 # M4-A.2, planning/mvp-m4-plan.md); M4-5 passes
@@ -170,7 +172,8 @@ K3_ENV = K3_KERNEL=$(MVP_GUEST_IMAGE) K3_PINS=$(MVP_GUEST_PINS) \
 
 .PHONY: tools-check capture-check platform-probe-check partition-tool-check \
 	evidence-check rc-record-check run-tool-check qemu-test evidence \
-	session-typist-check verify-tools-check platform-record-check sessions \
+	session-typist-check qemu-oracle-check verify-tools-check \
+	platform-record-check sessions \
 	verifier-image verify print-k3-plan \
 	k3-preflight k3-stage k3-env-record k3-env-install k3-env-restore \
 	k3-characterize k3-campaign k3-probe k3-input-characterize board-evidence
@@ -255,6 +258,11 @@ run-tool-check: image variants probes opensbi $(MVP_EXPECT_STAMP) \
 session-typist-check:
 	TMPDIR=$(TMPDIR) $(SESSION_TYPIST) --self-test
 
+# The QMP client and end-of-run reader against a scripted socketpair peer:
+# its normal and stopped paths, each strict reply, and each planted defect.
+qemu-oracle-check:
+	$(QEMU_ORACLE) --self-test --scratch $(TMPDIR)/qemu-oracle-self-test
+
 # The M8 verifier's tools (planning/mvp-m8-plan.md, D-5, D-7, D-9, D-10,
 # Q7), each self-test on the host, with no podman and no network: the
 # seeded single-defect mutant generator (verify/tools/mutate.py) on a
@@ -307,7 +315,8 @@ verify-tools-check:
 
 tools-check: capture-check platform-probe-check partition-tool-check \
 		evidence-check rc-record-check run-tool-check \
-		session-typist-check verify-tools-check platform-record-check
+		session-typist-check qemu-oracle-check verify-tools-check \
+		platform-record-check
 	@echo "BE_MVP_TOOLS_CHECK: PASS"
 
 # ------------------------------------------------------- the M8 verifier

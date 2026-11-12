@@ -4,8 +4,9 @@
 """One attempt of the MVP's U-Boot rehearsal in QEMU, and its own checks.
 
   run-qemu-uboot.py session --label LABEL --firmware FW --uboot UBOOT
-      --disk DISK --image QEMU_IMG --file NAME (--expect EXPECT |
-      --fallthrough) --machine MACHINE --cpu CPU --output DIR
+      --uboot-elf UBOOT_ELF --disk DISK --image QEMU_IMG --file NAME
+      (--expect EXPECT | --fallthrough) --machine MACHINE --cpu CPU
+      --output DIR
       [--qemu QEMU] [--boot-timeout S] [--run-timeout S] [--exit-timeout S]
   run-qemu-uboot.py derive BOARD_IMG OUT
   run-qemu-uboot.py relation BOARD_IMG QEMU_IMG
@@ -19,11 +20,13 @@ virtio block device, with the UART on QEMU's stdin and stdout, which QEMU
 also logs. Through them it does what the session does at the board's
 prompt: at `Hit any key to stop autoboot` a space; at each `=> ` one
 session line, typed a key at a time (B3's pace), with Enter only once
-U-Boot's echo is exactly the line; after `boot`, for a scenario, it reads
-to the expectation's terminal marker and on until QEMU exits (the SRST
-shutdown powers QEMU off); for the fall-through, to the stand-in boot
-command's FALLTHROUGH line and the prompt after it, then kills QEMU. A
-pipe, unlike B3's PTY, keeps what QEMU wrote just before it exited.
+U-Boot's echo is exactly the line; after `boot`, for a scenario, it reads to the expectation's terminal
+marker and the guest's shutdown. The QEMU oracle then reads all eight
+harts, U-Boot's entry word, and the moved boot image's header word while
+the machine is stopped, and quits QEMU. For the fall-through, the harness
+stops the machine after the stand-in command's FALLTHROUGH line and the
+prompt, the oracle reads the harts and U-Boot's entry word, and quits
+QEMU. A pipe, unlike B3's PTY, keeps the last UART bytes.
 
 The session lines (session_lines) are the M5 plan's be_* lines and bootcmd
 with `virtio` in place of `nvme` (QEMU has no NVMe here) and `crc32` in
@@ -39,8 +42,8 @@ uart.log, QEMU's own log of every byte the UART sent, which must equal it;
 qemu.txt, the command line, then QEMU's own messages; typed.txt, each key
 and line sent, with its time after QEMU's start and in UTC and its echo's
 verdict; session.txt, the session's facts, the findings, and last
-`BE_MVP_UBOOT_SESSION[LABEL]: PASS|REFUSED|FAIL ...`. Exit 0 PASS, 3
-REFUSED, 1 FAIL, 2 usage.
+`BE_MVP_UBOOT_SESSION[LABEL]: PASS|REFUSED|FAIL ...`; and oracle.json.
+Exit 0 PASS, 3 REFUSED, 1 FAIL, 2 usage.
 
 The rehearsal's own checks (judge), independent of tests/check-capture.py
 and kept beside it: OpenSBI's banner names one boot hart and SBI 2.0; one
@@ -95,6 +98,9 @@ import time
 import zlib
 
 HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+import qemu_oracle  # noqa: E402 pylint: disable=wrong-import-position
+
 LAYOUT_H = HERE.parents[1] / "src" / "mvp-layout.h"
 # The plan's literal load address (Q2), which be_ld and be_go type.
 LOAD = 0x140000000
@@ -440,22 +446,11 @@ def type_line(console, typed, line, start):
     return start + len(text)
 
 
-def stop(process):
-    """PROCESS's exit status, after killing it if it still runs."""
-    if process.poll() is not None:
-        return str(process.returncode)
-    process.kill()
-    try:
-        return f"killed:{process.wait(timeout=10)}"
-    except subprocess.TimeoutExpired:
-        return "killed:none"
-
-
-def run_session(args, paths, lines, expect, status):
+def run_session(args, paths, lines, expect, status, config):
     """QEMU through the session into PATHS; STATUS records how far it got."""
     argv = [args.qemu, "-machine", args.machine, "-cpu", args.cpu, "-smp", "8",
             "-m", "8G", "-bios", args.firmware, "-kernel", args.uboot,
-            "-display", "none", "-monitor", "none", "-no-reboot", "-drive",
+            "-display", "none", "-no-reboot", "-drive",
             f"file={args.disk},format=raw,if=none,id=d0", "-device",
             "virtio-blk-device,drive=d0", "-chardev",
             f"stdio,id=uart0,signal=off,logfile={paths['uart.log']},"
@@ -468,12 +463,19 @@ def run_session(args, paths, lines, expect, status):
         qemu_out.flush()
         typed = Typed(paths["typed.txt"])
         try:
-            qemu = subprocess.Popen(argv, stdin=subprocess.PIPE,
-                                    stdout=subprocess.PIPE, stderr=qemu_out)
-        except OSError:
+            oracle = qemu_oracle.OracleProcess.launch(
+                argv, config, paths["oracle.json"], stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=qemu_out)
+        except (qemu_oracle.OracleError, OSError):
+            qemu_oracle.write_failure_record(
+                paths["oracle.json"], "QEMU or QMP setup failed")
+            status["error"] = "oracle: QEMU or QMP setup failed"
+            status["qemu_exit"] = "killed:none"
             typed.handle.close()
-            raise
+            return
+        qemu = oracle.process
         console = Console(qemu, log)
+        end_state, harness_reason, harness_pass = None, None, False
         try:
             status["stage"] = "autoboot"
             position = console.find(AUTOBOOT, 0, args.boot_timeout, "autoboot")
@@ -492,23 +494,40 @@ def run_session(args, paths, lines, expect, status):
                 status["stage"] = "exit"
                 deadline = time.monotonic() + args.exit_timeout
                 while not console.closed and time.monotonic() < deadline:
+                    try:
+                        end_state = oracle.poll_end()
+                    except qemu_oracle.OracleError as error:
+                        raise Stop(f"oracle: {error}") from None
+                    if end_state is not None:
+                        break
                     console.read_some(0.1)
-                try:
-                    qemu.wait(timeout=max(0.1, deadline - time.monotonic()))
-                except subprocess.TimeoutExpired:
-                    raise Stop(f"exit: QEMU still runs {args.exit_timeout:g} "
-                               f"s after the terminal marker") from None
+                if end_state is None:
+                    harness_reason = (f"exit limit {args.exit_timeout:g} s "
+                                      "after the terminal marker")
             else:
                 status["stage"] = "fallthrough"
                 position = console.find(FALLEN, position, 60, "fallthrough")
                 console.find(PROMPT, position, 15, "prompt after FALLTHROUGH")
                 time.sleep(1)
+                harness_reason = "fallthrough complete"
+                harness_pass = True
             console.drain()
             status["stage"] = "done"
         except (Stop, OSError) as error:
             status["error"] = str(error)
+            harness_reason = harness_reason or \
+                f"session stopped at {status['stage']}"
         finally:
-            status["qemu_exit"] = stop(qemu)
+            outcome = oracle.finish(end=end_state,
+                                    harness_reason=harness_reason,
+                                    harness_pass=harness_pass)
+            status["oracle_verdict"] = "PASS" if outcome.passed else "FAIL"
+            status["oracle"] = outcome.detail
+            if not outcome.passed:
+                status["error"] = (
+                    f"{status['error']}; " if status["error"] != "-" else ""
+                ) + f"oracle: {outcome.detail}"
+            status["qemu_exit"] = qemu_oracle.launcher_exit(qemu.returncode)
             console.drain()
             for pipe in (qemu.stdin, qemu.stdout):
                 try:
@@ -524,10 +543,20 @@ def session(args):
     expect = json.loads(pathlib.Path(args.expect).read_text(
         encoding="utf-8")) if args.expect else None
     image = pathlib.Path(args.image).read_bytes()
+    words = [qemu_oracle.word_from_binary_elf(
+        "u-boot-entry", args.uboot, args.uboot_elf)]
+    if expect:
+        words.append(qemu_oracle.word_from_image(
+            "boot-image-header", args.image, values["STAGING_HPA"]))
+    config = qemu_oracle.OracleConfig(
+        8, "k3-like", False, "readable", "readable", "absent",
+        0x80000000, 0x200000000, tuple(words))
+    config.validate()
     out = pathlib.Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
     paths = {name: out / name for name in (
-        "console.log", "uart.log", "qemu.txt", "typed.txt", "session.txt")}
+        "console.log", "uart.log", "qemu.txt", "typed.txt", "session.txt",
+        "oracle.json")}
     for path in paths.values():
         if path.exists():
             path.unlink()
@@ -537,7 +566,7 @@ def session(args):
               "qemu_exit": "none"}
     started = time.monotonic()
     try:
-        run_session(args, paths, lines, expect, status)
+        run_session(args, paths, lines, expect, status, config)
     except OSError as error:
         status["error"] = f"QEMU: {error}"
     status["seconds"] = f"{time.monotonic() - started:.1f}"
@@ -547,7 +576,9 @@ def session(args):
     if status["stage"] != "done":
         findings.insert(0, f"the session stopped at {status['stage']}: "
                         f"{status['error']}")
-    wanted = "0" if expect else "killed:-9"
+    if status.get("oracle_verdict") != "PASS":
+        findings.insert(0, status.get("error", "the oracle did not pass"))
+    wanted = "0"
     if status["qemu_exit"] != wanted:
         findings.append(f"QEMU's exit {status['qemu_exit']}, not {wanted}")
     uart = paths["uart.log"].read_bytes() if paths["uart.log"].exists() \
@@ -564,7 +595,8 @@ def session(args):
               f"fallthrough={'no' if findings else 'yes'}")
     line = (f"BE_MVP_UBOOT_SESSION[{args.label}]: {verdict} "
             f"boot_hart={facts.get('boot_hart', 'none')} "
-            f"qemu_exit={status['qemu_exit']} {detail} "
+            f"qemu_exit={status['qemu_exit']} "
+            f"oracle={status.get('oracle_verdict', 'FAIL')} {detail} "
             f"seconds={status['seconds']}")
     paths["session.txt"].write_text(
         "".join(f"{key}={value}\n" for key, value in status.items())
@@ -741,8 +773,9 @@ def main(argv):
         formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
     run = commands.add_parser("session")
-    for option in ("--label", "--firmware", "--uboot", "--disk", "--image",
-                   "--file", "--machine", "--cpu", "--output"):
+    for option in ("--label", "--firmware", "--uboot", "--uboot-elf",
+                   "--disk", "--image", "--file", "--machine", "--cpu",
+                   "--output"):
         run.add_argument(option, required=True)
     kind = run.add_mutually_exclusive_group(required=True)
     kind.add_argument("--expect")
@@ -765,7 +798,8 @@ def main(argv):
         if args.command == "self-test":
             return self_test()
         if args.command == "session":
-            for path in (args.firmware, args.uboot, args.disk, args.image):
+            for path in (args.firmware, args.uboot, args.uboot_elf, args.disk,
+                         args.image):
                 if not os.access(path, os.R_OK):
                     parser.error(f"{path} is not readable")
             return session(args)
@@ -782,7 +816,8 @@ def main(argv):
               f"qemu_image_crc32={zlib.crc32(data):08x}\n"
               f"qemu_text_offset=0x{values['QEMU_TEXT_OFFSET']:x}")
         return 0
-    except (Refused, OSError, KeyError, ValueError) as error:
+    except (Refused, qemu_oracle.OracleError, OSError, KeyError,
+            ValueError) as error:
         print(f"BE_MVP_UBOOT_REHEARSAL: FAIL {args.command}: {error}")
         return 1
 
