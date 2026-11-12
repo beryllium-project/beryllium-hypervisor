@@ -1577,3 +1577,55 @@ mvp_m11_stops=1..18
 mvp_m11_open_questions=Q1-Q22-defaults
 mvp_m11_board=not-authorized;needs-the-inventory-the-amendment-and-an-addendum
 ```
+
+## Decision record
+
+The responsible human's decisions on this plan's stops and questions
+after its acceptance, each by his reply and its date. Each changes the
+text above as it says; the text above is otherwise as accepted.
+
+- **2026-11-11, `ar: yes`** (stop 11: a tool that the tool lock does
+  not name). The firmware base's build runs the RISC-V archiver, which
+  the lock did not name. The lock gains a role, `cross_ar`, for the
+  archiver of the closure's `binutils-riscv64-linux-gnu` package, which
+  the closure already held.
+- **2026-11-11, `review: yes`**: the proof-impact review's three
+  items, recorded in the review itself
+  ([`mvp-m11-proof-impact.md`](mvp-m11-proof-impact.md)).
+- **2026-11-12, `verify: wp3`** (stop 11: a baseline `verify` that
+  differs from the last record; Q22). The host for `verify` is the
+  development host, `lx2`. Its baseline at the lock commit equals the
+  last record in every suite but the WP arm, which proved 127 of 134
+  goals where the record has 130: six provers at once on four cores
+  took three goals past the prover's 60 s limit. So the WP arm runs at
+  most as many provers at once as the host has physical cores less
+  one, and never more than six, and at most as many mutant jobs at
+  once as those cores allow, and never more than two: three and one on
+  `lx2`; six and two, as before, on `l1`, the workstation that made
+  the last record. This changes one arm, against "The host for
+  `verify`" ("The arms themselves do not change"). The WP arm alone is
+  run again at the lock commit with this change. If its records equal
+  the last record's, the baseline is the run of 2026-11-11 with those
+  records, and the one qualification case whose prover stopped at its
+  limit is accepted as a time-limit crossing; otherwise the baseline
+  returns to the responsible human. D-11's four points run with the
+  changed arm.
+- **2026-11-12, `oracle: absent`** (stop 12: the oracle unable to read
+  a hart's PMP registers at the end of a run). Two of D-12's machines
+  cannot show them, and both run with the boundary off: QEMU's
+  `rva23s64` CPU has no PMP, and the CHERI variant's emulator ends its
+  process at the guest's shutdown, so no stopped machine remains to
+  read. Each machine row declares each register class readable or
+  absent. On `rva23` the oracle requires and records the PMP
+  registers' absence, and reads the rest as on the other machines. The
+  CHERI variant's runs end as before, with no oracle attached, and each
+  attempt keeps a fixed record that says so. A boundary-on run must be
+  on `k3-like` with every class readable, or it is refused before QEMU
+  starts. D-12's `rva23` row has no PMP mode, and M11-2's exit "The
+  oracle reads all eight harts' PMP registers" holds of every run on a
+  machine whose CPU has PMP.
+- **2026-11-12, `harness: 7000`** (stop 16). The soft limit of the
+  lane "The harness, the oracle, the capture checker's rules, the
+  scenarios' generator, the ledger's tool, and the model's tools" is
+  7,000 counted lines, in place of 3,500: M11-2 alone reached the
+  earlier limit.
