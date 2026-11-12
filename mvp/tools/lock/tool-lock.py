@@ -22,7 +22,8 @@ U-Boot pins (planning/mvp-m5-plan.md, Q9: its source, the script that
 builds it, and the binary's SHA-256, which tests/uboot-rehearsal.sh
 requires), and the SHA-256 of the evaluator's package closure
 (closure.txt), which lists each package's exact NEVRA and the SHA-256 of
-its RPM file (M0-B.1).
+its RPM file (M0-B.1). The cross_ar role pins the RISC-V archiver used
+by M11's OpenSBI firmware build beside the other cross-binutils roles.
 Trust: `check` fails closed on any drift: a role's command, resolved path,
 bytes, version line, or owning package; a compiler driver that resolves its
 cc1, collect2, as, or ld to another executable; a pin that is malformed or
@@ -79,6 +80,7 @@ ROLES = (
     ("cross_gcc_cc1", ("cross_gcc", CROSS, "cc1"), "-version -o /dev/null"),
     ("cross_gcc_collect2", ("cross_gcc", CROSS, "collect2"), "--version"),
     ("cross_as", CROSS + "as", "--version"),
+    ("cross_ar", CROSS + "ar", "--version"),
     ("cross_ld", CROSS + "ld", "--version"),
     ("cross_nm", CROSS + "nm", "--version"),
     ("cross_objcopy", CROSS + "objcopy", "--version"),
@@ -758,6 +760,9 @@ def self_test():
         "usage", "status 1"))
     expect("a version command that exits otherwise", lambda: first_line(
         "/usr/bin/bash", ["-c", "echo usage; exit 1"]), "status 1")
+    expect("the RISC-V archiver role", lambda: require(
+        ("cross_ar", CROSS + "ar", "--version") in ROLES,
+        "cross_ar role"))
     expect("the accepted OpenSBI pin", lambda: verify_opensbi(PINS))
     expect("another OpenSBI pin", lambda: verify_opensbi(
         dict(PINS, MVP_PIN_OPENSBI_COMMIT="0" * 40)), "does not build")

@@ -1850,20 +1850,23 @@ Two refreshes followed, each on the responsible human's direction: on
 [Results](#the-lock-refresh-and-the-gates-at-804fa95f-2026-10-25)), and on
 2026-10-26 on the workstation `l1`, which changed the `ssh` and `scp`
 roles and four closure lines (see
-[Results](#the-host-move-and-the-lock-refresh-on-l1-2026-10-26)). The
-table is the lock as it now stands.
+[Results](#the-host-move-and-the-lock-refresh-on-l1-2026-10-26)). M11-2
+refreshed it on the laptop `lx2` on 2026-11-11 (`python3`, the host GCC
+with its `cc1` and `collect2`, `sfdisk`, and the closure, 259 packages to
+257), then added the role `cross_ar`, the RISC-V archiver that the
+firmware base's build runs. The table is the lock as it now stands.
 
-| Role (32) | Version | Package |
+| Role (33) | Version | Package |
 | --- | --- | --- |
 | `make` | GNU Make 4.4.1 | `make-1:4.4.1-12.fc44.x86_64` |
 | `shell` (`/usr/bin/bash`) | GNU bash 5.3.9(1) | `bash-5.3.9-3.fc44.x86_64` |
-| `python3` | Python 3.14.8 | `python3-3.14.8-1.fc44.x86_64` |
+| `python3` | Python 3.14.10 | `python3-3.14.10-1.fc44.x86_64` |
 | `cross_gcc`, `cross_gcc_cc1`, `cross_gcc_collect2` | riscv64-linux-gnu-gcc 16.2.1 20260819 | `gcc-riscv64-linux-gnu-16.2.1-1.fc44.x86_64` |
-| `cross_as`, `cross_ld`, `cross_nm`, `cross_objcopy`, `cross_objdump`, `cross_readelf`, `cross_size` | GNU binutils 2.46.1 | `binutils-riscv64-linux-gnu-2.46.1-1.fc44.x86_64` |
+| `cross_as`, `cross_ar`, `cross_ld`, `cross_nm`, `cross_objcopy`, `cross_objdump`, `cross_readelf`, `cross_size` | GNU binutils 2.46.1 | `binutils-riscv64-linux-gnu-2.46.1-1.fc44.x86_64` |
 | `clang`, `host_clang` | clang 22.1.8 | `clang-22.1.8-4.fc44.x86_64` |
 | `lld` (`ld.lld`) | LLD 22.1.8 | `lld-22.1.8-4.fc44.x86_64` |
-| `host_gcc`, `host_gcc_collect2` | gcc 16.2.1 20260819 | `gcc-16.2.1-2.fc44.x86_64` |
-| `host_gcc_cc1` | GNU C23 16.2.1 | `cpp-16.2.1-2.fc44.x86_64` |
+| `host_gcc`, `host_gcc_collect2` | gcc 16.2.1 20261029 | `gcc-16.2.1-3.fc44.x86_64` |
+| `host_gcc_cc1` | GNU C23 16.2.1 | `cpp-16.2.1-3.fc44.x86_64` |
 | `host_as`, `host_ld` | GNU binutils 2.46.1 | `binutils-2.46.1-1.fc44.x86_64` |
 | `qemu` (`qemu-system-riscv64`) | QEMU 10.2.2 | `qemu-system-riscv-core-2:10.2.2-1.fc44.x86_64` |
 | `dtc` | DTC 1.8.1 | `dtc-1.8.1-6.fc44.x86_64` |
@@ -1874,7 +1877,7 @@ table is the lock as it now stands.
 | `ssh` (host-only, `-V`) | OpenSSH_10.2p1, OpenSSL 3.5.9 | `openssh-clients-10.2p1-16.fc44.x86_64` (`-14` until the refresh on `l1`) |
 | `scp` (host-only) | its usage line, exit status 1 (no version option) | `openssh-clients-10.2p1-16.fc44.x86_64` (`-14` until the refresh on `l1`) |
 | `mke2fs` (host-only, `-V`; M5-3) | mke2fs 1.47.3 (8-Jul-2025) | `e2fsprogs-1.47.3-4.fc44.x86_64` |
-| `sfdisk` (host-only; M5-3) | sfdisk from util-linux 2.41.5 | `util-linux-2.41.5-1.fc44.x86_64` |
+| `sfdisk` (host-only; M5-3) | sfdisk from util-linux 2.41.6 | `util-linux-2.41.6-1.fc44.x86_64` |
 | `tmux` (host-only, `-V`; M5, `0e733e76`) | tmux 3.8 | `tmux-3.8-2.fc44.x86_64` |
 
 The pins are Linux `v7.2` (commit
