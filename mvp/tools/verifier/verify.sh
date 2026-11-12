@@ -18,7 +18,8 @@
 #          M8-4), and M8-6's arms (verify/tools/wp-arm.py, cn-arm.py,
 #          cbmc-leaf-a.py on Leaf A; cbmc-ring.py on Leaf B), each
 #          recording its result line, which the human reads (the suite's
-#          PASS means ran and recorded).
+#          PASS means ran and recorded), then the solver runs near their
+#          time limits (verify/tools/near-limit.py).
 # Trust:   podman is the tool lock's (a host-only role). Each suite in the
 #          image runs as evaluate.sh runs mvp check: podman run --rm --init
 #          --network=none --security-opt label=disable, the tree mounted at
@@ -42,10 +43,11 @@
 #          tools.txt, why3-detect.txt, sources.sha256), each suite's log,
 #          the suites' records (qualification.txt and .json, qualify/,
 #          litmus.txt, litmus/; wp/, cn/, cbmc-leaf-a/, and cbmc-ring/, the
-#          arms'), and specification.md: the specification's text at the
-#          commit target-digests.txt pins, exported with the lock's git on
-#          the host, which digests.py hashes in the image (no git there,
-#          and a worktree's repository is not mounted).
+#          arms'), near-limit.txt and near-limit.log, and specification.md:
+#          the specification's text at the commit target-digests.txt pins,
+#          exported with the lock's git on the host, which digests.py hashes
+#          in the image (no git there, and a worktree's repository is not
+#          mounted).
 #          It exits non-zero if the image cannot be built or a suite fails.
 #
 #   verify.sh [image] [MVP_RPM_CACHE=DIR] [MVP_SRC_CACHE=DIR]
@@ -223,6 +225,12 @@ suite cn-arm 'BE_MVP_CN_ARM: ' \
 suite cbmc-leaf-a 'BE_MVP_CBMC_LEAF_A: ' \
 	/usr/bin/python3 -I -B mvp/verify/tools/cbmc-leaf-a.py --run --out "$out/cbmc-leaf-a"
 suite cbmc-ring 'BE_MVP_CBMC_RING: ' /usr/bin/python3 -I -B mvp/verify/tools/cbmc-ring.py --run --out "$out"
+
+# The solver runs near their time limits, read from the arms' logs and
+# written beside the record as near-limit.txt: a list, never a verdict;
+# its counts are run metadata. An incomplete list fails verify.
+suite near-limit 'BE_MVP_NEAR_LIMIT: ' \
+	/usr/bin/python3 -I -B mvp/verify/tools/near-limit.py --list "$out"
 
 note "wall_seconds=$(($(date +%s) - started))"
 [ -z "$failed" ] || die "suites failed:$failed"

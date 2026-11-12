@@ -269,11 +269,12 @@ session-typist-check:
 # compiled sequences, herd7's outputs, and a fake objdump (verify checks the
 # record against the built monitors); the Leaf A arms' runners
 # (verify/tools/wp-arm.py, cn-arm.py, cbmc-leaf-a.py; M8-6) on recorded
-# outputs and the committed annotations; the verifier closure's resolver
-# and fetch (tools/verifier/closure.py) and the source fetch with a planted
-# wrong digest (tools/verifier/fetch-sources.py); then the verifier's shell
-# scripts (bash -n, shellcheck) and Python (parsed), which the lint
-# target's lists do not reach.
+# outputs and the committed annotations; the post-run near-limit list on
+# synthetic logs and reports; the verifier closure's resolver and fetch
+# (tools/verifier/closure.py) and the source fetch with a planted wrong
+# digest (tools/verifier/fetch-sources.py); then the verifier's shell scripts
+# (bash -n, shellcheck) and Python (parsed), which the lint target's lists do
+# not reach.
 VERIFIER_SHELL := $(wildcard $(MVP_DIR)/tools/verifier/*.sh \
 	$(MVP_DIR)/verify/tools/*.sh)
 VERIFIER_PYTHON := $(wildcard $(MVP_DIR)/tools/verifier/*.py \
@@ -294,6 +295,8 @@ verify-tools-check:
 	$(PYTHON) -I -B $(MVP_DIR)/verify/tools/wp-arm.py --self-test
 	$(PYTHON) -I -B $(MVP_DIR)/verify/tools/cn-arm.py --self-test
 	$(PYTHON) -I -B $(MVP_DIR)/verify/tools/cbmc-leaf-a.py --self-test
+	$(PYTHON) -I -B $(MVP_DIR)/verify/tools/near-limit.py --self-test \
+		--scratch $(TMPDIR)/near-limit-self-test
 	$(PYTHON) -I -B $(MVP_DIR)/tools/verifier/closure.py --self-test
 	$(PYTHON) -I -B $(MVP_DIR)/tools/verifier/fetch-sources.py --self-test
 	set -e; for script in $(VERIFIER_SHELL); do bash -n "$$script"; done
