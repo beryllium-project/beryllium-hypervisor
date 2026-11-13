@@ -1,0 +1,64 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 12 Nov 2026 00:00:00 +0000
+Subject: [PATCH 2/9] lib: sbi: stop a hart whose domain switch fails to
+ program its PMP
+
+switch_to_next_domain_context() ignores the result of
+sbi_hart_protection_reconfigure(). When the target domain needs more
+PMP entries than the hart has, the old entries are already disabled and
+only some of the new ones are programmed, yet the hart goes on to run
+the target domain. Stop the hart in M-mode instead.
+
+When the target domain has not run on this hart before, the switch
+enters it directly and never returns to the trap frame it has just
+saved. The scratch area still points at that frame as the current trap
+context, so the next trap, taken at the same stack address, records
+itself as its own previous context and sbi_trap_error() never finishes
+walking the chain. Clear the pointer before entering the new context.
+
+AI-assisted-by: Claude Opus 5.5 (Anthropic), in the GitHub Copilot CLI
+---
+ lib/sbi/sbi_domain_context.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/lib/sbi/sbi_domain_context.c b/lib/sbi/sbi_domain_context.c
+index bb505fb..cf8d157 100644
+--- a/lib/sbi/sbi_domain_context.c
++++ b/lib/sbi/sbi_domain_context.c
+@@ -117,6 +117,7 @@ static int switch_to_next_domain_context(struct hart_context *ctx,
+ 	struct sbi_trap_context *trap_ctx;
+ 	struct sbi_domain *current_dom, *target_dom;
+ 	struct sbi_scratch *scratch = sbi_scratch_thishart_ptr();
++	int rc;
+ 
+ 	if (!ctx || !dom_ctx || ctx == dom_ctx)
+ 		return SBI_EINVAL;
+@@ -176,13 +177,26 @@ static int switch_to_next_domain_context(struct hart_context *ctx,
+ 	 * is also required for some of the above CSR updates (such
+ 	 * as satp CSR).
+ 	 */
+-	sbi_hart_protection_reconfigure(scratch, current_dom, target_dom);
++	rc = sbi_hart_protection_reconfigure(scratch, current_dom, target_dom);
++	if (rc) {
++		/* The hart must not run with a partly programmed protection */
++		sbi_printf("%s: hart%u protection for domain %s failed (error %d)\n",
++			   __func__, current_hartid(), target_dom->name, rc);
++		sbi_hart_hang();
++	}
+ 
+ 	/* Mark current context structure initialized because context saved */
+ 	ctx->initialized = true;
+ 
+ 	/* If target domain context is not initialized or runnable */
+ 	if (!dom_ctx->initialized) {
++		/*
++		 * The trap frame saved above is never returned to, so it must
++		 * not stay the current trap context: the next trap from the
++		 * new context reuses its address and would link to itself.
++		 */
++		sbi_trap_set_context(scratch, NULL);
++
+ 		/* Startup boot HART of target domain */
+ 		if (current_hartid() == target_dom->boot_hartid)
+ 			sbi_hart_switch_mode(target_dom->boot_hartid,

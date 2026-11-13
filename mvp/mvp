@@ -27,8 +27,12 @@
 #   ./mvp check [VAR=VALUE ...]        every off-board check (make check)
 #   ./mvp port                         the port, re-derived byte for byte
 #   ./mvp host-test                    the host tests, GCC = Clang
-#   ./mvp firmware [FIRMWARE_GIT=...]  build and pin-check M11's unmodified
-#                                      upstream OpenSBI base
+#   ./mvp firmware [FIRMWARE_GIT=...]  build and pin-check M11's firmware,
+#                                      the OpenSBI base with its patch
+#                                      series in the reduced configuration
+#   ./mvp firmware-test [FIRMWARE_GIT=...]
+#                                      the firmware's own tests: host, and
+#                                      QEMU in both PMP modes (M11-6)
 #   ./mvp tool-lock check|refresh      verify, or rewrite, the tool lock
 #   ./mvp evaluate [VAR=VALUE ...]     mvp check in the clean evaluator
 #   ./mvp verify [VAR=VALUE ...]       the M8 verification suites in the
@@ -219,6 +223,9 @@ host-test)
 	;;
 firmware)
 	run_make firmware "$@"
+	;;
+firmware-test)
+	run_make firmware-test "$@"
 	;;
 tool-lock)
 	[ "$#" -eq 1 ] || { usage; exit 2; }

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
+# The patch series over the pinned OpenSBI base, in the order in which
+# firmware/build.sh applies it. The patches are BSD-2-Clause (COPYING).
+0001-lib-sbi-allocate-domain-switch-contexts-at-cold-boot.patch
+0002-lib-sbi-stop-a-hart-whose-domain-switch-fails-to-pro.patch
+0003-lib-sbi-add-a-check-of-the-PMP-entries-against-a-dom.patch
+0004-lib-sbi-keep-a-per-hart-record-of-PMP-faults-returne.patch
+0005-lib-sbi-filter-the-SBI-calls-of-domains-that-have-an.patch
+0006-lib-utils-fdt-parse-SBI-call-allowlists-and-a-config.patch
+0007-lib-sbi-add-the-experimental-domain-commit-extension.patch
+0008-lib-sbi-print-the-domain-commit-records-at-system-re.patch
+0009-docs-document-SBI-call-allowlists-and-the-domain-com.patch

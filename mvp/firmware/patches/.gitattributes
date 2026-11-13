@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
+# The patch files keep git format-patch's own form, in which a blank
+# context line is a single space and an indented one starts with a space
+# and a tab; Git's whitespace checks therefore skip them, as they skip the
+# patch files under cheri/. firmware/build.sh applies each patch with
+# git apply --whitespace=error, so the lines that a patch adds are still
+# checked.
+*.patch -whitespace

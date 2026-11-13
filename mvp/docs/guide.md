@@ -128,10 +128,14 @@ firmware are built from pinned sources on each host and never committed:
 - **The firmware base.** Every plain emulated run except
   `firmware-version` boots `build/mvp/firmware/platform/generic/firmware/fw_dynamic.bin`,
   built from the exact source commit and tree in
-  `mvp/firmware/pins.mk`. Its SHA-256 must be
+  `mvp/firmware/pins.mk` with M11's patch series (`mvp/firmware/patches/`)
+  applied, in the reduced configuration of `mvp/firmware/config`. Its
+  SHA-256 must be
   `MVP_PIN_FIRMWARE_BIN_SHA256`; every launcher checks it before every
   run. The evaluator receives the source through a read-only offline
   mirror, builds it again, and compares the binary with the host's.
+  `./mvp/mvp firmware-test` runs the firmware's own tests, which `check`
+  runs too (`mvp/firmware/README.md`).
 - **The earlier firmware, OpenSBI `v1.6`.** The `firmware-version`
   negative alone boots the `fw_dynamic.bin` built from the lock's OpenSBI
   commit: B1's build under `build/k3-b1/` when present, otherwise the one

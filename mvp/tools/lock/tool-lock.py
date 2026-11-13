@@ -17,8 +17,8 @@ NEVRA; plus the Linux and OpenSBI source pins, the SHA-256 of the OpenSBI
 firmware every QEMU run boots (fw_dynamic.bin, which tests/run-qemu.sh,
 tests/session-typist.py, tests/uboot-rehearsal.sh,
 tools/run-reference-boot.sh, the evaluator, and mvp/Makefile's opensbi
-target each require before it boots), the SHA-256 of M11's unmodified
-OpenSBI firmware base (built but not booted yet), the U-Boot rehearsal's
+target each require before it boots), the SHA-256 of M11's firmware, the
+OpenSBI base with its patch series, the U-Boot rehearsal's
 U-Boot pins (planning/mvp-m5-plan.md, Q9: its source, the script that
 builds it, and the binary's SHA-256, which tests/uboot-rehearsal.sh
 requires), and the SHA-256 of the evaluator's package closure
@@ -149,11 +149,12 @@ PINS = {
     # the digest release candidate 4's records name (opensbi=78f14d30c951).
     "MVP_PIN_OPENSBI_BIN_SHA256":
         "78f14d30c95181704b6163b4c114f88483cd6c2c89e642812cd3856d01c6a42b",
-    # M11's unmodified upstream OpenSBI base (firmware/pins.mk), built with
-    # the lock's tools on the host and inside the evaluator. Every plain
-    # run except firmware-version boots it.
+    # M11's firmware: the upstream OpenSBI base (firmware/pins.mk) with the
+    # patch series of firmware/patches, in the reduced configuration of
+    # firmware/config, built with the lock's tools on the host and inside
+    # the evaluator. Every plain run except firmware-version boots it.
     "MVP_PIN_FIRMWARE_BIN_SHA256":
-        "ebd912c6e687b472564d737ea360d1723120e1a904d92e08e8ffc0a2d86bbd70",
+        "53005931558a7f7dee18a6b13c3a6385d4cba4841273661d64ce9a500f0f2a35",
     # The U-Boot rehearsal's U-Boot (planning/mvp-m5-plan.md, Q9): B3's
     # pinned upstream build, an external input never committed, which its
     # script builds from these and the rehearsal requires by SHA-256.
@@ -196,7 +197,8 @@ HEADER = """\
 # first version line, the executable's SHA-256, and the owning package's
 # NEVRA. The pins are the Linux and OpenSBI sources, the SHA-256 of the
 # OpenSBI firmware QEMU runs (fw_dynamic.bin), the SHA-256 of M11's
-# unmodified OpenSBI firmware base, and the U-Boot rehearsal's U-Boot: its
+# firmware (the OpenSBI base with its patch series), and the U-Boot
+# rehearsal's U-Boot: its
 # source, its build script, and its binary's SHA-256 (planning/mvp-m5-plan.md,
 # Q9). MVP_CLOSURE_SHA256 binds
 # tools/lock/closure.txt, the evaluator's package closure. This file is

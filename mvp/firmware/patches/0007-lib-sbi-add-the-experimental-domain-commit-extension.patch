@@ -1,0 +1,384 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 12 Nov 2026 00:00:00 +0000
+Subject: [PATCH 7/9] lib: sbi: add the experimental domain commit extension
+
+Add an experimental SBI extension, 0x08004246, with two functions.
+
+Function 0 commits the calling hart to its run-time domain. The hart
+must run in the non-root domain of least initialization order that
+lists it, exactly one other non-root domain must list it, and that
+domain must name the hart as its boot hart and have an SBI call
+allowlist. The function reads no argument: the target follows from the
+domains of the device tree and the hart that calls. The decision is a
+pure function of the domains as the hart sees them. If it holds, the
+hart leaves its domain through sbi_domain_context_exit(), which enters
+the target at its next address in its next mode; otherwise the call
+returns SBI_ERR_DENIED and changes nothing. Since the target has the
+greater initialization order, no hart can commit back.
+
+Function 1 returns one word of the configuration digest read from the
+device tree, most significant word first. It is served only to a hart
+in a non-root domain without an allowlist, the domain a hart boots in.
+
+Whenever the memory protection of a hart is configured for a domain
+with an allowlist, at a switch, a warm boot or a resume, the hart's
+menvcfg.CBIE is cleared, so that cache-block invalidation is illegal
+below M-mode, and the PMP entries are checked against the domain's
+regions. A mismatch fails the configuration, which stops the hart. The
+commit record then keeps menvcfg, mseccfg and the first PMP entries.
+
+AI-assisted-by: Claude Opus 5.5 (Anthropic), in the GitHub Copilot CLI
+---
+ include/sbi/sbi_dcommit.h         |  71 ++++++++++++++++++++
+ include/sbi/sbi_ecall_interface.h |   5 ++
+ lib/sbi/Kconfig                   |   9 +++
+ lib/sbi/objects.mk                |   3 +
+ lib/sbi/sbi_dcommit.c             | 107 ++++++++++++++++++++++++++++++
+ lib/sbi/sbi_ecall_dcommit.c       |  41 ++++++++++++
+ lib/sbi/sbi_hart_protection.c     |   5 +-
+ 7 files changed, 239 insertions(+), 2 deletions(-)
+ create mode 100644 lib/sbi/sbi_ecall_dcommit.c
+
+diff --git a/include/sbi/sbi_dcommit.h b/include/sbi/sbi_dcommit.h
+index 4063091..5047546 100644
+--- a/include/sbi/sbi_dcommit.h
++++ b/include/sbi/sbi_dcommit.h
+@@ -89,6 +89,49 @@ static inline bool sbi_dcommit_call_allowed(const struct sbi_dcommit_ecall *list
+ /** Number of 32-bit cells in a configuration digest */
+ #define SBI_DCOMMIT_DIGEST_CELLS	8
+ 
++/** Most non-root domains that may list a hart for its commit to be decided */
++#define SBI_DCOMMIT_VIEWS_MAX		3
++
++/** A non-root domain that lists the calling hart, as a commit sees it */
++struct sbi_dcommit_view {
++	/** Initialization order of the domain */
++	u32 order;
++	/** The calling hart runs in this domain */
++	bool caller;
++	/** The boot hart of the domain is the calling hart */
++	bool boots;
++	/** The domain has an SBI call allowlist */
++	bool listed;
++};
++
++/**
++ * Decide which domain, if any, the calling hart may commit to
++ *
++ * A hart may commit only from the non-root domain of least initialization
++ * order that lists it, to the one other non-root domain that lists it,
++ * and only when that domain names the hart as its boot hart and has an
++ * SBI call allowlist.
++ *
++ * @param v the non-root domains that list the calling hart
++ * @param n number of entries in v
++ *
++ * @return index in v of the domain to commit to, or -1 to refuse
++ */
++static inline int sbi_dcommit_target(const struct sbi_dcommit_view *v, u32 n)
++{
++	const struct sbi_dcommit_view *from, *to;
++
++	if (n != 2 || v[0].caller == v[1].caller)
++		return -1;
++
++	from = v[0].caller ? &v[0] : &v[1];
++	to = v[0].caller ? &v[1] : &v[0];
++	if (from->order >= to->order || !to->boots || !to->listed)
++		return -1;
++
++	return v[0].caller ? 1 : 0;
++}
++
+ /** Table of commit records, indexed by hart index */
+ extern struct sbi_dcommit_hart sbi_dcommit_harts[];
+ 
+@@ -116,4 +159,32 @@ void sbi_dcommit_ecall_done(int ret);
+  */
+ void sbi_dcommit_set_digest(const u32 *cells);
+ 
++struct sbi_scratch;
++struct sbi_domain;
++
++/**
++ * Finish the memory protection of the current hart for a domain with an
++ * SBI call allowlist: make cache-block invalidation illegal below M-mode,
++ * check the PMP entries, and fill in the hart's commit record. Does
++ * nothing for a domain without an allowlist.
++ *
++ * @return 0 on success and negative error code on failure
++ */
++int sbi_dcommit_seal_hart(struct sbi_scratch *scratch, struct sbi_domain *dom);
++
++/**
++ * Move the calling hart to the domain chosen by sbi_dcommit_target()
++ *
++ * @return negative error code; does not return on success
++ */
++int sbi_dcommit_commit(void);
++
++/**
++ * Get one XLEN-wide word of the configuration digest, most significant
++ * word first
++ *
++ * @return 0 on success and negative error code on failure
++ */
++int sbi_dcommit_digest_word(unsigned long index, unsigned long *word);
++
+ #endif
+diff --git a/include/sbi/sbi_ecall_interface.h b/include/sbi/sbi_ecall_interface.h
+index fd4e77c..395e61b 100644
+--- a/include/sbi/sbi_ecall_interface.h
++++ b/include/sbi/sbi_ecall_interface.h
+@@ -498,6 +498,11 @@ enum sbi_sse_state {
+ #define SBI_SPEC_VERSION_MINOR_MASK		0xffffff
+ #define SBI_EXT_EXPERIMENTAL_START		0x08000000
+ #define SBI_EXT_EXPERIMENTAL_END		0x08FFFFFF
++
++/* Experimental domain commit extension and its function IDs */
++#define SBI_EXT_DCOMMIT				0x08004246
++#define SBI_EXT_DCOMMIT_COMMIT			0x0
++#define SBI_EXT_DCOMMIT_DIGEST			0x1
+ #define SBI_EXT_VENDOR_START			0x09000000
+ #define SBI_EXT_VENDOR_END			0x09FFFFFF
+ #define SBI_EXT_FIRMWARE_START			0x0A000000
+diff --git a/lib/sbi/Kconfig b/lib/sbi/Kconfig
+index 24132ea..fb60a0b 100644
+--- a/lib/sbi/Kconfig
++++ b/lib/sbi/Kconfig
+@@ -95,4 +95,13 @@ config SBI_ECALL_SSE
+ config SBI_ECALL_MPXY
+ 	bool "MPXY extension"
+ 	default y
++
++config SBI_ECALL_DCOMMIT
++	bool "Domain commit extension (experimental)"
++	default n
++	help
++	  Let a hart move once, from the domain it boots in, to a domain
++	  that names it as its boot hart and filters its SBI calls with an
++	  allowlist, and serve the configuration digest read from the
++	  device tree.
+ endmenu
+diff --git a/lib/sbi/objects.mk b/lib/sbi/objects.mk
+index 693704f..b82c199 100644
+--- a/lib/sbi/objects.mk
++++ b/lib/sbi/objects.mk
+@@ -64,6 +64,9 @@ libsbi-objs-$(CONFIG_SBI_ECALL_SSE) += sbi_ecall_sse.o
+ carray-sbi_ecall_exts-$(CONFIG_SBI_ECALL_MPXY) += ecall_mpxy
+ libsbi-objs-$(CONFIG_SBI_ECALL_MPXY) += sbi_ecall_mpxy.o
+ 
++carray-sbi_ecall_exts-$(CONFIG_SBI_ECALL_DCOMMIT) += ecall_dcommit
++libsbi-objs-$(CONFIG_SBI_ECALL_DCOMMIT) += sbi_ecall_dcommit.o
++
+ libsbi-objs-y += sbi_bitmap.o
+ libsbi-objs-y += sbi_bitops.o
+ libsbi-objs-y += sbi_console.o
+diff --git a/lib/sbi/sbi_dcommit.c b/lib/sbi/sbi_dcommit.c
+index bc4bf03..5502f43 100644
+--- a/lib/sbi/sbi_dcommit.c
++++ b/lib/sbi/sbi_dcommit.c
+@@ -4,14 +4,22 @@
+  * Copyright (c) 2026 James Morris <jmorris@namei.org>
+  */
+ 
++#include <sbi/riscv_asm.h>
+ #include <sbi/riscv_encoding.h>
+ #include <sbi/sbi_console.h>
+ #include <sbi/sbi_dcommit.h>
+ #include <sbi/sbi_domain.h>
++#include <sbi/sbi_domain_context.h>
++#include <sbi/sbi_error.h>
++#include <sbi/sbi_hart.h>
++#include <sbi/sbi_hart_pmp.h>
+ #include <sbi/sbi_hartmask.h>
+ #include <sbi/sbi_scratch.h>
+ #include <sbi/sbi_trap.h>
+ 
++/* Bound on the domains walked to decide a commit */
++#define DCOMMIT_WALK_MAX	64
++
+ struct sbi_dcommit_hart sbi_dcommit_harts[SBI_HARTMASK_MAX_BITS];
+ 
+ /* Six counters and registers, the configuration bytes, the addresses */
+@@ -69,3 +77,102 @@ void sbi_dcommit_set_digest(const u32 *cells)
+ 	sbi_printf("\n");
+ 	dcommit_digest_set = true;
+ }
++
++int sbi_dcommit_seal_hart(struct sbi_scratch *scratch, struct sbi_domain *dom)
++{
++	struct sbi_dcommit_hart *rec = dcommit_thishart();
++	bool has_menvcfg;
++	int rc;
++
++	if (!dom || !dom->ecall_filtered)
++		return 0;
++
++	/* Make cache-block invalidation illegal below M-mode */
++	has_menvcfg = sbi_hart_priv_version(scratch) >= SBI_HART_PRIV_VER_1_12;
++	if (has_menvcfg)
++		csr_clear(CSR_MENVCFG, ENVCFG_CBIE);
++
++	rc = sbi_hart_pmp_verify(scratch, dom, rec->pmpcfg, rec->pmpaddr,
++				 SBI_DCOMMIT_PMP_ENTRIES);
++	if (rc) {
++		sbi_printf("%s: hart%u PMP does not match domain %s\n",
++			   __func__, current_hartid(), dom->name);
++		return rc;
++	}
++
++	rec->menvcfg = has_menvcfg ? csr_read64(CSR_MENVCFG) : 0;
++	rec->mseccfg = sbi_hart_has_extension(scratch, SBI_HART_EXT_SMEPMP) ?
++		       csr_read64(CSR_MSECCFG) : 0;
++	rec->committed = 1;
++
++	return 0;
++}
++
++int sbi_dcommit_commit(void)
++{
++	struct sbi_dcommit_view views[SBI_DCOMMIT_VIEWS_MAX];
++	struct sbi_domain *cur = sbi_domain_thishart_ptr();
++	u32 hartindex = current_hartindex();
++	u32 hartid = current_hartid();
++	u32 n = 0, walked = 0;
++	struct sbi_domain *dom;
++
++	sbi_domain_for_each(dom) {
++		if (++walked > DCOMMIT_WALK_MAX)
++			return SBI_EDENIED;
++		if (dom == &root ||
++		    !sbi_hartmask_test_hartindex(hartindex, dom->possible_harts))
++			continue;
++		if (n == SBI_DCOMMIT_VIEWS_MAX)
++			return SBI_EDENIED;
++		views[n].order = dom->init_order;
++		views[n].caller = dom == cur;
++		views[n].boots = dom->boot_hartid == hartid;
++		views[n].listed = dom->ecall_filtered;
++		n++;
++	}
++
++	if (sbi_dcommit_target(views, n) < 0)
++		return SBI_EDENIED;
++
++	/*
++	 * Leaving a domain whose context has no caller to return to enters
++	 * the domain of least initialization order, other than the current
++	 * one, that lists this hart and has not run on it. That is the
++	 * domain chosen above: root comes after every other domain, and no
++	 * other domain lists the hart. Entering it does not return.
++	 */
++	if (sbi_domain_context_exit())
++		return SBI_EFAIL;
++
++	/*
++	 * A return without an error would mean that the target had run on
++	 * this hart before, and that the trap frame of this call now holds
++	 * that context: the hart must not go back through it.
++	 */
++	sbi_printf("%s: hart%u returned from a domain switch\n", __func__,
++		   hartid);
++	sbi_hart_hang();
++}
++
++int sbi_dcommit_digest_word(unsigned long index, unsigned long *word)
++{
++	const struct sbi_domain *dom = sbi_domain_thishart_ptr();
++	unsigned long cells = sizeof(unsigned long) / sizeof(u32);
++
++	if (!dcommit_digest_set)
++		return SBI_ENOTSUPP;
++	if (!dom || dom == &root || dom->ecall_filtered)
++		return SBI_EDENIED;
++	if (index >= SBI_DCOMMIT_DIGEST_CELLS / cells)
++		return SBI_EINVAL;
++
++#if __riscv_xlen == 64
++	*word = ((unsigned long)dcommit_digest[2 * index] << 32) |
++		dcommit_digest[2 * index + 1];
++#else
++	*word = dcommit_digest[index];
++#endif
++
++	return 0;
++}
+diff --git a/lib/sbi/sbi_ecall_dcommit.c b/lib/sbi/sbi_ecall_dcommit.c
+new file mode 100644
+index 0000000..03e85a7
+--- /dev/null
++++ b/lib/sbi/sbi_ecall_dcommit.c
+@@ -0,0 +1,41 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * Copyright (c) 2026 James Morris <jmorris@namei.org>
++ */
++
++#include <sbi/sbi_dcommit.h>
++#include <sbi/sbi_ecall.h>
++#include <sbi/sbi_ecall_interface.h>
++#include <sbi/sbi_error.h>
++#include <sbi/sbi_trap.h>
++
++static int sbi_ecall_dcommit_handler(unsigned long extid, unsigned long funcid,
++				     struct sbi_trap_regs *regs,
++				     struct sbi_ecall_return *out)
++{
++	switch (funcid) {
++	case SBI_EXT_DCOMMIT_COMMIT:
++		return sbi_dcommit_commit();
++	case SBI_EXT_DCOMMIT_DIGEST:
++		return sbi_dcommit_digest_word(regs->a0, &out->value);
++	default:
++		return SBI_ENOTSUPP;
++	}
++}
++
++struct sbi_ecall_extension ecall_dcommit;
++
++static int sbi_ecall_dcommit_register_extensions(void)
++{
++	return sbi_ecall_register_extension(&ecall_dcommit);
++}
++
++struct sbi_ecall_extension ecall_dcommit = {
++	.name			= "dcommit",
++	.extid_start		= SBI_EXT_DCOMMIT,
++	.extid_end		= SBI_EXT_DCOMMIT,
++	.experimental		= true,
++	.register_extensions	= sbi_ecall_dcommit_register_extensions,
++	.handle			= sbi_ecall_dcommit_handler,
++};
+diff --git a/lib/sbi/sbi_hart_protection.c b/lib/sbi/sbi_hart_protection.c
+index ee4d4be..cfc49fe 100644
+--- a/lib/sbi/sbi_hart_protection.c
++++ b/lib/sbi/sbi_hart_protection.c
+@@ -5,6 +5,7 @@
+  */
+ 
+ #include <sbi/sbi_console.h>
++#include <sbi/sbi_dcommit.h>
+ #include <sbi/sbi_error.h>
+ #include <sbi/sbi_hart_protection.h>
+ #include <sbi/sbi_scratch.h>
+@@ -133,7 +134,7 @@ int sbi_hart_protection_configure(struct sbi_scratch *scratch,
+ 			return ret;
+ 	}
+ 
+-	return 0;
++	return sbi_dcommit_seal_hart(scratch, dom);
+ }
+ 
+ void sbi_hart_protection_unconfigure(struct sbi_scratch *scratch,
+@@ -193,7 +194,7 @@ int sbi_hart_protection_reconfigure(struct sbi_scratch *scratch,
+ 			return ret;
+ 	}
+ 
+-	return 0;
++	return sbi_dcommit_seal_hart(scratch, next_dom);
+ }
+ 
+ int sbi_hart_protection_temp_map_range(unsigned long base, unsigned long size)

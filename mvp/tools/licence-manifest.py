@@ -57,6 +57,8 @@ GUEST_MK = "mvp/guest.mk"
 B1_MAKEFILE = "bringup/k3-b1/Makefile"
 B3_BUILD = "bringup/k3-b3/tests/build-uboot.sh"
 FIRMWARE_PINS = "mvp/firmware/pins.mk"
+FIRMWARE_SERIES = "mvp/firmware/patches/series"
+FIRMWARE_CONFIG = "mvp/firmware/config"
 INPUTS = (LOCK, PINS, GUEST_MK, B1_MAKEFILE, B3_BUILD, FIRMWARE_PINS,
           "COPYING")
 HEADER = ("<!-- SPDX-License-Identifier: GPL-3.0-only -->\n"
@@ -203,18 +205,25 @@ def components(known):
          "the `firmware-version` QEMU negative alone; the board's resident "
          "OpenSBI is the human's firmware, which the MVP neither builds nor "
          "distributes"),
-        ("OpenSBI firmware base", "firmware-base", "pin:FIRMWARE", (),
+        ("OpenSBI firmware base, with M11's patch series", "firmware-base",
+         "pin:FIRMWARE", (),
          f"unreleased development commit `{known['firmware']['commit']}` "
-         f"(tree `{known['firmware']['tree']}`; `fw_dynamic.bin` SHA-256 "
+         f"(tree `{known['firmware']['tree']}`), patched by this "
+         f"repository's series `{FIRMWARE_SERIES}` in the reduced "
+         f"configuration `{FIRMWARE_CONFIG}` (`fw_dynamic.bin` SHA-256 "
          f"`{lock['FIRMWARE_BIN_SHA256']}`)",
          "BSD-2-Clause",
          "`LICENSES/BSD-2-Clause` (OpenSBI's own text); in the pinned source, "
-         "`COPYING.BSD`",
+         "`COPYING.BSD`; the patch series is BSD-2-Clause too (`COPYING`), "
+         "and each file it adds says so in its SPDX line",
          f"{known['firmware']['url']}, commit "
          f"`{known['firmware']['commit']}`, tree "
-         f"`{known['firmware']['tree']}` (`{FIRMWARE_PINS}`, `{LOCK}`)",
-         f"{none}: built under `build/mvp/firmware` as M11's base; every "
-         "plain emulated run except `firmware-version` boots it"),
+         f"`{known['firmware']['tree']}` (`{FIRMWARE_PINS}`, `{LOCK}`), "
+         f"and this repository's `{FIRMWARE_SERIES}` with the patches it "
+         "names",
+         f"{none}: built under `build/mvp/firmware` from the base and the "
+         "series; every plain emulated run except `firmware-version` boots "
+         "it"),
         ("U-Boot", "u-boot", "pin:UBOOT", (),
          f"`{lock['UBOOT_TAG']}`, commit `{lock['UBOOT_COMMIT']}` "
          f"(`{lock['UBOOT_DEFCONFIG']}`; `u-boot.bin` SHA-256 "

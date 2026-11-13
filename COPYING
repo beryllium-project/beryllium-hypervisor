@@ -34,6 +34,16 @@ version 2 text, as U-Boot v2022.10 ships it, is
 LICENSES/GPL-2.0-or-later). None is committed, and the MVP distributes no
 binary of any.
 
+The patch series that M11 applies to its OpenSBI firmware base,
+mvp/firmware/patches/*.patch, is licensed BSD-2-Clause
+(LICENSES/BSD-2-Clause), OpenSBI's own licence, and so is every file that
+it adds to OpenSBI, as each says in its own SPDX line. The patch files
+are kept in git format-patch form, with no header of their own. The
+series file, the reduced configuration, the build script, and the
+firmware's tests beside them (mvp/firmware/patches/series,
+mvp/firmware/config, mvp/firmware/build.sh, mvp/firmware/tests/) are
+GPL-3.0-only, as the rest of this repository.
+
 The licence texts under LICENSES/ are in the Linux kernel's form
 (Valid-License-Identifier, SPDX-URL, Usage-Guide, License-Text).
 mvp/tools/check-licenses.py, run by `./mvp/mvp check`, requires that every

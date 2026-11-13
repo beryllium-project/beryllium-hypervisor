@@ -1,0 +1,148 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 12 Nov 2026 00:00:00 +0000
+Subject: [PATCH 4/9] lib: sbi: keep a per-hart record of PMP faults returned
+ to S-mode
+
+Add a table of per-hart commit records, with one entry for each hart
+index, in the firmware's own data. Each entry is written only by its own
+hart and has a fixed layout, so that a debugger, or an emulator stopped
+at the end of a run, can read the whole table from memory.
+
+This first change counts the access faults that sbi_trap_redirect()
+hands back to S-mode or U-mode. Every access fault that a hart takes
+below M-mode, and every fault on an access that M-mode makes on the
+hart's behalf while emulating, is returned through that function. Later
+changes fill in the rest of the record.
+
+AI-assisted-by: Claude Opus 5.5 (Anthropic), in the GitHub Copilot CLI
+---
+ include/sbi/sbi_dcommit.h | 47 +++++++++++++++++++++++++++++++++++++++
+ lib/sbi/objects.mk        |  1 +
+ lib/sbi/sbi_dcommit.c     | 29 ++++++++++++++++++++++++
+ lib/sbi/sbi_trap.c        |  3 +++
+ 4 files changed, 80 insertions(+)
+ create mode 100644 include/sbi/sbi_dcommit.h
+ create mode 100644 lib/sbi/sbi_dcommit.c
+
+diff --git a/include/sbi/sbi_dcommit.h b/include/sbi/sbi_dcommit.h
+new file mode 100644
+index 0000000..1ca763f
+--- /dev/null
++++ b/include/sbi/sbi_dcommit.h
+@@ -0,0 +1,47 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * Copyright (c) 2026 James Morris <jmorris@namei.org>
++ */
++
++#ifndef __SBI_DCOMMIT_H__
++#define __SBI_DCOMMIT_H__
++
++#include <sbi/sbi_types.h>
++
++/** Number of PMP entries kept in a commit record */
++#define SBI_DCOMMIT_PMP_ENTRIES		16
++
++/**
++ * Commit record of one hart, written only by that hart.
++ *
++ * The table of records has a fixed layout, the same for every XLEN, so
++ * that a debugger, or an emulator stopped at the end of a run, can read
++ * it from memory.
++ */
++struct sbi_dcommit_hart {
++	/** 1 once the hart runs in a domain with an SBI call allowlist */
++	u64 committed;
++	/** Access faults handed back to S-mode or U-mode */
++	u64 pmp_faults;
++	/** SBI calls refused by the allowlist of the hart's domain */
++	u64 blocked_calls;
++	/** SBI calls let through by the allowlist that returned an error */
++	u64 failed_calls;
++	/** menvcfg once the hart was committed */
++	u64 menvcfg;
++	/** mseccfg once the hart was committed, or 0 without Smepmp */
++	u64 mseccfg;
++	/** Configuration bytes of the first PMP entries, read back */
++	u8 pmpcfg[SBI_DCOMMIT_PMP_ENTRIES];
++	/** Addresses of the first PMP entries, read back */
++	u64 pmpaddr[SBI_DCOMMIT_PMP_ENTRIES];
++};
++
++/** Table of commit records, indexed by hart index */
++extern struct sbi_dcommit_hart sbi_dcommit_harts[];
++
++/** Count a trap with the given cause handed back to S-mode or U-mode */
++void sbi_dcommit_trap_redirected(unsigned long cause);
++
++#endif
+diff --git a/lib/sbi/objects.mk b/lib/sbi/objects.mk
+index ae27d0c..693704f 100644
+--- a/lib/sbi/objects.mk
++++ b/lib/sbi/objects.mk
+@@ -67,6 +67,7 @@ libsbi-objs-$(CONFIG_SBI_ECALL_MPXY) += sbi_ecall_mpxy.o
+ libsbi-objs-y += sbi_bitmap.o
+ libsbi-objs-y += sbi_bitops.o
+ libsbi-objs-y += sbi_console.o
++libsbi-objs-y += sbi_dcommit.o
+ libsbi-objs-y += sbi_domain_context.o
+ libsbi-objs-y += sbi_domain_state.o
+ libsbi-objs-y += sbi_domain.o
+diff --git a/lib/sbi/sbi_dcommit.c b/lib/sbi/sbi_dcommit.c
+new file mode 100644
+index 0000000..b8538cf
+--- /dev/null
++++ b/lib/sbi/sbi_dcommit.c
+@@ -0,0 +1,29 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * Copyright (c) 2026 James Morris <jmorris@namei.org>
++ */
++
++#include <sbi/riscv_encoding.h>
++#include <sbi/sbi_dcommit.h>
++#include <sbi/sbi_hartmask.h>
++#include <sbi/sbi_scratch.h>
++
++struct sbi_dcommit_hart sbi_dcommit_harts[SBI_HARTMASK_MAX_BITS];
++
++/* Six counters and registers, the configuration bytes, the addresses */
++_Static_assert(sizeof(struct sbi_dcommit_hart) ==
++	       6 * sizeof(u64) + SBI_DCOMMIT_PMP_ENTRIES * (1 + sizeof(u64)),
++	       "struct sbi_dcommit_hart must have no padding");
++
++static struct sbi_dcommit_hart *dcommit_thishart(void)
++{
++	return &sbi_dcommit_harts[current_hartindex()];
++}
++
++void sbi_dcommit_trap_redirected(unsigned long cause)
++{
++	if (cause == CAUSE_FETCH_ACCESS || cause == CAUSE_LOAD_ACCESS ||
++	    cause == CAUSE_STORE_ACCESS)
++		dcommit_thishart()->pmp_faults++;
++}
+diff --git a/lib/sbi/sbi_trap.c b/lib/sbi/sbi_trap.c
+index e694188..42584cc 100644
+--- a/lib/sbi/sbi_trap.c
++++ b/lib/sbi/sbi_trap.c
+@@ -11,6 +11,7 @@
+ #include <sbi/riscv_encoding.h>
+ #include <sbi/sbi_bitops.h>
+ #include <sbi/sbi_console.h>
++#include <sbi/sbi_dcommit.h>
+ #include <sbi/sbi_double_trap.h>
+ #include <sbi/sbi_ecall.h>
+ #include <sbi/sbi_error.h>
+@@ -115,6 +116,8 @@ int sbi_trap_redirect(struct sbi_trap_regs *regs,
+ 	if (prev_mode != PRV_S && prev_mode != PRV_U)
+ 		return SBI_ENOTSUPP;
+ 
++	sbi_dcommit_trap_redirected(trap->cause);
++
+ 	/* If hart support for zicfilp, clear MPELP because redirecting to VS or (H)S */
+ 	if (sbi_hart_has_extension(sbi_scratch_thishart_ptr(), SBI_HART_EXT_ZICFILP)) {
+ #if __riscv_xlen == 32

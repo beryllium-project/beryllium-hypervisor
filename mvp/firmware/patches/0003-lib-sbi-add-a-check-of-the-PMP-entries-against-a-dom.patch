@@ -1,0 +1,112 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 12 Nov 2026 00:00:00 +0000
+Subject: [PATCH 3/9] lib: sbi: add a check of the PMP entries against a
+ domain's regions
+
+The PMP configure functions can leave a hart with fewer entries than
+its domain has regions without returning an error: a region whose base
+is beyond the implemented address bits, or whose size is below the PMP
+granularity, is skipped with a message, and under plain PMP every later
+region then moves down one entry.
+
+Add sbi_hart_pmp_verify(), which reads the PMP entries of the current
+hart back and checks them against the entries that the configure
+functions program for each region of a domain: the same configuration
+byte, the same address in the implemented address bits, at the entry
+that belongs to the region, and every other entry off. Under Smepmp it
+also checks that the reserved entry is off and that mseccfg.MML is set.
+The first entries are copied out for the caller to keep.
+
+AI-assisted-by: Claude Opus 5.5 (Anthropic), in the GitHub Copilot CLI
+---
+ include/sbi/sbi_hart_pmp.h |  9 ++++++
+ lib/sbi/sbi_hart_pmp.c     | 57 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 66 insertions(+)
+
+diff --git a/include/sbi/sbi_hart_pmp.h b/include/sbi/sbi_hart_pmp.h
+index 6a8b3e7..2029735 100644
+--- a/include/sbi/sbi_hart_pmp.h
++++ b/include/sbi/sbi_hart_pmp.h
+@@ -30,4 +30,13 @@ bool sbi_hart_smepmp_is_fw_region(unsigned int pmp_idx);
+ void sbi_hart_pmp_fence(void);
+ int sbi_hart_pmp_init(struct sbi_scratch *scratch);
+ 
++struct sbi_domain;
++
++/*
++ * Check the PMP entries of the current hart against the regions of a
++ * domain, and copy the first out_count entries to cfg_out and addr_out.
++ */
++int sbi_hart_pmp_verify(struct sbi_scratch *scratch, struct sbi_domain *dom,
++			u8 *cfg_out, u64 *addr_out, unsigned int out_count);
++
+ #endif
+diff --git a/lib/sbi/sbi_hart_pmp.c b/lib/sbi/sbi_hart_pmp.c
+index c530739..693eb28 100644
+--- a/lib/sbi/sbi_hart_pmp.c
++++ b/lib/sbi/sbi_hart_pmp.c
+@@ -407,6 +407,63 @@ static int sbi_hart_oldpmp_configure(struct sbi_scratch *scratch,
+ 	return 0;
+ }
+ 
++/*
++ * Check that the PMP entries of the current hart are exactly those which
++ * the configure functions above program for a domain: each region of the
++ * domain at its own entry, with the same configuration and address, and
++ * every other entry off. When they are, copy the first entries out.
++ */
++int sbi_hart_pmp_verify(struct sbi_scratch *scratch, struct sbi_domain *dom,
++			u8 *cfg_out, u64 *addr_out, unsigned int out_count)
++{
++	bool smepmp = sbi_hart_has_extension(scratch, SBI_HART_EXT_SMEPMP);
++	unsigned int pmp_count = sbi_hart_pmp_count(scratch);
++	unsigned int pmp_bits = sbi_hart_pmp_addrbits(scratch);
++	unsigned int pmp_idx = smepmp ? SBI_SMEPMP_RESV_ENTRY + 1 : 0;
++	unsigned long addr_mask = -1UL;
++	struct sbi_domain_memregion *reg;
++	unsigned int pmp_flags;
++	pmp_t want, have;
++
++	/* Compare only the address bits that the hart implements */
++	if (pmp_bits < __riscv_xlen)
++		addr_mask = (1UL << pmp_bits) - 1;
++
++	sbi_domain_for_each_memregion(dom, reg) {
++		if (pmp_idx >= pmp_count)
++			return SBI_EFAIL;
++
++		pmp_flags = smepmp ? sbi_domain_get_smepmp_flags(reg) :
++				     sbi_domain_get_oldpmp_flags(reg);
++		if (sbi_pmp_encode(&want, pmp_flags, reg->base, reg->order) ||
++		    hart_pmp_read(&have, pmp_idx))
++			return SBI_EFAIL;
++		if (have.cfg != want.cfg || ((have.addr ^ want.addr) & addr_mask))
++			return SBI_EFAIL;
++		pmp_idx++;
++	}
++
++	for (; pmp_idx < pmp_count; pmp_idx++) {
++		if (hart_pmp_read(&have, pmp_idx) || have.cfg)
++			return SBI_EFAIL;
++	}
++
++	if (smepmp && (hart_pmp_read(&have, SBI_SMEPMP_RESV_ENTRY) || have.cfg ||
++		       !(csr_read(CSR_MSECCFG) & MSECCFG_MML)))
++		return SBI_EFAIL;
++
++	for (pmp_idx = 0; pmp_idx < out_count; pmp_idx++) {
++		if (pmp_idx >= pmp_count || hart_pmp_read(&have, pmp_idx)) {
++			have.cfg = 0;
++			have.addr = 0;
++		}
++		cfg_out[pmp_idx] = have.cfg;
++		addr_out[pmp_idx] = have.addr;
++	}
++
++	return 0;
++}
++
+ static void sbi_hart_pmp_unconfigure(struct sbi_scratch *scratch,
+ 				     struct sbi_domain *dom)
+ {

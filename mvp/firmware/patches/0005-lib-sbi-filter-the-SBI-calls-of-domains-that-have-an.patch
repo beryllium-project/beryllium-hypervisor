@@ -1,0 +1,213 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 12 Nov 2026 00:00:00 +0000
+Subject: [PATCH 5/9] lib: sbi: filter the SBI calls of domains that have an
+ allowlist
+
+Let a domain carry an allowlist of the SBI calls that its harts may
+make. Each entry names an extension and a function, and may limit one
+argument register, a0 to a5, to an inclusive maximum. A domain without
+an allowlist is not filtered. An empty allowlist allows no call.
+
+sbi_ecall_handler() checks every call against the allowlist of the
+caller's domain before it looks up the extension, so no handler runs
+for a refused call, which returns SBI_ERR_DENIED. The decision is a
+pure function of the allowlist and the call's registers. The values in
+the allowlist are 32 bits wide and are compared with whole registers,
+so a register with any upper bit set never matches.
+
+The hart's commit record counts the calls that the allowlist refuses,
+and the calls that it lets through but that return an error.
+
+AI-assisted-by: Claude Opus 5.5 (Anthropic), in the GitHub Copilot CLI
+---
+ include/sbi/sbi_dcommit.h | 61 +++++++++++++++++++++++++++++++++++++++
+ include/sbi/sbi_domain.h  |  7 +++++
+ lib/sbi/sbi_dcommit.c     | 25 ++++++++++++++++
+ lib/sbi/sbi_ecall.c       |  9 ++++--
+ 4 files changed, 100 insertions(+), 2 deletions(-)
+
+diff --git a/include/sbi/sbi_dcommit.h b/include/sbi/sbi_dcommit.h
+index 1ca763f..454fe54 100644
+--- a/include/sbi/sbi_dcommit.h
++++ b/include/sbi/sbi_dcommit.h
+@@ -38,10 +38,71 @@ struct sbi_dcommit_hart {
+ 	u64 pmpaddr[SBI_DCOMMIT_PMP_ENTRIES];
+ };
+ 
++/** Maximum number of entries in the SBI call allowlist of a domain */
++#define SBI_DCOMMIT_ECALLS_MAX		8
++
++/** Allowlist argument index meaning that no argument is checked */
++#define SBI_DCOMMIT_ECALL_ANY_ARG	0xffffffffU
++
++/** One entry of the SBI call allowlist of a domain */
++struct sbi_dcommit_ecall {
++	/** SBI extension ID */
++	u32 extid;
++	/** SBI function ID */
++	u32 funcid;
++	/** Index of the checked argument register, 0 to 5 for a0 to a5 */
++	u32 arg;
++	/** Largest value allowed in the checked argument register */
++	u32 max;
++};
++
++/**
++ * Decide whether an SBI call matches an allowlist
++ *
++ * @param list allowlist entries
++ * @param count number of allowlist entries
++ * @param extid extension ID of the call (a7)
++ * @param funcid function ID of the call (a6)
++ * @param args argument registers a0 to a5 of the call
++ *
++ * @return true if an entry allows the call and false otherwise
++ */
++static inline bool sbi_dcommit_call_allowed(const struct sbi_dcommit_ecall *list,
++					    u32 count, unsigned long extid,
++					    unsigned long funcid,
++					    const unsigned long *args)
++{
++	u32 i;
++
++	for (i = 0; i < count && i < SBI_DCOMMIT_ECALLS_MAX; i++) {
++		if (list[i].extid != extid || list[i].funcid != funcid)
++			continue;
++		if (list[i].arg == SBI_DCOMMIT_ECALL_ANY_ARG)
++			return true;
++		if (list[i].arg < 6 && args[list[i].arg] <= list[i].max)
++			return true;
++	}
++
++	return false;
++}
++
+ /** Table of commit records, indexed by hart index */
+ extern struct sbi_dcommit_hart sbi_dcommit_harts[];
+ 
+ /** Count a trap with the given cause handed back to S-mode or U-mode */
+ void sbi_dcommit_trap_redirected(unsigned long cause);
+ 
++struct sbi_trap_regs;
++
++/**
++ * Check an SBI call against the allowlist of the caller's domain, and
++ * count it if the allowlist refuses it
++ *
++ * @return true if the call must be refused and false otherwise
++ */
++bool sbi_dcommit_ecall_blocked(const struct sbi_trap_regs *regs);
++
++/** Count the result of an SBI call that was not refused */
++void sbi_dcommit_ecall_done(int ret);
++
+ #endif
+diff --git a/include/sbi/sbi_domain.h b/include/sbi/sbi_domain.h
+index 56a2139..c741164 100644
+--- a/include/sbi/sbi_domain.h
++++ b/include/sbi/sbi_domain.h
+@@ -14,6 +14,7 @@
+ #include <sbi/sbi_list.h>
+ #include <sbi/sbi_types.h>
+ #include <sbi/sbi_hartmask.h>
++#include <sbi/sbi_dcommit.h>
+ #include <sbi/sbi_domain_context.h>
+ #include <sbi/sbi_domain_state.h>
+ 
+@@ -220,6 +221,12 @@ struct sbi_domain {
+ 	bool system_suspend_allowed;
+ 	/** Identifies whether to include the firmware region */
+ 	bool fw_region_inited;
++	/** Is the SBI call allowlist of this domain in force */
++	bool ecall_filtered;
++	/** Number of entries in the SBI call allowlist */
++	u32 ecall_count;
++	/** SBI call allowlist of this domain */
++	struct sbi_dcommit_ecall ecall_allow[SBI_DCOMMIT_ECALLS_MAX];
+ };
+ 
+ /** The root domain instance */
+diff --git a/lib/sbi/sbi_dcommit.c b/lib/sbi/sbi_dcommit.c
+index b8538cf..2c78775 100644
+--- a/lib/sbi/sbi_dcommit.c
++++ b/lib/sbi/sbi_dcommit.c
+@@ -6,8 +6,10 @@
+ 
+ #include <sbi/riscv_encoding.h>
+ #include <sbi/sbi_dcommit.h>
++#include <sbi/sbi_domain.h>
+ #include <sbi/sbi_hartmask.h>
+ #include <sbi/sbi_scratch.h>
++#include <sbi/sbi_trap.h>
+ 
+ struct sbi_dcommit_hart sbi_dcommit_harts[SBI_HARTMASK_MAX_BITS];
+ 
+@@ -27,3 +29,26 @@ void sbi_dcommit_trap_redirected(unsigned long cause)
+ 	    cause == CAUSE_STORE_ACCESS)
+ 		dcommit_thishart()->pmp_faults++;
+ }
++
++bool sbi_dcommit_ecall_blocked(const struct sbi_trap_regs *regs)
++{
++	const struct sbi_domain *dom = sbi_domain_thishart_ptr();
++	const unsigned long args[6] = { regs->a0, regs->a1, regs->a2,
++					regs->a3, regs->a4, regs->a5 };
++
++	if (!dom || !dom->ecall_filtered ||
++	    sbi_dcommit_call_allowed(dom->ecall_allow, dom->ecall_count,
++				     regs->a7, regs->a6, args))
++		return false;
++
++	dcommit_thishart()->blocked_calls++;
++	return true;
++}
++
++void sbi_dcommit_ecall_done(int ret)
++{
++	const struct sbi_domain *dom = sbi_domain_thishart_ptr();
++
++	if (ret < 0 && dom && dom->ecall_filtered)
++		dcommit_thishart()->failed_calls++;
++}
+diff --git a/lib/sbi/sbi_ecall.c b/lib/sbi/sbi_ecall.c
+index 65c5a55..d00e3db 100644
+--- a/lib/sbi/sbi_ecall.c
++++ b/lib/sbi/sbi_ecall.c
+@@ -8,6 +8,7 @@
+  */
+ 
+ #include <sbi/sbi_console.h>
++#include <sbi/sbi_dcommit.h>
+ #include <sbi/sbi_ecall.h>
+ #include <sbi/sbi_ecall_interface.h>
+ #include <sbi/sbi_error.h>
+@@ -128,15 +129,16 @@ int sbi_ecall_handler(struct sbi_trap_context *tcntx)
+ 	unsigned long func_id = regs->a6;
+ 	struct sbi_ecall_return out = {0};
+ 	bool is_0_1_spec = 0;
++	bool blocked = sbi_dcommit_ecall_blocked(regs);
+ 
+-	ext = sbi_ecall_find_extension(extension_id);
++	ext = blocked ? NULL : sbi_ecall_find_extension(extension_id);
+ 	if (ext && ext->handle) {
+ 		ret = ext->handle(extension_id, func_id, regs, &out);
+ 		if (extension_id >= SBI_EXT_0_1_SET_TIMER &&
+ 		    extension_id <= SBI_EXT_0_1_SHUTDOWN)
+ 			is_0_1_spec = 1;
+ 	} else {
+-		ret = SBI_ENOTSUPP;
++		ret = blocked ? SBI_EDENIED : SBI_ENOTSUPP;
+ 	}
+ 
+ 	if (!out.skip_regs_update) {
+@@ -163,6 +165,9 @@ int sbi_ecall_handler(struct sbi_trap_context *tcntx)
+ 			regs->a1 = out.value;
+ 	}
+ 
++	if (!blocked)
++		sbi_dcommit_ecall_done(ret);
++
+ 	return 0;
+ }
+ 

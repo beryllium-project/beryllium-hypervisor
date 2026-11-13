@@ -1,0 +1,204 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 12 Nov 2026 00:00:00 +0000
+Subject: [PATCH 1/9] lib: sbi: allocate domain switch contexts at cold boot
+
+The per-hart contexts used by sbi_domain_context_enter() and
+sbi_domain_context_exit() are allocated from the heap the first time a
+hart switches domains. A hart that switches late may then find the heap
+exhausted, long after the cold boot hart has finished its checks.
+
+Allocate the contexts of every hart, for every domain that lists it,
+from sbi_domain_finalize() once all domains are registered, and stop
+the cold boot if that fails. The vector context areas are sized for the
+cold boot hart, so a switch on a hart whose vector state needs another
+size is refused before anything changes.
+
+AI-assisted-by: Claude Opus 5.5 (Anthropic), in the GitHub Copilot CLI
+---
+ include/sbi/sbi_domain_context.h |  8 +++
+ lib/sbi/sbi_domain.c             |  8 +++
+ lib/sbi/sbi_domain_context.c     | 96 +++++++++++++++++++++-----------
+ 3 files changed, 78 insertions(+), 34 deletions(-)
+
+diff --git a/include/sbi/sbi_domain_context.h b/include/sbi/sbi_domain_context.h
+index 31a3a7f..b23c3c6 100644
+--- a/include/sbi/sbi_domain_context.h
++++ b/include/sbi/sbi_domain_context.h
+@@ -28,6 +28,14 @@ int sbi_domain_context_enter(struct sbi_domain *dom);
+  */
+ int sbi_domain_context_exit(void);
+ 
++/**
++ * Allocate the contexts of every hart for every domain that lists it.
++ * Called once at cold boot, after all domains are registered.
++ *
++ * @return 0 on success and negative error code on failure
++ */
++int sbi_domain_context_alloc(void);
++
+ /**
+  * Initialize domain context support
+  *
+diff --git a/lib/sbi/sbi_domain.c b/lib/sbi/sbi_domain.c
+index 42fe563..7dec8c2 100644
+--- a/lib/sbi/sbi_domain.c
++++ b/lib/sbi/sbi_domain.c
+@@ -961,6 +961,14 @@ int sbi_domain_finalize(struct sbi_scratch *scratch)
+ 		return rc;
+ 	}
+ 
++	/* Allocate domain switch contexts now rather than on first use */
++	rc = sbi_domain_context_alloc();
++	if (rc) {
++		sbi_printf("%s: domain context allocation failed (error %d)\n",
++			   __func__, rc);
++		return rc;
++	}
++
+ 	/*
+ 	 * Set the finalized flag so that the root domain
+ 	 * regions can't be changed.
+diff --git a/lib/sbi/sbi_domain_context.c b/lib/sbi/sbi_domain_context.c
+index 987ac7f..bb505fb 100644
+--- a/lib/sbi/sbi_domain_context.c
++++ b/lib/sbi/sbi_domain_context.c
+@@ -66,6 +66,9 @@ struct hart_context {
+ 
+ static struct sbi_domain_state dcstate;
+ 
++/* Size of each vector context area, fixed when the contexts are allocated */
++static size_t dcstate_vec_size;
++
+ static inline struct hart_context *hart_context_get(struct sbi_domain *dom,
+ 						    u32 hartindex)
+ {
+@@ -195,7 +198,6 @@ static int switch_to_next_domain_context(struct hart_context *ctx,
+ 
+ static int hart_context_init(u32 hartindex)
+ {
+-	size_t vec_size;
+ 	struct hart_context *ctx;
+ 	struct sbi_domain *dom;
+ 
+@@ -208,12 +210,9 @@ static int hart_context_init(u32 hartindex)
+ 		if (!ctx)
+ 			return SBI_ENOMEM;
+ 
+-		if (sbi_hart_has_extension(sbi_scratch_thishart_ptr(),
+-					   SBI_HART_EXT_V)) {
+-			vec_size = sbi_vector_context_size();
+-
++		if (dcstate_vec_size) {
+ 			/* Allocate the vector context pointer */
+-			ctx->vec_ctx = sbi_zalloc(vec_size);
++			ctx->vec_ctx = sbi_zalloc(dcstate_vec_size);
+ 			if (!ctx->vec_ctx) {
+ 				sbi_free(ctx);
+ 				return SBI_ENOMEM;
+@@ -228,6 +227,57 @@ static int hart_context_init(u32 hartindex)
+ 	return 0;
+ }
+ 
++/* Size of the vector context of the current hart, or 0 without vector */
++static size_t hart_vector_context_size(void)
++{
++	unsigned long mstatus;
++	size_t size;
++
++	if (!sbi_hart_has_extension(sbi_scratch_thishart_ptr(), SBI_HART_EXT_V))
++		return 0;
++
++	/* Reading vlenb needs the vector unit to be on */
++	mstatus = csr_read_set(CSR_MSTATUS, MSTATUS_VS);
++	size = sbi_vector_context_size();
++	csr_write(CSR_MSTATUS, mstatus);
++
++	return size;
++}
++
++/*
++ * The contexts of every hart are allocated at cold boot, with vector
++ * areas sized for the cold boot hart. Refuse a switch on a hart that has
++ * no context, or whose own vector state would not fit its areas.
++ */
++static int hart_context_check(struct hart_context *ctx)
++{
++	size_t vec_size;
++
++	if (!ctx)
++		return SBI_EINVAL;
++
++	vec_size = hart_vector_context_size();
++	if (vec_size && vec_size != dcstate_vec_size)
++		return SBI_ENOTSUPP;
++
++	return 0;
++}
++
++int sbi_domain_context_alloc(void)
++{
++	int rc;
++
++	dcstate_vec_size = hart_vector_context_size();
++
++	sbi_for_each_hartindex(i) {
++		rc = hart_context_init(i);
++		if (rc)
++			return rc;
++	}
++
++	return 0;
++}
++
+ int sbi_domain_context_enter(struct sbi_domain *dom)
+ {
+ 	int rc;
+@@ -243,20 +293,9 @@ int sbi_domain_context_enter(struct sbi_domain *dom)
+ 	if (!sbi_hartmask_test_hartindex(hartindex, dom->possible_harts))
+ 		return SBI_EINVAL;
+ 
+-	/*
+-	 * If it's first time to call `enter` on the current hart, no
+-	 * context allocated before. Allocate context for each valid
+-	 * domain on the current hart.
+-	 */
+-	if (!ctx) {
+-		rc = hart_context_init(hartindex);
+-		if (rc)
+-			return rc;
+-
+-		ctx = hart_context_thishart_get();
+-		if (!ctx)
+-			return SBI_EINVAL;
+-	}
++	rc = hart_context_check(ctx);
++	if (rc)
++		return rc;
+ 
+ 	dom_ctx = hart_context_get(dom, hartindex);
+ 	/* Validate the domain context existence */
+@@ -277,20 +316,9 @@ int sbi_domain_context_exit(void)
+ 	struct hart_context *ctx = hart_context_thishart_get();
+ 	struct hart_context *dom_ctx, *tmp;
+ 
+-	/*
+-	 * If it's first time to call `exit` on the current hart, no
+-	 * context allocated before. Loop through each domain to allocate
+-	 * its context on the current hart if valid.
+-	 */
+-	if (!ctx) {
+-		rc = hart_context_init(hartindex);
+-		if (rc)
+-			return rc;
+-
+-		ctx = hart_context_thishart_get();
+-		if (!ctx)
+-			return SBI_EINVAL;
+-	}
++	rc = hart_context_check(ctx);
++	if (rc)
++		return rc;
+ 
+ 	dom_ctx = ctx->prev_ctx;
+ 	ctx->prev_ctx = NULL;

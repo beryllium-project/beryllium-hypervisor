@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
+# Purpose: the reduced configuration of M11's firmware: Kconfig overrides
+#          that firmware/build.sh appends to the pinned OpenSBI source's
+#          own platform/generic/configs/defconfig (planning/mvp-m11-plan.md,
+#          D-2, "The configuration").
+# Trust:   build.sh copies only the lines of the two Kconfig setting forms
+#          below; it skips comments and blank lines, and refuses any other
+#          line.
+# Scope:   the SBI call families that no caller of the firmware uses are
+#          removed; the patch series' extension is added; the hart limit,
+#          which sizes the series' table of per-hart records, is lowered to
+#          Kconfig's least value. Nothing else changes: every console
+#          driver and every error message stays.
+#
+# Families kept: Base (always built), HSM, DBCN, SRST and IPI. The boot
+# chain and the monitor call no other family.
+# CONFIG_SBI_ECALL_TIME is not set
+# CONFIG_SBI_ECALL_RFENCE is not set
+# CONFIG_SBI_ECALL_SUSP is not set
+# CONFIG_SBI_ECALL_PMU is not set
+# CONFIG_SBI_ECALL_CPPC is not set
+# CONFIG_SBI_ECALL_FWFT is not set
+# CONFIG_SBI_ECALL_LEGACY is not set
+# CONFIG_SBI_ECALL_VENDOR is not set
+# CONFIG_SBI_ECALL_DBTR is not set
+# CONFIG_SBI_ECALL_SSE is not set
+# CONFIG_SBI_ECALL_MPXY is not set
+CONFIG_SBI_ECALL_DCOMMIT=y
+# The generic platform then manages at most the first 32 harts of its
+# device tree: QEMU's eight here; the K3 belongs to the board addendum.
+CONFIG_HARTMASK_MAX_BITS=32

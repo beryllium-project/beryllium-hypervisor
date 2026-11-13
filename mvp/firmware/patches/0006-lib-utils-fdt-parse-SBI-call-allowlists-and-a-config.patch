@@ -1,0 +1,197 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 12 Nov 2026 00:00:00 +0000
+Subject: [PATCH 6/9] lib: utils: fdt: parse SBI call allowlists and a
+ configuration digest
+
+Read two new properties when the domains are populated from the device
+tree at cold boot.
+
+An "ecall-allowlist" property in a domain instance node holds the SBI
+call allowlist of that domain: up to eight entries of four cells each,
+<extension function argument maximum>, where argument is 0 to 5 for a0
+to a5, or 0xffffffff when no argument is checked. An empty property
+allows no call. A domain without the property is not filtered.
+
+A "config-digest" property in the domain configuration node holds a
+256-bit digest of the configuration that the device tree describes, as
+eight cells, most significant first. The firmware does not interpret
+it: it keeps it, prints it at boot, and later serves it.
+
+A property of the wrong length, an allowlist with more than eight
+entries, or an argument index out of range fails the parse, so the cold
+boot stops rather than run with part of a configuration. Both
+properties are in nodes that are removed from the device tree passed to
+the next stage.
+
+AI-assisted-by: Claude Opus 5.5 (Anthropic), in the GitHub Copilot CLI
+---
+ include/sbi/sbi_dcommit.h  | 11 +++++++
+ lib/sbi/sbi_dcommit.c      | 17 +++++++++++
+ lib/utils/fdt/fdt_domain.c | 62 ++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 90 insertions(+)
+
+diff --git a/include/sbi/sbi_dcommit.h b/include/sbi/sbi_dcommit.h
+index 454fe54..4063091 100644
+--- a/include/sbi/sbi_dcommit.h
++++ b/include/sbi/sbi_dcommit.h
+@@ -86,6 +86,9 @@ static inline bool sbi_dcommit_call_allowed(const struct sbi_dcommit_ecall *list
+ 	return false;
+ }
+ 
++/** Number of 32-bit cells in a configuration digest */
++#define SBI_DCOMMIT_DIGEST_CELLS	8
++
+ /** Table of commit records, indexed by hart index */
+ extern struct sbi_dcommit_hart sbi_dcommit_harts[];
+ 
+@@ -105,4 +108,12 @@ bool sbi_dcommit_ecall_blocked(const struct sbi_trap_regs *regs);
+ /** Count the result of an SBI call that was not refused */
+ void sbi_dcommit_ecall_done(int ret);
+ 
++/**
++ * Keep the configuration digest read from the device tree at cold boot,
++ * and print it
++ *
++ * @param cells SBI_DCOMMIT_DIGEST_CELLS cells, most significant first
++ */
++void sbi_dcommit_set_digest(const u32 *cells);
++
+ #endif
+diff --git a/lib/sbi/sbi_dcommit.c b/lib/sbi/sbi_dcommit.c
+index 2c78775..bc4bf03 100644
+--- a/lib/sbi/sbi_dcommit.c
++++ b/lib/sbi/sbi_dcommit.c
+@@ -5,6 +5,7 @@
+  */
+ 
+ #include <sbi/riscv_encoding.h>
++#include <sbi/sbi_console.h>
+ #include <sbi/sbi_dcommit.h>
+ #include <sbi/sbi_domain.h>
+ #include <sbi/sbi_hartmask.h>
+@@ -18,6 +19,9 @@ _Static_assert(sizeof(struct sbi_dcommit_hart) ==
+ 	       6 * sizeof(u64) + SBI_DCOMMIT_PMP_ENTRIES * (1 + sizeof(u64)),
+ 	       "struct sbi_dcommit_hart must have no padding");
+ 
++static u32 dcommit_digest[SBI_DCOMMIT_DIGEST_CELLS];
++static bool dcommit_digest_set;
++
+ static struct sbi_dcommit_hart *dcommit_thishart(void)
+ {
+ 	return &sbi_dcommit_harts[current_hartindex()];
+@@ -52,3 +56,16 @@ void sbi_dcommit_ecall_done(int ret)
+ 	if (ret < 0 && dom && dom->ecall_filtered)
+ 		dcommit_thishart()->failed_calls++;
+ }
++
++void sbi_dcommit_set_digest(const u32 *cells)
++{
++	u32 i;
++
++	sbi_printf("Domain commit digest        : ");
++	for (i = 0; i < SBI_DCOMMIT_DIGEST_CELLS; i++) {
++		dcommit_digest[i] = cells[i];
++		sbi_printf("%08x", cells[i]);
++	}
++	sbi_printf("\n");
++	dcommit_digest_set = true;
++}
+diff --git a/lib/utils/fdt/fdt_domain.c b/lib/utils/fdt/fdt_domain.c
+index e4cce8c..da53af0 100644
+--- a/lib/utils/fdt/fdt_domain.c
++++ b/lib/utils/fdt/fdt_domain.c
+@@ -11,6 +11,7 @@
+ #include <libfdt.h>
+ #include <libfdt_env.h>
+ #include <sbi/sbi_console.h>
++#include <sbi/sbi_dcommit.h>
+ #include <sbi/sbi_domain.h>
+ #include <sbi/sbi_error.h>
+ #include <sbi/sbi_hartmask.h>
+@@ -290,6 +291,35 @@ static int __fdt_parse_region(const void *fdt, int domain_offset,
+ 	return 0;
+ }
+ 
++static int __fdt_parse_ecall_allowlist(struct sbi_domain *dom,
++				       const u32 *val, int len)
++{
++	struct sbi_dcommit_ecall *ent;
++	u32 i, count;
++
++	/* Each entry is <extension function argument maximum> */
++	if (len < 0 || len % (4 * sizeof(u32)))
++		return SBI_EINVAL;
++	count = len / (4 * sizeof(u32));
++	if (count > SBI_DCOMMIT_ECALLS_MAX)
++		return SBI_EINVAL;
++
++	for (i = 0; i < count; i++) {
++		ent = &dom->ecall_allow[i];
++		ent->extid = fdt32_to_cpu(val[4 * i]);
++		ent->funcid = fdt32_to_cpu(val[4 * i + 1]);
++		ent->arg = fdt32_to_cpu(val[4 * i + 2]);
++		ent->max = fdt32_to_cpu(val[4 * i + 3]);
++		if (ent->arg > 5 && ent->arg != SBI_DCOMMIT_ECALL_ANY_ARG)
++			return SBI_EINVAL;
++	}
++
++	dom->ecall_count = count;
++	dom->ecall_filtered = true;
++
++	return 0;
++}
++
+ static int __fdt_parse_domain(const void *fdt, int domain_offset, void *opaque)
+ {
+ 	u32 val32;
+@@ -463,6 +493,17 @@ static int __fdt_parse_domain(const void *fdt, int domain_offset, void *opaque)
+ 	else
+ 		dom->system_suspend_allowed = false;
+ 
++	/* Read "ecall-allowlist" DT property */
++	val = fdt_getprop(fdt, domain_offset, "ecall-allowlist", &len);
++	if (val) {
++		err = __fdt_parse_ecall_allowlist(dom, val, len);
++		if (err) {
++			sbi_printf("%s: domain \"%s\" has an invalid "
++				   "ecall-allowlist\n", __func__, dom->name);
++			goto fail_free_all;
++		}
++	}
++
+ 	/* Register the domain */
+ 	err = sbi_domain_register(dom);
+ 	if (err)
+@@ -479,10 +520,31 @@ fail_free_domain:
+ 
+ int fdt_domains_populate(const void *fdt)
+ {
++	u32 cells[SBI_DCOMMIT_DIGEST_CELLS];
++	const u32 *val = NULL;
++	int i, len = 0, offset;
++
+ 	/* Sanity checks */
+ 	if (!fdt)
+ 		return SBI_EINVAL;
+ 
++	/* Read "config-digest" DT property of the domain config node */
++	offset = fdt_path_offset(fdt, "/chosen");
++	if (offset >= 0)
++		offset = fdt_node_offset_by_compatible(fdt, offset,
++						       "opensbi,domain,config");
++	if (offset >= 0)
++		val = fdt_getprop(fdt, offset, "config-digest", &len);
++	if (val) {
++		if (len != (int)sizeof(cells)) {
++			sbi_printf("%s: invalid config-digest\n", __func__);
++			return SBI_EINVAL;
++		}
++		for (i = 0; i < SBI_DCOMMIT_DIGEST_CELLS; i++)
++			cells[i] = fdt32_to_cpu(val[i]);
++		sbi_dcommit_set_digest(cells);
++	}
++
+ 	/* Iterate over each domain in FDT and populate details */
+ 	return fdt_iterate_each_domain_ro(fdt, NULL, __fdt_parse_domain);
+ }

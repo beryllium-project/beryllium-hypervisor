@@ -1,0 +1,116 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Thu, 12 Nov 2026 00:00:00 +0000
+Subject: [PATCH 8/9] lib: sbi: print the domain commit records at system reset
+
+When the device tree holds a configuration digest, print the commit
+record of every hart just before the reset device acts: whether the
+hart was committed, its counts of access faults, refused calls and
+failed calls, and for a committed hart the menvcfg and mseccfg values
+and the PMP entries it kept. A device tree without a digest prints
+nothing new.
+
+The lines are, for each hart:
+
+  Domain commit hart<N>: committed=<0|1> pmp_faults=<n> blocked_calls=<n> failed_calls=<n>
+
+and, for a committed hart:
+
+  Domain commit hart<N>: menvcfg=0x<hex> mseccfg=0x<hex>
+  Domain commit hart<N>: pmpcfg=<16 configuration bytes in hex>
+  Domain commit hart<N>: pmpaddr0=<8 addresses>
+  Domain commit hart<N>: pmpaddr8=<8 addresses>
+
+AI-assisted-by: Claude Opus 5.5 (Anthropic), in the GitHub Copilot CLI
+---
+ include/sbi/sbi_dcommit.h |  6 ++++++
+ lib/sbi/sbi_dcommit.c     | 39 +++++++++++++++++++++++++++++++++++++++
+ lib/sbi/sbi_system.c      |  5 ++++-
+ 3 files changed, 49 insertions(+), 1 deletion(-)
+
+diff --git a/include/sbi/sbi_dcommit.h b/include/sbi/sbi_dcommit.h
+index 5047546..803f494 100644
+--- a/include/sbi/sbi_dcommit.h
++++ b/include/sbi/sbi_dcommit.h
+@@ -187,4 +187,10 @@ int sbi_dcommit_commit(void);
+  */
+ int sbi_dcommit_digest_word(unsigned long index, unsigned long *word);
+ 
++/**
++ * Print the commit record of every hart, if the device tree held a
++ * configuration digest. Called just before a system reset.
++ */
++void sbi_dcommit_report(void);
++
+ #endif
+diff --git a/lib/sbi/sbi_dcommit.c b/lib/sbi/sbi_dcommit.c
+index 5502f43..161993d 100644
+--- a/lib/sbi/sbi_dcommit.c
++++ b/lib/sbi/sbi_dcommit.c
+@@ -176,3 +176,42 @@ int sbi_dcommit_digest_word(unsigned long index, unsigned long *word)
+ 
+ 	return 0;
+ }
++
++void sbi_dcommit_report(void)
++{
++	const struct sbi_dcommit_hart *rec;
++	u32 i, j, hartid;
++
++	if (!dcommit_digest_set)
++		return;
++
++	for (i = 0; i < sbi_hart_count(); i++) {
++		rec = &sbi_dcommit_harts[i];
++		hartid = sbi_hartindex_to_hartid(i);
++		sbi_printf("Domain commit hart%u: committed=%llu pmp_faults=%llu "
++			   "blocked_calls=%llu failed_calls=%llu\n", hartid,
++			   (unsigned long long)rec->committed,
++			   (unsigned long long)rec->pmp_faults,
++			   (unsigned long long)rec->blocked_calls,
++			   (unsigned long long)rec->failed_calls);
++		if (!rec->committed)
++			continue;
++
++		sbi_printf("Domain commit hart%u: menvcfg=0x%016llx "
++			   "mseccfg=0x%016llx\n", hartid,
++			   (unsigned long long)rec->menvcfg,
++			   (unsigned long long)rec->mseccfg);
++		sbi_printf("Domain commit hart%u: pmpcfg=", hartid);
++		for (j = 0; j < SBI_DCOMMIT_PMP_ENTRIES; j++)
++			sbi_printf("%02x", rec->pmpcfg[j]);
++		sbi_printf("\n");
++		for (j = 0; j < SBI_DCOMMIT_PMP_ENTRIES; j++) {
++			if (!(j % 8))
++				sbi_printf("Domain commit hart%u: pmpaddr%u=",
++					   hartid, j);
++			sbi_printf("0x%016llx%s",
++				   (unsigned long long)rec->pmpaddr[j],
++				   (j % 8 == 7) ? "\n" : ",");
++		}
++	}
++}
+diff --git a/lib/sbi/sbi_system.c b/lib/sbi/sbi_system.c
+index 5500b05..ac99675 100644
+--- a/lib/sbi/sbi_system.c
++++ b/lib/sbi/sbi_system.c
+@@ -10,6 +10,7 @@
+ 
+ #include <sbi/riscv_asm.h>
+ #include <sbi/sbi_bitops.h>
++#include <sbi/sbi_dcommit.h>
+ #include <sbi/sbi_domain.h>
+ #include <sbi/sbi_hart.h>
+ #include <sbi/sbi_hsm.h>
+@@ -78,8 +79,10 @@ void __noreturn sbi_system_reset(u32 reset_type, u32 reset_reason)
+ 	if (dom->system_reset_allowed) {
+ 		const struct sbi_system_reset_device *dev =
+ 			sbi_system_reset_get_device(reset_type, reset_reason);
+-		if (dev)
++		if (dev) {
++			sbi_dcommit_report();
+ 			dev->system_reset(reset_type, reset_reason);
++		}
+ 	}
+ 
+ 	/* If platform specific reset did not work then do sbi_exit() */

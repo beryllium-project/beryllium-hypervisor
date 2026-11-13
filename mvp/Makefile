@@ -120,6 +120,9 @@ FIRMWARE_SRC := $(BUILD)/firmware-src
 FIRMWARE_BUILD := $(BUILD)/firmware
 FIRMWARE_SOURCE_STAMP := $(BUILD)/firmware-source.txt
 FIRMWARE_BIN := $(FIRMWARE_BUILD)/platform/generic/firmware/fw_dynamic.bin
+FIRMWARE_SERIES := $(MVP_DIR)/firmware/patches/series
+FIRMWARE_CONFIG := $(MVP_DIR)/firmware/config
+FIRMWARE_PATCHES := $(sort $(wildcard $(MVP_DIR)/firmware/patches/*.patch))
 
 .DEFAULT_GOAL := all
 -include $(MVP_DIR)/guest.mk
@@ -1187,9 +1190,10 @@ $(B2_OPENSBI_FW):
 opensbi: $(OPENSBI_FW)
 	$(MVP_OPENSBI_PIN_CHECK)
 
-# The M11 base is fetched by exact commit and tree, built unmodified with
-# upstream's default generic configuration, and pinned separately from the
-# earlier OpenSBI v1.6 binary.
+# The M11 base is fetched by exact commit and tree, patched with the series
+# under firmware/patches, built in the reduced configuration of
+# firmware/config, and pinned separately from the earlier OpenSBI v1.6
+# binary.
 $(FIRMWARE_SOURCE_STAMP): $(MVP_DIR)/firmware/pins.mk \
 		$(MVP_DIR)/firmware/fetch.sh
 	FIRMWARE_GIT='$(FIRMWARE_GIT)' \
@@ -1204,9 +1208,12 @@ $(FIRMWARE_SOURCE_STAMP): $(MVP_DIR)/firmware/pins.mk \
 
 $(FIRMWARE_BIN): $(FIRMWARE_SOURCE_STAMP) \
 		$(MVP_DIR)/firmware/build.sh $(MVP_DIR)/firmware/pins.mk \
+		$(FIRMWARE_SERIES) $(FIRMWARE_CONFIG) $(FIRMWARE_PATCHES) \
 		$(MVP_DIR)/tools/lock/tool-lock.conf
 	FIRMWARE_COMMIT='$(MVP_FIRMWARE_COMMIT)' \
 		FIRMWARE_TREE='$(MVP_FIRMWARE_TREE)' \
+		FIRMWARE_SERIES='$(FIRMWARE_SERIES)' \
+		FIRMWARE_CONFIG='$(FIRMWARE_CONFIG)' \
 		MVP_FIRMWARE_TOOL_MAKE='$(MVP_TOOL_make_command)' \
 		MVP_FIRMWARE_TOOL_SHELL='$(MVP_TOOL_shell_command)' \
 		MVP_FIRMWARE_TOOL_GIT='$(MVP_TOOL_git_command)' \
@@ -1222,6 +1229,41 @@ firmware-source: $(FIRMWARE_SOURCE_STAMP)
 
 firmware: tool-lock-check $(FIRMWARE_BIN)
 	$(MVP_FIRMWARE_PIN_CHECK)
+
+# The firmware's own tests (planning/mvp-m11-plan.md, M11-6): the host
+# tests of the series' two pure decisions, built from the patched header
+# of the firmware build, then every row of firmware/tests/fwtest.py on
+# QEMU's k3-like machine, in plain PMP and in Smepmp mode, each judged
+# through the QEMU oracle; the rows' S-mode payload is built here.
+FIRMWARE_TEST := $(BUILD)/firmware-test
+FIRMWARE_TEST_SRC := $(MVP_DIR)/firmware/tests
+FIRMWARE_TEST_PAYLOAD := $(FIRMWARE_TEST)/fwtest.elf
+FIRMWARE_TEST_WARNINGS := -Wall -Wextra -Werror
+
+$(FIRMWARE_TEST_PAYLOAD): $(addprefix $(FIRMWARE_TEST_SRC)/,fwtest.S fwtest.c \
+		fwtest.h fwtest.ld)
+	mkdir -p $(@D)
+	$(CC_gcc) -std=gnu11 -march=rv64gc -mabi=lp64d -mcmodel=medany -O2 \
+		$(FIRMWARE_TEST_WARNINGS) -ffreestanding -fno-builtin -nostdlib \
+		-nostartfiles -static -fno-pic -fno-stack-protector \
+		-fno-asynchronous-unwind-tables -Wl,--build-id=none \
+		-T $(FIRMWARE_TEST_SRC)/fwtest.ld -o $@ \
+		$(FIRMWARE_TEST_SRC)/fwtest.S $(FIRMWARE_TEST_SRC)/fwtest.c
+
+.PHONY: firmware-test
+firmware-test: firmware $(FIRMWARE_TEST_PAYLOAD)
+	mkdir -p $(RECORDS)/firmware-test
+	$(HOST_CC_gcc) -std=gnu11 -O2 $(FIRMWARE_TEST_WARNINGS) -D__riscv_xlen=64 \
+		-I$(FIRMWARE_BUILD)/source/include \
+		-o $(FIRMWARE_TEST)/host-decisions \
+		$(FIRMWARE_TEST_SRC)/host-decisions.c
+	set -o pipefail; $(FIRMWARE_TEST)/host-decisions | \
+		tee $(RECORDS)/firmware-test/host-decisions.txt
+	set -o pipefail; $(PYTHON) -I -B $(FIRMWARE_TEST_SRC)/fwtest.py run \
+		--firmware-dir $(FIRMWARE_BUILD) \
+		--payload $(FIRMWARE_TEST_PAYLOAD) --qemu $(QEMU) \
+		--dtc $(MVP_TOOL_dtc_command) --nm $(MVP_TOOL_cross_nm_command) \
+		--out $(FIRMWARE_TEST)/runs | tee $(RECORDS)/firmware-test/rows.txt
 
 # -------------------------------------------------------------- the lock
 # Every role of the tool lock, the pins, and the evaluator's closure,
@@ -1244,7 +1286,8 @@ MVP_SHELL_SCRIPTS = $(wildcard $(MVP_DIR)/mvp $(MVP_DIR)/firmware/*.sh \
 	$(MVP_DIR)/tools/*.sh \
 	$(MVP_DIR)/tools/evaluator/*.sh $(MVP_DIR)/tests/*.sh)
 MVP_PYTHON = $(wildcard $(MVP_DIR)/tools/*.py $(MVP_DIR)/tools/lock/*.py \
-	$(MVP_DIR)/tools/evaluator/*.py $(MVP_DIR)/tests/*.py)
+	$(MVP_DIR)/tools/evaluator/*.py $(MVP_DIR)/tests/*.py \
+	$(MVP_DIR)/firmware/tests/*.py)
 
 layout-source-check:
 	$(PYTHON) -I -B $(MVP_DIR)/tests/check-layout-source.py --self-test
@@ -1364,7 +1407,7 @@ claim-ledger-check: $(if $(filter check,$(MAKECMDGOALS)),$(TOOLS_EVIDENCE))
 		$(RECORDS)/claim-ledger/self-test.txt \
 		$(RECORDS)/claim-ledger/check.txt
 
-check: tool-lock-check opensbi firmware lint layout-source-check \
+check: tool-lock-check opensbi firmware firmware-test lint layout-source-check \
 	policy-negatives port-check \
 	guest-pin-check host-test target-check reference-boot image-check \
 	variants probes reference-check $(TOOLS_CHECKS) budgets $(TOOLS_EVIDENCE) \
@@ -1374,4 +1417,5 @@ check: tool-lock-check opensbi firmware lint layout-source-check \
 clean:
 	rm -rf -- $(PORT) $(GEN) $(BUILD)/host $(BUILD)/gcc $(BUILD)/clang \
 		$(BUILD)/variants $(BUILD)/probes $(BUILD)/budgets $(RECORDS) \
-		$(BUILD)/policy-negatives $(FIRMWARE_BUILD) $(FIRMWARE_SOURCE_STAMP)
+		$(BUILD)/policy-negatives $(FIRMWARE_BUILD) $(FIRMWARE_SOURCE_STAMP) \
+		$(FIRMWARE_TEST)
