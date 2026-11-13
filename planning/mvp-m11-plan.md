@@ -1648,3 +1648,23 @@ text above as it says; the text above is otherwise as accepted.
   boundary-on run must be on `k3-like`, with the PMP registers and
   `menvcfg` readable, and `mseccfg` readable under Smepmp and recorded
   as absent under plain PMP, or it is refused before QEMU starts.
+- **2026-11-13, `accept crossings`** (stop 11 at the lock commit, and
+  stop 9 at M11-2's point: counts that changed only because solver
+  runs reached their time limits).
+  - The baseline. The WP arm's run again at the lock commit under the
+    decision `verify: wp3` (2026-11-12, 18:00Z to 21:33Z) has the last
+    record's totals: 130 of 134 goals proved, and 18 of 24 mutants
+    killed. Its records equal the record's but in round 0, where 12
+    prover runs reached the 60 s limit against the record's 5; round 1
+    proved all seven. The baseline is the run of 2026-11-11 with this
+    run's WP records, and its one qualification case whose prover
+    stopped at its limit is a time-limit crossing, as `verify: wp3`
+    foresaw.
+  - M11-2's point (`1532acb0`). Its `verify` differs from the baseline
+    only where solver runs reached their limits: two of Leaf A's goals,
+    `D_reads_87` and `D_reads_97`, so that the WP arm proves 128 of 134;
+    and three rows of the ring's bounded check, `acquire` at 512 bytes
+    under cvc5, and `post` and `post_words` at 4,096 bytes under the
+    SAT solver in configuration B. Each arm's verdict, the ring's
+    totals, and every mutant's verdict are the baseline's. These are
+    recorded as time-limit crossings, and the point stands.
