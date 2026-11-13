@@ -1657,6 +1657,11 @@ public push now.
   readings, the ordering premises, and the lineage table, whether M11
   changes each and why; seven conditions on the later work packages;
   and three items for the responsible human.
+- `mvp-m11-evidence.md`: M11's evidence record, one section per work
+  package as each ends: what was run, when, on which commit, and what
+  it printed, starting with M11-2 (the tool locks on the development
+  host, the firmware base, the switch, the oracle, and the re-proof
+  point).
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and

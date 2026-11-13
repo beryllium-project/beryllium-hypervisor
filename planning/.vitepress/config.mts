@@ -584,6 +584,10 @@ export default defineConfig({
             link: '/mvp-m11-proof-impact'
           },
           {
+            text: 'MVP M11 evidence record',
+            link: '/mvp-m11-evidence'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1216,6 +1220,10 @@ export default defineConfig({
             link: '/mvp-m11-proof-impact'
           },
           {
+            text: 'MVP M11 evidence record',
+            link: '/mvp-m11-evidence'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1731,6 +1739,10 @@ export default defineConfig({
           {
             text: 'MVP M11 proof-impact review (M11-2)',
             link: '/mvp-m11-proof-impact'
+          },
+          {
+            text: 'MVP M11 evidence record',
+            link: '/mvp-m11-evidence'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',
