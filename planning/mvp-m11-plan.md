@@ -1641,3 +1641,10 @@ text above as it says; the text above is otherwise as accepted.
     the board tools' layout rule": 6,000, in place of 3,500. M11-3's
     content adds 1,914, and M11-4's design about 1,790, most of them
     host tests and the image checker's rules; M11-7 and M11-8 follow.
+- **2026-11-12, an erratum to the entry `oracle: absent`**, in this
+  record's wording, not in the decision. "With every class readable"
+  cannot hold under plain PMP: QEMU's `k3-like` CPU has `mseccfg` only
+  when Smepmp is on (found in M11-6's design). The rule reads: a
+  boundary-on run must be on `k3-like`, with the PMP registers and
+  `menvcfg` readable, and `mseccfg` readable under Smepmp and recorded
+  as absent under plain PMP, or it is refused before QEMU starts.
