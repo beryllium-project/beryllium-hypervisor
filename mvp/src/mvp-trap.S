@@ -97,11 +97,6 @@
 	.equ MVP_CSR_VSTIMECMP, 0x24d
 	.equ MVP_CSR_STIMECMP, 0x14d
 	.equ MVP_CSR_SENVCFG, 0x10a
-	/* The hart region: 2^17 bytes of 2^16-byte blocks; mvp-runtime.c
-	 * asserts both against mvp-layout.h. */
-	.equ MVP_REGION_SHIFT, 17
-	.equ MVP_BLOCK_SHIFT, 16
-
 #ifdef BE_MVP_CHERI
 	/*
 	 * beryllium-cheri: CHERI v0.9.3 (Zcherihybrid). Beryllium's
@@ -214,7 +209,7 @@
 	.endm
 #endif
 
-	.section .text, "ax"
+	.section .text.mvp.domain, "ax"
 
 	/*
 	 * Arm helper: henvcfg = the armed value, STCE only (beryllium-cheri:
@@ -471,6 +466,7 @@ be_mvp_arch_inject:
 	 * trusted-stack top in sscratch, so that an HS exception on hart 0
 	 * reaches its terminal path. Returns the sie readback.
 	 */
+	.section .text.mvp.control, "ax"
 	.align 2
 	.globl be_mvp_arch_arm_budget
 	.type be_mvp_arch_arm_budget, @function
@@ -498,6 +494,7 @@ be_mvp_arch_arm_budget:
 	 * a wake with none of a0's bits pending loops. Returns the time.
 	 * Hart 0's wait, and a paused or terminated domain hart's.
 	 */
+	.section .text.mvp.shared, "ax"
 	.align 2
 	.globl be_mvp_arch_wait
 	.type be_mvp_arch_wait, @function
@@ -519,6 +516,7 @@ be_mvp_arch_wait:
 	 * in HS for hart 0 reads its inbound ring only after an IPI arrived
 	 * (planning/mvp-m2-plan.md, Q14).
 	 */
+	.section .text.mvp.shared, "ax"
 	.align 2
 	.globl be_mvp_arch_clear_ssip
 	.type be_mvp_arch_clear_ssip, @function
@@ -528,6 +526,7 @@ be_mvp_arch_clear_ssip:
 	.size be_mvp_arch_clear_ssip, . - be_mvp_arch_clear_ssip
 
 	/* Time helper: the time CSR, for the tick counts and the budget. */
+	.section .text.mvp.shared, "ax"
 	.align 2
 	.globl be_mvp_arch_read_time
 	.type be_mvp_arch_read_time, @function
@@ -572,6 +571,7 @@ be_mvp_arch_fence_r_w:
 	 * both windows is stored, before the blocks are published; each domain
 	 * hart then executes the image's one fence.i before its first entry.
 	 */
+	.section .text.mvp.boot, "ax"
 	.align 2
 	.globl be_mvp_arch_fence_rw_rw
 	.type be_mvp_arch_fence_rw_rw, @function
@@ -585,6 +585,7 @@ be_mvp_arch_fence_rw_rw:
 	 * check, in HS wfi forever. It writes no CSR; an IPI wakes it into the
 	 * same wfi.
 	 */
+	.section .text.mvp.domain, "ax"
 	.align 2
 	.globl be_mvp_arch_park
 	.type be_mvp_arch_park, @function
@@ -594,6 +595,7 @@ be_mvp_arch_park:
 	j	1b
 	.size be_mvp_arch_park, . - be_mvp_arch_park
 
+	.section .text.mvp.shared, "ax"
 	.align 2
 	.globl be_mvp_trap_vector
 	.type be_mvp_trap_vector, @function
@@ -631,14 +633,11 @@ be_mvp_trap_vector:
 	 */
 	addi	t0, sp, 16
 #endif
-	la	t1, __be_mvp_hart_region_start
-	sub	t0, t0, t1
-	srli	t1, t0, MVP_REGION_SHIFT
-	bnez	t1, .Lmvp_vector_bad_stack
-	slli	t0, t0, 64 - MVP_BLOCK_SHIFT
-	srli	t0, t0, 64 - MVP_BLOCK_SHIFT
-	li	t1, BE_MVP_BLOCK_STACK_TOP_OFFSET
+	li	t1, BE_MVP_G0_BLOCK_HPA + BE_MVP_BLOCK_STACK_TOP_OFFSET
+	beq	t0, t1, .Lmvp_vector_stack_ok
+	li	t1, BE_MVP_G1_BLOCK_HPA + BE_MVP_BLOCK_STACK_TOP_OFFSET
 	bne	t0, t1, .Lmvp_vector_bad_stack
+.Lmvp_vector_stack_ok:
 #ifdef BE_MVP_CHERI
 	/* Every guest capability register into the capability frame. */
 	.insn	i 0x0f, 4, t0, sp, -32
@@ -804,6 +803,7 @@ be_mvp_trap_vector:
 	tail	be_mvp_hart_terminal
 	.size be_mvp_trap_vector, . - be_mvp_trap_vector
 
+	.section .text.mvp.domain, "ax"
 	.align 2
 	.globl be_mvp_arch_resume
 	.type be_mvp_arch_resume, @function
@@ -824,14 +824,11 @@ be_mvp_arch_resume:
 	 * trusted-stack top. */
 	csrr	t0, sscratch
 	bne	t6, t0, .Lmvp_resume_bad
-	la	t1, __be_mvp_hart_region_start
-	sub	t0, t0, t1
-	srli	t1, t0, MVP_REGION_SHIFT
-	bnez	t1, .Lmvp_resume_bad
-	slli	t0, t0, 64 - MVP_BLOCK_SHIFT
-	srli	t0, t0, 64 - MVP_BLOCK_SHIFT
-	li	t1, BE_MVP_BLOCK_STACK_TOP_OFFSET
+	li	t1, BE_MVP_G0_BLOCK_HPA + BE_MVP_BLOCK_SAVED_OFFSET
+	beq	t0, t1, .Lmvp_resume_record_ok
+	li	t1, BE_MVP_G1_BLOCK_HPA + BE_MVP_BLOCK_SAVED_OFFSET
 	bne	t0, t1, .Lmvp_resume_bad
+.Lmvp_resume_record_ok:
 	csrr	t0, satp
 	bnez	t0, .Lmvp_resume_bad
 	csrr	t0, stvec

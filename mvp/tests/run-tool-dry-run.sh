@@ -712,8 +712,8 @@ grep -q '^BE_MVP_PREFLIGHT: PASS hart0_dt=h:yes,sstc:yes hart0_cpuinfo=h:yes,sst
 cmp -s -- "$out/preflight-pass/verdict.txt" <(grep '^BE_MVP_PREFLIGHT: ' "$out/preflight-pass.tool.txt") ||
 	fail "preflight-pass: verdict.txt"
 has "$out/preflight-pass/region-check.txt" region_check=PASS \
-	'region core=0x102000000-0x102034000 result=free' \
-	'region hart-region=0x102044000-0x102064000 result=free' \
+	'region core=0x102000000-0x102020000 result=free' \
+	'region hart-region=0x102040000-0x102068000 result=free' \
 	'region staging=0x108000000-0x108600000 result=free' \
 	'region shared-pages=0x118000000-0x118003000 result=free' \
 	'system_ram_children=20 fdt_reservations=11'
@@ -743,9 +743,9 @@ print(json.dumps({"iomem": fake.recorded_iomem() + [sys.argv[2]]}))' \
 }
 for stop in "g0-window-child|$(iomem_with '  113000000-113000fff : Reserved')|^stop: g0-window 0x110000000-0x114000000 holds the /proc/iomem child" \
 	"g1-window-child|$(iomem_with '  117000000-117000fff : Reserved')|^stop: g1-window 0x114000000-0x118000000 holds the /proc/iomem child" \
-	"hart-region-child|$(iomem_with '  102050000-102050fff : Reserved')|^stop: hart-region 0x102044000-0x102064000 holds the /proc/iomem child" \
+	"hart-region-child|$(iomem_with '  102050000-102050fff : Reserved')|^stop: hart-region 0x102040000-0x102068000 holds the /proc/iomem child" \
 	'staging-reservation|{"fdt_reserved": [[4434427904, 4434432000]]}|^stop: staging 0x108000000-0x108600000 holds the FDT reservation 0x108500000-0x108501000' \
-	'mvp-region-reservation|{"fdt_reserved": [[4329046016, 4329050112]]}|^stop: mvp-region 0x102064000-0x1020a4000 holds the FDT reservation 0x102080000-0x102081000' \
+	'mvp-region-reservation|{"fdt_reserved": [[4329046016, 4329050112]]}|^stop: mvp-region 0x102068000-0x1020a4000 holds the FDT reservation 0x102080000-0x102081000' \
 	"channel-child|$(iomem_with '  118000000-118000fff : Reserved')|^stop: shared-pages 0x118000000-0x118003000 holds the /proc/iomem child"; do
 	IFS='|' read -r name settings pattern <<<"$stop"
 	preflight "$name" 1 "$settings"

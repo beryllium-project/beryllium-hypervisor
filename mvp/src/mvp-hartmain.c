@@ -181,8 +181,8 @@ static void hart_fail(struct be_mvp_hart_page *page, enum be_mvp_class failure,
 	be_mvp_line_text(&line, be_mvp_class_name(failure));
 	be_mvp_line_text(&line, hart_newline);
 	fallback_write(&line);
-	be_mvp_detail_line(&line, failure, page->page.desc.domain,
-			   page->page.desc.hart, detail, words);
+	be_mvp_detail_line(&line, failure, page->published->desc.domain,
+			   page->published->desc.hart, detail, words);
 	fallback_write(&line);
 	(void)be_mvp_exec_system_reset();
 	be_mvp_exec_park();
@@ -501,8 +501,8 @@ void be_mvp_dispatch(struct be_mvp_exit *record)
 
 	if (page == (struct be_mvp_hart_page *)0)
 		be_mvp_exec_park();
-	switch (be_mvp_handle_exit(&page->page.state, &page->map,
-				   &page->leaves, record, &result)) {
+	switch (be_mvp_handle_exit(&page->page.state, &page->published->map,
+				   &page->published->leaves, record, &result)) {
 	case BE_MVP_ACTION_RETURN:
 		break;
 	case BE_MVP_ACTION_CONSOLE_WRITE:
@@ -540,7 +540,7 @@ void be_mvp_dispatch(struct be_mvp_exit *record)
 		exit_fail(page, record, result.failure);
 	}
 	be_mvp_apply_return(&record->frame, &result);
-	be_mvp_exec_resume(record, page->page.desc.hgatp,
+	be_mvp_exec_resume(record, page->published->desc.hgatp,
 			   page->page.controls.hedeleg);
 }
 #endif
@@ -562,9 +562,30 @@ static void controls_fail(struct be_mvp_hart_page *page)
 		  BE_MVP_DETAIL_EXIT_WORDS);
 }
 
+static const struct be_mvp_published_page *published_page(be_u64 block)
+{
+	if (block == BE_MVP_G0_BLOCK_HPA)
+		return (const struct be_mvp_published_page *)(const void *)
+			BE_MVP_G0_PUBLISHED_HPA;
+	if (block == BE_MVP_G1_BLOCK_HPA)
+		return (const struct be_mvp_published_page *)(const void *)
+			BE_MVP_G1_PUBLISHED_HPA;
+	return (const struct be_mvp_published_page *)0;
+}
+
+static void copy_state_config(struct be_mvp_state *state,
+			      const struct be_mvp_state_config *config)
+{
+	state->exit_ceiling = config->exit_ceiling;
+	state->accept_denial = config->accept_denial;
+	state->accept_mgmt = config->accept_mgmt;
+	state->accept_input = config->accept_input;
+}
+
 void be_mvp_hart_main(be_u64 hart_id, be_u64 block)
 {
 	struct be_mvp_hart_page *page = hart_page(block);
+	const struct be_mvp_published_page *published = published_page(block);
 	struct be_mvp_exit *record = (struct be_mvp_exit *)(void *)(block +
 		BE_MVP_BLOCK_SAVED_OFFSET);
 	be_u64 top = block + BE_MVP_BLOCK_STACK_TOP_OFFSET;
@@ -577,21 +598,26 @@ void be_mvp_hart_main(be_u64 hart_id, be_u64 block)
 	be_u32 index;
 
 	/* Before the console exists, a block that fails its check parks. */
-	if (page == (struct be_mvp_hart_page *)0)
+	if (page == (struct be_mvp_hart_page *)0 ||
+	    published == (const struct be_mvp_published_page *)0 ||
+	    page->published != published)
 		be_mvp_exec_park();
 	state = &page->page;
 	/* The barrier: the generation word first, then what it publishes. */
-	if (*(volatile be_u64 *)&state->desc.generation != BE_MVP_GENERATION)
+	if (*(volatile const be_u64 *)&published->desc.generation !=
+	    BE_MVP_GENERATION)
 		be_mvp_exec_park();
 	be_mvp_exec_fence_r_r();
 	/* The SBI core's state and this hart's ring views are hart 0's work
 	 * before the barrier; from here on they are this hart's. */
-	if (be_mvp_block_check(&state->desc, hart_id, block, be_mvp_bindings,
+	if (be_mvp_block_check(&published->desc, hart_id, block,
+			       be_mvp_bindings,
 			       BE_MVP_DOMAINS) != BE_MVP_BLOCK_OK ||
 	    state->state.phase != BE_MVP_PHASE_RUNNING ||
 	    page->inbound.failed != 0U || page->outbound.failed != 0U ||
 	    page->input.failed != 0U)
 		be_mvp_exec_park();
+	copy_state_config(&state->state, &published->config);
 
 	be_mvp_exec_reset_hs_state(symbol_address(be_mvp_trap_vector), &hs);
 	value = be_mvp_exec_arm_stce();
@@ -600,13 +626,14 @@ void be_mvp_hart_main(be_u64 hart_id, be_u64 block)
 		register_fail(page, failure, BE_MVP_REGISTER_HENVCFG,
 			      BE_MVP_HENVCFG_ARMED, value);
 	/* The hart's one install: its domain's root, fenced and read back. */
-	value = be_mvp_exec_install_hgatp(state->desc.hgatp);
-	if (value != state->desc.hgatp)
+	value = be_mvp_exec_install_hgatp(published->desc.hgatp);
+	if (value != published->desc.hgatp)
 		register_fail(page, BE_MVP_CLASS_GSTAGE, BE_MVP_REGISTER_HGATP,
-			      state->desc.hgatp, value);
+			      published->desc.hgatp, value);
 	be_mvp_vcsr_initial(vcsr);
 	be_mvp_exec_arm_controls(&state->controls, top, vcsr, readback);
-	if (!be_mvp_controls_valid(&state->controls, state->desc.hgatp, top))
+	if (!be_mvp_controls_valid(&state->controls, published->desc.hgatp,
+				   top))
 		controls_fail(page);
 	index = be_mvp_vcsr_mismatch(vcsr, readback);
 	if (index != BE_MVP_VCSR_COUNT)
@@ -618,10 +645,11 @@ void be_mvp_hart_main(be_u64 hart_id, be_u64 block)
 	value = be_mvp_exec_read_time();
 	state->entered = value;
 	if (!be_mvp_post_ready(&page->outbound, &state->controls, value) ||
-	    !be_mvp_post_entered(&page->outbound, &state->entry, value) ||
+	    !be_mvp_post_entered(&page->outbound, &published->entry, value) ||
 	    !publish(page))
 		hart_fail(page, BE_MVP_CLASS_RING, (const be_u64 *)0, 0U);
 	tell_control_hart();
-	*record = state->entry;
-	be_mvp_exec_resume(record, state->desc.hgatp, state->controls.hedeleg);
+	*record = published->entry;
+	be_mvp_exec_resume(record, published->desc.hgatp,
+			   state->controls.hedeleg);
 }

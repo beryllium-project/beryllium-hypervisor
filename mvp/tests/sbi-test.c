@@ -390,16 +390,16 @@ static struct be_mvp_controls armed_controls(void)
 		.vstimecmp = ALL_ONES,
 		.sie = 0x2U,
 		.sstatus = BE_U64_C(0x200000000),
-		.hgatp = BE_U64_C(0x8000100000102034),
+		.hgatp = BE_U64_C(0x8000100000102020),
 		.vsatp = 0U,
-		.sscratch = BE_U64_C(0x102046000),
+		.sscratch = BE_U64_C(0x102062000),
 	};
 }
 
 static int armed_valid(const struct be_mvp_controls *controls)
 {
 	return be_mvp_controls_valid(controls, BE_MVP_G0_HGATP,
-				     BE_U64_C(0x102046000));
+				     BE_U64_C(0x102062000));
 }
 
 static void test_controls(void)
@@ -424,20 +424,20 @@ static void test_controls(void)
 	CHECK(BE_MVP_SSTATUS_CONTROL_MASK == 0xde722U);
 	/* Each domain hart's trusted-stack top is its block's. */
 	CHECK(BE_MVP_G0_BLOCK_HPA + BE_MVP_BLOCK_STACK_TOP_OFFSET ==
-	      BE_U64_C(0x102046000));
+	      BE_U64_C(0x102062000));
 	CHECK(sizeof(controls) == 16U * sizeof(be_u64));
 	CHECK(armed_valid(&controls) == 1);
 	CHECK(be_mvp_controls_valid(&controls, BE_R3_MANAGEMENT_HGATP,
-				    BE_U64_C(0x102046000)) == 0);
+				    BE_U64_C(0x102062000)) == 0);
 	CHECK(be_mvp_controls_valid(&controls, BE_MVP_G1_HGATP,
-				    BE_U64_C(0x102046000)) == 0);
+				    BE_U64_C(0x102062000)) == 0);
 	CHECK(be_mvp_controls_valid(&controls, BE_MVP_G0_HGATP,
 				    BE_R3_INITIAL_TRUSTED_SP) == 0);
 	CHECK(be_mvp_controls_valid(&controls, BE_MVP_G0_HGATP,
-				    BE_U64_C(0x102056000)) == 0);
+				    BE_U64_C(0x102066000)) == 0);
 	CHECK(be_mvp_controls_valid((const struct be_mvp_controls *)0,
 				    BE_MVP_G0_HGATP,
-				    BE_U64_C(0x102046000)) == 0);
+				    BE_U64_C(0x102062000)) == 0);
 	/* Any single field off its guest-run value fails. */
 	for (index = 0U; index < sizeof(controls) / sizeof(be_u64); ++index) {
 		bit = 2U;
@@ -622,7 +622,7 @@ static void test_window(void)
 	CHECK(windows[1].hpa_base == WINDOW_G1_HPA);
 	CHECK(windows[1].gpa_base == WINDOW_GPA &&
 	      windows[1].size == WINDOW_BYTES);
-	CHECK(window.pool_pa == BE_U64_C(0x102034000));
+	CHECK(window.pool_pa == BE_U64_C(0x102020000));
 	CHECK(window.vmid == 1U && windows[1].vmid == 2U);
 	CHECK(window.hart == 1U && windows[1].hart == 2U);
 }
@@ -771,7 +771,7 @@ static void test_dbcn_window(void)
 	 * monitor, the pool, the hart region, and the staged image. */
 	check_dbcn_refused(1U, WINDOW_HPA, 0U);
 	check_dbcn_refused(1U, BE_U64_C(0x102000000), 0U);
-	check_dbcn_refused(1U, BE_U64_C(0x102034000), 0U);
+	check_dbcn_refused(1U, BE_U64_C(0x102020000), 0U);
 	check_dbcn_refused(1U, BE_MVP_HART_REGION_HPA, 0U);
 	check_dbcn_refused(1U, BE_MVP_G1_BLOCK_HPA +
 			   BE_MVP_BLOCK_OUTBOUND_OFFSET, 0U);
@@ -4015,9 +4015,9 @@ static void test_line_builder(void)
 		{ 0x1af628U, "0x1af628", "1766952" },
 		{ 0x4000000U, "0x4000000", "67108864" },
 		{ 0x80200000U, "0x80200000", "2149580800" },
-		{ BE_U64_C(0x102034000), "0x102034000", "4328734720" },
-		{ BE_U64_C(0x8000000000102034), "0x8000000000102034",
-		  "9223372036855832628" },
+		{ BE_U64_C(0x102020000), "0x102020000", "4328652800" },
+		{ BE_U64_C(0x8000100000102020), "0x8000100000102020",
+		  "9223389629041877024" },
 		{ BE_U64_C(0x8000000000000000), "0x8000000000000000",
 		  "9223372036854775808" },
 		{ ALL_ONES, "0xffffffffffffffff", "18446744073709551615" },
@@ -4061,7 +4061,7 @@ static void test_line_builder(void)
 	be_mvp_line_text(&line, "\n");
 	CHECK(line_is(&line, "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 "
 		      "hart=2 gpa=0x80000000 hpa=0x114000000 size=0x4000000 "
-		      "leaves=32 root=0x10203c000 vmid=2\n"));
+		      "leaves=32 root=0x102030000 vmid=2\n"));
 	be_mvp_line_reset(&line);
 	be_mvp_line_text(&line, "BE_MVP:07 BLOCKS_PUBLISHED region=");
 	be_mvp_line_hex(&line, BE_MVP_HART_REGION_HPA);
@@ -4072,8 +4072,8 @@ static void test_line_builder(void)
 	be_mvp_line_text(&line, " budget_ticks=");
 	be_mvp_line_hex(&line, BE_MVP_RUN_BUDGET);
 	be_mvp_line_text(&line, "\n");
-	CHECK(line_is(&line, "BE_MVP:07 BLOCKS_PUBLISHED region=0x102044000 "
-		      "bytes=0x20000 generation=1 "
+	CHECK(line_is(&line, "BE_MVP:07 BLOCKS_PUBLISHED region=0x102040000 "
+		      "bytes=0x28000 generation=1 "
 		      "budget_ticks=0x100000000\n"));
 	be_mvp_line_reset(&line);
 	be_mvp_line_text(&line, "BE_MVP:09 HART_READY hart=");
@@ -4098,7 +4098,7 @@ static void test_line_builder(void)
 	be_mvp_line_hex(&line, ALL_ONES);
 	be_mvp_line_text(&line, "\n");
 	CHECK(line_is(&line, "BE_MVP:09 HART_READY hart=1 domain=0 "
-		      "hgatp=0x8000100000102034 hstatus_controls=0x180 "
+		      "hgatp=0x8000100000102020 hstatus_controls=0x180 "
 		      "hedeleg=0xb15c hideleg=0x40 hcounteren=0x2 sie=0x2 "
 		      "henvcfg=0x8000000000000000 "
 		      "vstimecmp=0xffffffffffffffff\n"));

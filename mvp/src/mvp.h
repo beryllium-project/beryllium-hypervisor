@@ -754,17 +754,20 @@ struct be_mvp_console {
 
 /**
  * struct be_mvp_state - one domain hart's SBI-core state
- * @exit_ceiling: most exits the domain may take
+ * @exit_ceiling: most exits the VS domain may take, copied by its hart's
+ *                entry from the published words after the generation check
+ *                and read fence
  * @accept_denial: 1 when the image's accepted-exit set names the denial
  *                 entry (its scenario's, but in the no-inject variant),
- *                 else 0; written by hart 0 before the barrier
+ *                 else 0; copied by the VS-domain-hart entry from the
+ *                 published words after the generation check and read fence
  * @accept_mgmt: 1 when the image's scenario accepts the management
- *               extension (planning/mvp-m2-plan.md, Q3), else 0; written
- *               by hart 0 before the barrier
+ *               extension (planning/mvp-m2-plan.md, Q3), else 0; copied
+ *               by the VS-domain-hart entry from the published words
  * @accept_input: 1 when the image's sealed configuration grants the
  *                domain console input (planning/mvp-m7-plan.md, D-5),
- *                else 0; written by hart 0 before the barrier from the
- *                sealed canonical state: only then is DBCN read served
+ *                else 0; copied by the VS-domain-hart entry from the
+ *                published words: only then is DBCN read served
  * @phase: RUNNING; STOPPED after its shutdown; PAUSED or TERMINATED after
  *         hart 0's order; or FAILED
  * @failure: sticky terminal class once @phase is FAILED

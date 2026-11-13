@@ -197,11 +197,10 @@ _Static_assert(BE_MVP_SIE_SSIE == BE_U64_C(0x2) &&
 	       BE_MVP_SIE_CONTROL == BE_U64_C(0x22) &&
 	       BE_MVP_HVIP_VS_BITS == BE_U64_C(0x444),
 	       "assembly sie and hvip mismatch");
-/* mvp-trap.S and mvp-hartentry.S test an offset from the region's start
- * by these shifts. */
-_Static_assert(BE_MVP_HART_REGION_BYTES == BE_U64_C(1) << 17 &&
-	       BE_MVP_BLOCK_BYTES == BE_U64_C(1) << 16,
-	       "assembly hart-region shifts mismatch");
+/* The assembly entry checks these two exact private-block addresses. */
+_Static_assert(BE_MVP_G0_BLOCK_HPA != BE_MVP_G1_BLOCK_HPA &&
+	       BE_MVP_BLOCK_BYTES == BE_U64_C(0x4000),
+	       "assembly private-block addresses and size mismatch");
 _Static_assert(sizeof(struct be_mvp_hart_page) <= BE_MVP_BLOCK_STATE_BYTES,
 	       "a domain hart's state page holds its views");
 _Static_assert(sizeof(struct be_mvp_exit) <= BE_MVP_BLOCK_SAVED_BYTES,
@@ -385,6 +384,13 @@ _Static_assert(BE_MVP_LOG_SEQUENCE == BE_MVP_RUN_LOG_SEQUENCE &&
 	       BE_MVP_LOG_EXPECTED_COUNT < BE_MVP_LOG_CAPACITY,
 	       "the generator's sequence is the image's, and its expected "
 	       "count at most fifteen (planning/mvp-m9-plan.md, stop 6)");
+
+#define MVP_BOOT_BSS	__attribute__((section(".bss.mvp.boot")))
+#define MVP_CONTROL_BSS	__attribute__((section(".bss.mvp.control")))
+#define MVP_SEALED_BSS	__attribute__((section(".bss.mvp.sealed")))
+#define MVP_LOG_BSS	__attribute__((section(".bss.mvp.log")))
+#define MVP_SHARED_RODATA __attribute__((section(".rodata.mvp.shared")))
+#define MVP_CONTROL_RODATA __attribute__((section(".rodata.mvp.control")))
 /*
  * The page and the registers (2.1, 2.6): hart 0's own, in the MVP
  * region's BSS, zero from clear_mvp_bss(), the page 4 KiB aligned;
@@ -395,12 +401,12 @@ _Static_assert(BE_MVP_LOG_SEQUENCE == BE_MVP_RUN_LOG_SEQUENCE &&
  * path prints and the domain harts' reach only as text.
  */
 static be_u8 be_mvp_log[BE_MVP_LOG_PAGE_BYTES]
-	__attribute__((aligned(BE_MVP_LOG_PAGE_BYTES)));
-static be_u8 be_mvp_log_registers[BE_MVP_LOG_REGISTERS_BYTES];
-static be_u64 be_mvp_log_ticks;
-static struct be_mvp_line be_mvp_log_terminal;
+	__attribute__((aligned(BE_MVP_LOG_PAGE_BYTES), section(".bss.mvp.log")));
+static be_u8 be_mvp_log_registers[BE_MVP_LOG_REGISTERS_BYTES] MVP_LOG_BSS;
+static be_u64 be_mvp_log_ticks MVP_CONTROL_BSS;
+static struct be_mvp_line be_mvp_log_terminal MVP_CONTROL_BSS;
 /* The core identity seal_config() computed and CONFIG_SEALED printed. */
-static be_u8 be_mvp_sealed_identity[BE_MVP_SHA256_BYTES];
+static be_u8 be_mvp_sealed_identity[BE_MVP_SHA256_BYTES] MVP_SEALED_BSS;
 #if BE_MVP_RUN_ACCEPT_MGMT
 /*
  * The management extension (planning/mvp-m2-plan.md, "The management
@@ -412,12 +418,12 @@ static be_u8 be_mvp_sealed_identity[BE_MVP_SHA256_BYTES];
  */
 static const struct be_mvp_mgmt_grant be_mvp_grants[BE_MVP_SCENARIO_GRANTS] =
 	BE_MVP_SCENARIO_GRANT_INITIALIZER;
-static struct be_mvp_mgmt_state be_mvp_mgmt_state;
+static struct be_mvp_mgmt_state be_mvp_mgmt_state MVP_CONTROL_BSS;
 _Static_assert(BE_MVP_SCENARIO_GRANTS <= BE_MVP_MGMT_GRANTS_MAX,
 	       "the scenario's grants fit hart 0's table");
 #endif
 
-static struct be_runtime be_mvp_runtime = BE_RUNTIME_INITIALIZER;
+static struct be_runtime be_mvp_runtime MVP_SEALED_BSS;
 /*
  * The G-stage builder's inputs, from the derived roots alone (mvp-core.c;
  * planning/mvp-m6-plan.md, D-2): each domain's window, pool, VMID, and
@@ -426,30 +432,35 @@ static struct be_runtime be_mvp_runtime = BE_RUNTIME_INITIALIZER;
  * and from then the only records the builder, its checks, the pages' and
  * channel page's placement, the measurement, and the control loop take.
  */
-static struct be_mvp_gstage_desc be_mvp_sealed_descs[BE_MVP_DOMAINS];
-static struct be_mvp_gstage_page be_mvp_sealed_pages[BE_MVP_PAGES_MAX];
+static struct be_mvp_gstage_desc
+	be_mvp_sealed_descs[BE_MVP_DOMAINS] MVP_SEALED_BSS;
+static struct be_mvp_gstage_page
+	be_mvp_sealed_pages[BE_MVP_PAGES_MAX] MVP_SEALED_BSS;
 #if !BE_MVP_RUN_PAGES
-static struct be_mvp_gstage_channel be_mvp_sealed_channel;
+static struct be_mvp_gstage_channel be_mvp_sealed_channel MVP_SEALED_BSS;
 #endif
-static struct be_r3_state be_mvp_r3_control = BE_R3_STATE_INITIALIZER;
-static struct be_r3_image_layout be_mvp_layout;
-static struct be_r3_hs_state be_mvp_hs;
-static struct be_mvp_gstage_map be_mvp_maps[BE_MVP_DOMAINS];
+static struct be_r3_state be_mvp_r3_control MVP_BOOT_BSS =
+	BE_R3_STATE_INITIALIZER;
+static struct be_r3_image_layout be_mvp_layout MVP_BOOT_BSS;
+static struct be_r3_hs_state be_mvp_hs MVP_BOOT_BSS;
+static struct be_mvp_gstage_map be_mvp_maps[BE_MVP_DOMAINS] MVP_SEALED_BSS;
 /*
  * Each root's walked leaves of its pages, which each domain hart's block
  * carries for the denial decision: the declared pages' in a scenario with
  * pages; else M1's channel leaf as page 0, all zero without a channel.
  */
-static struct be_mvp_gstage_leaves be_mvp_page_leaves[BE_MVP_DOMAINS];
+static struct be_mvp_gstage_leaves
+	be_mvp_page_leaves[BE_MVP_DOMAINS] MVP_SEALED_BSS;
 #if !BE_MVP_RUN_PAGES
-static struct be_mvp_gstage_leaf be_mvp_leaves[BE_MVP_DOMAINS];
+static struct be_mvp_gstage_leaf
+	be_mvp_leaves[BE_MVP_DOMAINS] MVP_SEALED_BSS;
 #endif
-static struct be_mvp_payload_plan be_mvp_plans[BE_MVP_DOMAINS];
+static struct be_mvp_payload_plan be_mvp_plans[BE_MVP_DOMAINS] MVP_SEALED_BSS;
 /* Hart 0's control loop and its own views of each domain's three rings. */
-static struct be_mvp_control be_mvp_ctl;
-static struct be_mvp_ring be_mvp_inbound[BE_MVP_DOMAINS];
-static struct be_mvp_ring be_mvp_outbound[BE_MVP_DOMAINS];
-static struct be_mvp_ring be_mvp_input_rings[BE_MVP_DOMAINS];
+static struct be_mvp_control be_mvp_ctl MVP_CONTROL_BSS;
+static struct be_mvp_ring be_mvp_inbound[BE_MVP_DOMAINS] MVP_CONTROL_BSS;
+static struct be_mvp_ring be_mvp_outbound[BE_MVP_DOMAINS] MVP_CONTROL_BSS;
+static struct be_mvp_ring be_mvp_input_rings[BE_MVP_DOMAINS] MVP_CONTROL_BSS;
 #if !defined(BE_MVP_PROBE_IMAGE)
 /*
  * Console input (planning/mvp-m7-plan.md, D-1, D-3, and D-4): hart 0's
@@ -457,16 +468,17 @@ static struct be_mvp_ring be_mvp_input_rings[BE_MVP_DOMAINS];
  * into, in the MVP region's BSS. Hart 0 alone names them, and arms them
  * only in an image whose sealed configuration grants console input.
  */
-static struct be_mvp_input be_mvp_console_in;
-static be_u8 be_mvp_console_in_buffer[BE_MVP_INPUT_READ_BYTES];
+static struct be_mvp_input be_mvp_console_in MVP_CONTROL_BSS;
+static be_u8 be_mvp_console_in_buffer[BE_MVP_INPUT_READ_BYTES]
+	MVP_CONTROL_BSS;
 #endif
-static struct be_mvp_record be_mvp_record;
-static struct be_mvp_line be_mvp_line;
-static struct be_mvp_line be_mvp_detail;
+static struct be_mvp_record be_mvp_record MVP_CONTROL_BSS;
+static struct be_mvp_line be_mvp_line MVP_CONTROL_BSS;
+static struct be_mvp_line be_mvp_detail MVP_CONTROL_BSS;
 #if !defined(BE_MVP_PROBE_IMAGE)
-static char be_mvp_console_out[BE_MVP_PRINT_LINE_BYTES];
+static char be_mvp_console_out[BE_MVP_PRINT_LINE_BYTES] MVP_CONTROL_BSS;
 #endif
-static be_u32 be_mvp_terminal_entered;
+static be_u32 be_mvp_terminal_entered MVP_CONTROL_BSS;
 
 /* The MVP's boot (planning/mvp-m6-plan.md, D-3, Q2): the accepted boot
  * check, then the sealed configuration, its identity's first eight bytes
@@ -650,6 +662,7 @@ static const char marker_register_henvcfg[] = "henvcfg";
 static const char marker_register_hgatp[] = "hgatp";
 static const char marker_srst[] = "BE_MVP:SRST_RETURNED\n";
 static const char marker_newline[] = "\n";
+static const char marker_minus[] MVP_SHARED_RODATA = "-";
 
 /*
  * What each drained record prints after its hart and domain: one byte per
@@ -748,7 +761,7 @@ void be_mvp_line_format(struct be_mvp_line *line, const char *format,
 			continue;
 		}
 		if (kind == 'i' && (value >> 63) != 0U) {
-			be_mvp_line_text(line, "-");
+			be_mvp_line_text(line, marker_minus);
 			value = 0U - value;
 		}
 		be_mvp_line_decimal(line, value);
@@ -966,6 +979,7 @@ static void seal_config(void)
 	be_u32 domain;
 	int agree;
 
+	*runtime = (struct be_runtime)BE_RUNTIME_INITIALIZER;
 	if (be_runtime_copy_inventory(runtime, &be_mvp_inventory) !=
 		    BE_RUNTIME_OK ||
 	    be_runtime_copy_proposal(runtime, &be_mvp_proposal) !=
@@ -1152,7 +1166,7 @@ static struct be_mvp_gstage_root_page channel_page(be_u32 domain)
 static void line_hex(struct be_mvp_line *line, const be_u8 *bytes,
 		     be_u64 count)
 {
-	static const char digits[] = "0123456789abcdef";
+	static const char digits[] MVP_CONTROL_RODATA = "0123456789abcdef";
 	char pair[3] = { '\0', '\0', '\0' };
 	be_u64 index;
 
@@ -1295,7 +1309,7 @@ static void build_gstage(void)
 		be_mvp_runtime_terminal(BE_MVP_CLASS_GSTAGE);
 	for (domain = 0U; domain < BE_MVP_DOMAINS; ++domain) {
 		be_u8 *pool = __be_mvp_pool_start +
-			      domain * BE_MVP_GUEST_POOL_BYTES;
+			      domain * BE_MVP_READ_CLUSTER_BYTES;
 		const struct be_mvp_gstage_map *map = &be_mvp_maps[domain];
 		const struct be_mvp_gstage_desc *desc =
 			&be_mvp_sealed_descs[domain];
@@ -1789,6 +1803,30 @@ static struct be_mvp_hart_page *hart_page(be_u32 domain)
 						   BE_MVP_BLOCK_STATE_OFFSET);
 }
 
+static struct be_mvp_published_page *published_page(be_u32 domain)
+{
+	be_u64 address = domain == 0U ? BE_MVP_G0_PUBLISHED_HPA :
+			 domain == 1U ? BE_MVP_G1_PUBLISHED_HPA : 0U;
+
+	return (struct be_mvp_published_page *)(void *)address;
+}
+
+static struct be_mvp_control_mailbox *control_mailbox(be_u32 domain)
+{
+	be_u64 address = domain == 0U ? BE_MVP_G0_CONTROL_MAILBOX_HPA :
+			 domain == 1U ? BE_MVP_G1_CONTROL_MAILBOX_HPA : 0U;
+
+	return (struct be_mvp_control_mailbox *)(void *)address;
+}
+
+static struct be_mvp_hart_mailbox *hart_mailbox(be_u32 domain)
+{
+	be_u64 address = domain == 0U ? BE_MVP_G0_HART_MAILBOX_HPA :
+			 domain == 1U ? BE_MVP_G1_HART_MAILBOX_HPA : 0U;
+
+	return (struct be_mvp_hart_mailbox *)(void *)address;
+}
+
 /* One ring's two views: the writer's and the reader's, at zero indices. */
 static int ring_views(struct be_mvp_ring *writer, struct be_mvp_ring *reader,
 		      be_u64 buffer, be_u64 capacity,
@@ -1824,49 +1862,67 @@ static void publish_blocks(void)
 
 	for (domain = 0U; domain < BE_MVP_DOMAINS; ++domain) {
 		struct be_mvp_hart_page *page = hart_page(domain);
-		be_u64 block = be_mvp_block_hpa(domain);
+		struct be_mvp_published_page *published =
+			published_page(domain);
+		struct be_mvp_control_mailbox *control =
+			control_mailbox(domain);
+		struct be_mvp_hart_mailbox *hart = hart_mailbox(domain);
 
-		(void)memset(page, 0, BE_MVP_BLOCK_STATE_BYTES);
-		if (be_mvp_block_fill(&page->page.desc, domain,
+		(void)memset(published, 0, BE_MVP_PUBLISHED_BYTES);
+		page->page.controls = (struct be_mvp_controls){ 0 };
+		page->page.state.phase = BE_MVP_PHASE_RUNNING;
+		page->page.state.failure = BE_MVP_CLASS_NONE;
+		page->page.state.counts = (struct be_mvp_counts){ 0 };
+		page->page.state.console = (struct be_mvp_console){ 0 };
+		page->page.state.by = 0U;
+		page->page.state.awaiting = 0U;
+		page->page.state.answer = 0U;
+		page->page.entered = 0U;
+		page->published = published;
+		page->stage = (struct be_mvp_input_stage){ 0 };
+		if (be_mvp_block_fill(&published->desc, domain,
 				      be_mvp_bindings, BE_MVP_DOMAINS,
 				      BE_MVP_RUN_OUTBOUND_BYTES) !=
 		    BE_MVP_BLOCK_OK)
 			boot_fail();
-		be_mvp_entry_frame(&page->page.entry,
+		be_mvp_entry_frame(&published->entry,
 				   be_mvp_plans[domain].kernel_gpa,
 				   BE_MVP_GUEST_HART,
 				   be_mvp_plans[domain].dtb_gpa);
-		(void)memcpy(&page->map, &be_mvp_maps[domain],
-			     sizeof(page->map));
-		(void)memcpy(&page->leaves, &be_mvp_page_leaves[domain],
-			     sizeof(page->leaves));
-		page->page.state.exit_ceiling = BE_MVP_RUN_EXIT_CEILING;
-		page->page.state.accept_denial = BE_MVP_RUN_ACCEPT_DENIAL;
-		page->page.state.accept_mgmt = BE_MVP_RUN_ACCEPT_MGMT;
-		page->page.state.accept_input = (grants >> domain) & 1U;
+		(void)memcpy(&published->map, &be_mvp_maps[domain],
+			     sizeof(published->map));
+		(void)memcpy(&published->leaves,
+			     &be_mvp_page_leaves[domain],
+			     sizeof(published->leaves));
+		published->config = (struct be_mvp_state_config) {
+			BE_MVP_RUN_EXIT_CEILING,
+			BE_MVP_RUN_ACCEPT_DENIAL,
+			BE_MVP_RUN_ACCEPT_MGMT,
+			(grants >> domain) & 1U,
+		};
 		if (!ring_views(&be_mvp_inbound[domain], &page->inbound,
-				block + BE_MVP_BLOCK_INBOUND_OFFSET,
+				published->desc.inbound,
 				BE_MVP_INBOUND_RING_BYTES,
-				&page->page.inbound_head,
-				&page->page.inbound_tail,
+				&control->inbound_head,
+				&hart->inbound_tail,
 				BE_MVP_RECORDS_INBOUND, domain) ||
 		    !ring_views(&page->outbound, &be_mvp_outbound[domain],
-				block + BE_MVP_BLOCK_OUTBOUND_OFFSET,
+				published->desc.outbound,
 				BE_MVP_RUN_OUTBOUND_BYTES,
-				&page->page.outbound_head,
-				&page->page.outbound_tail,
+				&hart->outbound_head,
+				&control->outbound_tail,
 				BE_MVP_RECORDS_OUTBOUND, domain) ||
 		    !ring_views(&be_mvp_input_rings[domain], &page->input,
-				block + BE_MVP_INPUT_RING_OFFSET,
+				published->desc.input,
 				BE_MVP_INPUT_RING_BYTES,
-				&page->page.input_head,
-				&page->page.input_tail,
+				&control->input_head,
+				&hart->input_tail,
 				BE_MVP_RECORDS_INPUT, domain))
 			boot_fail();
 	}
 	be_mvp_exec_fence_w_w();
 	for (domain = 0U; domain < BE_MVP_DOMAINS; ++domain)
-		*(volatile be_u64 *)&hart_page(domain)->page.desc.generation =
+		*(volatile be_u64 *)&published_page(domain)->desc.generation =
 			BE_MVP_GENERATION;
 	emit(marker_published, values);
 }
@@ -2415,7 +2471,7 @@ static void step(be_u32 domain, const struct be_mvp_record *record)
  * visit of the round-robin drain (Plan revision M0-C.1). The domain harts'
  * code is unchanged.
  */
-static be_u32 be_mvp_drain_delayed;
+static be_u32 be_mvp_drain_delayed MVP_CONTROL_BSS;
 
 static int drain_held(be_u32 domain)
 {
@@ -2556,7 +2612,7 @@ static void wait_ready(void)
  * armed (planning/mvp-m7-plan.md, D-1), each wake then polls the firmware
  * console and re-arms the timer for the next poll.
  */
-static void control_loop(void) __attribute__((noreturn));
+static void control_loop(void) __attribute__((noreturn, noinline));
 static void control_loop(void)
 {
 	for (;;) {

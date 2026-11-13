@@ -122,7 +122,7 @@ PAGE_ROLES = ("host", "prot")
 ANCHOR_PAGES, PAGE_BYTES = 3, 0x1000
 ANCHOR_ROLES = {
     0: ("host", (("store", 1, 0xff8), ("load", 2, 0), ("load", "G1_HPA", 0),
-                 ("load", "REGION_HPA", 0))),
+                 ("load", "ANCHOR_DENIED_HPA", 0))),
     1: ("prot", (("store", 0, 0xff8),)),
 }
 MODEL = "Beryllium MVP guest"

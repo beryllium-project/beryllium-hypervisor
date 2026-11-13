@@ -7,11 +7,11 @@
   budgets.py --self-test
 
 Purpose: every linked image (--image) against the plan's budgets, with
-Plan revision M0-A.1's: monitor text (the accepted code and the MVP's
-assembly) ending at or below 0x1_0200_8000, the accepted data and BSS at or
-below 0x1_0200_f000, the MVP pool exactly 0x10000 bytes and the hart region
-exactly 0x20000, the MVP region's text, constants, data, and BSS together at
-most 0x40000 bytes (each reported), the flat image exactly 0xa4000 bytes,
+M11-3's role layout: monitor text ending at or below 0x1_0200_c000,
+control data and BSS at or below 0x1_0201_2000, the read clusters exactly
+0x20000 bytes and the writer-split hart region exactly 0x28000, the MVP
+region's text, constants, data, and BSS together at most 0x3c000 bytes
+(each reported), the flat image exactly 0xa4000 bytes,
 and the boot image at most 4 MiB, with the second link's image
 (be-mvp-boot-pic.img), when the build left it, byte-identical. A
 measurement link (--measure) is a toolchain's monitor objects linked with
@@ -31,12 +31,12 @@ sys.dont_write_bytecode = True
 HERE = pathlib.Path(__file__).resolve()
 CHECKER = HERE.parents[1] / "tests" / "check-image.py"
 
-TEXT_LIMIT = 0x102008000
-DATA_LIMIT = 0x10200F000
+TEXT_LIMIT = 0x10200C000
+DATA_LIMIT = 0x102012000
 FLAT_BYTES = 0xA4000
-POOL_BYTES = 0x10000
-HART_REGION_BYTES = 0x20000
-MVP_LIMIT = 0x40000
+POOL_BYTES = 0x20000
+HART_REGION_BYTES = 0x28000
+MVP_LIMIT = 0x3C000
 BOOT_LIMIT = 0x400000
 PIC_IMAGE = "be-mvp-boot-pic.img"
 
@@ -122,14 +122,15 @@ def report(name, rows):
 
 
 def self_test():
-    good = {"text_end": 0x102004540, "data_end": 0x102008750,
+    good = {"text_end": 0x10200B000, "data_end": 0x102011000,
             "pool": POOL_BYTES, "hart_region": HART_REGION_BYTES,
-            "mvp_text": 0x3BD0, "mvp_rodata": 0xD60, "mvp_data": 0x8A8,
-            "mvp_bss": 0xC28, "mvp_bytes": 0x5E00}
+            "mvp_text": 0x18000, "mvp_rodata": 0x2000,
+            "mvp_data": 0x2000, "mvp_bss": 0x20000,
+            "mvp_bytes": 0x3C000}
     cases = [
         (good, FLAT_BYTES, 0x223000, True, []),
         (dict(good, text_end=TEXT_LIMIT), FLAT_BYTES, 0x223000, True, []),
-        (dict(good, text_end=0x1020087E0), None, None, None, ["text"]),
+        (dict(good, text_end=TEXT_LIMIT + 8), None, None, None, ["text"]),
         (dict(good, data_end=DATA_LIMIT + 8), None, None, None, ["data"]),
         (dict(good, pool=0x8000), None, None, None, ["pool"]),
         (dict(good, hart_region=0x30000), None, None, None,

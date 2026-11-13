@@ -99,6 +99,8 @@ B2_MANIFEST_SHA256 = \
 B2_PORTED_FILES = 32
 ENTRY = "arch/riscv/be/r5-entry.S"
 LDS = "arch/riscv/be/r5-beryllium.lds"
+PRIVILEGED = "arch/riscv/be/privileged.S"
+R0_CONFIG = "include/be/r0-config.h"
 R3_H = "include/be/r3.h"
 
 PHDR_ANCHOR = "\tguest_protected PT_LOAD FLAGS(5);\n"
@@ -694,8 +696,95 @@ RULES = {
         ("firmware-sbi-version",
          "#define BE_R3_OPENSBI_SPEC_VERSION\tBE_U64_C(0x02000000)",
          "#define BE_R3_OPENSBI_SPEC_VERSION\tBE_U64_C(0x03000000)", 1),
+        ("diagnostic-base", "#define BE_R3_DIAGNOSTIC_BASE\t\t"
+         "BE_U64_C(0x10200f000)", "#define BE_R3_DIAGNOSTIC_BASE\t\t"
+         "BE_U64_C(0x102012000)", 1),
+        ("diagnostic-end", "#define BE_R3_DIAGNOSTIC_END\t\t"
+         "BE_U64_C(0x102010000)", "#define BE_R3_DIAGNOSTIC_END\t\t"
+         "BE_U64_C(0x102013000)", 1),
     ],
-    **CORE_RULES,
+    R0_CONFIG: [
+        ("monitor-data-base",
+         "#define BE_R0_PA_MONITOR_DATA\t\tBE_U64_C(0x102008000)",
+         "#define BE_R0_PA_MONITOR_DATA\t\tBE_U64_C(0x10200c000)", 1),
+        ("monitor-code-size",
+         "#define BE_R0_SIZE_MONITOR_CODE\t\tBE_U64_C(0x8000)",
+         "#define BE_R0_SIZE_MONITOR_CODE\t\tBE_U64_C(0xc000)", 1),
+        ("monitor-data-size",
+         "#define BE_R0_SIZE_MONITOR_DATA\t\tBE_U64_C(0x8000)",
+         "#define BE_R0_SIZE_MONITOR_DATA\t\tBE_U64_C(0x7000)", 1),
+    ],
+    PRIVILEGED: [
+        ("sbi-shared-section", "\t.globl be_r3_arch_sbi_call\n",
+         "\t.section .text.be.shared, \"ax\"\n"
+         "\t.globl be_r3_arch_sbi_call\n", 1),
+        ("reset-shared-section", "\t.globl be_r3_arch_reset_state\n",
+         "\t.section .text.be.shared, \"ax\"\n"
+         "\t.globl be_r3_arch_reset_state\n", 1),
+        ("install-domain-section",
+         "\t.globl be_r3_arch_install_management\n",
+         "\t.section .text.be.domain, \"ax\"\n"
+         "\t.globl be_r3_arch_install_management\n", 1),
+        ("enter-boot-section", "\t.globl be_r3_arch_enter_management\n",
+         "\t.section .text.be.boot, \"ax\"\n"
+         "\t.globl be_r3_arch_enter_management\n", 1),
+        ("trap-boot-section", "\t.globl be_r3_unexpected_trap\n",
+         "\t.section .text.be.boot, \"ax\"\n"
+         "\t.globl be_r3_unexpected_trap\n", 1),
+        ("halt-shared-section", "\t.globl be_r3_arch_halt\n",
+         "\t.section .text.be.shared, \"ax\"\n"
+         "\t.globl be_r3_arch_halt\n", 1),
+    ],
+    R3_C: [
+        *CORE_RULES[R3_C],
+        ("monitor-code-end", "#define BE_R3_MONITOR_CODE_END\t\t"
+         "BE_U64_C(0x102008000)", "#define BE_R3_MONITOR_CODE_END\t\t"
+         "BE_U64_C(0x10200c000)", 1),
+        ("monitor-data-end", "#define BE_R3_MONITOR_DATA_END\t\t"
+         "BE_U64_C(0x102010000)", "#define BE_R3_MONITOR_DATA_END\t\t"
+         "BE_U64_C(0x102013000)", 1),
+        ("srst-result-table",
+         """enum be_r3_error be_r3_srst_result(long sbi_error)
+{
+\tswitch (sbi_error) {
+\tcase BE_R0_SBI_SUCCESS:
+\t\treturn BE_R3_ERROR_SRST_RETURNED;
+\tcase BE_R0_SBI_ERR_FAILED:
+\t\treturn BE_R3_ERROR_SRST_FAILED;
+\tcase BE_R0_SBI_ERR_NOT_SUPPORTED:
+\t\treturn BE_R3_ERROR_SRST_NOT_SUPPORTED;
+\tcase BE_R0_SBI_ERR_INVALID_PARAM:
+\t\treturn BE_R3_ERROR_SRST_INVALID_PARAM;
+\tcase BE_R0_SBI_ERR_DENIED:
+\t\treturn BE_R3_ERROR_SRST_DENIED;
+\tcase BE_R0_SBI_ERR_INVALID_ADDRESS:
+\t\treturn BE_R3_ERROR_SRST_INVALID_ADDRESS;
+\tdefault:
+\t\treturn BE_R3_ERROR_SRST_MALFORMED;
+\t}
+}
+""",
+         """static const enum be_r3_error be_r3_srst_results[]
+\t__attribute__((section(".rodata.be.shared"))) = {
+\tBE_R3_ERROR_SRST_RETURNED,
+\tBE_R3_ERROR_SRST_FAILED,
+\tBE_R3_ERROR_SRST_NOT_SUPPORTED,
+\tBE_R3_ERROR_SRST_INVALID_PARAM,
+\tBE_R3_ERROR_SRST_DENIED,
+\tBE_R3_ERROR_SRST_INVALID_ADDRESS,
+};
+
+enum be_r3_error be_r3_srst_result(long sbi_error)
+{
+\tif (sbi_error > BE_R0_SBI_SUCCESS ||
+\t    sbi_error < BE_R0_SBI_ERR_INVALID_ADDRESS)
+\t\treturn BE_R3_ERROR_SRST_MALFORMED;
+\treturn be_r3_srst_results[(be_u64)(-sbi_error)];
+}
+""", 1),
+    ],
+    **{path: entries for path, entries in CORE_RULES.items()
+       if path != R3_C},
 }
 
 # beryllium-cheri: --cheri keeps its interface and other effects, but the

@@ -96,6 +96,9 @@ struct be_mvp_block_desc {
 	be_u64 domain;
 	be_u64 hgatp;
 	be_u64 block;
+	be_u64 published;
+	be_u64 control_mailbox;
+	be_u64 hart_mailbox;
 	be_u64 stack_top;
 	be_u64 saved;
 	be_u64 state;
@@ -109,35 +112,59 @@ struct be_mvp_block_desc {
 };
 
 /**
- * struct be_mvp_state_page - one domain hart's state page
- * @inbound_head: the inbound ring's head, hart 0's
- * @inbound_tail: the inbound ring's tail, the domain hart's
- * @outbound_head: the outbound ring's head, the domain hart's
- * @outbound_tail: the outbound ring's tail, hart 0's
- * @desc: the block descriptor, hart 0's before the barrier
- * @entry: the first-entry frame, hart 0's before the barrier
+ * struct be_mvp_state_config - four immutable words hart 0 publishes
+ * @exit_ceiling: the domain's exit ceiling
+ * @accept_denial: whether the image accepts a denial
+ * @accept_mgmt: whether the image accepts management calls
+ * @accept_input: whether the sealed configuration grants console input
+ */
+struct be_mvp_state_config {
+	be_u64 exit_ceiling;
+	be_u64 accept_denial;
+	be_u64 accept_mgmt;
+	be_u64 accept_input;
+};
+
+/**
+ * struct be_mvp_published_page - one VS-domain hart's boot publication
+ * @desc: the block descriptor, with generation written last
+ * @entry: the first-entry frame
+ * @map: the walked window
+ * @leaves: the walked declared-page leaves
+ * @config: the four configuration words copied by the hart's entry
+ */
+struct be_mvp_published_page {
+	struct be_mvp_block_desc desc;
+	struct be_mvp_exit entry;
+	struct be_mvp_gstage_map map;
+	struct be_mvp_gstage_leaves leaves;
+	struct be_mvp_state_config config;
+};
+
+/**
+ * struct be_mvp_state_page - one VS-domain hart's private state page
  * @controls: the armed readbacks, the domain hart's
  * @state: the SBI core's state, counters and line buffer, the domain hart's
  * @entered: the time of the first entry, the domain hart's
- * @input_head: the input ring's head, hart 0's (M7, D-1)
- * @input_tail: the input ring's tail, the domain hart's
- *
- * Each ring index fills its own 64-byte line. After the barrier hart 0
- * writes only the inbound and input rings' heads and the outbound ring's
- * tail. The input ring's indices follow the rest, so that every earlier
- * field keeps its offset.
  */
 struct be_mvp_state_page {
-	struct be_mvp_ring_index inbound_head;
-	struct be_mvp_ring_index inbound_tail;
-	struct be_mvp_ring_index outbound_head;
-	struct be_mvp_ring_index outbound_tail;
-	struct be_mvp_block_desc desc;
-	struct be_mvp_exit entry;
 	struct be_mvp_controls controls;
 	struct be_mvp_state state;
 	be_u64 entered;
+};
+
+struct be_mvp_control_mailbox {
+	be_u8 inbound[BE_MVP_INBOUND_RING_BYTES];
+	be_u8 input[BE_MVP_INPUT_RING_BYTES];
+	struct be_mvp_ring_index inbound_head;
 	struct be_mvp_ring_index input_head;
+	struct be_mvp_ring_index outbound_tail;
+};
+
+struct be_mvp_hart_mailbox {
+	be_u8 outbound[BE_MVP_OUTBOUND_RING_BYTES];
+	struct be_mvp_ring_index outbound_head;
+	struct be_mvp_ring_index inbound_tail;
 	struct be_mvp_ring_index input_tail;
 };
 

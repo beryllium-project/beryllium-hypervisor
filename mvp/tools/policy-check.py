@@ -733,8 +733,13 @@ def core(domains, pages, layout):
     rows = [("monitor-code", base, data - base, "monitor-code", None),
             ("monitor-data", data, base + layout["CORE_BYTES"] - data,
              "monitor-data", None)] + [
-        (f"g{index}-root", domain["root"], layout["GUEST_POOL_BYTES"],
-         "root-table", None) for index, domain in enumerate(domains)]
+        row for index, domain in enumerate(domains) for row in (
+            (f"g{index}-root", domain["root"],
+             layout["GUEST_POOL_BYTES"], "root-table", None),
+            (f"g{index}-read-rest",
+             domain["root"] + layout["GUEST_POOL_BYTES"],
+             layout["READ_CLUSTER_BYTES"] -
+             layout["GUEST_POOL_BYTES"], "monitor-data", None))]
     for index, domain in enumerate(domains):
         rows += [(f"g{index}-{name}", domain["block"] + layout[
             f"BLOCK_{key}_OFFSET"], size, kind, None) for name, key, size,
@@ -744,6 +749,9 @@ def core(domains, pages, layout):
                       "saved-state"),
                      ("block", "STATE", layout["BLOCK_BYTES"] - layout[
                          "BLOCK_STATE_OFFSET"], "monitor-data"))]
+        rows += [(f"g{index}-hart-mailbox",
+                  layout[f"G{index}_HART_MAILBOX_HPA"],
+                  layout["HART_MAILBOX_BYTES"], "monitor-data", None)]
     rows += [("mvp-region", layout["REGION_HPA"], layout["REGION_BYTES"],
               "monitor-code", None),
              ("staging", layout["STAGING_HPA"], layout["BOOT_IMAGE_MAX"],

@@ -35,19 +35,13 @@ or changes these, the MVP profile:
 
 Monitor (ELF and its flat image):
 
-- the core (planning/mvp-m6-plan.md, D-4), laid out by the MVP-owned
-  linker script (src/mvp-monitor.lds), whose seven PT_LOAD segments the
-  ELF has and every one of whose ASSERT conjuncts holds, the checker's own
-  (MVP_CONJUNCTS) among them: the flat image's first 0x34000 bytes hold
-  the code extent [0x1_0200_0000, 0x1_0200_8000), .monitor.text; the
-  data extent [0x1_0200_8000, 0x1_0201_0000), the input section, the
-  constants, the data section, which holds nothing, and the diagnostic
-  page; and hart 0's stack, .stack.control, NOLOAD, 0x2000 bytes at
-  0x1_0201_0000; no other section, and no section outside its extent;
-  the rest, the unused span, zero;
-- the fourth PT_LOAD segment is the MVP pool and the hart region: NOLOAD,
-  RW, exactly 0x30000 bytes at 0x1_0203_4000, with the script's four pool
-  and four hart-region conjuncts;
+- the M11-3 core, laid out by src/mvp-monitor.lds, whose eight PT_LOAD
+  segments and every ASSERT conjunct hold: the flat image's first 0x20000
+  bytes hold boot, control, shared, and VS-domain-hart executable groups,
+  read-only data, generated input, control-writable data, the diagnostic
+  page, and hart 0's stack, with all padding inside output sections;
+- the fourth and fifth PT_LOAD segments are the two 64 KiB read clusters
+  and the writer-split hart region: NOLOAD and RW;
 - the MVP region (Plan revision M0-A.1): the fifth to seventh PT_LOAD
   segments, R-X, R, and RW, hold .mvp.text at 0x1_0206_4000, .mvp.rodata,
   and .mvp.data, in order, inside the region's 0x40000 bytes and never
@@ -318,7 +312,7 @@ def layout_constants(path=LAYOUT_H):
 
 LAYOUT = layout_constants()
 BASE = LAYOUT["MONITOR_HPA"]
-# The flat image (Plan revision M0-A.1): the core's 0x34000 bytes
+# The flat image (M11-3): the core's 0x20000 bytes
 # (planning/mvp-m6-plan.md, D-4), the NOLOAD pool and hart region as
 # zeros, and the MVP region, which ends it.
 SPAN = LAYOUT["IMAGE_BYTES"]
@@ -338,21 +332,26 @@ KERNEL_OFFSET = LAYOUT["BOOT_KERNEL_OFFSET"]
 MONITOR_OFFSET = LAYOUT["BOOT_MONITOR_OFFSET"]
 DTB_BYTES = LAYOUT["DTB_BYTES"]
 PAGE = LAYOUT["PAYLOAD_ALIGN"]
-MONITOR_TEXT_LIMIT = 0x102008000
-MONITOR_DATA_LIMIT = 0x10200F000
+MONITOR_TEXT_LIMIT = LAYOUT["MONITOR_RODATA_HPA"]
+MONITOR_DATA_LIMIT = LAYOUT["DIAGNOSTIC_HPA"]
 CONTROL_STACK = LAYOUT["CONTROL_STACK_HPA"]
 CONTROL_STACK_END = CONTROL_STACK + LAYOUT["CONTROL_STACK_BYTES"]
 # The core's extents (planning/mvp-m6-plan.md, D-4), and the extent each of
 # its sections lies in; the rest of the core, from hart 0's stack's end,
 # holds no section and is zero.
 CORE_EXTENTS = {
-    "code": (BASE, LAYOUT["DATA_HPA"]),
-    "data": (LAYOUT["DATA_HPA"], LAYOUT["DATA_HPA"] + LAYOUT["DATA_BYTES"]),
-    "stack": (CONTROL_STACK, CONTROL_STACK_END),
+    "code": (BASE, LAYOUT["MONITOR_RODATA_HPA"]),
+    "data": (LAYOUT["DATA_HPA"], LAYOUT["CONTROL_DATA_HPA"]),
+    "control": (LAYOUT["CONTROL_PROFILE_HPA"],
+                LAYOUT["CONTROL_PROFILE_HPA"] +
+                LAYOUT["CONTROL_PROFILE_BYTES"]),
+    "padding": (BASE + 0x18000, BASE + CORE_SPAN),
 }
 CORE_SECTIONS = {".monitor.text": "code", ".monitor.input": "data",
-                 ".monitor.rodata": "data", ".monitor.data": "data",
-                 ".diagnostic": "data", ".stack.control": "stack"}
+                 ".monitor.rodata": "data", ".monitor.data": "control",
+                 ".diagnostic": "control", ".control.pad": "control",
+                 ".stack.control": "control", ".control.tail": "control",
+                 ".core.padding": "padding"}
 CONFIG_SYMBOLS = ("be_mvp_inventory", "be_mvp_proposal")
 # S-mode RAM on the COM260: above OpenSBI, to the end of its 8 GiB.
 SMODE_RAM = (0x102000000, 0x300000000)
@@ -369,13 +368,7 @@ BLOCK_BYTES = LAYOUT["BLOCK_BYTES"]
 BLOCKS = (LAYOUT["G0_BLOCK_HPA"], LAYOUT["G1_BLOCK_HPA"])
 BLOCK_AREAS = (("stack", "BLOCK_STACK_OFFSET", "BLOCK_STACK_BYTES"),
                ("saved page", "BLOCK_SAVED_OFFSET", "BLOCK_SAVED_BYTES"),
-               ("state page", "BLOCK_STATE_OFFSET", "BLOCK_STATE_BYTES"),
-               ("inbound ring", "BLOCK_INBOUND_OFFSET",
-                "INBOUND_RING_BYTES"),
-               ("outbound ring", "BLOCK_OUTBOUND_OFFSET",
-                "OUTBOUND_RING_BYTES"),
-               ("input ring", "INPUT_RING_OFFSET", "INPUT_RING_BYTES"),
-               ("unused tail", "BLOCK_UNUSED_OFFSET", "BLOCK_UNUSED_BYTES"))
+               ("state page", "BLOCK_STATE_OFFSET", "BLOCK_STATE_BYTES"))
 RINGS = ("INBOUND_RING_BYTES", "OUTBOUND_RING_BYTES",
          "VARIANT_OUTBOUND_RING_BYTES", "INPUT_RING_BYTES")
 HARTS = (LAYOUT["DOMAIN0_HART"], LAYOUT["DOMAIN1_HART"])
@@ -387,32 +380,29 @@ HARTS = (LAYOUT["DOMAIN0_HART"], LAYOUT["DOMAIN1_HART"])
 # segment, and the MVP region after that (Plan revision M0-A.1), in its
 # own three segments.
 PHDRS = [("monitor_text", 5), ("monitor_ro", 4), ("monitor_data", 6),
-         ("mvp_pool", 6), ("mvp_text", 5), ("mvp_ro", 4), ("mvp_data", 6)]
+         ("mvp_pool", 6), ("mvp_hart", 6), ("mvp_text", 5),
+         ("mvp_ro", 4), ("mvp_data", 6)]
 MVP_CONJUNCTS = (
     f"be_reset == 0x{BASE:x}",
-    f"__be_monitor_code_start == 0x{BASE:x}",
-    f"__be_monitor_code_end <= 0x{MONITOR_TEXT_LIMIT:x}",
+    f"__be_monitor_code_end == 0x{MONITOR_TEXT_LIMIT:x}",
     f"__be_monitor_data_start == 0x{MONITOR_TEXT_LIMIT:x}",
-    f"__be_bss_end <= 0x{MONITOR_DATA_LIMIT:x}",
-    f"__be_monitor_data_end == 0x{CONTROL_STACK:x}",
+    f"__be_input_start == 0x{LAYOUT['MONITOR_INPUT_HPA']:x}",
+    f"__be_input_end == 0x{LAYOUT['CONTROL_DATA_HPA']:x}",
+    f"__be_diagnostic_start == 0x{LAYOUT['DIAGNOSTIC_HPA']:x}",
+    f"__be_diagnostic_end == 0x{LAYOUT['DIAGNOSTIC_HPA'] + LAYOUT['DIAGNOSTIC_BYTES']:x}",
     f"__be_control_stack_start == 0x{CONTROL_STACK:x}",
     f"__be_control_stack_end == 0x{CONTROL_STACK_END:x}",
-    "be_mvp_trap_vector >= __be_monitor_code_start",
-    "be_mvp_trap_vector < __be_monitor_code_end",
     f"__be_mvp_pool_start == 0x{POOL:x}",
     f"__be_mvp_pool_end == 0x{POOL + POOL_BYTES:x}",
-    "(__be_mvp_pool_start & 0x3fff) == 0",
-    "__be_control_stack_end <= __be_mvp_pool_start",
     f"__be_mvp_hart_region_start == 0x{HART_REGION:x}",
     f"__be_mvp_hart_region_end == 0x{HART_REGION + HART_REGION_BYTES:x}",
-    "(__be_mvp_hart_region_start & 0x3fff) == 0",
-    "__be_mvp_pool_end <= __be_mvp_hart_region_start",
     f"__be_mvp_region_start == 0x{REGION:x}",
-    f"__be_mvp_region_end <= 0x{REGION + REGION_BYTES:x}",
-    "(__be_mvp_region_start & 0x3fff) == 0",
-    "__be_mvp_hart_region_end <= __be_mvp_region_start",
+    f"__be_mvp_region_end == 0x{REGION + REGION_BYTES:x}",
+    f"be_mvp_park_entry == 0x{LAYOUT['PARK_ENTRY_HPA']:x}",
+    f"be_mvp_hart_entry == 0x{LAYOUT['G0_CONFINED_ENTRY_HPA']:x}",
 )
 POOL_PHDR = ("mvp_pool", 6)
+HART_PHDR = ("mvp_hart", 6)
 # The MVP layer's C objects, which only the MVP region holds; the MVP's
 # assembly (mvp-trap.o, mvp-hartentry.o, and the probe images'
 # mvp-probe-arch.o) stays with the core's code.
@@ -420,11 +410,121 @@ MVP_C_OBJECTS = ("mvp-runtime.o", "mvp-hartmain.o", "mvp-sbi.o",
                  "mvp-hart.o", "mvp-ring.o", "mvp-gstage.o", "mvp-payload.o",
                  "mvp-probe.o", "mvp-sha256.o", "mvp-core.o",
                  "mvp-executor.o", "mvp-input.o", "mvp-log.o")
+ROLE_EXTENTS = (
+    ("monitor boot", LAYOUT["MONITOR_BOOT_TEXT_HPA"],
+     LAYOUT["MONITOR_BOOT_TEXT_HPA"] + LAYOUT["MONITOR_BOOT_TEXT_BYTES"],
+     {"manifest.o", "state.o", "r3.o", "platform.o", "r5-entry.o",
+      "b1-handoff.o", "privileged.o"}),
+    ("monitor control", LAYOUT["MONITOR_CONTROL_TEXT_HPA"],
+     LAYOUT["MONITOR_CONTROL_TEXT_HPA"] +
+     LAYOUT["MONITOR_CONTROL_TEXT_BYTES"],
+     {"r3.o", "platform.o", "privileged.o", "mvp-trap.o"}),
+    ("monitor shared", LAYOUT["MONITOR_SHARED_TEXT_HPA"],
+     LAYOUT["MONITOR_SHARED_TEXT_HPA"] + LAYOUT["MONITOR_SHARED_TEXT_BYTES"],
+     {"freestanding.o", "r3.o", "platform.o", "privileged.o",
+      "mvp-trap.o", "mvp-ring.o",
+      "mvp-executor.o", "mvp-runtime.o", "mvp-sbi.o", "mvp-hart.o",
+      "mvp-probe-arch.o"}),
+    ("monitor VS-domain-hart", LAYOUT["MONITOR_DOMAIN_TEXT_HPA"],
+     LAYOUT["MONITOR_DOMAIN_TEXT_HPA"] + LAYOUT["MONITOR_DOMAIN_TEXT_BYTES"],
+     {"privileged.o", "mvp-trap.o", "mvp-probe-arch.o"}),
+    ("monitor read-only", LAYOUT["MONITOR_RODATA_HPA"],
+     LAYOUT["MONITOR_RODATA_HPA"] + LAYOUT["MONITOR_RODATA_BYTES"],
+     {"manifest.o", "state.o", "r3.o", "platform.o", "freestanding.o",
+      "privileged.o", "r5-entry.o", "b1-handoff.o",
+      "mvp-probe-arch.o"}),
+    ("monitor input", LAYOUT["MONITOR_INPUT_HPA"],
+     LAYOUT["MONITOR_INPUT_HPA"] + LAYOUT["MONITOR_INPUT_BYTES"],
+     {"mvp-config.o"}),
+    ("control data", LAYOUT["CONTROL_DATA_HPA"],
+     LAYOUT["CONTROL_DATA_HPA"] + LAYOUT["CONTROL_DATA_BYTES"],
+     {"mvp-runtime.o"}),
+    ("MVP control", LAYOUT["MVP_CONTROL_TEXT_HPA"],
+     LAYOUT["MVP_CONTROL_TEXT_HPA"] + LAYOUT["MVP_CONTROL_TEXT_BYTES"],
+     {"mvp-trap.o", "mvp-runtime.o", "mvp-hart.o", "mvp-input.o",
+      "mvp-executor.o", "mvp-sha256.o", "mvp-sbi.o", "mvp-log.o",
+      "mvp-probe.o"}),
+    ("MVP VS-domain-hart", LAYOUT["MVP_DOMAIN_TEXT_HPA"],
+     LAYOUT["MVP_DOMAIN_TEXT_HPA"] + LAYOUT["MVP_DOMAIN_TEXT_BYTES"],
+     {"mvp-hartentry.o", "mvp-trap.o", "mvp-hartmain.o", "mvp-sbi.o",
+      "mvp-gstage.o", "mvp-input.o", "mvp-hart.o", "mvp-executor.o",
+      "mvp-probe.o", "mvp-probe-arch.o"}),
+    ("MVP boot", LAYOUT["MVP_BOOT_TEXT_HPA"],
+     LAYOUT["MVP_BOOT_TEXT_HPA"] + LAYOUT["MVP_BOOT_TEXT_BYTES"],
+     set(MVP_C_OBJECTS) | {"mvp-trap.o", "mvp-hartentry.o",
+                           "mvp-probe-arch.o"}),
+    ("MVP boot read-only", LAYOUT["MVP_BOOT_RODATA_HPA"],
+     LAYOUT["MVP_BOOT_RODATA_HPA"] + LAYOUT["MVP_BOOT_RODATA_BYTES"],
+     set(MVP_C_OBJECTS)),
+    ("MVP writable", LAYOUT["MVP_BOOT_DATA_HPA"],
+     LAYOUT["REGION_HPA"] + LAYOUT["REGION_BYTES"],
+     set(MVP_C_OBJECTS)),
+)
+DOMAIN_CODE_EXTENTS = (
+    (LAYOUT["MONITOR_SHARED_TEXT_HPA"],
+     LAYOUT["MONITOR_SHARED_TEXT_HPA"] + LAYOUT["MONITOR_SHARED_TEXT_BYTES"]),
+    (LAYOUT["MONITOR_DOMAIN_TEXT_HPA"],
+     LAYOUT["MONITOR_DOMAIN_TEXT_HPA"] + LAYOUT["MONITOR_DOMAIN_TEXT_BYTES"]),
+    (LAYOUT["MVP_DOMAIN_TEXT_HPA"],
+     LAYOUT["MVP_DOMAIN_TEXT_HPA"] + LAYOUT["MVP_DOMAIN_TEXT_BYTES"]),
+)
+CONTROL_CODE_EXTENTS = (
+    (LAYOUT["MONITOR_CONTROL_TEXT_HPA"],
+     LAYOUT["MONITOR_CONTROL_TEXT_HPA"] +
+     LAYOUT["MONITOR_CONTROL_TEXT_BYTES"]),
+    (LAYOUT["MONITOR_SHARED_TEXT_HPA"],
+     LAYOUT["MONITOR_SHARED_TEXT_HPA"] + LAYOUT["MONITOR_SHARED_TEXT_BYTES"]),
+    (LAYOUT["MVP_CONTROL_TEXT_HPA"],
+     LAYOUT["MVP_CONTROL_TEXT_HPA"] + LAYOUT["MVP_CONTROL_TEXT_BYTES"]),
+)
+CONTROL_REFERENCE_EXTENTS = (
+    ("monitor control", LAYOUT["MONITOR_CONTROL_TEXT_HPA"],
+     LAYOUT["MONITOR_CONTROL_TEXT_HPA"] +
+     LAYOUT["MONITOR_CONTROL_TEXT_BYTES"], "r"),
+    ("monitor shared", LAYOUT["MONITOR_SHARED_TEXT_HPA"],
+     LAYOUT["MONITOR_SHARED_TEXT_HPA"] +
+     LAYOUT["MONITOR_SHARED_TEXT_BYTES"], "r"),
+    ("MVP control", LAYOUT["MVP_CONTROL_TEXT_HPA"],
+     LAYOUT["MVP_CONTROL_TEXT_HPA"] + LAYOUT["MVP_CONTROL_TEXT_BYTES"], "r"),
+    ("control data", LAYOUT["CONTROL_PROFILE_HPA"],
+     LAYOUT["CONTROL_PROFILE_HPA"] + LAYOUT["CONTROL_PROFILE_BYTES"], "rw"),
+    ("sealed data", LAYOUT["MVP_SEALED_HPA"],
+     LAYOUT["MVP_SEALED_HPA"] + LAYOUT["MVP_SEALED_BYTES"], "r"),
+    ("measurement log", LAYOUT["MVP_LOG_HPA"],
+     LAYOUT["MVP_LOG_HPA"] + LAYOUT["MVP_LOG_BYTES"], "r"),
+    ("G0 control mailbox", LAYOUT["G0_CONTROL_MAILBOX_HPA"],
+     LAYOUT["G0_CONTROL_MAILBOX_HPA"] + LAYOUT["CONTROL_MAILBOX_BYTES"],
+     "rw"),
+    ("G1 control mailbox", LAYOUT["G1_CONTROL_MAILBOX_HPA"],
+     LAYOUT["G1_CONTROL_MAILBOX_HPA"] + LAYOUT["CONTROL_MAILBOX_BYTES"],
+     "rw"),
+    ("hart mailboxes", LAYOUT["G0_HART_MAILBOX_HPA"],
+     LAYOUT["G1_HART_MAILBOX_HPA"] + LAYOUT["HART_MAILBOX_BYTES"], "r"),
+)
+DOMAIN_REFERENCE_EXTENTS = (
+    ("monitor shared", LAYOUT["MONITOR_SHARED_TEXT_HPA"],
+     LAYOUT["MONITOR_SHARED_TEXT_HPA"] +
+     LAYOUT["MONITOR_SHARED_TEXT_BYTES"], "r"),
+    ("monitor VS-domain-hart", LAYOUT["MONITOR_DOMAIN_TEXT_HPA"],
+     LAYOUT["MONITOR_DOMAIN_TEXT_HPA"] +
+     LAYOUT["MONITOR_DOMAIN_TEXT_BYTES"], "r"),
+    ("MVP VS-domain-hart", LAYOUT["MVP_DOMAIN_TEXT_HPA"],
+     LAYOUT["MVP_DOMAIN_TEXT_HPA"] + LAYOUT["MVP_DOMAIN_TEXT_BYTES"], "r"),
+)
+# The probe images run with the boundary off (the M11 plan's Q16): their
+# post-barrier code keeps the boot OpenSBI domain's wide access.
+PROBE_REFERENCE_EXTENTS = (
+    ("boundary-off image", BASE, BASE + SPAN, "rw"),
+)
 # The region's sections, and its linked symbols beyond the ASSERTs'.
 REGION_SECTIONS = (".mvp.text", ".mvp.rodata", ".mvp.data")
 REGION_SYMBOLS = ("__be_mvp_region_start", "__be_mvp_region_end",
                   "__be_mvp_text_start", "__be_mvp_text_end",
-                  "__be_mvp_bss_start", "__be_mvp_bss_end")
+                  "__be_mvp_bss_start", "__be_mvp_bss_end",
+                  "__be_mvp_control_text_start",
+                  "__be_mvp_control_text_end",
+                  "__be_control_confined_entry_slot_start",
+                  "__be_control_confined_entry_slot_end")
 
 # From the accepted B2 images (bringup/k3-b2/README.md: GCC 9c145f00...,
 # Clang 47be17e3...): the R3 functions the MVP reuses.
@@ -471,6 +571,7 @@ MVP_WAIT = "be_mvp_arch_wait"
 MVP_SSIP = "be_mvp_arch_clear_ssip"
 MVP_TIME = "be_mvp_arch_read_time"
 MVP_PARK = "be_mvp_arch_park"
+MVP_PARK_ENTRY = "be_mvp_park_entry"
 MVP_FENCE_I = "be_mvp_arch_fence_i"
 MVP_VECTOR = "be_mvp_trap_vector"
 MVP_RESUME = "be_mvp_arch_resume"
@@ -480,6 +581,7 @@ MVP_HART_MAIN = "be_mvp_hart_main"
 MVP_DISPATCH = "be_mvp_dispatch"
 MVP_TERMINAL = "be_mvp_runtime_terminal"
 MVP_HART_TERMINAL = "be_mvp_hart_terminal"
+CONTROL_LOOP = "control_loop"
 MVP_FW_CALL = "be_mvp_fw_call"
 MVP_INJECT = "be_mvp_arch_inject"
 # The executor's install and injection (planning/mvp-m6-plan.md, D-5).
@@ -577,9 +679,11 @@ PLATFORM_HELPERS = {"sbi_value_call", "be_r3_platform_get_spec_version",
                     "be_r3_platform_probe_extension", "be_r3_platform_write",
                     "be_r3_platform_reset", MVP_FW_CALL}
 REQUIRED_SYMBOLS = (
-    "be_reset", B1_QUIESCE, MVP_MAIN, MVP_HART_MAIN, MVP_DISPATCH,
+    "be_reset", B1_QUIESCE, MVP_MAIN, CONTROL_LOOP, MVP_HART_MAIN,
+    MVP_DISPATCH,
     MVP_VECTOR, MVP_RESUME, MVP_ENTRY, MVP_STCE, MVP_ARM, MVP_TIMER,
-    MVP_BUDGET, MVP_WAIT, MVP_SSIP, MVP_TIME, MVP_PARK, MVP_FENCE_I,
+    MVP_BUDGET, MVP_WAIT, MVP_SSIP, MVP_TIME, MVP_PARK, MVP_PARK_ENTRY,
+    MVP_FENCE_I,
     MVP_TERMINAL, MVP_HART_TERMINAL, MVP_FW_CALL, MVP_INJECT, EXEC_INSTALL,
     MVP_LAYOUT_SYMBOL, MVP_BINDINGS_SYMBOL, MVP_DESCS_SYMBOL,
     MVP_HGATPS_SYMBOL,
@@ -661,7 +765,7 @@ INSTRUCTION_SITES = {
     "hfence.gvma": {R3_RESET: 1, R3_INSTALL: 1},
     "sfence.vma": {R3_RESET: 1},
     "wfi": {R3_UNEXPECTED: 1, R3_HALT: 1, B1_HALT: 1, MVP_WAIT: 1,
-            MVP_PARK: 1},
+            MVP_PARK: 1, MVP_PARK_ENTRY: 1},
     "fence.i": {MVP_FENCE_I: 1},
     "hfence.vvma": {},
     "hlsv": {},
@@ -694,25 +798,47 @@ SHF_WRITE, SHF_ALLOC, SHF_EXECINSTR = 1, 2, 4
 # (planning/mvp-m6-plan.md, D-4), at the K3 addresses: (address or None,
 # size or None, required flags, forbidden flags).
 EXPECTED_SECTIONS = {
-    ".monitor.text": (BASE, None, "AX", "W"),
-    ".monitor.input": (MONITOR_TEXT_LIMIT, None, "A", "WX"),
-    ".monitor.rodata": (None, None, "A", "WX"),
-    ".monitor.data": (None, None, "WA", "X"),
-    ".diagnostic": (MONITOR_DATA_LIMIT, 0x1000, "WA", "X"),
+    ".monitor.text": (BASE, 0xC000, "AX", "W"),
+    ".monitor.rodata": (LAYOUT["MONITOR_RODATA_HPA"],
+                        LAYOUT["MONITOR_RODATA_BYTES"], "A", "WX"),
+    ".monitor.input": (LAYOUT["MONITOR_INPUT_HPA"],
+                       LAYOUT["MONITOR_INPUT_BYTES"], "A", "WX"),
+    ".monitor.data": (LAYOUT["CONTROL_DATA_HPA"],
+                      LAYOUT["CONTROL_DATA_BYTES"], "WA", "X"),
+    ".diagnostic": (LAYOUT["DIAGNOSTIC_HPA"], 0x1000, "WA", "X"),
     ".stack.control": (CONTROL_STACK, LAYOUT["CONTROL_STACK_BYTES"], "WA",
                        "X"),
-    # lld gives an output section without input sections the previous
-    # section's flags masked to A and W; the PT_LOAD is RW in both images.
-    ".gstage.root.mvp": (POOL, POOL_BYTES, "A", "X"),
-    ".hart.mvp": (HART_REGION, HART_REGION_BYTES, "A", "X"),
-    # The MVP region (Plan revision M0-A.1): code, constants, then data and
-    # BSS, from its fixed start.
-    ".mvp.text": (REGION, None, "AX", "W"),
-    ".mvp.rodata": (None, None, "A", "WX"),
-    ".mvp.data": (None, None, "WA", "X"),
+    ".gstage.g0": (LAYOUT["G0_ROOT_HPA"], LAYOUT["GUEST_POOL_BYTES"], "A",
+                   "X"),
+    ".gstage.g1": (LAYOUT["G1_ROOT_HPA"], LAYOUT["GUEST_POOL_BYTES"], "A",
+                   "X"),
+    ".published.g0": (LAYOUT["G0_PUBLISHED_HPA"],
+                      LAYOUT["PUBLISHED_BYTES"], "A", "X"),
+    ".published.g1": (LAYOUT["G1_PUBLISHED_HPA"],
+                      LAYOUT["PUBLISHED_BYTES"], "A", "X"),
+    ".mailbox.control.g0": (LAYOUT["G0_CONTROL_MAILBOX_HPA"],
+                            LAYOUT["CONTROL_MAILBOX_BYTES"], "A", "X"),
+    ".mailbox.control.g1": (LAYOUT["G1_CONTROL_MAILBOX_HPA"],
+                            LAYOUT["CONTROL_MAILBOX_BYTES"], "A", "X"),
+    ".mailbox.hart.g0": (LAYOUT["G0_HART_MAILBOX_HPA"],
+                         LAYOUT["HART_MAILBOX_BYTES"], "A", "X"),
+    ".mailbox.hart.g1": (LAYOUT["G1_HART_MAILBOX_HPA"],
+                         LAYOUT["HART_MAILBOX_BYTES"], "A", "X"),
+    ".private.g0": (LAYOUT["G0_BLOCK_HPA"], LAYOUT["BLOCK_BYTES"], "A", "X"),
+    ".private.g1": (LAYOUT["G1_BLOCK_HPA"], LAYOUT["BLOCK_BYTES"], "A", "X"),
+    ".mvp.text": (REGION, 0x18000, "AX", "W"),
+    ".mvp.rodata": (LAYOUT["MVP_BOOT_RODATA_HPA"],
+                    LAYOUT["MVP_BOOT_RODATA_BYTES"], "A", "WX"),
+    ".mvp.data": (LAYOUT["MVP_BOOT_DATA_HPA"],
+                  LAYOUT["REGION_HPA"] + LAYOUT["REGION_BYTES"] -
+                  LAYOUT["MVP_BOOT_DATA_HPA"], "WA", "X"),
 }
-MAP_SECTIONS = (".monitor.input", ".stack.control", ".gstage.root.mvp",
-                ".hart.mvp") + REGION_SECTIONS
+PADDING_SECTIONS = {
+    ".control.pad", ".control.tail", ".core.padding",
+    ".readpad.g0.1", ".readpad.g0.2", ".readpad.g1.1", ".readpad.g1.2",
+}
+ALLOCATED_SECTIONS = set(EXPECTED_SECTIONS) | PADDING_SECTIONS
+MAP_SECTIONS = tuple(EXPECTED_SECTIONS)
 # The frame offsets of the eight trap CSRs (struct be_r4_frame), then the
 # four words struct be_mvp_exit adds after the 320-byte frame.
 TRAP_CSRS = ("vstvec", "vsepc", "vscause", "vstval", "scause", "sepc",
@@ -1448,7 +1574,7 @@ def function_map(elf, start, end):
     return [(value, size, sorted(names)) for (value, size), names in ordered]
 
 
-def check_padding(flat, base, start, end):
+def check_padding_words(flat, base, start, end):
     for pc, size, word in instructions(flat, start, end, base):
         require((size == 4 and word == NOP) or
                 (size == 2 and word in (C_NOP, 0)),
@@ -1456,8 +1582,18 @@ def check_padding(flat, base, start, end):
                 f"function")
 
 
+def check_padding(flat, base, start, end, constants=()):
+    cursor = start
+    for low, high in sorted(constants):
+        if high <= cursor or low >= end:
+            continue
+        check_padding_words(flat, base, cursor, max(cursor, low))
+        cursor = max(cursor, high)
+    check_padding_words(flat, base, cursor, end)
+
+
 # ----------------------------------------------------- value tracking
-def track(decoded):
+def track(decoded, preserve_at_joins=()):
     """Constant and CSR-value tracking over the MVP's straight-line assembly.
 
     A register holds ("const", n), ("csr", name, mask), ("arg", "a0") to
@@ -1470,7 +1606,9 @@ def track(decoded):
     falling through requires equality (bne) and "ne" when it requires
     inequality (beq); and doubleword stores [(index, base, offset, value)].
     State is dropped at every jump or branch target and after any call or
-    stop, so a join never carries a value it might not hold.
+    stop, so a join never carries a value it might not hold. A caller may
+    name registers whose value it separately requires to be invariant
+    across every branch to a join.
     """
     joins = set()
     for pc, size, word in decoded:
@@ -1484,7 +1622,9 @@ def track(decoded):
     writes, reads, checks, stores = [], [], [], []
     for index, (pc, size, word) in enumerate(decoded):
         if pc in joins:
-            regs = {0: ("const", 0)}
+            regs = {register: regs[register]
+                    for register in (0, *preserve_at_joins)
+                    if register in regs}
         if size != 4:
             regs = {0: ("const", 0)}
             continue
@@ -1830,6 +1970,15 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
     sites = {kind: {} for kind in INSTRUCTION_SITES}
     writers = {}
     decoded_all = []
+    constant_ranges = tuple(
+        (symbols[start], symbols[end]) for start, end in (
+            ("__be_monitor_shared_constants_start",
+             "__be_monitor_shared_constants_end"),
+            ("__be_mvp_control_constants_start",
+             "__be_mvp_control_constants_end"),
+            ("__be_mvp_domain_constants_start",
+             "__be_mvp_domain_constants_end"))
+        if start in symbols and end in symbols)
     functions = []
     for code_start, code_end in extents:
         extent = function_map(elf, code_start, code_end)
@@ -1837,11 +1986,20 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
                 f"0x{code_end:x}")
         functions += extent
         decoded_all += scan_functions(elf, flat, base, code_start, code_end,
-                                      extent, sites, writers, csr_writers)
+                                      extent, sites, writers, csr_writers,
+                                      constant_ranges)
     check_sites(sites, writers, csr_writers)
     found = check_references(functions, decoded_all, symbols, install_extra,
                              install_callers, inject_sites)
     check_domain_reach(elf, functions, found, symbols, profile)
+    check_role_reach(
+        elf, functions, decoded_all, symbols, DOMAIN_ROOTS,
+        DOMAIN_CODE_EXTENTS,
+        DOMAIN_REFERENCE_EXTENTS if profile == "mvp"
+        else PROBE_REFERENCE_EXTENTS,
+        "VS-domain-hart")
+    if profile == "mvp":
+        check_control_reach(elf, functions, decoded_all, symbols)
     check_canary(elf, flat, base, found, symbols)
     by_name = {owner: decoded for owner, decoded in decoded_all}
     # beryllium-cheri: the monitor variant's trap entry and resume tail.
@@ -1864,12 +2022,12 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
 
 
 def scan_functions(elf, flat, base, code_start, code_end, functions, sites,
-                   writers, csr_writers):
+                   writers, csr_writers, constants=()):
     """One code extent's instruction words, sites, and CSR writers."""
     cursor = code_start
     decoded_all = []
     for value, size, names in functions:
-        check_padding(flat, base, cursor, value)
+        check_padding(flat, base, cursor, value, constants)
         owner = names[0] if len(names) == 1 else "/".join(names)
         decoded = instructions(flat, value, value + size, base)
         decoded_all.append((owner, decoded))
@@ -1900,7 +2058,7 @@ def scan_functions(elf, flat, base, code_start, code_end, functions, sites,
                 continue
             sites[kind][owner] = sites[kind].get(owner, 0) + 1
         cursor = value + size
-    check_padding(flat, base, cursor, code_end)
+    check_padding(flat, base, cursor, code_end, constants)
     return decoded_all
 
 
@@ -1971,7 +2129,7 @@ def check_references(functions, decoded_all, symbols, install_extra,
                 inject_found.append((owner, pc, link))
             if target in helpers and owner in region and \
                     not owner.startswith(EXECUTOR_PREFIX) and \
-                    owner != MVP_FW_CALL:
+                    owner != MVP_FW_CALL and owner not in MVP_ASSEMBLY:
                 seam.append((owner, helpers[target], hex(pc)))
             if target == symbols[R3_ENTER] or \
                     target == symbols.get(R3_ARM, -1):
@@ -2015,18 +2173,8 @@ def check_references(functions, decoded_all, symbols, install_extra,
     return found
 
 
-def check_domain_reach(elf, functions, found, symbols, profile="mvp"):
-    """The code a domain hart runs (planning/mvp-m2-plan.md, "The
-    measurement"): from the hart entry and the vector, every function a
-    call or a formed address in their instruction words reaches,
-    transitively. None of them names a byte of hart 0's own objects
-    (HART0_ONLY); hart 0's entry, the management decision, hart 0's
-    management setup, and, since M7, the firmware console read and hart
-    0's routing of console input are not among them (HART0_CODE); the
-    domain hart's request and wait, where linked, are, and in every image
-    but the probes the service of a granted console read
-    (planning/mvp-m7-plan.md, D-1). Returns the names of the functions
-    reached."""
+def reachable_functions(functions, found, symbols, roots, label):
+    """The transitive function closure from named roots."""
     extents = sorted((value, value + size,
                       names[0] if len(names) == 1 else "/".join(names))
                      for value, size, names in functions)
@@ -2038,15 +2186,25 @@ def check_domain_reach(elf, functions, found, symbols, profile="mvp"):
             return extents[index][2]
         return None
 
-    reached = {owner_at(symbols[name]) for name in DOMAIN_ROOTS}
-    require(None not in reached, "a domain-hart entry is not a function")
+    reached = {owner_at(symbols[name]) for name in roots}
+    require(None not in reached, f"a {label} root is not a function")
+    parent = {owner: None for owner in reached}
     work = sorted(reached)
     while work:
-        for _, target, _ in found[work.pop()]:
+        source = work.pop()
+        for _, target, _ in found[source]:
             owner = owner_at(target)
             if owner is not None and owner not in reached:
                 reached.add(owner)
+                parent[owner] = source
                 work.append(owner)
+    return extents, reached, parent
+
+
+def check_domain_reach(elf, functions, found, symbols, profile="mvp"):
+    """The code a VS-domain hart runs, transitively from its two roots."""
+    _, reached, _ = reachable_functions(
+        functions, found, symbols, DOMAIN_ROOTS, "VS-domain-hart")
     names = {name for owner in reached for name in owner.split("/")}
     for name in HART0_CODE:
         require(name not in names,
@@ -2068,6 +2226,97 @@ def check_domain_reach(elf, functions, found, symbols, profile="mvp"):
                         f"{owner}, which a domain hart runs, names {name} "
                         f"at 0x{pc:x}")
     return names
+
+
+def check_role_reach(elf, functions, decoded_all, symbols, roots, allowed,
+                     reference_extents, label):
+    """A duplicate-symbol-safe transitive role and data closure."""
+    require(len(functions) == len(decoded_all),
+            "the role reachability inputs differ in length")
+    nodes = []
+    for (start, size, names), (owner, decoded) in zip(functions, decoded_all):
+        nodes.append((start, start + size, owner,
+                      references(decoded, f"{owner}@0x{start:x}"),
+                      {pc: (width, word) for pc, width, word in decoded}))
+    starts = [start for start, _, _, _, _ in nodes]
+
+    def owner_at(address):
+        index = bisect.bisect_right(starts, address) - 1
+        return index if index >= 0 and address < nodes[index][1] else None
+
+    reached = {owner_at(symbols[root]) for root in roots}
+    require(None not in reached, f"a {label} root is not a function")
+    parent = {index: None for index in reached}
+    work = sorted(reached)
+    while work:
+        source = work.pop()
+        for _, target, _ in nodes[source][3]:
+            if label == "VS-domain-hart" and \
+                    nodes[source][0] == symbols[MVP_VECTOR] and \
+                    target == symbols[MVP_TERMINAL]:
+                continue
+            owner = owner_at(target)
+            if owner is not None and owner not in reached:
+                reached.add(owner)
+                parent[owner] = source
+                work.append(owner)
+    for index in sorted(reached):
+        start, end, owner, refs, words = nodes[index]
+        path = [index]
+        while parent[path[-1]] is not None:
+            path.append(parent[path[-1]])
+        path.reverse()
+        require(any(low <= start and end <= high for low, high in allowed),
+                f"the {label} roots reach {owner} at 0x{start:x}-0x{end:x}, "
+                f"outside their executable role extents, through "
+                f"{' -> '.join(nodes[item][2] for item in path)}")
+        for pc, target, link in refs:
+            if link is not None or owner_at(target) is not None:
+                continue
+            width, word = words[pc]
+            access = None
+            if width == 4:
+                access = "r" if word & 0x7f == 0x03 else \
+                    "w" if word & 0x7f in (0x23, 0x2f) else None
+            else:
+                kind = (word & 3) << 3 | (word >> 13) & 7
+                access = "r" if kind in (2, 3, 18, 19) else \
+                    "w" if kind in (6, 7, 22, 23) else None
+            boundary = [name for name, value in symbols.items()
+                        if value == target and name.startswith("__be_")]
+            if boundary and access is None:
+                continue
+            sections = [(name, section) for name, section in
+                        elf.sections.items() if section[2] & SHF_ALLOC and
+                        section[3] <= target < section[3] + section[5]]
+            if not sections:
+                require(boundary,
+                        f"the {label} roots reach {owner}, which forms "
+                        f"unallocated address 0x{target:x} at 0x{pc:x}")
+                continue
+            require(len(sections) == 1,
+                    f"0x{target:x} lies in multiple allocated sections")
+            section_name, _ = sections[0]
+            granted = [name for name, low, high, rights in reference_extents
+                       if low <= target < high and
+                       (access is None or access in rights)]
+            require(granted,
+                    f"the {label} roots reach {owner}, whose "
+                    f"{access or 'address'} "
+                    f"reference at 0x{pc:x} targets 0x{target:x} in "
+                    f"{section_name}, outside the role's profile")
+    return nodes, reached
+
+
+def check_control_reach(elf, functions, decoded_all, symbols):
+    """The post-barrier control loop and synchronous-exception terminal."""
+    nodes, _ = check_role_reach(
+        elf, functions, decoded_all, symbols, (CONTROL_LOOP, MVP_TERMINAL),
+        CONTROL_CODE_EXTENTS, CONTROL_REFERENCE_EXTENTS, "control")
+    vector = next(node for node in nodes if node[0] == symbols[MVP_VECTOR])
+    require(any(target == symbols[MVP_TERMINAL]
+                for _, target, _ in vector[3]),
+            "the shared trap vector does not reach the control terminal")
 
 
 def store_fields(word):
@@ -2191,6 +2440,11 @@ def check_structure(elf):
     """The accepted R5 checker's structure rules, moved to the K3 base."""
     require(3 not in elf.program_types, "image requests an interpreter")
     require(2 not in elf.program_types, "image carries a dynamic segment")
+    allocated = {name for name, section in elf.sections.items()
+                 if section[2] & SHF_ALLOC}
+    require(allocated == ALLOCATED_SECTIONS,
+            f"allocated sections {sorted(allocated)} differ from the "
+            f"layout's {sorted(ALLOCATED_SECTIONS)}")
     for name, section in elf.sections.items():
         require(section[1] not in (4, 9),
                 f"image carries relocations ({name})")
@@ -2206,14 +2460,6 @@ def check_structure(elf):
     for name in elf.symbols:
         require(re.search(r"(^|_)r6(_|$)|be_r6", name, re.I) is None,
                 f"hidden R6 symbol {name}")
-    # The core's data section holds nothing since the MVP layer's data
-    # moved to the MVP region (Plan revision M0-A.1): the ported accepted
-    # objects have none. GNU ld drops ALLOC from such an empty output
-    # section and lld keeps it as NOBITS, so only its emptiness and X are
-    # checked.
-    require(elf.sections.get(".monitor.data") is not None and
-            elf.sections[".monitor.data"][5] == 0,
-            "the core's data section .monitor.data holds bytes")
     for name, (address, size, required, forbidden) in \
             EXPECTED_SECTIONS.items():
         section = elf.sections.get(name)
@@ -2224,16 +2470,15 @@ def check_structure(elf):
             require(section[3] == address, f"{name} address moved")
         if size is not None:
             require(section[5] == size, f"{name} size changed")
-        for flag in required if name != ".monitor.data" else "":
+        for flag in required:
             require(have[flag], f"{name} lost flag {flag}")
         for flag in forbidden:
             require(not have[flag], f"{name} gained flag {flag}")
-    require(elf.sections[".gstage.root.mvp"][1] == 8,  # SHT_NOBITS
-            "the MVP pool is not NOLOAD")
-    require(elf.sections[".hart.mvp"][1] == 8,  # SHT_NOBITS
-            "the hart region is not NOLOAD")
-    require(elf.sections[".monitor.text"][5] <= 0x8000,
-            "monitor text outgrew its reserved window")
+    for name in (".gstage.g0", ".gstage.g1", ".published.g0",
+                 ".published.g1", ".mailbox.control.g0",
+                 ".mailbox.control.g1", ".mailbox.hart.g0",
+                 ".mailbox.hart.g1", ".private.g0", ".private.g1"):
+        require(elf.sections[name][1] == 8, f"{name} is not NOLOAD")
     data = elf.sections[".monitor.data"]
     require(data[3] + data[5] <= MONITOR_DATA_LIMIT,
             "monitor data overruns the diagnostic page")
@@ -2435,35 +2680,36 @@ def check_trap_entry_cheri(decoded, symbols):
 
 
 def check_block_arithmetic(decoded, symbols, owner):
-    """A block's stack top, tested or formed by the hart region's shifts.
-
-    The hart region's start, its size's shift, the block's shift (as the
-    left shift that keeps a block offset), and the stack top's offset in
-    the block, each as src/mvp-layout.h gives it.
-    """
+    """The two private blocks, or their saved-page tops, exactly."""
     region = symbols["__be_mvp_hart_region_start"]
     require(region == HART_REGION,
             f"the hart region starts at 0x{region:x}, not 0x{HART_REGION:x}")
-    named = [target for _, target, link in references(decoded, owner)
-             if link is None]
-    shifts, upper = set(), set()
-    for _, size, word in decoded:
-        if size == 4 and word & 0x707F in (0x1013, 0x5013) and \
-                word >> 26 == 0:
-            shifts.add(("slli" if word & 0x7000 == 0x1000 else "srli",
-                        (word >> 20) & 0x3F))
-        elif size == 4 and word & 0x7F == 0x37:
-            upper.add(word & 0xFFFFF000)
-    require(named.count(region) == 1,
-            f"{owner} does not test its block against the hart region")
-    require(("srli", HART_REGION_BYTES.bit_length() - 1) in shifts and
-            ("slli", 64 - (BLOCK_BYTES.bit_length() - 1)) in shifts,
-            f"{owner} does not bound its block by the region's "
-            f"0x{HART_REGION_BYTES:x} bytes and the block's "
-            f"0x{BLOCK_BYTES:x}")
-    require(LAYOUT["BLOCK_STACK_TOP_OFFSET"] in upper,
-            f"{owner} does not take the block's stack top at "
-            f"+0x{LAYOUT['BLOCK_STACK_TOP_OFFSET']:x}")
+    require(all(size == 4 for _, size, _ in decoded),
+            f"{owner} uses a compressed instruction in its block check")
+    words = [word for _, _, word in decoded]
+    compared = []
+    for index, word in enumerate(words):
+        if word & 0x7F != 0x63:
+            continue
+        for register in ((word >> 15) & 0x1F, (word >> 20) & 0x1F):
+            value = materialized(words, index, register)
+            if value is not None:
+                compared.append(value)
+    offset = 0 if owner == MVP_ENTRY else LAYOUT["BLOCK_SAVED_OFFSET"]
+    wanted = tuple(block + offset for block in BLOCKS)
+    require(all(compared.count(address) == 1 for address in wanted),
+            f"{owner} does not require exactly the private blocks "
+            f"{[hex(address) for address in wanted]}")
+    if owner == MVP_ENTRY:
+        stack_adds = []
+        for index, word in enumerate(words):
+            if word & 0xFE00707F == 0x33 and (word >> 7) & 0x1F == 2 and \
+                    (word >> 15) & 0x1F == 11:
+                stack_adds.append(materialized(
+                    words, index, (word >> 20) & 0x1F))
+        require(stack_adds == [LAYOUT["BLOCK_STACK_TOP_OFFSET"]],
+                f"{owner} does not take the block's stack top at "
+                f"+0x{LAYOUT['BLOCK_STACK_TOP_OFFSET']:x}")
 
 
 def check_hart_entry(decoded, symbols):
@@ -2495,6 +2741,10 @@ def resume_checks(symbols):
     """Every check the resume tail must make, and nothing else."""
     return {
         ("eq", "sscratch", MASK64, "arg:a0"),
+        ("ne", "sscratch", MASK64,
+         LAYOUT["G0_BLOCK_HPA"] + LAYOUT["BLOCK_SAVED_OFFSET"]),
+        ("eq", "sscratch", MASK64,
+         LAYOUT["G1_BLOCK_HPA"] + LAYOUT["BLOCK_SAVED_OFFSET"]),
         ("eq", "satp", MASK64, 0),
         ("eq", "stvec", MASK64, symbols[MVP_VECTOR]),
         ("eq", "sie", MASK64, SIE_SSIE),
@@ -2551,14 +2801,16 @@ def check_resume(decoded, symbols, start, end):
     last_load = max(index for index, fields in enumerate(loads) if fields)
     require(len(srets) == 1 and srets[0] == last_load + 1,
             "resume tail does not end its GPR restore in its one SRET")
-    writes, reads, checks, _ = track(decoded)
-    require([(csr, operation, value) for _, csr, operation, value in writes]
-            == [("sstatus", "c", ("const", 0x100)),
-                ("sstatus", "s", ("mem", "a0", EXIT_WORDS[0][1],
-                                  HSTATUS_SPVP)),
-                ("sepc", "w", ("mem", "a0", FRAME_SEPC, MASK64))],
+    writes, reads, checks, _ = track(decoded, (29, 30, 31))
+    actual_writes = [(csr, operation, value)
+                     for _, csr, operation, value in writes]
+    require(actual_writes ==
+            [("sstatus", "c", ("const", 0x100)),
+             ("sstatus", "s", ("mem", "a0", EXIT_WORDS[0][1],
+                               HSTATUS_SPVP)),
+             ("sepc", "w", ("mem", "a0", FRAME_SEPC, MASK64))],
             "resume tail does not clear SPP, set it from the saved SPVP, "
-            "and then write only sepc from the frame")
+            f"and then write only sepc from the frame: {actual_writes}")
     found = {check[1:] for check in checks}
     wanted = resume_checks(symbols)
     require(len(checks) == len(found) and found == wanted,
@@ -2641,15 +2893,16 @@ def check_resume_cheri(decoded, symbols, start, end):
             lc_fields(words[last_load]) == (frame, frame,
                                              CAP_FRAME + 16 * frame),
             "resume tail does not end its restore, ct6 last, in its one SRET")
-    writes, reads, checks, _ = track(decoded)
-    require([(csr, operation, value) for _, csr, operation, value in writes
-             if csr != "ddc"]
-            == [("sstatus", "c", ("const", 0x100)),
-                ("sstatus", "s", ("mem", "a0", EXIT_WORDS[0][1],
-                                  HSTATUS_SPVP)),
-                ("sepc", "w", ("mem", "a0", FRAME_SEPC, MASK64))],
+    writes, reads, checks, _ = track(decoded, (29, 30, 31))
+    actual_writes = [(csr, operation, value)
+                     for _, csr, operation, value in writes if csr != "ddc"]
+    require(actual_writes ==
+            [("sstatus", "c", ("const", 0x100)),
+             ("sstatus", "s", ("mem", "a0", EXIT_WORDS[0][1],
+                               HSTATUS_SPVP)),
+             ("sepc", "w", ("mem", "a0", FRAME_SEPC, MASK64))],
             "resume tail does not clear SPP, set it from the saved SPVP, "
-            "and then write only sepc from the frame")
+            f"and then write only sepc from the frame: {actual_writes}")
     found = {check[1:] for check in checks}
     wanted = resume_checks(symbols)
     require(len(checks) == len(found) and found == wanted,
@@ -2695,12 +2948,19 @@ def check_layout(elf, flat, base, layout):
                 f"{name} 0x{paddr:x} is writable and executable")
         require(flags == wanted, f"{name} flags {flags} != expected {wanted}")
         if (name, wanted) == POOL_PHDR:
-            require(paddr == POOL and
-                    memsz == POOL_BYTES + HART_REGION_BYTES and filesz == 0,
+            require(paddr == POOL and memsz == POOL_BYTES and filesz == 0,
                     f"MVP pool segment 0x{paddr:x}+0x{memsz:x} (file "
-                    f"0x{filesz:x}) is not NOLOAD "
-                    f"0x{POOL_BYTES + HART_REGION_BYTES:x} bytes at "
+                    f"0x{filesz:x}) is not NOLOAD 0x{POOL_BYTES:x} bytes at "
                     f"0x{POOL:x}")
+            previous_end = paddr + memsz
+            continue
+        if (name, wanted) == HART_PHDR:
+            require(paddr == HART_REGION and memsz == HART_REGION_BYTES and
+                    filesz == 0,
+                    f"MVP hart segment 0x{paddr:x}+0x{memsz:x} (file "
+                    f"0x{filesz:x}) is not NOLOAD "
+                    f"0x{HART_REGION_BYTES:x} bytes at 0x{HART_REGION:x}")
+            previous_end = paddr + memsz
             continue
         require(previous_end <= paddr and paddr + memsz <= base + SPAN,
                 f"{name} 0x{paddr:x}+0x{memsz:x} is out of order or leaves "
@@ -2720,8 +2980,8 @@ def check_layout(elf, flat, base, layout):
 
 
 def check_core(elf):
-    """The core (planning/mvp-m6-plan.md, D-4): each section in its first
-    0x34000 bytes is one of CORE_SECTIONS, inside its extent, so none lies
+    """The M11-3 core: each section in its first 0x20000 bytes is one of
+    CORE_SECTIONS, inside its extent, so none lies
     in the unused span, which check_layout requires to be zero; the
     configuration in the input section."""
     for name, section in elf.sections.items():
@@ -2769,12 +3029,9 @@ def map_entries(map_text):
 
 
 def check_placement(symbols, map_text, probe, extra_assembly):
-    """The MVP region holds the MVP layer's C objects and nothing else, and
-    the MVP's assembly stays in the core's code extent (Plan revision
-    M0-A.1): by symbol, the assembly's functions and the C entry points; by
-    the link map, every input section of the MVP C objects, and the input
-    section holds the configuration's alone (planning/mvp-m6-plan.md,
-    D-1)."""
+    """M11-3's role layout: MVP inputs lie in the monitor role extents or
+    the MVP region, accepted inputs never enter the MVP region, and the
+    generated configuration alone occupies .monitor.input."""
     code = (symbols["__be_monitor_code_start"],
             symbols["__be_monitor_code_end"])
     data = (symbols["__be_monitor_data_start"],
@@ -2785,34 +3042,51 @@ def check_placement(symbols, map_text, probe, extra_assembly):
     config = (symbols["__be_input_start"], symbols["__be_input_end"])
     for name in MVP_ASSEMBLY + extra_assembly:
         value = symbols.get(name)
-        require(value is not None and code[0] <= value < code[1],
-                f"{name} at 0x{value or 0:x} is outside the core's code "
-                f"extent 0x{code[0]:x}-0x{code[1]:x}")
+        require(value is not None and
+                (code[0] <= value < code[1] or text[0] <= value < text[1]),
+                f"{name} at 0x{value or 0:x} is outside the two executable "
+                "role sections")
     for name in MVP_C_ENTRIES + ((PROBE_HGATP,) if probe == "probe-platform"
                                  else ()):
         value = symbols.get(name)
-        require(value is not None and text[0] <= value < text[1],
-                f"{name} at 0x{value or 0:x} is outside the MVP region's "
-                f"text 0x{text[0]:x}-0x{text[1]:x}")
+        require(value is not None and
+                (code[0] <= value < code[1] or text[0] <= value < text[1]),
+                f"{name} at 0x{value or 0:x} is outside the executable "
+                "role sections")
     require(map_text is not None, "no link map beside the monitor ELF")
     seen = set()
     for address, size, name, section in map_entries(map_text):
+        roles = [(role, end, allowed) for role, start, end, allowed in
+                 ROLE_EXTENTS if start <= address < end]
+        require(len(roles) == 1,
+                f"{name}'s {section} at 0x{address:x} is outside every "
+                "role extent")
+        role, end, allowed = roles[0]
+        require(address + size <= end,
+                f"{name}'s {section} at 0x{address:x}+0x{size:x} leaves "
+                f"the {role} extent")
+        require(name in allowed,
+                f"{name}'s {section} at 0x{address:x} is not permitted "
+                f"in the {role} extent")
         if name == "mvp-config.o" or config[0] <= address < config[1]:
             require(name == "mvp-config.o" and config[0] <= address and
                     address + size <= config[1],
                     f"{name}'s {section} at 0x{address:x}: the input "
                     f"section holds the configuration's constants alone")
             continue
-        inside = region[0] <= address and address + size <= region[1]
+        inside = (BASE <= address and address + size <= BASE + CORE_SPAN) or \
+            (region[0] <= address and address + size <= region[1])
+        if name in ("mvp-trap.o", "mvp-hartentry.o", "mvp-probe-arch.o"):
+            require(inside, f"{name}'s {section} at 0x{address:x} lies "
+                    "outside the executable role extents")
+            continue
         if name not in MVP_C_OBJECTS:
             require(not region[0] <= address < region[1],
                     f"{name}'s {section} at 0x{address:x} lies in the MVP "
                     f"region")
             continue
-        where = "in the core's code extent" \
-            if code[0] <= address < code[1] else "in the core's data" \
-            if data[0] <= address < data[1] else "outside the MVP region"
-        require(inside, f"{name}'s {section} at 0x{address:x} lies {where}")
+        require(inside, f"{name}'s {section} at 0x{address:x} lies outside "
+                "the monitor and MVP role extents")
         seen.add(name)
     # The probe images place no payload and, running no control loop and
     # serving no console read, keep none of console input's code (M7); the
@@ -2914,22 +3188,21 @@ def check_guests(elf, flat, base, variant=None, expect=None):
 
 
 def check_region(constants):
-    """The hart region's blocks at their offsets, the rings powers of two.
-
-    Each block is its areas in order, from its start to its end, and the
-    stack top the vector, the resume tail, and the hart entry test is the
-    stack's end and the saved page's start.
-    """
+    """The two private blocks and writer-owned mailboxes."""
     region, size = constants["HART_REGION_HPA"], constants["HART_REGION_BYTES"]
     block = constants["BLOCK_BYTES"]
-    require(region == HART_REGION and size == 2 * block and
-            size & (size - 1) == 0 and region % 0x4000 == 0,
-            f"the hart region 0x{region:x}+0x{size:x} is not two "
-            f"power-of-two blocks at 0x{HART_REGION:x}")
-    for guest, key in enumerate(("G0_BLOCK_HPA", "G1_BLOCK_HPA")):
-        require(constants[key] == region + guest * block,
-                f"G{guest}'s block 0x{constants[key]:x} is not at "
-                f"+0x{guest * block:x} in the hart region")
+    require(region == HART_REGION and size == HART_REGION_BYTES and
+            region % 0x4000 == 0 and block == 0x4000,
+            f"the hart region 0x{region:x}+0x{size:x} is not the layout's")
+    require(constants["G0_HART_MAILBOX_HPA"] == region and
+            constants["G1_HART_MAILBOX_HPA"] ==
+            region + constants["HART_MAILBOX_BYTES"] and
+            constants["G0_BLOCK_HPA"] ==
+            region + 2 * constants["HART_MAILBOX_BYTES"] and
+            constants["G1_BLOCK_HPA"] ==
+            constants["G0_BLOCK_HPA"] + block and
+            constants["G1_BLOCK_HPA"] + block == region + size,
+            "the hart mailboxes and private blocks are not in order")
     for ring in RINGS:
         value = constants[ring]
         require(value and value & (value - 1) == 0,
@@ -2950,6 +3223,15 @@ def check_region(constants):
     require(constants["VARIANT_OUTBOUND_RING_BYTES"] <=
             constants["OUTBOUND_RING_BYTES"],
             "the ring-full variant's ring is larger than the outbound ring")
+    require(constants["BLOCK_INBOUND_OFFSET"] == 0 and
+            constants["INPUT_RING_OFFSET"] ==
+            constants["INBOUND_RING_BYTES"] and
+            constants["CONTROL_OUTBOUND_TAIL_OFFSET"] + 0x40 <=
+            constants["CONTROL_MAILBOX_BYTES"] and
+            constants["BLOCK_OUTBOUND_OFFSET"] == 0 and
+            constants["HART_INPUT_TAIL_OFFSET"] + 0x40 <=
+            constants["HART_MAILBOX_BYTES"],
+            "the mailbox buffers and index lines leave their extents")
 
 
 class Scenario:
@@ -3417,10 +3699,10 @@ def check_mgmt_record(elf, flat, base, scenario):
                 f"the linked grants {grants} are not the report's {wanted}")
     state = symbols[MVP_MGMT_STATE_SYMBOL]
     state_size = symbol_size(elf, MVP_MGMT_STATE_SYMBOL)
-    require(state_size and symbols["__be_mvp_bss_start"] <= state and
-            state + state_size <= symbols["__be_mvp_bss_end"],
-            f"{MVP_MGMT_STATE_SYMBOL} at 0x{state:x} is not in the MVP "
-            f"region's BSS")
+    require(state_size and symbols["__be_control_data_start"] <= state and
+            state + state_size <= symbols["__be_control_data_end"],
+            f"{MVP_MGMT_STATE_SYMBOL} at 0x{state:x} is not in the control "
+            f"writable-data extent")
     return grants
 
 
@@ -3442,6 +3724,142 @@ def check_mvp_layout(constants):
             f"flat image of 0x{image:x} bytes after the core")
 
 
+def profile_count(entries, label):
+    """NAPOT-shaped entries, coalesced when adjacent with equal rights."""
+    ordered = sorted(entries, key=lambda entry: entry[1])
+    merged = []
+    for name, base, size, rights in ordered:
+        require(size >= 0x1000 and size & (size - 1) == 0 and
+                base & (size - 1) == 0,
+                f"{label}'s {name} extent 0x{base:x}+0x{size:x} is not "
+                "power-of-two sized and aligned")
+        require(not merged or merged[-1][1] <= base,
+                f"{label}'s {name} extent overlaps its preceding entry")
+        if merged and merged[-1][1] == base and merged[-1][2] == rights:
+            merged[-1] = (merged[-1][0], base + size, rights)
+        else:
+            merged.append((base, base + size, rights))
+    return len(merged)
+
+
+def check_profiles(constants, scenario):
+    """D-5's control and VS-domain-hart profiles, each at most nine."""
+    control = [
+        ("monitor control", constants["MONITOR_CONTROL_TEXT_HPA"],
+         constants["MONITOR_CONTROL_TEXT_BYTES"], "rx"),
+        ("monitor shared", constants["MONITOR_SHARED_TEXT_HPA"],
+         constants["MONITOR_SHARED_TEXT_BYTES"], "rx"),
+        ("MVP control", constants["MVP_CONTROL_TEXT_HPA"],
+         constants["MVP_CONTROL_TEXT_BYTES"], "rx"),
+        ("control data", constants["CONTROL_PROFILE_HPA"],
+         constants["CONTROL_PROFILE_BYTES"], "rw"),
+        ("sealed", constants["MVP_SEALED_HPA"],
+         constants["MVP_SEALED_BYTES"], "r"),
+        ("measurement log", constants["MVP_LOG_HPA"],
+         constants["MVP_LOG_BYTES"], "r"),
+        ("G0 control mailbox", constants["G0_CONTROL_MAILBOX_HPA"],
+         constants["CONTROL_MAILBOX_BYTES"], "rw"),
+        ("G1 control mailbox", constants["G1_CONTROL_MAILBOX_HPA"],
+         constants["CONTROL_MAILBOX_BYTES"], "rw"),
+        ("hart mailbox pair", constants["G0_HART_MAILBOX_HPA"],
+         2 * constants["HART_MAILBOX_BYTES"], "r"),
+    ]
+    count = profile_count(control, "control profile")
+    require(count == 8,
+            f"the control profile uses {count} entries, not 8")
+
+    page_rights = [[], []]
+    if scenario.report is not None:
+        if scenario.pages:
+            for page in report_pages(scenario.report):
+                for domain in (0, 1):
+                    if page[f"rights{domain}"]:
+                        page_rights[domain].append(
+                            (f"declared page {len(page_rights[domain])}",
+                             page["hpa"], page["bytes"],
+                             f"page-{page[f'rights{domain}']}"))
+        else:
+            channel = report_channel(scenario.report)
+            page_rights[channel["writer_domain"]].append(
+                ("declared channel", channel["hpa"], channel["bytes"],
+                 f"page-{channel['writer_rights']}"))
+            page_rights[channel["reader_domain"]].append(
+                ("declared channel", channel["hpa"], channel["bytes"],
+                 f"page-{channel['reader_rights']}"))
+
+    expected = {"two-guests": (6, 6), "te-poc": (7, 7),
+                "anchor": (8, 9)}[scenario.name]
+    domains = (1, 0) if scenario.name == "anchor" else (0, 1)
+    for domain in domains:
+        root = constants[f"G{domain}_ROOT_HPA"]
+        entries = [
+            ("monitor shared", constants["MONITOR_SHARED_TEXT_HPA"],
+             constants["MONITOR_SHARED_TEXT_BYTES"], "rx"),
+            ("monitor VS-domain-hart", constants["MONITOR_DOMAIN_TEXT_HPA"],
+             constants["MONITOR_DOMAIN_TEXT_BYTES"], "rx"),
+            ("MVP VS-domain-hart", constants["MVP_DOMAIN_TEXT_HPA"],
+             constants["MVP_DOMAIN_TEXT_BYTES"], "rx"),
+            ("read cluster", root, constants["READ_CLUSTER_BYTES"], "r"),
+            ("private state", constants[f"G{domain}_BLOCK_HPA"],
+             constants["BLOCK_BYTES"], "rw"),
+            ("hart mailbox", constants[f"G{domain}_HART_MAILBOX_HPA"],
+             constants["HART_MAILBOX_BYTES"], "rw"),
+            ("VS-domain window", constants[f"G{domain}_HPA"],
+             constants["GUEST_BYTES"], "rwx"),
+        ] + page_rights[domain]
+        count = profile_count(entries, f"{scenario.name} G{domain} profile")
+        require(count <= 9,
+                f"the {scenario.name} G{domain} profile uses {count} "
+                "entries, more than 9")
+        require(count == expected[domain],
+                f"the {scenario.name} G{domain} profile uses {count} "
+                f"entries, not {expected[domain]}")
+
+
+def check_control_entry_slot(elf, symbols, constants):
+    """The reserved M11-8 control entry slot, wholly inside its role."""
+    start = symbols["__be_control_confined_entry_slot_start"]
+    end = symbols["__be_control_confined_entry_slot_end"]
+    wanted = constants["CONTROL_CONFINED_ENTRY_HPA"]
+    size = constants["CONTROL_CONFINED_ENTRY_BYTES"]
+    control = (symbols["__be_mvp_control_text_start"],
+               symbols["__be_mvp_control_text_end"])
+    require((start, end) == (wanted, wanted + size),
+            f"the control confined-entry slot is 0x{start:x}-0x{end:x}, "
+            f"not 0x{wanted:x}-0x{wanted + size:x}")
+    require(control[0] <= start < end <= control[1],
+            "the control confined-entry slot leaves the control "
+            "executable extent")
+    overlaps = [name for value, length, name in elf.functions
+                if value < end and start < value + length]
+    require(not overlaps,
+            f"functions overlap the reserved control entry slot: "
+            f"{sorted(overlaps)}")
+
+
+def check_park_entry_page(elf, symbols, constants):
+    """The park OpenSBI domain's page holds its entry and no other code."""
+    start = constants["PARK_HPA"]
+    end = start + constants["PARK_BYTES"]
+    occupants = sorted(
+        (name, value, symbol_size(elf, name))
+        for name, value in symbols.items()
+        if value is not None and start <= value < end and
+        not name.startswith("__be_"))
+    functions = [(value, length, name) for value, length, name in elf.functions
+                 if start <= value < end]
+    require(occupants == [(MVP_PARK_ENTRY, symbols[MVP_PARK_ENTRY],
+                           symbol_size(elf, MVP_PARK_ENTRY))] and
+            functions == [(symbols[MVP_PARK_ENTRY],
+                            symbol_size(elf, MVP_PARK_ENTRY),
+                            MVP_PARK_ENTRY)] and
+            symbols[MVP_PARK_ENTRY] == start and
+            symbols[MVP_PARK_ENTRY] +
+            symbol_size(elf, MVP_PARK_ENTRY) <= end,
+            f"the park page 0x{start:x}-0x{end:x} holds "
+            f"{[(name, hex(value), hex(length)) for name, value, length in occupants]}")
+
+
 def check_monitor(toolchain, elf_data, flat, base, layout, map_text=None,
                   profile="mvp", variant=None, expect=None,
                   constants=LAYOUT, scenario=TWO_GUESTS):
@@ -3454,7 +3872,8 @@ def check_monitor(toolchain, elf_data, flat, base, layout, map_text=None,
     _, hgatp_extra, probe = PROFILES[profile]
     # A probe image places the stub, not the payload: no payload layout.
     required = tuple(name for name in REQUIRED_SYMBOLS
-                     if not probe or name != MVP_LAYOUT_SYMBOL) + \
+                     if not probe or
+                     name not in (MVP_LAYOUT_SYMBOL, CONTROL_LOOP)) + \
         ((PROBE_STUB,) if probe else ())
     for name in required + hgatp_extra + REGION_SYMBOLS:
         require(symbols.get(name) is not None, f"symbol {name} is missing")
@@ -3468,6 +3887,8 @@ def check_monitor(toolchain, elf_data, flat, base, layout, map_text=None,
         require(name != PROBE_SWITCH or hgatp_extra,
                 f"{PROBE_SWITCH} is linked outside the VMID images")
     check_layout(elf, flat, base, layout)
+    check_control_entry_slot(elf, symbols, constants)
+    check_park_entry_page(elf, symbols, constants)
     # An image with pages links them, and the secret, exactly when its
     # scenario declares pages (planning/mvp-m2-plan.md).
     pages = MVP_PAGES_SYMBOL in symbols
@@ -3515,6 +3936,7 @@ def check_monitor(toolchain, elf_data, flat, base, layout, map_text=None,
     log = check_log_record(elf, flat, base, probe, scenario, pages)
     check_region(constants)
     check_mvp_layout(constants)
+    check_profiles(constants, scenario)
     return {
         "channel": channel,
         "pages": pages,
@@ -4413,6 +4835,32 @@ def matching_word(elf, flat, name, base, predicate):
     raise ImageError(f"{name} has no matching instruction")
 
 
+def branch_constant_writer(elf, flat, name, base, constant):
+    """The ADDIW that contributes a named constant to a branch operand."""
+    value, size = function_start(elf, name)
+    decoded = instructions(flat, value, value + size, base)
+    require(all(width == 4 for _, width, _ in decoded),
+            f"{name} has a compressed instruction")
+    words = [word for _, _, word in decoded]
+    for index, word in enumerate(words):
+        if word & 0x7F != 0x63:
+            continue
+        for register in ((word >> 15) & 0x1F, (word >> 20) & 0x1F):
+            if materialized(words, index, register) != constant:
+                continue
+            writer = nearest_writer(words, index, register)
+            while writer is not None and \
+                    (words[writer] & 0x707F) == 0x1013:
+                register = (words[writer] >> 15) & 0x1F
+                writer = nearest_writer(words, writer, register)
+            require(writer is not None and
+                    (words[writer] & 0x707F) in (0x13, 0x1B),
+                    f"{name}'s branch constant 0x{constant:x} has no "
+                    "ADDI/ADDIW")
+            return decoded[writer][0], words[writer]
+    raise ImageError(f"{name} does not branch on constant 0x{constant:x}")
+
+
 def add_immediate(value):
     """addi or addiw with this 12-bit immediate."""
     return lambda word: word & 0x707F in (0x13, 0x1B) and \
@@ -4533,6 +4981,13 @@ def symbol_value(elf, name, value):
     entries = elf.symbol_entries.get(name, [])
     require(len(entries) == 1, f"{name} is not one symbol")
     return entries[0] + 8, struct.pack("<Q", value)
+
+
+def symbol_size_value(elf, name, size):
+    """An elf mutation: the one symbol name's st_size set to size."""
+    entries = elf.symbol_entries.get(name, [])
+    require(len(entries) == 1, f"{name} is not one symbol")
+    return entries[0] + 16, struct.pack("<Q", size)
 
 
 def run_mutations(toolchain, elf_data, flat, boot_img, pins, kernel, layout,
@@ -4808,6 +5263,8 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
         lambda value: value & 0x707F == 0x7013 and
         signed(value >> 20, 12) == 0x444)
     dispatch_slot = word_slots(elf, flat, MVP_DISPATCH, BASE, 2)
+    control_slot = word_slots(elf, flat, CONTROL_LOOP, BASE, 2)
+    boot_slot = word_slots(elf, flat, "be_mvp_block_fill", BASE, 2)
     spv_test = matching_word(elf, flat, MVP_VECTOR, BASE,
                              lambda value: value & 0x707F == 0x7013 and
                              signed(value >> 20, 12) == HSTATUS_SPV)[0]
@@ -4816,7 +5273,9 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
         lambda value: load_fields(value) == (5, 12, 80))
     top = lui_with(LAYOUT["BLOCK_STACK_TOP_OFFSET"])
     entry_top, entry_word = matching_word(elf, flat, MVP_ENTRY, BASE, top)
-    vector_top, vector_word = matching_word(elf, flat, MVP_VECTOR, BASE, top)
+    vector_top, vector_word = branch_constant_writer(
+        elf, flat, MVP_VECTOR, BASE,
+        LAYOUT["G0_BLOCK_HPA"] + LAYOUT["BLOCK_SAVED_OFFSET"])
     descs = symbols[MVP_DESCS_SYMBOL]
     hgatps = symbols[MVP_HGATPS_SYMBOL]
     bindings = symbols[MVP_BINDINGS_SYMBOL]
@@ -4856,6 +5315,15 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
          word(0x10200073), "sret sites"),
         ("a second install call", dispatch_slot,
          call_pair(dispatch_slot, symbols[R3_INSTALL]), "install call sites"),
+        ("the control loop reaches VS-domain-hart code", control_slot,
+         call_pair(control_slot, symbols[MVP_HART_MAIN]),
+         "the control roots reach"),
+        ("the control loop reads boot-only data", control_slot,
+         load_reference(control_slot, symbols["__be_mvp_rodata_start"], 15),
+         "outside the role's profile"),
+        ("the VS-domain hart reads control data", dispatch_slot,
+         load_reference(dispatch_slot, symbols["__be_control_data_start"], 15),
+         "outside the role's profile"),
         ("R3 entry called", dispatch_slot,
          call_pair(dispatch_slot, symbols[R3_ENTER]), "has call sites"),
         ("a time read outside the executor", dispatch_slot,
@@ -4948,7 +5416,9 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
         ("vector skips SPV", spv_test, word(NOP),
          "does not fail closed on hstatus.SPV"),
         ("a block offset moved in the vector", vector_top,
-         word(vector_word & 0xFFF | moved_top), "block's stack top"),
+         word(with_immediate(vector_word,
+                             signed(vector_word >> 20, 12) + 1)),
+         "does not require exactly the private blocks"),
         ("a block offset moved in the hart entry", entry_top,
          word(entry_word & 0xFFF | moved_top), "stack top"),
         ("hart entry reads its block first", entry_top,
@@ -5010,42 +5480,55 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
         ("an MVP C function in the core's code extent",
          lambda text: map_rename(
              text, lambda address, _, name, __: name == "privileged.o" and
-             code[0] <= address < code[1], "mvp-runtime.o"),
-         "in the core's code extent"),
+             code[0] <= address < code[1], "mvp-sbi.o"),
+         "is not permitted in the monitor boot extent"),
         ("MVP C constants in the core's data",
          lambda text: map_rename(
              text, lambda address, _, name, __: name == "manifest.o" and
              data[0] <= address < data[1], "mvp-sbi.o"),
-         "in the core's data"),
+         "is not permitted in the monitor read-only extent"),
         ("another object's constants in the input section",
          lambda text: map_rename(
              text, lambda _, __, name, ___: name == "mvp-config.o", "r3.o"),
-         "holds the configuration's constants alone"),
+         "is not permitted in the monitor input extent"),
         ("an accepted object's code in the MVP region",
          lambda text: map_rename(
-             text, lambda _, __, name, ___: name == "mvp-ring.o", "r3.o"),
-         "lies in the MVP region"),
+             text, lambda _, __, name, ___: name == "mvp-ring.o",
+             "state.o"),
+         "is not permitted in the monitor shared extent"),
     ]
     elfs = [
+        ("an unlisted allocated section",
+         elf.section_headers[".symtab"] + 8,
+         quad(elf.sections[".symtab"][2] | SHF_ALLOC),
+         "allocated sections"),
         ("an MVP section inside the core",
          elf.section_headers[".mvp.rodata"] + 16,
-         quad(BASE + CORE_SPAN - 0x4000), "inside the core"),
+         quad(BASE + CORE_SPAN - 0x4000), ".mvp.rodata address moved"),
         ("a section in the core's unused span",
          elf.section_headers[".monitor.rodata"] + 16,
-         quad(CONTROL_STACK_END), "leaves the core's data extent"),
+         quad(CONTROL_STACK_END), ".monitor.rodata address moved"),
         ("the configuration outside the input section",
          *symbol_value(elf, "be_mvp_proposal", symbols["__be_input_end"]),
          "be_mvp_proposal is not in the core's input section"),
         ("the MVP region's data past its end",
          elf.section_headers[".mvp.data"] + 32,
          quad(REGION + REGION_BYTES - mvp_data[3] + 0x10),
-         "leaves the MVP region"),
+         ".mvp.data size changed"),
         ("the hart entry in the MVP region",
          *symbol_value(elf, MVP_ENTRY, symbols["__be_mvp_text_start"]),
-         "be_mvp_hart_entry at"),
+         "ASSERT fails: be_mvp_hart_entry"),
         ("the dispatch in the core's code extent",
          *symbol_value(elf, MVP_DISPATCH, code[0] + 0x40),
-         "be_mvp_dispatch at"),
+         "overlap"),
+        ("the control confined-entry slot leaves its role",
+         *symbol_value(elf, "__be_control_confined_entry_slot_end",
+                       symbols["__be_mvp_control_text_end"] + 4),
+         "control confined-entry slot"),
+        ("the park entry covers boot code",
+         *symbol_size_value(elf, MVP_PARK_ENTRY,
+                            LAYOUT["PARK_BYTES"] + 4),
+         "the park page"),
         ("the MVP region's end past 0x1_020a_4000",
          *symbol_value(elf, "__be_mvp_region_end",
                        REGION + REGION_BYTES + 0x1000),
@@ -5098,21 +5581,31 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
     layouts = [
         ("a block offset moved in the layout",
          {"BLOCK_INBOUND_OFFSET": LAYOUT["BLOCK_INBOUND_OFFSET"] + 0x1000},
-         "is not at its offset"),
+         "mailbox buffers and index lines leave their extents"),
         ("a ring size that is not a power of two",
          {"OUTBOUND_RING_BYTES": 0x6000}, "is not a power of two"),
         ("a block outside its place in the region",
          {"G1_BLOCK_HPA": LAYOUT["G1_BLOCK_HPA"] + 0x1000},
-         "in the hart region"),
+         "hart mailboxes and private blocks are not in order"),
         ("an MVP region over 256 KiB",
-         {"REGION_BYTES": REGION_BYTES + 0x4000}, "more than 0x40000"),
+         {"REGION_BYTES": REGION_BYTES + 0x8000}, "more than 0x40000"),
         ("the MVP region not after the hart region",
          {"REGION_HPA": REGION + 0x4000}, "does not follow the hart region"),
+        ("a role extent not aligned to its size",
+         {"MONITOR_CONTROL_TEXT_HPA":
+          LAYOUT["MONITOR_CONTROL_TEXT_HPA"] + 0x1000},
+         "is not power-of-two sized and aligned"),
         ("a flat image the MVP region does not end",
          {"IMAGE_BYTES": SPAN + 0x1000}, "does not end the flat image"),
         ("the staged image on the MVP region",
          {"STAGING_HPA": REGION + 0x8000}, "overlaps the MVP region"),
     ]
+    if scenario.name == "anchor":
+        layouts.append(
+            ("a tenth protected VS-domain-hart profile entry",
+             {"MONITOR_DOMAIN_TEXT_HPA":
+              LAYOUT["MONITOR_DOMAIN_TEXT_HPA"] + 0x2000},
+             "anchor G1 profile uses 10 entries, more than 9"))
     # The denial path (planning/mvp-m1-plan.md, "Tests and evidence"): the
     # injection helper's writers, call sites, and readback, the vector's
     # vsstatus, and the channel page among the extents; then, in an image
@@ -5248,8 +5741,8 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
          struct.pack("<I", count + 1), "the linked expected count"),
         ("a linked sequence not the image's", log_constants + 164,
          struct.pack("<I", sequence % 3 + 1), "the linked log sequence"),
-        ("an instruction forms the canary's address", dispatch_slot,
-         pool_reference(dispatch_slot, canary, 15),
+        ("an instruction forms the canary's address", boot_slot,
+         pool_reference(boot_slot, canary, 15),
          f"refers to {MVP_LOG_CANARY_SYMBOL}"),
         ("a constant word holds the canary's address",
          align_up(log_constants, 8), struct.pack("<Q", canary + 1),
@@ -5323,7 +5816,7 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
     layouts += [
         ("the input ring not after the outbound ring",
          {"INPUT_RING_OFFSET": LAYOUT["INPUT_RING_OFFSET"] + 0x1000},
-         "the block's input ring at"),
+         "mailbox buffers and index lines leave their extents"),
         ("an input ring size that is not a power of two",
          {"INPUT_RING_BYTES": 0x1800},
          "INPUT_RING_BYTES 0x1800 is not a power of two"),
@@ -5398,15 +5891,15 @@ def probe_mutation_test(probe, toolchain, elf_path, bin_path, boot_path,
                           "extent", "elf", *symbol_value(
                               elf, PROBE_HGATP,
                               symbols["__be_monitor_code_start"] + 0x40),
-                          f"{PROBE_HGATP} at"))
+                          "overlap"))
     else:
         mutations.append(("the raw switch fenced", "monitor",
                           symbols[PROBE_SWITCH] + 4,
                           struct.pack("<I", 0x62000073), "hfence.gvma sites"))
-        mutations.append(("the raw switch in the MVP region", "elf",
+        mutations.append(("the raw switch in the control entry slot", "elf",
                           *symbol_value(elf, PROBE_SWITCH,
                                         symbols["__be_mvp_text_start"]),
-                          f"{PROBE_SWITCH} at"))
+                          "functions overlap the reserved control entry slot"))
     return run_mutations(toolchain, elf_data, flat, boot_img, pins, kernel,
                          layout, mutations, probe, map_text)
 

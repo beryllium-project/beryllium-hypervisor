@@ -126,7 +126,7 @@ FIRMWARE_BIN := $(FIRMWARE_BUILD)/platform/generic/firmware/fw_dynamic.bin
 -include $(MVP_DIR)/tools.mk
 
 # K3 load address of the monitor flat image, as B2's, and its exact size:
-# the core's 0x34000 bytes (M6, D-4), the NOLOAD pool and hart region as
+# the core's 0x20000 bytes (M11-3), the NOLOAD pool and hart region as
 # zeros, and the MVP region, which ends it (Plan revision M0-A.1).
 MVP_BASE := 0x102000000
 MVP_IMAGE_BYTES := 0xa4000
@@ -275,7 +275,7 @@ HOST_PREFIX_probe := BE_MVP_PROBE_CHECK
 HOST_SCENARIOS_ring := 160
 HOST_ASSERTIONS_ring := 409415
 HOST_SCENARIOS_hart := 843
-HOST_ASSERTIONS_hart := 176892
+HOST_ASSERTIONS_hart := 176899
 HOST_SCENARIOS_sbi := 133
 HOST_ASSERTIONS_sbi := 16292
 # beryllium-cheri: the CHERI-aware monitor's SBI test makes two more
@@ -354,7 +354,8 @@ MVP_VARIANT_DTBS = $(filter-out $(MVP_GUEST_DTB_G0) $(MVP_GUEST_DTB_G1),$(sort \
 
 .PHONY: all b2-port port port-check payload-layout scenario host-test \
 	target-check image image-check variants probes budgets tool-lock-check \
-	opensbi lint policy-negatives claim-ledger-check check clean
+	opensbi layout-source-check lint policy-negatives claim-ledger-check \
+	check clean
 .DELETE_ON_ERROR:
 
 all: image
@@ -1245,6 +1246,10 @@ MVP_SHELL_SCRIPTS = $(wildcard $(MVP_DIR)/mvp $(MVP_DIR)/firmware/*.sh \
 MVP_PYTHON = $(wildcard $(MVP_DIR)/tools/*.py $(MVP_DIR)/tools/lock/*.py \
 	$(MVP_DIR)/tools/evaluator/*.py $(MVP_DIR)/tests/*.py)
 
+layout-source-check:
+	$(PYTHON) -I -B $(MVP_DIR)/tests/check-layout-source.py --self-test
+	$(PYTHON) -I -B $(MVP_DIR)/tests/check-layout-source.py --check
+
 lint:
 	set -e; for script in $(MVP_SHELL_SCRIPTS); do bash -n "$$script"; done
 	$(if $(MVP_SHELL_SCRIPTS),shellcheck $(MVP_SHELL_SCRIPTS))
@@ -1359,7 +1364,8 @@ claim-ledger-check: $(if $(filter check,$(MAKECMDGOALS)),$(TOOLS_EVIDENCE))
 		$(RECORDS)/claim-ledger/self-test.txt \
 		$(RECORDS)/claim-ledger/check.txt
 
-check: tool-lock-check opensbi firmware lint policy-negatives port-check \
+check: tool-lock-check opensbi firmware lint layout-source-check \
+	policy-negatives port-check \
 	guest-pin-check host-test target-check reference-boot image-check \
 	variants probes reference-check $(TOOLS_CHECKS) budgets $(TOOLS_EVIDENCE) \
 	claim-ledger-check

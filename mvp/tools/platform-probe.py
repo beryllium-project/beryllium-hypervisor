@@ -22,7 +22,8 @@ interface (S3-A policy item 2: kexec is not used).
 The layout rule (planning/mvp-m0-plan.md, "Hart region"; Plan revision
 M0-A.1) covers every MVP extent the shim and the monitor write: the
 core [BE_MVP_MONITOR_HPA, + BE_MVP_CORE_BYTES) (M6: the flat image's
-first 0x34000 bytes, the MVP's own layout), the pool, the hart region,
+first 0x20000 bytes, split by M11-3 into role and writer extents), the
+pool, the hart region,
 the MVP region, the staging reserve [L, L + BE_MVP_STAGING_BYTES) (the
 image's maximum rounded up to 2 MiB plus the 2 MiB slot the kexec era
 kept after it, unchanged in extent), both domain windows, and the shared pages

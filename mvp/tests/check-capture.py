@@ -3806,8 +3806,46 @@ def current_log_standin(text, expect, root):
     """TEXT with its whole measurement-log surface rendered for the
     current image from its reference, preserving only the retained run's
     ticks. The result is a synthetic stand-in, never a captured log."""
-    if "BE_MVP:19 LOG record seq=0 " not in text:
-        return text
+    parts = lines(text)
+
+    # The retained captures predate M11-3's physical layout. Keep their
+    # run-dependent fields, but take every layout-derived marker from the
+    # current generated expectation just as the log surface comes from the
+    # current reference.
+    layout_prefixes = (
+        "BE_MVP:00 CONFIG_SEALED ",
+        "BE_MVP:01 SCENARIO ",
+        "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 ",
+        "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 ",
+        "BE_MVP:03 CHANNEL_CHECKED channel=0 ",
+        "BE_MVP:03 PAGE_CHECKED page=0 ",
+        "BE_MVP:03 PAGE_CHECKED page=1 ",
+        "BE_MVP:03 PAGE_CHECKED page=2 ",
+        "BE_MVP:07 BLOCKS_PUBLISHED ",
+        "BE_MVP:09 HART_READY hart=1 ",
+        "BE_MVP:09 HART_READY hart=2 ",
+    )
+    templates = [entry["template"] for entry in expect["control_lines"]]
+    for prefix in layout_prefixes:
+        wanted = next((line_ for line_ in templates
+                       if line_.startswith(prefix)), None)
+        if wanted is None:
+            continue
+        for index, line_ in enumerate(parts):
+            if not line_.startswith(prefix):
+                continue
+            if "<h>" in wanted:
+                match = re.search(r" hedeleg=(0x[0-9a-f]+) ", line_)
+                if match is None:
+                    raise ValueError(f"{expect['image']}'s retained "
+                                     f"{prefix.strip()} has no hedeleg")
+                wanted = wanted.replace("<h>", match.group(1))
+            parts[index] = wanted
+            break
+
+    if not any(line_.startswith("BE_MVP:19 LOG record seq=0 ")
+               for line_ in parts):
+        return text_of(parts)
     reference_path, boot_path = LOG.default_paths(root, "gcc", expect)
     reference = LOG.Reference(reference_path.read_bytes())
     rendered = LOG.expected_lines(reference, LOG.log_harts(expect))
@@ -3819,7 +3857,6 @@ def current_log_standin(text, expect, root):
             record["digest"] = hashlib.sha256(
                 boot[offset:offset + record["length"]]).hexdigest()
     standin_registers = LOG.replay(standin_records)
-    parts = lines(text)
 
     launch_ticks = {}
     for line_ in parts:

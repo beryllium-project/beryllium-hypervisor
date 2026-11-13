@@ -34,7 +34,7 @@
 #endif
 
 /*
- * The monitor flat image (Plan revision M0-A.1): its first 0x34000 bytes,
+ * The monitor flat image (M11-3): its first 0x20000 bytes,
  * the core, are the MVP's own layout since M6 (src/mvp-monitor.lds;
  * planning/mvp-m6-plan.md, D-4): the monitor code below the data, the
  * monitor data with the diagnostic page at its end, hart 0's stack, and
@@ -45,11 +45,29 @@
  * shared pages as the extents the preflight names.
  */
 #define BE_MVP_MONITOR_HPA		BE_MVP_C(0x102000000)
-#define BE_MVP_CORE_BYTES		BE_MVP_C(0x34000)
+#define BE_MVP_CORE_BYTES		BE_MVP_C(0x20000)
 #define BE_MVP_IMAGE_BYTES		BE_MVP_C(0xa4000)
-#define BE_MVP_DATA_HPA			BE_MVP_C(0x102008000)
-#define BE_MVP_DATA_BYTES		BE_MVP_C(0x8000)
-#define BE_MVP_CONTROL_STACK_HPA	BE_MVP_C(0x102010000)
+#define BE_MVP_MONITOR_BOOT_TEXT_HPA	BE_MVP_C(0x102000000)
+#define BE_MVP_MONITOR_BOOT_TEXT_BYTES	BE_MVP_C(0x4000)
+#define BE_MVP_MONITOR_CONTROL_TEXT_HPA	BE_MVP_C(0x102004000)
+#define BE_MVP_MONITOR_CONTROL_TEXT_BYTES BE_MVP_C(0x2000)
+#define BE_MVP_MONITOR_SHARED_TEXT_HPA	BE_MVP_C(0x102008000)
+#define BE_MVP_MONITOR_SHARED_TEXT_BYTES BE_MVP_C(0x2000)
+#define BE_MVP_MONITOR_DOMAIN_TEXT_HPA	BE_MVP_C(0x10200a000)
+#define BE_MVP_MONITOR_DOMAIN_TEXT_BYTES BE_MVP_C(0x2000)
+#define BE_MVP_MONITOR_RODATA_HPA	BE_MVP_C(0x10200c000)
+#define BE_MVP_MONITOR_RODATA_BYTES	BE_MVP_C(0x3000)
+#define BE_MVP_MONITOR_INPUT_HPA	BE_MVP_C(0x10200f000)
+#define BE_MVP_MONITOR_INPUT_BYTES	BE_MVP_C(0x1000)
+#define BE_MVP_DATA_HPA			BE_MVP_C(0x10200c000)
+#define BE_MVP_DATA_BYTES		BE_MVP_C(0x7000)
+#define BE_MVP_CONTROL_DATA_HPA		BE_MVP_C(0x102010000)
+#define BE_MVP_CONTROL_DATA_BYTES	BE_MVP_C(0x2000)
+#define BE_MVP_DIAGNOSTIC_HPA		BE_MVP_C(0x102012000)
+#define BE_MVP_DIAGNOSTIC_BYTES		BE_MVP_C(0x1000)
+#define BE_MVP_CONTROL_PROFILE_HPA	BE_MVP_C(0x102010000)
+#define BE_MVP_CONTROL_PROFILE_BYTES	BE_MVP_C(0x8000)
+#define BE_MVP_CONTROL_STACK_HPA	BE_MVP_C(0x102014000)
 #define BE_MVP_CONTROL_STACK_BYTES	BE_MVP_C(0x2000)
 
 /*
@@ -58,22 +76,29 @@
  * only a root with a channel uses (M1); the rest of each pool is spare.
  */
 #define BE_MVP_DOMAINS			BE_MVP_C(2)
-#define BE_MVP_POOL_HPA			BE_MVP_C(0x102034000)
-#define BE_MVP_POOL_BYTES		BE_MVP_C(0x10000)
+#define BE_MVP_POOL_HPA			BE_MVP_C(0x102020000)
+#define BE_MVP_POOL_BYTES		BE_MVP_C(0x20000)
+#define BE_MVP_READ_CLUSTER_BYTES	BE_MVP_C(0x10000)
 #define BE_MVP_GUEST_POOL_BYTES		BE_MVP_C(0x8000)
 #define BE_MVP_ROOT_BYTES		BE_MVP_C(0x4000)
-#define BE_MVP_G0_ROOT_HPA		BE_MVP_C(0x102034000)
-#define BE_MVP_G0_LEVEL1_HPA		BE_MVP_C(0x102038000)
-#define BE_MVP_G0_LEVEL0_HPA		BE_MVP_C(0x102039000)
-#define BE_MVP_G1_ROOT_HPA		BE_MVP_C(0x10203c000)
-#define BE_MVP_G1_LEVEL1_HPA		BE_MVP_C(0x102040000)
-#define BE_MVP_G1_LEVEL0_HPA		BE_MVP_C(0x102041000)
+#define BE_MVP_G0_ROOT_HPA		BE_MVP_C(0x102020000)
+#define BE_MVP_G0_LEVEL1_HPA		BE_MVP_C(0x102024000)
+#define BE_MVP_G0_LEVEL0_HPA		BE_MVP_C(0x102025000)
+#define BE_MVP_G0_PUBLISHED_HPA		BE_MVP_C(0x102028000)
+#define BE_MVP_G1_ROOT_HPA		BE_MVP_C(0x102030000)
+#define BE_MVP_G1_LEVEL1_HPA		BE_MVP_C(0x102034000)
+#define BE_MVP_G1_LEVEL0_HPA		BE_MVP_C(0x102035000)
+#define BE_MVP_G1_PUBLISHED_HPA		BE_MVP_C(0x102038000)
+#define BE_MVP_PUBLISHED_BYTES		BE_MVP_C(0x1000)
+#define BE_MVP_G0_CONTROL_MAILBOX_HPA	BE_MVP_C(0x10202c000)
+#define BE_MVP_G1_CONTROL_MAILBOX_HPA	BE_MVP_C(0x10203c000)
+#define BE_MVP_CONTROL_MAILBOX_BYTES	BE_MVP_C(0x4000)
 
 /* Distinct VMIDs and each domain's hgatp: Sv39x4, VMID, root. */
 #define BE_MVP_G0_VMID			BE_MVP_C(1)
 #define BE_MVP_G1_VMID			BE_MVP_C(2)
-#define BE_MVP_G0_HGATP			BE_MVP_C(0x8000100000102034)
-#define BE_MVP_G1_HGATP			BE_MVP_C(0x800020000010203c)
+#define BE_MVP_G0_HGATP			BE_MVP_C(0x8000100000102020)
+#define BE_MVP_G1_HGATP			BE_MVP_C(0x8000200000102030)
 
 /*
  * Hart identifiers ("Hart identifiers", Q12). The control hart is fixed by
@@ -97,11 +122,14 @@
  * the domain, the hart reads them at its DBCN-read exits), in the first
  * 4 KiB of what M0 left unused; the rest is unused.
  */
-#define BE_MVP_HART_REGION_HPA		BE_MVP_C(0x102044000)
-#define BE_MVP_HART_REGION_BYTES	BE_MVP_C(0x20000)
-#define BE_MVP_BLOCK_BYTES		BE_MVP_C(0x10000)
-#define BE_MVP_G0_BLOCK_HPA		BE_MVP_C(0x102044000)
-#define BE_MVP_G1_BLOCK_HPA		BE_MVP_C(0x102054000)
+#define BE_MVP_HART_REGION_HPA		BE_MVP_C(0x102040000)
+#define BE_MVP_HART_REGION_BYTES	BE_MVP_C(0x28000)
+#define BE_MVP_BLOCK_BYTES		BE_MVP_C(0x4000)
+#define BE_MVP_G0_BLOCK_HPA		BE_MVP_C(0x102060000)
+#define BE_MVP_G1_BLOCK_HPA		BE_MVP_C(0x102064000)
+#define BE_MVP_G0_HART_MAILBOX_HPA	BE_MVP_C(0x102040000)
+#define BE_MVP_G1_HART_MAILBOX_HPA	BE_MVP_C(0x102050000)
+#define BE_MVP_HART_MAILBOX_BYTES	BE_MVP_C(0x10000)
 #define BE_MVP_BLOCK_STACK_OFFSET	BE_MVP_C(0x0)
 #define BE_MVP_BLOCK_STACK_BYTES	BE_MVP_C(0x2000)
 #define BE_MVP_BLOCK_STACK_TOP_OFFSET	BE_MVP_C(0x2000)
@@ -109,14 +137,18 @@
 #define BE_MVP_BLOCK_SAVED_BYTES	BE_MVP_C(0x1000)
 #define BE_MVP_BLOCK_STATE_OFFSET	BE_MVP_C(0x3000)
 #define BE_MVP_BLOCK_STATE_BYTES	BE_MVP_C(0x1000)
-#define BE_MVP_BLOCK_INBOUND_OFFSET	BE_MVP_C(0x4000)
+#define BE_MVP_BLOCK_INBOUND_OFFSET	BE_MVP_C(0x0)
 #define BE_MVP_INBOUND_RING_BYTES	BE_MVP_C(0x1000)
-#define BE_MVP_BLOCK_OUTBOUND_OFFSET	BE_MVP_C(0x5000)
+#define BE_MVP_BLOCK_OUTBOUND_OFFSET	BE_MVP_C(0x0)
 #define BE_MVP_OUTBOUND_RING_BYTES	BE_MVP_C(0x8000)
-#define BE_MVP_INPUT_RING_OFFSET	BE_MVP_C(0xd000)
+#define BE_MVP_INPUT_RING_OFFSET	BE_MVP_C(0x1000)
 #define BE_MVP_INPUT_RING_BYTES		BE_MVP_C(0x1000)
-#define BE_MVP_BLOCK_UNUSED_OFFSET	BE_MVP_C(0xe000)
-#define BE_MVP_BLOCK_UNUSED_BYTES	BE_MVP_C(0x2000)
+#define BE_MVP_CONTROL_INBOUND_HEAD_OFFSET BE_MVP_C(0x2000)
+#define BE_MVP_CONTROL_INPUT_HEAD_OFFSET	BE_MVP_C(0x2040)
+#define BE_MVP_CONTROL_OUTBOUND_TAIL_OFFSET BE_MVP_C(0x2080)
+#define BE_MVP_HART_OUTBOUND_HEAD_OFFSET	BE_MVP_C(0x8000)
+#define BE_MVP_HART_INBOUND_TAIL_OFFSET	BE_MVP_C(0x8040)
+#define BE_MVP_HART_INPUT_TAIL_OFFSET	BE_MVP_C(0x8080)
 /* The outbound high-water mark at or below which a run stays in budget. */
 #define BE_MVP_RING_PEAK_BUDGET		BE_MVP_C(0x4000)
 /* The generation word hart 0 publishes last, at the boot barrier. */
@@ -129,8 +161,24 @@
  * extent below 0x1_0200_8000 keeps the accepted code and the MVP's
  * assembly, the vector among it.
  */
-#define BE_MVP_REGION_HPA		BE_MVP_C(0x102064000)
-#define BE_MVP_REGION_BYTES		BE_MVP_C(0x40000)
+#define BE_MVP_REGION_HPA		BE_MVP_C(0x102068000)
+#define BE_MVP_REGION_BYTES		BE_MVP_C(0x3c000)
+#define BE_MVP_PARK_HPA			BE_MVP_C(0x102078000)
+#define BE_MVP_PARK_BYTES		BE_MVP_C(0x1000)
+#define BE_MVP_MVP_BOOT_TEXT_HPA	BE_MVP_C(0x102078000)
+#define BE_MVP_MVP_BOOT_TEXT_BYTES	BE_MVP_C(0x8000)
+#define BE_MVP_MVP_CONTROL_TEXT_HPA	BE_MVP_C(0x102068000)
+#define BE_MVP_MVP_CONTROL_TEXT_BYTES	BE_MVP_C(0x8000)
+#define BE_MVP_MVP_DOMAIN_TEXT_HPA	BE_MVP_C(0x102070000)
+#define BE_MVP_MVP_DOMAIN_TEXT_BYTES	BE_MVP_C(0x8000)
+#define BE_MVP_MVP_BOOT_RODATA_HPA	BE_MVP_C(0x102080000)
+#define BE_MVP_MVP_BOOT_RODATA_BYTES	BE_MVP_C(0x2000)
+#define BE_MVP_MVP_BOOT_DATA_HPA	BE_MVP_C(0x102082000)
+#define BE_MVP_MVP_BOOT_DATA_BYTES	BE_MVP_C(0x2000)
+#define BE_MVP_MVP_SEALED_HPA		BE_MVP_C(0x102084000)
+#define BE_MVP_MVP_SEALED_BYTES		BE_MVP_C(0x2000)
+#define BE_MVP_MVP_LOG_HPA		BE_MVP_C(0x102086000)
+#define BE_MVP_MVP_LOG_BYTES		BE_MVP_C(0x2000)
 /* Fedora's kernel on the COM260, the first byte above the free RAM the B7
  * preflight recorded after the monitor. */
 #define BE_MVP_FEDORA_KERNEL_HPA	BE_MVP_C(0x102200000)
@@ -145,6 +193,8 @@
 #define BE_MVP_BOOT_KERNEL_OFFSET	BE_MVP_C(0xa5000)
 #define BE_MVP_BOOT_IMAGE_MAX		BE_MVP_C(0x400000)
 #define BE_MVP_KERNEL_FILE_MAX		BE_MVP_C(0x400000)
+#define BE_MVP_PLAIN_GUEST_IMAGE_MAX	BE_MVP_C(0x300000)
+#define BE_MVP_PINNED_GUEST_IMAGE_MAX	BE_MVP_C(0x359000)
 #define BE_MVP_KERNEL_IMAGE_SIZE_MAX	BE_MVP_C(0x800000)
 #define BE_MVP_KERNEL_TEXT_OFFSET	BE_MVP_C(0x200000)
 #define BE_MVP_DTB_BYTES		BE_MVP_C(0x1000)
@@ -224,6 +274,13 @@
  * timer, which it re-arms at every wake, never past the run budget's end.
  */
 #define BE_MVP_INPUT_POLL_TICKS		BE_MVP_C(0x40000)
+#define BE_MVP_TICK_TICKS		BE_MVP_C(0x40000)
+#define BE_MVP_CONTROL_CONFINED_ENTRY_HPA BE_MVP_C(0x102068000)
+#define BE_MVP_CONTROL_CONFINED_ENTRY_BYTES BE_MVP_C(0x1000)
+#define BE_MVP_G0_CONFINED_ENTRY_HPA	BE_MVP_C(0x102070000)
+#define BE_MVP_G1_CONFINED_ENTRY_HPA	BE_MVP_C(0x102070000)
+#define BE_MVP_PARK_ENTRY_HPA		BE_MVP_C(0x102078000)
+#define BE_MVP_ANCHOR_DENIED_HPA	BE_MVP_C(0x102064000)
 /*
  * The SBI identity: version 5 since M7, which serves DBCN read
  * (planning/mvp-m7-plan.md, D-10 and Q11; 3 before), and 6 in an image
@@ -235,18 +292,37 @@
 #ifndef __ASSEMBLER__
 _Static_assert(BE_MVP_POOL_HPA == BE_MVP_MONITOR_HPA + BE_MVP_CORE_BYTES,
 	       "the pool follows the core, the board tools' extent");
-_Static_assert(BE_MVP_DATA_HPA == BE_MVP_MONITOR_HPA + BE_MVP_C(0x8000) &&
-	       BE_MVP_CONTROL_STACK_HPA == BE_MVP_DATA_HPA + BE_MVP_DATA_BYTES &&
+_Static_assert(BE_MVP_MONITOR_BOOT_TEXT_HPA == BE_MVP_MONITOR_HPA &&
+	       BE_MVP_MONITOR_CONTROL_TEXT_HPA ==
+	       BE_MVP_MONITOR_BOOT_TEXT_HPA + BE_MVP_MONITOR_BOOT_TEXT_BYTES &&
+	       BE_MVP_MONITOR_SHARED_TEXT_HPA ==
+	       BE_MVP_MONITOR_HPA + BE_MVP_C(0x8000) &&
+	       BE_MVP_MONITOR_DOMAIN_TEXT_HPA ==
+	       BE_MVP_MONITOR_SHARED_TEXT_HPA +
+	       BE_MVP_MONITOR_SHARED_TEXT_BYTES &&
+	       BE_MVP_MONITOR_RODATA_HPA ==
+	       BE_MVP_MONITOR_DOMAIN_TEXT_HPA +
+	       BE_MVP_MONITOR_DOMAIN_TEXT_BYTES,
+	       "the monitor text groups and read-only data are in order");
+_Static_assert(BE_MVP_MONITOR_INPUT_HPA ==
+	       BE_MVP_MONITOR_RODATA_HPA + BE_MVP_MONITOR_RODATA_BYTES &&
+	       BE_MVP_CONTROL_DATA_HPA == BE_MVP_MONITOR_HPA + BE_MVP_C(0x10000) &&
+	       BE_MVP_DIAGNOSTIC_HPA ==
+	       BE_MVP_CONTROL_DATA_HPA + BE_MVP_CONTROL_DATA_BYTES &&
+	       BE_MVP_CONTROL_STACK_HPA == BE_MVP_MONITOR_HPA + BE_MVP_C(0x14000) &&
 	       BE_MVP_CONTROL_STACK_HPA + BE_MVP_CONTROL_STACK_BYTES <=
+	       BE_MVP_CONTROL_PROFILE_HPA + BE_MVP_CONTROL_PROFILE_BYTES &&
+	       BE_MVP_CONTROL_PROFILE_HPA + BE_MVP_CONTROL_PROFILE_BYTES <=
 	       BE_MVP_MONITOR_HPA + BE_MVP_CORE_BYTES,
-	       "the core: code below 0x1_0200_8000, data, then hart 0's stack");
-_Static_assert(BE_MVP_POOL_BYTES == BE_MVP_DOMAINS * BE_MVP_GUEST_POOL_BYTES,
-	       "the pool holds one B6-shaped pool per domain");
+	       "the core data, console page, and control stack fit their profile");
+_Static_assert(BE_MVP_POOL_BYTES ==
+	       BE_MVP_DOMAINS * BE_MVP_READ_CLUSTER_BYTES,
+	       "the pool extent holds two read clusters");
 _Static_assert(BE_MVP_G0_ROOT_HPA == BE_MVP_POOL_HPA,
 	       "G0's root starts the pool");
 _Static_assert(BE_MVP_G1_ROOT_HPA ==
-	       BE_MVP_G0_ROOT_HPA + BE_MVP_GUEST_POOL_BYTES,
-	       "G1's root starts the second pool");
+	       BE_MVP_G0_ROOT_HPA + BE_MVP_READ_CLUSTER_BYTES,
+	       "G1's read cluster follows G0's");
 _Static_assert(BE_MVP_G0_LEVEL1_HPA == BE_MVP_G0_ROOT_HPA + BE_MVP_ROOT_BYTES,
 	       "G0's level-1 page follows its root");
 _Static_assert(BE_MVP_G1_LEVEL1_HPA == BE_MVP_G1_ROOT_HPA + BE_MVP_ROOT_BYTES,
@@ -256,10 +332,19 @@ _Static_assert(BE_MVP_G0_LEVEL0_HPA ==
 	       BE_MVP_G1_LEVEL0_HPA ==
 	       BE_MVP_G1_LEVEL1_HPA + BE_MVP_C(0x1000),
 	       "each level-0 page follows its level-1 page");
-_Static_assert(BE_MVP_G0_LEVEL0_HPA + BE_MVP_C(0x1000) <= BE_MVP_G1_ROOT_HPA &&
+_Static_assert(BE_MVP_G0_LEVEL0_HPA + BE_MVP_C(0x1000) <=
+	       BE_MVP_G0_PUBLISHED_HPA &&
+	       BE_MVP_G0_PUBLISHED_HPA + BE_MVP_PUBLISHED_BYTES <=
+	       BE_MVP_G0_CONTROL_MAILBOX_HPA &&
+	       BE_MVP_G0_CONTROL_MAILBOX_HPA + BE_MVP_CONTROL_MAILBOX_BYTES ==
+	       BE_MVP_G1_ROOT_HPA &&
 	       BE_MVP_G1_LEVEL0_HPA + BE_MVP_C(0x1000) <=
+	       BE_MVP_G1_PUBLISHED_HPA &&
+	       BE_MVP_G1_PUBLISHED_HPA + BE_MVP_PUBLISHED_BYTES <=
+	       BE_MVP_G1_CONTROL_MAILBOX_HPA &&
+	       BE_MVP_G1_CONTROL_MAILBOX_HPA + BE_MVP_CONTROL_MAILBOX_BYTES ==
 	       BE_MVP_POOL_HPA + BE_MVP_POOL_BYTES,
-	       "each level-0 page lies in its own pool");
+	       "each read cluster is its pool, published page, padding, mailbox");
 _Static_assert((BE_MVP_G0_ROOT_HPA & (BE_MVP_ROOT_BYTES - 1)) == 0 &&
 	       (BE_MVP_G1_ROOT_HPA & (BE_MVP_ROOT_BYTES - 1)) == 0,
 	       "each Sv39x4 root is 16 KiB aligned");
@@ -285,11 +370,15 @@ _Static_assert(BE_MVP_VARIANT_HART_START_HART >= BE_MVP_HARTS,
 	       "the hart-start variant names a hart the platform lacks");
 _Static_assert(BE_MVP_HART_REGION_HPA == BE_MVP_POOL_HPA + BE_MVP_POOL_BYTES,
 	       "the hart region follows the pool");
-_Static_assert(BE_MVP_HART_REGION_BYTES == BE_MVP_DOMAINS * BE_MVP_BLOCK_BYTES,
-	       "the hart region holds one block per domain hart");
-_Static_assert(BE_MVP_G0_BLOCK_HPA == BE_MVP_HART_REGION_HPA &&
-	       BE_MVP_G1_BLOCK_HPA == BE_MVP_G0_BLOCK_HPA + BE_MVP_BLOCK_BYTES,
-	       "G0's block starts the region and G1's follows it");
+_Static_assert(BE_MVP_G0_HART_MAILBOX_HPA == BE_MVP_HART_REGION_HPA &&
+	       BE_MVP_G1_HART_MAILBOX_HPA ==
+	       BE_MVP_G0_HART_MAILBOX_HPA + BE_MVP_HART_MAILBOX_BYTES &&
+	       BE_MVP_G0_BLOCK_HPA ==
+	       BE_MVP_G1_HART_MAILBOX_HPA + BE_MVP_HART_MAILBOX_BYTES &&
+	       BE_MVP_G1_BLOCK_HPA == BE_MVP_G0_BLOCK_HPA + BE_MVP_BLOCK_BYTES &&
+	       BE_MVP_G1_BLOCK_HPA + BE_MVP_BLOCK_BYTES ==
+	       BE_MVP_HART_REGION_HPA + BE_MVP_HART_REGION_BYTES,
+	       "the hart region is both mailboxes, then both private blocks");
 _Static_assert((BE_MVP_HART_REGION_HPA & BE_MVP_C(0x3fff)) == 0 &&
 	       (BE_MVP_G0_BLOCK_HPA & BE_MVP_C(0x3fff)) == 0 &&
 	       (BE_MVP_G1_BLOCK_HPA & BE_MVP_C(0x3fff)) == 0,
@@ -301,18 +390,22 @@ _Static_assert(BE_MVP_BLOCK_STACK_OFFSET == 0 &&
 	       "the saved page sits at the trusted-stack top");
 _Static_assert(BE_MVP_BLOCK_STATE_OFFSET ==
 	       BE_MVP_BLOCK_SAVED_OFFSET + BE_MVP_BLOCK_SAVED_BYTES &&
-	       BE_MVP_BLOCK_INBOUND_OFFSET ==
-	       BE_MVP_BLOCK_STATE_OFFSET + BE_MVP_BLOCK_STATE_BYTES &&
-	       BE_MVP_BLOCK_OUTBOUND_OFFSET ==
-	       BE_MVP_BLOCK_INBOUND_OFFSET + BE_MVP_INBOUND_RING_BYTES &&
-	       BE_MVP_INPUT_RING_OFFSET ==
-	       BE_MVP_BLOCK_OUTBOUND_OFFSET + BE_MVP_OUTBOUND_RING_BYTES &&
-	       BE_MVP_BLOCK_UNUSED_OFFSET ==
-	       BE_MVP_INPUT_RING_OFFSET + BE_MVP_INPUT_RING_BYTES &&
-	       BE_MVP_BLOCK_UNUSED_OFFSET + BE_MVP_BLOCK_UNUSED_BYTES ==
+	       BE_MVP_BLOCK_STATE_OFFSET + BE_MVP_BLOCK_STATE_BYTES ==
 	       BE_MVP_BLOCK_BYTES,
-	       "a block is the stack, saved, state, inbound, outbound, input, "
-	       "and unused pages in order, exactly");
+	       "a private block is its stack, saved page, and state page");
+_Static_assert(BE_MVP_BLOCK_INBOUND_OFFSET == 0 &&
+	       BE_MVP_INPUT_RING_OFFSET ==
+	       BE_MVP_BLOCK_INBOUND_OFFSET + BE_MVP_INBOUND_RING_BYTES &&
+	       BE_MVP_CONTROL_INBOUND_HEAD_OFFSET >=
+	       BE_MVP_INPUT_RING_OFFSET + BE_MVP_INPUT_RING_BYTES &&
+	       BE_MVP_CONTROL_OUTBOUND_TAIL_OFFSET + BE_MVP_C(0x40) <=
+	       BE_MVP_CONTROL_MAILBOX_BYTES,
+	       "the control mailbox holds its buffers and index lines");
+_Static_assert(BE_MVP_BLOCK_OUTBOUND_OFFSET == 0 &&
+	       BE_MVP_HART_OUTBOUND_HEAD_OFFSET >= BE_MVP_OUTBOUND_RING_BYTES &&
+	       BE_MVP_HART_INPUT_TAIL_OFFSET + BE_MVP_C(0x40) <=
+	       BE_MVP_HART_MAILBOX_BYTES,
+	       "the hart mailbox holds its buffer and index lines");
 _Static_assert((BE_MVP_INBOUND_RING_BYTES &
 		(BE_MVP_INBOUND_RING_BYTES - 1)) == 0 &&
 	       (BE_MVP_OUTBOUND_RING_BYTES &
@@ -343,6 +436,32 @@ _Static_assert(BE_MVP_REGION_HPA + BE_MVP_REGION_BYTES ==
 	       "the MVP region ends the flat image, at 0x1_020a_4000");
 _Static_assert((BE_MVP_REGION_HPA & BE_MVP_C(0x3fff)) == 0,
 	       "the MVP region is 16 KiB aligned");
+_Static_assert(BE_MVP_MVP_CONTROL_TEXT_HPA == BE_MVP_REGION_HPA &&
+	       BE_MVP_MVP_DOMAIN_TEXT_HPA ==
+	       BE_MVP_MVP_CONTROL_TEXT_HPA + BE_MVP_MVP_CONTROL_TEXT_BYTES &&
+	       BE_MVP_MVP_BOOT_TEXT_HPA ==
+	       BE_MVP_MVP_DOMAIN_TEXT_HPA + BE_MVP_MVP_DOMAIN_TEXT_BYTES &&
+	       BE_MVP_PARK_HPA == BE_MVP_MVP_BOOT_TEXT_HPA &&
+	       BE_MVP_PARK_ENTRY_HPA == BE_MVP_PARK_HPA &&
+	       BE_MVP_MVP_BOOT_RODATA_HPA ==
+	       BE_MVP_MVP_BOOT_TEXT_HPA + BE_MVP_MVP_BOOT_TEXT_BYTES &&
+	       BE_MVP_MVP_BOOT_DATA_HPA ==
+	       BE_MVP_MVP_BOOT_RODATA_HPA + BE_MVP_MVP_BOOT_RODATA_BYTES &&
+	       BE_MVP_MVP_SEALED_HPA ==
+	       BE_MVP_MVP_BOOT_DATA_HPA + BE_MVP_MVP_BOOT_DATA_BYTES &&
+	       BE_MVP_MVP_LOG_HPA ==
+	       BE_MVP_MVP_SEALED_HPA + BE_MVP_MVP_SEALED_BYTES &&
+	       BE_MVP_MVP_LOG_HPA + BE_MVP_MVP_LOG_BYTES <=
+	       BE_MVP_REGION_HPA + BE_MVP_REGION_BYTES,
+	       "the MVP role and boot-output extents are in order");
+_Static_assert(BE_MVP_CONTROL_CONFINED_ENTRY_HPA ==
+	       BE_MVP_MVP_CONTROL_TEXT_HPA &&
+	       BE_MVP_CONTROL_CONFINED_ENTRY_HPA +
+	       BE_MVP_CONTROL_CONFINED_ENTRY_BYTES <=
+	       BE_MVP_MVP_CONTROL_TEXT_HPA + BE_MVP_MVP_CONTROL_TEXT_BYTES &&
+	       BE_MVP_G0_CONFINED_ENTRY_HPA == BE_MVP_MVP_DOMAIN_TEXT_HPA &&
+	       BE_MVP_G1_CONFINED_ENTRY_HPA == BE_MVP_MVP_DOMAIN_TEXT_HPA,
+	       "the three confined resume addresses lie in their role extents");
 _Static_assert(BE_MVP_REGION_HPA + BE_MVP_REGION_BYTES <=
 	       BE_MVP_FEDORA_KERNEL_HPA &&
 	       BE_MVP_FEDORA_KERNEL_HPA <= BE_MVP_STAGING_HPA,
@@ -355,6 +474,25 @@ _Static_assert(BE_MVP_IMAGE_BYTES > BE_MVP_CORE_BYTES +
 _Static_assert(BE_MVP_BOOT_KERNEL_OFFSET ==
 	       BE_MVP_BOOT_MONITOR_OFFSET + BE_MVP_IMAGE_BYTES,
 	       "the kernel follows the monitor in the boot image");
+/*
+ * The CHERI guest Image, at 0x359000 bytes, is the largest Image pinned by
+ * any built variant. The plain guest keeps M7's 0x300000-byte budget.
+ */
+_Static_assert((BE_MVP_PLAIN_GUEST_IMAGE_MAX &
+		(BE_MVP_PAYLOAD_ALIGN - 1)) == 0 &&
+	       (BE_MVP_PINNED_GUEST_IMAGE_MAX &
+		(BE_MVP_PAYLOAD_ALIGN - 1)) == 0 &&
+	       BE_MVP_PLAIN_GUEST_IMAGE_MAX <= BE_MVP_KERNEL_FILE_MAX &&
+	       BE_MVP_PINNED_GUEST_IMAGE_MAX <= BE_MVP_KERNEL_FILE_MAX,
+	       "the plain and largest pinned guest Images fit the generic limit");
+_Static_assert(BE_MVP_BOOT_MONITOR_OFFSET + BE_MVP_IMAGE_BYTES +
+	       BE_MVP_PLAIN_GUEST_IMAGE_MAX +
+	       BE_MVP_DOMAINS * BE_MVP_DTB_BYTES <= BE_MVP_BOOT_IMAGE_MAX,
+	       "the plain guest Image and both DTBs fit the boot image");
+_Static_assert(BE_MVP_BOOT_MONITOR_OFFSET + BE_MVP_IMAGE_BYTES +
+	       BE_MVP_PINNED_GUEST_IMAGE_MAX +
+	       BE_MVP_DOMAINS * BE_MVP_DTB_BYTES <= BE_MVP_BOOT_IMAGE_MAX,
+	       "the largest pinned guest Image and both DTBs fit the boot image");
 _Static_assert(BE_MVP_UBOOT_RAM_BASE + BE_MVP_UBOOT_TEXT_OFFSET ==
 	       BE_MVP_STAGING_HPA, "booti places the board image at L");
 _Static_assert(BE_MVP_QEMU_RAM_BASE + BE_MVP_QEMU_TEXT_OFFSET ==
@@ -426,9 +564,9 @@ _Static_assert(BE_MVP_VARIANT_DRAIN_DELAY_TICKS > BE_MVP_FAIL_ACK_TICKS,
 	       "in ring-full, hart 0 still waits when a domain hart's wait "
 	       "for its acknowledgement ends");
 _Static_assert(BE_MVP_INPUT_POLL_TICKS == BE_MVP_C(1) << 18 &&
+	       BE_MVP_TICK_TICKS == BE_MVP_INPUT_POLL_TICKS &&
 	       BE_MVP_INPUT_POLL_TICKS < BE_MVP_VARIANT_RUN_BUDGET,
-	       "hart 0 polls the console every 2^18 ticks (Q2), well inside "
-	       "every run budget");
+	       "both roles tick every 2^18 ticks, well inside every run budget");
 #endif
 
 #endif /* BE_MVP_LAYOUT_H */

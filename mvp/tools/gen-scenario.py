@@ -3150,7 +3150,8 @@ LOG_OBJECTS = ("monitor-text", "monitor-rodata", "monitor-input", "mvp-text",
                "kernel-image", "device-tree", "secret-page", "close")
 R2_OBJECTS = LOG_OBJECTS[:5]
 # The R2 ranges whose base the link fixes (src/mvp-monitor.lds's ASSERTs).
-R2_BASES = {"monitor-text": "MONITOR_HPA", "monitor-input": "DATA_HPA",
+R2_BASES = {"monitor-text": "MONITOR_HPA",
+            "monitor-input": "MONITOR_INPUT_HPA",
             "mvp-text": "REGION_HPA"}
 # Each sequence's count without R2, the close included (3.1).
 LOG_COUNTS = {"v1": 8, "v2": 9, "v3": 10, "probe": 4}
@@ -3996,7 +3997,7 @@ def self_test(scenario_path, layout_path, dts_path, policy_path=None,
     platform = probe_control_lines(scenario["probes"][0], binding, layout,
                                    core)
     # The MVP core profile (planning/mvp-m6-plan.md, D-1): the layout's
-    # fourteen extents, each window an authority, no channel, and the
+    # eighteen extents, each window an authority, no channel, and the
     # hart-start variant's hart 9 under its macro, with its own identity.
     changed = copy.deepcopy(binding)
     changed[1]["hart"] = 9
@@ -4005,7 +4006,7 @@ def self_test(scenario_path, layout_path, dts_path, policy_path=None,
                            [("BE_MVP_VARIANT_HART_START", other)],
                            [False, True])
     cores = [sealed_line(core).split(" identity=")[0] ==
-             "BE_MVP:00 CONFIG_SEALED inventory=14 authorities=2 roots=2 "
+             "BE_MVP:00 CONFIG_SEALED inventory=18 authorities=2 roots=2 "
              "harts=0,1,2", other["harts"] == [0, 1, 9] and
              other["identity"] != core["identity"], not core["channels"] and
              [row[3] for row in core["authorities"]] == [7, 7],
@@ -4034,8 +4035,8 @@ def self_test(scenario_path, layout_path, dts_path, policy_path=None,
         (firmware, "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 "
          "status=1:1,2:0,3:1,4:1,5:1,6:1,7:1 started=2", False),
         (by_tag["BE_MVP:01"], "BE_MVP:01 SCENARIO name=probe-platform "
-         "domains=1 harts=0,1 of=8 ring_bytes=0x8000 mvp_region=0x102064000 "
-         "mvp_bytes=0x40000 image_bytes=0xa4000", True),
+         "domains=1 harts=0,1 of=8 ring_bytes=0x8000 mvp_region=0x102068000 "
+         "mvp_bytes=0x3c000 image_bytes=0xa4000", True),
         (by_tag["BE_MVP:02"], "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 "
          "status=1:1,2:0,3:1,4:1,5:1,6:1,7:1 started=2", True),
         (by_tag["BE_MVP:02"], "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 "
@@ -4265,7 +4266,7 @@ def self_test_v2(scenario_path, scenario, layout, dts, policy, bins, files):
         ("CHANNEL_CHECKED", before[tags.index("BE_MVP:03 CHANNEL_CHECKED")]
          == "BE_MVP:03 CHANNEL_CHECKED channel=0 writer=0 reader=1 "
          "gpa=0x84000000 hpa=0x118000000 bytes=0x1000 "
-         "level0=0x102039000,0x102041000 writer_pte=0x460000d7 "
+         "level0=0x102025000,0x102035000 writer_pte=0x460000d7 "
          f"reader_pte=0x46000053 config={config}"),
         ("the channel lines' places", tags[5:13] == [
             "BE_MVP:03 GSTAGE_BUILT_REWALKED"] * 2 + [
@@ -4500,7 +4501,7 @@ def self_test_v3(scenario_path, scenario, layout, dts, policy, files,
     mine = images[scenario["name"]]
     before = [entry["template"] for entry in mine["control_lines"]]
     tags = [" ".join(text.split(" ", 2)[:2]) for text in before]
-    level0 = "level0=0x102039000,0x102041000"
+    level0 = "level0=0x102025000,0x102035000"
     lines = mine["domain_lines"]
     digest = "cfa178e1a716ea360e7828e40d6d23fb0df925efc7d64693424ddfe8a0770251"
     detail = {name: images[name]["outcome"].get("detail_lines", [{}])[0].get(

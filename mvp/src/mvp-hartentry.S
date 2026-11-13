@@ -21,22 +21,17 @@
 
 	.option norvc
 
-	/* The hart region: 2^17 bytes of 2^16-byte blocks (mvp-runtime.c). */
-	.equ MVP_REGION_SHIFT, 17
-	.equ MVP_BLOCK_SHIFT, 16
-
-	.section .text, "ax"
+	.section .text.mvp.domain, "ax"
 	.align 4
 	.globl be_mvp_hart_entry
 	.type be_mvp_hart_entry, @function
 be_mvp_hart_entry:
-	/* a1 must be a block's start: inside the region, 64 KiB aligned. */
-	la	t0, __be_mvp_hart_region_start
-	sub	t1, a1, t0
-	srli	t2, t1, MVP_REGION_SHIFT
-	bnez	t2, 1f
-	slli	t2, t1, 64 - MVP_BLOCK_SHIFT
-	bnez	t2, 1f
+	/* a1 must be exactly one of the two private-state extent bases. */
+	li	t0, BE_MVP_G0_BLOCK_HPA
+	beq	a1, t0, 2f
+	li	t0, BE_MVP_G1_BLOCK_HPA
+	bne	a1, t0, 1f
+2:
 	/* The trusted stack grows down from the saved page. */
 	li	t2, BE_MVP_BLOCK_STACK_TOP_OFFSET
 	add	sp, a1, t2
@@ -58,3 +53,13 @@ be_mvp_arch_fence_i:
 	fence.i
 	ret
 	.size be_mvp_arch_fence_i, . - be_mvp_arch_fence_i
+
+	.section .text.mvp.boot, "ax"
+	.align 4
+	.globl be_mvp_park_entry
+	.type be_mvp_park_entry, @function
+be_mvp_park_entry:
+1:
+	wfi
+	j	1b
+	.size be_mvp_park_entry, . - be_mvp_park_entry

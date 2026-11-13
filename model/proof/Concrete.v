@@ -1570,6 +1570,12 @@ Definition nonempty {A : Type} (l : list A) : bool :=
 (* reads: mvp/src/mvp-sbi.c:sbi_srst *)
 (* reads: mvp/src/mvp-sbi.c:sbi_dbcn *)
 (* reads: mvp/src/mvp-sbi.c:sbi_mgmt *)
+(*
+ * M11-3 publishes these four [BConfig] words in a VS-domain hart's
+ * read-only page and copies them into the hart's private working state
+ * after publication and before READY. The decision still reads the same
+ * four words; stage 1's publication and readiness steps are unchanged.
+ *)
 Definition exit_decide (ceiling accept_denial accept_mgmt accept_input exits : N)
     (w : walked) (e : exit_rec) : exit_action :=
   if ceiling <=? exits then XFail

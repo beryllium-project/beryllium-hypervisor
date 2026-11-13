@@ -1919,7 +1919,7 @@ LABEL = "beryllium-log-profile-v1 example: "
 PLACED = ("BE_MVP:06 PAYLOAD_PLACED domain={} kernel=0x80200000 "
           "kernel_bytes=0x1f7cc4 image_size=0x22bfb0 dtb=0x83e00000 "
           "dtb_bytes=0x1000 ticks=0x1000")
-PUBLISHED = ("BE_MVP:07 BLOCKS_PUBLISHED region=0x102044000 bytes=0x20000 "
+PUBLISHED = ("BE_MVP:07 BLOCKS_PUBLISHED region=0x102040000 bytes=0x28000 "
              "generation=1 budget_ticks=0x100000000")
 HART_STARTED = ("BE_MVP:08 HART_STARTED hart={1} domain={0} result=0 "
                 "status=0 ticks=0x2000")

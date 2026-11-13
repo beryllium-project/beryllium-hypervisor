@@ -190,7 +190,7 @@ holds:
 
 | File | Contents |
 | --- | --- |
-| `be-mvp.elf` | The monitor: B2's port with the MVP layer, whose C sits in its own region at `0x1_0206_4000` |
+| `be-mvp.elf` | The monitor: B2's port with the MVP layer split into boot, control, shared, and VS-domain-hart role extents |
 | `be-mvp.bin` | The flat monitor image, loaded at `0x1_0200_0000`, exactly `0xa4000` bytes |
 | `be-mvp-boot.elf` | The boot image as an ELF: the shim, the flat image, and the guest payload (the kernel and both DTBs), linked at the staging address `0x1_0800_0000`; QEMU boots this file |
 | `be-mvp-boot.img` | The same bytes as a flat file, the board image, which the board's U-Boot loads from the Beryllium partition; its RISC-V Image header's `text_offset` makes `booti` move it to `0x1_0800_0000`, and a second link at another base must give identical bytes |
@@ -293,7 +293,12 @@ the two domains' lines differ from run to run or from image to image. The
 committed captures under `mvp/tests/fixtures/`, which the checker's
 self-test judges, read the same way without a QEMU run; `qemu-te-poc-gcc.log`
 is a `te-poc` capture made with M1's guest kernel, and the `-m6` captures
-are M6's.
+are M6's. The excerpt's addresses are those of the layout before M11-3.
+Since M11-3 the scenario line names the MVP region at `0x102068000`,
+`0x3c000` bytes; the roots are at `0x102020000` and `0x102030000`, their
+level-0 pages at `0x102025000` and `0x102035000`, and the `hgatp` values
+change with them; `:07` names the hart region at `0x102040000`, `0x28000`
+bytes; and `CONFIG_SEALED` counts four more extents, 19 for `te-poc`.
 
 ```text
 BE_MVP_SHIM: boot_hart=0x4 starting hart 0
@@ -384,9 +389,13 @@ BE_MVP:14 SHUTDOWN type=0 reason=0
   `:20 REGISTERS` line follow here, before `:07` (the section
   [The measurement log](#the-measurement-log-06-launch-19-and-20-m9)); this
   excerpt predates them.
-- **`:07 BLOCKS_PUBLISHED`.** The boot barrier: each domain hart's block in
-  the hart region at `0x102044000` filled and its generation word written
-  last; `budget_ticks` is the run budget.
+- **`:07 BLOCKS_PUBLISHED`.** The boot barrier: each domain hart's
+  descriptor, first-entry frame, walked mappings, and configuration
+  words filled in its published page, the generation word written last;
+  `region` names the hart region, which since M11-3 holds the mailboxes
+  that the domain harts write and their private blocks, `0x28000` bytes at
+  `0x102040000` (`0x20000` bytes at `0x102044000` before M11-3, as in this
+  excerpt); `budget_ticks` is the run budget.
 - **`:08` to `:10`.** Hart 0 starts harts 1 and 2 through SBI HSM; each
   domain hart reads back its armed control registers (its `hgatp` names its
   VMID and root; `hedeleg` reads `0xb15d` in QEMU and `0xb15c` on the board,
@@ -638,7 +647,8 @@ barrier, `measure_log()` in `src/mvp-runtime.c` appends, in a fixed order:
 Each `measured` record extends its stream's register, R := SHA-256 of R
 followed by the record's digest; `informational` records extend nothing.
 In the `te-poc` capture of `mvp/tests/fixtures/qemu-te-poc-gcc-m9.log`
-the log's lines stand between `:06 PAYLOAD_PLACED` and `:07`:
+the log's lines stand between `:06 PAYLOAD_PLACED` and `:07` (an M9
+capture, so its `:07` line shows the hart region before M11-3):
 
 ```text
 BE_MVP:06 LAUNCH domain=0 hart=1 register=d4a20b05… expected=match ticks=0x70793

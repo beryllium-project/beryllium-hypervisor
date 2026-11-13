@@ -355,9 +355,12 @@ done < <("$python" -B "$gen_dts" --layout "$layout" --guest-flavour cheri-linux 
 # The pin lines: every output's SHA-256 and size, the Image's header facts
 # and banner, and the toolchain; then the comparison with
 # guest/cheri-pins.txt.
-"$python" -B - "$out" "$cc_version" "$layout" "$gen_dts" >"$out/pins.cheri.txt" <<'EOF'
+"$python" -B - "$out" "$cc_version" "$layout" "$gen_dts" "$pins" \
+	>"$out/pins.cheri.txt" <<'EOF'
 import pathlib, re, struct, subprocess, sys, hashlib
-out, cc, layout, gen_dts = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4]
+out, cc, layout, gen_dts, pins = (pathlib.Path(sys.argv[1]), sys.argv[2],
+                                  sys.argv[3], sys.argv[4],
+                                  pathlib.Path(sys.argv[5]))
 dtbs = subprocess.run([sys.executable, "-B", gen_dts, "--layout", layout,
                        "--guest-flavour", "cheri-linux", "--query", "dtbs"],
                       check=True, capture_output=True,
@@ -368,6 +371,20 @@ for name in names:
     data = (out / name).read_bytes()
     print(f"file {name} sha256={hashlib.sha256(data).hexdigest()} bytes={len(data)}")
 image = (out / "Image").read_bytes()
+match = re.search(r"^#define\s+BE_MVP_PINNED_GUEST_IMAGE_MAX\s+"
+                  r"BE_MVP_C\((0x[0-9a-fA-F]+|[0-9]+)\)\s*$",
+                  pathlib.Path(layout).read_text(), re.M)
+if match is None:
+    raise SystemExit("no BE_MVP_PINNED_GUEST_IMAGE_MAX in the layout")
+limit = int(match.group(1), 0)
+pin = re.search(r"^file Image sha256=[0-9a-f]{64} bytes=([0-9]+)$",
+                pins.read_text(), re.M)
+if pin is None or int(pin.group(1)) > limit:
+    raise SystemExit("guest/cheri-pins.txt's Image exceeds "
+                     f"BE_MVP_PINNED_GUEST_IMAGE_MAX ({limit:#x})")
+if len(image) > limit:
+    raise SystemExit(f"Image is {len(image)} bytes, over "
+                     f"BE_MVP_PINNED_GUEST_IMAGE_MAX ({limit:#x})")
 text_offset, image_size = struct.unpack_from("<QQ", image, 8)
 print(f"kernel image_size={image_size:#x}")
 print(f"kernel text_offset={text_offset:#x}")

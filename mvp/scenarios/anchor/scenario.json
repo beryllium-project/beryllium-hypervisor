@@ -37,10 +37,10 @@
       {"name": "secret_page", "class": "memory", "hpa": "0x118002000", "bytes": "0x1000", "type": "secret_t"},
       {"name": "request", "class": "channel", "object": "request_page", "type": "req_t"},
       {"name": "response", "class": "channel", "object": "response_page", "type": "resp_t"},
-      {"name": "accepted_image", "class": "memory", "hpa": "0x102000000", "bytes": "0x34000", "type": "monitor_mem_t"},
-      {"name": "pool", "class": "memory", "hpa": "0x102034000", "bytes": "0x10000", "type": "monitor_mem_t"},
-      {"name": "hart_region", "class": "memory", "hpa": "0x102044000", "bytes": "0x20000", "type": "monitor_mem_t"},
-      {"name": "mvp_region", "class": "memory", "hpa": "0x102064000", "bytes": "0x40000", "type": "monitor_mem_t"},
+      {"name": "accepted_image", "class": "memory", "hpa": "0x102000000", "bytes": "0x20000", "type": "monitor_mem_t"},
+      {"name": "pool", "class": "memory", "hpa": "0x102020000", "bytes": "0x20000", "type": "monitor_mem_t"},
+      {"name": "hart_region", "class": "memory", "hpa": "0x102040000", "bytes": "0x28000", "type": "monitor_mem_t"},
+      {"name": "mvp_region", "class": "memory", "hpa": "0x102068000", "bytes": "0x3c000", "type": "monitor_mem_t"},
       {"name": "staging", "class": "memory", "hpa": "0x108000000", "bytes": "0x400000", "type": "monitor_mem_t"}
     ]
   },
@@ -59,10 +59,10 @@
     {"source": "prot_t", "target": "secret_t", "class": "memory", "permissions": ["read", "map"]}
   ],
   "objects": [
-    {"name": "accepted_image", "class": "memory", "hpa": "0x102000000", "bytes": "0x34000", "owner": "monitor"},
-    {"name": "pool", "class": "memory", "hpa": "0x102034000", "bytes": "0x10000", "owner": "monitor"},
-    {"name": "hart_region", "class": "memory", "hpa": "0x102044000", "bytes": "0x20000", "owner": "monitor"},
-    {"name": "mvp_region", "class": "memory", "hpa": "0x102064000", "bytes": "0x40000", "owner": "monitor"},
+    {"name": "accepted_image", "class": "memory", "hpa": "0x102000000", "bytes": "0x20000", "owner": "monitor"},
+    {"name": "pool", "class": "memory", "hpa": "0x102020000", "bytes": "0x20000", "owner": "monitor"},
+    {"name": "hart_region", "class": "memory", "hpa": "0x102040000", "bytes": "0x28000", "owner": "monitor"},
+    {"name": "mvp_region", "class": "memory", "hpa": "0x102068000", "bytes": "0x3c000", "owner": "monitor"},
     {"name": "staging", "class": "memory", "hpa": "0x108000000", "bytes": "0x400000", "owner": "monitor"}
   ],
   "pages": [
@@ -83,8 +83,8 @@
       "prefix": "BE_MVP_G0: ",
       "hart": 1,
       "vmid": 1,
-      "root": "0x102034000",
-      "block": "0x102044000",
+      "root": "0x102020000",
+      "block": "0x102060000",
       "window": {
         "gpa": "0x80000000",
         "hpa": "0x110000000",
@@ -110,8 +110,8 @@
       "prefix": "BE_MVP_G1: ",
       "hart": 2,
       "vmid": 2,
-      "root": "0x10203c000",
-      "block": "0x102054000",
+      "root": "0x102030000",
+      "block": "0x102064000",
       "window": {
         "gpa": "0x80000000",
         "hpa": "0x114000000",

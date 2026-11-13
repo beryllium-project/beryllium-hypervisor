@@ -68,18 +68,16 @@
 #endif
 
 /*
- * A domain hart's state page as its runtime uses it: M0-2's state page,
- * then the walked window and the walked leaves of its root's pages hart 0
- * copies in before the barrier (the hart's private state for the denial
- * decision: M1's channel leaf as page 0, or a scenario's declared pages),
- * and the hart's own views of its two rings; since M7 its view of its
- * input ring and its staged input (planning/mvp-m7-plan.md, D-1), the
- * domain hart's alone after the barrier.
+ * A VS-domain hart's private page as its runtime uses it: its state and
+ * controls, its own views of the three rings, and its staged console
+ * input. Hart 0 fills these before the barrier except for the four
+ * configuration fields, which the hart copies from its published page at
+ * entry. The walked window, leaves, descriptor, and first-entry frame are
+ * in the read-only published extent.
  */
 struct be_mvp_hart_page {
 	struct be_mvp_state_page page;
-	struct be_mvp_gstage_map map;
-	struct be_mvp_gstage_leaves leaves;
+	const struct be_mvp_published_page *published;
 	struct be_mvp_ring inbound;
 	struct be_mvp_ring outbound;
 	struct be_mvp_ring input;

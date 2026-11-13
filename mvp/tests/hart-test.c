@@ -337,18 +337,21 @@ static void test_constants(void)
 	CHECK(BE_MVP_HGATP_ROOT_ALIGN == 0x4000U &&
 	      BE_MVP_HGATP_ROOT_LIMIT == BE_U64_C(0x100000000000000));
 	CHECK(defaults[0].hart == 1U && defaults[0].vmid == 1U &&
-	      defaults[0].root == BE_U64_C(0x102034000));
+	      defaults[0].root == BE_U64_C(0x102020000));
 	CHECK(defaults[1].hart == 2U && defaults[1].vmid == 2U &&
-	      defaults[1].root == BE_U64_C(0x10203c000));
+	      defaults[1].root == BE_U64_C(0x102030000));
 	CHECK(BE_MVP_CONTROL_HART == 0U && BE_MVP_HARTS == 8U);
-	CHECK(BE_MVP_G0_BLOCK_HPA == BE_U64_C(0x102044000) &&
-	      BE_MVP_G1_BLOCK_HPA == BE_U64_C(0x102054000));
-	CHECK(BE_MVP_HART_REGION_HPA == BE_U64_C(0x102044000) &&
-	      BE_MVP_HART_REGION_BYTES == 0x20000U);
+	CHECK(BE_MVP_G0_BLOCK_HPA == BE_U64_C(0x102060000) &&
+	      BE_MVP_G1_BLOCK_HPA == BE_U64_C(0x102064000));
+	CHECK(BE_MVP_HART_REGION_HPA == BE_U64_C(0x102040000) &&
+	      BE_MVP_HART_REGION_BYTES == 0x28000U);
 	CHECK(BE_MVP_GENERATION == 1U);
-	CHECK(sizeof(struct be_mvp_block_desc) == 14U * WORD);
+	CHECK(sizeof(struct be_mvp_block_desc) == 17U * WORD);
+	CHECK(sizeof(struct be_mvp_published_page) <= BE_MVP_PUBLISHED_BYTES);
 	CHECK(sizeof(struct be_mvp_state_page) <= BE_MVP_BLOCK_STATE_BYTES);
-	CHECK(__builtin_offsetof(struct be_mvp_state_page, desc) == 256U);
+	CHECK(sizeof(struct be_mvp_control_mailbox) <=
+	      BE_MVP_CONTROL_MAILBOX_BYTES);
+	CHECK(sizeof(struct be_mvp_hart_mailbox) <= BE_MVP_HART_MAILBOX_BYTES);
 	CHECK(BE_MVP_BLOCK_OK == 0 && BE_MVP_DOMAIN_NONE == 0 &&
 	      BE_MVP_STEP_INVALID == 0);
 	CHECK(BE_MVP_READY_WORDS == 8U && BE_MVP_ENTERED_WORDS == 3U &&
@@ -366,19 +369,19 @@ static void test_constants(void)
 static void test_hgatp(void)
 {
 	SCENARIO();
-	CHECK(be_mvp_hgatp(1U, BE_U64_C(0x102034000)) == BE_MVP_G0_HGATP);
-	CHECK(be_mvp_hgatp(2U, BE_U64_C(0x10203c000)) == BE_MVP_G1_HGATP);
-	CHECK(BE_MVP_G0_HGATP == BE_U64_C(0x8000100000102034));
-	CHECK(BE_MVP_G1_HGATP == BE_U64_C(0x800020000010203c));
+	CHECK(be_mvp_hgatp(1U, BE_U64_C(0x102020000)) == BE_MVP_G0_HGATP);
+	CHECK(be_mvp_hgatp(2U, BE_U64_C(0x102030000)) == BE_MVP_G1_HGATP);
+	CHECK(BE_MVP_G0_HGATP == BE_U64_C(0x8000100000102020));
+	CHECK(BE_MVP_G1_HGATP == BE_U64_C(0x8000200000102030));
 	CHECK(be_mvp_hgatp(0U, BE_U64_C(0x4000)) ==
 	      BE_U64_C(0x8000000000000004));
 	CHECK(be_mvp_hgatp(0x3fffU, BE_U64_C(0xffffffffffc000)) ==
 	      BE_U64_C(0x83fffffffffffffc));
-	CHECK(be_mvp_hgatp(0x4000U, BE_U64_C(0x102034000)) == 0U);
-	CHECK(be_mvp_hgatp(ALL_ONES, BE_U64_C(0x102034000)) == 0U);
-	CHECK(be_mvp_hgatp(1U, BE_U64_C(0x102035000)) == 0U);
-	CHECK(be_mvp_hgatp(1U, BE_U64_C(0x102036000)) == 0U);
-	CHECK(be_mvp_hgatp(1U, BE_U64_C(0x102034008)) == 0U);
+	CHECK(be_mvp_hgatp(0x4000U, BE_U64_C(0x102020000)) == 0U);
+	CHECK(be_mvp_hgatp(ALL_ONES, BE_U64_C(0x102020000)) == 0U);
+	CHECK(be_mvp_hgatp(1U, BE_U64_C(0x102021000)) == 0U);
+	CHECK(be_mvp_hgatp(1U, BE_U64_C(0x102022000)) == 0U);
+	CHECK(be_mvp_hgatp(1U, BE_U64_C(0x102020008)) == 0U);
 	CHECK(be_mvp_hgatp(1U, BE_U64_C(0x100000000000000)) == 0U);
 	CHECK(be_mvp_hgatp(1U, ALL_ONES & ~BE_U64_C(0x3fff)) == 0U);
 }
@@ -446,7 +449,19 @@ static void test_bindings(void)
 
 static void expect_fill(be_u64 domain, be_u64 outbound_bytes)
 {
-	be_u64 block = BE_MVP_G0_BLOCK_HPA + domain * BE_MVP_BLOCK_BYTES;
+	const be_u64 blocks[BE_MVP_DOMAINS] = {
+		BE_MVP_G0_BLOCK_HPA, BE_MVP_G1_BLOCK_HPA,
+	};
+	const be_u64 published[BE_MVP_DOMAINS] = {
+		BE_MVP_G0_PUBLISHED_HPA, BE_MVP_G1_PUBLISHED_HPA,
+	};
+	const be_u64 control_mailboxes[BE_MVP_DOMAINS] = {
+		BE_MVP_G0_CONTROL_MAILBOX_HPA, BE_MVP_G1_CONTROL_MAILBOX_HPA,
+	};
+	const be_u64 hart_mailboxes[BE_MVP_DOMAINS] = {
+		BE_MVP_G0_HART_MAILBOX_HPA, BE_MVP_G1_HART_MAILBOX_HPA,
+	};
+	be_u64 block = blocks[domain];
 
 	memset(&desc, 0x5a, sizeof(desc));
 	CHECK(be_mvp_block_fill(&desc, domain, bindings, BE_MVP_DOMAINS,
@@ -456,13 +471,17 @@ static void expect_fill(be_u64 domain, be_u64 outbound_bytes)
 	CHECK(desc.hgatp == be_mvp_hgatp(bindings[domain].vmid,
 					 bindings[domain].root));
 	CHECK(desc.block == block && desc.stack_top == block + 0x2000U);
+	CHECK(desc.published == published[domain] &&
+	      desc.control_mailbox == control_mailboxes[domain] &&
+	      desc.hart_mailbox == hart_mailboxes[domain]);
 	CHECK(desc.saved == block + 0x2000U && desc.state == block + 0x3000U);
-	CHECK(desc.inbound == block + 0x4000U &&
+	CHECK(desc.inbound == control_mailboxes[domain] &&
 	      desc.inbound_bytes == 0x1000U);
-	CHECK(desc.outbound == block + 0x5000U &&
+	CHECK(desc.outbound == hart_mailboxes[domain] &&
 	      desc.outbound_bytes == outbound_bytes);
 	/* The input ring fills its slot (planning/mvp-m7-plan.md, D-1). */
-	CHECK(desc.input == block + 0xd000U && desc.input_bytes == 0x1000U);
+	CHECK(desc.input == control_mailboxes[domain] + 0x1000U &&
+	      desc.input_bytes == 0x1000U);
 	CHECK(desc.generation == 0U);
 }
 
@@ -473,7 +492,9 @@ static void expect_fill_refused(be_u64 domain, be_u64 outbound_bytes,
 	CHECK(be_mvp_block_fill(&desc, domain, bindings, BE_MVP_DOMAINS,
 				outbound_bytes) == error);
 	CHECK(desc.hart == 0U && desc.domain == 0U && desc.hgatp == 0U &&
-	      desc.block == 0U && desc.stack_top == 0U && desc.saved == 0U &&
+	      desc.block == 0U && desc.published == 0U &&
+	      desc.control_mailbox == 0U && desc.hart_mailbox == 0U &&
+	      desc.stack_top == 0U && desc.saved == 0U &&
 	      desc.state == 0U && desc.inbound == 0U &&
 	      desc.inbound_bytes == 0U && desc.outbound == 0U &&
 	      desc.outbound_bytes == 0U && desc.input == 0U &&
@@ -486,16 +507,14 @@ static void test_block_fill(void)
 	memcpy(bindings, defaults, sizeof(bindings));
 	expect_fill(0U, BE_MVP_OUTBOUND_RING_BYTES);
 	CHECK(desc.hgatp == BE_MVP_G0_HGATP && desc.hart == 1U);
-	CHECK(desc.block == BE_U64_C(0x102044000));
+	CHECK(desc.block == BE_U64_C(0x102060000));
 	expect_fill(1U, BE_MVP_OUTBOUND_RING_BYTES);
 	CHECK(desc.hgatp == BE_MVP_G1_HGATP && desc.hart == 2U);
-	CHECK(desc.block == BE_U64_C(0x102054000));
-	CHECK(desc.outbound == BE_U64_C(0x102059000));
-	CHECK(desc.outbound + desc.outbound_bytes ==
-	      BE_U64_C(0x102054000) + BE_MVP_INPUT_RING_OFFSET);
-	CHECK(desc.input == BE_U64_C(0x102061000) &&
-	      desc.input + desc.input_bytes ==
-	      BE_U64_C(0x102054000) + BE_MVP_BLOCK_UNUSED_OFFSET);
+	CHECK(desc.block == BE_U64_C(0x102064000));
+	CHECK(desc.outbound == BE_U64_C(0x102050000));
+	CHECK(desc.outbound + desc.outbound_bytes == BE_U64_C(0x102058000));
+	CHECK(desc.input == BE_U64_C(0x10203d000) &&
+	      desc.input + desc.input_bytes == BE_U64_C(0x10203e000));
 	/* The ring-full variant's ring, and the smallest. */
 	expect_fill(1U, BE_MVP_VARIANT_OUTBOUND_RING_BYTES);
 	expect_fill(0U, BE_MVP_RING_MIN_BYTES);
@@ -700,51 +719,62 @@ static void test_block_check(void)
 	CHECK(check_own() == BE_MVP_BLOCK_HGATP);
 }
 
-/* The state page: the four index lines, then the descriptor. */
+/* The two writer-owned mailboxes and the read-only published page. */
 static void test_state_page(void)
 {
-	static struct be_mvp_state_page page __attribute__((aligned(4096)));
-	static be_u8 inbound[BE_MVP_INBOUND_RING_BYTES];
+	static struct be_mvp_control_mailbox control
+		__attribute__((aligned(4096)));
+	static struct be_mvp_hart_mailbox hart __attribute__((aligned(4096)));
+	static struct be_mvp_published_page published
+		__attribute__((aligned(4096)));
 	struct be_mvp_ring hart0;
-	struct be_mvp_ring hart;
-	const char *base = (const char *)&page;
+	struct be_mvp_ring domain;
 
 	SCENARIO();
-	CHECK((const char *)&page.inbound_head == base);
-	CHECK((const char *)&page.inbound_tail == base + 64);
-	CHECK((const char *)&page.outbound_head == base + 128);
-	CHECK((const char *)&page.outbound_tail == base + 192);
-	CHECK((const char *)&page.desc == base + 256);
-	CHECK((be_u64)((const char *)(&page + 1) - base) <= 4096U);
-	be_mvp_ring_reset(&page.inbound_head, &page.inbound_tail);
-	be_mvp_ring_reset(&page.outbound_head, &page.outbound_tail);
-	CHECK(be_mvp_ring_init(&hart0, inbound, BE_MVP_INBOUND_RING_BYTES,
-			       &page.inbound_head, &page.inbound_tail,
+	CHECK(__builtin_offsetof(struct be_mvp_control_mailbox, inbound_head) ==
+	      BE_MVP_CONTROL_INBOUND_HEAD_OFFSET);
+	CHECK(__builtin_offsetof(struct be_mvp_control_mailbox, input_head) ==
+	      BE_MVP_CONTROL_INPUT_HEAD_OFFSET);
+	CHECK(__builtin_offsetof(struct be_mvp_control_mailbox, outbound_tail) ==
+	      BE_MVP_CONTROL_OUTBOUND_TAIL_OFFSET);
+	CHECK(__builtin_offsetof(struct be_mvp_hart_mailbox, outbound_head) ==
+	      BE_MVP_HART_OUTBOUND_HEAD_OFFSET);
+	CHECK(__builtin_offsetof(struct be_mvp_hart_mailbox, inbound_tail) ==
+	      BE_MVP_HART_INBOUND_TAIL_OFFSET);
+	CHECK(__builtin_offsetof(struct be_mvp_hart_mailbox, input_tail) ==
+	      BE_MVP_HART_INPUT_TAIL_OFFSET);
+	be_mvp_ring_reset(&control.inbound_head, &hart.inbound_tail);
+	be_mvp_ring_reset(&hart.outbound_head, &control.outbound_tail);
+	CHECK(be_mvp_ring_init(&hart0, control.inbound,
+			       BE_MVP_INBOUND_RING_BYTES,
+			       &control.inbound_head, &hart.inbound_tail,
 			       BE_MVP_RECORDS_INBOUND, 0U,
 			       BE_MVP_RING_WRITER) == 1);
-	CHECK(be_mvp_ring_init(&hart, inbound, BE_MVP_INBOUND_RING_BYTES,
-			       &page.inbound_head, &page.inbound_tail,
+	CHECK(be_mvp_ring_init(&domain, control.inbound,
+			       BE_MVP_INBOUND_RING_BYTES,
+			       &control.inbound_head, &hart.inbound_tail,
 			       BE_MVP_RECORDS_INBOUND, 0U,
 			       BE_MVP_RING_READER) == 1);
 	CHECK(be_mvp_ring_post(&hart0, BE_MVP_RECORD_PING, 7U,
 			       (const be_u8 *)0, 0U) == 1);
 	CHECK(be_mvp_ring_publish(&hart0) == 1);
-	CHECK(page.inbound_head.value == 16U && page.inbound_tail.value == 0U);
-	CHECK(page.outbound_head.value == 0U &&
-	      page.outbound_tail.value == 0U);
-	CHECK(be_mvp_ring_acquire(&hart) == 16U);
-	CHECK(be_mvp_ring_take(&hart, &record) == BE_MVP_RING_RECORD);
-	CHECK(be_mvp_ring_release(&hart) == 1);
-	CHECK(page.inbound_tail.value == 16U);
+	CHECK(control.inbound_head.value == 16U &&
+	      hart.inbound_tail.value == 0U);
+	CHECK(hart.outbound_head.value == 0U &&
+	      control.outbound_tail.value == 0U);
+	CHECK(be_mvp_ring_acquire(&domain) == 16U);
+	CHECK(be_mvp_ring_take(&domain, &record) == BE_MVP_RING_RECORD);
+	CHECK(be_mvp_ring_release(&domain) == 1);
+	CHECK(hart.inbound_tail.value == 16U);
 	/* The descriptor in place, published and checked. */
 	memcpy(bindings, defaults, sizeof(bindings));
-	CHECK(be_mvp_block_fill(&page.desc, 0U, bindings, BE_MVP_DOMAINS,
+	CHECK(be_mvp_block_fill(&published.desc, 0U, bindings, BE_MVP_DOMAINS,
 				BE_MVP_OUTBOUND_RING_BYTES) ==
 	      BE_MVP_BLOCK_OK);
-	page.desc.generation = BE_MVP_GENERATION;
-	CHECK(be_mvp_block_check(&page.desc, 1U, BE_MVP_G0_BLOCK_HPA,
+	published.desc.generation = BE_MVP_GENERATION;
+	CHECK(be_mvp_block_check(&published.desc, 1U, BE_MVP_G0_BLOCK_HPA,
 				 bindings, BE_MVP_DOMAINS) == BE_MVP_BLOCK_OK);
-	CHECK(page.inbound_head.value == 16U);
+	CHECK(control.inbound_head.value == 16U);
 }
 
 static void test_control_init(void)

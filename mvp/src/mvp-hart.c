@@ -29,20 +29,12 @@
 _Static_assert(BE_MVP_DOMAINS == 2U, "the control loop tracks two domains");
 _Static_assert(sizeof(struct be_mvp_state_page) <= BE_MVP_BLOCK_STATE_BYTES,
 	       "the state page holds its contents");
-_Static_assert(__builtin_offsetof(struct be_mvp_state_page, inbound_head) ==
-	       0U &&
-	       __builtin_offsetof(struct be_mvp_state_page, inbound_tail) ==
-	       BE_MVP_RING_INDEX_BYTES &&
-	       __builtin_offsetof(struct be_mvp_state_page, outbound_head) ==
-	       2U * BE_MVP_RING_INDEX_BYTES &&
-	       __builtin_offsetof(struct be_mvp_state_page, outbound_tail) ==
-	       3U * BE_MVP_RING_INDEX_BYTES &&
-	       __builtin_offsetof(struct be_mvp_state_page, input_head) %
-	       BE_MVP_RING_INDEX_BYTES == 0U &&
-	       __builtin_offsetof(struct be_mvp_state_page, input_tail) ==
-	       __builtin_offsetof(struct be_mvp_state_page, input_head) +
-	       BE_MVP_RING_INDEX_BYTES,
-	       "each ring index fills its own 64-byte line");
+_Static_assert(sizeof(struct be_mvp_published_page) <= BE_MVP_PUBLISHED_BYTES,
+	       "the published page holds its contents");
+_Static_assert(sizeof(struct be_mvp_control_mailbox) <=
+	       BE_MVP_CONTROL_MAILBOX_BYTES &&
+	       sizeof(struct be_mvp_hart_mailbox) <= BE_MVP_HART_MAILBOX_BYTES,
+	       "each mailbox holds its records and index lines");
 _Static_assert(__builtin_offsetof(struct be_mvp_block_desc, generation) ==
 	       sizeof(struct be_mvp_block_desc) - WORD_BYTES,
 	       "the generation word ends the descriptor");
@@ -109,9 +101,29 @@ int be_mvp_bindings_valid(const struct be_mvp_binding *bindings,
 
 be_u64 be_mvp_block_hpa(be_u64 domain)
 {
-	if (domain >= BE_MVP_DOMAINS)
-		return 0U;
-	return BE_MVP_G0_BLOCK_HPA + domain * BE_MVP_BLOCK_BYTES;
+	if (domain == 0U)
+		return BE_MVP_G0_BLOCK_HPA;
+	if (domain == 1U)
+		return BE_MVP_G1_BLOCK_HPA;
+	return 0U;
+}
+
+static be_u64 published_hpa(be_u64 domain)
+{
+	return domain == 0U ? BE_MVP_G0_PUBLISHED_HPA :
+	       domain == 1U ? BE_MVP_G1_PUBLISHED_HPA : 0U;
+}
+
+static be_u64 control_mailbox_hpa(be_u64 domain)
+{
+	return domain == 0U ? BE_MVP_G0_CONTROL_MAILBOX_HPA :
+	       domain == 1U ? BE_MVP_G1_CONTROL_MAILBOX_HPA : 0U;
+}
+
+static be_u64 hart_mailbox_hpa(be_u64 domain)
+{
+	return domain == 0U ? BE_MVP_G0_HART_MAILBOX_HPA :
+	       domain == 1U ? BE_MVP_G1_HART_MAILBOX_HPA : 0U;
 }
 
 enum be_mvp_block_error
@@ -138,14 +150,17 @@ be_mvp_block_fill(struct be_mvp_block_desc *desc, be_u64 domain,
 	desc->hgatp = be_mvp_hgatp(bindings[domain].vmid,
 				   bindings[domain].root);
 	desc->block = block;
+	desc->published = published_hpa(domain);
+	desc->control_mailbox = control_mailbox_hpa(domain);
+	desc->hart_mailbox = hart_mailbox_hpa(domain);
 	desc->stack_top = block + BE_MVP_BLOCK_STACK_TOP_OFFSET;
 	desc->saved = block + BE_MVP_BLOCK_SAVED_OFFSET;
 	desc->state = block + BE_MVP_BLOCK_STATE_OFFSET;
-	desc->inbound = block + BE_MVP_BLOCK_INBOUND_OFFSET;
+	desc->inbound = desc->control_mailbox + BE_MVP_BLOCK_INBOUND_OFFSET;
 	desc->inbound_bytes = BE_MVP_INBOUND_RING_BYTES;
-	desc->outbound = block + BE_MVP_BLOCK_OUTBOUND_OFFSET;
+	desc->outbound = desc->hart_mailbox + BE_MVP_BLOCK_OUTBOUND_OFFSET;
 	desc->outbound_bytes = outbound_bytes;
-	desc->input = block + BE_MVP_INPUT_RING_OFFSET;
+	desc->input = desc->control_mailbox + BE_MVP_INPUT_RING_OFFSET;
 	desc->input_bytes = BE_MVP_INPUT_RING_BYTES;
 	return BE_MVP_BLOCK_OK;
 }
@@ -173,12 +188,17 @@ be_mvp_block_check(const struct be_mvp_block_desc *desc, be_u64 hart_id,
 	expected = be_mvp_block_hpa(desc->domain);
 	if (desc->block != expected || block != expected)
 		return BE_MVP_BLOCK_ADDRESS;
-	if (desc->stack_top != expected + BE_MVP_BLOCK_STACK_TOP_OFFSET ||
+	if (desc->published != published_hpa(desc->domain) ||
+	    desc->control_mailbox != control_mailbox_hpa(desc->domain) ||
+	    desc->hart_mailbox != hart_mailbox_hpa(desc->domain) ||
+	    desc->stack_top != expected + BE_MVP_BLOCK_STACK_TOP_OFFSET ||
 	    desc->saved != expected + BE_MVP_BLOCK_SAVED_OFFSET ||
 	    desc->state != expected + BE_MVP_BLOCK_STATE_OFFSET ||
-	    desc->inbound != expected + BE_MVP_BLOCK_INBOUND_OFFSET ||
-	    desc->outbound != expected + BE_MVP_BLOCK_OUTBOUND_OFFSET ||
-	    desc->input != expected + BE_MVP_INPUT_RING_OFFSET)
+	    desc->inbound != desc->control_mailbox +
+			     BE_MVP_BLOCK_INBOUND_OFFSET ||
+	    desc->outbound != desc->hart_mailbox +
+			      BE_MVP_BLOCK_OUTBOUND_OFFSET ||
+	    desc->input != desc->control_mailbox + BE_MVP_INPUT_RING_OFFSET)
 		return BE_MVP_BLOCK_OFFSETS;
 	if (!ring_bytes_valid(desc->inbound_bytes,
 			      BE_MVP_INBOUND_RING_BYTES) ||

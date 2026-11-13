@@ -131,16 +131,16 @@ struct config {
 
 static const struct config configs[] = {
 	{ "two-guests", &two_guests_inventory, &two_guests_proposal,
-	  two_guests_identity, 14U, 2U, { 1U, 1U },
+	  two_guests_identity, 18U, 2U, { 1U, 1U },
 	  { BE_MVP_DOMAIN0_HART, BE_MVP_DOMAIN1_HART }, 0U, 0 },
 	{ "hart-start", &hart_start_inventory, &hart_start_proposal,
-	  hart_start_identity, 14U, 2U, { 1U, 1U },
+	  hart_start_identity, 18U, 2U, { 1U, 1U },
 	  { BE_MVP_DOMAIN0_HART, BE_MVP_VARIANT_HART_START_HART }, 0U, 0 },
 	{ "te-poc", &te_poc_inventory, &te_poc_proposal, te_poc_identity,
-	  15U, 4U, { 2U, 2U }, { BE_MVP_DOMAIN0_HART, BE_MVP_DOMAIN1_HART },
+	  19U, 4U, { 2U, 2U }, { BE_MVP_DOMAIN0_HART, BE_MVP_DOMAIN1_HART },
 	  1U, te_poc_pages },
 	{ "anchor", &anchor_inventory, &anchor_proposal, anchor_identity,
-	  17U, 7U, { 3U, 4U }, { BE_MVP_DOMAIN0_HART, BE_MVP_DOMAIN1_HART },
+	  21U, 7U, { 3U, 4U }, { BE_MVP_DOMAIN0_HART, BE_MVP_DOMAIN1_HART },
 	  3U, anchor_pages },
 };
 
@@ -267,19 +267,19 @@ static void secret_read(void)
 {
 	proposal.authorities[proposal.authority_count++] =
 		(struct be_authority_request){
-			BE_DOMAIN_MANAGEMENT, GPA0 + 2U * PAGE, 17U,
+			BE_DOMAIN_MANAGEMENT, GPA0 + 2U * PAGE, 21U,
 			BE_RIGHT_READ };
 }
-static void other_window(void) { authority(3)->resource_id = 13U; }
+static void other_window(void) { authority(3)->resource_id = 17U; }
 static void window_owner(void)
 {
-	proposal.resources[13].owner = BE_DOMAIN_MANAGEMENT;
+	proposal.resources[17].owner = BE_DOMAIN_MANAGEMENT;
 }
 static void overlapping(void)
 {
-	inventory.resources[11].size = BE_MVP_G0_HPA - BE_MVP_STAGING_HPA +
+	inventory.resources[15].size = BE_MVP_G0_HPA - BE_MVP_STAGING_HPA +
 				       PAGE;
-	proposal.resources[11].size = inventory.resources[11].size;
+	proposal.resources[15].size = inventory.resources[15].size;
 }
 static void reversed(void)
 {
@@ -294,8 +294,8 @@ static void self_channel(void)
 {
 	proposal.channels[0].target = BE_DOMAIN_MANAGEMENT;
 }
-static void shared_channel(void) { proposal.channels[1].resource_id = 15U; }
-static void private_channel(void) { proposal.channels[1].resource_id = 17U; }
+static void shared_channel(void) { proposal.channels[1].resource_id = 19U; }
+static void private_channel(void) { proposal.channels[1].resource_id = 21U; }
 /* te-poc's: each domain's window and its end of the channel. */
 static void reader_write(void)
 {
@@ -466,14 +466,14 @@ static void test_gstage(void)
 	CHECK(seal(&anchor_inventory, &anchor_proposal));
 	enforcement = runtime.enforcement;
 	root = &enforcement.roots[0];
-	CHECK(root->mappings[0].frame_id == 13U);
+	CHECK(root->mappings[0].frame_id == 17U);
 	root->mappings[0] = root->mappings[--root->mapping_count];
 	CHECK(!be_mvp_core_gstage(&runtime.canonical, &enforcement, descs,
 				  pages, &count));
 	SCENARIO();
 	enforcement = runtime.enforcement;
 	enforcement.roots[1].mappings[1].gpa += PAGE * 8U;
-	CHECK(enforcement.roots[1].mappings[1].frame_id == 15U);
+	CHECK(enforcement.roots[1].mappings[1].frame_id == 19U);
 	CHECK(!be_mvp_core_gstage(&runtime.canonical, &enforcement, descs,
 				  pages, &count));
 	SCENARIO();
