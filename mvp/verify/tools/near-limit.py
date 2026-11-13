@@ -1047,7 +1047,7 @@ def self_test(requested):
                 "line 2 is not exactly status=<S> seconds=<T>")
         refused("arm-log-with-limit-form",
                 lambda tree: write(
-                    leaf_log(tree), command_record("300", "0", "1.0",
+                    leaf_log(tree), command_record("600", "0", "1.0",
                                                    "cbmc")),
                 "line 2 is not exactly status=<S> seconds=<T>")
         refused("limit-log-with-arm-form",
@@ -1080,12 +1080,12 @@ def self_test(requested):
                 "line 2 is not exactly limit_seconds=<L>")
         refused("missing-status-line",
                 lambda tree: write(ring_log(tree),
-                                   "cbmc\nlimit_seconds=600\n"
+                                   "cbmc\nlimit_seconds=1200\n"
                                    "seconds=1.0\n"),
                 "line 3 is not exactly status=<S>")
         refused("missing-seconds-line",
                 lambda tree: write(ring_log(tree),
-                                   "cbmc\nlimit_seconds=600\nstatus=0\n"),
+                                   "cbmc\nlimit_seconds=1200\nstatus=0\n"),
                 "line 4 is not exactly seconds=<T>")
         refused("non-decimal-limit",
                 lambda tree: write(
@@ -1101,7 +1101,7 @@ def self_test(requested):
                 lambda tree: write(
                     ring_log(tree), command_record("601", "0", "1.0",
                                                    "cbmc")),
-                "does not equal cbmc-ring's module limit 600")
+                "does not equal cbmc-ring's module limit 1200")
 
         # Every .log below a suite or arm record directory is either a
         # solver record or one of the named auxiliary classes.
@@ -1178,8 +1178,8 @@ def self_test(requested):
         multiple = copied("wp-multiple-provers")
         report = json.dumps([
             {"goal": "two", "verdict": "valid", "provers": [
-                {"prover": "P1", "time": 55, "success": 1},
-                {"prover": "P2", "time": 56, "success": 1}]},
+                {"prover": "P1", "time": 110, "success": 1},
+                {"prover": "P2", "time": 112, "success": 1}]},
             {"goal": "timed-out", "verdict": "timeout", "provers": [
                 {"prover": "P1", "time": 0, "success": 0},
                 {"prover": "P2", "time": 0, "success": 0}]},
@@ -1196,7 +1196,7 @@ def self_test(requested):
              "#untimed" not in "\n".join(
                  line for line in multi_text.splitlines()
                  if line.startswith(("near ", "crossed "))) and
-             "kind=wp-prover limit=60 runs=10 untimed=1" in multi_text,
+             "kind=wp-prover limit=120 runs=10 untimed=1" in multi_text,
              multi_error or multi_text)
 
         # Qualification record fields are singular and mandatory.
@@ -1267,7 +1267,7 @@ def self_test(requested):
         refused("qualify-command-at-wrong-depth",
                 lambda tree: write(
                     tree / "qualify" / "wrong" / "command.txt",
-                    command_record("60", "0", "1.0")),
+                    command_record("120", "0", "1.0")),
                 "is not ARM/SOLVER/CASE/command.txt")
         refused("non-utf8-log",
                 lambda tree: (tree / "cn" / "runs" / "round-0" /
@@ -1282,7 +1282,7 @@ def self_test(requested):
         refused("run-name-with-space",
                 lambda tree: write(
                     tree / "cbmc-ring" / "logs" / "bad name.log",
-                    command_record("600", "0", "1.0", "cbmc")),
+                    command_record("1200", "0", "1.0", "cbmc")),
                 "contains whitespace")
 
         # Output path checks happen before inventory; an actual write error

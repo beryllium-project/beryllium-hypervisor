@@ -50,7 +50,7 @@ SPECIFICATION_SHA256 = ("aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf"
 SPECIFICATION_COMMIT = "93a8d136d38547a8c581197315f7607b5eef7bad"
 FUNCTIONS = ("access_fault", "htinst_accepted", "inside", "leaf_at",
              "be_mvp_denial_decide")
-SEED, COUNT, GOAL_SECONDS = 0x4D38, 24, 60
+SEED, COUNT, GOAL_SECONDS = 0x4D38, 24, 120
 RECORDS = ("rounds.txt", "goals.txt", "assumptions.txt", "mutants.txt",
            "vacuity.txt", "transcription.txt")
 HOST_SOURCES = ("mvp/src/mvp-ring.c", "mvp/src/mvp-gstage.c")

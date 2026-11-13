@@ -25,7 +25,7 @@ two index values or one of the index advances section 5 names (R1-9:
 cursor + 8, cursor + 16, cursor + 16 + i, cursor + size), or a finding),
 each with CBMC's SAT solver (MiniSAT) and
 with --cvc5, the two qualified pairs (CBMC with Z3 did not qualify), every
-run killed after 600 s (a non-result). A property counts as checked only
+run killed after 1200 s (a non-result). A property counts as checked only
 if no solver reports it false and at least one reports it successful in
 every run its row needs. Buffer-writing and buffer-reading conclusions
 (post, post_words, take, the sequence) run one CBMC process per position
@@ -104,7 +104,7 @@ MARKER = ".cbmc-ring-run"
 CAPACITIES = (512, 4096)
 SOLVERS = {"sat": (), "cvc5": ("--cvc5",)}
 CONFIGURATIONS = ("A", "B")
-RUN_SECONDS = 600
+RUN_SECONDS = 1200
 CHECKS = ("--bounds-check", "--pointer-check", "--signed-overflow-check",
           "--undefined-shift-check")
 ARCH = ("--arch", "riscv64")
@@ -150,9 +150,9 @@ PART_DEFINES = {"all": (), "scalar": ("BE_CBMC_PART_SCALAR",),
 CLASS_LIMIT = {("buffer", 512): None, ("buffer", 4096): 3,
                ("window", 512): None, ("window", 4096): None}
 # On a class-split part, configuration A and cvc5 run on its first classes
-# only: (configuration, solver, capacity) -> classes. cvc5 answers no
-# class-split run within 600 s (every one at 512 in the trials): at 4,096
-# it runs once, B's first class, to record that.
+# only: (configuration, solver, capacity) -> classes. cvc5 answered no
+# class-split run under the earlier 600 s limit (every one at 512 in the
+# trials): at 4,096 it runs once, B's first class, to record that.
 SAMPLES = {("A", "sat", 512): 3, ("A", "sat", 4096): 3,
            ("A", "cvc5", 512): 1, ("A", "cvc5", 4096): 0,
            ("B", "cvc5", 512): 1, ("B", "cvc5", 4096): 1}
@@ -929,7 +929,8 @@ def plan(shows):
                     jobs.append(Job(harness, part, capacity, "sat", "B",
                                     positions[0], mode))
     # The long runs first, so that the pools end together: cvc5's on the
-    # class-split parts (often its 600 s), then the class-split parts.
+    # class-split parts (often its whole limit, 600 s in the trials), then
+    # the class-split parts.
     jobs.sort(key=lambda job: (job.part not in ("buffer", "window"),
                                job.solver != "cvc5", job.capacity != 4096))
     return jobs
@@ -1371,7 +1372,8 @@ def assumptions(facts, include_dirs, host_flags):
         f"bounds loops unwound to their bounds 8, 256, 32, CBMC's count "
         f"one more: --unwindset {unwind}; the harnesses' own loops "
         "--unwind capacity+1; every unwinding assertion checked (B).",
-        "runs each CBMC run limited to 600 s (a timeout is a non-result; "
+        f"runs each CBMC run limited to {RUN_SECONDS} s (a timeout is a "
+        "non-result; "
         "the run's session is killed, its cvc5 with it); a part's harness "
         "assertions one run each (--property) and the leaf's checks with "
         "the unwinding assertions one run (--no-assertions), where CBMC "
@@ -1394,7 +1396,7 @@ def assumptions(facts, include_dirs, host_flags):
         "class; vacuity: the harness's assertions removed by "
         "-DBE_CBMC_VACUITY and assert(0) after the assumptions, which must "
         "fail; each with SAT, and again with cvc5 where SAT gave no answer "
-        "within 600 s (either qualified solver's answer stands).",
+        f"within {RUN_SECONDS} s (either qualified solver's answer stands).",
         "capacities 512 and 4096; payloads 0 to 256 bytes (any u64 length "
         "offered); words 0 to 32 (any u64 count offered); the own index "
         "any multiple of 8, near 2^64 included; the peer's index any u64 "
@@ -1536,7 +1538,7 @@ def self_test():
     case("a run without a cover summary has none", parse_cover(SUCCESSFUL)[
         :2] == (None, None))
     probe = Job("take", "scalar", 4096, "sat", "B", None, "cover")
-    probe.result = ("timeout", TIMEOUT, 600.0)
+    probe.result = ("timeout", TIMEOUT, 1200.0)
     again = Job("take", "scalar", 4096, "cvc5", "B", None, "vacuity")
     again.result = (10, FAILED, 9.0)
     case("a cover run without a summary has no answer, a failed vacuity "

@@ -17,7 +17,7 @@ mvp/src/mvp-sbi.c's five functions. A clause tagged `goal NAME` is one
 goal: each runs alone (the function's other goals left out, its requires,
 ownership, and the other functions' contracts kept) under `cn verify
 --only=FUNCTION`, once with --solver-type=z3 and once with cvc5, each run
-limited to 60 s by the process's timeout (CN has no per-query timeout);
+limited to 120 s by the process's timeout (CN has no per-query timeout);
 a goal is closed when at least one solver passes and neither fails. A
 clause tagged `rN` belongs to annotation round N; round k's copy keeps the
 clauses of rounds 0 to k. CN's front end needs four preprocessor
@@ -195,7 +195,7 @@ def cn(path, function, solver):
         " ".join(command) + f"\nstatus={status} seconds={seconds}\n" +
         output, encoding="utf-8")
     if status == "timeout":
-        return "timeout", "killed after 60 s", seconds
+        return "timeout", f"killed after {LIB.GOAL_SECONDS} s", seconds
     verdict = re.search(rf"^\[\d+/\d+\]: {function} -- (pass|fail)$",
                         output, re.M)
     if not verdict:
@@ -278,7 +278,7 @@ integer model: CN at this commit runs in integer mode (BaseTypes.cnBV is false a
 memory model: CN's separation logic (ownership by RW and W, VIP pointer provenance)
 axiomatics: none; no lemma, no trusted function in the copy
 solver trust: Z3 4.16.0 and cvc5 1.3.4, both on every goal (D-7 item 7's pair); a goal is closed when one passes and neither fails
-time limit: 60 s per goal and solver, as a limit on the cn process (killed at 60 s, recorded as a timeout): CN at this commit has no per-goal or per-query limit (its --incremental-solver-timeout only hands a slow incremental query to a non-incremental solver)
+time limit: 120 s per goal and solver, as a limit on the cn process (killed at 120 s, recorded as a timeout): CN at this commit has no per-goal or per-query limit (its --incremental-solver-timeout only hands a slow incremental query to a non-incremental solver)
 ownership premise: section 4.3 as CN ownership; not checked at any caller
 tool findings: (1) a compound literal's temporary object is never released: `*out = (struct be_mvp_denial){ 0 }` leaves its fields owned at every return ('Left-over unused resource'), which no annotation can release (a toy with the same statement fails and its named-local twin passes); (2) leaf_at's goals fail first on CN's liveness check of &leaves->page[index], which looks for an Owned or Alloc resource of the allocation and skips iterated ones; with Alloc(leaves) added to the contract (a development run) that check passes and the read of leaves->page[index] at a symbolic index then needs a `focus` ghost statement in the loop's body (CN at this commit satisfies a single-object request only from a single-object resource), and that body is one if-statement without braces: a ghost statement there would become the loop's body, and braces would change the token stream; (3) bitwise operators are uninterpreted (above)
 not covered: the callers; compiled execution (claim class (d)); concurrency"""
@@ -392,7 +392,7 @@ def run_arm(out, jobs):
     seconds = round(time.monotonic() - started)
     LIB.write(out / "rounds.txt", [
         LIB.HEADER, "# CN arm: one line per annotation round (D-7 item 5); "
-        "each goal one run per solver, 60 s each", *rounds,
+        f"each goal one run per solver, {LIB.GOAL_SECONDS} s each", *rounds,
         f"rounds_used={final_round} of at most {MAX_ROUNDS}",
         f"wall_seconds={seconds}"])
     LIB.write(out / "goals.txt", [
@@ -484,18 +484,18 @@ def self_test():
          {"D_zero": "be_mvp_denial_decide", "D_small": "be_mvp_denial_decide",
           "D_long": "be_mvp_denial_decide"} and rounds_in(lines) == 1)
     for verdicts, wanted in (((("pass", "", 1), ("pass", "", 1)), "closed"),
-                             ((("pass", "", 1), ("timeout", "", 60)),
+                             ((("pass", "", 1), ("timeout", "", 120)),
                               "closed"),
                              ((("pass", "", 1), ("fail", "x", 1)),
                               "disagree"),
-                             ((("fail", "x", 1), ("timeout", "", 60)),
+                             ((("fail", "x", 1), ("timeout", "", 120)),
                               "open"),
                              ((("error", "", 1), ("error", "", 1)), "open")):
         case(f"judge {verdicts[0][0]} {verdicts[1][0]}", judge(
             dict(zip(SOLVERS, verdicts))) == wanted)
     case("a vacuity check needs one solver's verdict and no contrary one",
          vacuity_ok({"z3": ("fail", "unprovable-constraint", 1),
-                     "cvc5": ("timeout", "", 60)}, "fail") and
+                     "cvc5": ("timeout", "", 120)}, "fail") and
          not vacuity_ok({"z3": ("fail", "pointer-liveness", 1),
                          "cvc5": ("fail", "pointer-liveness", 1)}, "fail")
          and not vacuity_ok({"z3": ("pass", "", 1),

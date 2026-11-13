@@ -22,7 +22,7 @@ nondeterministic under section 4.3's assumptions, --arch riscv64,
 loop over three entries) and --unwindset memcmp.0:513 (the frame's
 comparisons), once with the default SAT solver (MiniSAT 2.2.1) and once
 with --cvc5. A property holds when a solver reports SUCCESS and none
-FAILURE; a run is killed after 300 s, a killed run no verdict. Then the
+FAILURE; a run is killed after 600 s, a killed run no verdict. Then the
 vacuity checks (reach_NAME, an assert(0) after each function, must fail;
 contradiction_NAME, after a contradictory assumption, must hold;
 cover_decide under --cover cover: every case reachable), the 24 seeded
@@ -70,7 +70,7 @@ CHECKS = ("--arch", "riscv64", "--bounds-check", "--pointer-check",
           "--unwinding-assertions", "--unwind", "4", "--unwindset",
           "memcmp.0:513")
 SOLVERS = {"sat": (), "cvc5": ("--cvc5",)}
-RUN_SECONDS = 300
+RUN_SECONDS = 600
 ENTRIES = ("check_decide", "check_frame", "check_helpers")
 MUTANT_ENTRIES = ("check_decide", "check_helpers")
 OWN = set(LIB.FUNCTIONS) | {"memcmp"}
@@ -199,7 +199,7 @@ memory model: CBMC's (objects with 8 object bits and 56 offset bits); pointer, b
 bounds: a bounded model check, never proof: the only loop of the five functions (leaf_at's, three entries) is unwound fully under --unwinding-assertions, so within CBMC's semantics every input is covered; memcmp's loop (the frame check) is unwound past every structure's size
 solver trust: MiniSAT 2.2.1 and cvc5 1.3.4; a property holds when one reports SUCCESS and none FAILURE; every FAILURE comes with a concrete trace
 ownership premise: section 4.3's validity and separation by construction (distinct locals); nothing at any caller
-not covered: the callers; compiled execution (claim class (d)): CBMC's C semantics, not the object code; time limits: a CBMC run is killed after 300 s (all of one entry point's properties are solved together, so the per-goal limit of 60 s is not CBMC's unit)"""
+not covered: the callers; compiled execution (claim class (d)): CBMC's C semantics, not the object code; time limits: a CBMC run is killed after 600 s (all of one entry point's properties are solved together, so the per-goal limit of 120 s is not CBMC's unit)"""
 
 
 def run_arm(out, jobs):
@@ -379,7 +379,7 @@ def self_test():
         label("leaf_at.unwind.0", "unwinding assertion loop 0") ==
         "leaf_at.unwind.0")
     merged = merge({"sat": ("failed", {"p": ("SUCCESS", "P"), "q": (
-        "FAILURE", "Q")}, 1, ""), "cvc5": ("timeout", {}, 300, "")})
+        "FAILURE", "Q")}, 1, ""), "cvc5": ("timeout", {}, 600, "")})
     case("one solver's verdict suffices; a FAILURE fails", merged ==
          {"p": ("holds", "P"), "q": ("fails", "Q")}, merged)
     merged = merge({"sat": ("failed", {"p": ("SUCCESS", "P")}, 1, ""),

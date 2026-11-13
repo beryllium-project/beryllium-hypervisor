@@ -22,8 +22,8 @@ Alt-Ergo, Z3, and cvc5 through Why3; CBMC (bounds, pointer, signed and
 unsigned overflow, and unwinding checks, --unwind 5) with its SAT solver
 and its --z3 and --cvc5 SMT back ends; CN (cn verify) with
 --solver-type=z3 and cvc5; and herd7 with the RISC-V model riscv.cat.
-Every case runs under the plan's limit of 60 s per goal (WP's
--wp-timeout; CBMC, CN, and herd7 runs are killed after 60 s).
+Every case runs under a limit of 120 s per goal, twice the M8 plan's D-7
+limit (WP's -wp-timeout; CBMC, CN, and herd7 runs are killed after 120 s).
 Inputs: expectations.json (schema be-mvp-qualify-v1): one row per arm,
 solver, and case, naming its file and its expected verdict, which must be
 the case's rule: known-pass proved, known-fail unproved, vacuity-requires
@@ -76,7 +76,7 @@ TAG = "BE_MVP_QUALIFY"
 SCHEMA = "be-mvp-qualify-v1"
 SPECIFICATION_SHA256 = ("ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f"
                         "4c542ecc9dc53d")
-GOAL_SECONDS = 60
+GOAL_SECONDS = 120
 MARKER = ".qualify-run"
 RULE = {"known-pass": "proved", "known-fail": "unproved",
         "vacuity-requires": "detected", "vacuity-ensures": "unproved",
@@ -120,8 +120,8 @@ def load(text, root=QUALIFY):
     if document.get("specification_sha256") != SPECIFICATION_SHA256:
         raise Refusal("expectations.json cites another specification")
     if document.get("goal_seconds") != GOAL_SECONDS:
-        raise Refusal(f"expectations.json's goal_seconds is not the plan's "
-                      f"{GOAL_SECONDS}")
+        raise Refusal(f"expectations.json's goal_seconds is not "
+                      f"{GOAL_SECONDS}, twice D-7's")
     rows, seen = [], {}
     for number, row in enumerate(document.get("cases") or [], 1):
         if not isinstance(row, dict) or set(row) != {"arm", "solver", "case",

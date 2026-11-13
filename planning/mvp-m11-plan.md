@@ -1668,3 +1668,19 @@ text above as it says; the text above is otherwise as accepted.
     SAT solver in configuration B. Each arm's verdict, the ring's
     totals, and every mutant's verdict are the baseline's. These are
     recorded as time-limit crossings, and the point stands.
+- **2026-11-13, `increase time limits so everything will pass in one
+  round`** (with `accept crossings`, above: "we will be back on a faster
+  machine in a day or so"). Every time limit of the verifier's arms is
+  doubled, and nothing else of them changes: a WP goal, a CN run, a
+  qualification case, and a herd7 run, 120 s in place of the M8 plan's
+  60 s (its D-7 item 5 and Q6); a WP job, eight hours in place of four;
+  a CBMC run on Leaf A, 600 s in place of 300; and a run of the ring's
+  bounded check, 1,200 s in place of 600. This is a second departure
+  from "The host for `verify`" ("The arms themselves do not change").
+  The WP arm's rounds are its annotation files, which do not change; a
+  longer limit lets a prover finish a goal within its round. M11-3's
+  point is the first run at the doubled limits, against a base run at
+  the earlier ones, so its differences from the base are read run by
+  run: a run that ends within the doubled limit after it reached the
+  earlier one in the base is recorded as an effect of the limit, and
+  any other difference is stop 9, as before.

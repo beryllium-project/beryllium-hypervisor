@@ -17,7 +17,7 @@ and round-1.acsl to round-N.acsl (each round's annotations; at most four)
 on the unmodified mvp/src/mvp-sbi.c, compiled with the target's include
 directories and the LP64 machdep gcc_x86_64, and WP proves every goal of
 the five functions with -wp-rte, -warn-unsigned-overflow, and
--warn-unsigned-downcast, Alt-Ergo through mvp/verify/wp/why3.conf, 60 s per
+-warn-unsigned-downcast, Alt-Ergo through mvp/verify/wp/why3.conf, 120 s per
 goal. The arm derives -wp-par and its default mutant-job count from the
 host's physical cores, leaving one core free and capping them at six
 provers and two jobs; --jobs overrides only the mutant-job count. A round
@@ -94,7 +94,7 @@ PROVE = ("-wp-prover", "alt-ergo", "-wp-timeout", str(LIB.GOAL_SECONDS))
 SMOKE = ("-wp-smoke-tests", "-wp-smoke-timeout", str(LIB.GOAL_SECONDS),
          "-wp-prop=-@ensures,-@assigns,-@exits,-@terminates,-@assert,"
          "-@invariant,-@variant,-@requires,-@check,-@lemma")
-RUN_SECONDS = 4 * 3600
+RUN_SECONDS = 8 * 3600
 MAX_ROUNDS = 4
 STRATEGIES = {"wp:split", "wp:bitwised", "wp:bitrange", "wp:bittestrange",
               "wp:bitshift", "wp:range"}
@@ -737,7 +737,8 @@ def run_arm(out, jobs):
     seconds = round(time.monotonic() - started)
     LIB.write(out / "rounds.txt", [LIB.HEADER, "# WP arm: one line per "
                                    "annotation round (D-7 item 5: at most "
-                                   "four after round 0; 60 s per goal)",
+                                   f"four after round 0; {LIB.GOAL_SECONDS}"
+                                   " s per goal, twice D-7's)",
                                    *rounds, f"rounds_used={len(files) - 1}"
                                    f" of at most {MAX_ROUNDS}",
                                    f"wall_seconds={seconds}"])
@@ -914,7 +915,7 @@ core id : 0
              "five functions with RTE and the overflow warnings",
              "-wp-prop=-@lemma,-D_E3" in main and "-wp-rte" in main and
              "-warn-unsigned-overflow" in main and "-machdep gcc_x86_64" in
-             main and "-wp-timeout 60" in main and "-wp-par 3" in main and
+             main and "-wp-timeout 120" in main and "-wp-par 3" in main and
              "-wp-fct=access_fault,"
              "htinst_accepted,inside,leaf_at,be_mvp_denial_decide" in main,
              main)

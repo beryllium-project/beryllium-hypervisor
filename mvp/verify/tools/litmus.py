@@ -18,7 +18,7 @@ outcome the protocol forbids in its exists clause. The sequences they
 mirror are recorded in mvp/verify/litmus/sequences.txt and the lines each
 test mirrors in sequences/<symbol>-<toolchain>.s.
 --run (in the verifier image): herd7 -model riscv.cat on each test, killed
-after 60 s, its Observation line read as qualify.py reads it; writes
+after 120 s, its Observation line read as qualify.py reads it; writes
 DIR/litmus.txt (default build/mvp/verify): a line per test, `premise=L1
 file=... expected=Never observed=Never ok=yes states=N`, and last
 `BE_MVP_LITMUS: PASS premises=N never=N sometimes=N not_run=N`; and

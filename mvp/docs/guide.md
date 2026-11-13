@@ -1657,6 +1657,12 @@ on a host of thirteen or more physical cores, one otherwise; `--jobs`
 sets the mutant jobs alone. Its `BE_MVP_WP_ARM_HOST` line, printed before
 the first Frama-C job, records the counts in `build/mvp/verify/wp-arm.log`.
 
+Every solver run has a time limit, twice the M8 plan's since M11 (the
+[M11 plan](../../planning/mvp-m11-plan.md)'s decision record): 120 s for
+a WP goal, a CN run, a qualification case, and a herd7 run; 600 s for a
+CBMC run on the denial decision; and 1,200 s for a CBMC run on the ring.
+A run that reaches its limit is a non-result.
+
 ### The licence manifest
 
 [`licence-manifest.md`](licence-manifest.md) names every component of
