@@ -1539,9 +1539,9 @@
         },
         {
           "path": "mvp/verify/litmus/L1.litmus",
-          "sha256": "e93c3d9235a8aa49bc3e0fe6702990a70339f67584e458a42629bae29085ff04",
+          "sha256": "1b127aa0aaa9e5b477ae5e21edf0bc2070dd626dc2ab26e559b72b40a5305abb",
           "evidence_source_commit": "5e4110eb3af89674acaf4370f160fa5c18594df6",
-          "note": "The five litmus tests whose instructions mirror the compiled sequences of the exact symbols at the target commit 6fbcc3d1 (the writer's publish and its fence helper, the reader's acquire-fence-take-fence-release, publish_blocks' generation store, the domain hart's check; the symbols' bytes recorded in sequences.txt by digest for both toolchains): each premise's forbidden outcome Never under herd7 7.58's RVWMO model, the ablated tests not vacuous; herd7 7.58 lacks bltu and bnez, so blt and bne on the same registers stand in."
+          "note": "The five litmus tests whose instructions mirror the compiled sequences of the exact symbols at the target commit 6fbcc3d1 (the writer's publish and its fence helper, the reader's acquire-fence-take-fence-release, publish_blocks' generation store, the domain hart's check; the symbols' bytes recorded in sequences.txt by digest for both toolchains): each premise's forbidden outcome Never under herd7 7.58's RVWMO model, the ablated tests not vacuous; herd7 7.58 lacks bltu and bnez, so blt and bne on the same registers stand in. M11-3's re-proof point (planning/mvp-m11-plan.md, D-11) changes its comment's cited addresses and digests, and one sentence of it, on a load that M11-3 added before the barrier (the domain hart's check of its published page's address, which can only park it); its initial state, program, and condition are unchanged. This SHA-256 is that revision's, which no internal commit holds."
         },
         {
           "path": "planning/mvp-m8-specifications.md",
@@ -1623,15 +1623,15 @@
         },
         {
           "path": "mvp/verify/litmus/sequences.txt",
-          "sha256": "bf4fdb4c8b19492f3cfcab00579ac148e1c04afbee46ebfcf98bac65ab2fbae7",
+          "sha256": "aafdd5203a41908edfdf6a9733bb57df799005f249400b4c2bbc0373127253f6",
           "evidence_source_commit": "5e4110eb3af89674acaf4370f160fa5c18594df6",
-          "note": "The compiled sequences the litmus tests mirror, per toolchain: the ELF without debug sections by SHA-256, each cited symbol's section, address, size, bytes' SHA-256, and the excerpt compared with the disassembly; a changed compile fails the check (the sequences suite, the first of ./mvp/mvp verify). M11-2's re-proof point (planning/mvp-m11-plan.md, D-11) wrote it again at 9e0563d7, as the plan's decision record directs: the target commit and both ELFs' digests change, because the firmware's SBI version is a constant of each monitor and the two-guests scenario's SHA-256 is part of its image; no recorded symbol, address, size, byte, or excerpt changes. This SHA-256 is that revision's, which no internal commit holds."
+          "note": "The compiled sequences the litmus tests mirror, per toolchain: the ELF without debug sections by SHA-256, each cited symbol's section, address, size, bytes' SHA-256, and the excerpt compared with the disassembly; a changed compile fails the check (the sequences suite, the first of ./mvp/mvp verify). M11-2's re-proof point (planning/mvp-m11-plan.md, D-11) wrote it again at 9e0563d7, as the plan's decision record directs: the target commit and both ELFs' digests change, because the firmware's SBI version is a constant of each monitor and the two-guests scenario's SHA-256 is part of its image; no recorded symbol, address, size, byte, or excerpt changes. M11-3's re-proof point wrote it again at 5d0d7846: M11-3's layout moved the cited symbols, the ring functions and the executor's fences among them into the shared text, and 35 of the 55 symbols' digests changed; the 206 excerpt lines were found again by role (80 with the same encoding, 112 with a new PC-relative offset, 14 with a new register or offset: the descriptor's generation word is now at offset 128 of the published page). This SHA-256 is that revision's, which no internal commit holds."
         },
         {
           "path": "mvp/verify/litmus/L3.litmus",
-          "sha256": "ac17a94809c020e6fccd0a3eb1742375b4f05ffb7ca94827998822b3cded3690",
+          "sha256": "5b8703bb3f18cc11c883f31d8f16dc178985c0fb1cd269dbc071585b7c8b4d2d",
           "evidence_source_commit": "5e4110eb3af89674acaf4370f160fa5c18594df6",
-          "note": "The five litmus tests whose instructions mirror the compiled sequences of the exact symbols at the target commit 6fbcc3d1 (the writer's publish and its fence helper, the reader's acquire-fence-take-fence-release, publish_blocks' generation store, the domain hart's check; the symbols' bytes recorded in sequences.txt by digest for both toolchains): each premise's forbidden outcome Never under herd7 7.58's RVWMO model, the ablated tests not vacuous; herd7 7.58 lacks bltu and bnez, so blt and bne on the same registers stand in."
+          "note": "The five litmus tests whose instructions mirror the compiled sequences of the exact symbols at the target commit 6fbcc3d1 (the writer's publish and its fence helper, the reader's acquire-fence-take-fence-release, publish_blocks' generation store, the domain hart's check; the symbols' bytes recorded in sequences.txt by digest for both toolchains): each premise's forbidden outcome Never under herd7 7.58's RVWMO model, the ablated tests not vacuous; herd7 7.58 lacks bltu and bnez, so blt and bne on the same registers stand in. M11-3's re-proof point (planning/mvp-m11-plan.md, D-11) changes its comment's cited addresses and digests; its initial state, program, and condition are unchanged. This SHA-256 is that revision's, which no internal commit holds."
         },
         {
           "path": "mvp/results/20261105-rc4/rc.txt",
@@ -1665,9 +1665,9 @@
         },
         {
           "path": "mvp/verify/litmus/L4.litmus",
-          "sha256": "5fa31859ce02669cfb442a9476590495b38aefa040002d79d09b4bbff7b758d0",
+          "sha256": "c5f1d1306cc1239b3c05581b4f9ae3e69aca6710ae8bed030aeda86337fd4d6d",
           "evidence_source_commit": "5e4110eb3af89674acaf4370f160fa5c18594df6",
-          "note": "The five litmus tests whose instructions mirror the compiled sequences of the exact symbols at the target commit 6fbcc3d1 (the writer's publish and its fence helper, the reader's acquire-fence-take-fence-release, publish_blocks' generation store, the domain hart's check; the symbols' bytes recorded in sequences.txt by digest for both toolchains): each premise's forbidden outcome Never under herd7 7.58's RVWMO model, the ablated tests not vacuous; herd7 7.58 lacks bltu and bnez, so blt and bne on the same registers stand in."
+          "note": "The five litmus tests whose instructions mirror the compiled sequences of the exact symbols at the target commit 6fbcc3d1 (the writer's publish and its fence helper, the reader's acquire-fence-take-fence-release, publish_blocks' generation store, the domain hart's check; the symbols' bytes recorded in sequences.txt by digest for both toolchains): each premise's forbidden outcome Never under herd7 7.58's RVWMO model, the ablated tests not vacuous; herd7 7.58 lacks bltu and bnez, so blt and bne on the same registers stand in. M11-3's re-proof point (planning/mvp-m11-plan.md, D-11) changes its comment's cited addresses and digests; its initial state, program, and condition are unchanged. This SHA-256 is that revision's, which no internal commit holds."
         },
         {
           "path": "mvp/results/20261105-rc4/rc.txt",
@@ -1707,9 +1707,9 @@
         },
         {
           "path": "mvp/verify/litmus/L5.litmus",
-          "sha256": "2d23a7a397a7e2ffdf09e624867e2c93379db4db5d5aeb81f15611a3cdd29570",
+          "sha256": "bc4f9acd1d1a11cb7c340269b44ea6fc3bdfdeb98fbe18e12e1bd2b6e6f227c8",
           "evidence_source_commit": "5e4110eb3af89674acaf4370f160fa5c18594df6",
-          "note": "The five litmus tests whose instructions mirror the compiled sequences of the exact symbols at the target commit 6fbcc3d1 (the writer's publish and its fence helper, the reader's acquire-fence-take-fence-release, publish_blocks' generation store, the domain hart's check; the symbols' bytes recorded in sequences.txt by digest for both toolchains): each premise's forbidden outcome Never under herd7 7.58's RVWMO model, the ablated tests not vacuous; herd7 7.58 lacks bltu and bnez, so blt and bne on the same registers stand in."
+          "note": "The five litmus tests whose instructions mirror the compiled sequences of the exact symbols at the target commit 6fbcc3d1 (the writer's publish and its fence helper, the reader's acquire-fence-take-fence-release, publish_blocks' generation store, the domain hart's check; the symbols' bytes recorded in sequences.txt by digest for both toolchains): each premise's forbidden outcome Never under herd7 7.58's RVWMO model, the ablated tests not vacuous; herd7 7.58 lacks bltu and bnez, so blt and bne on the same registers stand in. M11-3's re-proof point (planning/mvp-m11-plan.md, D-11) changes its comment's cited addresses and digests; its initial state, program, and condition are unchanged. This SHA-256 is that revision's, which no internal commit holds."
         },
         {
           "path": "mvp/results/20261105-rc4/rc.txt",

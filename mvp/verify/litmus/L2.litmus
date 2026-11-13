@@ -14,16 +14,16 @@ RISCV L2
    reads.
    P0, the domain hart in be_mvp_hart_main, posting READY and ENTERED:
      sb x6,0(x10)    READY's type byte, 1, be_mvp_ring_post (by store_le,
-                     called at 102068516; inline)  1020682ee 102068a7e
+                     called at 10200889a; inline)  102008672 1020087d6
      fence w,w       be_mvp_arch_fence_w_w, through be_mvp_exec_fence_w_w,
-                     called at                          10206666e 10206676e
-     sd x7,0(x11)    the head, 120, be_mvp_ring_publish 1020686a0 102068c20
+                     called at                          102070796 10207056a
+     sd x7,0(x11)    the head, 120, be_mvp_ring_publish 102008a24 102008978
    P1, hart 0 in drain:
-     ld x5,0(x11)    the head, be_mvp_ring_acquire      1020686cc 102068c3e
+     ld x5,0(x11)    the head, be_mvp_ring_acquire      102008a50 102008996
      fence r,r       be_mvp_arch_fence_r_r, through be_mvp_exec_fence_r_r,
-                     called at                          102064ad4 102065c62
+                     called at                          1020696b8 10206969a
      lbu x6,0(x10)   the type byte, be_mvp_ring_take (by load_le, called at
-                     102068782; inline)                 10206830a 102068cf8
+                     102008b06; inline)                 10200868e 102008a50
    Every writer posts, calls the same fence, then publishes, and every
    reader acquires, calls the fence, then takes; the excerpts list each
    call. The writers, in both ELFs: poll_input (the input ring); ping's
@@ -46,35 +46,35 @@ RISCV L2
    be_mvp_ring_post@gcc sha256=ee8afa602949d8d119a9d3e218852a01d9602a7536c0baed60145c21ef94fee0
    be_mvp_ring_post@clang sha256=eee8be5c51bad1a916fa45b7650581b7da8f1aaf2e55a6870456548eef9fc6cf
    store_le@gcc sha256=09c6c11d7a6aba36468fd816e04f7d964b6e9b437daaa8aea394e8197c14c5c1
-   be_mvp_hart_main@gcc sha256=2754ae74c2b48f495a2e6c4009609da42973854664a950b6bb39ba5f405a9e2c
-   be_mvp_hart_main@clang sha256=eb0618c2c2216fafab4777cacd749b5ee51521573c33cab80a2755ea4f5236f9
-   be_mvp_exec_fence_w_w@gcc sha256=d2af5007185244ecff68554a5dba4d5b9d680932e87437fb430399451331246f
-   be_mvp_exec_fence_w_w@clang sha256=8e7211664d0945b560dd409a522e5b3267c3c6443146ecb502f8c84051f21975
+   be_mvp_hart_main@gcc sha256=575a418566c3a9ad623170ae9b58d35a6ce2bc2d614f60b6638032a915161460
+   be_mvp_hart_main@clang sha256=980acf51bcaa2e7f5a03fa7045d5f9b01e554c606d3613fae0e9971f4a21a7d7
+   be_mvp_exec_fence_w_w@gcc sha256=8acd9ed5fd8fc2ba9f99adaf372142f1969beb6a6dec9e826e1d3793f8cf54df
+   be_mvp_exec_fence_w_w@clang sha256=1a1b3373e3f36ff8f4253edcd298268b397eff9aad50195ae68fb06b13f480e7
    be_mvp_arch_fence_w_w@gcc sha256=4a9c49b5aeb97cd559e75906fa16144d0b05bd33affb259ae823429b7fb89d2b
    be_mvp_arch_fence_w_w@clang sha256=4a9c49b5aeb97cd559e75906fa16144d0b05bd33affb259ae823429b7fb89d2b
    be_mvp_ring_publish@gcc sha256=d6bc6d9bd556d6d600e6a4781c2a44262bf09e30c7ce18fda5bf8a346b0a4499
    be_mvp_ring_publish@clang sha256=b711c6231b4fd53b0c441d9e3a992a064d56587e1764cd58a94d66a31d140f96
-   drain@gcc sha256=0abb8c3c24bb7045baef384ee9d178229ce382231a4382078e45ab24ef696283
-   drain@clang sha256=e676ca4159e5b163f42b52d5cee25859f6de86be997c34a2532335c7a8f1ba04
+   drain@gcc sha256=4536392d3d53025fd198d6658d29135138a81144311171c03e2dcbfc201a89ac
+   drain@clang sha256=08701733f0fffbb895191ca3a689bd3302e3412bdff92330e90ae8c752a82083
    be_mvp_ring_acquire@gcc sha256=eef51e43a0c46bf53374713121bf4e0689155ee51f05ae9ca8163f27fa09b7fe
    be_mvp_ring_acquire@clang sha256=a994f23057b4f865722f8e59fef642e6480bef64d06abf711a618ae0dfd2a211
-   be_mvp_exec_fence_r_r@gcc sha256=d2af5007185244ecff68554a5dba4d5b9d680932e87437fb430399451331246f
-   be_mvp_exec_fence_r_r@clang sha256=8e7211664d0945b560dd409a522e5b3267c3c6443146ecb502f8c84051f21975
+   be_mvp_exec_fence_r_r@gcc sha256=8acd9ed5fd8fc2ba9f99adaf372142f1969beb6a6dec9e826e1d3793f8cf54df
+   be_mvp_exec_fence_r_r@clang sha256=1a1b3373e3f36ff8f4253edcd298268b397eff9aad50195ae68fb06b13f480e7
    be_mvp_arch_fence_r_r@gcc sha256=a173287af103bb3df9e7a542c380e51560c7777708cf7ac49430094df5ce713b
    be_mvp_arch_fence_r_r@clang sha256=a173287af103bb3df9e7a542c380e51560c7777708cf7ac49430094df5ce713b
-   be_mvp_ring_take@gcc sha256=86f0abb4ffc514a17b3fc622bb891bd2f3c0ba17730ada7d510b59ea68aa9810
-   be_mvp_ring_take@clang sha256=b28cc06163a851112fd3feefb4375ea195eef77dc34eac8f28dee5cccd793324
+   be_mvp_ring_take@gcc sha256=d0f94b546f43eeeb2baec78cb7f0b478eb8868306b149d9c3587fbf53a3ff11c
+   be_mvp_ring_take@clang sha256=5081e4cd50a8bcd8556f5da9c5a258c6d61ff365902114f448c9c07b417bf787
    load_le@gcc sha256=fa2e7528e095f314d97b9ddbcd0307a21e446b0bb01fe89831c5603840775c33
-   poll_input@gcc sha256=8030b4ed86233bbf882983ac5d99d3ebdff00b3a75ed2241e328c4ea811f28ad
-   poll_input@clang sha256=c7fd06c998affa32ddabb328379f2a9951e459a8954408c9e38a0e02f0545b54
-   domain_failed@clang sha256=e67ee03624371a13a623a406ba7dc9df6a15e0e5e849626143af00820d9f5f83
-   hart_fail@gcc sha256=00007a9e29a080abdef9be2bec01391be529b39f6d32eff0881fd896b71bb5e9
-   hart_fail@clang sha256=6b23d163a972cfeebb98a9dcc278ba121c4cb31818041fc8e6016344882733fa
-   console@gcc sha256=fc1d10eaf33faea4f333c79507c7dd0ccd6ce235c5c8e819776afdd21ada7004
-   console@clang sha256=d54a3492ab3213daa8826606cf4dcd18c5c156d2604ac6e8e66bdf5de3d0f674
-   be_mvp_dispatch@gcc sha256=19454e6ddfa6715f43ed56ac7bbb8c7734eb0ab16dac77fb7fba820ff57dabf8
-   be_mvp_dispatch@clang sha256=585fd111563c0a5bb2bba9e18c3d22ff562f68b134273a46de0030efe0f0b44a
-   stopped@clang sha256=d2e8f42530f83cc9bdc0ee2dcd83a370bd45c3ddaab141e57b385e8be2f1a42d *)
+   poll_input@gcc sha256=36f6927f57dd97c28006bfd169251c970adea3f988263578be2ee40aadd23dfd
+   poll_input@clang sha256=fc8b453563e6092d21fe4951907054e96cfbcbcb4abfbdaf5f3404a2355ce65f
+   domain_failed@clang sha256=c41b4cb0e5d8ff0e067301860da3995bc87f7ac1c33d209b309665657d899a46
+   hart_fail@gcc sha256=5bbc8f3d3a8c6a851eefae4fe4632b6872f0a00d5bc047d38234f1d4b52dcf20
+   hart_fail@clang sha256=0952607e8c91ca359a9cf5895abd53660a7d81627a53cb22d80fc5ab931baac4
+   console@gcc sha256=382f00e488d2dbb1ab2bfe995b3bdf0e57e442a621904c8cccbf9951eaa3ec14
+   console@clang sha256=55a4cbb647f2bd1d7861af0fc4bc83221e20d3dc4a87e505b448fac84f9ef31e
+   be_mvp_dispatch@gcc sha256=2838f00de9df9256f97690ad1794ee0e3753485ed74edc53ad8d6f4bd38b0363
+   be_mvp_dispatch@clang sha256=59eabfbb70bf310d7746563745b1219fd204c15f0252ecbe6e9a299fddba492b
+   stopped@clang sha256=e2102a3c47ee91b63d413f52c864d4239fe932c3c7cd198f7d0bddc322ad2d6d *)
 {
 type_byte=0; head=0;
 0:x10=type_byte; 0:x11=head; 0:x6=1; 0:x7=120;

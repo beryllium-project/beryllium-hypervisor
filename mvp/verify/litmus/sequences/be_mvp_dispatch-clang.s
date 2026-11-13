@@ -5,18 +5,18 @@
 # L2 reader, L4 P0 (ipi, inbound ring): acquire; fence r, r; serve; served,
 #   on to fence r, w; release; then L2 writer, call site 6 (outbound ring,
 #   PONG): fence w, w; the head
-   1020663bc:	876080e7          	jalr	-1930(ra) # 102068c2e <be_mvp_ring_acquire>
-   1020663c4:	42a080e7          	jalr	1066(ra) # 10206a7ea <be_mvp_exec_fence_r_r>
-   1020663e2:	dfe080e7          	jalr	-514(ra) # 1020671dc <be_mvp_ipi_serve>
-   1020663e6:	e95d                	bnez	a0,10206649c <be_mvp_dispatch+0x178>
-   1020664a0:	356080e7          	jalr	854(ra) # 10206a7f2 <be_mvp_exec_fence_r_w>
-   1020664aa:	958080e7          	jalr	-1704(ra) # 102068dfe <be_mvp_ring_release>
-   1020664b4:	332080e7          	jalr	818(ra) # 10206a7e2 <be_mvp_exec_fence_w_w>
-   1020664be:	752080e7          	jalr	1874(ra) # 102068c0c <be_mvp_ring_publish>
+   102070176:	814080e7          	jalr	-2028(ra) # 102008986 <be_mvp_ring_acquire>
+   10207017e:	afa080e7          	jalr	-1286(ra) # 102008c74 <be_mvp_exec_fence_r_r>
+   10207019c:	e18080e7          	jalr	-488(ra) # 102070fb0 <be_mvp_ipi_serve>
+   1020701a0:	e95d                	bnez	a0,102070256 <be_mvp_dispatch+0x17c>
+   10207025a:	a26080e7          	jalr	-1498(ra) # 102008c7c <be_mvp_exec_fence_r_w>
+   102070264:	8f6080e7          	jalr	-1802(ra) # 102008b56 <be_mvp_ring_release>
+   10207026e:	a02080e7          	jalr	-1534(ra) # 102008c6c <be_mvp_exec_fence_w_w>
+   102070278:	6f0080e7          	jalr	1776(ra) # 102008964 <be_mvp_ring_publish>
 # L2 reader, L5 P0 (console_read, input ring): acquire; fence r, r; serve;
 #   fence r, w; release
-   102066400:	832080e7          	jalr	-1998(ra) # 102068c2e <be_mvp_ring_acquire>
-   102066408:	3e6080e7          	jalr	998(ra) # 10206a7ea <be_mvp_exec_fence_r_r>
-   10206641a:	8a4080e7          	jalr	-1884(ra) # 10206acba <be_mvp_input_serve>
-   10206642a:	3cc080e7          	jalr	972(ra) # 10206a7f2 <be_mvp_exec_fence_r_w>
-   102066434:	9ce080e7          	jalr	-1586(ra) # 102068dfe <be_mvp_ring_release>
+   1020701ba:	7d0080e7          	jalr	2000(ra) # 102008986 <be_mvp_ring_acquire>
+   1020701c2:	ab6080e7          	jalr	-1354(ra) # 102008c74 <be_mvp_exec_fence_r_r>
+   1020701d4:	46e080e7          	jalr	1134(ra) # 10207163e <be_mvp_input_serve>
+   1020701e4:	a9c080e7          	jalr	-1380(ra) # 102008c7c <be_mvp_exec_fence_r_w>
+   1020701ee:	96c080e7          	jalr	-1684(ra) # 102008b56 <be_mvp_ring_release>

@@ -4,18 +4,18 @@
 # objdump -d prints them (litmus.py --check-sequences). Specification SHA-256 ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d.
 # L2 P1, L3 P0 (outbound ring): acquire; fence r, r; take; fence r, w;
 #   release
-   102064ab2:	bfe080e7          	jalr	-1026(ra) # 1020686ac <be_mvp_ring_acquire>
-   102064ad4:	552080e7          	jalr	1362(ra) # 10206a022 <be_mvp_exec_fence_r_r>
-   102064ae6:	c16080e7          	jalr	-1002(ra) # 1020686f8 <be_mvp_ring_take>
-   102064af8:	536080e7          	jalr	1334(ra) # 10206a02a <be_mvp_exec_fence_r_w>
-   102064b02:	d60080e7          	jalr	-672(ra) # 10206885e <be_mvp_ring_release>
+   102069696:	39e080e7          	jalr	926(ra) # 102008a30 <be_mvp_ring_acquire>
+   1020696b8:	634080e7          	jalr	1588(ra) # 102008ce8 <be_mvp_exec_fence_r_r>
+   1020696ca:	3b6080e7          	jalr	950(ra) # 102008a7c <be_mvp_ring_take>
+   1020696dc:	618080e7          	jalr	1560(ra) # 102008cf0 <be_mvp_exec_fence_r_w>
+   1020696e6:	500080e7          	jalr	1280(ra) # 102008be2 <be_mvp_ring_release>
 # L2 writer, call site 2 (inbound ring, ping's PING): post; fence w, w; the
 #   head
-   102064bfa:	a12080e7          	jalr	-1518(ra) # 102068608 <be_mvp_ring_post_words>
-   102064c08:	416080e7          	jalr	1046(ra) # 10206a01a <be_mvp_exec_fence_w_w>
-   102064c12:	a7a080e7          	jalr	-1414(ra) # 102068688 <be_mvp_ring_publish>
+   1020697de:	1b2080e7          	jalr	434(ra) # 10200898c <be_mvp_ring_post_words>
+   1020697ec:	4f8080e7          	jalr	1272(ra) # 102008ce0 <be_mvp_exec_fence_w_w>
+   1020697f6:	21a080e7          	jalr	538(ra) # 102008a0c <be_mvp_ring_publish>
 # L2 writer, call site 3 (inbound ring, domain_failed's ACK): post; fence w,
 #   w; the head
-   102064e74:	5e2080e7          	jalr	1506(ra) # 102068452 <be_mvp_ring_post>
-   102064e7e:	1a0080e7          	jalr	416(ra) # 10206a01a <be_mvp_exec_fence_w_w>
-   102064e88:	804080e7          	jalr	-2044(ra) # 102068688 <be_mvp_ring_publish>
+   102069a58:	d82080e7          	jalr	-638(ra) # 1020087d6 <be_mvp_ring_post>
+   102069a62:	282080e7          	jalr	642(ra) # 102008ce0 <be_mvp_exec_fence_w_w>
+   102069a6c:	fa4080e7          	jalr	-92(ra) # 102008a0c <be_mvp_ring_publish>
