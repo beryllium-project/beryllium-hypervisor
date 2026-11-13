@@ -467,7 +467,7 @@ def source_state():
 
 def image_manifest(build):
     """(SHA-256, path relative to BUILD) of every image, firmware binary,
-    and guest input."""
+    guest input, and deterministic partition output."""
     paths = []
     for toolchain in TOOLCHAINS:
         directories = [build / toolchain] + [build / toolchain / name
@@ -484,6 +484,26 @@ def image_manifest(build):
     if not firmware.is_file():
         raise Refused(f"{firmware} is missing; run make -C mvp firmware")
     paths.append(firmware)
+    # M11-5: descriptors and their detached authority sections, each
+    # backend's source/tree/table, and the path-free GCC/Clang checker
+    # records. The fresh QEMU base dumps are deliberately excluded: their
+    # rng-seed differs, while partition-base-check compares their normalized
+    # form with the committed base trees.
+    required = [build / "gen" / "partition",
+                build / "records" / "partition"] + [
+                    build / "partition" / name for name in (
+                        "two-guests", "te-poc", "anchor")]
+    missing = [str(path) for path in required if not path.is_dir()]
+    if missing:
+        raise Refused("partition-check outputs are missing: " +
+                      ", ".join(missing))
+    for directory in required[:2]:
+        paths += sorted(path for path in directory.rglob("*")
+                        if path.is_file())
+    for scenario_name in ("two-guests", "te-poc", "anchor"):
+        directory = build / "partition" / scenario_name
+        paths += sorted(path for path in directory.rglob("*")
+                        if path.is_file())
     if not any(path.name == "be-mvp-boot.img" for path in paths):
         raise Refused(f"no boot image under {build}")
     return [(file_sha(path), str(path.relative_to(build))) for path in paths]
@@ -1577,6 +1597,12 @@ def synthetic_build(root):
                                file_sha(build / elf))))
     (suite / "attempts.tsv").write_text("\n".join(rows) + "\n",
                                         encoding="ascii")
+    for relative in ("gen/partition", "records/partition",
+                     "partition/two-guests", "partition/te-poc",
+                     "partition/anchor"):
+        directory = build / relative
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "fixture.json").write_text("{}\n", encoding="ascii")
     (suite / "summary.txt").write_text(
         "BE_MVP_QEMU_TOOLCHAIN[gcc]: runs=1 attempts=2 refused=1\n"
         "BE_MVP_QEMU: PASS runs=2 attempts=3 refused=1\n", encoding="ascii")

@@ -404,7 +404,7 @@ sessions: variants firmware $(MVP_EXPECT_STAMP) $(TE_POC_EXPECT_STAMP) \
 # In `check` it follows every stage it records; alone, it bundles the last
 # check's records and refuses stale or missing ones.
 EVIDENCE_STAGES := $(if $(filter check,$(MAKECMDGOALS)),tool-lock-check firmware \
-	lint policy-negatives image-check variants probes tools-check \
+	lint policy-negatives image-check partition-check variants probes tools-check \
 	qemu-test sessions budgets)
 evidence: $(EVIDENCE_STAGES)
 	$(EVIDENCE) --build $(BUILD) --out $(BUILD)/evidence/check

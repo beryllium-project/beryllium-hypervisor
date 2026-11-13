@@ -40,6 +40,9 @@
 #                                      (M8-5; tools/verifier/verify.sh)
 #   ./mvp image                        monitor and boot images (M0-3)
 #   ./mvp image-check                  the image checker and its mutations
+#   ./mvp partition-check              M11's descriptors, OpenSBI domain
+#                                      trees, expected PMP tables, and
+#                                      independent checker
 #   ./mvp variants                     the negative variants, checked
 #   ./mvp probes                       the probe images, checked
 #   ./mvp budgets                      every budget, measured
@@ -251,6 +254,9 @@ verify)
 	;;
 image | image-check | variants | probes | budgets)
 	later "$command" M0-3 "$@"
+	;;
+partition-check)
+	later partition-check M11-5 "$@"
 	;;
 uboot-rehearsal)
 	extra=(UBOOT_REHEARSAL_ALL)

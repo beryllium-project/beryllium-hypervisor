@@ -120,6 +120,7 @@ FIRMWARE_SRC := $(BUILD)/firmware-src
 FIRMWARE_BUILD := $(BUILD)/firmware
 FIRMWARE_SOURCE_STAMP := $(BUILD)/firmware-source.txt
 FIRMWARE_BIN := $(FIRMWARE_BUILD)/platform/generic/firmware/fw_dynamic.bin
+FIRMWARE_ELF := $(FIRMWARE_BUILD)/platform/generic/firmware/fw_dynamic.elf
 FIRMWARE_SERIES := $(MVP_DIR)/firmware/patches/series
 FIRMWARE_CONFIG := $(MVP_DIR)/firmware/config
 FIRMWARE_PATCHES := $(sort $(wildcard $(MVP_DIR)/firmware/patches/*.patch))
@@ -876,6 +877,213 @@ MVP_SHELL_IMAGES = $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach \
 	s,$(MVP_SHELL_SCENARIOS),$(call shell_dir,$(t),$(s))/be-mvp-boot.elf \
 	$(call shell_dir,$(t),$(s))/be-mvp-boot.img))
 
+# ------------------------------------------------ partition descriptor
+# M11-5: one descriptor per boundary-on scenario image, generated only from
+# scenario.json and mvp-layout.h. The policy authority report is an
+# independent checker input, never a generator input.
+PARTITION_GEN := $(MVP_DIR)/tools/gen-partition.py
+PARTITION_BACKEND := $(MVP_DIR)/tools/partition-backend.py
+PARTITION_CHECK := $(MVP_DIR)/tests/check-partition.py
+PARTITION_SCENARIOS := two-guests te-poc anchor
+PARTITION_IMAGES_two-guests := two-guests payload exit-budget run-timeout \
+	ring-full hart-start init-exit rdcycle sbi-time hostile \
+	two-guests-shell
+PARTITION_IMAGES_te-poc := te-poc reader-write no-inject te-poc-shell
+PARTITION_IMAGES_anchor := anchor secret-shared response-writable \
+	wrong-measurement no-grant-check self-report-flip anchor-shell
+$(foreach s,$(PARTITION_SCENARIOS),$(eval \
+	PARTITION_DIR_$(s) := $(GEN)/partition/$(s)))
+$(foreach s,$(PARTITION_SCENARIOS),$(eval \
+	PARTITION_AUTHORITY_$(s) := $(PARTITION_DIR_$(s))/authority-report.json))
+$(foreach s,$(PARTITION_SCENARIOS),$(eval PARTITION_OUTPUTS_$(s) := \
+	$(PARTITION_AUTHORITY_$(s)) \
+	$(foreach i,$(PARTITION_IMAGES_$(s)),$(PARTITION_DIR_$(s))/$(i).json \
+	$(PARTITION_DIR_$(s))/$(i)-identity.h)))
+
+define partition_generate
+$$(PARTITION_OUTPUTS_$(1)) &: $(MVP_DIR)/scenarios/$(1)/scenario.json \
+		$(MVP_DIR)/src/mvp-layout.h $(PARTITION_GEN)
+	rm -rf -- $$(PARTITION_DIR_$(1))
+	$$(PYTHON) -I -B $(PARTITION_GEN) \
+		--scenario $(MVP_DIR)/scenarios/$(1)/scenario.json \
+		--layout $(MVP_DIR)/src/mvp-layout.h \
+		$(foreach i,$(PARTITION_IMAGES_$(1)),--image $(i)) \
+		--out $$(PARTITION_DIR_$(1))
+endef
+$(foreach s,$(PARTITION_SCENARIOS),$(eval $(call partition_generate,$(s))))
+
+.PHONY: partition-descriptors
+partition-descriptors: $(foreach s,$(PARTITION_SCENARIOS),\
+	$(PARTITION_OUTPUTS_$(s)))
+
+PARTITION_BASE_DIR := $(MVP_DIR)/partition/base
+PARTITION_MODES := plain smepmp
+PARTITION_BASE_plain := $(PARTITION_BASE_DIR)/k3-like-pmp.dts
+PARTITION_BASE_smepmp := $(PARTITION_BASE_DIR)/k3-like-smepmp.dts
+PARTITION_WARN_plain := $(PARTITION_BASE_DIR)/k3-like-pmp.warnings.json
+PARTITION_WARN_smepmp := $(PARTITION_BASE_DIR)/k3-like-smepmp.warnings.json
+partition_descriptor = $(PARTITION_DIR_$(1))/$(2).json
+partition_backend_dir = $(BUILD)/partition/$(1)/$(2)/$(3)
+partition_backend_dts = $(call partition_backend_dir,$(1),$(2),$(3))/$(2).dts
+partition_backend_dtb = $(call partition_backend_dir,$(1),$(2),$(3))/$(2).dtb
+partition_backend_pmp = $(call partition_backend_dir,$(1),$(2),$(3))/$(2)-pmp.json
+
+define partition_backend_rule
+$(call partition_backend_dts,$(1),$(2),$(3)) \
+$(call partition_backend_dtb,$(1),$(2),$(3)) \
+$(call partition_backend_pmp,$(1),$(2),$(3)) &: \
+		$(call partition_descriptor,$(1),$(2)) \
+		$$(PARTITION_BASE_$(3)) $$(PARTITION_WARN_$(3)) \
+		$(FIRMWARE_ELF) $(PARTITION_BACKEND)
+	rm -rf -- $(call partition_backend_dir,$(1),$(2),$(3))
+	$$(PYTHON) -I -B $(PARTITION_BACKEND) \
+		--descriptor $(call partition_descriptor,$(1),$(2)) \
+		--base-dts $$(PARTITION_BASE_$(3)) \
+		--base-warnings $$(PARTITION_WARN_$(3)) \
+		--firmware-elf $(FIRMWARE_ELF) \
+		--dtc $$(MVP_TOOL_dtc_command) \
+		--nm $$(MVP_TOOL_cross_nm_command) \
+		--readelf $$(MVP_TOOL_cross_readelf_command) \
+		--out $(call partition_backend_dir,$(1),$(2),$(3))
+endef
+$(foreach s,$(PARTITION_SCENARIOS),$(foreach i,$(PARTITION_IMAGES_$(s)),\
+	$(foreach m,$(PARTITION_MODES),\
+	$(eval $(call partition_backend_rule,$(s),$(i),$(m))))))
+
+PARTITION_BACKEND_OUTPUTS := $(foreach s,$(PARTITION_SCENARIOS),\
+	$(foreach i,$(PARTITION_IMAGES_$(s)),$(foreach m,$(PARTITION_MODES),\
+	$(call partition_backend_pmp,$(s),$(i),$(m)))))
+.PHONY: partition-backend
+partition-backend: $(PARTITION_BACKEND_OUTPUTS)
+
+# The image whose role extents the independent checker reads. Payload uses
+# the scenario's monitor; self-report-flip uses its mutated monitor.
+partition_elf_two-guests = $(if $(filter two-guests payload,$(2)),\
+	$(MVP_ELF_$(1)),$(if $(filter two-guests-shell,$(2)),\
+	$(call shell_dir,$(1),two-guests)/be-mvp.elf,\
+	$(BUILD)/variants/$(1)/$(2)/be-mvp.elf))
+partition_elf_te-poc = $(if $(filter te-poc,$(2)),$(TE_POC_ELF_$(1)),\
+	$(if $(filter te-poc-shell,$(2)),\
+	$(call shell_dir,$(1),te-poc)/be-mvp.elf,\
+	$(BUILD)/variants/$(1)/$(2)/be-mvp.elf))
+partition_elf_anchor = $(if $(filter anchor,$(2)),$(ANCHOR_ELF_$(1)),\
+	$(if $(filter anchor-shell,$(2)),\
+	$(call shell_dir,$(1),anchor)/be-mvp.elf,\
+	$(BUILD)/variants/$(1)/$(2)/be-mvp.elf))
+partition_elf = $(call partition_elf_$(1),$(2),$(3))
+PARTITION_IMAGE_ELFS := $(foreach s,$(PARTITION_SCENARIOS),\
+	$(foreach i,$(PARTITION_IMAGES_$(s)),$(foreach t,gcc clang,\
+	$(call partition_elf,$(s),$(t),$(i)))))
+partition_policy_arg = $(if $(filter te-poc,$(1)),--authority-report \
+	$(TE_POC_REPORT),$(if $(filter anchor,$(1)),--authority-report \
+	$(ANCHOR_REPORT)))
+partition_policy_dep = $(if $(filter te-poc,$(1)),$(TE_POC_REPORT),\
+	$(if $(filter anchor,$(1)),$(ANCHOR_REPORT)))
+partition_record = $(RECORDS)/partition/$(1)/$(2)/$(3)/$(4).json
+
+# These are the exact k3-like options of every boundary-on run. The oracle's
+# -no-shutdown and QMP chardev, and the serial backend, do not alter the FDT.
+# No k3-like row passes -initrd or -append. -kernel is present, so the dump is
+# made with a representative boot ELF; a /chosen difference is not ignored.
+PARTITION_MACHINE := virt,aia=aplic-imsic,aia-guests=7
+PARTITION_CPU := rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true
+PARTITION_BASE_CHECK := $(BUILD)/partition/base-check
+.PHONY: partition-base-check
+partition-base-check: $(foreach m,$(PARTITION_MODES),\
+	$(PARTITION_BASE_$(m)) $(PARTITION_WARN_$(m))) firmware image
+	rm -rf -- $(PARTITION_BASE_CHECK)
+	mkdir -m 700 -p -- $(PARTITION_BASE_CHECK)
+	$(MVP_TOOL_qemu_command) \
+		-machine '$(PARTITION_MACHINE),dumpdtb=$(abspath $(PARTITION_BASE_CHECK)/plain.dtb)' \
+		-cpu '$(PARTITION_CPU)' -smp 8 -m 8G -bios $(FIRMWARE_BIN) \
+		-kernel $(MVP_BOOT_ELF_gcc) -display none -serial none \
+		-no-reboot -no-shutdown
+	$(MVP_TOOL_qemu_command) \
+		-machine '$(PARTITION_MACHINE),dumpdtb=$(abspath $(PARTITION_BASE_CHECK)/smepmp.dtb)' \
+		-cpu '$(PARTITION_CPU),smepmp=true' -smp 8 -m 8G \
+		-bios $(FIRMWARE_BIN) -kernel $(MVP_BOOT_ELF_gcc) \
+		-display none -serial none -no-reboot -no-shutdown
+	set -e -o pipefail; $(foreach m,$(PARTITION_MODES),$(PYTHON) -I -B $(PARTITION_BACKEND) \
+		--check-base --raw-dtb $(PARTITION_BASE_CHECK)/$(m).dtb \
+		--base-dts $(PARTITION_BASE_$(m)) \
+		--base-warnings $(PARTITION_WARN_$(m)) \
+		--dtc $(MVP_TOOL_dtc_command) \
+		--scratch $(PARTITION_BASE_CHECK)/check-$(m);)
+
+.PHONY: partition-descriptor-tools-check
+partition-descriptor-tools-check: partition-descriptors
+	rm -rf -- $(RECORDS)/partition-tools
+	mkdir -m 700 -p -- $(RECORDS)/partition-tools
+	set -e -o pipefail; $(foreach s,$(PARTITION_SCENARIOS),$(PYTHON) -I -B \
+		$(PARTITION_GEN) --self-test \
+		--scenario $(MVP_DIR)/scenarios/$(s)/scenario.json \
+		--layout $(MVP_DIR)/src/mvp-layout.h \
+		--scratch $(BUILD)/partition-self-test-$(s) | \
+		tee $(RECORDS)/partition-tools/generator-$(s).txt;)
+	set -e -o pipefail; $(PYTHON) -I -B $(PARTITION_BACKEND) --self-test \
+		--descriptor $(PARTITION_DIR_te-poc)/te-poc.json \
+		--dtc $(MVP_TOOL_dtc_command) \
+		--scratch $(BUILD)/partition-backend-self-test | \
+		tee $(RECORDS)/partition-tools/backend.txt
+	set -e -o pipefail; $(foreach s,$(PARTITION_SCENARIOS),$(PYTHON) -I -B \
+		$(PARTITION_CHECK) --self-test \
+		--descriptor $(PARTITION_DIR_$(s))/$(s).json \
+		--scenario $(MVP_DIR)/scenarios/$(s)/scenario.json \
+		--layout $(MVP_DIR)/src/mvp-layout.h | \
+		tee $(RECORDS)/partition-tools/checker-$(s).txt;)
+	set -e -o pipefail; $(foreach s,te-poc anchor,$(PYTHON) -I -B \
+		$(PARTITION_CHECK) --mutation-test \
+		--descriptor $(PARTITION_DIR_$(s))/$(s).json \
+		--scenario $(MVP_DIR)/scenarios/$(s)/scenario.json \
+		--layout $(MVP_DIR)/src/mvp-layout.h \
+		--dtc $(MVP_TOOL_dtc_command) --backend $(PARTITION_BACKEND) \
+		--scratch $(BUILD)/partition-mutations-$(s) | \
+		tee $(RECORDS)/partition-tools/mutations-$(s).txt;)
+	@echo "BE_MVP_PARTITION_TOOLS: PASS"
+
+tools-check: partition-descriptor-tools-check
+
+define partition_check_rule
+$(call partition_record,$(3),$(4),$(1),$(2)): \
+		$(call partition_descriptor,$(1),$(2)) $(PARTITION_AUTHORITY_$(1)) \
+		$(MVP_DIR)/scenarios/$(1)/scenario.json $(MVP_DIR)/src/mvp-layout.h \
+		$(call partition_policy_dep,$(1)) \
+		$(call partition_backend_dtb,$(1),$(2),$(3)) \
+		$(PARTITION_BASE_$(3)) \
+		$(call partition_backend_pmp,$(1),$(2),$(3)) \
+		$(FIRMWARE_ELF) $(call partition_elf,$(1),$(4),$(2)) $(PARTITION_CHECK)
+	mkdir -m 700 -p -- $$(@D)
+	rm -f -- $$@
+	$$(PYTHON) -I -B $(PARTITION_CHECK) \
+		--descriptor $(call partition_descriptor,$(1),$(2)) \
+		--partition-authority $$(PARTITION_AUTHORITY_$(1)) \
+		--scenario $(MVP_DIR)/scenarios/$(1)/scenario.json \
+		--layout $(MVP_DIR)/src/mvp-layout.h $(call partition_policy_arg,$(1)) \
+		--dtb $(call partition_backend_dtb,$(1),$(2),$(3)) \
+		--base-dts $$(PARTITION_BASE_$(3)) \
+		--tables $(call partition_backend_pmp,$(1),$(2),$(3)) \
+		--firmware-elf $(FIRMWARE_ELF) \
+		--image-elf $(call partition_elf,$(1),$(4),$(2)) \
+		--nm $$(MVP_TOOL_cross_nm_command) \
+		--readelf $$(MVP_TOOL_cross_readelf_command) --record $$@
+endef
+$(foreach s,$(PARTITION_SCENARIOS),$(foreach i,$(PARTITION_IMAGES_$(s)),\
+	$(foreach m,$(PARTITION_MODES),$(foreach t,gcc clang,\
+	$(eval $(call partition_check_rule,$(s),$(i),$(m),$(t)))))))
+PARTITION_CHECK_RECORDS := $(foreach s,$(PARTITION_SCENARIOS),\
+	$(foreach i,$(PARTITION_IMAGES_$(s)),$(foreach m,$(PARTITION_MODES),\
+	$(foreach t,gcc clang,$(call partition_record,$(m),$(t),$(s),$(i))))))
+
+.PHONY: partition-check
+partition-check: partition-base-check partition-backend image variants \
+		$(TE_POC_REPORT) $(ANCHOR_REPORT) $(PARTITION_IMAGE_ELFS) \
+		$(PARTITION_CHECK_RECORDS)
+	set -e -o pipefail; $(foreach s,$(PARTITION_SCENARIOS),$(foreach i,$(PARTITION_IMAGES_$(s)),\
+	$(foreach m,$(PARTITION_MODES),cmp \
+		$(call partition_record,$(m),gcc,$(s),$(i)) \
+		$(call partition_record,$(m),clang,$(s),$(i));)))
+	@echo "BE_MVP_PARTITION_CHECK: PASS scenarios=3 modes=2"
+
 # The payload variant's kernel: magic2 "RSC\x05" becomes "RSC\0".
 $(BUILD)/variants/payload/Image: $(MVP_GUEST_IMAGE) $(MVP_DIR)/tools/gen-payload.py
 	mkdir -p $(@D)
@@ -1224,6 +1432,9 @@ $(FIRMWARE_BIN): $(FIRMWARE_SOURCE_STAMP) \
 		MVP_FIRMWARE_TOOL_DTC='$(MVP_TOOL_dtc_command)' \
 		$(MVP_DIR)/firmware/build.sh $(FIRMWARE_SRC) $(FIRMWARE_BUILD)
 
+$(FIRMWARE_ELF): $(FIRMWARE_BIN)
+	test -s "$@"
+
 .PHONY: firmware-source firmware
 firmware-source: $(FIRMWARE_SOURCE_STAMP)
 
@@ -1410,6 +1621,7 @@ claim-ledger-check: $(if $(filter check,$(MAKECMDGOALS)),$(TOOLS_EVIDENCE))
 check: tool-lock-check opensbi firmware firmware-test lint layout-source-check \
 	policy-negatives port-check \
 	guest-pin-check host-test target-check reference-boot image-check \
+	partition-check \
 	variants probes reference-check $(TOOLS_CHECKS) budgets $(TOOLS_EVIDENCE) \
 	claim-ledger-check
 	@echo "BE_MVP_CHECK: PASS"
