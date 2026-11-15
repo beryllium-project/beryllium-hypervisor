@@ -220,3 +220,143 @@ rows as time-limit crossings, under stop 9.
   with the export; later points do the same.
 - **Soft limits.** The harness lane's limit is 7,000 lines by the
   decision `harness: 7000`; at the point, M11-2 adds 4,338 counted lines by the plan's rule from `77eabce5`: 4,071 in that lane, 246 in the firmware's build rules (limit 2,500), and 21 in the monitor's lane (the port's rule; limit 3,500). JSON, Markdown, the era fixtures, the proof records, and the lock's data are reported apart.
+
+## M11-3: the layout
+
+### Outcome first
+
+M11-3's required result (the plan's work-package table) holds at its
+point, exact commit `0e074244`:
+
+- `check` passes on both toolchains, and the image checker refuses each
+  of its 129, 133, and 143 mutations of the three scenarios' images
+  (before the landing, from a clean clone of the reviewed content, on
+  2026-11-13 from 10:35Z to 10:56Z, and again at the point);
+- `./be model-check` passes with stage 1 proved again: its 26 theorems,
+  their statements unchanged, 26 assumption sets closed, 99 citations,
+  and the generated layout `b5536372…`;
+- at the point, every verifier suite gives the base's verdicts. Its
+  counts differ from the base's only where a run that reached the
+  earlier time limit in the base ends within the doubled one (the
+  decision `increase time limits`), and one known finding has a new
+  witness that follows from the layout header (below).
+
+### The commits
+
+On the working branch `m11`, over the public `main` at `fa0e3c56`,
+unsigned:
+
+| Commit | Content |
+| --- | --- |
+| `6d0f5ae` | The layout by role and by writer (D-4, D-5), with the boundary off; the claim ledger's pins in C-10, C-40, C-41, C-48, and C-51 to C-55 |
+| `5d0d7846` | Every time limit of the verifier's arms doubled, on the responsible human's direction, with its decision-record entry |
+| `0e074244` | The point's records: the target digests and the litmus record at `5d0d7846` |
+
+M11-6 (`9ab77ec`) and M11-5 (`a3dcbe9`) landed between `6d0f5ae` and
+`5d0d7846`, so the point holds them too; neither changes an input of a
+proved leaf. M11-3 adds 1,914 counted lines to the monitor's lane
+(limit 6,000).
+
+### The re-proof point
+
+M11-3 changes three of the leaves' pinned inputs (`mvp-layout.h`,
+`mvp.h`, and the port's `r3.h`), so its point is D-11's second. At
+`5d0d7846`, from a clean clone's build (2026-11-13):
+
+- `mvp/verify/target-digests.txt`: the target commit and the three
+  files' digests, written with the frozen specification's export, as at
+  M11-2;
+- the litmus record: M11-3 moved the cited symbols, and 35 of the 55
+  symbols' digests changed. Its 206 excerpt lines were found again by
+  role: 80 with the same encoding, 112 with a new PC-relative offset,
+  and 14 with a new register or offset (the descriptor's generation word
+  is now at offset 128 of the published page). The five tests'
+  programs, premises, and conditions are unchanged; their comments'
+  addresses and digests are derived again, and one sentence of L1's
+  comment is rewritten for a load that M11-3 added before the barrier
+  (the VS-domain hart's check of its published page's address, which
+  can only park it). The call-site scan finds the same fences at all
+  ten sites;
+- the claim ledger's pins in C-54, C-56 (two), C-57, and C-58, each with
+  a note on its row.
+
+At `0e074244` the other gates passed from a fresh clean clone
+(2026-11-13, 16:03Z to 17:11Z): the tool lock; `check`; `evaluate` (609
+of 609 images identical; evaluator image `89052df019b8-009c2eba5655`);
+the U-Boot rehearsal (7 cases in 9 attempts, 2 refused because the
+firmware had booted on a VS-domain hart, and repeated); the kernel's
+second build (23 outputs identical); `./be model-check` (as above, with
+the model's differential check); and the model's evaluator.
+
+Its `verify` ran three times on `lx2`:
+
+- the first, from 17:11Z on 2026-11-13, was ended by a loss of power at
+  about 08:23Z on 2026-11-14, in its last arm, the ring's bounded check;
+  every earlier arm had ended;
+- the second, from 13:58Z on 2026-11-14, ended at 14:16Z in the WP
+  arm's first qualification case: its container received SIGTERM from
+  no podman command, at the moment podman's rootless pause process was
+  replaced. No out-of-memory kill, core dump, or kernel event was
+  logged, and the cause was not found; a run of that arm alone then
+  started normally. `verify.sh` stopped without the arm's line (below);
+- the third, from 14:26Z on 2026-11-14 to 06:05Z on 2026-11-15
+  (56,297 s), is the point's record. Both partial records are kept
+  beside it.
+
+Against the base, M11-2's point at the earlier limits, 17 of the 32
+record files are equal once run metadata is set aside (9 byte for
+byte). Each difference in the other 15, read run by run:
+
+- the limits themselves: the stated limit in the WP arm's rounds, in
+  CN's assumptions and rounds, in Leaf A's bounded check's assumptions,
+  and in the ring's assumptions; one qualification case's "killed after
+  120 s"; and the digest of the qualification's expectations, a file
+  that carries the limits;
+- the litmus record's digest and the five tests' digests, written again
+  at this point;
+- runs that reached the earlier limit in the base and end within the
+  doubled one, each recorded as an effect of the limit:
+  - the WP arm: eight goals of round 0 (13 timeouts in the base, 5
+    here) and Leaf A's `D_reads_87` and `D_reads_97` in round 1, all
+    closed by Alt-Ergo, so 130 of 134 goals are proved, as at the lock
+    commit's baseline. Every mutant's verdict is unchanged (18 killed),
+    and the masks no longer name the two goals;
+  - the WP qualification case `vacuity-ensures`: the prover gave up
+    within the limit where it reached it in the base; the verdict is
+    unproved, as required, in both;
+  - Leaf A's bounded check of `check_frame` under the SAT solver:
+    successful (284 properties) where it reached 300 s in the base; the
+    arm's verdict is SUCCESSFUL in both;
+  - the ring's three rows that reached 600 s in the base: `acquire` at
+    512 bytes under cvc5 now ends with its 15 failed properties, as at
+    the lock commit's baseline, and `post` and `post_words` at 4,096
+    bytes under the SAT solver end successful. The ring's totals (13,547
+    of 14,931 properties checked) are unchanged; its mutants now run
+    the two runs that those rows complete (`not_run` 2 to 0), and every
+    mutant's verdict is unchanged;
+- the ring's recorded finding `room` (the specification's room row
+  against the leaf, a specification mismatch): the same assertion and
+  reason, and the same four contradictions confirmed by its reproducer,
+  with different values in its counterexample. Its trace job run again
+  (2026-11-15) reproduces each point's values exactly at that point's
+  commit, and the harness compiles `mvp-layout.h`, which M11-3 changed:
+  another witness of the same finding, not a verdict;
+- the near-limit suite's line: 4,419 runs, 1 near its limit, 273 over
+  it (the base: 4,331, 19, and 326).
+
+No verdict changed, and every changed count is an effect of the limit:
+no stop 9. Leaf A's code is token-equal to the base's.
+
+### Departures and readings for review
+
+- **The point's `verify` ran three times**, for the reasons above; its
+  record is the third run, from the start.
+- **`verify.sh` stops at a suite with no result line.** Under
+  `set -euo pipefail`, its search for the suite's result line fails and
+  ends the script before that suite's line is written, so the suite is
+  not named and the later suites do not run. It changed nothing here,
+  since the run was repeated; it is left unchanged, as the arms' tools
+  are, and listed as a residual.
+- **The witness of `room`** is read as above: a bounded model checker's
+  counterexample is one assignment among many, and this one follows
+  from the compiled inputs.
