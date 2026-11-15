@@ -75,7 +75,7 @@
   ],
   "secret": {"page": 2, "bytes": "0x20", "hex": "42452d4d56502d4d322d544553542d5345435245542d30303030303030303030"},
   "measurement": {"domain": 1, "inputs": ["kernel", "dtb", "secret_page", "configuration_identity"]},
-  "accepted_exits": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "ipi", "denial", "mgmt"],
+  "accepted_exits": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "tick", "denial", "mgmt"],
   "domains": [
     {
       "index": 0,
@@ -180,7 +180,7 @@
       "RESULT fail"
     ],
     "counters": {
-      "ipi": {"exact": 1},
+      "ipi": {"exact": 0},
       "time": {"exact": 0},
       "dbcn_byte": {"exact": 0},
       "srst": {"exact": 1},
@@ -188,7 +188,7 @@
       "exits": {"min": 1, "max": 1048576},
       "ring_peak": {"min": 16, "max": 16384}
     },
-    "exit_classes": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "ipi"],
+    "exit_classes": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "tick"],
     "concurrency": {
       "overlap": "half-of-shorter",
       "alternations": 8

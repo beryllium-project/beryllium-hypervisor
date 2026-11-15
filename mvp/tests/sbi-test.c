@@ -6,21 +6,22 @@
  *          plan's SBI table (version 3), the DBCN range check at each
  *          window's edges and leaf boundaries, the SRST type and reason grid
  *          with a shutdown that stops only the calling domain and terminal
- *          reboots, TIME values, exit classes, the IPI class (the
- *          supervisor software interrupt, from VS or VU) and B7's wfi and
- *          slice exits now terminal, each domain's exit ceiling, per-hart
+ *          reboots, TIME values, exit classes, the tick before the ceiling,
+ *          an unexpected supervisor software interrupt terminal, and B7's
+ *          wfi exit terminal, each VS domain's exit ceiling, per-hart
  *          counters, the frame return and the first-entry frame, the guest
- *          controls (SSIE, VTW clear), the per-hart line console and its
+ *          controls (SSIE and STIE, VTW clear), the per-hart line console and its
  *          LINE records (CR drop, byte filter, full-buffer split, flush, a
- *          full ring, and two harts whose lines never mix), the IPI's PING
- *          and PONG (empty inbound ring, unknown record, malformed ring, full
- *          outbound ring), the READY, ENTERED, SHUTDOWN, and FAIL records,
+ *          full ring, and two harts whose lines never mix), the tick's PING
+ *          and PONG (empty inbound ring, unknown record, malformed ring,
+ *          room-kept outbound ring), the READY, ENTERED, SHUTDOWN, and FAIL
+ *          records,
  *          a failed domain hart's wait for hart 0's ACK, whose window
  *          restarts on hart 0's progress through the outbound ring's tail
  *          (Q10, Plan revision M1-B), with the board's backlog replayed,
  *          the denial action in an image that accepts denials and the
  *          terminal guest-page fault in one that does not, the counters'
- *          sum (exits = sbi + ipi + denials), the DENIAL record, its
+ *          sum (exits = sbi + denials, ticks apart), the DENIAL record, its
  *          refusals and a full ring, and hart 0's loop reconciling
  *          SHUTDOWN's denial word (planning/mvp-m1-plan.md, "The denial
  *          path"), the per-domain CSR set and SPP logic, the firmware HSM
@@ -326,6 +327,8 @@ static void test_constants(void)
 	CHECK(strlen(BE_MVP_G1_PREFIX) == BE_MVP_DOMAIN_PREFIX_LENGTH);
 	CHECK(BE_MVP_PRINT_LINE_BYTES == 268U);
 	CHECK(BE_MVP_SCAUSE_SUPERVISOR_SOFTWARE == SSI);
+	CHECK(BE_MVP_SCAUSE_SUPERVISOR_TIMER ==
+	      (BE_MVP_SCAUSE_INTERRUPT | 5U));
 	CHECK(BE_MVP_VCSR_COUNT == 11U);
 	CHECK(BE_MVP_GPR_A2 == 11U);
 	CHECK(BE_R4_GPR_A0 == 9U && BE_R4_GPR_A1 == 10U);
@@ -337,10 +340,11 @@ static void test_constants(void)
 	CHECK(__builtin_offsetof(struct be_mvp_exit, vsatp) == 336U);
 	CHECK(__builtin_offsetof(struct be_mvp_exit, time) == 344U);
 	CHECK(__builtin_offsetof(struct be_mvp_exit, vsstatus) == 352U);
-	/* Twelve counters, and M7's served console reads. */
-	CHECK(sizeof(struct be_mvp_counts) == 13U * sizeof(be_u64));
+	/* Twelve original counters, M7's console reads, and M11's tick. */
+	CHECK(sizeof(struct be_mvp_counts) == 14U * sizeof(be_u64));
 	/* The image checker reads the exit ceiling at the state's start. */
 	CHECK(__builtin_offsetof(struct be_mvp_state, exit_ceiling) == 0U);
+	CHECK(sizeof(struct be_mvp_state) == 440U);
 	CHECK(sizeof(struct be_mvp_state) <= BE_MVP_BLOCK_STATE_BYTES);
 	/* The monitor's own firmware calls (D15). */
 	CHECK(BE_MVP_FW_EID_HSM == EID_HSM && BE_MVP_FW_EID_IPI == EID_IPI);
@@ -361,7 +365,7 @@ static void test_class_names(void)
 		"exit-budget", "run-timeout", "resume", "console",
 		"guest-failure", "guest-reboot", "shutdown-returned",
 		"firmware", "hart-start", "hart-ready", "ring", "ipi",
-		"measurement", "mgmt", "log",
+		"measurement", "mgmt", "log", "tick", "boundary",
 	};
 	unsigned int index;
 
@@ -388,7 +392,7 @@ static struct be_mvp_controls armed_controls(void)
 		.henvcfg = ARMED_HENVCFG,
 		.hgeie = 0U,
 		.vstimecmp = ALL_ONES,
-		.sie = 0x2U,
+		.sie = 0x22U,
 		.sstatus = BE_U64_C(0x200000000),
 		.hgatp = BE_U64_C(0x8000100000102020),
 		.vsatp = 0U,
@@ -415,6 +419,7 @@ static void test_controls(void)
 	CHECK(BE_MVP_HSTATUS_RESUME_MASK == 0x73f280U);
 	CHECK(BE_MVP_HSTATUS_RESUME_CONTROLS == 0x80U);
 	CHECK(BE_MVP_SIE_SSIE == 0x2U && BE_MVP_SIE_STIE == 0x20U);
+	CHECK(BE_MVP_SIE_DOMAIN == 0x22U);
 	CHECK(BE_MVP_SIE_CONTROL == 0x22U);
 	CHECK(BE_MVP_HVIP_VS_BITS == 0x444U);
 	CHECK(BE_MVP_HEDELEG == ARMED_HEDELEG);
@@ -547,14 +552,14 @@ static void test_controls(void)
 		CHECK(armed_valid(&controls) ==
 		      (bit == 2U || bit == 6U || bit == 10U ? 0 : 1));
 	}
-	/* sie: exactly SSIE, the IPI; STIE is hart 0's alone. */
+	/* Scenario sie: the tick, with SSIE enabled to expose an IPI. */
 	for (bit = 0U; bit < 64U; ++bit) {
 		controls = armed_controls();
 		controls.sie ^= BE_U64_C(1) << bit;
 		CHECK(armed_valid(&controls) == 0);
 	}
 	controls = armed_controls();
-	controls.sie = BE_MVP_SIE_CONTROL;
+	controls.sie = BE_MVP_SIE_SSIE;
 	CHECK(armed_valid(&controls) == 0);
 	/* HS sstatus: SIE, SPIE, SPP, FS, VS, XS, SUM, and MXR all clear. */
 	for (bit = 0U; bit < 64U; ++bit) {
@@ -941,7 +946,7 @@ static void test_after_shutdown(void)
 	struct be_mvp_state other = fresh_state();
 	struct be_mvp_exit record = ecall(BE_MVP_SBI_EID_SRST, 0U, 0U, 0U, 0U);
 	struct be_mvp_exit base = ecall(BE_MVP_SBI_EID_BASE, 0U, 0U, 0U, 0U);
-	struct be_mvp_exit ipi = exit_with(SSI, ECALL_PC);
+	struct be_mvp_exit tick = exit_with(STI, ECALL_PC);
 	struct be_mvp_result result;
 
 	SCENARIO();
@@ -956,17 +961,17 @@ static void test_after_shutdown(void)
 	      BE_MVP_ACTION_SHUTDOWN);
 	CHECK(other.phase == BE_MVP_PHASE_STOPPED);
 	CHECK(other.counts.exits == 2U && other.counts.srst == 1U);
-	/* An exit of a stopped domain, an IPI included, fails its hart. */
+	/* An exit of a stopped VS domain, a tick included, fails its hart. */
 	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &base, &result) ==
 	      BE_MVP_ACTION_TERMINAL);
 	CHECK(result.failure == BE_MVP_CLASS_EXCEPTION);
 	CHECK(state.phase == BE_MVP_PHASE_FAILED);
 	CHECK(state.counts.exits == 1U);
-	CHECK(be_mvp_handle_exit(&other, &windows[1], &no_leaf, &ipi,
+	CHECK(be_mvp_handle_exit(&other, &windows[1], &no_leaf, &tick,
 				 &result) ==
 	      BE_MVP_ACTION_TERMINAL);
 	CHECK(result.failure == BE_MVP_CLASS_EXCEPTION);
-	CHECK(other.counts.ipi == 0U);
+	CHECK(other.counts.ipi == 0U && other.counts.tick == 0U);
 
 	state = fresh_state();
 	record = ecall(BE_MVP_SBI_EID_SRST, 0U, 0U, 1U, 0U);
@@ -1067,7 +1072,6 @@ static void test_terminal_exits(void)
 		{ BE_MVP_SCAUSE_INTERRUPT | 2U, BE_MVP_CLASS_INTERRUPT },
 		{ BE_MVP_SCAUSE_INTERRUPT | 4U, BE_MVP_CLASS_INTERRUPT },
 		{ BE_MVP_SCAUSE_INTERRUPT | 13U, BE_MVP_CLASS_INTERRUPT },
-		{ BE_MVP_SCAUSE_INTERRUPT | 5U, BE_MVP_CLASS_INTERRUPT },
 		{ BE_MVP_SCAUSE_INTERRUPT | 5U | HIGH_BIT,
 		  BE_MVP_CLASS_INTERRUPT },
 		{ BE_MVP_SCAUSE_INTERRUPT | 6U, BE_MVP_CLASS_INTERRUPT },
@@ -1247,11 +1251,11 @@ static void test_apply_return(void)
 	be_mvp_apply_return((struct be_r4_frame *)0, &result);
 	be_mvp_apply_return(&record.frame, (const struct be_mvp_result *)0);
 	CHECK(record.frame.sepc == ECALL_PC + 4U);
-	/* The IPI, a shutdown, and terminal decisions change nothing: the
-	 * IPI resumes exactly where it struck. */
+	/* Tick, probe IPI, shutdown, and terminal decisions change nothing. */
 	{
 		static const enum be_mvp_action untouched[] = {
 			BE_MVP_ACTION_NONE, BE_MVP_ACTION_IPI,
+			BE_MVP_ACTION_TICK,
 			BE_MVP_ACTION_SHUTDOWN, BE_MVP_ACTION_GUEST_FAILURE,
 			BE_MVP_ACTION_GUEST_REBOOT, BE_MVP_ACTION_TERMINAL,
 		};
@@ -1542,39 +1546,33 @@ static void test_console(void)
 				  EXIT_TIME) == 0U);
 	CHECK(outbound[0].failed == 0U && outbound[1].failed == 0U);
 
-	/* A full ring: the line is refused, never overwritten, and the hart
-	 * fails as ring; a later flush cannot post either. */
+	/* The room guard fails before a normal line consumes the reserve. */
 	SCENARIO();
 	harts[0] = fresh_state();
 	open_outbound(0U, BE_MVP_RING_MIN_BYTES);
 	memset(input, 'f', sizeof(input));
 	input[100] = '\n';
-	for (index = 0U; index < 4U; ++index) {
-		CHECK(be_mvp_console_feed(&harts[0], &outbound[0], input, 101U,
-					  EXIT_TIME) == 1U);
-		CHECK(be_mvp_ring_publish(&outbound[0]) == 1);
-	}
-	CHECK(harts[0].counts.lines == 4U &&
-	      ring_index[0][0].value == 4U * 120U);
+	CHECK(be_mvp_console_feed(&harts[0], &outbound[0], input, 101U,
+				  EXIT_TIME) == 1U);
+	CHECK(be_mvp_ring_publish(&outbound[0]) == 1);
+	CHECK(harts[0].counts.lines == 1U && ring_index[0][0].value == 120U);
 	CHECK(be_mvp_console_feed(&harts[0], &outbound[0], input, 101U,
 				  EXIT_TIME) == BE_MVP_CONSOLE_FULL);
 	CHECK(harts[0].phase == BE_MVP_PHASE_FAILED &&
 	      harts[0].failure == BE_MVP_CLASS_RING);
-	CHECK(harts[0].counts.lines == 4U && outbound[0].failed == 1U);
+	CHECK(harts[0].counts.lines == 1U && outbound[0].failed == 0U &&
+	      outbound[0].cursor == 120U);
 	CHECK(be_mvp_console_feed(&harts[0], &outbound[0], input, 1U,
 				  EXIT_TIME) == BE_MVP_CONSOLE_INVALID);
 	harts[0].console.length = 3U;
 	CHECK(be_mvp_console_flush(&harts[0], &outbound[0], EXIT_TIME) ==
-	      BE_MVP_CONSOLE_FULL);
+	      1U);
 	CHECK(harts[0].failure == BE_MVP_CLASS_RING);
-	CHECK(ring_index[0][0].value == 4U * 120U);
-	/* Hart 0 still drains the four lines the ring took. */
-	CHECK(be_mvp_ring_acquire(&drain_view[0]) == 4U * 120U);
-	for (index = 0U; index < 4U; ++index) {
-		CHECK(be_mvp_ring_take(&drain_view[0], &taken) ==
-		      BE_MVP_RING_RECORD);
-		CHECK(taken.type == BE_MVP_RECORD_LINE && taken.length == 100U);
-	}
+	CHECK(ring_index[0][0].value == 120U && outbound[0].cursor == 144U);
+	/* Hart 0 drains the published normal line; the failure line is pending. */
+	CHECK(be_mvp_ring_acquire(&drain_view[0]) == 120U);
+	CHECK(be_mvp_ring_take(&drain_view[0], &taken) == BE_MVP_RING_RECORD);
+	CHECK(taken.type == BE_MVP_RECORD_LINE && taken.length == 100U);
 	CHECK(be_mvp_ring_take(&drain_view[0], &taken) == BE_MVP_RING_EMPTY);
 }
 
@@ -1713,7 +1711,7 @@ static void test_vcsr(void)
 				     index == BE_MVP_VCSR_VSTIMECMP ?
 				     ALL_ONES : 0U));
 	be_mvp_vcsr_initial((be_u64 *)0);
-	/* SPP follows SPVP alone: an IPI that struck VU code resumes in VU
+	/* SPP follows SPVP alone: a tick that struck VU code resumes in VU
 	 * mode. */
 	record = exit_with(SSI, ECALL_PC);
 	record.hstatus = BE_U64_C(0x200000080);
@@ -1752,8 +1750,8 @@ static void test_vcsr(void)
 	CHECK(strcmp(be_mvp_vcsr_name(99U), "invalid") == 0);
 }
 
-/* The IPI exit, and B7's slice and idling wfi, now terminal. */
-static void test_ipi_exit(void)
+/* The tick precedes the ceiling; every other interrupt is terminal. */
+static void test_tick_exit(void)
 {
 	struct be_mvp_state state;
 	struct be_mvp_exit record;
@@ -1761,49 +1759,80 @@ static void test_ipi_exit(void)
 	unsigned int spvp;
 
 	SCENARIO();
-	/* The supervisor software interrupt at V=1: the IPI, from VS or VU,
-	 * at any PC; it resumes where it struck. */
-	for (spvp = 0U; spvp < 2U; ++spvp) {
-		state = fresh_state();
-		record = exit_with(SSI, ECALL_PC);
-		if (spvp == 0U)
-			record.hstatus &= ~BE_MVP_HSTATUS_SPVP;
-		CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record,
-					 &result) == BE_MVP_ACTION_IPI);
-		CHECK(result.resume_pc == ECALL_PC && result.error == 0 &&
-		      result.value == 0U &&
-		      result.failure == BE_MVP_CLASS_NONE);
-		CHECK(state.counts.ipi == 1U && state.counts.exits == 1U &&
-		      call_sum(&state.counts) == 0U);
-		CHECK(state.phase == BE_MVP_PHASE_RUNNING);
-	}
-	state = fresh_state();
-	record = exit_with(SSI, ALL_ONES);
-	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record, &result) ==
-	      BE_MVP_ACTION_IPI);
-	CHECK(result.resume_pc == ALL_ONES);
-	/* The registers of an SBI call do not make an IPI a call. */
-	state = fresh_state();
-	record = exit_with(SSI, ECALL_PC);
-	record.frame.gpr[BE_R4_GPR_A7] = BE_MVP_SBI_EID_SRST;
-	record.frame.gpr[BE_R4_GPR_A6] = 0U;
-	record.frame.gpr[BE_R4_GPR_A0] = 0U;
-	record.frame.gpr[BE_R4_GPR_A1] = 0U;
-	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record, &result) ==
-	      BE_MVP_ACTION_IPI);
-	CHECK(state.phase == BE_MVP_PHASE_RUNNING && state.counts.srst == 0U);
-	/* B7's HS slice, the supervisor timer at V=1, is terminal: domain
-	 * harts never enable STIE. */
+	/* The supervisor timer at V=1, from VS or VU, resumes where it struck. */
 	for (spvp = 0U; spvp < 2U; ++spvp) {
 		state = fresh_state();
 		record = exit_with(STI, ECALL_PC);
 		if (spvp == 0U)
 			record.hstatus &= ~BE_MVP_HSTATUS_SPVP;
 		CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record,
+					 &result) == BE_MVP_ACTION_TICK);
+		CHECK(result.resume_pc == ECALL_PC && result.error == 0 &&
+		      result.value == 0U &&
+		      result.failure == BE_MVP_CLASS_NONE);
+		CHECK(state.counts.tick == 1U && state.counts.exits == 0U &&
+		      state.counts.ipi == 0U &&
+		      call_sum(&state.counts) == 0U);
+		CHECK(state.phase == BE_MVP_PHASE_RUNNING);
+	}
+	state = fresh_state();
+	record = exit_with(STI, ALL_ONES);
+	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record, &result) ==
+	      BE_MVP_ACTION_TICK);
+	CHECK(result.resume_pc == ALL_ONES);
+	/* The registers of an SBI call do not make a tick a call. */
+	state = fresh_state();
+	record = exit_with(STI, ECALL_PC);
+	record.frame.gpr[BE_R4_GPR_A7] = BE_MVP_SBI_EID_SRST;
+	record.frame.gpr[BE_R4_GPR_A6] = 0U;
+	record.frame.gpr[BE_R4_GPR_A0] = 0U;
+	record.frame.gpr[BE_R4_GPR_A1] = 0U;
+	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record, &result) ==
+	      BE_MVP_ACTION_TICK);
+	CHECK(state.phase == BE_MVP_PHASE_RUNNING && state.counts.srst == 0U);
+	/* A tick is never charged and cannot trip a zero ceiling. */
+	state = (struct be_mvp_state)BE_MVP_STATE_INITIALIZER(0U);
+	record = exit_with(STI, ECALL_PC);
+	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record, &result) ==
+	      BE_MVP_ACTION_TICK);
+	CHECK(state.counts.tick == 1U && state.counts.exits == 0U);
+	record = ecall(BE_MVP_SBI_EID_BASE, 0U, 0U, 0U, 0U);
+	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record, &result) ==
+	      BE_MVP_ACTION_TERMINAL);
+	CHECK(result.failure == BE_MVP_CLASS_EXIT_BUDGET);
+	/* A nonzero reserved word or a non-guest origin is not a tick. */
+	state = fresh_state();
+	record = exit_with(STI, ECALL_PC);
+	record.frame.reserved = 1U;
+	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record, &result) ==
+	      BE_MVP_ACTION_TERMINAL);
+	CHECK(result.failure == BE_MVP_CLASS_EXCEPTION &&
+	      state.counts.exits == 1U && state.counts.tick == 0U);
+	state = fresh_state();
+	record = exit_with(STI, ECALL_PC);
+	record.hstatus &= ~BE_MVP_HSTATUS_SPV;
+	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record, &result) ==
+	      BE_MVP_ACTION_TERMINAL);
+	CHECK(result.failure == BE_MVP_CLASS_EXCEPTION &&
+	      state.counts.exits == 1U && state.counts.tick == 0U);
+	/* A software interrupt is now an unexpected interrupt. */
+	for (spvp = 0U; spvp < 2U; ++spvp) {
+		state = fresh_state();
+		record = exit_with(SSI, ECALL_PC);
+		if (spvp == 0U)
+			record.hstatus &= ~BE_MVP_HSTATUS_SPVP;
+		CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record,
 					 &result) == BE_MVP_ACTION_TERMINAL);
 		CHECK(result.failure == BE_MVP_CLASS_INTERRUPT);
-		CHECK(state.counts.ipi == 0U);
+		CHECK(state.counts.ipi == 0U && state.counts.tick == 0U &&
+		      state.counts.exits == 1U);
 	}
+	/* The ceiling remains first for every exit other than the tick. */
+	state = (struct be_mvp_state)BE_MVP_STATE_INITIALIZER(0U);
+	record = exit_with(SSI, ECALL_PC);
+	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record, &result) ==
+	      BE_MVP_ACTION_TERMINAL);
+	CHECK(result.failure == BE_MVP_CLASS_EXIT_BUDGET);
 	/* B7's idling wfi: with VTW clear a guest wfi runs natively, so a
 	 * virtual-instruction exit for one is terminal, from VS or VU. */
 	for (spvp = 0U; spvp < 2U; ++spvp) {
@@ -1816,17 +1845,6 @@ static void test_ipi_exit(void)
 					 &result) == BE_MVP_ACTION_TERMINAL);
 		CHECK(result.failure == BE_MVP_CLASS_VIRTUAL_INSTRUCTION);
 	}
-	/* IPIs count against the ceiling. */
-	state = (struct be_mvp_state)BE_MVP_STATE_INITIALIZER(2U);
-	record = exit_with(SSI, ECALL_PC);
-	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record, &result) ==
-	      BE_MVP_ACTION_IPI);
-	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record, &result) ==
-	      BE_MVP_ACTION_IPI);
-	CHECK(be_mvp_handle_exit(&state, &window, &no_leaf, &record, &result) ==
-	      BE_MVP_ACTION_TERMINAL);
-	CHECK(result.failure == BE_MVP_CLASS_EXIT_BUDGET);
-	CHECK(state.counts.exits == 3U && state.counts.ipi == 2U);
 }
 
 /* Hart 0's inbound ring to a domain hart, both views. */
@@ -1861,39 +1879,43 @@ static void ping(be_u64 count, be_u64 time)
 	(void)be_mvp_ring_acquire(&inbound);
 }
 
-/* The domain hart's IPI exit, and its service at @now. */
+/* The VS-domain hart's tick exit, and its service at @now. */
 static be_u64 serve(be_u64 now)
 {
-	struct be_mvp_exit record = exit_with(SSI, ECALL_PC);
+	struct be_mvp_exit record = exit_with(STI, ECALL_PC);
 	struct be_mvp_result result;
+	be_u64 posted = ALL_ONES;
 
 	record.time = now - 5U;
 	CHECK(be_mvp_handle_exit(&harts[1], &windows[1], &no_leaf, &record,
 				 &result) ==
-	      BE_MVP_ACTION_IPI);
-	return be_mvp_ipi_serve(&harts[1], &inbound, &outbound[1], &record,
-				now);
+	      BE_MVP_ACTION_TICK);
+	if (!be_mvp_ipi_serve(&harts[1], &inbound, &outbound[1], &record,
+			      now, &posted))
+		return ALL_ONES;
+	return posted;
 }
 
-static void expect_ipi_failed(enum be_mvp_class failure)
+static void expect_tick_failed(enum be_mvp_class failure)
 {
 	CHECK(harts[1].phase == BE_MVP_PHASE_FAILED &&
 	      harts[1].failure == failure);
 }
 
-static void test_ipi_serve(void)
+static void test_tick_serve(void)
 {
-	struct be_mvp_exit record = exit_with(SSI, ECALL_PC);
+	struct be_mvp_exit record = exit_with(STI, ECALL_PC);
+	be_u64 posted;
 	be_u64 index;
 
-	/* One PING: one PONG with the PING's time, the receipt, and SPV. */
+	/* One PING: receipt is the handler's read, not the earlier exit time. */
 	SCENARIO();
 	open_harts();
 	open_inbound(1U);
 	ping(1U, 0x1000U);
 	CHECK(serve(0x2000U) == 1U);
 	CHECK(harts[1].phase == BE_MVP_PHASE_RUNNING &&
-	      harts[1].counts.ipi == 1U);
+	      harts[1].counts.tick == 1U && harts[1].counts.ipi == 0U);
 	CHECK(be_mvp_ring_release(&inbound) == 1 &&
 	      inbound_index[1].value == 16U);
 	CHECK(be_mvp_ring_publish(&outbound[1]) == 1);
@@ -1902,9 +1924,9 @@ static void test_ipi_serve(void)
 	CHECK(taken.type == BE_MVP_RECORD_PONG && taken.domain == 1U &&
 	      taken.time == 0x2000U && taken.length == 24U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_PONG_SENT) == 0x1000U);
-	CHECK(be_mvp_record_word(&taken, BE_MVP_PONG_RECEIVED) == 0x2000U - 5U);
+	CHECK(be_mvp_record_word(&taken, BE_MVP_PONG_RECEIVED) == 0x2000U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_PONG_SPV) == 1U);
-	/* Two PINGs before one IPI: two PONGs, in order. */
+	/* Two PINGs before one tick: two PONGs, in order. */
 	ping(2U, 0x3000U);
 	CHECK(serve(0x4000U) == 2U);
 	CHECK(be_mvp_ring_publish(&outbound[1]) == 1);
@@ -1915,24 +1937,25 @@ static void test_ipi_serve(void)
 		CHECK(be_mvp_record_word(&taken, BE_MVP_PONG_SENT) ==
 		      0x3000U + index);
 	}
-	CHECK(harts[1].counts.ipi == 2U && harts[1].counts.exits == 2U);
+	CHECK(harts[1].counts.tick == 2U && harts[1].counts.exits == 0U);
 	/* A PONG reports SPV as the record has it. */
 	ping(1U, 0x5000U);
 	record.hstatus &= ~BE_MVP_HSTATUS_SPV;
 	CHECK(be_mvp_ipi_serve(&harts[1], &inbound, &outbound[1], &record,
-			       0x6000U) == 1U);
+			       0x6000U, &posted) == 1 && posted == 1U);
 	CHECK(be_mvp_ring_publish(&outbound[1]) == 1);
 	CHECK(be_mvp_ring_acquire(&drain_view[1]) == 40U);
 	CHECK(be_mvp_ring_take(&drain_view[1], &taken) == BE_MVP_RING_RECORD);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_PONG_SPV) == 0U);
 
-	/* An IPI with no PING: FAIL ipi. */
+	/* A tick with no PING is a successful empty serve. */
 	SCENARIO();
 	open_harts();
 	open_inbound(1U);
 	(void)be_mvp_ring_acquire(&inbound);
 	CHECK(serve(0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_IPI);
+	CHECK(harts[1].phase == BE_MVP_PHASE_RUNNING &&
+	      harts[1].failure == BE_MVP_CLASS_NONE);
 	CHECK(outbound[1].cursor == 0U);
 	/* Unacquired PINGs are not there yet. */
 	SCENARIO();
@@ -1942,16 +1965,16 @@ static void test_ipi_serve(void)
 			       (const be_u8 *)0, 0U) == 1);
 	CHECK(be_mvp_ring_publish(&inbound_writer) == 1);
 	CHECK(serve(0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_IPI);
-	/* A record other than PING: FAIL ipi, even after a PING. */
+	CHECK(harts[1].phase == BE_MVP_PHASE_RUNNING);
+	/* A record other than PING: FAIL tick, even after a PING. */
 	SCENARIO();
 	open_harts();
 	open_inbound(1U);
 	CHECK(be_mvp_ring_post(&inbound_writer, BE_MVP_RECORD_ACK, 1U,
 			       (const be_u8 *)0, 0U) == 1);
 	ping(0U, 0U);
-	CHECK(serve(0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_IPI);
+	CHECK(serve(0x2000U) == ALL_ONES);
+	expect_tick_failed(BE_MVP_CLASS_TICK);
 	SCENARIO();
 	open_harts();
 	open_inbound(1U);
@@ -1960,8 +1983,8 @@ static void test_ipi_serve(void)
 	CHECK(be_mvp_ring_post(&inbound_writer, BE_MVP_RECORD_ACK, 2U,
 			       (const be_u8 *)0, 0U) == 1);
 	ping(0U, 0U);
-	CHECK(serve(0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_IPI);
+	CHECK(serve(0x2000U) == ALL_ONES);
+	expect_tick_failed(BE_MVP_CLASS_TICK);
 	/* A PING with a payload is not a PING. */
 	SCENARIO();
 	open_harts();
@@ -1969,16 +1992,16 @@ static void test_ipi_serve(void)
 	CHECK(be_mvp_ring_post(&inbound_writer, BE_MVP_RECORD_PING, 1U,
 			       (const be_u8 *)"x", 1U) == 1);
 	ping(0U, 0U);
-	CHECK(serve(0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_IPI);
+	CHECK(serve(0x2000U) == ALL_ONES);
+	expect_tick_failed(BE_MVP_CLASS_TICK);
 	/* A malformed inbound ring: FAIL ring. */
 	SCENARIO();
 	open_harts();
 	open_inbound(1U);
 	ping(1U, 0x1000U);
 	inbound_bytes[1] = 0U;
-	CHECK(serve(0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_RING);
+	CHECK(serve(0x2000U) == ALL_ONES);
+	expect_tick_failed(BE_MVP_CLASS_RING);
 	/* A full outbound ring: FAIL ring. */
 	SCENARIO();
 	open_harts();
@@ -1990,9 +2013,9 @@ static void test_ipi_serve(void)
 				       16U) == 1);
 	CHECK(outbound[1].cursor == 384U);
 	ping(4U, 0x1000U);
-	CHECK(serve(0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_RING);
-	CHECK(outbound[1].cursor == 384U + 3U * 40U);
+	CHECK(serve(0x2000U) == ALL_ONES);
+	expect_tick_failed(BE_MVP_CLASS_RING);
+	CHECK(outbound[1].cursor == 384U);
 	/* A hart that is not running, and absent arguments. */
 	SCENARIO();
 	open_harts();
@@ -2000,26 +2023,161 @@ static void test_ipi_serve(void)
 	ping(1U, 0x1000U);
 	harts[1].phase = BE_MVP_PHASE_STOPPED;
 	CHECK(be_mvp_ipi_serve(&harts[1], &inbound, &outbound[1], &record,
-			       0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_IPI);
+			       0x2000U, &posted) == 0);
+	expect_tick_failed(BE_MVP_CLASS_TICK);
 	harts[1] = fresh_state();
 	CHECK(be_mvp_ipi_serve(&harts[1], (struct be_mvp_ring *)0,
-			       &outbound[1], &record, 0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_IPI);
+			       &outbound[1], &record, 0x2000U, &posted) == 0);
+	expect_tick_failed(BE_MVP_CLASS_TICK);
 	harts[1] = fresh_state();
 	CHECK(be_mvp_ipi_serve(&harts[1], &inbound, (struct be_mvp_ring *)0,
-			       &record, 0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_IPI);
+			       &record, 0x2000U, &posted) == 0);
+	expect_tick_failed(BE_MVP_CLASS_TICK);
 	harts[1] = fresh_state();
 	CHECK(be_mvp_ipi_serve(&harts[1], &inbound, &outbound[1],
-			       (const struct be_mvp_exit *)0, 0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_IPI);
+			       (const struct be_mvp_exit *)0, 0x2000U,
+			       &posted) == 0);
+	expect_tick_failed(BE_MVP_CLASS_TICK);
 	CHECK(be_mvp_ipi_serve((struct be_mvp_state *)0, &inbound,
-			       &outbound[1], &record, 0x2000U) == 0U);
+			       &outbound[1], &record, 0x2000U, &posted) == 0);
+	CHECK(be_mvp_ipi_serve(&harts[1], &inbound, &outbound[1], &record,
+			       0x2000U, (be_u64 *)0) == 0);
 	/* The PING is still there for a hart that can serve it. */
 	harts[1] = fresh_state();
 	CHECK(be_mvp_ipi_serve(&harts[1], &inbound, &outbound[1], &record,
-			       0x2000U) == 1U);
+			       0x2000U, &posted) == 1 && posted == 1U);
+}
+
+static be_u64 reserve_cursor(be_u64 payload, be_u64 shortfall)
+{
+	return BE_MVP_VARIANT_OUTBOUND_RING_BYTES -
+	       BE_MVP_FAILURE_ROOM_BYTES - be_mvp_ring_record_bytes(payload) +
+	       shortfall;
+}
+
+static void place_writer(be_u64 payload, be_u64 shortfall)
+{
+	open_outbound(1U, BE_MVP_VARIANT_OUTBOUND_RING_BYTES);
+	outbound[1].cursor = reserve_cursor(payload, shortfall);
+	outbound[1].peak = outbound[1].cursor;
+}
+
+static void room_failed(be_u64 cursor)
+{
+	CHECK(harts[1].phase == BE_MVP_PHASE_FAILED &&
+	      harts[1].failure == BE_MVP_CLASS_RING);
+	CHECK(outbound[1].cursor == cursor && outbound[1].failed == 0U);
+}
+
+/* Every non-failure post keeps 360 bytes; FAILED posts use the reserve. */
+static void test_failure_room(void)
+{
+	struct be_mvp_controls controls = armed_controls();
+	struct be_mvp_exit entry;
+	struct be_mvp_denial denial = { 0 };
+	struct be_mvp_result result = {
+		.action = BE_MVP_ACTION_MGMT,
+		.fid = BE_MVP_SBI_MGMT_PAUSE,
+		.target = 0U,
+	};
+	be_u64 detail[BE_MVP_FAIL_DETAIL_WORDS] = { 0 };
+	be_u64 cursor;
+	be_u64 posted;
+
+	SCENARIO();
+	open_harts();
+	cursor = reserve_cursor(BE_MVP_READY_WORDS * 8U, 0U);
+	place_writer(BE_MVP_READY_WORDS * 8U, 0U);
+	CHECK(be_mvp_post_ready(&harts[1], &outbound[1], &controls, 1U) == 1);
+	CHECK(outbound[1].cursor == cursor +
+	      be_mvp_ring_record_bytes(BE_MVP_READY_WORDS * 8U));
+	open_harts();
+	cursor = reserve_cursor(BE_MVP_READY_WORDS * 8U, 8U);
+	place_writer(BE_MVP_READY_WORDS * 8U, 8U);
+	CHECK(be_mvp_post_ready(&harts[1], &outbound[1], &controls, 1U) == 0);
+	room_failed(cursor);
+
+	SCENARIO();
+	be_mvp_entry_frame(&entry, BE_MVP_KERNEL_GPA, 0U, BE_MVP_DTB_GPA);
+	open_harts();
+	cursor = reserve_cursor(BE_MVP_ENTERED_WORDS * 8U, 8U);
+	place_writer(BE_MVP_ENTERED_WORDS * 8U, 8U);
+	CHECK(be_mvp_post_entered(&harts[1], &outbound[1], &entry, 1U) == 0);
+	room_failed(cursor);
+
+	SCENARIO();
+	open_harts();
+	harts[1].phase = BE_MVP_PHASE_STOPPED;
+	cursor = reserve_cursor(BE_MVP_SHUTDOWN_WORDS * 8U, 8U);
+	place_writer(BE_MVP_SHUTDOWN_WORDS * 8U, 8U);
+	CHECK(be_mvp_post_shutdown(&harts[1], &outbound[1], 0U, 1U) == 0);
+	room_failed(cursor);
+
+	SCENARIO();
+	open_harts();
+	harts[1].counts.denials = 1U;
+	cursor = reserve_cursor(BE_MVP_DENIAL_WORDS * 8U, 8U);
+	place_writer(BE_MVP_DENIAL_WORDS * 8U, 8U);
+	CHECK(be_mvp_post_denial(&harts[1], &outbound[1], &denial, 1U) == 0);
+	room_failed(cursor);
+
+	SCENARIO();
+	open_harts();
+	harts[1].accept_mgmt = 1U;
+	harts[1].counts.mgmt = 1U;
+	cursor = reserve_cursor(BE_MVP_MGMT_REQUEST_WORDS * 8U, 8U);
+	place_writer(BE_MVP_MGMT_REQUEST_WORDS * 8U, 8U);
+	CHECK(be_mvp_post_mgmt_request(&harts[1], &outbound[1], &result,
+				       1U) == 0);
+	CHECK(harts[1].awaiting == 0U);
+	room_failed(cursor);
+
+	SCENARIO();
+	open_harts();
+	memset(harts[1].console.text, 'x', BE_MVP_CONSOLE_LINE_BYTES);
+	harts[1].console.length = BE_MVP_CONSOLE_LINE_BYTES;
+	cursor = reserve_cursor(BE_MVP_CONSOLE_LINE_BYTES, 8U);
+	place_writer(BE_MVP_CONSOLE_LINE_BYTES, 8U);
+	CHECK(be_mvp_console_flush(&harts[1], &outbound[1], 1U) ==
+	      BE_MVP_CONSOLE_FULL);
+	CHECK(harts[1].console.length == BE_MVP_CONSOLE_LINE_BYTES);
+	room_failed(cursor);
+
+	SCENARIO();
+	open_harts();
+	open_inbound(1U);
+	ping(1U, 1U);
+	cursor = reserve_cursor(BE_MVP_PONG_WORDS * 8U, 8U);
+	place_writer(BE_MVP_PONG_WORDS * 8U, 8U);
+	entry = exit_with(STI, ECALL_PC);
+	entry.time = 2U;
+	posted = ALL_ONES;
+	CHECK(be_mvp_ipi_serve(&harts[1], &inbound, &outbound[1], &entry,
+			       3U, &posted) == 0);
+	CHECK(posted == 0U);
+	room_failed(cursor);
+
+	/* `ring-full`: the kept full LINE and largest FAIL fill 1 KiB. */
+	SCENARIO();
+	open_harts();
+	open_outbound(1U, BE_MVP_VARIANT_OUTBOUND_RING_BYTES);
+	memset(harts[1].console.text, 'f', BE_MVP_CONSOLE_LINE_BYTES);
+	harts[1].console.length = BE_MVP_CONSOLE_LINE_BYTES;
+	outbound[1].cursor = BE_MVP_VARIANT_OUTBOUND_RING_BYTES -
+			     be_mvp_ring_record_bytes(
+				     BE_MVP_CONSOLE_LINE_BYTES) -
+			     be_mvp_ring_record_bytes(
+				     BE_MVP_FAIL_MAX_WORDS * 8U);
+	outbound[1].peak = outbound[1].cursor;
+	CHECK(be_mvp_console_flush(&harts[1], &outbound[1], 1U) ==
+	      BE_MVP_CONSOLE_FULL);
+	room_failed(outbound[1].cursor);
+	CHECK(be_mvp_console_flush(&harts[1], &outbound[1], 2U) == 1U);
+	CHECK(be_mvp_post_fail(&harts[1], &outbound[1], detail,
+			       BE_MVP_FAIL_DETAIL_WORDS, 3U) == 1);
+	CHECK(outbound[1].cursor == BE_MVP_VARIANT_OUTBOUND_RING_BYTES &&
+	      outbound[1].peak == BE_MVP_VARIANT_OUTBOUND_RING_BYTES &&
+	      outbound[1].failed == 0U);
 }
 
 static void take_from(unsigned int domain, enum be_mvp_record_type type,
@@ -2042,6 +2200,7 @@ static void test_records(void)
 	struct be_mvp_step_result step;
 	struct be_mvp_exit entry;
 	be_u64 detail[BE_MVP_FAIL_DETAIL_WORDS + 1U];
+	be_u64 posted;
 	be_u64 index;
 
 	SCENARIO();
@@ -2050,10 +2209,12 @@ static void test_records(void)
 			    BE_MVP_READY_TICKS);
 	CHECK(be_mvp_control_started(&control, 0U, 1U) == 1);
 	controls.hedeleg = ARMED_HEDELEG_WARL;
-	CHECK(be_mvp_post_ready(&outbound[0], &controls, ENTRY_TIME) == 1);
+	CHECK(be_mvp_post_ready(&harts[0], &outbound[0], &controls,
+				ENTRY_TIME) == 1);
 	be_mvp_entry_frame(&entry, BE_MVP_KERNEL_GPA, BE_MVP_GUEST_HART,
 			   BE_MVP_DTB_GPA);
-	CHECK(be_mvp_post_entered(&outbound[0], &entry, ENTRY_TIME + 1U) == 1);
+	CHECK(be_mvp_post_entered(&harts[0], &outbound[0], &entry,
+				  ENTRY_TIME + 1U) == 1);
 	CHECK(be_mvp_ring_publish(&outbound[0]) == 1);
 	CHECK(be_mvp_ring_acquire(&drain_view[0]) == 16U + 64U + 16U + 24U);
 	take_from(0U, BE_MVP_RECORD_READY, BE_MVP_READY_WORDS * 8U,
@@ -2065,7 +2226,7 @@ static void test_records(void)
 	      ARMED_HEDELEG_WARL);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HIDELEG) == 0x40U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HCOUNTEREN) == 0x2U);
-	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_SIE) == 0x2U);
+	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_SIE) == 0x22U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_HENVCFG) ==
 	      ARMED_HENVCFG);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_READY_VSTIMECMP) == ALL_ONES);
@@ -2080,7 +2241,7 @@ static void test_records(void)
 	      BE_U64_C(0x83e00000));
 	CHECK(be_mvp_control_record(&control, 0U, &taken, &step) ==
 	      BE_MVP_STEP_ENTERED);
-	/* The first line asks for the PING; the IPI answers it. */
+	/* The first line asks for the PING; the tick answers it. */
 	(void)be_mvp_console_feed(&harts[0], &outbound[0],
 				  (const be_u8 *)"hello\n", 6U,
 				  ENTRY_TIME + 2U);
@@ -2093,7 +2254,7 @@ static void test_records(void)
 	      BE_MVP_STEP_LINE && step.ping == 1U);
 	take_from(0U, BE_MVP_RECORD_PONG, 0U, ENTRY_TIME + 3U);
 	/* A PONG of the wrong size is refused by hart 0; a real one comes
-	 * from be_mvp_ipi_serve(). */
+	 * from be_mvp_ipi_serve() at a tick. */
 	{
 		struct be_mvp_control copy = control;
 
@@ -2103,13 +2264,13 @@ static void test_records(void)
 	}
 	open_inbound(0U);
 	ping(1U, ENTRY_TIME + 3U);
-	entry = exit_with(SSI, ECALL_PC);
+	entry = exit_with(STI, ECALL_PC);
 	entry.time = ENTRY_TIME + 4U;
 	CHECK(be_mvp_handle_exit(&harts[0], &window, &no_leaf, &entry,
 				 &(struct be_mvp_result){ 0 }) ==
-	      BE_MVP_ACTION_IPI);
+	      BE_MVP_ACTION_TICK);
 	CHECK(be_mvp_ipi_serve(&harts[0], &inbound, &outbound[0], &entry,
-			       ENTRY_TIME + 5U) == 1U);
+			       ENTRY_TIME + 5U, &posted) == 1 && posted == 1U);
 	/* The guest shuts down: SRST, flush, then SHUTDOWN. */
 	entry = ecall(BE_MVP_SBI_EID_SRST, 0U, 0U, 0U, 0U);
 	CHECK(be_mvp_handle_exit(&harts[0], &window, &no_leaf, &entry,
@@ -2122,8 +2283,8 @@ static void test_records(void)
 	CHECK(be_mvp_post_shutdown(&harts[0], &outbound[0], ENTRY_TIME + 1U,
 				   ENTRY_TIME + 7U) == 1);
 	CHECK(be_mvp_ring_publish(&outbound[0]) == 1);
-	/* SHUTDOWN: 15 words since M7's console reads served. */
-	CHECK(be_mvp_ring_acquire(&drain_view[0]) == 40U + 24U + 136U);
+	/* SHUTDOWN: M11 appends the tick count as word 15. */
+	CHECK(be_mvp_ring_acquire(&drain_view[0]) == 40U + 24U + 144U);
 	take_from(0U, BE_MVP_RECORD_PONG, BE_MVP_PONG_WORDS * 8U,
 		  ENTRY_TIME + 5U);
 	CHECK(be_mvp_control_record(&control, 0U, &taken, &step) ==
@@ -2134,10 +2295,11 @@ static void test_records(void)
 	      BE_MVP_STEP_LINE && step.ping == 0U);
 	take_from(0U, BE_MVP_RECORD_SHUTDOWN, BE_MVP_SHUTDOWN_WORDS * 8U,
 		  ENTRY_TIME + 7U);
-	CHECK(be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_EXITS) == 2U);
+	CHECK(be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_EXITS) == 1U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_BASE) == 0U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_SRST) == 1U);
-	CHECK(be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_IPI) == 1U);
+	CHECK(be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_IPI) == 0U);
+	CHECK(be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_TICK) == 1U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_LINES) == 2U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_RING_PEAK) ==
 	      16U + 64U + 16U + 24U + 24U + 16U + 40U + 24U);
@@ -2156,10 +2318,10 @@ static void test_records(void)
 				   0U) == 0);
 	CHECK(be_mvp_post_shutdown(&harts[0], (struct be_mvp_ring *)0, 0U,
 				   0U) == 0);
-	CHECK(be_mvp_post_ready(&outbound[1],
+	CHECK(be_mvp_post_ready(&harts[1], &outbound[1],
 				(const struct be_mvp_controls *)0, 0U) == 0);
-	CHECK(be_mvp_post_entered(&outbound[1], (const struct be_mvp_exit *)0,
-				  0U) == 0);
+	CHECK(be_mvp_post_entered(&harts[1], &outbound[1],
+				  (const struct be_mvp_exit *)0, 0U) == 0);
 	CHECK(outbound[1].cursor == 0U);
 
 	/* FAIL: the class, then up to eight words of detail. */
@@ -2518,7 +2680,7 @@ static int denial_is_zero(const struct be_mvp_denial *denial)
 	return memcmp(denial, &zero, sizeof(zero)) == 0;
 }
 
-/* The denial action and the counters: exits = sbi + ipi + denials. */
+/* The denial action and counters: exits = sbi + denials; ticks are apart. */
 static void test_denials(void)
 {
 	static const be_u64 causes[3] = {
@@ -2605,26 +2767,27 @@ static void test_denials(void)
 		      result.denial.inject_vscause == injected[index]);
 	}
 
-	/* A mixed run: SBI calls, IPIs, and denials. */
+	/* A mixed run: SBI calls, uncharged ticks, and denials. */
 	SCENARIO();
 	state = accepting_state();
 	for (index = 0U; index < 30U; ++index) {
 		if (index % 3U == 0U)
 			record = ecall(BE_MVP_SBI_EID_BASE, 0U, 0U, 0U, 0U);
 		else if (index % 3U == 1U)
-			record = exit_with(SSI, ECALL_PC);
+			record = exit_with(STI, ECALL_PC);
 		else
 			record = denied(STORE_FAULT, PROBE_GPA);
 		action = be_mvp_handle_exit(&state, &windows[1], &leaves[1],
 					    &record, &result);
 		CHECK(action == (index % 3U == 0U ? BE_MVP_ACTION_RETURN :
-				 index % 3U == 1U ? BE_MVP_ACTION_IPI :
+				 index % 3U == 1U ? BE_MVP_ACTION_TICK :
 				 BE_MVP_ACTION_DENY));
 		CHECK(state.counts.exits == be_mvp_counts_sbi(&state.counts) +
-		      state.counts.ipi + state.counts.denials);
+		      state.counts.denials);
 	}
-	CHECK(state.counts.exits == 30U && state.counts.base == 10U &&
-	      state.counts.ipi == 10U && state.counts.denials == 10U);
+	CHECK(state.counts.exits == 20U && state.counts.base == 10U &&
+	      state.counts.ipi == 0U && state.counts.tick == 10U &&
+	      state.counts.denials == 10U);
 
 	/* The ceiling counts denials as exits. */
 	SCENARIO();
@@ -2726,7 +2889,7 @@ static void test_denial_records(void)
 	harts[1].accept_denial = 1U;
 	CHECK(be_mvp_post_denial(&harts[1], &outbound[1], &denial, 1U) == 0);
 	harts[1].counts.denials = 1U;
-	CHECK(be_mvp_post_denial((const struct be_mvp_state *)0, &outbound[1],
+	CHECK(be_mvp_post_denial((struct be_mvp_state *)0, &outbound[1],
 				 &denial, 1U) == 0);
 	CHECK(be_mvp_post_denial(&harts[1], &outbound[1],
 				 (const struct be_mvp_denial *)0, 1U) == 0);
@@ -2738,18 +2901,22 @@ static void test_denial_records(void)
 	CHECK(be_mvp_post_denial(&harts[1], &outbound[1], &denial, 1U) == 0);
 	CHECK(outbound[1].cursor == 0U && outbound[1].failed == 0U);
 
-	/* A full ring refuses the record and fails its view (FAIL ring). */
+	/* The room guard fails the state before the ring view is full. */
 	SCENARIO();
 	open_outbound(1U, BE_MVP_VARIANT_OUTBOUND_RING_BYTES);
 	harts[1] = accepting_state();
 	harts[1].counts.denials = 1U;
-	for (index = 0U; index < BE_MVP_VARIANT_OUTBOUND_RING_BYTES / 112U;
+	for (index = 0U; index <
+		     (BE_MVP_VARIANT_OUTBOUND_RING_BYTES -
+		      BE_MVP_FAILURE_ROOM_BYTES) / 112U;
 	     ++index)
 		CHECK(be_mvp_post_denial(&harts[1], &outbound[1], &denial,
 					 index) == 1);
 	CHECK(be_mvp_post_denial(&harts[1], &outbound[1], &denial, index) ==
 	      0);
-	CHECK(outbound[1].failed == 1U && outbound[1].cursor == index * 112U);
+	CHECK(harts[1].phase == BE_MVP_PHASE_FAILED &&
+	      harts[1].failure == BE_MVP_CLASS_RING &&
+	      outbound[1].failed == 0U && outbound[1].cursor == index * 112U);
 
 	/* Hart 0's loop: the reader's two denials, then its SHUTDOWN. */
 	SCENARIO();
@@ -2759,11 +2926,12 @@ static void test_denial_records(void)
 			    BE_MVP_READY_TICKS);
 	CHECK(be_mvp_control_started(&control, 1U, 2U) == 1);
 	CHECK(be_mvp_control_channel(&control, windows, &channel) == 1);
-	CHECK(be_mvp_post_ready(&outbound[1], &controls, ENTRY_TIME) == 1);
+	CHECK(be_mvp_post_ready(&harts[1], &outbound[1], &controls,
+				ENTRY_TIME) == 1);
 	be_mvp_entry_frame(&record, BE_MVP_KERNEL_GPA, BE_MVP_GUEST_HART,
 			   BE_MVP_DTB_GPA);
-	CHECK(be_mvp_post_entered(&outbound[1], &record, ENTRY_TIME + 1U) ==
-	      1);
+	CHECK(be_mvp_post_entered(&harts[1], &outbound[1], &record,
+				  ENTRY_TIME + 1U) == 1);
 	(void)be_mvp_console_feed(&harts[1], &outbound[1],
 				  (const be_u8 *)"reader\n", 7U,
 				  ENTRY_TIME + 2U);
@@ -3169,7 +3337,7 @@ static void test_mgmt_calls(void)
 	}
 	CHECK(frame.gpr[BE_R4_GPR_A0] == BE_U64_C(0xfffffffffffffff6));
 
-	/* exits = sbi + ipi + denials, with mgmt among the SBI calls. */
+	/* exits = sbi + denials, with mgmt among the SBI calls. */
 	SCENARIO();
 	state = mgmt_state();
 	state.accept_denial = 1U;
@@ -3185,19 +3353,20 @@ static void test_mgmt_calls(void)
 	record = ecall(BE_MVP_SBI_EID_MGMT, 7U, 1U, 0U, 0U);
 	CHECK(be_mvp_handle_exit(&state, &windows[0], &leaves[0], &record,
 				 &result) == BE_MVP_ACTION_RETURN);
-	record = exit_with(SSI, ECALL_PC);
+	record = exit_with(STI, ECALL_PC);
 	CHECK(be_mvp_handle_exit(&state, &windows[0], &leaves[0], &record,
-				 &result) == BE_MVP_ACTION_IPI);
+				 &result) == BE_MVP_ACTION_TICK);
 	record = denied(LOAD_FAULT, BESIDE_GPA);
 	CHECK(be_mvp_handle_exit(&state, &windows[0], &leaves[0], &record,
 				 &result) == BE_MVP_ACTION_DENY);
-	CHECK(state.counts.exits == 6U && state.counts.mgmt == 2U &&
+	CHECK(state.counts.exits == 5U && state.counts.mgmt == 2U &&
 	      state.counts.refused == 1U && state.counts.base == 1U &&
-	      state.counts.ipi == 1U && state.counts.denials == 1U);
+	      state.counts.ipi == 0U && state.counts.tick == 1U &&
+	      state.counts.denials == 1U);
 	CHECK(be_mvp_counts_sbi(&state.counts) == 4U &&
 	      call_sum(&state.counts) == 4U);
-	CHECK(be_mvp_counts_sbi(&state.counts) + state.counts.ipi +
-	      state.counts.denials == state.counts.exits);
+	CHECK(be_mvp_counts_sbi(&state.counts) + state.counts.denials ==
+	      state.counts.exits);
 	CHECK(be_mvp_counts_sbi((const struct be_mvp_counts *)0) == 0U);
 }
 
@@ -3248,8 +3417,8 @@ static be_u64 wait_once(be_u64 now)
 {
 	be_u64 posted = ALL_ONES;
 
-	CHECK(be_mvp_wait_serve(&harts[1], &inbound, &outbound[1], now,
-				&posted) == 1);
+	CHECK(be_mvp_wait_serve(&harts[1], &inbound, &outbound[1], now - 1U,
+				now, &posted) == 1);
 	return posted;
 }
 
@@ -3257,10 +3426,10 @@ static void expect_wait_failed(be_u64 now, enum be_mvp_class failure)
 {
 	be_u64 posted = ALL_ONES;
 
-	CHECK(be_mvp_wait_serve(&harts[1], &inbound, &outbound[1], now,
-				&posted) == 0);
+	CHECK(be_mvp_wait_serve(&harts[1], &inbound, &outbound[1], now - 1U,
+				now, &posted) == 0);
 	CHECK(posted == 0U);
-	expect_ipi_failed(failure);
+	expect_tick_failed(failure);
 }
 
 /* @count 32-byte LINE records into domain 1's outbound ring. */
@@ -3283,8 +3452,8 @@ static void waiting(void)
 	call_mgmt(1U, MGMT_PAUSE, 0U, EXIT_TIME + 1U);
 }
 
-/* Domain 1 running, its IPI's exit taken, the order at hand. */
-static be_u64 ipi_with(enum be_mvp_record_type type, be_u64 by)
+/* VS domain 1 running, its tick taken, the order at hand. */
+static be_u64 tick_with(enum be_mvp_record_type type, be_u64 by)
 {
 	open_harts();
 	harts[1] = mgmt_state();
@@ -3306,7 +3475,7 @@ static void take_answer(enum be_mvp_record_type type, be_u64 words,
  * The extension's records (planning/mvp-m2-plan.md, Q14 and Q15):
  * MGMT_REQUEST as the requester posts it, and its refusals; the
  * requester's wait in HS for MGMT_RESULT, serving PINGs, and every record
- * it refuses; the target's PAUSE and TERMINATE through the IPI, PAUSED and
+ * it refuses; the target's PAUSE and TERMINATE through ticks, PAUSED and
  * TERMINATED, the paused and terminated waits, and every record they
  * refuse; SHUTDOWN's management word; and hart 0's loop taking each.
  */
@@ -3400,18 +3569,23 @@ static void test_mgmt_records(void)
 				       &result, 1U) == 0);
 	CHECK(outbound[1].cursor == index && harts[1].awaiting == 0U);
 	open_outbound(1U, BE_MVP_RING_MIN_BYTES);
-	for (index = 0U; index < BE_MVP_RING_MIN_BYTES / 40U; ++index)
+	for (index = 0U;
+	     index < (BE_MVP_RING_MIN_BYTES - BE_MVP_FAILURE_ROOM_BYTES) /
+			     40U;
+	     ++index)
 		CHECK(be_mvp_ring_post_words(&outbound[1],
 					     BE_MVP_RECORD_MGMT_REQUEST, index,
 					     pong, 3U) == 1);
 	CHECK(be_mvp_post_mgmt_request(&harts[1], &outbound[1], &result,
 				       1U) == 0);
-	CHECK(outbound[1].failed == 1U && harts[1].awaiting == 0U);
+	CHECK(outbound[1].failed == 0U && harts[1].awaiting == 0U &&
+	      harts[1].phase == BE_MVP_PHASE_FAILED &&
+	      harts[1].failure == BE_MVP_CLASS_RING);
 	CHECK(be_mvp_post_mgmt_request(&harts[1], &outbound[1], &result,
 				       1U) == 0);
 
 	/* The wait: a PING is answered with a PONG whose receipt is the
-	 * wait's and whose SPV is 0 (the IPI found the hart in HS). */
+	 * wait's and whose SPV is 0 (the tick found the hart in HS). */
 	SCENARIO();
 	waiting();
 	ping(1U, EXIT_TIME + 2U);
@@ -3424,7 +3598,7 @@ static void test_mgmt_records(void)
 	take_from(1U, BE_MVP_RECORD_PONG, 24U, EXIT_TIME + 5U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_PONG_SENT) == EXIT_TIME + 2U &&
 	      be_mvp_record_word(&taken, BE_MVP_PONG_RECEIVED) ==
-	      EXIT_TIME + 5U &&
+	      EXIT_TIME + 4U &&
 	      be_mvp_record_word(&taken, BE_MVP_PONG_SPV) == 0U);
 	/* An empty ring is a wake with nothing yet: the wait goes on. */
 	CHECK(wait_once(EXIT_TIME + 6U) == 0U && harts[1].awaiting == 1U);
@@ -3433,7 +3607,7 @@ static void test_mgmt_records(void)
 	result_to_hart(0, 1U, EXIT_TIME + 8U);
 	CHECK(wait_once(EXIT_TIME + 9U) == 1U);
 	CHECK(harts[1].awaiting == 0U && harts[1].answer == 0U);
-	/* Every result hart 0 answers is taken; any other fails ipi. */
+	/* Every result hart 0 answers is taken; any other fails tick. */
 	for (index = 0U; index < BE_ARRAY_SIZE(accepted); ++index) {
 		SCENARIO();
 		waiting();
@@ -3445,23 +3619,23 @@ static void test_mgmt_records(void)
 		SCENARIO();
 		waiting();
 		result_to_hart(refused[index], 1U, EXIT_TIME + 2U);
-		expect_wait_failed(EXIT_TIME + 3U, BE_MVP_CLASS_IPI);
+		expect_wait_failed(EXIT_TIME + 3U, BE_MVP_CLASS_TICK);
 	}
 	/* Another request's answer (sequence 0 or 2), one of another size,
-	 * or an order while it waits: ipi. */
+	 * or an order while it waits: tick. */
 	for (index = 0U; index < BE_ARRAY_SIZE(bad_counts); ++index) {
 		SCENARIO();
 		waiting();
 		to_hart(BE_MVP_RECORD_MGMT_RESULT, EXIT_TIME + 2U,
 			bad_words[index], bad_counts[index]);
-		expect_wait_failed(EXIT_TIME + 3U, BE_MVP_CLASS_IPI);
+		expect_wait_failed(EXIT_TIME + 3U, BE_MVP_CLASS_TICK);
 	}
 	for (index = 0U; index < 2U; ++index) {
 		SCENARIO();
 		waiting();
 		order_to_hart(index == 0U ? BE_MVP_RECORD_PAUSE :
 			      BE_MVP_RECORD_TERMINATE, 0U, EXIT_TIME + 2U);
-		expect_wait_failed(EXIT_TIME + 3U, BE_MVP_CLASS_IPI);
+		expect_wait_failed(EXIT_TIME + 3U, BE_MVP_CLASS_TICK);
 	}
 	/* A malformed inbound ring, or a full outbound one: ring. */
 	SCENARIO();
@@ -3483,41 +3657,41 @@ static void test_mgmt_records(void)
 	open_harts();
 	open_inbound(1U);
 	harts[1] = mgmt_state();
-	expect_wait_failed(1U, BE_MVP_CLASS_IPI);
+	expect_wait_failed(1U, BE_MVP_CLASS_TICK);
 	harts[1] = mgmt_state();
 	harts[1].phase = BE_MVP_PHASE_STOPPED;
-	expect_wait_failed(1U, BE_MVP_CLASS_IPI);
+	expect_wait_failed(1U, BE_MVP_CLASS_TICK);
 	waiting();
-	CHECK(be_mvp_wait_serve(&harts[1], &inbound, &outbound[1], 1U,
+	CHECK(be_mvp_wait_serve(&harts[1], &inbound, &outbound[1], 0U, 1U,
 				(be_u64 *)0) == 0);
 	CHECK(harts[1].phase == BE_MVP_PHASE_RUNNING);
 	CHECK(be_mvp_wait_serve((struct be_mvp_state *)0, &inbound,
-				&outbound[1], 1U, &index) == 0);
+				&outbound[1], 0U, 1U, &index) == 0);
 	CHECK(be_mvp_wait_serve(&harts[1], (struct be_mvp_ring *)0,
-				&outbound[1], 1U, &index) == 0);
-	expect_ipi_failed(BE_MVP_CLASS_IPI);
+				&outbound[1], 0U, 1U, &index) == 0);
+	expect_tick_failed(BE_MVP_CLASS_TICK);
 	waiting();
 	CHECK(be_mvp_wait_serve(&harts[1], &inbound, (struct be_mvp_ring *)0,
-				1U, &index) == 0);
-	expect_ipi_failed(BE_MVP_CLASS_IPI);
-	/* An answer on the guest's IPI exit, with no request awaited: ipi. */
+				0U, 1U, &index) == 0);
+	expect_tick_failed(BE_MVP_CLASS_TICK);
+	/* An answer on the guest's tick, with no request awaited: tick. */
 	SCENARIO();
 	open_harts();
 	harts[1] = mgmt_state();
 	open_inbound(1U);
 	result_to_hart(0, 1U, 0x1000U);
-	CHECK(serve(0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_IPI);
+	CHECK(serve(0x2000U) == ALL_ONES);
+	expect_tick_failed(BE_MVP_CLASS_TICK);
 
-	/* PAUSE through the IPI: PAUSED with the exits (the IPI's
-	 * included) and the requester, at the answer's time; the hart is
+	/* PAUSE through the tick: PAUSED with charged exits and the requester
+	 * at the answer's time; the hart is
 	 * paused, and every later exit is terminal. */
 	SCENARIO();
-	CHECK(ipi_with(BE_MVP_RECORD_PAUSE, 0U) == 1U);
+	CHECK(tick_with(BE_MVP_RECORD_PAUSE, 0U) == 1U);
 	CHECK(harts[1].phase == BE_MVP_PHASE_PAUSED && harts[1].by == 0U &&
-	      harts[1].counts.ipi == 1U);
+	      harts[1].counts.tick == 1U && harts[1].counts.ipi == 0U);
 	take_answer(BE_MVP_RECORD_PAUSED, BE_MVP_PAUSED_WORDS, 0x2000U);
-	CHECK(be_mvp_record_word(&taken, BE_MVP_PAUSED_EXITS) == 1U &&
+	CHECK(be_mvp_record_word(&taken, BE_MVP_PAUSED_EXITS) == 0U &&
 	      be_mvp_record_word(&taken, BE_MVP_PAUSED_BY) == 0U);
 	CHECK(be_mvp_ring_release(&inbound) == 1);
 	{
@@ -3527,13 +3701,13 @@ static void test_mgmt_records(void)
 		CHECK(be_mvp_handle_exit(&copy, &windows[1], &no_leaf, &record,
 					 &result) == BE_MVP_ACTION_TERMINAL);
 		CHECK(copy.failure == BE_MVP_CLASS_EXCEPTION);
-		/* Its parked wait, not the IPI exit, takes what follows. */
+		/* Its parked wait, not another guest tick, takes what follows. */
 		copy = harts[1];
-		record = exit_with(SSI, ECALL_PC);
+		record = exit_with(STI, ECALL_PC);
 		CHECK(be_mvp_ipi_serve(&copy, &inbound, &outbound[1], &record,
-				       1U) == 0U);
+				       1U, &index) == 0);
 		CHECK(copy.phase == BE_MVP_PHASE_FAILED &&
-		      copy.failure == BE_MVP_CLASS_IPI);
+		      copy.failure == BE_MVP_CLASS_TICK);
 	}
 	/* Paused: a wake with nothing waits on; TERMINATE is taken. */
 	CHECK(wait_once(0x3000U) == 0U);
@@ -3542,23 +3716,23 @@ static void test_mgmt_records(void)
 	CHECK(harts[1].phase == BE_MVP_PHASE_TERMINATED);
 	take_answer(BE_MVP_RECORD_TERMINATED, BE_MVP_TERMINATED_WORDS,
 		    0x5000U);
-	CHECK(be_mvp_record_word(&taken, BE_MVP_TERMINATED_EXITS) == 1U &&
+	CHECK(be_mvp_record_word(&taken, BE_MVP_TERMINATED_EXITS) == 0U &&
 	      be_mvp_record_word(&taken, BE_MVP_TERMINATED_BY) == 0U);
 	CHECK(be_mvp_ring_release(&inbound) == 1);
-	/* Terminated: a wake with nothing waits on; any record is ipi. */
+	/* Terminated: a wake with nothing waits on; any record is tick. */
 	CHECK(wait_once(0x6000U) == 0U);
 	ping(1U, 0x7000U);
-	expect_wait_failed(0x8000U, BE_MVP_CLASS_IPI);
+	expect_wait_failed(0x8000U, BE_MVP_CLASS_TICK);
 	/* TERMINATE while running: TERMINATED at once. */
 	SCENARIO();
-	CHECK(ipi_with(BE_MVP_RECORD_TERMINATE, 0U) == 1U);
+	CHECK(tick_with(BE_MVP_RECORD_TERMINATE, 0U) == 1U);
 	CHECK(harts[1].phase == BE_MVP_PHASE_TERMINATED);
 	take_answer(BE_MVP_RECORD_TERMINATED, BE_MVP_TERMINATED_WORDS,
 		    0x2000U);
-	/* Paused, anything but TERMINATE is ipi. */
+	/* Paused, anything but TERMINATE is tick. */
 	for (index = 0U; index < 3U; ++index) {
 		SCENARIO();
-		CHECK(ipi_with(BE_MVP_RECORD_PAUSE, 0U) == 1U);
+		CHECK(tick_with(BE_MVP_RECORD_PAUSE, 0U) == 1U);
 		CHECK(be_mvp_ring_release(&inbound) == 1);
 		if (index == 0U)
 			ping(1U, 0x3000U);
@@ -3566,9 +3740,9 @@ static void test_mgmt_records(void)
 			order_to_hart(BE_MVP_RECORD_PAUSE, 0U, 0x3000U);
 		else
 			result_to_hart(0, 1U, 0x3000U);
-		expect_wait_failed(0x4000U, BE_MVP_CLASS_IPI);
+		expect_wait_failed(0x4000U, BE_MVP_CLASS_TICK);
 	}
-	/* One IPI, several records: a PING before the order is answered,
+	/* One tick, several records: a PING before the order is answered,
 	 * and a TERMINATE after a PAUSE; nothing after the order but a
 	 * TERMINATE after a PAUSE. */
 	SCENARIO();
@@ -3602,8 +3776,8 @@ static void test_mgmt_records(void)
 				      BE_MVP_RECORD_TERMINATE, 0U, 0x1001U);
 		CHECK(be_mvp_ring_publish(&inbound_writer) == 1);
 		(void)be_mvp_ring_acquire(&inbound);
-		CHECK(serve(0x2000U) == 0U);
-		expect_ipi_failed(BE_MVP_CLASS_IPI);
+		CHECK(serve(0x2000U) == ALL_ONES);
+		expect_tick_failed(BE_MVP_CLASS_TICK);
 	}
 	/* An order naming no domain, of another size, in an image without
 	 * the extension, or to a full outbound ring. */
@@ -3623,8 +3797,8 @@ static void test_mgmt_records(void)
 			harts[1].accept_mgmt = 0U;
 			order_to_hart(BE_MVP_RECORD_PAUSE, 0U, 0x1000U);
 		}
-		CHECK(serve(0x2000U) == 0U);
-		expect_ipi_failed(BE_MVP_CLASS_IPI);
+		CHECK(serve(0x2000U) == ALL_ONES);
+		expect_tick_failed(BE_MVP_CLASS_TICK);
 		CHECK(harts[1].phase == BE_MVP_PHASE_FAILED);
 	}
 	SCENARIO();
@@ -3634,8 +3808,8 @@ static void test_mgmt_records(void)
 	open_outbound(1U, BE_MVP_RING_MIN_BYTES);
 	fill(16U);
 	order_to_hart(BE_MVP_RECORD_PAUSE, 0U, 0x1000U);
-	CHECK(serve(0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_RING);
+	CHECK(serve(0x2000U) == ALL_ONES);
+	expect_tick_failed(BE_MVP_CLASS_RING);
 	CHECK(outbound[1].cursor == BE_MVP_RING_MIN_BYTES);
 
 	/*
@@ -3695,8 +3869,8 @@ static void test_mgmt_records(void)
 	CHECK(be_mvp_console_feed(&harts[1], &outbound[1],
 				  (const be_u8 *)"x", 1U, 0x800U) == 0U);
 	order_to_hart(BE_MVP_RECORD_PAUSE, 0U, 0x1000U);
-	CHECK(serve(0x2000U) == 0U);
-	expect_ipi_failed(BE_MVP_CLASS_RING);
+	CHECK(serve(0x2000U) == ALL_ONES);
+	expect_tick_failed(BE_MVP_CLASS_RING);
 	CHECK(harts[1].counts.lines == 0U &&
 	      outbound[1].cursor == BE_MVP_RING_MIN_BYTES);
 
@@ -3707,6 +3881,7 @@ static void test_mgmt_records(void)
 	harts[0] = mgmt_state();
 	harts[0].counts.mgmt = 13U;
 	harts[0].counts.dbcn_input = 14U;
+	harts[0].counts.tick = 15U;
 	harts[0].phase = BE_MVP_PHASE_STOPPED;
 	CHECK(be_mvp_post_shutdown(&harts[0], &outbound[0], 1U, 2U) == 1);
 	CHECK(be_mvp_ring_publish(&outbound[0]) == 1);
@@ -3714,7 +3889,8 @@ static void test_mgmt_records(void)
 	      16U + BE_MVP_SHUTDOWN_WORDS * 8U);
 	take_from(0U, BE_MVP_RECORD_SHUTDOWN, BE_MVP_SHUTDOWN_WORDS * 8U, 2U);
 	CHECK(be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_MGMT) == 13U &&
-	      be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_DBCN_INPUT) == 14U);
+	      be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_DBCN_INPUT) == 14U &&
+	      be_mvp_record_word(&taken, BE_MVP_SHUTDOWN_TICK) == 15U);
 
 	/* Hart 0's loop on the records the harts post: the host's pause of
 	 * the protected domain delivered, the protected domain's PAUSED,
@@ -3729,12 +3905,12 @@ static void test_mgmt_records(void)
 	for (domain = 0U; domain < 2U; ++domain) {
 		CHECK(be_mvp_control_started(&control, domain, domain + 1U) ==
 		      1);
-		CHECK(be_mvp_post_ready(&outbound[domain], &controls,
-					ENTRY_TIME) == 1);
+		CHECK(be_mvp_post_ready(&harts[domain], &outbound[domain],
+					&controls, ENTRY_TIME) == 1);
 		be_mvp_entry_frame(&record, BE_MVP_KERNEL_GPA,
 				   BE_MVP_GUEST_HART, BE_MVP_DTB_GPA);
-		CHECK(be_mvp_post_entered(&outbound[domain], &record,
-					  ENTRY_TIME + 1U) == 1);
+		CHECK(be_mvp_post_entered(&harts[domain], &outbound[domain],
+					  &record, ENTRY_TIME + 1U) == 1);
 		(void)be_mvp_console_feed(&harts[domain], &outbound[domain],
 					  (const be_u8 *)"up\n", 3U,
 					  ENTRY_TIME + 2U);
@@ -3784,7 +3960,7 @@ static void test_mgmt_records(void)
 	open_inbound(0U);
 	result_to_hart(step.result, step.seq, EXIT_TIME + 6U);
 	CHECK(be_mvp_wait_serve(&harts[0], &inbound, &outbound[0],
-				EXIT_TIME + 7U, &index) == 1);
+				EXIT_TIME + 6U, EXIT_TIME + 7U, &index) == 1);
 	CHECK(index == 0U && harts[0].awaiting == 0U && harts[0].answer == 0U);
 }
 
@@ -3923,7 +4099,7 @@ static void test_per_hart(void)
 	struct be_mvp_exit base = ecall(BE_MVP_SBI_EID_BASE, 0U, 0U, 0U, 0U);
 	struct be_mvp_exit write = ecall(BE_MVP_SBI_EID_DBCN, 0U, 16U,
 					 WINDOW_GPA + 0x1000U, 0U);
-	struct be_mvp_exit ipi = exit_with(SSI, ECALL_PC);
+	struct be_mvp_exit tick = exit_with(STI, ECALL_PC);
 	struct be_mvp_exit fault = exit_with(
 		BE_MVP_SCAUSE_LOAD_GUEST_PAGE_FAULT, ECALL_PC);
 	struct be_mvp_result result;
@@ -3935,12 +4111,12 @@ static void test_per_hart(void)
 	CHECK(be_mvp_handle_exit(&harts[0], &windows[0], &no_leaf, &base,
 				 &result) ==
 	      BE_MVP_ACTION_RETURN);
-	CHECK(be_mvp_handle_exit(&harts[1], &windows[1], &no_leaf, &ipi,
+	CHECK(be_mvp_handle_exit(&harts[1], &windows[1], &no_leaf, &tick,
 				 &result) ==
-	      BE_MVP_ACTION_IPI);
-	CHECK(be_mvp_handle_exit(&harts[1], &windows[1], &no_leaf, &ipi,
+	      BE_MVP_ACTION_TICK);
+	CHECK(be_mvp_handle_exit(&harts[1], &windows[1], &no_leaf, &tick,
 				 &result) ==
-	      BE_MVP_ACTION_IPI);
+	      BE_MVP_ACTION_TICK);
 	/* DBCN reads the calling domain's own window. */
 	CHECK(be_mvp_handle_exit(&harts[0], &windows[0], &no_leaf, &write,
 				 &result) ==
@@ -3952,12 +4128,12 @@ static void test_per_hart(void)
 	CHECK(result.source_pa == WINDOW_G1_HPA + 0x1000U);
 	CHECK(harts[0].counts.exits == 2U && harts[0].counts.base == 1U &&
 	      harts[0].counts.dbcn_write == 1U && harts[0].counts.ipi == 0U);
-	CHECK(harts[1].counts.exits == 3U && harts[1].counts.ipi == 2U &&
+	CHECK(harts[1].counts.exits == 1U && harts[1].counts.ipi == 0U &&
+	      harts[1].counts.tick == 2U &&
 	      harts[1].counts.dbcn_write == 1U && harts[1].counts.base == 0U);
 	for (domain = 0U; domain < 2U; ++domain)
 		CHECK(harts[domain].counts.exits ==
-		      be_mvp_counts_sbi(&harts[domain].counts) +
-			      harts[domain].counts.ipi);
+		      be_mvp_counts_sbi(&harts[domain].counts));
 	CHECK(be_mvp_counts_sbi((const struct be_mvp_counts *)0) == 0U);
 	/* One hart's terminal exit fails that hart alone; hart 0 ends the
 	 * run when its FAIL record arrives (Q10). */
@@ -4023,7 +4199,7 @@ static void test_line_builder(void)
 		{ ALL_ONES, "0xffffffffffffffff", "18446744073709551615" },
 	};
 	static const char *const counts[] = {
-		" exits=", " sbi=", " ipi=", " base=", " time=",
+		" exits=", " sbi=", " ipi=", " tick=", " base=", " time=",
 		" dbcn_write=", " dbcn_read=", " dbcn_byte=", " srst=",
 		" refused=", " lines=",
 	};
@@ -4223,15 +4399,15 @@ static void replay(struct be_mvp_state *state, be_u64 eid, be_u64 fid,
 			       BE_MVP_PHASE_FAILED : BE_MVP_PHASE_RUNNING));
 }
 
-/* One IPI exit of a replay: hart 0's PING after the domain's first line. */
-static void replay_ipi(struct be_mvp_state *state)
+/* One tick of a replay: the PING is found after the first line. */
+static void replay_tick(struct be_mvp_state *state)
 {
-	struct be_mvp_exit record = exit_with(SSI, ECALL_PC);
+	struct be_mvp_exit record = exit_with(STI, ECALL_PC);
 	struct be_mvp_result result;
 
 	record.time = ENTRY_TIME + state->counts.exits * BE_U64_C(0x40000);
 	CHECK(be_mvp_handle_exit(state, &windows[replay_domain], &no_leaf,
-				 &record, &result) == BE_MVP_ACTION_IPI);
+				 &record, &result) == BE_MVP_ACTION_TICK);
 	CHECK(result.resume_pc == ECALL_PC);
 }
 
@@ -4268,8 +4444,7 @@ static void replay_base(struct be_mvp_state *state)
 	       BE_MVP_ACTION_RETURN, 0, 1U);
 }
 
-/* The B6 research reference boot's 138 calls before its shutdown, with
- * the IPI probe's one IPI after the first write. */
+/* The B6 reference boot's 138 charged calls, with one uncharged tick. */
 static void replay_boot(struct be_mvp_state *state)
 {
 	be_u64 call;
@@ -4280,7 +4455,7 @@ static void replay_boot(struct be_mvp_state *state)
 	for (call = 0U; call < 12U; ++call) {
 		replay_write(state, writes++);
 		if (call == 0U)
-			replay_ipi(state);
+			replay_tick(state);
 	}
 	for (round = 0U; round < 2U; ++round) {
 		replay(state, BE_MVP_SBI_EID_BASE, 4U, 0U, 0U,
@@ -4307,7 +4482,7 @@ static void replay_boot(struct be_mvp_state *state)
  * section 1c), for each domain on its own hart: 3 Base IDs; probes for
  * TIME, IPI, RFENCE, SRST, and DBCN answered 1, 0, 0, 1, 1; 6 machine-ID
  * reads; 89 DBCN writes; 35 DBCN reads denied with -4; and one SRST
- * shutdown, which stops only that domain; plus the IPI probe's one IPI.
+ * shutdown, which stops only that VS domain; plus the tick probe's tick.
  * The Base answers are B7's.
  */
 static void test_census(void)
@@ -4321,11 +4496,11 @@ static void test_census(void)
 		state = fresh_state();
 		replay_domain = domain;
 		replay_boot(&state);
-		CHECK(state.counts.exits == 139U);
+		CHECK(state.counts.exits == 138U);
 		replay(&state, BE_MVP_SBI_EID_SRST, 0U, 0U, 0U,
 		       BE_MVP_ACTION_SHUTDOWN, 0, 0U);
 		CHECK(state.phase == BE_MVP_PHASE_STOPPED);
-		CHECK(state.counts.exits == 140U);
+		CHECK(state.counts.exits == 139U);
 		CHECK(state.counts.base == 14U);
 		CHECK(state.counts.time == 0U);
 		CHECK(state.counts.dbcn_write == 89U);
@@ -4333,10 +4508,9 @@ static void test_census(void)
 		CHECK(state.counts.dbcn_byte == 0U);
 		CHECK(state.counts.srst == 1U);
 		CHECK(state.counts.refused == 0U);
-		CHECK(state.counts.ipi == 1U);
+		CHECK(state.counts.ipi == 0U && state.counts.tick == 1U);
 		CHECK(call_sum(&state.counts) == 139U);
-		CHECK(state.counts.exits ==
-		      be_mvp_counts_sbi(&state.counts) + state.counts.ipi);
+		CHECK(state.counts.exits == be_mvp_counts_sbi(&state.counts));
 		CHECK(state.counts.exits <= BE_MVP_EXIT_CEILING);
 	}
 	/* With the exit-budget variant's ceiling a boot stops at 65. */
@@ -4355,9 +4529,9 @@ static void test_census(void)
 
 /*
  * Two domains at once, each on its own hart: their boots interleaved call
- * by call, each domain's IPI after its first write, then both shutdowns
+ * by call, each VS domain's tick after its first write, then both shutdowns
  * in either order. Every exit lands in its own hart's counts, and each
- * hart's exits are its SBI calls and its IPI.
+ * hart's charged exits are its SBI calls.
  */
 static void test_census_two_harts(void)
 {
@@ -4374,7 +4548,7 @@ static void test_census_two_harts(void)
 				replay_base(&harts[domain]);
 			replay_write(&harts[domain], call);
 			if (call == domain)
-				replay_ipi(&harts[domain]);
+				replay_tick(&harts[domain]);
 		}
 	}
 	replay_domain = 1U;
@@ -4388,14 +4562,14 @@ static void test_census_two_harts(void)
 	CHECK(harts[0].counts.base == 64U && harts[1].counts.base == 0U);
 	CHECK(harts[0].counts.dbcn_write == 41U &&
 	      harts[1].counts.dbcn_write == 40U);
-	CHECK(harts[0].counts.ipi == 1U && harts[1].counts.ipi == 1U);
+	CHECK(harts[0].counts.ipi == 0U && harts[1].counts.ipi == 0U &&
+	      harts[0].counts.tick == 1U && harts[1].counts.tick == 1U);
 	CHECK(harts[0].counts.srst == 1U && harts[1].counts.srst == 1U);
 	for (domain = 0U; domain < 2U; ++domain)
 		CHECK(harts[domain].counts.exits ==
-		      be_mvp_counts_sbi(&harts[domain].counts) +
-			      harts[domain].counts.ipi);
-	CHECK(harts[0].counts.exits == 64U + 41U + 1U + 1U);
-	CHECK(harts[1].counts.exits == 40U + 1U + 1U);
+		      be_mvp_counts_sbi(&harts[domain].counts));
+	CHECK(harts[0].counts.exits == 64U + 41U + 1U);
+	CHECK(harts[1].counts.exits == 40U + 1U);
 }
 
 /* The sbi-time variant: no sstc in the DT, so Linux arms through TIME. */
@@ -4422,12 +4596,13 @@ static void test_census_sbi_time(void)
 		CHECK(result.timer == deadline && result.error == 0 &&
 		      result.value == 0U);
 	}
-	replay_ipi(&state);
+	replay_tick(&state);
 	replay(&state, BE_MVP_SBI_EID_SRST, 0U, 0U, 0U, BE_MVP_ACTION_SHUTDOWN,
 	       0, 0U);
 	CHECK(state.counts.time == 20U && state.counts.base == 8U);
 	CHECK(state.counts.dbcn_write == 10U && state.counts.srst == 1U);
-	CHECK(state.counts.exits == 40U && state.counts.ipi == 1U &&
+	CHECK(state.counts.exits == 39U && state.counts.ipi == 0U &&
+	      state.counts.tick == 1U &&
 	      call_sum(&state.counts) == 39U);
 }
 
@@ -4457,12 +4632,13 @@ int main(void)
 	test_frame_integrity();
 	test_apply_return();
 	test_entry_frame();
-	test_ipi_exit();
+	test_tick_exit();
 	test_per_hart();
 	test_vcsr();
 	test_console();
 	test_console_interleave();
-	test_ipi_serve();
+	test_tick_serve();
+	test_failure_room();
 	test_records();
 	test_ack_wait();
 	test_denials();

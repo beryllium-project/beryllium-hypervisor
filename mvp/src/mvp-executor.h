@@ -79,7 +79,9 @@ long be_mvp_exec_hart_status(be_u64 hart, be_u64 *status);
  *
  * Return: the SBI error.
  */
+#if defined(BE_MVP_PROBE_IMAGE)
 long be_mvp_exec_send_ipi(be_u64 mask, be_u64 base);
+#endif
 
 /**
  * be_mvp_exec_console_write - hart 0's DBCN write, the accepted helper's,
@@ -174,6 +176,15 @@ be_u64 be_mvp_exec_arm_budget(be_u64 deadline, be_u64 trusted_top);
  * @deadline: vstimecmp
  */
 void be_mvp_exec_set_timer(be_u64 deadline);
+
+/**
+ * be_mvp_exec_rearm_tick - be_mvp_arch_rearm_tick()
+ *
+ * Return: the time used to arm the VS-domain hart's next HS tick.
+ */
+#if !defined(BE_MVP_PROBE_IMAGE)
+be_u64 be_mvp_exec_rearm_tick(void);
+#endif
 
 /**
  * be_mvp_exec_inject - be_mvp_arch_inject(), in an image that accepts

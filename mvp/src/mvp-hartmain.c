@@ -7,7 +7,7 @@
  *          of its published block, its arming, the install of its domain's
  *          root, READY and ENTERED, and the first entry; then the service of
  *          each exit through the pure-C SBI core: SBI calls, the console's
- *          LINE records, the IPI's PING and PONG, in an image that accepts
+ *          LINE records, the tick's PING and PONG, in an image that accepts
  *          denials an accepted denial's injection and DENIAL record
  *          (planning/mvp-m1-plan.md, "The denial path"), in an image that
  *          accepts the management extension a management call's request
@@ -80,12 +80,6 @@ static int publish(struct be_mvp_hart_page *page)
 	return be_mvp_ring_publish(&page->outbound);
 }
 
-/* The domain hart's records wait in its ring; one IPI wakes hart 0. */
-static void tell_control_hart(void)
-{
-	(void)be_mvp_send_ipi(BE_MVP_CONTROL_HART);
-}
-
 /*
  * Whether hart 0's ACK is in the inbound ring. Nothing is released: the
  * hart parks either way.
@@ -109,6 +103,22 @@ static int acknowledged(struct be_mvp_hart_page *page)
 	}
 	return 0;
 }
+
+/* One HS tick: wait, re-arm from a fresh time read, and observe SSIP. */
+#if !defined(BE_MVP_PROBE_IMAGE)
+static be_u64 wait_tick_raw(be_u64 *answered, int *unexpected_ipi)
+{
+	be_u64 received;
+	be_u64 pending;
+
+	(void)be_mvp_exec_rearm_tick();
+	received = be_mvp_exec_wait(BE_MVP_SIE_DOMAIN);
+	*answered = be_mvp_exec_read_time();
+	pending = be_mvp_exec_clear_ssip();
+	*unexpected_ipi = (pending & BE_MVP_SIE_SSIE) != 0U;
+	return received;
+}
+#endif
 
 /*
  * One fallback line through DBCN from this hart's own stack, never the
@@ -137,7 +147,7 @@ static void fallback_write(const struct be_mvp_line *line)
 
 /*
  * The domain hart's terminal path (Q10, as Plan revision M1-B revises it):
- * its partial line, then FAIL with its detail and one IPI, then the wait
+ * its partial line, then FAIL with its detail, then the tick-driven wait
  * for hart 0's ACK, which parks the hart. The wait's 2^24-tick window
  * restarts each time hart 0 takes a record from the hart's outbound ring
  * (be_mvp_ack_wait_step()), so it measures hart 0's progress, not its
@@ -162,14 +172,24 @@ static void hart_fail(struct be_mvp_hart_page *page, enum be_mvp_class failure,
 				   be_mvp_exec_read_time());
 	if (be_mvp_post_fail(state, &page->outbound, detail, words,
 			     be_mvp_exec_read_time()) && publish(page)) {
-		tell_control_hart();
 		be_mvp_ack_wait_start(&wait, be_mvp_exec_read_time(),
 				      be_mvp_ring_taken(&page->outbound));
 		do {
-			int ack = acknowledged(page);
+			be_u64 now;
+			int unexpected_ipi;
+			int ack;
 
+#if defined(BE_MVP_PROBE_IMAGE)
+			now = be_mvp_exec_read_time();
+			unexpected_ipi = 0;
+#else
+			(void)wait_tick_raw(&now, &unexpected_ipi);
+#endif
+			if (unexpected_ipi != 0)
+				break;
+			ack = acknowledged(page);
 			step = be_mvp_ack_wait_step(&wait,
-				be_mvp_exec_read_time(),
+				now,
 				be_mvp_ring_taken(&page->outbound),
 				be_mvp_ring_published(&page->outbound), ack);
 			if (step == BE_MVP_ACK_PARK)
@@ -219,6 +239,18 @@ static void exit_fail(struct be_mvp_hart_page *page,
 	hart_fail(page, failure, detail, BE_MVP_DETAIL_EXIT_WORDS);
 }
 
+#if !defined(BE_MVP_PROBE_IMAGE) && BE_MVP_RUN_ACCEPT_MGMT
+static void wait_tick(struct be_mvp_hart_page *page,
+		      const struct be_mvp_exit *record, be_u64 *answered)
+{
+	int unexpected_ipi;
+
+	(void)wait_tick_raw(answered, &unexpected_ipi);
+	if (unexpected_ipi != 0)
+		exit_fail(page, record, BE_MVP_CLASS_INTERRUPT);
+}
+#endif
+
 void be_mvp_hart_terminal(struct be_mvp_exit *record,
 			  enum be_mvp_class failure)
 {
@@ -242,7 +274,7 @@ void be_mvp_dispatch(struct be_mvp_exit *record)
 	be_mvp_probe_exit(page, record);
 }
 #else
-/* The domain's bytes, as LINE records; one IPI when a line ended. */
+/* The VS domain's bytes, as LINE records found at hart 0's next tick. */
 static void console(struct be_mvp_hart_page *page,
 		    const struct be_mvp_exit *record, const be_u8 *bytes,
 		    be_u64 length)
@@ -257,7 +289,6 @@ static void console(struct be_mvp_hart_page *page,
 		return;
 	if (!publish(page))
 		exit_fail(page, record, BE_MVP_CLASS_RING);
-	tell_control_hart();
 }
 
 /* Copy DBCN bytes from the domain's window; firmware never sees them. */
@@ -311,37 +342,39 @@ static void console_read(struct be_mvp_hart_page *page,
 /*
  * The inbound ring read in HS, outside an exit (be_mvp_wait_serve()), with
  * the reader's fences: a waiting hart's PING and MGMT_RESULT, a paused
- * hart's TERMINATE; then any answer published, and hart 0 told.
+ * VS-domain hart's TERMINATE; then any answer published.
  */
 static void wait_serve(struct be_mvp_hart_page *page,
 		       const struct be_mvp_exit *record)
 {
 	be_u64 posted = 0U;
+	be_u64 received;
+	be_u64 answered;
 	int served;
 
 	(void)be_mvp_ring_acquire(&page->inbound);
-	/* Reader: the head, then the records it admits. */
+	/* Reader: the head, then the records it admits; the receipt is
+	 * read after both. */
 	be_mvp_exec_fence_r_r();
+	received = be_mvp_exec_read_time();
+	answered = be_mvp_exec_read_time();
 	served = be_mvp_wait_serve(&page->page.state, &page->inbound,
-				   &page->outbound, be_mvp_exec_read_time(),
-				   &posted);
+				   &page->outbound, received, answered, &posted);
 	if (!served)
-		exit_fail(page, record, BE_MVP_CLASS_IPI);
+		exit_fail(page, record, page->page.state.failure);
 	/* Reader: every copy out before the tail that frees the bytes. */
 	be_mvp_exec_fence_r_w();
 	if (!be_mvp_ring_release(&page->inbound) ||
 	    (posted != 0U && !publish(page)))
 		exit_fail(page, record, BE_MVP_CLASS_RING);
-	if (posted != 0U)
-		tell_control_hart();
 }
 
 /*
- * A paused or terminated domain (planning/mvp-m2-plan.md, Q4 and Q15): its
+ * A paused or terminated VS domain (planning/mvp-m2-plan.md, Q4 and Q15):
  * guest's state stays in the saved page, never restored. The hart waits in
- * HS for each IPI, clears it, and reads its inbound ring: a paused hart
+ * HS for each tick and reads its inbound ring: a paused hart
  * takes a TERMINATE, answered with TERMINATED, and parks on as terminated;
- * any other record, or any record once terminated, fails the hart as ipi;
+ * any other record, or any record once terminated, fails the hart as tick;
  * a wake that finds the ring empty waits again.
  */
 static void parked(struct be_mvp_hart_page *page,
@@ -350,35 +383,38 @@ static void parked(struct be_mvp_hart_page *page,
 		   const struct be_mvp_exit *record)
 {
 	for (;;) {
-		(void)be_mvp_exec_wait(BE_MVP_SIE_SSIE);
-		(void)be_mvp_exec_clear_ssip();
+		be_u64 answered;
+
+		wait_tick(page, record, &answered);
 		wait_serve(page, record);
 	}
 }
 #endif
 
 /*
- * The IPI: clear SSIP before reading the inbound ring, so a later IPI is
- * never lost; answer each PING with a PONG, and in an image that accepts
- * the management extension a PAUSE or TERMINATE with PAUSED or TERMINATED;
- * release, publish, and tell hart 0. A hart that hart 0 has now paused or
- * terminated parks.
+ * The guest-level tick: re-arm first, read the inbound ring, answer each
+ * PING with a PONG, and in an image that accepts management answer PAUSE
+ * or TERMINATE with PAUSED or TERMINATED. An empty ring is normal.
  */
-static void ipi(struct be_mvp_hart_page *page, const struct be_mvp_exit *record)
+static void tick(struct be_mvp_hart_page *page,
+		 const struct be_mvp_exit *record)
 {
-	(void)be_mvp_exec_clear_ssip();
+	be_u64 posted = 0U;
+	be_u64 now;
+
+	(void)be_mvp_exec_rearm_tick();
 	(void)be_mvp_ring_acquire(&page->inbound);
 	/* Reader: the head, then the records it admits. */
 	be_mvp_exec_fence_r_r();
-	if (be_mvp_ipi_serve(&page->page.state, &page->inbound,
-			     &page->outbound, record,
-			     be_mvp_exec_read_time()) == 0U)
-		exit_fail(page, record, BE_MVP_CLASS_IPI);
+	now = be_mvp_exec_read_time();
+	if (!be_mvp_ipi_serve(&page->page.state, &page->inbound,
+			      &page->outbound, record, now, &posted))
+		exit_fail(page, record, page->page.state.failure);
 	/* Reader: every copy out before the tail that frees the bytes. */
 	be_mvp_exec_fence_r_w();
-	if (!be_mvp_ring_release(&page->inbound) || !publish(page))
+	if (!be_mvp_ring_release(&page->inbound) ||
+	    (posted != 0U && !publish(page)))
 		exit_fail(page, record, BE_MVP_CLASS_RING);
-	tell_control_hart();
 #if BE_MVP_RUN_ACCEPT_MGMT
 	if (page->page.state.phase == BE_MVP_PHASE_PAUSED ||
 	    page->page.state.phase == BE_MVP_PHASE_TERMINATED)
@@ -402,7 +438,6 @@ static void stopped(struct be_mvp_hart_page *page,
 				  page->page.entered, now) ||
 	    !publish(page))
 		exit_fail(page, record, BE_MVP_CLASS_RING);
-	tell_control_hart();
 	be_mvp_exec_park();
 }
 
@@ -410,18 +445,16 @@ static void stopped(struct be_mvp_hart_page *page,
 /*
  * A management call (planning/mvp-m2-plan.md, "The management extension"
  * and Q14), after be_mvp_handle_exit() counted it: MGMT_REQUEST posted,
- * published, and announced to hart 0 by one IPI (else ring); then the
- * wait in HS for its MGMT_RESULT. The inbound ring is read only once the
- * SSIP helper's readback shows an IPI arrived, and hart 0 sends one after
- * each record it publishes, so every record read here has had its IPI
- * consumed, and none reaches the guest after its record; a PING found
- * meanwhile is answered with its PONG. The wait's 2^24-tick window
+ * published, and found by hart 0 at its next tick; then the wait in HS for
+ * its MGMT_RESULT. At each VS-domain-hart tick the inbound ring is read; a
+ * PING found meanwhile is answered with its PONG. The wait's 2^24-tick
+ * window
  * restarts each time hart 0 takes a record from the hart's outbound ring
  * (be_mvp_ack_wait_step(), M1-B's), so it measures hart 0's progress, not
  * its latency behind a slow console; a window with neither progress nor
  * the answer fails the hart as mgmt. The answer becomes the result's a0,
  * which the dispatch writes into the frame before it resumes the guest
- * after the ecall; no CSR is written but sip's SSIP clear.
+ * after the ecall.
  */
 static void mgmt_call(struct be_mvp_hart_page *page,
 		      const struct be_mvp_exit *record,
@@ -435,18 +468,19 @@ static void mgmt_call(struct be_mvp_hart_page *page,
 				      be_mvp_exec_read_time()) ||
 	    !publish(page))
 		exit_fail(page, record, BE_MVP_CLASS_RING);
-	tell_control_hart();
 	be_mvp_ack_wait_start(&wait, be_mvp_exec_read_time(),
 			      be_mvp_ring_taken(&page->outbound));
 	do {
-		if ((be_mvp_exec_clear_ssip() & BE_MVP_SIE_SSIE) != 0U)
-			wait_serve(page, record);
+		be_u64 answered;
+
+		wait_tick(page, record, &answered);
+		wait_serve(page, record);
 		if (state->awaiting == 0U) {
 			result->error = (long)state->answer;
 			result->value = 0U;
 			return;
 		}
-		step = be_mvp_ack_wait_step(&wait, be_mvp_exec_read_time(),
+		step = be_mvp_ack_wait_step(&wait, answered,
 			be_mvp_ring_taken(&page->outbound),
 			be_mvp_ring_published(&page->outbound), 0);
 	} while (step == BE_MVP_ACK_WAIT);
@@ -460,8 +494,8 @@ static void mgmt_call(struct be_mvp_hart_page *page,
  * plan's order, after be_mvp_handle_exit() counted the exit and the denial:
  * the injection helper writes vscause, vstval, vsepc, and vsstatus and
  * reads each back, and every readback must equal its value (else controls,
- * with a register DETAIL); one DENIAL record is posted, published, and
- * announced to hart 0 by one IPI (else ring, by M0's fallback path); then
+ * with a register DETAIL); one DENIAL record is posted and published for
+ * hart 0's next tick (else ring, by M0's fallback path); then
  * the frame's sepc becomes the guest's trap vector and the saved SPVP VS,
  * so that M0's resume tail enters VS mode there. No hgatp write, no fence
  * beyond the publish, no lock, and no other hart's block.
@@ -487,7 +521,6 @@ static void deny(struct be_mvp_hart_page *page, struct be_mvp_exit *record,
 				be_mvp_exec_read_time()) ||
 	    !publish(page))
 		exit_fail(page, record, BE_MVP_CLASS_RING);
-	tell_control_hart();
 	record->frame.sepc = denial->resume_pc;
 	record->hstatus |= BE_MVP_HSTATUS_SPVP;
 }
@@ -517,8 +550,8 @@ void be_mvp_dispatch(struct be_mvp_exit *record)
 	case BE_MVP_ACTION_SET_TIMER:
 		be_mvp_exec_set_timer(result.timer);
 		break;
-	case BE_MVP_ACTION_IPI:
-		ipi(page, record);
+	case BE_MVP_ACTION_TICK:
+		tick(page, record);
 		break;
 #if BE_MVP_RUN_ACCEPT_DENIAL
 	case BE_MVP_ACTION_DENY:
@@ -642,13 +675,18 @@ void be_mvp_hart_main(be_u64 hart_id, be_u64 block)
 			      readback[index]);
 	be_mvp_exec_fence_i();
 
+#if defined(BE_MVP_PROBE_IMAGE)
 	value = be_mvp_exec_read_time();
+#else
+	value = be_mvp_exec_rearm_tick();
+#endif
 	state->entered = value;
-	if (!be_mvp_post_ready(&page->outbound, &state->controls, value) ||
-	    !be_mvp_post_entered(&page->outbound, &published->entry, value) ||
+	if (!be_mvp_post_ready(&state->state, &page->outbound,
+			       &state->controls, value) ||
+	    !be_mvp_post_entered(&state->state, &page->outbound,
+				 &published->entry, value) ||
 	    !publish(page))
 		hart_fail(page, BE_MVP_CLASS_RING, (const be_u64 *)0, 0U);
-	tell_control_hart();
 	*record = published->entry;
 	be_mvp_exec_resume(record, published->desc.hgatp,
 			   state->controls.hedeleg);

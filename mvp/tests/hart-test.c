@@ -73,7 +73,7 @@ static unsigned long scenarios;
 #define STEP_INVALID		BE_MVP_STEP_INVALID
 #define CLASS_NONE		BE_MVP_CLASS_NONE
 #define CLASS_RING		BE_MVP_CLASS_RING
-#define CLASS_IPI		BE_MVP_CLASS_IPI
+#define CLASS_TICK		BE_MVP_CLASS_TICK
 
 static const struct be_mvp_binding defaults[BE_MVP_DOMAINS] =
 	BE_MVP_BINDINGS_INITIALIZER;
@@ -355,7 +355,7 @@ static void test_constants(void)
 	CHECK(BE_MVP_BLOCK_OK == 0 && BE_MVP_DOMAIN_NONE == 0 &&
 	      BE_MVP_STEP_INVALID == 0);
 	CHECK(BE_MVP_READY_WORDS == 8U && BE_MVP_ENTERED_WORDS == 3U &&
-	      BE_MVP_PONG_WORDS == 3U && BE_MVP_SHUTDOWN_WORDS == 15U &&
+	      BE_MVP_PONG_WORDS == 3U && BE_MVP_SHUTDOWN_WORDS == 16U &&
 	      BE_MVP_FAIL_MAX_WORDS == 9U && BE_MVP_DENIAL_WORDS == 12U);
 	CHECK(BE_MVP_SHUTDOWN_MGMT == 13U &&
 	      BE_MVP_MGMT_REQUEST_WORDS == 3U &&
@@ -966,7 +966,7 @@ struct expected {
 };
 
 #define RING_	{ BE_MVP_STEP_INVALID, BE_MVP_CLASS_RING, 0U }
-#define IPI_	{ BE_MVP_STEP_INVALID, BE_MVP_CLASS_IPI, 0U }
+#define TICK_	{ BE_MVP_STEP_INVALID, BE_MVP_CLASS_TICK, 0U }
 #define FAIL_	{ BE_MVP_STEP_FAIL, BE_MVP_CLASS_CONTROLS, 0U }
 #define OK_(s)	{ BE_MVP_STEP_##s, BE_MVP_CLASS_NONE, 0U }
 #define ALL_RING_ { RING_, RING_, RING_, RING_, RING_, RING_, RING_ }
@@ -993,8 +993,8 @@ static const struct expected table[BE_ARRAY_SIZE(table_types)]
 	{ RING_, RING_, OK_(ENTERED), RING_, RING_, RING_, RING_ },
 	{ RING_, RING_, RING_, { BE_MVP_STEP_LINE, BE_MVP_CLASS_NONE, 1U },
 	  OK_(LINE), OK_(LINE), RING_ },
-	{ RING_, RING_, RING_, IPI_, OK_(PONG), IPI_, RING_ },
-	{ RING_, RING_, RING_, IPI_, IPI_, OK_(SHUTDOWN), RING_ },
+	{ RING_, RING_, RING_, TICK_, OK_(PONG), TICK_, RING_ },
+	{ RING_, RING_, RING_, TICK_, TICK_, OK_(SHUTDOWN), RING_ },
 	{ RING_, FAIL_, FAIL_, FAIL_, FAIL_, FAIL_, RING_ },
 	ALL_RING_,
 	ALL_RING_,
@@ -1204,10 +1204,10 @@ static void test_payloads(void)
 	make(BE_MVP_RECORD_FAIL, 0U, tick(0U), 0U);
 	expect_at(STEP_INVALID, CLASS_RING);
 	at(TARGET_ENTERED);
-	make_fail(0U, tick(0U), BE_MVP_CLASS_IPI, 9U);
+	make_fail(0U, tick(0U), BE_MVP_CLASS_TICK, 9U);
 	expect_at(STEP_INVALID, CLASS_RING);
 	at(TARGET_ENTERED);
-	make_fail(0U, tick(0U), BE_MVP_CLASS_IPI, 1U);
+	make_fail(0U, tick(0U), BE_MVP_CLASS_TICK, 1U);
 	record.length = 12U;
 	expect_at(STEP_INVALID, CLASS_RING);
 	at(TARGET_ENTERED);
@@ -1220,8 +1220,8 @@ static void test_payloads(void)
 	make_fail(0U, tick(0U), ALL_ONES, 0U);
 	expect_at(STEP_INVALID, CLASS_RING);
 	at(TARGET_ENTERED);
-	make_fail(0U, tick(0U), BE_MVP_CLASS_IPI, 0U);
-	expect_at(BE_MVP_STEP_FAIL, BE_MVP_CLASS_IPI);
+	make_fail(0U, tick(0U), BE_MVP_CLASS_TICK, 0U);
+	expect_at(BE_MVP_STEP_FAIL, BE_MVP_CLASS_TICK);
 	at(TARGET_ENTERED);
 	make_fail(0U, tick(0U), BE_MVP_CLASS_EXIT_BUDGET, 8U);
 	expect_at(BE_MVP_STEP_FAIL, BE_MVP_CLASS_EXIT_BUDGET);
@@ -1282,7 +1282,7 @@ static void test_times(void)
 	make_line(0U, domain_time[0], "same time again");
 	CHECK(apply(0U) == BE_MVP_STEP_LINE && result.ping == 0U);
 	at(TARGET_PONGED);
-	make_fail(0U, 0U, BE_MVP_CLASS_IPI, 0U);
+	make_fail(0U, 0U, BE_MVP_CLASS_TICK, 0U);
 	expect_at(STEP_INVALID, CLASS_RING);
 	/* Across domains, drain order sets no time order. */
 	SCENARIO();
@@ -2252,6 +2252,38 @@ static void test_wake(void)
 	      BE_MVP_CLASS_HART_READY);
 }
 
+static void test_deadline(void)
+{
+	be_u64 deadline = 0U;
+
+	SCENARIO();
+	fresh();
+	CHECK(be_mvp_control_deadline(&ctl, START, &deadline) == 1);
+	CHECK(deadline == START + BE_MVP_TICK_TICKS);
+	CHECK(be_mvp_control_deadline(&ctl, START + BUDGET - 1U,
+				      &deadline) == 1);
+	CHECK(deadline == START + BUDGET);
+	CHECK(be_mvp_control_deadline(&ctl, START + BUDGET, &deadline) == 1);
+	CHECK(deadline == START + BUDGET);
+
+	SCENARIO();
+	be_mvp_control_init(&ctl, ALL_ONES - 100U, 100U, 20U);
+	CHECK(be_mvp_control_deadline(&ctl, ALL_ONES - 50U, &deadline) == 1);
+	CHECK(deadline == ALL_ONES);
+	ctl.failed = 1U;
+	CHECK(be_mvp_control_deadline(&ctl, START, &deadline) == 0);
+	fresh();
+	ctl.done = 1U;
+	CHECK(be_mvp_control_deadline(&ctl, START, &deadline) == 0);
+	fresh();
+	ctl.budget = 0U;
+	CHECK(be_mvp_control_deadline(&ctl, START, &deadline) == 0);
+	CHECK(be_mvp_control_deadline((const struct be_mvp_control *)0,
+				      START, &deadline) == 0);
+	fresh();
+	CHECK(be_mvp_control_deadline(&ctl, START, (be_u64 *)0) == 0);
+}
+
 /*
  * Hart 0's round-robin drain (Plan revision M0-C.1), driven as the runtime
  * drives it: be_mvp_drain_next() names a ring, and the visit acquires its
@@ -2930,6 +2962,7 @@ int main(void)
 	test_mgmt();
 	test_saturation();
 	test_wake();
+	test_deadline();
 	test_drain_order();
 	test_overlap();
 	test_line_output();

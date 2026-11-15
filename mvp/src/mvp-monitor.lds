@@ -270,7 +270,8 @@ SECTIONS
 		__be_control_confined_entry_slot_end = .;
 		*mvp-trap.o(.text.mvp.control)
 		*mvp-runtime.o(
-			.text.answer* .text.apply* .text.control_loop*
+			.text.answer* .text.apply* .text.arm_control_tick*
+			.text.control_loop*
 			.text.domain_failed* .text.drain* .text.emit*
 			.text.emit_line* .text.emit_record* .text.emit_text*
 			.text.fail_detail* .text.fail_domain* .text.input_report*
@@ -279,7 +280,7 @@ SECTIONS
 			.text.write_text* .text.write_line* .text.terminal*
 			.text.page_rights* .text.poll_input* .text.post_inbound*
 			.text.run_complete* .text.settle* .text.target_state*
-			.text.wake_failed*)
+			.text.wait_control_tick* .text.wake_failed*)
 		*mvp-log.o(.text .text.*)
 		*mvp-hart.o(
 			.text.be_mvp_control_* .text.be_mvp_drain_*
@@ -309,7 +310,7 @@ SECTIONS
 		__be_mvp_control_constants_start = .;
 		*mvp-runtime.o(
 			.rodata.marker_started* .rodata.marker_ready*
-			.rodata.marker_entered* .rodata.marker_ipi*
+			.rodata.marker_entered* .rodata.marker_tick*
 			.rodata.marker_domain_shutdown* .rodata.marker_complete*
 			.rodata.marker_input
 			.rodata.marker_input_* .rodata.marker_focus*
@@ -358,6 +359,7 @@ SECTIONS
 			.text.be_mvp_exec_inject*
 			.text.be_mvp_exec_install_hgatp*
 			.text.be_mvp_exec_park*
+			.text.be_mvp_exec_rearm_tick*
 			.text.be_mvp_exec_resume*
 			.text.be_mvp_exec_set_timer*
 			.text.be_mvp_exec_switch_hgatp*)

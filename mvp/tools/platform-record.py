@@ -53,7 +53,8 @@ the requester's state, the result, the target's state, and service=,
 beside its guest's MVPINIT 10 report, the DOMAIN_PAUSED and
 DOMAIN_TERMINATED lines with their exit counts, and each request's and
 response's digest (MVPINIT 09) beside the expectation's offline one; and
-each anchor run's BE_MVP:11 IPI_PROBE lines beside the capture checker's
+each anchor run's current TICK_PROBE or historical IPI_PROBE lines beside
+the capture checker's
 costs (check.txt), a probe it recorded as served inside a management wait
 of its hart (Plan revision M2-A: g<d>_ping_in_mgmt_wait, g<d>_ping_mgmt_seq)
 with the BE_MVP:MGMT line whose wait holds it; M0's
@@ -130,7 +131,7 @@ REPETITION_MS = {"1": "10", "2": "10", "3": "10", "4": "1"}
 MODES = {0: "Bare", 8: "Sv39x4", 9: "Sv48x4", 10: "Sv57x4"}
 COUNTS = ("boot_hart", "records", "wakes", "alternations", "overlap_ticks",
           "shorter_ticks")
-SHUTDOWN = ("hart", "domain", "exits", "sbi", "ipi", "base", "time",
+SHUTDOWN = ("hart", "domain", "exits", "sbi", "ipi", "tick", "base", "time",
             "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused",
             "lines", "ring_peak", "entered", "ticks", "elapsed_ms")
 # The campaign's Serial log paragraph (M0 open item 40, as M1 makes it an
@@ -211,10 +212,10 @@ GUEST_CALL = re.compile(r"MVPINIT 10 MGMT (?:burst=(\d+) )?fid=(\S+) "
 GUEST_DIGEST = re.compile(r"MVPINIT 09 (REQUEST|RESPONSE) n=(\d+) "
                           r"(?:digest=([0-9a-f]{64})|timeout=1)")
 MGMT_COUNTS = ("mgmt_g0", "mgmt_g1")
-# Plan revision M2-A (planning/mvp-m2-plan.md): the IPI probe's line, and
-# the capture checker's costs for a probe served inside a management wait
-# of its hart (M2-A.1), by domain.
+# Plan revision M2-A (planning/mvp-m2-plan.md): the current tick probe, or a
+# historical IPI probe, and the capture checker's management-wait costs.
 IPI_PROBE = "BE_MVP:11 IPI_PROBE "
+TICK_PROBE = "BE_MVP:11 TICK_PROBE "
 IPI_FIELDS = ("hart", "domain", "sent", "received", "answered", "spv")
 IN_WAIT, WAIT_SEQ = "g{}_ping_in_mgmt_wait", "g{}_ping_mgmt_seq"
 
@@ -880,9 +881,8 @@ def guest_calls(run, prefixes):
 
 
 def ipi_probes(run, timebase):
-    """RUN's BE_MVP:11 IPI_PROBE lines (result.json) beside the capture
-    checker's costs (check.txt; Plan revision M2-A.1): each probe's times
-    and SPV, and, for one the checker recorded as served inside a
+    """RUN's current tick or historical IPI probe lines beside the capture
+    checker's costs: each probe's times and SPV, and, for one served inside a
     management wait of its hart (IN_WAIT, WAIT_SEQ), the BE_MVP:MGMT line
     of that domain and seq whose wait, [ticks, ticks + service], holds
     its received=: the request's function, ticks, and service, the
@@ -894,9 +894,11 @@ def ipi_probes(run, timebase):
         for mark in run["markers"] if mark.startswith(MGMT))}
     rows = []
     for mark in run["markers"]:
-        if not mark.startswith(IPI_PROBE):
+        prefix = TICK_PROBE if mark.startswith(TICK_PROBE) else \
+            IPI_PROBE if mark.startswith(IPI_PROBE) else None
+        if prefix is None:
             continue
-        probe = line_fields(mark[len(IPI_PROBE):], IPI_FIELDS)
+        probe = line_fields(mark[len(prefix):], IPI_FIELDS)
         domain = probe["domain"]
         inside = costs.get(IN_WAIT.format(domain))
         wait = waits.get((domain, costs.get(WAIT_SEQ.format(domain))))
@@ -1749,7 +1751,7 @@ def failure_section(rows):
 
 
 def probe_summary(m2):
-    """The IPI probe in a management wait (ipi_probes()), as a fact where
+    """The tick or historical IPI probe in a management wait, as a fact where
     a run shows it and as not observed otherwise."""
     rows, runs = m2["ipi_probes"], len(m2["ipi_runs"])
     inside = [row for row in rows if row[7] == "1"]
@@ -1821,8 +1823,9 @@ def anchor_sections(m2):
         table(["Run", "Image", "Requester", "Its state", "`seq`", "`fid`",
                "`target`", "`result`", "SBI", "`target_state`", "`ticks`",
                "`service`", "ms", "The guest's report"], m2["requests"]),
-        "### The IPI probe in a management wait\n\nEach anchor run's "
-        "`BE_MVP:11 IPI_PROBE` lines (`result.json`) beside the capture "
+        "### The tick probe in a management wait\n\nEach anchor run's "
+        "current `BE_MVP:11 TICK_PROBE` or historical `IPI_PROBE` lines "
+        "(`result.json`) beside the capture "
         "checker's costs (`BE_MVP_COSTS` in `check.txt`; "
         "planning/mvp-m2-plan.md, Plan revision M2-A): a domain hart that "
         "waits in HS for hart 0's answer to its management request serves "

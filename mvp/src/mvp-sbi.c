@@ -2,10 +2,10 @@
 /*
  * Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
  *
- * Purpose: MVP guest SBI core: exit classification (SBI and the IPI), each
+ * Purpose: MVP guest SBI core: exit classification (SBI and the tick), each
  *          domain's exit ceiling, per-hart counters, the bounded SBI
  *          subset, the DBCN window check, the per-hart line console and its
- *          LINE records, the IPI's PING and PONG, the denial entry's
+ *          LINE records, the tick's PING and PONG, the denial entry's
  *          decision over the hart's walked pages and its injected values
  *          (planning/mvp-m1-plan.md, "The denial path"), the management
  *          extension (planning/mvp-m2-plan.md, "The management extension"):
@@ -43,9 +43,10 @@ _Static_assert(BE_MVP_HSTATUS_RESUME_MASK == BE_U64_C(0x73f280) &&
 	       "hstatus resume controls are SPV, SPVP masked out");
 _Static_assert(BE_MVP_SSTATUS_CONTROL_MASK == BE_U64_C(0xde722),
 	       "sstatus guest mask is R3's plus VS");
-_Static_assert(BE_MVP_SIE_SSIE == BE_U64_C(0x2) &&
+_Static_assert((BE_MVP_SIE_DOMAIN == BE_U64_C(0x2) ||
+		BE_MVP_SIE_DOMAIN == BE_U64_C(0x22)) &&
 	       BE_MVP_SIE_CONTROL == BE_U64_C(0x22),
-	       "domain harts take SSIE; hart 0 SSIE and STIE");
+	       "VS-domain harts take their profile's interrupts; hart 0 both");
 _Static_assert(sizeof(struct be_mvp_exit) == 360U &&
 	       sizeof(struct be_mvp_exit) <= BE_MVP_BLOCK_SAVED_BYTES,
 	       "the exit record is the accepted frame and five words, inside "
@@ -116,6 +117,8 @@ static const char *const be_mvp_class_names[BE_MVP_CLASS_COUNT] = {
 	[BE_MVP_CLASS_MEASUREMENT] = "measurement",
 	[BE_MVP_CLASS_MGMT] = "mgmt",
 	[BE_MVP_CLASS_LOG] = "log",
+	[BE_MVP_CLASS_TICK] = "tick",
+	[BE_MVP_CLASS_BOUNDARY] = "boundary",
 };
 
 static const char *const be_mvp_vcsr_names[BE_MVP_VCSR_COUNT] = {
@@ -167,7 +170,7 @@ int be_mvp_controls_valid(const struct be_mvp_controls *controls,
 	       controls->henvcfg == BE_MVP_HENVCFG_ARMED &&
 	       controls->hgeie == 0U &&
 	       controls->vstimecmp == BE_MVP_VSTIMECMP_DISARMED &&
-	       controls->sie == BE_MVP_SIE_SSIE &&
+	       controls->sie == BE_MVP_SIE_DOMAIN &&
 	       (controls->sstatus & BE_MVP_SSTATUS_CONTROL_MASK) == 0U &&
 	       controls->hgatp == expected_hgatp && controls->vsatp == 0U &&
 	       controls->sscratch == trusted_top;
@@ -336,6 +339,44 @@ enum be_mvp_class be_mvp_fail(struct be_mvp_state *state,
 	state->phase = BE_MVP_PHASE_FAILED;
 	state->failure = failure;
 	return failure;
+}
+
+_Static_assert(BE_MVP_FAILURE_ROOM_BYTES ==
+	       BE_MVP_RECORD_HEADER_BYTES + BE_MVP_RECORD_PAYLOAD_MAX +
+	       BE_MVP_RECORD_HEADER_BYTES + BE_MVP_FAIL_MAX_WORDS * 8U,
+	       "the failure room holds one full LINE and the largest FAIL");
+
+/*
+ * Keep one full LINE and the largest FAIL behind every non-failure post.
+ * The tail is the writer's existing unchecked, unfenced observation: an
+ * old value can only fail early. be_mvp_ring_post() remains the final
+ * validator of the view and the tail.
+ */
+static int failure_room(struct be_mvp_state *state,
+			struct be_mvp_ring *outbound, be_u64 payload)
+{
+	be_u64 record;
+	be_u64 taken;
+	be_u64 used;
+
+	if (state == (struct be_mvp_state *)0 ||
+	    outbound == (struct be_mvp_ring *)0)
+		return 0;
+	if (state->phase == BE_MVP_PHASE_FAILED)
+		return 1;
+	record = be_mvp_ring_record_bytes(payload);
+	taken = be_mvp_ring_taken(outbound);
+	used = outbound->cursor - taken;
+	if (record == 0U || outbound->role != BE_MVP_RING_WRITER ||
+	    outbound->failed != 0U || used > outbound->capacity ||
+	    record > outbound->capacity - used)
+		return 1;
+	if (BE_MVP_FAILURE_ROOM_BYTES >
+	    outbound->capacity - used - record) {
+		(void)be_mvp_fail(state, BE_MVP_CLASS_RING);
+		return 0;
+	}
+	return 1;
 }
 
 static enum be_mvp_action terminal(struct be_mvp_state *state,
@@ -566,22 +607,24 @@ enum be_mvp_action be_mvp_handle_exit(struct be_mvp_state *state,
 	    state->phase != BE_MVP_PHASE_RUNNING)
 		return terminal(state, result, BE_MVP_CLASS_EXCEPTION);
 	counts = &state->counts;
+	frame = &record->frame;
+	/* A tick is served before the ceiling and is never charged to it. */
+	if (frame->reserved == 0U &&
+	    (record->hstatus & BE_MVP_HSTATUS_SPV) != 0U &&
+	    frame->scause == BE_MVP_SCAUSE_SUPERVISOR_TIMER) {
+		++counts->tick;
+		result->resume_pc = frame->sepc;
+		result->action = BE_MVP_ACTION_TICK;
+		return result->action;
+	}
 	if (counts->exits >= state->exit_ceiling) {
 		counts->exits = state->exit_ceiling + 1U;
 		return terminal(state, result, BE_MVP_CLASS_EXIT_BUDGET);
 	}
 	++counts->exits;
-	frame = &record->frame;
 	if (frame->reserved != 0U ||
 	    (record->hstatus & BE_MVP_HSTATUS_SPV) == 0U)
 		return terminal(state, result, BE_MVP_CLASS_EXCEPTION);
-	/* The IPI: the PING waits in the inbound ring; resume where it hit. */
-	if (frame->scause == BE_MVP_SCAUSE_SUPERVISOR_SOFTWARE) {
-		++counts->ipi;
-		result->resume_pc = frame->sepc;
-		result->action = BE_MVP_ACTION_IPI;
-		return result->action;
-	}
 	failure = be_mvp_classify_cause(frame->scause);
 	/* A guest-page fault the denial entry accepts is a denial. */
 	if (failure == BE_MVP_CLASS_GUEST_PAGE_FAULT &&
@@ -666,7 +709,7 @@ static be_u64 serve_record(struct be_mvp_state *state,
 
 	if (record->type == BE_MVP_RECORD_PING) {
 		if (!running || record->length != 0U)
-			return refuse(state, BE_MVP_CLASS_IPI);
+			return refuse(state, BE_MVP_CLASS_TICK);
 		answer[BE_MVP_PONG_SENT] = record->time;
 		answer[BE_MVP_PONG_RECEIVED] = received;
 		answer[BE_MVP_PONG_SPV] = spv;
@@ -677,24 +720,24 @@ static be_u64 serve_record(struct be_mvp_state *state,
 			    state->awaiting ||
 		    !answerable(be_mvp_record_word(record,
 						   BE_MVP_MGMT_RESULT_CODE)))
-			return refuse(state, BE_MVP_CLASS_IPI);
+			return refuse(state, BE_MVP_CLASS_TICK);
 		state->answer = be_mvp_record_word(record,
 						   BE_MVP_MGMT_RESULT_CODE);
 		state->awaiting = 0U;
 		return 0U;
 	} else if (record->type == BE_MVP_RECORD_PAUSE) {
 		if (!ordered || !running || state->awaiting != 0U)
-			return refuse(state, BE_MVP_CLASS_IPI);
+			return refuse(state, BE_MVP_CLASS_TICK);
 		state->phase = BE_MVP_PHASE_PAUSED;
 		type = BE_MVP_RECORD_PAUSED;
 	} else if (record->type == BE_MVP_RECORD_TERMINATE) {
 		if (!ordered || ((!running || state->awaiting != 0U) &&
 				 state->phase != BE_MVP_PHASE_PAUSED))
-			return refuse(state, BE_MVP_CLASS_IPI);
+			return refuse(state, BE_MVP_CLASS_TICK);
 		state->phase = BE_MVP_PHASE_TERMINATED;
 		type = BE_MVP_RECORD_TERMINATED;
 	} else {
-		return refuse(state, BE_MVP_CLASS_IPI);
+		return refuse(state, BE_MVP_CLASS_TICK);
 	}
 	if (type != BE_MVP_RECORD_PONG) {
 		be_u64 flushed;
@@ -710,7 +753,8 @@ static be_u64 serve_record(struct be_mvp_state *state,
 		answer[BE_MVP_PAUSED_BY] = state->by;
 		words = BE_MVP_PAUSED_WORDS;
 	}
-	if (!be_mvp_ring_post_words(outbound, type, now, answer, words))
+	if (!failure_room(state, outbound, words * sizeof(be_u64)) ||
+	    !be_mvp_ring_post_words(outbound, type, now, answer, words))
 		return refuse(state, BE_MVP_CLASS_RING);
 	return 1U;
 }
@@ -752,34 +796,39 @@ static be_u64 serve(struct be_mvp_state *state, struct be_mvp_ring *inbound,
 	return posted;
 }
 
-be_u64 be_mvp_ipi_serve(struct be_mvp_state *state,
-			struct be_mvp_ring *inbound,
-			struct be_mvp_ring *outbound,
-			const struct be_mvp_exit *record, be_u64 now)
+int be_mvp_ipi_serve(struct be_mvp_state *state,
+		     struct be_mvp_ring *inbound,
+		     struct be_mvp_ring *outbound,
+		     const struct be_mvp_exit *record, be_u64 now,
+		     be_u64 *posted)
 {
+	be_u64 answers;
 	be_u64 taken;
 
+	if (posted == (be_u64 *)0)
+		return 0;
+	*posted = 0U;
 	if (state == (struct be_mvp_state *)0)
-		return 0U;
+		return 0;
 	if (inbound == (struct be_mvp_ring *)0 ||
 	    outbound == (struct be_mvp_ring *)0 ||
 	    record == (const struct be_mvp_exit *)0 ||
 	    state->phase != BE_MVP_PHASE_RUNNING) {
-		(void)be_mvp_fail(state, BE_MVP_CLASS_IPI);
-		return 0U;
+		(void)be_mvp_fail(state, BE_MVP_CLASS_TICK);
+		return 0;
 	}
-	/* The receipt is the IPI exit's, at V=1 or not. */
-	if (serve(state, inbound, outbound, record->time,
-		  (record->hstatus & BE_MVP_HSTATUS_SPV) != 0U ? 1U : 0U, now,
-		  &taken) == SERVE_FAILED)
-		return 0U;
-	if (taken == 0U)
-		(void)be_mvp_fail(state, BE_MVP_CLASS_IPI);
-	return taken;
+	/* The handler's read is the receipt. An empty ring is normal. */
+	answers = serve(state, inbound, outbound, now,
+			(record->hstatus & BE_MVP_HSTATUS_SPV) != 0U ? 1U : 0U,
+			now, &taken);
+	if (answers == SERVE_FAILED)
+		return 0;
+	*posted = answers;
+	return 1;
 }
 
 int be_mvp_wait_serve(struct be_mvp_state *state, struct be_mvp_ring *inbound,
-		      struct be_mvp_ring *outbound, be_u64 now,
+		      struct be_mvp_ring *outbound, be_u64 received, be_u64 now,
 		      be_u64 *posted)
 {
 	be_u64 answers;
@@ -795,11 +844,11 @@ int be_mvp_wait_serve(struct be_mvp_state *state, struct be_mvp_ring *inbound,
 	    !((state->phase == BE_MVP_PHASE_RUNNING && state->awaiting != 0U) ||
 	      state->phase == BE_MVP_PHASE_PAUSED ||
 	      state->phase == BE_MVP_PHASE_TERMINATED)) {
-		(void)be_mvp_fail(state, BE_MVP_CLASS_IPI);
+		(void)be_mvp_fail(state, BE_MVP_CLASS_TICK);
 		return 0;
 	}
-	/* In HS: the receipt is now, and the IPI did not arrive at V=1. */
-	answers = serve(state, inbound, outbound, now, 0U, now, &taken);
+	/* In HS, the tick did not arrive at V=1. */
+	answers = serve(state, inbound, outbound, received, 0U, now, &taken);
 	if (answers == SERVE_FAILED)
 		return 0;
 	*posted = answers;
@@ -971,7 +1020,8 @@ const char *be_mvp_domain_prefix(be_u32 domain)
 static int post_line(struct be_mvp_state *state, struct be_mvp_ring *outbound,
 		     be_u64 now)
 {
-	if (!be_mvp_ring_post(outbound, BE_MVP_RECORD_LINE, now,
+	if (!failure_room(state, outbound, state->console.length) ||
+	    !be_mvp_ring_post(outbound, BE_MVP_RECORD_LINE, now,
 			      (const be_u8 *)state->console.text,
 			      state->console.length)) {
 		(void)be_mvp_fail(state, BE_MVP_CLASS_RING);
@@ -1037,7 +1087,8 @@ be_u64 be_mvp_console_flush(struct be_mvp_state *state,
 	return 1U;
 }
 
-int be_mvp_post_ready(struct be_mvp_ring *outbound,
+int be_mvp_post_ready(struct be_mvp_state *state,
+		      struct be_mvp_ring *outbound,
 		      const struct be_mvp_controls *controls, be_u64 now)
 {
 	be_u64 words[BE_MVP_READY_WORDS];
@@ -1053,11 +1104,14 @@ int be_mvp_post_ready(struct be_mvp_ring *outbound,
 	words[BE_MVP_READY_SIE] = controls->sie;
 	words[BE_MVP_READY_HENVCFG] = controls->henvcfg;
 	words[BE_MVP_READY_VSTIMECMP] = controls->vstimecmp;
-	return be_mvp_ring_post_words(outbound, BE_MVP_RECORD_READY, now, words,
+	return failure_room(state, outbound,
+			    BE_MVP_READY_WORDS * sizeof(be_u64)) &&
+	       be_mvp_ring_post_words(outbound, BE_MVP_RECORD_READY, now, words,
 				      BE_MVP_READY_WORDS);
 }
 
-int be_mvp_post_entered(struct be_mvp_ring *outbound,
+int be_mvp_post_entered(struct be_mvp_state *state,
+			struct be_mvp_ring *outbound,
 			const struct be_mvp_exit *record, be_u64 now)
 {
 	be_u64 words[BE_MVP_ENTERED_WORDS];
@@ -1067,7 +1121,9 @@ int be_mvp_post_entered(struct be_mvp_ring *outbound,
 	words[BE_MVP_ENTERED_PC] = record->frame.sepc;
 	words[BE_MVP_ENTERED_A0] = record->frame.gpr[BE_R4_GPR_A0];
 	words[BE_MVP_ENTERED_A1] = record->frame.gpr[BE_R4_GPR_A1];
-	return be_mvp_ring_post_words(outbound, BE_MVP_RECORD_ENTERED, now,
+	return failure_room(state, outbound,
+			    BE_MVP_ENTERED_WORDS * sizeof(be_u64)) &&
+	       be_mvp_ring_post_words(outbound, BE_MVP_RECORD_ENTERED, now,
 				      words, BE_MVP_ENTERED_WORDS);
 }
 
@@ -1097,11 +1153,14 @@ int be_mvp_post_shutdown(struct be_mvp_state *state,
 	words[BE_MVP_SHUTDOWN_DENIALS] = state->counts.denials;
 	words[BE_MVP_SHUTDOWN_MGMT] = state->counts.mgmt;
 	words[BE_MVP_SHUTDOWN_DBCN_INPUT] = state->counts.dbcn_input;
-	return be_mvp_ring_post_words(outbound, BE_MVP_RECORD_SHUTDOWN, now,
+	words[BE_MVP_SHUTDOWN_TICK] = state->counts.tick;
+	return failure_room(state, outbound,
+			    BE_MVP_SHUTDOWN_WORDS * sizeof(be_u64)) &&
+	       be_mvp_ring_post_words(outbound, BE_MVP_RECORD_SHUTDOWN, now,
 				      words, BE_MVP_SHUTDOWN_WORDS);
 }
 
-int be_mvp_post_denial(const struct be_mvp_state *state,
+int be_mvp_post_denial(struct be_mvp_state *state,
 		       struct be_mvp_ring *outbound,
 		       const struct be_mvp_denial *denial, be_u64 now)
 {
@@ -1124,7 +1183,9 @@ int be_mvp_post_denial(const struct be_mvp_state *state,
 	words[BE_MVP_DENIAL_VSTVEC] = denial->vstvec;
 	words[BE_MVP_DENIAL_INJECTED] = denial->inject_vscause;
 	words[BE_MVP_DENIAL_EXIT] = denial->time;
-	return be_mvp_ring_post_words(outbound, BE_MVP_RECORD_DENIAL, now,
+	return failure_room(state, outbound,
+			    BE_MVP_DENIAL_WORDS * sizeof(be_u64)) &&
+	       be_mvp_ring_post_words(outbound, BE_MVP_RECORD_DENIAL, now,
 				      words, BE_MVP_DENIAL_WORDS);
 }
 
@@ -1145,7 +1206,9 @@ int be_mvp_post_mgmt_request(struct be_mvp_state *state,
 	words[BE_MVP_MGMT_REQUEST_FID] = result->fid;
 	words[BE_MVP_MGMT_REQUEST_TARGET] = result->target;
 	words[BE_MVP_MGMT_REQUEST_SEQ] = state->counts.mgmt;
-	if (!be_mvp_ring_post_words(outbound, BE_MVP_RECORD_MGMT_REQUEST, now,
+	if (!failure_room(state, outbound,
+			  BE_MVP_MGMT_REQUEST_WORDS * sizeof(be_u64)) ||
+	    !be_mvp_ring_post_words(outbound, BE_MVP_RECORD_MGMT_REQUEST, now,
 				    words, BE_MVP_MGMT_REQUEST_WORDS))
 		return 0;
 	state->awaiting = state->counts.mgmt;
@@ -1168,7 +1231,8 @@ int be_mvp_post_fail(struct be_mvp_state *state,
 	payload[BE_MVP_FAIL_CLASS] = (be_u64)state->failure;
 	for (index = 0U; index < words; ++index)
 		payload[BE_MVP_FAIL_CLASS + 1U + index] = detail[index];
-	return be_mvp_ring_post_words(outbound, BE_MVP_RECORD_FAIL, now,
+	return failure_room(state, outbound, (1U + words) * sizeof(be_u64)) &&
+	       be_mvp_ring_post_words(outbound, BE_MVP_RECORD_FAIL, now,
 				      payload, 1U + words);
 }
 

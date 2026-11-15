@@ -101,7 +101,7 @@
       "RESULT fail"
     ],
     "counters": {
-      "ipi": {"exact": 1},
+      "ipi": {"exact": 0},
       "time": {"exact": 0},
       "dbcn_byte": {"exact": 0},
       "srst": {"exact": 1},
@@ -109,7 +109,7 @@
       "exits": {"min": 1, "max": 1048576},
       "ring_peak": {"min": 16, "max": 16384}
     },
-    "exit_classes": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "ipi"],
+    "exit_classes": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "tick"],
     "concurrency": {
       "overlap": "half-of-shorter",
       "alternations": 8

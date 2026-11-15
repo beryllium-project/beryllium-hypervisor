@@ -442,7 +442,7 @@ static enum be_mvp_step domain_shutdown(struct be_mvp_control *ctl,
 	    !words_are(record, BE_MVP_SHUTDOWN_WORDS))
 		return invalid(ctl, result, BE_MVP_CLASS_RING);
 	if (track->ponged == 0U)
-		return invalid(ctl, result, BE_MVP_CLASS_IPI);
+		return invalid(ctl, result, BE_MVP_CLASS_TICK);
 	if (be_mvp_record_word(record, BE_MVP_SHUTDOWN_ENTERED) !=
 		    track->entered ||
 	    be_mvp_record_word(record, BE_MVP_SHUTDOWN_LINES) != track->lines ||
@@ -753,7 +753,7 @@ static enum be_mvp_step apply(struct be_mvp_control *ctl, be_u64 domain,
 		    be_mvp_record_word(record, BE_MVP_PONG_SPV) > 1U)
 			return invalid(ctl, result, BE_MVP_CLASS_RING);
 		if (track->pinged == 0U || track->ponged != 0U)
-			return invalid(ctl, result, BE_MVP_CLASS_IPI);
+			return invalid(ctl, result, BE_MVP_CLASS_TICK);
 		track->ponged = 1U;
 		result->step = BE_MVP_STEP_PONG;
 		return result->step;
@@ -836,6 +836,22 @@ enum be_mvp_class be_mvp_control_wake(struct be_mvp_control *ctl,
 	if (elapsed >= ctl->budget)
 		return control_fail(ctl, BE_MVP_CLASS_RUN_TIMEOUT);
 	return BE_MVP_CLASS_NONE;
+}
+
+int be_mvp_control_deadline(const struct be_mvp_control *ctl, be_u64 now,
+			    be_u64 *deadline)
+{
+	be_u64 end;
+	be_u64 next;
+
+	if (ctl == (const struct be_mvp_control *)0 ||
+	    deadline == (be_u64 *)0 || ctl->failed != 0U || ctl->done != 0U ||
+	    ctl->budget == 0U)
+		return 0;
+	end = add_saturating(ctl->start, ctl->budget);
+	next = add_saturating(now, BE_MVP_TICK_TICKS);
+	*deadline = next < end ? next : end;
+	return 1;
 }
 
 be_u64 be_mvp_control_running(const struct be_mvp_control *ctl)

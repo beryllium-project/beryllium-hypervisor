@@ -36,9 +36,9 @@
  *          management extension (planning/mvp-m2-plan.md, "The management
  *          extension") gives the control loop the sealed grants and hart
  *          0's management state: each request is decided there, a denial
- *          answered at once with MGMT_RESULT and one IPI, a granted request
- *          delivered to its target's hart as PAUSE or TERMINATE with one
- *          IPI and answered when the target's PAUSED or TERMINATED is
+ *          answered with MGMT_RESULT for the requester's next tick, a
+ *          granted request delivered as PAUSE or TERMINATE for the target's
+ *          next tick and answered when its PAUSED or TERMINATED is
  *          drained, each request logged as one BE_MVP:MGMT line, each
  *          transition as BE_MVP:12 DOMAIN_PAUSED or DOMAIN_TERMINATED, the
  *          latter with the terminated domain's launch register. Since M7
@@ -48,11 +48,12 @@
  *          that grants console input to a domain, hart 0 arms console
  *          input after the barrier (BE_MVP:15, BE_MVP:16 FOCUS none, and a
  *          first poll that discards what the firmware held), and then,
- *          after each drain, polls the firmware console, routes each byte
+ *          on each control tick, after the drain, polls the firmware
+ *          console, routes each byte
  *          through the focus parser to the focused domain's input ring,
  *          reports each focus and each reason's first drop (BE_MVP:16 and
- *          :17), re-arms its timer for the next poll, never past the
- *          budget's end, and prints the run's input accounting
+ *          :17), re-arms the shared control tick, never past the budget's
+ *          end, and prints the run's input accounting
  *          (BE_MVP:18) before BE_MVP:13. Any other image never reads the
  *          firmware console. Since M9 (planning/mvp-m9-plan.md, D-1 and
  *          D-2; mvp/docs/log-profile.md, the Beryllium log profile version
@@ -564,10 +565,10 @@ static const char marker_ready[] = "BE_MVP:09 HART_READY hart=%d domain=%d "
 static const char marker_entered[] = "BE_MVP:10 DOMAIN_ENTERED hart=%d "
 	"domain=%d pc=%x a0=%x a1=%x ticks=%x";
 #if !defined(BE_MVP_PROBE_IMAGE)
-static const char marker_ipi[] = "BE_MVP:11 IPI_PROBE hart=%d domain=%d "
+static const char marker_tick[] = "BE_MVP:11 TICK_PROBE hart=%d domain=%d "
 	"sent=%x received=%x answered=%x spv=%d";
 static const char marker_domain_shutdown[] = "BE_MVP:12 DOMAIN_SHUTDOWN "
-	"hart=%d domain=%d exits=%d sbi=%d ipi=%d base=%d time=%d "
+	"hart=%d domain=%d exits=%d sbi=%d ipi=%d tick=%d base=%d time=%d "
 	"dbcn_write=%d dbcn_read=%d dbcn_byte=%d srst=%d refused=%d lines=%d "
 	"ring_peak=%x entered=%x ticks=%x";
 static const char marker_complete[] = "BE_MVP:13 RUN_COMPLETE domains=%d "
@@ -689,6 +690,7 @@ static const be_u8 values_pong[] = {
 };
 static const be_u8 values_shutdown[] = {
 	BE_MVP_SHUTDOWN_EXITS, VALUE_SBI, BE_MVP_SHUTDOWN_IPI,
+	BE_MVP_SHUTDOWN_TICK,
 	BE_MVP_SHUTDOWN_BASE, BE_MVP_SHUTDOWN_TIME, BE_MVP_SHUTDOWN_DBCN_WRITE,
 	BE_MVP_SHUTDOWN_DBCN_READ, BE_MVP_SHUTDOWN_DBCN_BYTE,
 	BE_MVP_SHUTDOWN_SRST, BE_MVP_SHUTDOWN_REFUSED, BE_MVP_SHUTDOWN_LINES,
@@ -703,8 +705,9 @@ static const be_u8 values_paused[] = {
 #endif
 #endif
 _Static_assert(BE_MVP_SHUTDOWN_BASE == 1U && BE_MVP_SHUTDOWN_REFUSED == 7U &&
-	       BE_MVP_SHUTDOWN_MGMT == 13U && BE_MVP_SHUTDOWN_DBCN_INPUT == 14U,
-	       "the SBI call classes are SHUTDOWN's words 1 to 7, 13, and 14");
+	       BE_MVP_SHUTDOWN_MGMT == 13U && BE_MVP_SHUTDOWN_DBCN_INPUT == 14U &&
+	       BE_MVP_SHUTDOWN_TICK == 15U,
+	       "the SBI classes keep their words and tick is SHUTDOWN word 15");
 
 static be_u64 symbol_address(const be_u8 *symbol)
 {
@@ -794,6 +797,7 @@ void be_mvp_detail_line(struct be_mvp_line *line, enum be_mvp_class failure,
 	be_mvp_line_text(line, marker_newline);
 }
 
+#if defined(BE_MVP_PROBE_IMAGE)
 long be_mvp_send_ipi(be_u64 hart)
 {
 	be_u64 mask;
@@ -803,6 +807,7 @@ long be_mvp_send_ipi(be_u64 hart)
 		return BE_MVP_SBI_ERR_INVALID_PARAM;
 	return be_mvp_exec_send_ipi(mask, base);
 }
+#endif
 
 /*
  * Monitor lines go straight to the firmware console: hart 0 is its only
@@ -888,7 +893,7 @@ static void fail_detail(enum be_mvp_class failure, const char *format,
 	terminal(failure, 1);
 }
 
-/* A domain's ring or IPI protocol broken, as hart 0 saw it. */
+/* A VS domain's ring or tick protocol broken, as hart 0 saw it. */
 static void fail_domain(enum be_mvp_class failure, be_u32 domain,
 			be_u64 type) __attribute__((noreturn));
 static void fail_domain(enum be_mvp_class failure, be_u32 domain,
@@ -1974,10 +1979,7 @@ static void start_harts(void)
 }
 
 #if !defined(BE_MVP_PROBE_IMAGE)
-/*
- * One record into a domain's inbound ring at @now, published, then one IPI
- * to its hart: the record is visible before the IPI that announces it.
- */
+/* One record into a VS domain's inbound ring, found at its next tick. */
 static void post_inbound(be_u32 domain, enum be_mvp_record_type type,
 			 be_u64 now, const be_u64 *words, be_u64 count)
 {
@@ -1989,12 +1991,9 @@ static void post_inbound(be_u32 domain, enum be_mvp_record_type type,
 	be_mvp_exec_fence_w_w();
 	if (!be_mvp_ring_publish(inbound))
 		fail_domain(BE_MVP_CLASS_RING, domain, type);
-	if (be_mvp_send_ipi(be_mvp_bindings[domain].hart) !=
-	    BE_MVP_SBI_SUCCESS)
-		fail_domain(BE_MVP_CLASS_IPI, domain, type);
 }
 
-/* The PING of the IPI probe (Q4): one record, then one IPI. */
+/* The PING of the tick probe: one record, then the VS-domain hart's tick. */
 static void ping(be_u32 domain)
 {
 	post_inbound(domain, BE_MVP_RECORD_PING, be_mvp_exec_read_time(),
@@ -2079,25 +2078,37 @@ static void poll_input(void)
 	be_mvp_input_poll_end(input);
 }
 
-/*
- * The next wake while console input is armed (D-1): hart 0's timer, by
- * the budget helper, the image's one stimecmp writer, at the earlier of
- * the next poll and the budget's end, so the run still ends where its
- * budget ends. Without console input it is never re-armed.
- */
-static void rearm_input(void)
+/* Hart 0's next ring-read tick, never past the run budget. */
+#if !defined(BE_MVP_PROBE_IMAGE)
+static void arm_control_tick(be_u64 now)
 {
 	be_u64 deadline;
+	be_u64 input_deadline;
 
-	if (!be_mvp_input_rearm(&be_mvp_console_in, be_mvp_ctl.start,
-				be_mvp_ctl.budget, be_mvp_exec_read_time(),
-				&deadline))
-		return;
+	if (!be_mvp_control_deadline(&be_mvp_ctl, now, &deadline))
+		be_mvp_runtime_terminal(BE_MVP_CLASS_CONTROLS);
+	if (be_mvp_console_in.armed != 0U &&
+	    (!be_mvp_input_rearm(&be_mvp_console_in, be_mvp_ctl.start,
+				 be_mvp_ctl.budget, now, &input_deadline) ||
+	     input_deadline != deadline))
+		be_mvp_runtime_terminal(BE_MVP_CLASS_CONTROLS);
 	if (be_mvp_exec_arm_budget(deadline,
 				   symbol_address(__be_control_stack_end)) !=
 	    BE_MVP_SIE_CONTROL)
 		be_mvp_runtime_terminal(BE_MVP_CLASS_CONTROLS);
 }
+
+static be_u64 wait_control_tick(void)
+{
+	be_u64 before = be_mvp_exec_read_time();
+	be_u64 now = be_mvp_exec_wait(BE_MVP_SIE_CONTROL);
+
+	be_mvp_control_waited(&be_mvp_ctl, now - before);
+	if ((be_mvp_exec_clear_ssip() & BE_MVP_SIE_SSIE) != 0U)
+		be_mvp_runtime_terminal(BE_MVP_CLASS_INTERRUPT);
+	return now;
+}
+#endif
 
 /*
  * Console input, armed right after the barrier (D-1 and D-4), only when
@@ -2105,7 +2116,7 @@ static void rearm_input(void)
  * granted domains and the prefix, BE_MVP:16 FOCUS none, and the first
  * poll, whose bytes the firmware held before arming, each dropped as
  * before-armed. In any other image hart 0 never reads the firmware
- * console, never re-arms its timer for a poll, and prints nothing here.
+ * console and prints nothing here. The control tick exists in every image.
  */
 static void arm_input(void)
 {
@@ -2176,8 +2187,8 @@ static void input_summary(void)
 /*
  * The answer to one management request (planning/mvp-m2-plan.md, Q14):
  * MGMT_RESULT (the result as a two's-complement word, and the request's
- * sequence number) in the requester's inbound ring with one IPI; then its
- * BE_MVP:MGMT line, whose service is the answer's time minus the
+ * sequence number) in the requester's inbound ring for its next tick; then
+ * its BE_MVP:MGMT line, whose service is the answer's time minus the
  * request's.
  */
 static void answer(const struct be_mvp_step_result *result)
@@ -2211,7 +2222,7 @@ static void answer(const struct be_mvp_step_result *result)
 
 /*
  * A granted request's delivery: PAUSE or TERMINATE, naming its requester,
- * in the target's inbound ring with one IPI; its answer waits for the
+ * in the target's inbound ring for its next tick; its answer waits for the
  * target's PAUSED or TERMINATED.
  */
 static void deliver(const struct be_mvp_step_result *result)
@@ -2296,12 +2307,12 @@ static void domain_failed(be_u32 domain, const struct be_mvp_record *record,
 static void emit_record(const char *format, const be_u8 *program,
 			be_u32 domain, const struct be_mvp_record *record)
 {
-	be_u64 values[16];
+	be_u64 values[17];
 	be_u64 count;
 
 	values[0] = be_mvp_bindings[domain].hart;
 	values[1] = domain;
-	for (count = 2U; count < 16U && *program != VALUE_END; ++program) {
+	for (count = 2U; count < 17U && *program != VALUE_END; ++program) {
 		be_u64 source = *program & ~VALUE_SINCE;
 		be_u64 value = 0U;
 		be_u64 index;
@@ -2415,7 +2426,7 @@ static void step(be_u32 domain, const struct be_mvp_record *record)
 			ping(domain);
 		return;
 	case BE_MVP_STEP_PONG:
-		emit_record(marker_ipi, values_pong, domain, record);
+		emit_record(marker_tick, values_pong, domain, record);
 		return;
 #if BE_MVP_RUN_ACCEPT_DENIAL
 	case BE_MVP_STEP_DENIAL:
@@ -2572,26 +2583,33 @@ static void wake_failed(enum be_mvp_class failure, be_u64 now)
 	fail_detail(failure, marker_detail_waited, values);
 }
 
-/*
- * The READY wait: poll both rings, without a second timer write, until
- * both domains are READY or the READY wait or the run budget has passed.
- */
+/* The READY wait: scenario rings are read on hart 0's timer tick. */
 static void wait_ready(void)
 {
 	for (;;) {
 		be_u64 now;
 		be_u64 elapsed;
 
-		drain();
 #if defined(BE_MVP_PROBE_IMAGE)
+		drain();
 		if (be_mvp_ctl.domain[0].phase >= BE_MVP_DOMAIN_READY)
 			return;
+		now = be_mvp_exec_read_time();
 #else
+		now = wait_control_tick();
+		drain();
+		{
+			enum be_mvp_class failure =
+				be_mvp_control_wake(&be_mvp_ctl, now);
+
+			if (failure != BE_MVP_CLASS_NONE)
+				wake_failed(failure, now);
+		}
+		arm_control_tick(now);
 		if (be_mvp_ctl.domain[0].phase >= BE_MVP_DOMAIN_READY &&
 		    be_mvp_ctl.domain[1].phase >= BE_MVP_DOMAIN_READY)
 			return;
 #endif
-		now = be_mvp_exec_read_time();
 		elapsed = since(now);
 		if (now < be_mvp_ctl.start ||
 		    elapsed >= be_mvp_ctl.ready_ticks ||
@@ -2599,37 +2617,31 @@ static void wait_ready(void)
 #if defined(BE_MVP_PROBE_IMAGE)
 			wake_failed(BE_MVP_CLASS_HART_READY, now);
 #else
-			wake_failed(be_mvp_control_wake(&be_mvp_ctl, now), now);
+			wake_failed(BE_MVP_CLASS_HART_READY, now);
 #endif
 	}
 }
 
 #if !defined(BE_MVP_PROBE_IMAGE)
 /*
- * The control loop: wait in wfi for the IPI or the budget timer, clear
- * SSIP, and drain both rings round-robin (Plan revision M0-C.1). A wake by
- * the budget timer at the budget's end is run-timeout. With console input
- * armed (planning/mvp-m7-plan.md, D-1), each wake then polls the firmware
- * console and re-arms the timer for the next poll.
+ * The control loop: each own-timer tick checks the budget, re-arms the one
+ * comparator, drains both rings round-robin, and polls console input when
+ * armed. An unexpected IPI fails closed.
  */
 static void control_loop(void) __attribute__((noreturn, noinline));
 static void control_loop(void)
 {
 	for (;;) {
-		be_u64 before = be_mvp_exec_read_time();
-		be_u64 now = be_mvp_exec_wait(BE_MVP_SIE_CONTROL);
+		be_u64 now = wait_control_tick();
 		enum be_mvp_class failure;
 
-		be_mvp_control_waited(&be_mvp_ctl, now - before);
 		failure = be_mvp_control_wake(&be_mvp_ctl, now);
 		if (failure != BE_MVP_CLASS_NONE)
 			wake_failed(failure, now);
-		(void)be_mvp_exec_clear_ssip();
+		arm_control_tick(now);
 		drain();
-		if (be_mvp_console_in.armed != 0U) {
+		if (be_mvp_console_in.armed != 0U)
 			poll_input();
-			rearm_input();
-		}
 	}
 }
 #else
@@ -2670,18 +2682,19 @@ static void start_run(void) __attribute__((noreturn));
 static void start_run(void)
 {
 	be_u64 now = be_mvp_exec_read_time();
+
+	be_mvp_control_init(&be_mvp_ctl, now, BE_MVP_RUN_TIME_BUDGET,
+			    BE_MVP_READY_TICKS);
+#if defined(BE_MVP_PROBE_IMAGE)
 	be_u64 deadline = now + BE_MVP_RUN_TIME_BUDGET;
 
-#if !defined(BE_MVP_PROBE_IMAGE)
-	(void)be_mvp_input_rearm(&be_mvp_console_in, now,
-				 BE_MVP_RUN_TIME_BUDGET, now, &deadline);
-#endif
 	if (be_mvp_exec_arm_budget(deadline,
 				   symbol_address(__be_control_stack_end)) !=
 	    BE_MVP_SIE_CONTROL)
 		be_mvp_runtime_terminal(BE_MVP_CLASS_CONTROLS);
-	be_mvp_control_init(&be_mvp_ctl, now, BE_MVP_RUN_TIME_BUDGET,
-			    BE_MVP_READY_TICKS);
+#else
+	arm_control_tick(now);
+#endif
 #if BE_MVP_RUN_ACCEPT_DENIAL
 	/* What a DENIAL is checked against, the sealed pages or channel; an
 	 * image that accepts no denial never gives it, so its loop refuses

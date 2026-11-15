@@ -278,10 +278,10 @@ HOST_PREFIX_log := BE_MVP_LOG_CHECK
 HOST_PREFIX_probe := BE_MVP_PROBE_CHECK
 HOST_SCENARIOS_ring := 160
 HOST_ASSERTIONS_ring := 409415
-HOST_SCENARIOS_hart := 843
-HOST_ASSERTIONS_hart := 176899
-HOST_SCENARIOS_sbi := 133
-HOST_ASSERTIONS_sbi := 16292
+HOST_SCENARIOS_hart := 845
+HOST_ASSERTIONS_hart := 176916
+HOST_SCENARIOS_sbi := 141
+HOST_ASSERTIONS_sbi := 16350
 # beryllium-cheri: the CHERI-aware monitor's SBI test makes two more
 # assertions: hedeleg without cause 28 refused, and henvcfg STCE without
 # CRE refused.
@@ -497,11 +497,13 @@ monitor_objects = $(addprefix $(BUILD)/$(1)/obj/,$(PORT_C:.c=.o) \
 OBJECTS_gcc := $(call monitor_objects,gcc)
 OBJECTS_clang := $(call monitor_objects,clang)
 # The link set of the monitor in $(1) for toolchain $(2): the toolchain's
-# objects, each in $(4) (shared MVP C sources) replaced by $(1)'s own, then
-# $(1)'s runtime objects, then $(3) (extra objects), in M0's order; then its
-# MVP core profile (M6).
+# objects, each in $(4) (shared MVP C sources) or $(5) (shared MVP assembly
+# sources) replaced by $(1)'s own, then $(1)'s runtime objects, then $(3)
+# (extra objects), in M0's order; then its MVP core profile (M6).
+monitor_object_names = $(patsubst %.S,%.o,$(patsubst %.c,%.o,$(1)))
 monitor_link = $(foreach o,$(OBJECTS_$(2)),$(if $(filter $(notdir $(o)),\
-	$(4:.c=.o)),$(1)/obj/mvp/$(notdir $(o)),$(o))) \
+	$(call monitor_object_names,$(4) $(5))),\
+	$(1)/obj/mvp/$(notdir $(o)),$(o))) \
 	$(addprefix $(1)/obj/mvp/,$(MVP_RUNTIME_C:.c=.o)) $(3) \
 	$(1)/obj/mvp/mvp-config.o
 LD_gcc :=
@@ -639,23 +641,34 @@ $(1)/obj/mvp/$(4:.c=.o): $(MVP_DIR)/src/$(4) $(MVP_RUNTIME_HEADERS) $(5) \
 	$$(CC_$(2)) $$(TARGET_FLAGS) $$(MVP_OPT) $(3) -c $$< -o $$@
 endef
 
+# One MVP assembly object rebuilt for a monitor-specific compile-time profile.
+define mvp_monitor_asm_object
+$(1)/obj/mvp/$(4:.S=.o): $(MVP_DIR)/src/$(4) \
+		$(MVP_DIR)/src/mvp-layout.h $(PORT_STAMP)
+	mkdir -p $$(@D)
+	$$(CC_$(2)) $$(TARGET_FLAGS) $(3) -c $$< -o $$@
+endef
+
 # $(1) output directory, $(2) toolchain, $(3) extra flags, $(4) extra
 # objects, $(5) the scenario's header, $(6) the shared MVP C sources the
-# monitor rebuilds with $(3). The scenario's MVP core profile, beside its
-# header, compiles with $(3) too: the hart-start variant names its hart.
+# monitor rebuilds with $(3), $(7) the shared MVP assembly sources it
+# rebuilds with $(3). The scenario's MVP core profile, beside its header,
+# compiles with $(3) too: the hart-start variant names its hart.
 define mvp_monitor
 $(foreach c,$(MVP_RUNTIME_C) $(6),$(eval $(call \
 	mvp_monitor_object,$(1),$(2),$(3),$(c),$(5))))
+$(foreach a,$(7),$(eval $(call \
+	mvp_monitor_asm_object,$(1),$(2),$(3),$(a))))
 $(1)/obj/mvp/mvp-config.o: $(dir $(5))mvp-config.c $(MVP_RUNTIME_HEADERS) \
 		$(PORT_STAMP)
 	mkdir -p $$(@D)
 	$$(CC_$(2)) $$(TARGET_FLAGS) $(3) -c $$< -o $$@
 
-$(1)/be-mvp.elf: $(call monitor_link,$(1),$(2),$(4),$(6)) $(PORT_STAMP) \
+$(1)/be-mvp.elf: $(call monitor_link,$(1),$(2),$(4),$(6),$(7)) $(PORT_STAMP) \
 		$(MVP_LDS)
 	$$(CC_$(2)) $$(LD_$(2)) $$(TARGET_FLAGS) $$(LINK_FLAGS) \
 		-Wl,-Map,$(1)/be-mvp.map \
-		$(call monitor_link,$(1),$(2),$(4),$(6)) -o $$@
+		$(call monitor_link,$(1),$(2),$(4),$(6),$(7)) -o $$@
 	$$(OBJDUMP) -d -S $$@ > $(1)/be-mvp.dis
 	$$(CROSS_COMPILE)size -A -x $$@ > $(1)/be-mvp.size.txt
 
@@ -1270,7 +1283,7 @@ $(foreach t,$(TOOLCHAINS),$(eval $(call mvp_probe_stub,$(t))))
 $(foreach t,$(TOOLCHAINS),$(foreach p,$(MVP_PROBES),$(eval $(call mvp_probe,$(p),$(t)))))
 $(foreach t,$(TOOLCHAINS),$(foreach p,$(MVP_PROBES),$(eval $(call \
 	mvp_monitor,$(BUILD)/probes/$(t)/$(p),$(t),-DBE_MVP_PROBE_IMAGE=$(PROBE_NUMBER_$(p)),$(BUILD)/probes/$(t)/$(p)/obj/mvp/mvp-probe.o \
-	$(BUILD)/probes/$(t)/$(p)/obj/mvp/mvp-probe-arch.o,$(MVP_SCENARIO_H),))))
+	$(BUILD)/probes/$(t)/$(p)/obj/mvp/mvp-probe-arch.o,$(MVP_SCENARIO_H),mvp-sbi.c,mvp-trap.S))))
 $(foreach t,$(TOOLCHAINS),$(foreach p,$(MVP_PROBES),$(eval $(call \
 	mvp_boot,$(BUILD)/probes/$(t)/$(p),$(t),$(BOOT_TEXT_OFFSET),$(BUILD)/probes/$(t)/$(p)/be-mvp.bin,$(MVP_GUEST_IMAGE),$(MVP_GUEST_DTB_G0),$(MVP_GUEST_DTB_G1),))))
 

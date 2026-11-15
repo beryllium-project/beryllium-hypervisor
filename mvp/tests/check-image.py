@@ -84,14 +84,15 @@ Monitor (ELF and its flat image):
   reset only by the arm helper, be_mvp_arch_arm_controls; vstimecmp also
   by the TIME helper; vscause, vstval, vsepc, and vsstatus also by the
   injection helper, be_mvp_arch_inject (planning/mvp-m1-plan.md, "Tests
-  and evidence"); stimecmp only by hart 0's budget helper,
-  be_mvp_arch_arm_budget, and B1's quiesce; sie by the arm and budget
-  helpers; sip cleared only by the IPI's SSIP helper,
+  and evidence"); stimecmp only by hart 0's budget helper, the scenario
+  tick and park helpers, and B1's quiesce; sie by the arm and budget
+  helpers; sip cleared only by the SSIP helper,
   be_mvp_arch_clear_ssip; hstatus only cleared, so VTW is never set;
 - the values the helpers write, by constant tracking: the Sstc helper's
   henvcfg STCE; the arm helper's vstimecmp ~0, then hip read, then hedeleg
   0xb15d, hideleg 0x40, hcounteren 0x2, hstatus VTVM, VTW, and VTSR
-  cleared (0x700000), sie SSIE set (0x2), sscratch the trusted top, and
+  cleared (0x700000), scenario sie SSIE and STIE set (0x22), probe sie
+  SSIE set (0x2), sscratch the trusted top, and
   the eleven per-domain CSRs from its third argument's words 0-10, in
   order, with every control read back into its first argument and the set
   into its fourth; the budget helper's stimecmp from its argument, sie
@@ -99,10 +100,10 @@ Monitor (ELF and its flat image):
   its argument; the injection helper's vscause, vstval, vsepc, and
   vsstatus from its first four arguments, in that order, each then read
   back, in that order, into its fifth argument's four words, and no other
-  CSR; the SSIP helper's clear of sip.SSIP, one csrrc that reads sip as
-  it was and nothing else (planning/mvp-m2-plan.md, Q14); the wait helper
-  writes no CSR and reads only sip and time; the park writes and reads
-  none;
+  CSR; the tick and scenario park write time plus the fixed period to
+  stimecmp; the SSIP helper's clear of sip.SSIP, one csrrc that reads sip
+  as it was and nothing else; the wait helper writes no CSR and reads only
+  sip and time; the probe park writes and reads none;
 - the injection helper's call sites: exactly one, the executor's
   be_mvp_exec_inject, itself called once, by the denial action
   (be_mvp_dispatch, or its deny), in an image whose scenario's
@@ -117,7 +118,8 @@ Monitor (ELF and its flat image):
   and before any memory access, calls be_mvp_hart_main, and otherwise
   parks;
 - the resume tail: exactly the plan's checks (sscratch is the record,
-  satp, stvec, sie SSIE only, sstatus under its mask against the saved
+  satp, stvec, scenario sie SSIE and STIE (probe sie SSIE only), sstatus
+  under its mask against the saved
   SPVP, hstatus under the R3 mask without SPVP against SPV alone,
   hedeleg against the armed readback, hideleg, hie at most VSTIE, hvip's
   VS bits, hcounteren, htimedelta, henvcfg, hgeie, and the hgatp
@@ -566,6 +568,7 @@ B1_HALT = "be_b1_halt"
 MVP_STCE = "be_mvp_arch_arm_stce"
 MVP_ARM = "be_mvp_arch_arm_controls"
 MVP_TIMER = "be_mvp_arch_set_timer"
+MVP_TICK = "be_mvp_arch_rearm_tick"
 MVP_BUDGET = "be_mvp_arch_arm_budget"
 MVP_WAIT = "be_mvp_arch_wait"
 MVP_SSIP = "be_mvp_arch_clear_ssip"
@@ -1880,8 +1883,48 @@ def check_inject_moves(name, decoded):
             f"readbacks after it")
 
 
-def check_helpers(elf, flat, base, symbols):
+def check_tick_deadline(name, decoded):
+    """One time read plus BE_MVP_TICK_TICKS written to stimecmp."""
+    words = [word for _, _, word in decoded]
+    writes = [index for index, word in enumerate(words)
+              if csr_number(word) == 0x14D and
+              (word >> 12) & 7 == 1]
+    require(len(writes) == 1, f"{name} has {len(writes)} stimecmp writes")
+    write = writes[0]
+    result = (words[write] >> 15) & 0x1F
+    add = nearest_writer(words, write, result)
+    require(add is not None and words[add] & 0xFE00707F == 0x00000033,
+            f"{name} does not add time and the tick period")
+    sources = ((words[add] >> 15) & 0x1F, (words[add] >> 20) & 0x1F)
+    constant = [register for register in sources
+                if materialized(words, add, register) ==
+                LAYOUT["TICK_TICKS"]]
+    timers = []
+    for register in sources:
+        at = nearest_writer(words, add, register)
+        if at is not None and csr_number(words[at]) == 0xC01 and \
+                (words[at] >> 12) & 7 == 2 and \
+                (words[at] >> 15) & 0x1F == 0:
+            timers.append(register)
+    require(len(constant) == 1 and len(timers) == 1 and
+            constant[0] != timers[0],
+            f"{name} does not write time + 0x{LAYOUT['TICK_TICKS']:x}")
+
+
+def check_helpers(elf, flat, base, symbols, profile):
     """The values the MVP's helpers write, and what they read back."""
+    helper_writes = dict(HELPER_WRITES)
+    helper_reads = dict(HELPER_READS)
+    if profile == "mvp":
+        helper_writes[MVP_ARM] = [
+            (csr, operation,
+             ("const", SIE_SSIE | SIE_STIE)
+             if csr == "sie" else value)
+            for csr, operation, value in helper_writes[MVP_ARM]]
+        helper_writes[MVP_TICK] = [("stimecmp", "w", None)]
+        helper_writes[MVP_PARK] = [("stimecmp", "w", None)]
+        helper_reads[MVP_TICK] = ["time"]
+        helper_reads.pop(MVP_PARK, None)
     if MONITOR == "cheri":
         # beryllium-cheri: the CHERI helpers' own rules and their
         # sscratchc first; after the values each helper writes, the arm
@@ -1890,7 +1933,7 @@ def check_helpers(elf, flat, base, symbols):
             check_cheri_helper(name, function_words(elf, flat, name, base))
         for name in (MVP_ARM, MVP_BUDGET):
             check_sscratchc(name, function_words(elf, flat, name, base))
-    for name, expected in HELPER_WRITES.items():
+    for name, expected in helper_writes.items():
         decoded = function_words(elf, flat, name, base)
         writes, reads, _, stores = track(decoded)
         actual = [(csr, operation, value) for _, csr, operation, value
@@ -1901,14 +1944,18 @@ def check_helpers(elf, flat, base, symbols):
                     f"{wanted[2]!r}")
         require(actual == expected,
                 f"{name} writes {actual}, expected {expected}")
+        if profile == "mvp" and name in (MVP_TICK, MVP_PARK):
+            require([csr for _, csr in reads] == ["time"],
+                    f"{name} reads {reads}, expected time only")
+            check_tick_deadline(name, decoded)
         slots = {offset: value[1] for _, base_value, offset, value in stores
                  if base_value == ARG_A0 and value and value[0] == "csr" and
                  value[2] == MASK64}
-        if name in HELPER_READS:
-            require([csr for _, csr in reads] == HELPER_READS[name] and
+        if name in helper_reads:
+            require([csr for _, csr in reads] == helper_reads[name] and
                     not stores,
                     f"{name} reads {reads} or stores {stores}, expected "
-                    f"{HELPER_READS[name]} only")
+                    f"{helper_reads[name]} only")
         if name == MVP_INJECT:
             inject_slots = {offset: value[1] for _, base_value, offset, value
                             in stores if base_value == ARG_A4 and value and
@@ -1964,8 +2011,15 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
     helper with inject_sites call sites (1 in an image that accepts
     denials, else 0)."""
     install_extra, hgatp_extra, _ = PROFILES[profile]
+    if profile == "mvp":
+        require("be_mvp_send_ipi" not in symbols and
+                "be_mvp_exec_send_ipi" not in symbols,
+                "a scenario image retains an IPI send call")
     csr_writers = dict(CSR_WRITERS)
     csr_writers["hgatp"] = CSR_WRITERS["hgatp"] | set(hgatp_extra)
+    if profile == "mvp":
+        csr_writers["stimecmp"] = CSR_WRITERS["stimecmp"] | {
+            MVP_TICK, MVP_PARK}
     install_callers = INSTALL_CALLERS + list(install_extra)
     sites = {kind: {} for kind in INSTRUCTION_SITES}
     writers = {}
@@ -2009,9 +2063,10 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
     resume = [(value, size) for value, size, names in functions
               if MVP_RESUME in names][0]
     (check_resume_cheri if cheri else check_resume)(
-        by_name[MVP_RESUME], symbols, resume[0], resume[0] + resume[1])
+        by_name[MVP_RESUME], symbols, resume[0], resume[0] + resume[1],
+        profile)
     check_hart_entry(by_name[MVP_ENTRY], symbols)
-    check_helpers(elf, flat, base, symbols)
+    check_helpers(elf, flat, base, symbols, profile)
     if hgatp_extra:
         require([word for _, _, word in by_name[PROBE_SWITCH]] ==
                 list(PROBE_SWITCH_WORDS),
@@ -2737,7 +2792,7 @@ def check_hart_entry(decoded, symbols):
     check_block_arithmetic(decoded, symbols, MVP_ENTRY)
 
 
-def resume_checks(symbols):
+def resume_checks(symbols, profile):
     """Every check the resume tail must make, and nothing else."""
     return {
         ("eq", "sscratch", MASK64, "arg:a0"),
@@ -2747,7 +2802,8 @@ def resume_checks(symbols):
          LAYOUT["G1_BLOCK_HPA"] + LAYOUT["BLOCK_SAVED_OFFSET"]),
         ("eq", "satp", MASK64, 0),
         ("eq", "stvec", MASK64, symbols[MVP_VECTOR]),
-        ("eq", "sie", MASK64, SIE_SSIE),
+        ("eq", "sie", MASK64,
+         SIE_SSIE | SIE_STIE if profile == "mvp" else SIE_SSIE),
         ("eq", "sstatus", 0xDE722, f"mem:a0+{EXIT_WORDS[0][1]}&0x100"),
         ("eq", "hstatus", 0x73F380 & ~HSTATUS_SPVP, 0x80),
         ("eq", "hedeleg", MASK64, "arg:a2"),
@@ -2762,7 +2818,7 @@ def resume_checks(symbols):
     }
 
 
-def check_resume(decoded, symbols, start, end):
+def check_resume(decoded, symbols, start, end, profile):
     """Call free; sepc and the GPRs; one SRET; the plan's checks."""
     require(all(size == 4 for _, size, _ in decoded),
             "resume tail holds a compressed instruction")
@@ -2812,7 +2868,7 @@ def check_resume(decoded, symbols, start, end):
             "resume tail does not clear SPP, set it from the saved SPVP, "
             f"and then write only sepc from the frame: {actual_writes}")
     found = {check[1:] for check in checks}
-    wanted = resume_checks(symbols)
+    wanted = resume_checks(symbols, profile)
     require(len(checks) == len(found) and found == wanted,
             f"resume checks differ: missing "
             f"{sorted(map(str, wanted - found))}, extra "
@@ -2822,7 +2878,7 @@ def check_resume(decoded, symbols, start, end):
     check_block_arithmetic(decoded, symbols, MVP_RESUME)
 
 
-def check_resume_cheri(decoded, symbols, start, end):
+def check_resume_cheri(decoded, symbols, start, end, profile):
     """Call free; sepc and the GPRs; one SRET; the plan's checks: the
     CHERI-aware monitor's (beryllium-cheri, --monitor cheri)."""
     require(all(size == 4 for _, size, _ in decoded),
@@ -2904,7 +2960,7 @@ def check_resume_cheri(decoded, symbols, start, end):
             "resume tail does not clear SPP, set it from the saved SPVP, "
             f"and then write only sepc from the frame: {actual_writes}")
     found = {check[1:] for check in checks}
-    wanted = resume_checks(symbols)
+    wanted = resume_checks(symbols, profile)
     require(len(checks) == len(found) and found == wanted,
             f"resume checks differ: missing "
             f"{sorted(map(str, wanted - found))}, extra "
@@ -5248,10 +5304,22 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
     arm_hstatus, hstatus_word = matching_word(
         elf, flat, MVP_ARM, BASE,
         lambda value: value & 0x707F == 0x3073 and value >> 20 == 0x600)
-    arm_ssie, ssie_word = preceding_word(
+    arm_sie, sie_word = preceding_word(
         elf, flat, MVP_ARM, BASE, lambda value: value == CSRS_SIE_T0)
     budget_stie, stie_word = matching_word(
         elf, flat, MVP_BUDGET, BASE, add_immediate(SIE_SSIE | SIE_STIE))
+    tick_period, tick_period_word = matching_word(
+        elf, flat, MVP_TICK, BASE,
+        lambda value: value & 0x7F == 0x37 and
+        value & 0xFFFFF000 == LAYOUT["TICK_TICKS"])
+    tick_write, tick_write_word = matching_word(
+        elf, flat, MVP_TICK, BASE,
+        lambda value: csr_number(value) == 0x14D and
+        (value >> 12) & 7 == 1)
+    park_write, park_write_word = matching_word(
+        elf, flat, MVP_PARK, BASE,
+        lambda value: csr_number(value) == 0x14D and
+        (value >> 12) & 7 == 1)
     resume_hedeleg, _ = matching_word(
         elf, flat, MVP_RESUME, BASE, lambda value: value == MV_T4_A2)
     resume_spvp, spvp_word = matching_word(
@@ -5285,10 +5353,18 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
          word(with_immediate(arm_word, 0x15F)), "hedeleg written as"),
         ("VTW set by the arm immediate", arm_hstatus,
          word(hstatus_word & ~0x1000), "hstatus written as"),
-        ("SSIE missing from the arm immediate", arm_ssie,
-         word(with_immediate(ssie_word, 0)), "sie written as"),
+        ("SSIE missing from the arm immediate", arm_sie,
+         word(with_immediate(sie_word, SIE_STIE)), "sie written as"),
+        ("STIE missing from the arm immediate", arm_sie,
+         word(with_immediate(sie_word, SIE_SSIE)), "sie written as"),
         ("STIE missing from the budget immediate", budget_stie,
          word(with_immediate(stie_word, SIE_SSIE)), "sie written as"),
+        ("tick period changed", tick_period,
+         word(tick_period_word + 0x1000), "does not write time +"),
+        ("tick comparator write missing", tick_write, word(NOP),
+         "stimecmp written by"),
+        ("park comparator write missing", park_write, word(NOP),
+         "stimecmp written by"),
         ("resume hedeleg check", resume_hedeleg, word(MV_T4_A1),
          "resume checks differ"),
         ("resume SPP not from SPVP", resume_spvp,

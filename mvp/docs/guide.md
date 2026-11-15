@@ -246,8 +246,9 @@ the firmware base as the firmware) on the `virt` machine with eight harts and
 8 GiB. The QEMU oracle requires the guest's shutdown, reads every hart and
 a word of the boot image while the machine is stopped, and quits QEMU;
 the capture checker, `mvp/tests/check-capture.py`, still judges the capture.
-These runs are emulation: QEMU's harts, IPIs, memory ordering, translation
-caching, console, and timing are not the board's.
+These runs are emulation: QEMU's harts, timer ticks, the probe images' IPIs,
+memory ordering, translation caching, console, and timing are not the
+board's.
 
 | Machine | QEMU configuration | Runs |
 | --- | --- | --- |
@@ -297,7 +298,9 @@ the two domains' lines differ from run to run or from image to image. The
 committed captures under `mvp/tests/fixtures/`, which the checker's
 self-test judges, read the same way without a QEMU run; `qemu-te-poc-gcc.log`
 is a `te-poc` capture made with M1's guest kernel, and the `-m6` captures
-are M6's. The excerpt's addresses are those of the layout before M11-3.
+are M6's. The excerpt's addresses are those of the layout before M11-3,
+and its IPI signalling lines are retained pre-M11-4 evidence. Current
+scenario images use timer ticks and print `TICK_PROBE`.
 Since M11-3 the scenario line names the MVP region at `0x102068000`,
 `0x3c000` bytes; the roots are at `0x102020000` and `0x102030000`, their
 level-0 pages at `0x102025000` and `0x102035000`, and the `hgatp` values
@@ -409,9 +412,10 @@ BE_MVP:14 SHUTDOWN type=0 reason=0
   console writes become records in its hart's ring; hart 0 drains the two
   rings in turn and prints each line behind its domain's prefix, so no domain
   writes the console itself.
-- **`:11 IPI_PROBE`.** After a domain's first line, hart 0 sends its hart one
-  IPI, and the domain hart answers: `sent`, `received`, and `answered` ticks,
-  and `spv=1`, the guest interrupted at V=1.
+- **`:11 TICK_PROBE`.** In the current line, after a VS domain's first line,
+  hart 0 publishes PING and the VS-domain hart answers at its next tick:
+  `sent`, `received`, and `answered`, with `spv=1` in guest mode or `0` in
+  a checked management wait. The excerpt's `IPI_PROBE` is historical.
 - **`MVPINIT 07 CHANNEL`.** The writer filled the channel page and set its
   flag; the reader read it. Both print the same digest, and the reader
   `match=1`.
@@ -432,13 +436,13 @@ BE_MVP:14 SHUTDOWN type=0 reason=0
 - **`MVPINIT 05` and `06`.** After its computation steps and a one-second
   sleep (`MVPINIT 03`, `04`), the init reports `RESULT pass` and powers off,
   which stops only its own hart.
-- **`:12 DOMAIN_SHUTDOWN`.** The domain's counters: `exits`; `sbi`, the sum
+- **`:12 DOMAIN_SHUTDOWN`.** The VS domain's counters: `exits`; `sbi`, the sum
   of `base`, `time`, `dbcn_write`, `dbcn_read`, `dbcn_byte`, `srst`, and
-  `refused`; `ipi`; the lines printed; the outbound ring's high-water mark
-  (`ring_peak`); and its entry and shutdown ticks. The denials are not
-  printed here: the checker counts the `DENY` lines and requires
-  `exits = sbi + ipi + denials` (164 = 162 + 1 + 1 for domain 0, and 167 =
-  164 + 1 + 2 for domain 1).
+  `refused`; `ipi=0`; the uncharged `tick` count; the lines printed; the
+  outbound ring's high-water mark (`ring_peak`); and its entry and shutdown
+  times. The denials are not printed here: the checker counts the `DENY`
+  lines and requires `exits = sbi + denials`. The excerpt has the earlier
+  IPI field and sum.
 - **`:13 RUN_COMPLETE` and `:14 SHUTDOWN`.** The records hart 0 drained, its
   wakes and idle ticks, `overlap_ticks` (the overlap of the two domains'
   entered-to-shutdown intervals), and the run's ticks; then hart 0's SRST
@@ -470,11 +474,12 @@ scenario line itself. Its docstring states every rule. In outline:
   with its own guest ID; every `MVPINIT` line once; and no rejected substring
   (`panic`, `Oops`, `unhandled signal`, `RESULT fail`, and the others its
   expectation lists).
-- **The counters.** Exact where the expectation fixes them (such as `ipi=1`,
+- **The counters.** Exact where the expectation fixes them (such as `ipi=0`,
   `srst=1`, `time=0`, and `refused=0`) and within ranges elsewhere; `exits` the
-  sum over the scenario's accepted exits (`exits = sbi + ipi + denials` for
-  `te-poc`); `sbi` the sum of its classes; `lines` the lines printed; and
-  `ring_peak` at most half the ring.
+  sum of charged scenario exits (`exits = sbi + denials` for `te-poc`);
+  `tick` counted apart and bounded by the run interval; `sbi` the sum of its
+  classes; `lines` the lines printed; `wakes` bounded by the run interval;
+  and `ring_peak` at most half the ring.
 - **Concurrency.** `overlap_ticks` at least half of the shorter domain's
   interval, and at least K = 8 alternations between the two domains' lines
   on the console (the alternation floor).
@@ -562,8 +567,8 @@ console input to a domain (`scenario.json`'s per-domain `console_input`,
 carried into `mvp-config.c` and sealed with the rest; the accepted
 scenario images grant it to none), hart 0 prints `BE_MVP:15 INPUT_ARMED
 grants=g0,g1 prefix=0x7e` after the barrier, then polls the firmware
-console (`sbi_debug_console_read`) on its own Sstc timer every 2^18
-ticks after each drain, at most 256 bytes a poll. Each byte goes through
+console (`sbi_debug_console_read`) on the control hart's 2^18-tick timer,
+after each tick's drain, at most 256 bytes a poll. Each byte goes through
 a three-state parser: at the start of a typed line `~0` or `~1` selects
 the domain that receives input (hart 0 prints `BE_MVP:16 FOCUS g<d>`),
 `~~` is a literal `~`, and `~` followed by anything else is dropped; every

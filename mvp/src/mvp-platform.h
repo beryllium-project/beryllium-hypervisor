@@ -3,7 +3,8 @@
  * Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
  *
  * Purpose: MVP privileged boundary: the VS-exit vector, the resume tail,
- *          the arm, budget, wait, SSIP, timer, fence, time, and park helpers
+ *          the arm, budget, tick, wait, SSIP, timer, fence, time, and park
+ *          helpers
  *          in mvp-trap.S, the hart entry and the fence.i in mvp-hartentry.S,
  *          and the C entry points that assembly calls; hart 0's runtime
  *          (mvp-runtime.c) and the domain hart's (mvp-hartmain.c).
@@ -15,14 +16,12 @@
  *          write or fence but the accepted install function's, no vs* write
  *          but the arm helper's (and vstimecmp by the TIME helper, and
  *          vscause, vstval, vsepc, and vsstatus by the injection helper,
- *          once per accepted denial), no stimecmp write but hart 0's
- *          budget helper's (since M7 also re-armed at each wake for the
- *          console input poll, never past the budget's end, in an image
- *          that grants console input), no hvip injection, and no HS
- *          interrupt but the IPI at V=1 and, in hart 0's wait, the IPI and
- *          the budget timer;
- *          a domain hart waiting in HS for hart 0's answer, or paused or
- *          terminated, finds the IPI pending in sip, never as a trap.
+ *          once per accepted denial), stimecmp only by hart 0's budget
+ *          helper and the VS-domain-hart tick helper, no hvip injection,
+ *          and no scenario HS interrupt but the timer tick, with an
+ *          unexpected IPI enabled only to fail closed;
+ *          a VS-domain hart waiting in HS for hart 0's answer, paused,
+ *          failed, or terminal sleeps until its own timer tick.
  */
 
 #ifndef BE_MVP_PLATFORM_H
@@ -173,7 +172,9 @@ long be_mvp_fw_call(be_u64 eid, be_u64 fid, be_u64 argument0,
  * Return: the SBI error, or %BE_MVP_SBI_ERR_INVALID_PARAM for the all-harts
  *         base.
  */
+#if defined(BE_MVP_PROBE_IMAGE)
 long be_mvp_send_ipi(be_u64 hart);
+#endif
 
 /**
  * be_mvp_line_format - append a formatted line
@@ -214,9 +215,10 @@ be_u64 be_mvp_arch_arm_stce(void);
  *
  * Writes vstimecmp = ~0 and samples hip, then writes hedeleg = 0xb15d,
  * hideleg = VSTI, and hcounteren = TM, clears hstatus VTVM, VTW, and VTSR,
- * sets sie.SSIE, writes sscratch = @trusted_top and the per-domain CSR set
- * once, and reads every control and the set back. The only writer of the
- * per-domain CSRs but for the TIME helper's vstimecmp.
+ * sets the profile's sie (SSIE for a probe, SSIE and STIE for a scenario),
+ * writes sscratch = @trusted_top and the per-VS-domain CSR set once, and
+ * reads every control and the set back. The only writer of the
+ * per-VS-domain CSRs but for the TIME helper's vstimecmp.
  */
 void be_mvp_arch_arm_controls(struct be_mvp_controls *controls,
 			      be_u64 trusted_top, const be_u64 *vcsr,
@@ -227,6 +229,18 @@ void be_mvp_arch_arm_controls(struct be_mvp_controls *controls,
  * @deadline: the domain's absolute deadline, written to vstimecmp
  */
 void be_mvp_arch_set_timer(be_u64 deadline);
+
+/**
+ * be_mvp_arch_rearm_tick - arm this VS-domain hart's next HS timer tick
+ *
+ * Reads time, writes stimecmp = time + %BE_MVP_TICK_TICKS, and returns the
+ * time it read. Scenario images call it before READY and at every tick.
+ *
+ * Return: the time used for the deadline.
+ */
+#if !defined(BE_MVP_PROBE_IMAGE)
+be_u64 be_mvp_arch_rearm_tick(void);
+#endif
 
 /**
  * be_mvp_arch_inject - deliver one accepted denial as an access fault
@@ -264,7 +278,7 @@ be_u64 be_mvp_arch_arm_budget(be_u64 deadline, be_u64 trusted_top);
  * @pending: the sip bits that end the wait
  *
  * sstatus.SIE is 0, so a pending interrupt wakes the wfi without a trap:
- * hart 0's wait, and a paused or terminated domain hart's.
+ * hart 0's wait, and a VS-domain hart's management, failure, or park wait.
  *
  * Return: the time CSR after the wait.
  */
@@ -307,7 +321,12 @@ void be_mvp_arch_fence_rw_rw(void);
  */
 void be_mvp_arch_fence_i(void);
 
-/** be_mvp_arch_park - a domain hart's park: HS wfi, forever. */
+/**
+ * be_mvp_arch_park - a VS-domain hart's terminal park
+ *
+ * A scenario image re-arms stimecmp before each HS wfi. A probe image keeps
+ * the IPI-only park.
+ */
 void be_mvp_arch_park(void) __attribute__((noreturn));
 
 /**

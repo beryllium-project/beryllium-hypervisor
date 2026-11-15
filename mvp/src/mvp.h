@@ -142,10 +142,11 @@
 /* Exit handling. */
 #define BE_MVP_INSTRUCTION_SIZE		BE_U64_C(4)
 #define BE_MVP_SCAUSE_INTERRUPT		(BE_U64_C(1) << 63)
-/* The IPI: the supervisor software interrupt, the only interrupt a domain
- * hart takes at V=1. */
+/* The probe images' IPI, and the scenario images' HS timer tick. */
 #define BE_MVP_SCAUSE_SUPERVISOR_SOFTWARE \
 	(BE_MVP_SCAUSE_INTERRUPT | BE_U64_C(1))
+#define BE_MVP_SCAUSE_SUPERVISOR_TIMER \
+	(BE_MVP_SCAUSE_INTERRUPT | BE_U64_C(5))
 #define BE_MVP_SCAUSE_FETCH_ACCESS_FAULT	BE_U64_C(1)
 #define BE_MVP_SCAUSE_ILLEGAL_INSTRUCTION	BE_U64_C(2)
 #define BE_MVP_SCAUSE_LOAD_ACCESS_FAULT	BE_U64_C(5)
@@ -239,11 +240,17 @@
  */
 #define BE_MVP_HVIP_VS_BITS		BE_U64_C(0x444)
 #define BE_MVP_HCOUNTEREN_TM		(BE_U64_C(1) << 1)
-/* The IPI: sie.SSIE, with sstatus.SIE 0, so a domain hart takes it only at
- * V=1; hart 0 also enables STIE for its budget, in its wait only. */
+/* Scenario VS-domain harts take their timer tick and fail an unexpected
+ * IPI. Probe VS-domain harts keep their IPI-only controls. Hart 0 enables
+ * both so that an unexpected IPI is observable beside its timer. */
 #define BE_MVP_SIE_SSIE			(BE_U64_C(1) << 1)
 #define BE_MVP_SIE_STIE			(BE_U64_C(1) << 5)
 #define BE_MVP_SIE_CONTROL		(BE_MVP_SIE_SSIE | BE_MVP_SIE_STIE)
+#if defined(BE_MVP_PROBE_IMAGE)
+#define BE_MVP_SIE_DOMAIN		BE_MVP_SIE_SSIE
+#else
+#define BE_MVP_SIE_DOMAIN		BE_MVP_SIE_CONTROL
+#endif
 #define BE_MVP_VSTIMECMP_DISARMED	(~BE_U64_C(0))
 #define BE_MVP_HSTATUS_SPV		BE_R3_HSTATUS_SPV
 #define BE_MVP_HSTATUS_SPVP		BE_R3_HSTATUS_SPVP
@@ -412,8 +419,7 @@ enum be_mvp_vcsr {
  * @BE_MVP_CLASS_HART_START: a hart_start failed or its hart did not start
  * @BE_MVP_CLASS_HART_READY: a started hart posted no READY in time
  * @BE_MVP_CLASS_RING: a ring was full, malformed, or out of protocol
- * @BE_MVP_CLASS_IPI: an IPI found no PING or another record; or a PONG
- *                    came unasked, twice, or not before SHUTDOWN
+ * @BE_MVP_CLASS_IPI: a probe image's IPI failed
  * @BE_MVP_CLASS_MEASUREMENT: a domain's launch register differs from the
  *                            image's expected launch register, its gate
  *                            (mvp/docs/log-profile.md, 2.9; before M9,
@@ -427,6 +433,10 @@ enum be_mvp_vcsr {
  *                    or cannot close with the image's expected count
  *                    (mvp/docs/log-profile.md, 2.5; planning/
  *                    mvp-m9-plan.md, D-1)
+ * @BE_MVP_CLASS_TICK: a record found at a VS-domain hart's tick was out
+ *                     of protocol; an empty ring is not a failure
+ * @BE_MVP_CLASS_BOUNDARY: the physical-boundary contract was absent,
+ *                         refused, or inconsistent
  * @BE_MVP_CLASS_COUNT: number of classes, not a class
  */
 enum be_mvp_class {
@@ -457,6 +467,8 @@ enum be_mvp_class {
 	BE_MVP_CLASS_MEASUREMENT,
 	BE_MVP_CLASS_MGMT,
 	BE_MVP_CLASS_LOG,
+	BE_MVP_CLASS_TICK,
+	BE_MVP_CLASS_BOUNDARY,
 	BE_MVP_CLASS_COUNT,
 };
 
@@ -496,8 +508,7 @@ enum be_mvp_phase {
  *                              (be_mvp_input_serve()), then return the
  *                              count
  * @BE_MVP_ACTION_SET_TIMER: write the timer value to vstimecmp, then return
- * @BE_MVP_ACTION_IPI: the IPI: clear sip.SSIP, serve the inbound ring
- *                     (be_mvp_ipi_serve()), then resume at the same sepc
+ * @BE_MVP_ACTION_IPI: retained for the probe images' IPI path
  * @BE_MVP_ACTION_DENY: an accepted denial: inject the result's access
  *                      fault, read it back, post DENIAL, tell hart 0, and
  *                      resume in VS mode at the guest's trap vector
@@ -511,6 +522,8 @@ enum be_mvp_phase {
  * @BE_MVP_ACTION_GUEST_FAILURE: guest shutdown, reason 1: fail and shut down
  * @BE_MVP_ACTION_GUEST_REBOOT: guest reboot request: fail and shut down
  * @BE_MVP_ACTION_TERMINAL: fail closed with the result's class
+ * @BE_MVP_ACTION_TICK: re-arm the VS-domain hart's HS timer, serve its
+ *                      inbound ring, then resume at the same sepc
  */
 enum be_mvp_action {
 	BE_MVP_ACTION_NONE = 0,
@@ -526,6 +539,7 @@ enum be_mvp_action {
 	BE_MVP_ACTION_GUEST_FAILURE,
 	BE_MVP_ACTION_GUEST_REBOOT,
 	BE_MVP_ACTION_TERMINAL,
+	BE_MVP_ACTION_TICK,
 };
 
 /**
@@ -650,12 +664,15 @@ enum be_mvp_record_type {
 #define BE_MVP_SHUTDOWN_DENIALS		12U
 #define BE_MVP_SHUTDOWN_MGMT		13U
 #define BE_MVP_SHUTDOWN_DBCN_INPUT	14U
-#define BE_MVP_SHUTDOWN_WORDS		15U
+#define BE_MVP_SHUTDOWN_TICK		15U
+#define BE_MVP_SHUTDOWN_WORDS		16U
 /* FAIL: the class, then up to BE_MVP_FAIL_DETAIL_WORDS words of detail
  * that the hart's FAIL kind defines (M0-3's DETAIL formats). */
 #define BE_MVP_FAIL_CLASS		0U
 #define BE_MVP_FAIL_DETAIL_WORDS	8U
 #define BE_MVP_FAIL_MAX_WORDS		(1U + BE_MVP_FAIL_DETAIL_WORDS)
+/* One full LINE record and the largest FAIL record. */
+#define BE_MVP_FAILURE_ROOM_BYTES	360U
 /* DENIAL (planning/mvp-m1-plan.md, "The denial path"): the domain's denial
  * sequence number from 1, the cause, the kind, the GPA, htval, htinst,
  * stval, sepc, the guest's vsstatus and vstvec at the exit, the injected
@@ -712,7 +729,7 @@ enum be_mvp_record_type {
  * @dbcn_byte: DBCN write-byte calls
  * @srst: SRST calls that stopped the domain or ended the run
  * @refused: calls answered with SBI_ERR_NOT_SUPPORTED or _INVALID_PARAM
- * @ipi: IPI exits (supervisor software interrupts)
+ * @ipi: IPI exits (probe-only; zero in every passing scenario)
  * @lines: LINE records the hart's console posted
  * @denials: accepted denials, each a DENIAL record
  * @mgmt: management calls made (the extension's pause or terminate), each
@@ -720,11 +737,12 @@ enum be_mvp_record_type {
  * @dbcn_input: DBCN read calls served with success, 0 or more bytes, to a
  *              domain whose sealed configuration grants console input
  *              (planning/mvp-m7-plan.md, D-1)
+ * @tick: HS timer ticks served without charging @exits
  *
- * Every accepted exit adds one to exactly one of the call classes (@base
- * to @refused, @mgmt, and @dbcn_input), @ipi, and @denials, so in a run
- * that ends without failure @exits is their sum; @lines counts records,
- * not exits.
+ * Every charged exit adds one to exactly one of the call classes (@base
+ * to @refused, @mgmt, and @dbcn_input) and @denials, so in a passing
+ * scenario @exits is their sum and @ipi is zero. A tick adds only @tick;
+ * @lines counts records, not exits.
  */
 struct be_mvp_counts {
 	be_u64 exits;
@@ -740,6 +758,7 @@ struct be_mvp_counts {
 	be_u64 denials;
 	be_u64 mgmt;
 	be_u64 dbcn_input;
+	be_u64 tick;
 };
 
 /**
@@ -1061,13 +1080,15 @@ enum be_mvp_action be_mvp_handle_exit(struct be_mvp_state *state,
 				      struct be_mvp_result *result);
 
 /**
- * be_mvp_ipi_serve - serve one IPI from the hart's inbound ring
+ * be_mvp_ipi_serve - serve one guest-level tick from the inbound ring
  * @state: the hart's state, RUNNING
  * @inbound: the hart's acquired reader view of its inbound ring
  * @outbound: the hart's writer view of its outbound ring
- * @record: the IPI's exit record: its time is the receipt, its hstatus.SPV
- *          says whether the IPI arrived at V=1
- * @now: the time CSR as the answers are posted
+ * @record: the tick's exit record; its hstatus.SPV says that the tick
+ *          arrived at V=1
+ * @now: the time CSR after the acquired ring is visible, used as the
+ *       receipt and as the time each answer is posted
+ * @posted: the records posted to @outbound
  *
  * Takes every record up to the acquired head and answers each at @now: a
  * PING with one PONG (the PING's time, the receipt, and SPV); and, in an
@@ -1083,14 +1104,17 @@ enum be_mvp_action be_mvp_handle_exit(struct be_mvp_state *state,
  * ordered its loads (fence r, r) before, and releases it and publishes
  * the outbound ring after; a hart then PAUSED or TERMINATED parks.
  *
- * Return: the records taken, each answered, at least 1; or 0, with the
- *         hart FAILED as ipi (an empty inbound ring, or a record refused)
- *         or ring (a malformed inbound ring or a full outbound ring).
+ * The identifier is retained because the compiled-sequence record cites it.
+ * An empty acquired ring is a successful tick with @posted set to 0.
+ *
+ * Return: 1, with @posted set; or 0, with the hart FAILED as tick (a
+ *         record refused) or ring (a malformed ring or refused post).
  */
-be_u64 be_mvp_ipi_serve(struct be_mvp_state *state,
-			struct be_mvp_ring *inbound,
-			struct be_mvp_ring *outbound,
-			const struct be_mvp_exit *record, be_u64 now);
+int be_mvp_ipi_serve(struct be_mvp_state *state,
+		     struct be_mvp_ring *inbound,
+		     struct be_mvp_ring *outbound,
+		     const struct be_mvp_exit *record, be_u64 now,
+		     be_u64 *posted);
 
 /**
  * be_mvp_wait_serve - serve a domain hart's inbound ring outside an exit
@@ -1098,25 +1122,26 @@ be_u64 be_mvp_ipi_serve(struct be_mvp_state *state,
  *         management request, or PAUSED, or TERMINATED
  * @inbound: the hart's acquired reader view of its inbound ring
  * @outbound: the hart's writer view of its outbound ring
- * @now: the time CSR: the receipt of a PING and the time of each answer
+ * @received: the ring-read receipt time
+ * @now: the time CSR as each answer is posted
  * @posted: the records posted to @outbound, which the caller publishes
  *
  * planning/mvp-m2-plan.md, Q14 and Q15: a hart waiting in HS for its
- * MGMT_RESULT takes a PING, answered with a PONG whose SPV is 0 (the IPI
+ * MGMT_RESULT takes a PING, answered with a PONG whose SPV is 0 (the tick
  * arrived in HS), and the MGMT_RESULT of its request's sequence number,
  * whose result becomes @state's @answer and which ends the wait (@state's
  * @awaiting becomes 0); a PAUSED hart takes only a TERMINATE, answered
  * with TERMINATED; a TERMINATED hart takes nothing. Any other record is
- * refused, as be_mvp_ipi_serve() refuses one; an empty ring is not: the
- * hart looks whenever an IPI may have arrived. The caller's fences are
+ * refused, as be_mvp_ipi_serve() refuses one; an empty ring is not. The
+ * caller's fences are
  * be_mvp_ipi_serve()'s.
  *
- * Return: 1, with @posted set; or 0, with the hart FAILED as ipi (a record
+ * Return: 1, with @posted set; or 0, with the hart FAILED as tick (a record
  *         refused, or a hart in no state to wait) or ring (a malformed
  *         inbound ring or a full outbound ring).
  */
 int be_mvp_wait_serve(struct be_mvp_state *state, struct be_mvp_ring *inbound,
-		      struct be_mvp_ring *outbound, be_u64 now,
+		      struct be_mvp_ring *outbound, be_u64 received, be_u64 now,
 		      be_u64 *posted);
 
 /**
@@ -1299,24 +1324,28 @@ be_u64 be_mvp_console_flush(struct be_mvp_state *state,
 
 /**
  * be_mvp_post_ready - post READY with the armed readbacks
+ * @state: the VS-domain hart's state
  * @outbound: the hart's writer view of its outbound ring
  * @controls: the armed readback
  * @now: the time CSR
  *
  * Return: 1, or 0 when the ring refused it.
  */
-int be_mvp_post_ready(struct be_mvp_ring *outbound,
+int be_mvp_post_ready(struct be_mvp_state *state,
+		      struct be_mvp_ring *outbound,
 		      const struct be_mvp_controls *controls, be_u64 now);
 
 /**
  * be_mvp_post_entered - post ENTERED with the first entry's frame
+ * @state: the VS-domain hart's state
  * @outbound: the hart's writer view of its outbound ring
  * @record: the first-entry record
  * @now: the time CSR, the domain's entry time
  *
  * Return: 1, or 0 when the ring refused it.
  */
-int be_mvp_post_entered(struct be_mvp_ring *outbound,
+int be_mvp_post_entered(struct be_mvp_state *state,
+			struct be_mvp_ring *outbound,
 			const struct be_mvp_exit *record, be_u64 now);
 
 /**
@@ -1348,7 +1377,7 @@ int be_mvp_post_shutdown(struct be_mvp_state *state,
  *
  * Return: 1, or 0 for absent or invalid input or when the ring refused it.
  */
-int be_mvp_post_denial(const struct be_mvp_state *state,
+int be_mvp_post_denial(struct be_mvp_state *state,
 		       struct be_mvp_ring *outbound,
 		       const struct be_mvp_denial *denial, be_u64 now);
 

@@ -124,21 +124,26 @@ the two domains' chains in either hart order (the plan's "either hart
 order"); then :13 and :14, after which no line of any stream may follow.
 Probe images: one fixed sequence with the probe lines in place.
 
-Pass (the scenario, sbi-time, shim-rule): each domain's stream holds the
+Pass (the scenario, sbi-time, shim-rule): each VS domain's stream holds the
 required lines in order with its own guest ID, every MVPINIT line once (the
 STEP line once per step, t_ms rising), no other MVPINIT line, the memory
 within its window, and no rejected substring (panic excepted in the command
 line); its lines lie between its own :10 and :12, and its :11 follows its
-first line. Counters, from each :12: those the expectation fixes (ipi=1,
-srst=1, time=0 or above 0 for sbi-time, ...) and ranges (exits, ring_peak,
-at most half the outbound ring: stop condition 3); exits = sbi + ipi; sbi =
+first line. Current counters include `ipi=0` and an uncharged bounded
+`tick`; historical expectations retain `ipi=1`. Other counters are those
+the expectation fixes (srst=1, time=0 or above 0 for sbi-time, ...) and
+ranges (exits, ring_peak, at most half the outbound ring: stop condition
+3); current exits = sbi, plus denials where the scenario has them;
+historical sums retain IPI. sbi =
 base + time + dbcn_write + dbcn_read + dbcn_byte + srst + refused; lines =
 the domain's printed lines; entered = its :10 ticks; ticks between entered
 and the budget. From :13: records = every record-drained line (each domain's
 lines, :09-:12); idle_ticks at most ticks; ticks at most the budget and at
 least each domain's; overlap_ticks = the intersection of the two domains'
 entered-to-shutdown intervals, at least half the shorter (Q5); and at
-least K alternations between the domains' lines (Q5). With hart 0's
+least K alternations between the VS domains' lines (Q5). Current tick and
+wake counts are bounded by their observed intervals; tick-probe latency is
+recorded but not a pass rule. With hart 0's
 round-robin drain (Plan revision M0-C.2), two domains that produce lines at
 once alternate on the console at least once per wake in which both rings
 hold a record; a console-bound hart 0 lowers the wakes, not the alternation
@@ -199,8 +204,9 @@ injected 20/1, 21/5, or 23/7 for a fetch, load, or store, kind as the
 sealed record gives it, htinst zero or the transformed form of the init's
 instruction (HTINST), signo=11 code=2 observed=1 and, for the store,
 unchanged=1, and one Direct-mode vstvec per domain; the writer's and the
-reader's MVPINIT 07 digests equal with match=1; exits = sbi + ipi +
-denials; and the authority report (--report, required): the expectation's
+reader's MVPINIT 07 digests equal with match=1; current exits = sbi +
+denials (historical captures retain their IPI sum); and the authority
+report (--report, required): the expectation's
 SHA-256 and configuration identity, its grants each with a rule, its
 declared flows, every check A1-A8 pass, each :03 GSTAGE_BUILT_REWALKED line
 its window grant's GPA, HPA, and size, and CHANNEL_CHECKED the channel's
@@ -246,7 +252,8 @@ denials, and requests, with the server answering only a first run of the
 requests.
 
 Plan revision M2-A (planning/mvp-m2-plan.md, M2-A.1) adds one rule, the
-IPI probe's SPV: a BE_MVP:11 IPI_PROBE line shows spv=1, M0's rule, or,
+current tick probe's or historical IPI probe's SPV: the line shows spv=1,
+or,
 only where the expectation is a v3 one with the management extension
 (mgmt; its probe template carries spv=<S>, which this rule resolves),
 spv=0 with its received= inside a management wait of its own hart,
@@ -514,20 +521,30 @@ UBOOT_NOISE = ("fail to get alias node efuse_power",
 FIRMWARE = re.compile(r"BE_MVP:02 FIRMWARE_PROBED hsm=([01]) ipi=([01]) "
                       rf"status=((?:[0-9]+:{SIGNED},)*[0-9]+:{SIGNED}) "
                       r"started=(none|[0-9]+)")
-COUNTERS = ("exits", "sbi", "ipi", "base", "time", "dbcn_write", "dbcn_read",
-            "dbcn_byte", "srst", "refused", "lines")
+LEGACY_COUNTERS = ("exits", "sbi", "ipi", "base", "time", "dbcn_write",
+                   "dbcn_read", "dbcn_byte", "srst", "refused", "lines")
+COUNTERS = ("exits", "sbi", "ipi", "tick", "base", "time", "dbcn_write",
+            "dbcn_read", "dbcn_byte", "srst", "refused", "lines")
 CALL_CLASSES = ("base", "time", "dbcn_write", "dbcn_read", "dbcn_byte",
                 "srst", "refused")
-SHUTDOWN = re.compile(rf"BE_MVP:12 DOMAIN_SHUTDOWN hart=({DEC}) "
-                      rf"domain=({DEC}) " +
-                      " ".join(f"{name}=({DEC})" for name in COUNTERS) +
-                      rf" ring_peak=({HEX}) entered=({HEX}) ticks=({HEX})")
+SHUTDOWN = re.compile(
+    rf"BE_MVP:12 DOMAIN_SHUTDOWN hart=({DEC}) domain=({DEC}) " +
+    " ".join(f"{name}=({DEC})" for name in COUNTERS) +
+    rf" ring_peak=({HEX}) entered=({HEX}) ticks=({HEX})")
+LEGACY_SHUTDOWN = re.compile(
+    rf"BE_MVP:12 DOMAIN_SHUTDOWN hart=({DEC}) domain=({DEC}) " +
+    " ".join(f"{name}=({DEC})" for name in LEGACY_COUNTERS) +
+    rf" ring_peak=({HEX}) entered=({HEX}) ticks=({HEX})")
 COMPLETE = re.compile(rf"BE_MVP:13 RUN_COMPLETE domains=({DEC}) "
                       rf"records=({DEC}) wakes=({DEC}) idle_ticks=({HEX}) "
                       rf"overlap_ticks=({HEX}) ticks=({HEX})")
 IPI_PROBE = re.compile(rf"BE_MVP:11 IPI_PROBE hart=({DEC}) domain=({DEC}) "
                        rf"sent=({HEX}) received=({HEX}) answered=({HEX}) "
                        r"spv=([01])")
+TICK_PROBE = re.compile(
+    rf"BE_MVP:11 TICK_PROBE hart=({DEC}) domain=({DEC}) "
+    rf"sent=({HEX}) received=({HEX}) answered=({HEX}) spv=([01])")
+TICK_PERIOD = LAYOUT["TICK_TICKS"]
 # hedeleg is WARL (B6's fix-warl): a reading of 0xb15d that holds 0xb10c.
 # beryllium-cheri: the values per monitor variant (--monitor): the
 # CHERI-aware monitor's delegate cause 28, CHERI v0.9.3's CHERI fault, too,
@@ -1368,6 +1385,15 @@ def counter_rule(name, rule, value, where):
     return None
 
 
+def tick_signalling(expect):
+    return "tick" in expect.get("exit_classes", ())
+
+
+def probe_match(expect, text):
+    return (TICK_PROBE if tick_signalling(expect) else IPI_PROBE).fullmatch(
+        text)
+
+
 def sbi_findings(expect, domain, values, where):
     """sbi as the sum of its terms (M0's and M1's call classes, all
     printed; M2's sbi_terms, which add mgmt, hart 0's requests, which the
@@ -1443,12 +1469,14 @@ def shutdown_findings(state, capture, expect, budget, findings, facts,
     shutdown; returns the parsed ends."""
     denials = denials or {}
     counters = dict(expect["counters"])
+    counter_names = COUNTERS if tick_signalling(expect) else LEGACY_COUNTERS
+    shutdown_re = SHUTDOWN if tick_signalling(expect) else LEGACY_SHUTDOWN
     if expect["outcome"].get("time_above_zero"):
         counters["time"] = {"min": 1, "max": counters["exits"]["max"]}
     shutdowns = {}
     for domain, binding in enumerate(expect["domains"]):
         line = state.matched.get(("BE_MVP:12", domain))
-        match = SHUTDOWN.fullmatch(line.text) if line else None
+        match = shutdown_re.fullmatch(line.text) if line else None
         if not match:
             ended = TERMINATED.fullmatch(line.text) if line else None
             if ended:
@@ -1456,10 +1484,13 @@ def shutdown_findings(state, capture, expect, budget, findings, facts,
                     state, domain, binding, ended, counters, budget,
                     findings, facts)
             continue
-        values = dict(zip(("hart", "domain") + COUNTERS,
-                          (int(value) for value in match.groups()[:13])))
+        count_end = 2 + len(counter_names)
+        values = dict(zip(("hart", "domain") + counter_names,
+                          (int(value) for value in
+                           match.groups()[:count_end])))
         values.update(zip(("ring_peak", "entered", "ticks"),
-                          (int(value, 16) for value in match.groups()[13:])))
+                          (int(value, 16) for value in
+                           match.groups()[count_end:])))
         shutdowns[domain] = values
         where = f"G{domain}'s BE_MVP:12"
         if values["hart"] != binding["hart"]:
@@ -1469,6 +1500,14 @@ def shutdown_findings(state, capture, expect, budget, findings, facts,
             finding = counter_rule(name, rule, values[name], where)
             if finding:
                 findings.append(finding)
+        if tick_signalling(expect):
+            interval = values["ticks"] - values["entered"] \
+                if values["ticks"] >= values["entered"] else 0
+            maximum = (interval + TICK_PERIOD - 1) // TICK_PERIOD + 1
+            if values["tick"] < 1 or values["tick"] > maximum:
+                findings.append(
+                    f"{where}: tick={values['tick']} is not in 1..{maximum} "
+                    f"for its 0x{interval:x}-tick run")
         if values["ring_peak"] > RING_PEAK_BUDGET:
             findings.append(f"{where}: ring_peak=0x{values['ring_peak']:x} "
                             f"is above half the ring (stop condition 3)")
@@ -1510,6 +1549,11 @@ def shutdown_findings(state, capture, expect, budget, findings, facts,
                 ticks < max(value["ticks"] for value in shutdowns.values()):
             findings.append(f"BE_MVP:13 ticks=0x{ticks:x} idle_ticks="
                             f"0x{idle:x} are not within the run")
+        if tick_signalling(expect):
+            maximum = (ticks + TICK_PERIOD - 1) // TICK_PERIOD + 1
+            if wakes < 1 or wakes > maximum:
+                findings.append(f"BE_MVP:13 wakes={wakes} is not in "
+                                f"1..{maximum} for 0x{ticks:x} run ticks")
         spans = [(value["entered"], value["ticks"])
                  for value in shutdowns.values()]
         computed = max(0, min(end for _, end in spans) -
@@ -2343,27 +2387,27 @@ def required_findings(capture, outcome):
 
 
 def ping_findings(state, expect, mgmts):
-    """The IPI probe's SPV (Plan revision M2-A.1): each BE_MVP:11 line
-    shows spv=1, M0's rule, or spv=0 where the image has the management
-    extension (a v3 expectation's mgmt) and its received= lies in a
-    management wait of its own hart, [ticks, ticks + service] of one of
-    MGMTS (hart 0's BE_MVP:MGMT lines) naming that hart, both since the
-    barrier as the monitor prints them: a hart that waits in HS for hart
-    0's MGMT_RESULT serves a PING it finds meanwhile (Q14), and its PONG
-    shows SPV 0. Returns (findings, {domain: the fields of the request
-    whose wait holds its probe})."""
+    """The current tick probe, or a historical IPI probe: ordered times,
+    then the M2-A.1 SPV rule. A tick's latency is recorded, not judged."""
     findings, waited = [], {}
     waits = [dict(zip(MGMT_FIELDS, match.groups())) for match in (
         MGMT.fullmatch(line.text) for line in mgmts) if match]
     for key, line in state.sequence:
-        match = IPI_PROBE.fullmatch(line.text) if key[0] == "BE_MVP:11" \
+        match = probe_match(expect, line.text) if key[0] == "BE_MVP:11" \
             else None
-        if not match or match.group(6) == "1":
+        if not match:
             continue
         hart, domain = int(match.group(1)), int(match.group(2))
+        sent, received, answered = (int(value, 16)
+                                    for value in match.groups()[2:5])
+        if not sent <= received <= answered:
+            findings.append(f"line {line.number}: G{domain}'s BE_MVP:11 "
+                            f"times are not sent <= received <= answered")
+        if match.group(6) == "1":
+            continue
         received = int(match.group(4), 16)
-        where = (f"line {line.number}: G{domain}'s BE_MVP:11 spv=0, a PONG "
-                 f"answered in HS")
+        where = (f"line {line.number}: G{domain}'s BE_MVP:11 spv=0, a "
+                 f"PONG answered in HS")
         if "mgmt" not in expect:
             findings.append(f"{where}, but the image has no management "
                             f"extension, so its hart never waits in HS "
@@ -2415,7 +2459,8 @@ def costs(state, shutdowns, denials=None, requests=None, waited=None):
         out[f"g{domain}_run_ticks"] = run
         out[f"g{domain}_run_ticks_per_exit"] = run // max(values["exits"], 1)
         ping = state.matched.get(("BE_MVP:11", domain))
-        match = IPI_PROBE.fullmatch(ping.text) if ping else None
+        match = ((TICK_PROBE if "TICK_PROBE" in ping.text else IPI_PROBE)
+                 .fullmatch(ping.text)) if ping else None
         if match:
             sent, received, answered = (int(value, 16) for value in
                                         match.groups()[2:5])
@@ -3808,6 +3853,38 @@ def current_log_standin(text, expect, root):
     ticks. The result is a synthetic stand-in, never a captured log."""
     parts = lines(text)
 
+    if tick_signalling(expect):
+        for index, line_ in enumerate(parts):
+            probe = IPI_PROBE.fullmatch(line_)
+            if probe:
+                parts[index] = line_.replace("IPI_PROBE", "TICK_PROBE", 1)
+                continue
+            shutdown = LEGACY_SHUTDOWN.fullmatch(line_)
+            if shutdown:
+                values = dict(zip(
+                    LEGACY_COUNTERS,
+                    (int(value) for value in shutdown.groups()[
+                        2:2 + len(LEGACY_COUNTERS)])))
+                values["exits"] -= values["ipi"]
+                values["tick"] = max(1, values["ipi"])
+                values["ipi"] = 0
+                suffix = shutdown.groups()[2 + len(LEGACY_COUNTERS):]
+                parts[index] = (
+                    f"BE_MVP:12 DOMAIN_SHUTDOWN hart={shutdown.group(1)} "
+                    f"domain={shutdown.group(2)} " +
+                    " ".join(f"{name}={values[name]}" for name in COUNTERS) +
+                    f" ring_peak={suffix[0]} entered={suffix[1]} "
+                    f"ticks={suffix[2]}")
+                continue
+            complete = COMPLETE.fullmatch(line_)
+            if complete:
+                ticks = int(complete.group(6), 16)
+                maximum = (ticks + TICK_PERIOD - 1) // TICK_PERIOD + 1
+                wakes = min(int(complete.group(3)), maximum)
+                parts[index] = re.sub(
+                    rf"wakes={DEC}", f"wakes={max(1, wakes)}", line_,
+                    count=1)
+
     # The retained captures predate M11-3's physical layout. Keep their
     # run-dependent fields, but take every layout-derived marker from the
     # current generated expectation just as the log surface comes from the
@@ -4077,13 +4154,13 @@ def narrow_overlap(text):
     parts = lines(text)
     shutdowns = {}
     for index, line in enumerate(parts):
-        match = SHUTDOWN.fullmatch(line)
+        match = LEGACY_SHUTDOWN.fullmatch(line)
         if match:
             shutdowns[int(match.group(2))] = index
-    g1 = SHUTDOWN.fullmatch(parts[shutdowns[1]])
+    g1 = LEGACY_SHUTDOWN.fullmatch(parts[shutdowns[1]])
     start1, end1 = int(g1.group(15), 16), int(g1.group(16), 16)
     entered = end1 - (end1 - start1) // 4
-    g0 = SHUTDOWN.fullmatch(parts[shutdowns[0]])
+    g0 = LEGACY_SHUTDOWN.fullmatch(parts[shutdowns[0]])
     end0 = entered + (int(g0.group(16), 16) - int(g0.group(15), 16))
     parts[shutdowns[0]] = re.sub(r"entered=0x[0-9a-f]+ ticks=0x[0-9a-f]+$",
                                  f"entered=0x{entered:x} ticks=0x{end0:x}",
@@ -4113,12 +4190,24 @@ def probe_at(text, needle, received):
     were."""
     parts = lines(text)
     index = where(parts, needle)
-    sent, was, answered = (int(value, 16) for value in IPI_PROBE.fullmatch(
-        parts[index]).groups()[2:5])
+    match = (TICK_PROBE if "TICK_PROBE" in parts[index]
+             else IPI_PROBE).fullmatch(parts[index])
+    sent, was, answered = (int(value, 16)
+                           for value in match.groups()[2:5])
     parts[index] = re.sub(
         r"sent=0x[0-9a-f]+ received=0x[0-9a-f]+ answered=0x[0-9a-f]+",
         f"sent=0x{received - was + sent:x} received=0x{received:x} "
         f"answered=0x{received - was + answered:x}", parts[index])
+    return text_of(parts)
+
+
+def probe_times(text, needle, received, answered):
+    """TEXT with one current TICK_PROBE's receipt and answer replaced."""
+    parts = lines(text)
+    index = where(parts, needle)
+    parts[index] = re.sub(
+        r"received=0x[0-9a-f]+ answered=0x[0-9a-f]+",
+        f"received=0x{received:x} answered=0x{answered:x}", parts[index])
     return text_of(parts)
 
 
@@ -4480,6 +4569,22 @@ def current_m9_fixture_cases(expects, reports, root):
             session_options(
                 image, M9_SESSION_FIXTURES, **base,
                 report=report_for(expects[image], reports)), "PASS"))
+    text = current_log_standin(
+        fixture(M9_FIXTURES["te-poc"]), expects["te-poc"], root)
+    tick_line = next(line for line in lines(text)
+                     if line.startswith("BE_MVP:11 TICK_PROBE hart=1"))
+    match = TICK_PROBE.fullmatch(tick_line)
+    sent = int(match.group(3), 16)
+    delayed = sent + 2 * TICK_PERIOD
+    options = dict(base, report=report_for(expects["te-poc"], reports))
+    cases += [
+        ("M11 tick latency is recorded, not judged", "te-poc", "direct",
+         probe_times(text, "BE_MVP:11 TICK_PROBE hart=1", delayed,
+                     delayed + 1), options, "PASS"),
+        ("M11 tick times reversed", "te-poc", "direct",
+         probe_times(text, "BE_MVP:11 TICK_PROBE hart=1", delayed,
+                     delayed - 1), options, "FAIL"),
+    ]
     return cases
 
 

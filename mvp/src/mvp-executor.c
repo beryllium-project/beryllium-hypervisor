@@ -59,6 +59,7 @@ long be_mvp_exec_hart_status(be_u64 hart, be_u64 *status)
 			      status);
 }
 
+#if defined(BE_MVP_PROBE_IMAGE)
 long be_mvp_exec_send_ipi(be_u64 mask, be_u64 base)
 {
 	be_u64 value;
@@ -66,6 +67,7 @@ long be_mvp_exec_send_ipi(be_u64 mask, be_u64 base)
 	return be_mvp_fw_call(BE_MVP_FW_EID_IPI, BE_MVP_FW_IPI_SEND_IPI, mask,
 			      base, 0U, &value);
 }
+#endif
 
 enum be_r3_error be_mvp_exec_console_write(const char *text, be_u64 length)
 {
@@ -121,6 +123,13 @@ void be_mvp_exec_set_timer(be_u64 deadline)
 {
 	be_mvp_arch_set_timer(deadline);
 }
+
+#if !defined(BE_MVP_PROBE_IMAGE)
+be_u64 be_mvp_exec_rearm_tick(void)
+{
+	return be_mvp_arch_rearm_tick();
+}
+#endif
 
 #if BE_MVP_RUN_ACCEPT_DENIAL
 void be_mvp_exec_inject(be_u64 vscause, be_u64 vstval, be_u64 vsepc,

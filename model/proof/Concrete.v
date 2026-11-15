@@ -59,7 +59,7 @@
  *   actions) and stage 1's history log are the model's, not monitor
  *   memory; a stack local the protocol needs (hart 0's drain order) is a
  *   word of the hart's stack.
- * - CSRs, the firmware, SBI HSM's timing, IPIs, the console's text, the
+ * - CSRs, the firmware, SBI HSM's timing, ticks, the console's text, the
  *   guest, and time are not modelled: an exit of any kind may occur at any
  *   time in guest mode, a hart in an HS wait may read its inbound ring at
  *   any time, and every value the hardware supplies (an exit record, a
@@ -833,6 +833,8 @@ Record exit_rec : Type := mk_exit {
 (** The causes, the status bits, and the opcodes the entry names. *)
 (* reads: mvp/src/mvp.h:BE_MVP_SCAUSE_SUPERVISOR_SOFTWARE *)
 Definition scause_ssi : N := 2 ^ 63 + 1.
+(* reads: mvp/src/mvp.h:BE_MVP_SCAUSE_SUPERVISOR_TIMER *)
+Definition scause_sti : N := 2 ^ 63 + 5.
 Definition scause_ecall : N := 10.
 Definition scause_fetch_gpf : N := 20.
 Definition scause_load_gpf : N := 21.
@@ -1156,7 +1158,7 @@ Inductive act : Type :=
 
 (** Where a domain hart reads its inbound ring from. *)
 Inductive serve_kind : Type :=
-| FromGuest (* an IPI exit (ipi) *)
+| FromGuest (* a guest-level tick *)
 | FromWait  (* its management call's wait in HS (mgmt_call, wait_serve) *)
 | FromPark  (* a paused or terminated park's wake (parked) *)
 | FromFail. (* its FAIL's wait for hart 0's ACK (acknowledged) *)
@@ -1214,7 +1216,7 @@ Inductive exit_action : Type :=
 | XFail
 | XResume
 | XLine (bytes : list N)
-| XIpi
+| XTick
 | XDeny (dn : denial)
 | XMgmt (fid target : N)
 | XShutdown
@@ -1481,6 +1483,25 @@ Definition dtodo_of (s : cstate) (d : nat) : list act := cs_dtodo s d.
 Definition outbound (d : nat) : cring := Ctl (OutboundRing d).
 Definition inbound (d : nat) : cring := Ctl (InboundRing d).
 
+Definition failure_room : N := 360.
+
+Definition post_room_fails (c : config) (s : cstate) (channel : cring)
+    (r : record) : option nat :=
+  match channel with
+  | Ctl (OutboundRing d) =>
+      match dmode_of s d with
+      | DFailWait => None
+      | _ =>
+          let used := sub64 (rd (cs_mem s) channel RWCur)
+                            (rd (cs_mem s) channel RTail) in
+          let bytes := record_bytes (rec_length r) in
+          if (used + bytes <=? cfg_capacity c channel) &&
+             (cfg_capacity c channel <? used + bytes + failure_room)
+          then Some d else None
+      end
+  | _ => None
+  end.
+
 Definition core (m : mem) (d : nat) (f : core_field) : N :=
   m (WBlock d (BCore f)).
 
@@ -1555,15 +1576,15 @@ Definition nonempty {A : Type} (l : list A) : bool :=
   match l with [] => false | _ => true end.
 
 (**
- * [exit_decide] is be_mvp_handle_exit with the dispatch: an exit at the
- * ceiling, from VS mode, an interrupt but the IPI, an exception but a VS
- * ecall, a guest-page fault the denial entry refuses, or a reboot or a
- * failure's SRST fails the domain; an IPI serves the inbound ring; an
- * accepted guest-page fault is denied; a management call posts its
- * request and waits; an SRST shutdown posts SHUTDOWN and parks; a granted
- * console read serves the input ring; a console write that completes
- * lines posts them; anything else returns to the guest. The window checks
- * of the console's reads and writes are not modelled.
+ * [exit_decide] is be_mvp_handle_exit with the dispatch: a guest-level
+ * timer tick is served before the ceiling and is not charged; an exit at
+ * the ceiling, outside guest mode, another interrupt, an exception but a
+ * VS ecall, a guest-page fault the denial entry refuses, or a reboot or a
+ * failure's SRST fails the VS domain. An accepted guest-page fault is
+ * denied; a management call posts its request and waits; an SRST shutdown
+ * posts SHUTDOWN and parks; a granted console read serves the input ring;
+ * a console write that completes lines posts them; anything else returns
+ * to the guest. The console window checks are not modelled.
  *)
 (* reads: mvp/src/mvp-sbi.c:be_mvp_handle_exit *)
 (* reads: mvp/src/mvp-sbi.c:be_mvp_classify_cause *)
@@ -1578,9 +1599,11 @@ Definition nonempty {A : Type} (l : list A) : bool :=
  *)
 Definition exit_decide (ceiling accept_denial accept_mgmt accept_input exits : N)
     (w : walked) (e : exit_rec) : exit_action :=
-  if ceiling <=? exits then XFail
+  if N.testbit (ex_hstatus e) hstatus_spv_bit &&
+     (ex_scause e =? scause_sti)
+  then XTick
+  else if ceiling <=? exits then XFail
   else if negb (N.testbit (ex_hstatus e) hstatus_spv_bit) then XFail
-  else if ex_scause e =? scause_ssi then XIpi
   else if is_gpf (ex_scause e) then
     match denial_decide (accept_denial =? 1) w e with
     | Some dn => XDeny dn
@@ -2023,12 +2046,19 @@ Definition exec (c : config) (s : cstate) (st : cstep) : option cstate :=
       | APost channel' r' :: rest =>
           if cring_eqb channel channel' && writer_live s channel then
             if negb (record_eqb r r') then None else
-            let '(ok, m') :=
-              ring_post (cfg_capacity c channel) channel m r in
-            if ok then
-              Some (add_log (set_writer_todo (set_mem s m') channel rest)
-                      [GPost channel (image (N.of_nat (ring_domain channel)) r)])
-            else Some (add_log (writer_halts s channel m') [GRefused channel])
+            match post_room_fails c s channel r with
+            | Some d => Some (set_d s d DFailing [])
+            | None =>
+                let '(ok, m') :=
+                  ring_post (cfg_capacity c channel) channel m r in
+                if ok then
+                  Some (add_log (set_writer_todo (set_mem s m') channel rest)
+                          [GPost channel
+                             (image (N.of_nat (ring_domain channel)) r)])
+                else
+                  Some (add_log (writer_halts s channel m')
+                          [GRefused channel])
+            end
           else None
       | _ => None
       end
@@ -2128,8 +2158,7 @@ Definition exec (c : config) (s : cstate) (st : cstep) : option cstate :=
               else Some (hart_fails s1 d m')
           | (TakeEmpty, m'), FromFail => Some (set_d (set_mem s m') d DFailWait [])
           | (TakeEmpty, m'), FromGuest =>
-              if taken then Some (set_d (set_mem s m') d (DServe k (SRelease posted)) [])
-              else Some (hart_fails s d m')
+              Some (set_d (set_mem s m') d (DServe k (SRelease posted)) [])
           | (TakeEmpty, m'), _ =>
               Some (set_d (set_mem s m') d (DServe k (SRelease posted)) [])
           | (TakeInvalid, m'), FromFail => Some (set_d (set_mem s m') d DFailWait [])
@@ -2254,7 +2283,11 @@ Definition exec (c : config) (s : cstate) (st : cstep) : option cstate :=
           let exits := core m d CoreExits in
           let ceiling := m (WBlock d (BConfig 0)) in
           let m1 := set_core (upd m (WBlock d BSaved) (ex_sepc e)) d CoreExits
-                      (if ceiling <=? exits then ceiling + 1 else exits + 1) in
+                      (match a with
+                       | XTick => exits
+                       | _ => if ceiling <=? exits then ceiling + 1
+                              else exits + 1
+                       end) in
           let s1 := add_log (set_mem s m1) [GExit d e a] in
           let out := outbound d in
           match a with
@@ -2262,7 +2295,7 @@ Definition exec (c : config) (s : cstate) (st : cstep) : option cstate :=
           | XResume => Some s1
           | XLine bytes =>
               Some (set_d s1 d DGuest [APost out (line_record bytes); APublish out])
-          | XIpi => Some (set_d s1 d (DServe FromGuest SAcquire) [])
+          | XTick => Some (set_d s1 d (DServe FromGuest SAcquire) [])
           | XDeny dn =>
               let seq := core m1 d CoreDenials + 1 in
               Some (set_d (set_mem s1 (set_core m1 d CoreDenials seq)) d DGuest

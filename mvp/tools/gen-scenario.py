@@ -274,10 +274,10 @@ PLACEHOLDERS = {
 # Plan revision M2-A.1 (planning/mvp-m2-plan.md): in the BE_MVP:11 line of
 # an image with the management extension (a v3 scenario's, and its
 # runtime negatives'), and there alone, <S> is the PONG's SPV, 1, or 0
-# where the PING reached the domain's hart while it waited in HS for hart
+# where the PING reached the VS-domain hart while it waited in HS for hart
 # 0's answer to a management request (Q14); the line's regular expression
 # admits either, and the capture checker resolves which against the
-# capture's BE_MVP:MGMT lines. M0's and M1's lines keep spv=1.
+# capture's BE_MVP:MGMT lines. Other scenario lines keep spv=1.
 SPV = "<S>"
 SPV_PLACEHOLDERS = dict(PLACEHOLDERS, **{SPV: r"[01]"})
 CLASSES = ("boot", "gstage", "sstc", "controls", "payload", "interrupt",
@@ -285,7 +285,7 @@ CLASSES = ("boot", "gstage", "sstc", "controls", "payload", "interrupt",
            "illegal-instruction", "exception", "exit-budget", "run-timeout",
            "resume", "console", "guest-failure", "guest-reboot",
            "shutdown-returned", "firmware", "hart-start", "hart-ready",
-           "ring", "ipi", "measurement", "mgmt", "log")
+           "ring", "ipi", "measurement", "mgmt", "log", "tick", "boundary")
 PROBE_LINES = {
     "hsm": "BE_MVP:PROBE hsm status={status}",
     "hgatp": "BE_MVP:PROBE hgatp vmid=0x3fff sv48x4=<X> sv57x4=<X> "
@@ -1518,6 +1518,14 @@ def line(template, placeholders=None):
     return {"template": template, "regex": regex(template, placeholders)}
 
 
+def runtime_counters(counters, budget, layout):
+    """Scenario counters with the tick's run-budget upper bound."""
+    out = copy.deepcopy(counters)
+    period = layout["TICK_TICKS"]
+    out["tick"] = {"min": 1, "max": (budget + period - 1) // period + 1}
+    return out
+
+
 def control_lines(name, binding, layout, outbound, budget, time="0",
                   channel=None, extra=None, refused="0", spv="1", core=None):
     """The control-hart lines before and after the domains' lines, from the
@@ -1602,7 +1610,7 @@ def control_lines(name, binding, layout, outbound, budget, time="0",
         before.append(f"BE_MVP:09 HART_READY hart={domain['hart']} "
                       f"domain={domain['index']} "
                       f"hgatp=0x{domain['hgatp']:x} hstatus_controls=0x180 "
-                      "hedeleg=<h> hideleg=0x40 hcounteren=0x2 sie=0x2 "
+                      "hedeleg=<h> hideleg=0x40 hcounteren=0x2 sie=0x22 "
                       # beryllium-cheri: the monitor variant's.
                       f"henvcfg={ARMED_HENVCFG[MONITOR]} "
                       "vstimecmp=0xffffffffffffffff")
@@ -1614,13 +1622,14 @@ def control_lines(name, binding, layout, outbound, budget, time="0",
     per_domain = {}
     for domain in binding:
         per_domain[str(domain["index"])] = [line(
-            f"BE_MVP:11 IPI_PROBE hart={domain['hart']} "
+            f"BE_MVP:11 TICK_PROBE hart={domain['hart']} "
             f"domain={domain['index']} sent=<T> received=<T> answered=<T> "
             f"spv={spv}", SPV_PLACEHOLDERS), line(
             f"BE_MVP:12 DOMAIN_SHUTDOWN hart={domain['hart']} "
-            f"domain={domain['index']} exits=<N> sbi=<N> ipi=1 base=<N> "
-            f"time={time} dbcn_write=<N> dbcn_read=<N> dbcn_byte=0 srst=1 "
-            f"refused={refused} lines=<N> ring_peak=<B> entered=<T> "
+            f"domain={domain['index']} exits=<N> sbi=<N> ipi=0 tick=<N> "
+            f"base=<N> time={time} dbcn_write=<N> dbcn_read=<N> "
+            f"dbcn_byte=0 srst=1 refused={refused} lines=<N> "
+            f"ring_peak=<B> entered=<T> "
             "ticks=<T>")]
     after = [f"BE_MVP:13 RUN_COMPLETE domains={len(binding)} records=<N> "
              "wakes=<N> idle_ticks=<T> overlap_ticks=<T> ticks=<T>",
@@ -1684,6 +1693,8 @@ def probe_control_lines(probe, binding, layout, core):
         elif tag == "BE_MVP:02":
             text = (f"BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 status={status} "
                     "started=<W>")
+        elif tag == "BE_MVP:09":
+            text = text.replace(" sie=0x22 ", " sie=0x2 ")
         elif tag == "BE_MVP:10":
             text = text.replace(f" a1=0x{layout['DTB_GPA']:x} ", " a1=0x0 ")
         out.append(line(text))
@@ -1967,7 +1978,8 @@ def expectations(scenario, binding, layout, digest, core_of):
                     for domain in binding],
         "domain_lines": scenario["expect"]["domain_lines"],
         "rejected": scenario["expect"]["rejected"],
-        "counters": scenario["expect"]["counters"],
+        "counters": runtime_counters(scenario["expect"]["counters"],
+                                     layout["RUN_BUDGET"], layout),
         "exit_classes": scenario["expect"]["exit_classes"],
         "concurrency": scenario["expect"]["concurrency"],
     }
@@ -1993,11 +2005,15 @@ def expectations(scenario, binding, layout, digest, core_of):
                    "budget"),
             "<N>" if variant.get("time_above_zero") else "0",
             core=core_of(changed))
+        variant_budget = number(
+            variant.get("run_budget_ticks", layout["RUN_BUDGET"]), "budget")
         images[variant["name"]] = dict(
             common, image=variant["name"], outcome=outcome,
             toolchains=variant["toolchains"], where=variant["where"],
             change=variant["change"], control_lines=lines[0],
-            domain_control_lines=lines[1], final_lines=lines[2])
+            domain_control_lines=lines[1], final_lines=lines[2],
+            counters=runtime_counters(scenario["expect"]["counters"],
+                                      variant_budget, layout))
     for probe in scenario.get("probes", []):
         images[probe["name"]] = {
             "schema": EXPECT_SCHEMA, "scenario": name,
@@ -2126,9 +2142,10 @@ def expectations_v2(scenario, binding, layout, digest, sealed, report_sha):
         "domain_lines": lines,
         "domain_placeholders": ROLE_PLACEHOLDERS,
         "rejected": expect["rejected"],
-        "counters": expect["counters"],
+        "counters": runtime_counters(expect["counters"],
+                                     layout["RUN_BUDGET"], layout),
         "exit_classes": expect["exit_classes"],
-        "exit_sum": ["sbi", "ipi", "denials"],
+        "exit_sum": ["sbi", "denials"],
         "accepted_exits": sealed["accepted_exits"],
         "concurrency": expect["concurrency"],
         "denials": deny_lines(binding, sealed),
@@ -2154,6 +2171,10 @@ def expectations_v2(scenario, binding, layout, digest, sealed, report_sha):
                      where=variant["where"], change=variant["change"],
                      control_lines=before, domain_control_lines=per_domain,
                      final_lines=after)
+        variant_budget = number(
+            variant.get("run_budget_ticks", layout["RUN_BUDGET"]), "budget")
+        image["counters"] = runtime_counters(expect["counters"],
+                                             variant_budget, layout)
         if "walked" in variant:
             # The refused check prints its DETAIL in place of the channel's
             # line, and no domain runs.
@@ -2284,11 +2305,12 @@ def expectations_v3(scenario, binding, layout, digest, sealed, report_sha):
         "domain_lines": lines,
         "domain_placeholders": ROLE_PLACEHOLDERS,
         "rejected": expect["rejected"],
-        "counters": expect["counters"],
+        "counters": runtime_counters(expect["counters"],
+                                     layout["RUN_BUDGET"], layout),
         "exit_classes": expect["exit_classes"],
-        "exit_sum": ["sbi", "ipi", "denials"],
+        "exit_sum": ["sbi", "denials"],
         "sbi_terms": [term for term in expect["exit_classes"]
-                      if term != "ipi"] + ["mgmt"],
+                      if term not in ("ipi", "tick")] + ["mgmt"],
         "sbi_derived": derived(mgmt),
         "accepted_exits": sealed["accepted_exits"],
         "concurrency": expect["concurrency"],
@@ -2343,6 +2365,10 @@ def expectations_v3(scenario, binding, layout, digest, sealed, report_sha):
                      final_lines=after, order=[],
                      denials={str(index): [] for index in range(DOMAINS)},
                      mgmt={str(index): [] for index in range(DOMAINS)})
+        variant_budget = number(
+            variant.get("run_budget_ticks", layout["RUN_BUDGET"]), "budget")
+        image["counters"] = runtime_counters(expect["counters"],
+                                             variant_budget, layout)
         if variant["fail"] == "gstage":
             # The page check prints the pages' lines only after every page
             # passes, so the refused page's DETAIL stands in place of all
@@ -2869,7 +2895,7 @@ def console_images(scenario, scenario_path, images, binding, layout, dts,
                 " dropped=<D>")] + image["final_lines"]
             image["exit_classes"] = base["exit_classes"] + ["dbcn_input"]
             terms = base.get("sbi_terms", [term for term in base[
-                "exit_classes"] if term != "ipi"])
+                "exit_classes"] if term not in ("ipi", "tick")])
             image["sbi_terms"] = terms + ["dbcn_input"]
             image["sbi_derived"] = dict(base.get("sbi_derived", {}), **{
                 "dbcn_input": {str(index): {"min": 1, "max": layout[
@@ -4561,7 +4587,7 @@ def self_test_v3(scenario_path, scenario, layout, dts, policy, files,
         ("mgmt a term of sbi", [(images[name]["exit_sum"], images[name][
             "sbi_terms"][-2:], images[name]["sbi_derived"]) for name in (
                 "anchor", "no-grant-check")] == [
-            (["sbi", "ipi", "denials"], ["refused", "mgmt"], {"mgmt": {
+            (["sbi", "denials"], ["refused", "mgmt"], {"mgmt": {
                 "0": {"exact": exact}, "1": {"exact": 2}}})
             for exact in (13, 0)]),
         ("the host's lines", lines["0"][8:25] == [

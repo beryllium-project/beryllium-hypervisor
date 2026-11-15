@@ -3,10 +3,10 @@
  * Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
  *
  * Purpose: MVP VS-exit vector, no-call resume tail (also every first
- *          entry), the domain hart's arm helpers, the SBI TIME vstimecmp
- *          write, the denial's injection helper, hart 0's budget and wait
- *          helpers, the SSIP clear, the time read, the ring and placement
- *          fences, and the domain park.
+ *          entry), the VS-domain-hart arm helpers, the SBI TIME vstimecmp
+ *          write, the HS tick's stimecmp write, the denial's injection
+ *          helper, hart 0's budget and wait helpers, the SSIP clear, the
+ *          time read, the ring and placement fences, and the terminal park.
  * Trust:   sole MVP CSR boundary after the accepted R3 reset. The vector
  *          saves the accepted 320-byte struct be_r4_frame, then hstatus,
  *          htinst, vsatp, time, and vsstatus, to the saved page at the
@@ -15,18 +15,19 @@
  *          writes neither hie nor hvip. The resume tail checks every guest
  *          control, this hart's sscratch and hgatp, sets SPP from the
  *          record's saved SPVP, and writes no vs* CSR, hgatp, or fence.
- *          Only the arm helper writes the per-domain CSRs (vstimecmp also
- *          the TIME helper, and vscause, vstval, vsepc, and vsstatus also
- *          the injection helper, once per accepted denial), only the budget
- *          helper writes stimecmp, only the arm and budget helpers write
- *          sie, and only the SSIP helper clears sip. VTW is never set.
+ *          Only the arm helper writes the per-VS-domain CSRs (vstimecmp
+ *          also the TIME helper, and vscause, vstval, vsepc, and vsstatus
+ *          also the injection helper, once per accepted denial), only the
+ *          tick, park, and budget helpers write stimecmp, only the arm and
+ *          budget helpers write sie, and only the SSIP helper clears sip.
+ *          VTW is never set.
  *          Nothing here dereferences a guest address.
  * Scope:   the MVP line (planning/mvp-m0-plan.md, planning/mvp-m1-plan.md,
- *          and planning/mvp-m2-plan.md). A domain hart takes only the IPI
- *          as an HS interrupt, while V=1; hart 0 waits on the IPI and its
- *          budget timer with sstatus.SIE 0, and a paused or terminated
- *          domain hart on the IPI alone; no hvip injection; hstateen0,
- *          hvictl, hvien, and hviprio* are never accessed.
+ *          and planning/mvp-m2-plan.md). A scenario VS-domain hart takes
+ *          its HS timer tick while V=1 and fails any other interrupt; hart
+ *          0 waits on its timer and observes an unexpected IPI to fail it;
+ *          probe images retain their IPI path. There is no hvip injection;
+ *          hstateen0, hvictl, hvien, and hviprio* are never accessed.
  *
  * beryllium-cheri: two monitor variants assemble from this file
  * (planning/cheri-platform.md). Without BE_MVP_CHERI it is the RISC-V
@@ -89,9 +90,15 @@
 	 * M8's sequences record (verify/litmus/sequences.txt) pins. */
 #define MVP_HENVCFG_ARMED MVP_HENVCFG_STCE
 #endif
-	/* The IPI: the supervisor software interrupt, taken only while V=1. */
+	/* The probe IPI and the scenario tick plus unexpected-IPI detector. */
 	.equ MVP_SIE_SSIE, 0x2
-	/* Hart 0's wait: the IPI and its budget timer. */
+	.equ MVP_SIE_STIE, 0x20
+#if defined(BE_MVP_PROBE_IMAGE)
+	.equ MVP_SIE_DOMAIN, MVP_SIE_SSIE
+#else
+	.equ MVP_SIE_DOMAIN, 0x22
+#endif
+	/* Hart 0's wait: the timer, with SSIE enabled to fail an IPI. */
 	.equ MVP_SIE_CONTROL, 0x22
 	/* Sstc vstimecmp and stimecmp, and senvcfg, by number. */
 	.equ MVP_CSR_VSTIMECMP, 0x24d
@@ -233,12 +240,12 @@ be_mvp_arch_arm_stce:
 	/*
 	 * Arm helper: disarm the guest timer before it can be delegated, then
 	 * delegate the guest's own exceptions and VSTI, open time only, clear
-	 * VTVM, VTW, and VTSR, enable the IPI (sstatus.SIE stays 0, so HS takes
-	 * it only while V=1), name the trusted-stack top in sscratch, and write
-	 * the per-domain CSR set once from a2's eleven words. Every control the
-	 * domain's run depends on is read back for C to check, and the set into
-	 * a3's eleven words. This domain hart's stimecmp is never written: sie
-	 * holds no STIE, so its timer never reaches HS.
+	 * VTVM, VTW, and VTSR, enable the profile's interrupts (sstatus.SIE
+	 * stays 0), name the trusted-stack top in sscratch, and write the
+	 * per-VS-domain CSR set once from a2's eleven words. Every control the
+	 * VS domain's run depends on is read back for C to check, and the set
+	 * into a3's eleven words. Scenario code arms stimecmp after this helper;
+	 * probe code keeps SSIE alone.
 	 */
 	.align 2
 	.globl be_mvp_arch_arm_controls
@@ -258,7 +265,7 @@ be_mvp_arch_arm_controls:
 	csrw	hcounteren, t0
 	li	t0, MVP_HSTATUS_CLEARED_TRAPS
 	csrc	hstatus, t0
-	li	t0, MVP_SIE_SSIE
+	li	t0, MVP_SIE_DOMAIN
 	csrs	sie, t0
 	csrw	sscratch, a1
 #ifdef BE_MVP_CHERI
@@ -409,6 +416,24 @@ be_mvp_arch_set_timer:
 	csrw	MVP_CSR_VSTIMECMP, a0
 	ret
 	.size be_mvp_arch_set_timer, . - be_mvp_arch_set_timer
+
+	/*
+	 * Scenario VS-domain-hart tick: read time, arm stimecmp one fixed
+	 * period ahead, and return the time used. Probe images do not call it.
+	 */
+#if !defined(BE_MVP_PROBE_IMAGE)
+	.section .text.mvp.domain, "ax"
+	.align 2
+	.globl be_mvp_arch_rearm_tick
+	.type be_mvp_arch_rearm_tick, @function
+be_mvp_arch_rearm_tick:
+	rdtime	a0
+	li	t0, BE_MVP_TICK_TICKS
+	add	t0, a0, t0
+	csrw	MVP_CSR_STIMECMP, t0
+	ret
+	.size be_mvp_arch_rearm_tick, . - be_mvp_arch_rearm_tick
+#endif
 
 	/*
 	 * Injection helper (planning/mvp-m1-plan.md, "The denial path"): one
@@ -581,9 +606,9 @@ be_mvp_arch_fence_rw_rw:
 	.size be_mvp_arch_fence_rw_rw, . - be_mvp_arch_fence_rw_rw
 
 	/*
-	 * Park: a domain hart after its domain's shutdown or a failed block
-	 * check, in HS wfi forever. It writes no CSR; an IPI wakes it into the
-	 * same wfi.
+	 * Terminal park. A scenario VS-domain hart re-arms its timer before
+	 * every HS wfi, so a pending STIP cannot turn the park into a spin.
+	 * Probe images retain the IPI-only park.
 	 */
 	.section .text.mvp.domain, "ax"
 	.align 2
@@ -591,6 +616,12 @@ be_mvp_arch_fence_rw_rw:
 	.type be_mvp_arch_park, @function
 be_mvp_arch_park:
 1:
+#if !defined(BE_MVP_PROBE_IMAGE)
+	rdtime	t0
+	li	t1, BE_MVP_TICK_TICKS
+	add	t0, t0, t1
+	csrw	MVP_CSR_STIMECMP, t0
+#endif
 	wfi
 	j	1b
 	.size be_mvp_arch_park, . - be_mvp_arch_park
@@ -834,9 +865,9 @@ be_mvp_arch_resume:
 	csrr	t0, stvec
 	la	t1, be_mvp_trap_vector
 	bne	t0, t1, .Lmvp_resume_bad
-	/* sie holds SSIE only: the IPI, taken only while V=1. */
+	/* Scenario sie holds the tick and unexpected-IPI detector; probes SSIE. */
 	csrr	t0, sie
-	li	t1, MVP_SIE_SSIE
+	li	t1, MVP_SIE_DOMAIN
 	bne	t0, t1, .Lmvp_resume_bad
 	/*
 	 * SPP is the only sstatus control the return may carry, and it is

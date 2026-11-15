@@ -60,7 +60,7 @@
   "channels": [
     {"name": "channel0", "object": "shared_page", "gpa": "0x84000000", "writer": "G0", "reader": "G1", "writer_rights": ["read", "write"], "reader_rights": ["read"]}
   ],
-  "accepted_exits": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "ipi", "denial"],
+  "accepted_exits": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "tick", "denial"],
   "domains": [
     {
       "index": 0,
@@ -151,7 +151,7 @@
       "RESULT fail"
     ],
     "counters": {
-      "ipi": {"exact": 1},
+      "ipi": {"exact": 0},
       "time": {"exact": 0},
       "dbcn_byte": {"exact": 0},
       "srst": {"exact": 1},
@@ -159,7 +159,7 @@
       "exits": {"min": 1, "max": 1048576},
       "ring_peak": {"min": 16, "max": 16384}
     },
-    "exit_classes": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "ipi"],
+    "exit_classes": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "tick"],
     "concurrency": {
       "overlap": "half-of-shorter",
       "alternations": 8
@@ -182,7 +182,7 @@
   },
   "variants": [
     {"name": "reader-write", "toolchains": ["gcc", "clang"], "where": ["qemu", "board"], "change": "the root builder writes W and D into the reader's channel leaf (a compile-time switch in src/mvp-gstage.c); the sealed record is unchanged", "fail": "gstage", "after": "BE_MVP:03", "detail": "channel", "domain": 1, "hart": 2, "walked": "0x460000d7", "declared": "0x46000053"},
-    {"name": "no-inject", "toolchains": ["gcc", "clang"], "where": ["qemu", "board"], "change": "te-poc with denial removed from its accepted-exit set", "accepted_exits": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "ipi"], "fail": "guest-page-fault", "after": "BE_MVP:10", "detail": "domain", "first_fault": [{"domain": 0, "hart": 1, "cause": 21, "htval": "0x21000400"}, {"domain": 1, "hart": 2, "cause": 23, "htval": "0x210003fe"}]},
+    {"name": "no-inject", "toolchains": ["gcc", "clang"], "where": ["qemu", "board"], "change": "te-poc with denial removed from its accepted-exit set", "accepted_exits": ["base", "time", "dbcn_write", "dbcn_read", "dbcn_byte", "srst", "refused", "tick"], "fail": "guest-page-fault", "after": "BE_MVP:10", "detail": "domain", "first_fault": [{"domain": 0, "hart": 1, "cause": 21, "htval": "0x21000400"}, {"domain": 1, "hart": 2, "cause": 23, "htval": "0x210003fe"}]},
     {"name": "te-poc-shell", "toolchains": ["gcc", "clang"], "where": ["qemu"], "change": "each domain's DTB has rdinit=/init-shell with its role's arguments and the sealed configuration grants each console input (planning/mvp-m7-plan.md, Q4); tests/session-typist.py types sessions/shell.json", "pass": true, "rdinit": ["/init-shell", "/init-shell"], "console_input": [true, true], "session": "sessions/shell.json"}
   ]
 }

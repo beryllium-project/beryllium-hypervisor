@@ -1731,15 +1731,81 @@ Qed.
 (** The effect of each ring step on its ring. *)
 Lemma exec_post_effect :
   forall c s ch r s', exec c s (CPost ch r) = Some s' ->
-    exists b m1, ring_post (cfg_capacity c ch) ch (cs_mem s) r = (b, m1) /\
-      cs_mem s' = m1 /\
-      cs_log s' = cs_log s ++
-        (if b then [GPost ch (image (N.of_nat (ring_domain ch)) r)]
-         else [GRefused ch]).
+    (exists m1,
+       ring_post (cfg_capacity c ch) ch (cs_mem s) r = (true, m1) /\
+       cs_mem s' = m1 /\
+       cs_log s' = cs_log s ++
+         [GPost ch (image (N.of_nat (ring_domain ch)) r)]) \/
+    (exists m1,
+       ring_post (cfg_capacity c ch) ch (cs_mem s) r = (false, m1) /\
+       cs_mem s' = m1 /\
+       cs_log s' = cs_log s ++ [GRefused ch]) \/
+    (exists d, post_room_fails c s ch r = Some d /\
+       cs_mem s' = cs_mem s /\ cs_log s' = cs_log s /\
+       cs_dmode s' d = DFailing /\ cs_dtodo s' d = []).
 Proof.
   intros c s ch r s' Hexec.
-  simpl in Hexec; exec_destruct Hexec; mem_simpl; log_simpl;
-    do 2 eexists; repeat split; reflexivity.
+  simpl in Hexec; exec_destruct Hexec; mem_simpl; log_simpl.
+  all: first
+    [ left; eexists; repeat split; reflexivity
+    | right; left; eexists; repeat split; reflexivity
+    | right; right; eexists; repeat split; try reflexivity;
+        unfold set_d, upd_fun; cbn; rewrite Nat.eqb_refl; reflexivity ].
+Qed.
+
+Lemma post_room_fails_fits :
+  forall c s channel r d, post_room_fails c s channel r = Some d ->
+    sub64 (rd (cs_mem s) channel RWCur) (rd (cs_mem s) channel RTail) +
+      record_bytes (rec_length r) <= cfg_capacity c channel.
+Proof.
+  intros c s [[x | x] | x] r d H; unfold post_room_fails in H;
+    try discriminate H.
+  destruct (dmode_of s x); try
+    (destruct
+       ((sub64 (rd (cs_mem s) (Ctl (OutboundRing x)) RWCur)
+                (rd (cs_mem s) (Ctl (OutboundRing x)) RTail) +
+          record_bytes (rec_length r) <=?
+          cfg_capacity c (Ctl (OutboundRing x))) &&
+        (cfg_capacity c (Ctl (OutboundRing x)) <?
+          sub64 (rd (cs_mem s) (Ctl (OutboundRing x)) RWCur)
+                (rd (cs_mem s) (Ctl (OutboundRing x)) RTail) +
+          record_bytes (rec_length r) + failure_room)) eqn:Hroom;
+     try discriminate H;
+     apply andb_true_iff in Hroom as [Hfit _];
+     apply N.leb_le in Hfit; exact Hfit).
+Qed.
+
+Lemma post_room_fails_outbound :
+  forall c s channel r d, post_room_fails c s channel r = Some d ->
+    channel = outbound d.
+Proof.
+  intros c s [[x | x] | x] r d H; unfold post_room_fails in H;
+    try discriminate H.
+  destruct (dmode_of s x); try
+    (destruct
+       ((sub64 (rd (cs_mem s) (Ctl (OutboundRing x)) RWCur)
+                (rd (cs_mem s) (Ctl (OutboundRing x)) RTail) +
+          record_bytes (rec_length r) <=?
+          cfg_capacity c (Ctl (OutboundRing x))) &&
+        (cfg_capacity c (Ctl (OutboundRing x)) <?
+          sub64 (rd (cs_mem s) (Ctl (OutboundRing x)) RWCur)
+                (rd (cs_mem s) (Ctl (OutboundRing x)) RTail) +
+          record_bytes (rec_length r) + failure_room)) eqn:Hroom;
+     try discriminate H;
+     injection H as <-; reflexivity).
+Qed.
+
+Lemma post_room_fails_domain_lt :
+  forall c s channel r d,
+    writer_live s channel = true ->
+    post_room_fails c s channel r = Some d ->
+    (d < 2)%nat.
+Proof.
+  intros c s channel r d Hlive Hroom.
+  pose proof (post_room_fails_outbound c s channel r d Hroom) as Hch.
+  rewrite Hch in Hlive; unfold writer_live in Hlive.
+  apply andb_true_iff in Hlive as [Hlt _].
+  apply Nat.ltb_lt; exact Hlt.
 Qed.
 
 Lemma exec_publish_effect :
@@ -1933,8 +1999,9 @@ Proof.
         rewrite Hm; apply ring_ok_zero; [exact Hcap |].
         intros f Hf'; apply publish_block_ring_zero; [symmetry; exact Ha | exact Hf'].
       * (* post *)
-        destruct (exec_post_effect c s channel r s' Hexec) as [b [m1 [Hp [Hm Hl]]]].
-        destruct b.
+        destruct (exec_post_effect c s channel r s' Hexec)
+          as [[m1 [Hp [Hm Hl]]] | [[m1 [Hp [Hm Hl]]] |
+              [d [Hg [Hm [Hl [_ _]]]]]]].
         -- pose proof (ring_post_ok _ _ _ _ _ _ _ _ _ Hcap Hw Hp) as Hok.
            eexists; unfold ring_inv_at.
            rewrite Hl, taken_of_app, posted_of_app, pub_of_app, Hm.
@@ -1942,7 +2009,9 @@ Proof.
            simpl; rewrite app_nil_r.
            destruct (pub_of channel (cs_log s)) as [pub unpub]; exact Hok.
         -- apply ring_post_refused in Hp; subst m1.
-           exists w; quiet_after channel; rewrite Hm; apply ring_ok_refuse_writer; exact Hw.
+           exists w; quiet_after channel; rewrite Hm;
+             apply ring_ok_refuse_writer; exact Hw.
+        -- exists w; unfold ring_inv_at; rewrite Hm, Hl; exact Hw.
       * (* publish *)
         destruct (exec_publish_effect c s channel s' Hexec) as [b [m1 [Hp [Hm Hl]]]].
         destruct b.
@@ -2195,7 +2264,8 @@ Qed.
 Lemma ring_post_true :
   forall cap ch m r m', ring_post cap ch m r = (true, m') ->
     sub64 (rd m ch RWCur) (rd m ch RTail) + record_bytes (rec_length r) <= cap /\
-    type_in (rec_type r) (ring_types ch) = true.
+    type_in (rec_type r) (ring_types ch) = true /\
+    rec_length r <= 256.
 Proof.
   intros cap ch m r m' Hp; unfold ring_post in Hp; cbv zeta in Hp.
   repeat match type of Hp with
@@ -2208,9 +2278,1238 @@ Proof.
   end.
   match goal with
   | H : (negb (type_in _ _) || _) = false |- _ =>
-      apply orb_false_iff in H as [H3 _]; apply negb_false_iff in H3
+      apply orb_false_iff in H as [H3 H4]; apply negb_false_iff in H3;
+      apply N.ltb_ge in H4
   end.
-  split; [lia | exact H3].
+  repeat split; try lia; exact H3.
+Qed.
+
+(**
+ * A VS-domain hart keeps the failure path's 360 bytes behind its
+ * outbound cursor. Once that path is posting, its pending record fits in
+ * the reserve; a halted hart needs no further room.
+ *)
+Definition failure_room_ok (c : config) (s : cstate) (d : nat) : Prop :=
+  let channel := outbound d in
+  let used := sub64 (rd (cs_mem s) channel RWCur)
+                    (rd (cs_mem s) channel RTail) in
+  match dmode_of s d with
+  | DServe FromFail _ =>
+      match dtodo_of s d with [] => True | _ => False end
+  | DFailWait =>
+      match dtodo_of s d with
+      | [] | [APublish _] => True
+      | [APost _ _; APublish _] =>
+          used + failure_room <= cfg_capacity c channel
+      | _ => False
+      end
+  | DHalted => True
+  | _ => used + failure_room <= cfg_capacity c channel
+  end.
+
+Definition full_room_mode (mode : dmode) : Prop :=
+  match mode with
+  | DServe FromFail _ | DFailWait | DHalted => False
+  | _ => True
+  end.
+
+Lemma fail_record_fits_room :
+  record_bytes (rec_length fail_record) <= failure_room.
+Proof. change (24 <= 360)%N; lia. Qed.
+
+Lemma record_bytes_max :
+  forall length, record_bytes length <= 272.
+Proof.
+  intros length; destruct (length <=? 256) eqn:Hlen.
+  - apply N.leb_le in Hlen.
+    exact (proj1 (proj2 (record_bytes_bounds length Hlen))).
+  - unfold record_bytes; rewrite Hlen; lia.
+Qed.
+
+Lemma failure_room_full :
+  forall c s d,
+    failure_room_ok c s d ->
+    full_room_mode (dmode_of s d) ->
+    sub64 (rd (cs_mem s) (outbound d) RWCur)
+          (rd (cs_mem s) (outbound d) RTail) +
+      failure_room <= cfg_capacity c (outbound d).
+Proof.
+  intros c s d Hroom Hmode.
+  unfold failure_room_ok in Hroom.
+  destruct (dmode_of s d); try exact Hroom; try contradiction Hmode.
+  destruct k; try exact Hroom; contradiction Hmode.
+Qed.
+
+Lemma enabled_post_has_room :
+  forall c s d r rest,
+    failure_room_ok c s d ->
+    writer_live s (outbound d) = true ->
+    dtodo_of s d = APost (outbound d) r :: rest ->
+    sub64 (rd (cs_mem s) (outbound d) RWCur)
+          (rd (cs_mem s) (outbound d) RTail) +
+      failure_room <= cfg_capacity c (outbound d).
+Proof.
+  intros c s d r rest Hroom Hlive Htodo.
+  unfold failure_room_ok in Hroom.
+  destruct (dmode_of s d) eqn:Hmode; try exact Hroom.
+  - destruct k; try exact Hroom.
+    simpl in Hroom; rewrite Htodo in Hroom; contradiction Hroom.
+  - simpl in Hroom; rewrite Htodo in Hroom.
+    destruct rest as [| action tail]; simpl in Hroom; try contradiction Hroom.
+    destruct action; try contradiction Hroom.
+    destruct tail; simpl in Hroom; [exact Hroom | contradiction Hroom].
+  - unfold writer_live, outbound in Hlive; cbn in Hlive;
+      apply andb_true_iff in Hlive as [_ Hlive];
+      rewrite Hmode in Hlive; discriminate Hlive.
+Qed.
+
+Definition same_room_words (channel : cring) (m m' : mem) : Prop :=
+  rd m' channel RWCur = rd m channel RWCur /\
+  rd m' channel RTail = rd m channel RTail.
+
+Lemma same_room_words_refl :
+  forall channel m, same_room_words channel m m.
+Proof. intros; split; reflexivity. Qed.
+
+Lemma same_room_words_trans :
+  forall channel m1 m2 m3,
+    same_room_words channel m1 m2 ->
+    same_room_words channel m2 m3 ->
+    same_room_words channel m1 m3.
+Proof.
+  intros channel m1 m2 m3 [Hc12 Ht12] [Hc23 Ht23];
+    split; [rewrite Hc23, Hc12 | rewrite Ht23, Ht12]; reflexivity.
+Qed.
+
+Lemma same_room_words_ring :
+  forall channel m m', same_ring channel m m' ->
+    same_room_words channel m m'.
+Proof.
+  intros channel m m' H; split; unfold rd; apply H.
+Qed.
+
+Lemma ring_ops_room_words :
+  forall cap channel m,
+    same_room_words channel m (snd (ring_publish channel m)) /\
+    same_room_words channel m (snd (ring_acquire cap channel m)) /\
+    same_room_words channel m (snd (ring_take cap channel m)) /\
+    same_room_words channel m (snd (ring_room cap channel m)).
+Proof.
+  intros; repeat split; ring_op_words.
+Qed.
+
+Lemma acquire_result_room_words :
+  forall cap channel m n m',
+    ring_acquire cap channel m = (n, m') ->
+    same_room_words channel m m'.
+Proof.
+  intros cap channel m n m' H.
+  pose proof (proj1 (proj2 (ring_ops_room_words cap channel m))) as Hsame.
+  rewrite H in Hsame; exact Hsame.
+Qed.
+
+Lemma take_result_room_words :
+  forall cap channel m result m',
+    ring_take cap channel m = (result, m') ->
+    same_room_words channel m m'.
+Proof.
+  intros cap channel m result m' H.
+  pose proof
+    (proj1 (proj2 (proj2 (ring_ops_room_words cap channel m)))) as Hsame.
+  rewrite H in Hsame; exact Hsame.
+Qed.
+
+Lemma control_result_room_words :
+  forall channel m m', ctl_only m m' ->
+    same_room_words channel m m'.
+Proof.
+  intros channel m m' H.
+  apply same_room_words_ring, same_ring_ctl; exact H.
+Qed.
+
+Lemma dmode_h0_after :
+  forall s m todo outcome events d,
+    dmode_of (h0_after s m todo outcome events) d = dmode_of s d.
+Proof. intros s m todo [] events d; reflexivity. Qed.
+
+Lemma dtodo_h0_after :
+  forall s m todo outcome events d,
+    dtodo_of (h0_after s m todo outcome events) d = dtodo_of s d.
+Proof. intros s m todo [] events d; reflexivity. Qed.
+
+Lemma failure_room_frame :
+  forall c s s' d,
+    dmode_of s' d = dmode_of s d ->
+    dtodo_of s' d = dtodo_of s d ->
+    same_room_words (outbound d) (cs_mem s) (cs_mem s') ->
+    failure_room_ok c s d -> failure_room_ok c s' d.
+Proof.
+  intros c s s' d Hmode Htodo [Hcur Htail] Hroom.
+  unfold failure_room_ok in *; rewrite Hmode, Htodo.
+  rewrite Hcur, Htail; exact Hroom.
+Qed.
+
+Lemma set_d_full_preserves_room :
+  forall c s d target mode todo m',
+    same_room_words (outbound d) (cs_mem s) m' ->
+    failure_room_ok c s d ->
+    full_room_mode (dmode_of s target) ->
+    full_room_mode mode ->
+    failure_room_ok c (set_d (set_mem s m') target mode todo) d.
+Proof.
+  intros c s d target mode todo m' Hmem Hroom Hold Hnew.
+  destruct (Nat.eqb d target) eqn:Heq.
+  - apply Nat.eqb_eq in Heq; subst target.
+    pose proof (failure_room_full c s d Hroom Hold) as Hfull.
+    destruct Hmem as [Hcur Htail]; unfold rd in Hcur, Htail.
+    unfold failure_room_ok, set_d, set_mem, upd_fun, dmode_of, dtodo_of;
+      cbn.
+    rewrite Nat.eqb_refl; cbn.
+    destruct mode; try exact I; try contradiction Hnew.
+    all: try (rewrite Hcur, Htail; exact Hfull).
+    all: try match goal with
+    | k : serve_kind |- _ =>
+        destruct k; try contradiction Hnew;
+        rewrite Hcur, Htail; exact Hfull
+    end.
+  - apply (failure_room_frame c s
+      (set_d (set_mem s m') target mode todo) d); [| | exact Hmem | exact Hroom].
+    + cbn [dmode_of set_d set_mem upd_fun cs_dmode];
+        unfold upd_fun; rewrite Heq; reflexivity.
+    + cbn [dtodo_of set_d set_mem upd_fun cs_dtodo];
+        unfold upd_fun; rewrite Heq; reflexivity.
+Qed.
+
+Lemma set_d_other_preserves_room :
+  forall c s d target mode todo m',
+    Nat.eqb d target = false ->
+    same_room_words (outbound d) (cs_mem s) m' ->
+    failure_room_ok c s d ->
+    failure_room_ok c (set_d (set_mem s m') target mode todo) d.
+Proof.
+  intros c s d target mode todo m' Heq Hmem Hroom.
+  apply (failure_room_frame c s
+    (set_d (set_mem s m') target mode todo) d); [| | exact Hmem | exact Hroom].
+  - cbn [dmode_of set_d set_mem cs_dmode]; unfold upd_fun;
+      rewrite Heq; reflexivity.
+  - cbn [dtodo_of set_d set_mem cs_dtodo]; unfold upd_fun;
+      rewrite Heq; reflexivity.
+Qed.
+
+Lemma set_d_target_or_other_preserves_room :
+  forall c s d target mode todo m',
+    same_room_words (outbound d) (cs_mem s) m' ->
+    failure_room_ok c s d ->
+    failure_room_ok c (set_d (set_mem s m') target mode todo) target ->
+    failure_room_ok c (set_d (set_mem s m') target mode todo) d.
+Proof.
+  intros c s d target mode todo m' Hmem Hbefore Htarget.
+  destruct (Nat.eqb d target) eqn:Heq.
+  - apply Nat.eqb_eq in Heq; subst target; exact Htarget.
+  - exact (set_d_other_preserves_room c s d target mode todo m' Heq Hmem
+      Hbefore).
+Qed.
+
+Lemma full_transition_preserves_room :
+  forall c s s' d,
+    same_room_words (outbound d) (cs_mem s) (cs_mem s') ->
+    failure_room_ok c s d ->
+    full_room_mode (dmode_of s d) ->
+    full_room_mode (dmode_of s' d) ->
+    failure_room_ok c s' d.
+Proof.
+  intros c s s' d Hmem Hroom Hold Hnew.
+  pose proof (failure_room_full c s d Hroom Hold) as Hfull.
+  unfold failure_room_ok.
+  destruct (dmode_of s' d); try exact I; try contradiction Hnew.
+  all: try (destruct Hmem as [Hcur Htail];
+    rewrite Hcur, Htail; exact Hfull).
+  destruct k; try contradiction Hnew.
+  all: destruct Hmem as [Hcur Htail]; rewrite Hcur, Htail; exact Hfull.
+Qed.
+
+Lemma publish_block_preserves_room :
+  forall c s d,
+    config_ok c ->
+    failure_room_ok c s d ->
+    failure_room_ok c (set_mem s (publish_block c (cs_mem s) d)) d.
+Proof.
+  intros c s d Hc Hbefore.
+  assert (Hfresh :
+    sub64
+      (rd (publish_block c (cs_mem s) d) (outbound d) RWCur)
+      (rd (publish_block c (cs_mem s) d) (outbound d) RTail) +
+      failure_room <= cfg_capacity c (outbound d)).
+  { unfold rd, outbound.
+    rewrite (publish_block_ring_zero c (cs_mem s) d
+      (Ctl (OutboundRing d)) RWCur) by (reflexivity || simpl; tauto).
+    rewrite (publish_block_ring_zero c (cs_mem s) d
+      (Ctl (OutboundRing d)) RTail) by (reflexivity || simpl; tauto).
+    rewrite sub64_self.
+    pose proof (cap_facts _ (Hc (Ctl (OutboundRing d)))) as [_ [Hmin _]].
+    unfold failure_room; lia. }
+  unfold failure_room_ok, dmode_of, dtodo_of in Hbefore |- *; simpl.
+  destruct (cs_dmode s d); try exact Hfresh; try exact I.
+  all: try match goal with
+  | k : serve_kind |- _ =>
+      destruct k; simpl in Hbefore |- *;
+        try exact Hfresh; try exact Hbefore; try exact I
+  end.
+  destruct (cs_dtodo s d) as [| [ch r | ch] rest]; simpl in Hbefore |- *;
+    try exact I; try contradiction Hbefore.
+  destruct rest as [| [ch2 r2 | ch2] rest]; simpl in Hbefore |- *;
+    try exact I; try contradiction Hbefore.
+  destruct rest; simpl in Hbefore |- *;
+    try exact Hbefore; try exact Hfresh; contradiction Hbefore.
+  exact Hbefore.
+Qed.
+
+Lemma room_guard_preserves_room :
+  forall c s d r n rest,
+    failure_room_ok c s d ->
+    writer_live s (outbound d) = true ->
+    dtodo_of s d = APost (outbound d) r :: rest ->
+    post_room_fails c s (outbound d) r = Some n ->
+    failure_room_ok c (set_d s n DFailing []) d.
+Proof.
+  intros c s d r n rest Hbefore Hlive Htodo Hguard.
+  assert (Hnotwait : dmode_of s d <> DFailWait).
+  { intros Hmode; unfold post_room_fails, outbound in Hguard; cbn in Hguard;
+      rewrite Hmode in Hguard; discriminate Hguard. }
+  assert (Hnothalt : dmode_of s d <> DHalted).
+  { intros Hmode; unfold writer_live, outbound in Hlive; cbn in Hlive;
+      apply andb_true_iff in Hlive as [_ Hlive];
+      rewrite Hmode in Hlive; discriminate Hlive. }
+  pose proof
+    (post_room_fails_outbound c s (outbound d) r n Hguard) as Hchannel.
+  unfold outbound in Hchannel; injection Hchannel as <-.
+  unfold failure_room_ok, set_d, upd_fun, dmode_of, dtodo_of in *;
+    cbn.
+  destruct (cs_dmode s d); simpl in Hbefore;
+    rewrite Nat.eqb_refl; cbn; try exact Hbefore; try contradiction.
+  all: try match goal with
+  | k : serve_kind |- _ =>
+      destruct k; simpl in Hbefore; try exact Hbefore;
+      rewrite Htodo in Hbefore; contradiction Hbefore
+  end.
+Qed.
+
+Lemma halted_failure_room :
+  forall c s d m,
+    failure_room_ok c (set_d (set_mem s m) d DHalted []) d.
+Proof.
+  intros; unfold failure_room_ok, set_d, set_mem, upd_fun, dmode_of,
+    dtodo_of; cbn; rewrite Nat.eqb_refl; reflexivity.
+Qed.
+
+Lemma fail_wait_empty_room :
+  forall c s d m,
+    failure_room_ok c (set_d (set_mem s m) d DFailWait []) d.
+Proof.
+  intros; unfold failure_room_ok, set_d, set_mem, upd_fun, dmode_of,
+    dtodo_of; cbn; rewrite Nat.eqb_refl; reflexivity.
+Qed.
+
+Lemma fail_wait_post_room :
+  forall c s d m,
+    failure_room_ok c s d ->
+    full_room_mode (dmode_of s d) ->
+    same_room_words (outbound d) (cs_mem s) m ->
+    failure_room_ok c
+      (set_d (set_mem s m) d DFailWait
+        [APost (outbound d) fail_record; APublish (outbound d)]) d.
+Proof.
+  intros c s d m Hroom Hmode [Hcur Htail].
+  pose proof (failure_room_full c s d Hroom Hmode) as Hfull.
+  unfold failure_room_ok, set_d, set_mem, upd_fun, dmode_of, dtodo_of;
+    cbn; rewrite Nat.eqb_refl; cbn.
+  unfold rd in Hcur, Htail; rewrite Hcur, Htail; exact Hfull.
+Qed.
+
+Lemma fail_serve_empty_room :
+  forall c s d m phase,
+    failure_room_ok c
+      (set_d (set_mem s m) d (DServe FromFail phase) []) d.
+Proof.
+  intros; unfold failure_room_ok, set_d, set_mem, upd_fun, dmode_of,
+    dtodo_of; cbn; rewrite Nat.eqb_refl; reflexivity.
+Qed.
+
+Lemma writer_live_not_halted :
+  forall s d, writer_live s (outbound d) = true ->
+    dmode_of s d <> DHalted.
+Proof.
+  intros s d Hlive Hmode.
+  unfold writer_live, outbound in Hlive; cbn in Hlive.
+  apply andb_true_iff in Hlive as [_ Hlive].
+  rewrite Hmode in Hlive; discriminate Hlive.
+Qed.
+
+Lemma ring_ok_used :
+  forall cap channel m taken posted pub w,
+    cap_okb cap = true ->
+    ring_ok cap channel m taken posted pub w ->
+    sub64 (rd m channel RWCur) (rd m channel RTail) = wWc w - wT w.
+Proof.
+  intros cap channel m taken posted pub w Hcap Hok.
+  pose proof (ro_order _ _ _ _ _ _ _ Hok)
+    as [HTRc [HRcRl [HRlH [HHWc HWcT]]]].
+  rewrite (ro_wcur _ _ _ _ _ _ _ Hok), (ro_tail _ _ _ _ _ _ _ Hok).
+  apply (ring_sub cap); [exact Hcap | lia | exact HWcT].
+Qed.
+
+Lemma post_guard_keeps_room :
+  forall c s d r,
+    dmode_of s d <> DFailWait ->
+    post_room_fails c s (outbound d) r = None ->
+    sub64 (rd (cs_mem s) (outbound d) RWCur)
+          (rd (cs_mem s) (outbound d) RTail) +
+      record_bytes (rec_length r) <= cfg_capacity c (outbound d) ->
+    sub64 (rd (cs_mem s) (outbound d) RWCur)
+          (rd (cs_mem s) (outbound d) RTail) +
+      record_bytes (rec_length r) + failure_room <=
+      cfg_capacity c (outbound d).
+Proof.
+  intros c s d r Hmode Hguard Hfit.
+  unfold post_room_fails in Hguard.
+  remember (dmode_of s d) as mode eqn:Hm in Hguard, Hmode.
+  destruct mode; simpl in Hguard.
+  all: rewrite <- Hm in Hguard.
+  all: cbn in Hguard.
+  all: try (exfalso; apply Hmode; reflexivity).
+  all: rewrite (proj2 (N.leb_le _ _) Hfit) in Hguard; cbn in Hguard.
+  all: destruct
+    (cfg_capacity c (outbound d) <?
+     sub64 (rd (cs_mem s) (outbound d) RWCur)
+           (rd (cs_mem s) (outbound d) RTail) +
+     record_bytes (rec_length r) + failure_room) eqn:Hroom.
+  all: try rewrite Hroom in Hguard.
+  all: try discriminate Hguard.
+  all: apply N.ltb_ge in Hroom; exact Hroom.
+Qed.
+
+Lemma post_success_keeps_room :
+  forall c s d r m',
+    config_ok c ->
+    ring_inv_at c s (outbound d) ->
+    dmode_of s d <> DFailWait ->
+    post_room_fails c s (outbound d) r = None ->
+    ring_post (cfg_capacity c (outbound d)) (outbound d) (cs_mem s) r =
+      (true, m') ->
+    sub64 (rd m' (outbound d) RWCur) (rd m' (outbound d) RTail) +
+      failure_room <= cfg_capacity c (outbound d).
+Proof.
+  intros c s d r m' Hc [w Hw] Hmode Hguard Hpost.
+  pose proof (ring_post_true _ _ _ _ _ Hpost)
+    as [Hfit [_ Hlen]].
+  pose proof
+    (post_guard_keeps_room c s d r Hmode Hguard Hfit) as Hkeep.
+  pose proof
+    (ring_post_ok _ _ _ _ _ _ _ _ _ (Hc (outbound d)) Hw Hpost)
+    as Hpost_ok.
+  pose proof
+    (ring_ok_used _ _ _ _ _ _ _ (Hc (outbound d)) Hw) as Hused.
+  pose proof
+    (ring_ok_used _ _ _ _ _ _ _ (Hc (outbound d)) Hpost_ok)
+    as Hused'.
+  pose proof (image_length (N.of_nat (ring_domain (outbound d))) r Hlen)
+    as Hsize.
+  rewrite Hused in Hkeep; rewrite Hused'; rewrite Hsize; cbn; lia.
+Qed.
+
+Lemma post_success_preserves_room :
+  forall c tr s d r rest m',
+    config_ok c ->
+    reach c tr s ->
+    (d < 2)%nat ->
+    failure_room_ok c s d ->
+    dmode_of s d <> DHalted ->
+    dtodo_of s d = APost (outbound d) r :: rest ->
+    post_room_fails c s (outbound d) r = None ->
+    ring_post (cfg_capacity c (outbound d)) (outbound d) (cs_mem s) r =
+      (true, m') ->
+    failure_room_ok c
+      (set_writer_todo (set_mem s m') (outbound d) rest) d.
+Proof.
+  intros c tr s d r rest m' Hc Hr Hdom Hbefore Hlive Htodo Hguard Hpost.
+  unfold set_writer_todo, outbound, set_d, upd_fun.
+  unfold failure_room_ok, dmode_of, dtodo_of in Hbefore |- *; cbn.
+  destruct (cs_dmode s d) eqn:Hmode.
+  all: rewrite Nat.eqb_refl; cbn.
+  all: try match goal with
+  | k : serve_kind |- _ => destruct k; cbn in Hbefore |- *
+  end.
+  all: try (unfold dtodo_of in Htodo; rewrite Htodo in Hbefore;
+    contradiction Hbefore).
+  all: try (
+    assert (Hnotwait : dmode_of s d <> DFailWait)
+      by (intros Heq; unfold dmode_of in Heq; rewrite Hmode in Heq;
+          discriminate Heq);
+    exact (post_success_keeps_room c s d r m' Hc
+      (ring_inv_reach c tr s Hc Hr (outbound d) Hdom) Hnotwait Hguard
+      Hpost)).
+  - try unfold dtodo_of in Htodo; rewrite Htodo in Hbefore.
+    destruct rest as [| action tail]; simpl in Hbefore |- *;
+      [contradiction Hbefore |].
+    destruct action as [ch next | ch]; simpl in Hbefore |- *;
+      [contradiction Hbefore |].
+    destruct tail; simpl in Hbefore |- *; [exact I | contradiction Hbefore].
+  - exfalso; apply Hlive; exact Hmode.
+Qed.
+
+Lemma publish_success_preserves_room :
+  forall c s d rest m',
+    failure_room_ok c s d ->
+    dmode_of s d <> DHalted ->
+    dtodo_of s d = APublish (outbound d) :: rest ->
+    ring_publish (outbound d) (cs_mem s) = (true, m') ->
+    failure_room_ok c
+      (set_writer_todo (set_mem s m') (outbound d) rest) d.
+Proof.
+  intros c s d rest m' Hbefore Hlive Htodo Hpublish.
+  pose proof
+    (proj1 (ring_ops_room_words 0 (outbound d) (cs_mem s))) as Hsame.
+  rewrite Hpublish in Hsame; cbn in Hsame.
+  unfold set_writer_todo, outbound, set_d, upd_fun.
+  unfold failure_room_ok, dmode_of, dtodo_of in Hbefore |- *; cbn.
+  destruct (cs_dmode s d) eqn:Hmode.
+  all: rewrite Nat.eqb_refl; cbn.
+  all: try match goal with
+  | k : serve_kind |- _ => destruct k; cbn in Hbefore |- *
+  end.
+  all: try (unfold dtodo_of in Htodo; rewrite Htodo in Hbefore;
+    contradiction Hbefore).
+  all: try (
+    destruct Hsame as [Hcur Htail]; unfold rd in Hcur, Htail;
+    rewrite Hcur, Htail; exact Hbefore).
+  - try unfold dtodo_of in Htodo; rewrite Htodo in Hbefore.
+    destruct rest as [| action rest]; simpl in Hbefore |- *;
+      [exact I | contradiction Hbefore].
+  - exfalso; apply Hlive; unfold dmode_of; exact Hmode.
+Qed.
+
+Lemma release_keeps_room :
+  forall c s d b m',
+    config_ok c ->
+    ring_inv_at c s (outbound d) ->
+    sub64 (rd (cs_mem s) (outbound d) RWCur)
+          (rd (cs_mem s) (outbound d) RTail) +
+      failure_room <= cfg_capacity c (outbound d) ->
+    ring_release (outbound d) (cs_mem s) = (b, m') ->
+    sub64 (rd m' (outbound d) RWCur) (rd m' (outbound d) RTail) +
+      failure_room <= cfg_capacity c (outbound d).
+Proof.
+  intros c s d b m' Hc [w Hw] Hroom Hrelease.
+  unfold ring_release in Hrelease.
+  destruct (failed_view (rd (cs_mem s) (outbound d) RRFail)).
+  - injection Hrelease as _ <-.
+    unfold rd, refuse_reader; rewrite !upd_other by ring_neq; exact Hroom.
+  - injection Hrelease as _ <-.
+    pose proof (ro_order _ _ _ _ _ _ _ Hw)
+      as [HTRc [HRcRl [HRlH [HHWc HWcT]]]].
+    pose proof
+      (ring_ok_used _ _ _ _ _ _ _ (Hc (outbound d)) Hw) as Hused.
+    unfold rd; rewrite upd_other by ring_neq; rewrite upd_same.
+    fold (rd (cs_mem s) (outbound d) RWCur).
+    fold (rd (cs_mem s) (outbound d) RRCur).
+    rewrite (ro_wcur _ _ _ _ _ _ _ Hw), (ro_rcur _ _ _ _ _ _ _ Hw).
+    rewrite (ring_sub (cfg_capacity c (outbound d)))
+      by (try exact (Hc (outbound d)); lia).
+    rewrite Hused in Hroom; lia.
+Qed.
+
+Lemma release_result_preserves_failure_room :
+  forall c tr s d b m',
+    config_ok c ->
+    reach c tr s ->
+    (d < 2)%nat ->
+    failure_room_ok c s d ->
+    ring_release (outbound d) (cs_mem s) = (b, m') ->
+    failure_room_ok c (set_mem s m') d.
+Proof.
+  intros c tr s d b m' Hc Hr Hdom Hbefore Hrelease.
+  unfold failure_room_ok in Hbefore |- *; simpl.
+  destruct (dmode_of s d) eqn:Hmode.
+  all: unfold dmode_of in Hmode.
+  all: try rewrite Hmode in Hbefore.
+  all: try rewrite Hmode.
+  all: cbn in Hbefore |- *.
+  all: try match goal with
+  | k : serve_kind |- _ =>
+      destruct k; cbn in Hbefore |- *; try exact Hbefore
+  end.
+  all: unfold dtodo_of in Hbefore |- *.
+  all: try exact I.
+  all: try match goal with
+  | H : match cs_dtodo ?s0 ?d0 with _ => _ end |- _ =>
+      destruct (cs_dtodo s0 d0) as [| [ch r | ch] rest]; simpl in H |- *;
+      try exact I; try exact H;
+      destruct rest as [| [ch2 r2 | ch2] rest]; simpl in H |- *;
+      try exact I; try exact H;
+      destruct rest; simpl in H |- *; try exact I; try exact H
+  end.
+  all: exact (release_keeps_room c s d b m' Hc
+    (ring_inv_reach c tr s Hc Hr (outbound d) Hdom) Hbefore Hrelease).
+Qed.
+
+Lemma acquire_preserves_failure_room :
+  forall c s d s',
+    failure_room_ok c s d ->
+    exec c s (CAcquire (outbound d)) = Some s' ->
+    failure_room_ok c s' d.
+Proof.
+  intros c s d s' Hbefore Hexec.
+  pose proof Hexec as Hframe.
+  destruct (exec_acquire_effect c s (outbound d) s' Hexec)
+    as [n [m1 [Hacquire [Hsame _]]]].
+  assert (Hmode : dmode_of s' d = dmode_of s d).
+  { simpl in Hframe; exec_destruct Hframe; state_simpl; reflexivity. }
+  assert (Htodo : dtodo_of s' d = dtodo_of s d).
+  { simpl in Hexec; exec_destruct Hexec; state_simpl; reflexivity. }
+  apply (failure_room_frame c s s' d Hmode Htodo); [| exact Hbefore].
+  apply (same_room_words_trans (outbound d) (cs_mem s) m1 (cs_mem s')).
+  - pose proof
+      (proj1 (proj2 (ring_ops_room_words
+        (cfg_capacity c (outbound d)) (outbound d) (cs_mem s)))) as Hroom.
+    rewrite Hacquire in Hroom; exact Hroom.
+  - apply same_room_words_ring; exact Hsame.
+Qed.
+
+Lemma take_preserves_failure_room :
+  forall c s d s',
+    failure_room_ok c s d ->
+    exec c s (CTake (outbound d)) = Some s' ->
+    failure_room_ok c s' d.
+Proof.
+  intros c s d s' Hbefore Hexec.
+  pose proof Hexec as Hframe.
+  destruct (exec_take_effect c s (outbound d) s' Hexec)
+    as [res [m1 [Htake [Hsame _]]]].
+  assert (Hmode : dmode_of s' d = dmode_of s d).
+  { simpl in Hframe; exec_destruct Hframe; state_simpl; reflexivity. }
+  assert (Htodo : dtodo_of s' d = dtodo_of s d).
+  { simpl in Hexec; exec_destruct Hexec; state_simpl; reflexivity. }
+  apply (failure_room_frame c s s' d Hmode Htodo); [| exact Hbefore].
+  apply (same_room_words_trans (outbound d) (cs_mem s) m1 (cs_mem s')).
+  - pose proof
+      (proj1 (proj2 (proj2 (ring_ops_room_words
+        (cfg_capacity c (outbound d)) (outbound d) (cs_mem s))))) as Hroom.
+    rewrite Htake in Hroom; exact Hroom.
+  - apply same_room_words_ring; exact Hsame.
+Qed.
+
+Lemma release_preserves_failure_room :
+  forall c tr s d s',
+    config_ok c ->
+    reach c tr s ->
+    (d < 2)%nat ->
+    failure_room_ok c s d ->
+    exec c s (CRelease (outbound d)) = Some s' ->
+    failure_room_ok c s' d.
+Proof.
+  intros c tr s d s' Hc Hr Hdom Hbefore Hexec.
+  pose proof Hexec as Hframe.
+  destruct (exec_release_effect c s (outbound d) s' Hexec)
+    as [b [m1 [Hrelease [Hsame _]]]].
+  assert (Hmode : dmode_of s' d = dmode_of s d).
+  { simpl in Hframe; exec_destruct Hframe; state_simpl; reflexivity. }
+  assert (Htodo : dtodo_of s' d = dtodo_of s d).
+  { simpl in Hexec; exec_destruct Hexec; state_simpl; reflexivity. }
+  unfold failure_room_ok in Hbefore |- *; rewrite Hmode, Htodo.
+  destruct (dmode_of s d); try exact I.
+  all: try match goal with
+  | k : serve_kind |- _ =>
+      destruct k; cbn in Hbefore |- *; try exact Hbefore
+  end.
+  all: try match goal with
+  | H : match dtodo_of ?s0 ?d0 with _ => _ end |- _ =>
+      destruct (dtodo_of s0 d0) as [| [ch r | ch] rest]; simpl in H |- *;
+      try exact I; try exact H;
+      destruct rest as [| [ch2 r2 | ch2] rest]; simpl in H |- *;
+      try exact I; try exact H;
+      destruct rest; simpl in H |- *; try exact I; try exact H
+  end.
+  all: pose proof (release_keeps_room c s d b m1 Hc
+    (ring_inv_reach c tr s Hc Hr (outbound d) Hdom) Hbefore Hrelease)
+    as Hm1.
+  all: destruct (same_room_words_ring _ _ _ Hsame) as [Hcur Htail];
+    fold (rd (cs_mem s') (outbound d) RWCur) in Hcur;
+    fold (rd m1 (outbound d) RWCur) in Hcur;
+    fold (rd (cs_mem s') (outbound d) RTail) in Htail;
+    fold (rd m1 (outbound d) RTail) in Htail;
+    rewrite Hcur, Htail; exact Hm1.
+Qed.
+
+Lemma failure_room_reach :
+  forall c tr s, config_ok c -> reach c tr s ->
+    forall d, (d < 2)%nat -> failure_room_ok c s d.
+Proof.
+  intros c tr s Hc Hr.
+  induction Hr as [| tr s st s' Hr IH Hexec]; intros d Hd.
+  - unfold failure_room_ok, outbound, dmode_of, dtodo_of; simpl.
+    change (failure_room <= cfg_capacity c (Ctl (OutboundRing d))).
+    pose proof (cap_facts _ (Hc (Ctl (OutboundRing d)))) as [_ [Hmin _]].
+    unfold failure_room; lia.
+  - specialize (IH d Hd).
+    destruct (ring_affects st (outbound d)) eqn:Ha.
+    + destruct st as [| d0 | d0 | d0 | d0 | channel r | channel | channel
+                     | channel | channel | channel | channel n | | d0
+                     | d0 e | d0 | d0 | d0 | d0 bytes |];
+        simpl in Ha; try discriminate Ha;
+        try (apply cring_eqb_eq in Ha; subst channel).
+      all: simpl in Hexec; exec_destruct Hexec; mem_simpl; log_simpl.
+      all: repeat match goal with
+      | H : cring_eqb ?left ?right && writer_live _ _ = true |- _ =>
+          apply andb_true_iff in H as [Hchannel Hlive];
+          apply cring_eqb_eq in Hchannel; subst right
+      | H : negb (record_eqb ?left ?right) = false |- _ =>
+          apply negb_false_iff in H; apply record_eqb_eq in H; subst right
+      end.
+      all: try match goal with
+      | Htodo : dtodo_of ?state ?domain = APost ?channel ?r :: ?rest,
+        Hboth : _ = true,
+        Hbefore : failure_room_ok ?cfg ?state ?domain |- _ =>
+          change (cring_eqb (outbound domain) channel &&
+            writer_live state (outbound domain) = true) in Hboth;
+          apply andb_true_iff in Hboth as [Hchannel Hlive];
+          apply cring_eqb_eq in Hchannel; subst channel;
+          first
+            [ match goal with
+              | Hguard : _ = Some ?n |- _ =>
+                  change (post_room_fails cfg state (outbound domain) r =
+                    Some n) in Hguard
+              end
+            | match goal with
+              | Hguard : _ = None |- _ =>
+                  change (post_room_fails cfg state (outbound domain) r =
+                    None) in Hguard
+              end ]
+      | Htodo : dtodo_of ?state ?domain = APublish ?channel :: ?rest,
+        Hboth : _ = true |- _ =>
+          change (cring_eqb (outbound domain) channel &&
+            writer_live state (outbound domain) = true) in Hboth;
+          apply andb_true_iff in Hboth as [Hchannel Hlive];
+          apply cring_eqb_eq in Hchannel; subst channel
+      end.
+      all: try exact IH.
+      all: try match goal with
+      | Ha0 : Nat.eqb ?d0 ?domain = true
+        , Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg ?next ?domain =>
+          apply Nat.eqb_eq in Ha0; subst d0;
+          change (failure_room_ok cfg
+            (set_mem state (publish_block cfg (cs_mem state) domain)) domain);
+          exact (publish_block_preserves_room cfg state domain Hc Hbefore)
+      end.
+      all: try match goal with
+      | Hguard :
+          post_room_fails ?cfg ?state (outbound ?domain) ?r = Some ?n,
+        Hlive : writer_live ?state (outbound ?domain) = true,
+        Htodo :
+          dtodo_of ?state ?domain = APost (outbound ?domain) ?r :: ?rest,
+        Hbefore : failure_room_ok ?cfg ?state ?domain |- _ =>
+          change (failure_room_ok cfg (set_d state n DFailing []) domain);
+          exact (room_guard_preserves_room cfg state domain r n rest Hbefore
+            Hlive Htodo Hguard)
+      end.
+      all: try match goal with
+      | Htodo :
+          dtodo_of ?state ?domain = APost (outbound ?domain) ?r :: ?rest,
+        Hguard : post_room_fails ?cfg ?state (outbound ?domain) ?r = None,
+        Hpost :
+          ring_post (cfg_capacity ?cfg (outbound ?domain)) (outbound ?domain)
+            (cs_mem ?state) ?r =
+            (true, ?m),
+        Hlive : writer_live ?state (outbound ?domain) = true,
+        Hbefore : failure_room_ok ?cfg ?state ?domain |- _ =>
+          change (failure_room_ok cfg
+            (set_writer_todo (set_mem state m) (outbound domain) rest)
+            domain);
+          exact (post_success_preserves_room cfg tr state domain r rest m Hc
+            Hr Hd Hbefore (writer_live_not_halted state domain Hlive) Htodo
+            Hguard Hpost)
+      end.
+      all: try match goal with
+      | Htodo :
+          dtodo_of ?state ?domain = APublish (outbound ?domain) :: ?rest,
+        Hpublish : ring_publish (outbound ?domain) (cs_mem ?state) = (true, ?m),
+        Hlive : writer_live ?state (outbound ?domain) = true,
+        Hbefore : failure_room_ok ?cfg ?state ?domain |- _ =>
+          change (failure_room_ok cfg
+            (set_writer_todo (set_mem state m) (outbound domain) rest)
+            domain);
+          exact (publish_success_preserves_room cfg state domain rest m Hbefore
+            (writer_live_not_halted state domain Hlive) Htodo Hpublish)
+      end.
+      all: try match goal with
+      | |- failure_room_ok ?cfg
+          (set_d (set_mem ?state ?m) ?domain DHalted []) ?domain =>
+          exact (halted_failure_room cfg state domain m)
+      | |- failure_room_ok ?cfg
+          (add_log (set_d (set_mem ?state ?m) ?domain DHalted []) _)
+          ?domain =>
+          change (failure_room_ok cfg
+            (set_d (set_mem state m) domain DHalted []) domain);
+          exact (halted_failure_room cfg state domain m)
+      end.
+      all: try match goal with
+      | Hbefore : failure_room_ok ?cfg ?state ?domain,
+        Hacquire :
+          ring_acquire (cfg_capacity ?cfg (outbound ?domain))
+            (outbound ?domain) (cs_mem ?state) = (?n, ?m) |- _ =>
+          let Hroom := fresh "Hroom" in
+          pose proof (acquire_result_room_words
+            (cfg_capacity cfg (outbound domain)) (outbound domain)
+            (cs_mem state) n m Hacquire) as Hroom;
+          first
+            [ change (failure_room_ok cfg (set_mem state m) domain);
+              exact (failure_room_frame cfg state (set_mem state m) domain
+                eq_refl eq_refl Hroom Hbefore)
+            | change (failure_room_ok cfg
+                (set_mem state (drain_visited m false)) domain);
+              let Hctl := fresh "Hctl" in
+              pose proof (control_result_room_words (outbound domain) m
+                (drain_visited m false) (ctl_only_drain_visited m false))
+                as Hctl;
+              exact (failure_room_frame cfg state
+                (set_mem state (drain_visited m false)) domain eq_refl
+                eq_refl (same_room_words_trans (outbound domain)
+                  (cs_mem state) m (drain_visited m false) Hroom Hctl)
+                Hbefore) ]
+      end.
+      all: try match goal with
+      | Hbefore : failure_room_ok ?cfg ?state ?domain,
+        Htake :
+          ring_take (cfg_capacity ?cfg (outbound ?domain))
+            (outbound ?domain) (cs_mem ?state) = (?result, ?m) |- _ =>
+          let Hroom := fresh "Hroom" in
+          pose proof (take_result_room_words
+            (cfg_capacity cfg (outbound domain)) (outbound domain)
+            (cs_mem state) result m Htake) as Hroom;
+          first
+            [ change (failure_room_ok cfg (set_mem state m) domain);
+              exact (failure_room_frame cfg state (set_mem state m) domain
+                eq_refl eq_refl Hroom Hbefore)
+            | match goal with
+              | |- context [set_ctl m KRecord (rec_type ?record)] =>
+                  change (failure_room_ok cfg
+                    (set_mem state (set_ctl m KRecord (rec_type record)))
+                    domain);
+                  let Hctl := fresh "Hctl" in
+                  assert (Hctl : same_room_words (outbound domain) m
+                    (set_ctl m KRecord (rec_type record)))
+                    by (apply control_result_room_words; unfold set_ctl;
+                        apply ctl_only_upd, ctl_only_refl);
+                  exact (failure_room_frame cfg state
+                    (set_mem state (set_ctl m KRecord (rec_type record)))
+                    domain eq_refl eq_refl
+                    (same_room_words_trans (outbound domain) (cs_mem state)
+                      m (set_ctl m KRecord (rec_type record)) Hroom Hctl)
+                    Hbefore)
+              end ]
+      end.
+      all: try match goal with
+      | Hbefore : failure_room_ok ?cfg ?state ?domain,
+        Hrelease :
+          ring_release (outbound ?domain) (cs_mem ?state) = (?b, ?m) |- _ =>
+          let Hroom := fresh "Hroom" in
+          pose proof (release_result_preserves_failure_room cfg tr state
+            domain b m Hc Hr Hd Hbefore Hrelease) as Hroom;
+          first
+            [ change (failure_room_ok cfg (set_mem state m) domain);
+              exact Hroom
+            | change (failure_room_ok cfg
+                (set_mem state (drain_visited m false)) domain);
+              let Hctl := fresh "Hctl" in
+              pose proof (control_result_room_words (outbound domain) m
+                (drain_visited m false) (ctl_only_drain_visited m false))
+                as Hctl;
+              exact (failure_room_frame cfg (set_mem state m)
+                (set_mem state (drain_visited m false)) domain eq_refl
+                eq_refl Hctl Hroom) ]
+      end.
+      all: try match goal with
+      | Hbefore : failure_room_ok ?cfg ?state ?domain,
+        H : exec ?cfg ?state (CAcquire (outbound ?domain)) = Some ?next
+        |- _ =>
+          exact (acquire_preserves_failure_room cfg state domain next Hbefore H)
+      | Hbefore : failure_room_ok ?cfg ?state ?domain,
+        H : exec ?cfg ?state (CTake (outbound ?domain)) = Some ?next |- _ =>
+          exact (take_preserves_failure_room cfg state domain next Hbefore H)
+      | Hbefore : failure_room_ok ?cfg ?state ?domain,
+        H : exec ?cfg ?state (CRelease (outbound ?domain)) = Some ?next
+        |- _ =>
+          exact (release_preserves_failure_room cfg tr state domain next Hc Hr
+            Hd Hbefore H)
+      end.
+    + pose proof (exec_frame c s st s' Hexec) as Hframe.
+      assert (Hcur :
+        rd (cs_mem s') (outbound d) RWCur =
+        rd (cs_mem s) (outbound d) RWCur).
+      { unfold rd; apply Hframe; apply cwrites_ring_unaffected; exact Ha. }
+      assert (Htail :
+        rd (cs_mem s') (outbound d) RTail =
+        rd (cs_mem s) (outbound d) RTail).
+      { unfold rd; apply Hframe; apply cwrites_ring_unaffected; exact Ha. }
+      destruct st as [| d0 | d0 | d0 | d0 | channel r | channel | channel
+                     | channel | channel | channel | channel n | | d0
+                     | d0 e | d0 | d0 | d0 | d0 bytes |].
+      all: try match goal with
+      | channel : cring |- _ => destruct channel as [[d1 | d1] | d1]
+      end.
+      all: simpl in Hexec; exec_destruct Hexec; mem_simpl; log_simpl.
+      all: try (eapply (failure_room_frame c s _ d);
+        [ cbn [dmode_of add_log set_h0 set_mem h0_after after_visit];
+          reflexivity
+        | cbn [dtodo_of add_log set_h0 set_mem h0_after after_visit];
+          reflexivity
+        | split; [exact Hcur | exact Htail]
+        | exact IH ]).
+      all: try match goal with
+      | Hroom : post_room_fails ?cfg ?state ?channel ?r = Some ?n |- _ =>
+          pose proof
+            (post_room_fails_outbound cfg state channel r n Hroom)
+            as Hchannel;
+          discriminate Hchannel
+      end.
+      all: try match goal with
+      | Hsource : dmode_of ?state ?target = ?old,
+        Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg ?next ?domain =>
+          destruct (Nat.eqb domain target) eqn:E;
+          [ apply Nat.eqb_eq in E; subst target;
+            apply (full_transition_preserves_room cfg state _ domain);
+            [ split; [exact Hcur | exact Htail]
+            | exact Hbefore
+            | unfold full_room_mode; rewrite Hsource; reflexivity
+            | cbn [dmode_of add_log set_d set_h0 set_mem cs_dmode];
+              unfold upd_fun; rewrite Nat.eqb_refl; reflexivity ]
+          | apply (failure_room_frame cfg state _ domain);
+            [ cbn [dmode_of add_log set_d set_h0 set_mem cs_dmode];
+              unfold upd_fun; rewrite E; reflexivity
+            | cbn [dtodo_of add_log set_d set_h0 set_mem cs_dtodo];
+              unfold upd_fun; rewrite E; reflexivity
+            | split; [exact Hcur | exact Htail]
+            | exact Hbefore ] ]
+      end.
+      all: try exact IH.
+      all: try exact I.
+      all: try contradiction.
+      all: try unfold hart_fails.
+      all: try match goal with
+      | |- failure_room_ok ?cfg
+          (add_log (set_d (set_mem ?base ?m) ?target ?mode ?todo) _)
+          ?domain =>
+          change (failure_room_ok cfg
+            (set_d (set_mem s m) target mode todo) domain)
+      | |- failure_room_ok ?cfg
+          (set_d (set_mem ?base ?m) ?target ?mode ?todo) ?domain =>
+          change (failure_room_ok cfg
+            (set_d (set_mem s m) target mode todo) domain)
+      end.
+      all: try match goal with
+      | Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg
+          (set_d (set_mem ?state ?m) ?target
+            (DServe FromFail ?phase) []) ?domain =>
+          apply (set_d_target_or_other_preserves_room cfg state domain target
+            (DServe FromFail phase) [] m);
+          [ split; [exact Hcur | exact Htail]
+          | exact Hbefore
+          | exact (fail_serve_empty_room cfg state target m phase) ]
+      | Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg
+          (set_d (set_mem ?state ?m) ?target DFailWait []) ?domain =>
+          apply (set_d_target_or_other_preserves_room cfg state domain target
+            DFailWait [] m);
+          [ split; [exact Hcur | exact Htail]
+          | exact Hbefore
+          | exact (fail_wait_empty_room cfg state target m) ]
+      | Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg
+          (set_d (set_mem ?state ?m) ?target DHalted []) ?domain =>
+          apply (set_d_target_or_other_preserves_room cfg state domain target
+            DHalted [] m);
+          [ split; [exact Hcur | exact Htail]
+          | exact Hbefore
+          | exact (halted_failure_room cfg state target m) ]
+      end.
+      all: try match goal with
+      | Hsource : dmode_of ?state ?target = ?old,
+        Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg ?next ?domain =>
+          destruct (Nat.eqb domain target) eqn:E;
+          [ apply Nat.eqb_eq in E; subst target;
+            apply (full_transition_preserves_room cfg state _ domain);
+            [ split; [exact Hcur | exact Htail]
+            | exact Hbefore
+            | unfold full_room_mode; rewrite Hsource; reflexivity
+            | cbn [dmode_of add_log set_d set_h0 set_mem cs_dmode];
+              unfold upd_fun; rewrite Nat.eqb_refl; reflexivity ]
+          | apply (failure_room_frame cfg state _ domain);
+            [ cbn [dmode_of add_log set_d set_h0 set_mem cs_dmode];
+              unfold upd_fun; rewrite E; reflexivity
+            | cbn [dtodo_of add_log set_d set_h0 set_mem cs_dtodo];
+              unfold upd_fun; rewrite E; reflexivity
+            | split; [exact Hcur | exact Htail]
+            | exact Hbefore ] ]
+      end.
+      all: try match goal with
+      | Hsource :
+          dmode_of ?state ?target = DServe ?kind ?old_phase,
+        Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg
+          (set_d (set_mem ?state ?m) ?target
+            (DServe ?kind ?new_phase) []) ?domain =>
+          destruct kind;
+          first
+            [ apply (set_d_full_preserves_room cfg state domain target
+                (DServe FromGuest new_phase) [] m);
+              [ split; [exact Hcur | exact Htail]
+              | exact Hbefore
+              | unfold full_room_mode; rewrite Hsource; reflexivity
+              | reflexivity ]
+            | apply (set_d_full_preserves_room cfg state domain target
+                (DServe FromWait new_phase) [] m);
+              [ split; [exact Hcur | exact Htail]
+              | exact Hbefore
+              | unfold full_room_mode; rewrite Hsource; reflexivity
+              | reflexivity ]
+            | apply (set_d_full_preserves_room cfg state domain target
+                (DServe FromPark new_phase) [] m);
+              [ split; [exact Hcur | exact Htail]
+              | exact Hbefore
+              | unfold full_room_mode; rewrite Hsource; reflexivity
+              | reflexivity ]
+            | apply (set_d_target_or_other_preserves_room cfg state domain
+                target (DServe FromFail new_phase) [] m);
+              [ split; [exact Hcur | exact Htail]
+              | exact Hbefore
+              | exact (fail_serve_empty_room cfg state target m new_phase) ] ]
+      end.
+      all: try match goal with
+      | Hsource : dmode_of ?state ?target = ?old,
+        Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg
+          (set_d (set_mem ?state ?m) ?target DFailWait
+            [APost (outbound ?target) fail_record;
+             APublish (outbound ?target)]) ?domain =>
+          destruct (Nat.eqb domain target) eqn:E;
+          [ apply Nat.eqb_eq in E; subst target;
+            apply (fail_wait_post_room cfg state domain m);
+            [ exact Hbefore
+            | unfold full_room_mode; rewrite Hsource; reflexivity
+            | split; [exact Hcur | exact Htail] ]
+          | apply (set_d_other_preserves_room cfg state domain target
+              DFailWait
+              [APost (outbound target) fail_record;
+               APublish (outbound target)] m);
+            [ exact E
+            | split; [exact Hcur | exact Htail]
+            | exact Hbefore ] ]
+      end.
+      all: try match goal with
+      | Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg (set_d ?state ?target DHalted []) ?domain =>
+          change (failure_room_ok cfg
+            (set_d (set_mem state (cs_mem state)) target DHalted []) domain);
+          apply (set_d_target_or_other_preserves_room cfg state domain target
+            DHalted [] (cs_mem state));
+          [ apply same_room_words_refl
+          | exact Hbefore
+          | exact (halted_failure_room cfg state target (cs_mem state)) ]
+      end.
+      all: try match goal with
+      | Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg
+          (h0_after ?state ?m ?todo ?outcome ?events) ?domain =>
+          apply (failure_room_frame cfg state
+            (h0_after state m todo outcome events) domain);
+          [ apply dmode_h0_after
+          | apply dtodo_h0_after
+          | split; [exact Hcur | exact Htail]
+          | exact Hbefore ]
+      end.
+      all: try match goal with
+      | Hguard :
+          post_room_fails ?cfg ?state (Ctl (OutboundRing ?target)) ?record =
+            Some ?n,
+        Ha0 : ring_affects (CPost (Ctl (OutboundRing ?target)) ?record)
+          (outbound ?domain) = false,
+        Hbefore : failure_room_ok ?cfg ?state ?domain |- _ =>
+          pose proof (post_room_fails_outbound cfg state
+            (Ctl (OutboundRing target)) record n Hguard) as Hchannel;
+          unfold outbound in Hchannel; injection Hchannel as <-;
+          change (Nat.eqb target domain = false) in Ha0;
+          assert (E : Nat.eqb domain target = false)
+            by (rewrite Nat.eqb_sym; exact Ha0);
+          change (failure_room_ok cfg
+            (set_d (set_mem state (cs_mem state)) target DFailing [])
+            domain);
+          exact (set_d_other_preserves_room cfg state domain target DFailing
+            [] (cs_mem state) E (same_room_words_refl (outbound domain)
+              (cs_mem state)) Hbefore)
+      end.
+      all: try match goal with
+      | Hguard : _ = Some ?n,
+        Ha0 : ring_affects (CPost (Ctl (OutboundRing ?target)) ?record)
+          (outbound ?domain) = false,
+        Hbefore : failure_room_ok ?cfg ?state ?domain |- _ =>
+          change (post_room_fails cfg state (outbound target) record =
+            Some n) in Hguard;
+          pose proof (post_room_fails_outbound cfg state (outbound target)
+            record n Hguard) as Hchannel;
+          unfold outbound in Hchannel; injection Hchannel as <-;
+          change (Nat.eqb target domain = false) in Ha0;
+          assert (E : Nat.eqb domain target = false)
+            by (rewrite Nat.eqb_sym; exact Ha0);
+          change (failure_room_ok cfg
+            (set_d (set_mem state (cs_mem state)) target DFailing [])
+            domain);
+          exact (set_d_other_preserves_room cfg state domain target DFailing
+            [] (cs_mem state) E (same_room_words_refl (outbound domain)
+              (cs_mem state)) Hbefore)
+      end.
+      all: try match goal with
+      | Ha0 :
+          ring_affects (CPost (Ctl (OutboundRing ?target)) ?record)
+            (outbound ?domain) = false,
+        Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg ?next ?domain =>
+          try match goal with
+          | Hguard :
+              post_room_fails cfg state (Ctl (OutboundRing target)) record =
+                Some ?n |- _ =>
+              pose proof (post_room_fails_outbound cfg state
+                (Ctl (OutboundRing target)) record n Hguard) as Hchannel;
+              unfold outbound in Hchannel; injection Hchannel as <-
+          end;
+          change (Nat.eqb target domain = false) in Ha0;
+          assert (E : Nat.eqb domain target = false)
+            by (rewrite Nat.eqb_sym; exact Ha0);
+          apply (failure_room_frame cfg state next domain);
+          [ cbn [dmode_of add_log set_d set_h0 set_mem hart_fails upd_fun
+                  cs_dmode];
+            unfold upd_fun; rewrite E; reflexivity
+          | cbn [dtodo_of add_log set_d set_h0 set_mem hart_fails upd_fun
+                  cs_dtodo];
+            unfold upd_fun; rewrite E; reflexivity
+          | split; [exact Hcur | exact Htail]
+          | exact Hbefore ]
+      | Ha0 :
+          ring_affects (CPublish (Ctl (OutboundRing ?target)))
+            (outbound ?domain) = false,
+        Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg ?next ?domain =>
+          change (Nat.eqb target domain = false) in Ha0;
+          assert (E : Nat.eqb domain target = false)
+            by (rewrite Nat.eqb_sym; exact Ha0);
+          apply (failure_room_frame cfg state next domain);
+          [ cbn [dmode_of add_log set_d set_h0 set_mem upd_fun cs_dmode];
+            unfold upd_fun; rewrite E; reflexivity
+          | cbn [dtodo_of add_log set_d set_h0 set_mem upd_fun cs_dtodo];
+            unfold upd_fun; rewrite E; reflexivity
+          | split; [exact Hcur | exact Htail]
+          | exact Hbefore ]
+      end.
+      all: try match goal with
+      | Hsource : dmode_of ?state ?target = ?old,
+        Hbefore : failure_room_ok ?cfg ?state ?domain
+        |- failure_room_ok ?cfg
+          (set_d (set_mem ?state ?m) ?target DFailWait
+            [APost (outbound ?target) fail_record;
+             APublish (outbound ?target)]) ?domain =>
+          destruct (Nat.eqb domain target) eqn:E;
+          [ apply Nat.eqb_eq in E; subst target;
+            apply (fail_wait_post_room cfg state domain m);
+            [ exact Hbefore
+            | unfold full_room_mode; rewrite Hsource; reflexivity
+            | split; [exact Hcur | exact Htail] ]
+          | apply (set_d_other_preserves_room cfg state domain target
+              DFailWait
+              [APost (outbound target) fail_record;
+               APublish (outbound target)] m);
+            [ exact E
+            | split; [exact Hcur | exact Htail]
+            | exact Hbefore ] ]
+      end.
+      destruct (Nat.eqb d d0) eqn:E.
+      * apply Nat.eqb_eq in E; subst d0.
+        apply (fail_wait_post_room c s d
+          (set_core (cs_mem s) d CorePhase phase_failed)).
+        -- exact IH.
+        -- unfold full_room_mode; rewrite Heqd1; reflexivity.
+        -- split; [exact Hcur | exact Htail].
+      * apply (set_d_other_preserves_room c s d d0 DFailWait
+          [APost (outbound d0) fail_record; APublish (outbound d0)]
+          (set_core (cs_mem s) d0 CorePhase phase_failed)).
+        -- exact E.
+        -- split; [exact Hcur | exact Htail].
+        -- exact IH.
+      * destruct (Nat.eqb d d0) eqn:E.
+        -- apply Nat.eqb_eq in E; subst d0.
+           apply (fail_wait_post_room c s d
+             (set_core (cs_mem s) d CorePhase phase_failed)).
+           ++ exact IH.
+           ++ unfold full_room_mode; rewrite Heqd1; reflexivity.
+           ++ split; [exact Hcur | exact Htail].
+        -- apply (set_d_other_preserves_room c s d d0 DFailWait
+             [APost (outbound d0) fail_record; APublish (outbound d0)]
+             (set_core (cs_mem s) d0 CorePhase phase_failed)).
+           ++ exact E.
+           ++ split; [exact Hcur | exact Htail].
+           ++ exact IH.
+Qed.
+
+Lemma reachable_outbound_post_fits :
+  forall c tr s d r s',
+    config_ok c ->
+    reach c tr s ->
+    (d < 2)%nat ->
+    exec c s (CPost (outbound d) r) = Some s' ->
+    sub64 (rd (cs_mem s) (outbound d) RWCur)
+          (rd (cs_mem s) (outbound d) RTail) +
+      record_bytes (rec_length r) <= cfg_capacity c (outbound d).
+Proof.
+  intros c tr s d r s' Hc Hr Hdom Hexec.
+  pose proof (failure_room_reach c tr s Hc Hr d Hdom) as Hroom.
+  simpl in Hexec; exec_destruct Hexec.
+  all: repeat match goal with
+  | H : cring_eqb ?left ?right && writer_live _ _ = true |- _ =>
+      apply andb_true_iff in H as [Hchannel Hlive];
+      apply cring_eqb_eq in Hchannel; subst right
+  | H : negb (record_eqb ?left ?right) = false |- _ =>
+      apply negb_false_iff in H; apply record_eqb_eq in H; subst right
+  end.
+  all: try match goal with
+  | Hguard : _ = Some ?n |- _ =>
+      change (post_room_fails c s (outbound d) r = Some n) in Hguard;
+      exact (post_room_fails_fits c s (outbound d) r n Hguard)
+  end.
+  all: try match goal with
+  | Hpost :
+      ring_post (cfg_capacity ?cfg (outbound ?domain)) (outbound ?domain)
+        (cs_mem ?state) ?record =
+        (true, ?m) |- _ =>
+      exact (proj1 (ring_post_true _ _ _ _ _ Hpost))
+  end.
+  all: try match goal with
+  | Htodo :
+      dtodo_of ?state ?domain = APost (outbound ?domain) ?record :: ?rest,
+    Hlive : writer_live ?state (outbound ?domain) = true,
+    Hbefore : failure_room_ok ?cfg ?state ?domain |- _ =>
+      pose proof (enabled_post_has_room cfg state domain record rest Hbefore
+        Hlive Htodo) as Hkept;
+      pose proof (record_bytes_max (rec_length record)) as Hrecord;
+      unfold failure_room in Hkept; lia
+  end.
+  change (cring_eqb (outbound d) channel &&
+    writer_live s (outbound d) = true) in Heqb.
+  apply andb_true_iff in Heqb as [Hchannel Hlive].
+  apply cring_eqb_eq in Hchannel; subst channel.
+  pose proof (enabled_post_has_room c s d r l Hroom Hlive Heql) as Hkept.
+  pose proof (record_bytes_max (rec_length r)) as Hrecord.
+  unfold failure_room in Hkept; lia.
 Qed.
 
 Lemma cells_length :
@@ -2288,8 +3587,11 @@ Proof.
         reflexivity.
     + rewrite Hm; apply publish_block_ring_zero; [reflexivity |].
       destruct Hf as [-> | ->]; simpl; tauto.
-  - destruct (exec_post_effect c s channel r s' Hexec) as [b [m1 [Hp [Hm _]]]].
-    left; rewrite Hm, <- (Hpost r), Hp; reflexivity.
+  - destruct (exec_post_effect c s channel r s' Hexec)
+      as [[m1 [Hp [Hm _]]] | [[m1 [Hp [Hm _]]] | [d [_ [Hm _]]]]].
+    + left; rewrite Hm, <- (Hpost r), Hp; reflexivity.
+    + left; rewrite Hm, <- (Hpost r), Hp; reflexivity.
+    + left; rewrite Hm; reflexivity.
   - destruct (exec_publish_effect c s channel s' Hexec) as [b [m1 [Hp [Hm _]]]].
     destruct Hf as [-> | ->].
     + unfold ring_publish in Hp.
@@ -2371,13 +3673,16 @@ Proof.
     rewrite Hl' in Hin; apply in_app_or in Hin as [Hin | [Hin | []]];
       [| discriminate Hin].
     rewrite Forall_forall in Hev; exact (Hev _ Hin).
-  - destruct (exec_post_effect c s ch r s' Hexec) as [b [m1 [Hp [Hm Hl']]]].
-    rewrite Hm; destruct b.
-    + exfalso; rewrite Hl' in Hin;
+  - destruct (exec_post_effect c s ch r s' Hexec)
+      as [[m1 [Hp [Hm Hl']]] | [[m1 [Hp [Hm Hl']]] |
+          [d [_ [Hm [Hl' _]]]]]].
+    + rewrite Hm; exfalso; rewrite Hl' in Hin;
         apply in_app_or in Hin as [Hin | [Hin | []]]; [| discriminate Hin].
       destruct (failed_writer_ops (cfg_capacity c ch) ch (cs_mem s) (IH ch Hin))
         as [Hf _]; rewrite Hf in Hp; discriminate Hp.
-    + apply ring_post_refused in Hp; subst m1; apply refuse_writer_failed.
+    + rewrite Hm; apply ring_post_refused in Hp; subst m1;
+        apply refuse_writer_failed.
+    + rewrite Hm, Hl' in *; apply IH; exact Hin.
   - destruct (exec_publish_effect c s ch s' Hexec) as [b [m1 [Hp [Hm Hl']]]].
     rewrite Hm; destruct b.
     + exfalso; rewrite Hl' in Hin;
@@ -2524,9 +3829,32 @@ Theorem control_ring_fails_closed :
        failed_view (rd (cs_mem s2) (Ctl ring) RWFail) = true).
 Proof.
   intros c tr s ring r s' Hc Hr _ _ Hd Hexec Hover.
-  destruct (exec_post_effect c s (Ctl ring) r s' Hexec) as [b [m1 [Hp [Hm Hl]]]].
-  destruct b.
-  { exfalso.
+  destruct ring as [domain | domain].
+  2: {
+    exfalso.
+    pose proof
+      (reachable_outbound_post_fits c tr s domain r s' Hc Hr Hd Hexec)
+      as Hfit.
+    destruct (ring_inv_reach c tr s Hc Hr (outbound domain) Hd) as [w Hw].
+    pose proof (Hc (outbound domain)) as Hcap.
+    destruct (ro_order _ _ _ _ _ _ _ Hw)
+      as [HT [HRc [HRl [HH HW]]]].
+    change (cfg_capacity c (outbound domain) <
+      sub64 (rd (cs_mem s) (outbound domain) RHead)
+        (rd (cs_mem s) (outbound domain) RTail) +
+      record_bytes (rec_length r)) in Hover.
+    rewrite (ro_head _ _ _ _ _ _ _ Hw), (ro_tail _ _ _ _ _ _ _ Hw)
+      in Hover.
+    rewrite (ro_wcur _ _ _ _ _ _ _ Hw), (ro_tail _ _ _ _ _ _ _ Hw)
+      in Hfit.
+    rewrite (ring_sub (cfg_capacity c (outbound domain))) in Hover, Hfit
+      by (assumption || lia).
+    lia. }
+  set (ring := InboundRing domain) in *.
+  destruct (exec_post_effect c s (Ctl ring) r s' Hexec)
+    as [[m1 [Hp [Hm Hl]]] | [[m1 [Hp [Hm Hl]]] |
+        [d [Hg [Hm [Hl _]]]]]].
+  - exfalso.
     destruct (ring_post_true _ _ _ _ _ Hp) as [Hroom _].
     destruct (ring_inv_reach c tr s Hc Hr (Ctl ring) Hd) as [w Hw].
     pose proof (Hc (Ctl ring)) as Hcap.
@@ -2535,17 +3863,29 @@ Proof.
     rewrite (ro_wcur _ _ _ _ _ _ _ Hw), (ro_tail _ _ _ _ _ _ _ Hw) in Hroom.
     rewrite (ring_sub (cfg_capacity c (Ctl ring))) in Hover, Hroom
       by (assumption || lia).
-    lia. }
-  apply ring_post_refused in Hp; subst m1.
-  split; [| split; [exact Hl |]].
-  - intros p; rewrite Hm; unfold refuse_writer; apply upd_other;
-      intros Heq; discriminate Heq.
-  - intros tr2 s2 H2.
-    pose proof (reach_step c tr s _ s' Hr Hexec) as Hr'.
-    destruct (reach_log_grows c _ tr2 s' s2 Hr' H2) as [evs Hevs].
-    apply (refused_failed c _ s2 H2).
-    rewrite Hevs, Hl; apply in_or_app; left; apply in_or_app; right; left;
-      reflexivity.
+    lia.
+  - apply ring_post_refused in Hp; subst m1.
+    split; [| split; [exact Hl |]].
+    + intros p; rewrite Hm; unfold refuse_writer; apply upd_other;
+        intros Heq; discriminate Heq.
+    + intros tr2 s2 H2.
+      pose proof (reach_step c tr s _ s' Hr Hexec) as Hr'.
+      destruct (reach_log_grows c _ tr2 s' s2 Hr' H2) as [evs Hevs].
+      apply (refused_failed c _ s2 H2).
+      rewrite Hevs, Hl; apply in_or_app; left; apply in_or_app; right; left;
+        reflexivity.
+  - exfalso.
+    pose proof (post_room_fails_fits c s (Ctl ring) r d Hg) as Hroom.
+    destruct (ring_inv_reach c tr s Hc Hr (Ctl ring) Hd) as [w Hw].
+    pose proof (Hc (Ctl ring)) as Hcap.
+    destruct (ro_order _ _ _ _ _ _ _ Hw) as [HT [HRc [HRl [HH HW]]]].
+    rewrite (ro_head _ _ _ _ _ _ _ Hw), (ro_tail _ _ _ _ _ _ _ Hw)
+      in Hover.
+    rewrite (ro_wcur _ _ _ _ _ _ _ Hw), (ro_tail _ _ _ _ _ _ _ Hw)
+      in Hroom.
+    rewrite (ring_sub (cfg_capacity c (Ctl ring))) in Hover, Hroom
+      by (assumption || lia).
+    lia.
 Qed.
 
 (* --------------------------------------------------------------------- *)
@@ -2586,7 +3926,8 @@ Theorem ring_type_set :
        type_in (rec_type r) (ring_types channel) = true).
 Proof.
   intros c tr s s' channel _ _ _ _; split.
-  - intros r m' _ Hp; exact (proj2 (ring_post_true _ _ _ _ _ Hp)).
+  - intros r m' _ Hp;
+      exact (proj1 (proj2 (ring_post_true _ _ _ _ _ Hp))).
   - intros r img m' _ Ht; exact (proj2 (proj2 (ring_take_record _ _ _ _ _ _ Ht))).
 Qed.
 

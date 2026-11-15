@@ -772,7 +772,7 @@ def run_arm(out, jobs):
         "proved unreachable but, in the leaf, its null tests of the five "
         "pointers, which section 4.3's D_valid excludes), ensures \\false "
         "not proved, and a contradictory requires doomed; a statement the "
-        "smoke tests prove unreachable in the leaf at mvp-sbi.c line 318 "
+        "smoke tests prove unreachable in the leaf at mvp-sbi.c line 321 "
         "is the SPVP ? SPP : 0 arm Revision 1 records as a true "
         "observation of the code, not an erratum (E3 refuses SPVP = 1), and "
         "is not excused",

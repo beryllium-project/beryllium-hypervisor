@@ -115,6 +115,43 @@ Proof.
                               pose proof (I2 _ _ _ H); subst; lia
                           end
                         | pose proof (I2 _ _ _ eq_refl); subst; lia ] ]).
+    all: try match goal with
+    | Hroom : post_room_fails ?c ?s ?ch ?r = Some ?n |- _ =>
+        pose proof
+          (post_room_fails_outbound c s ch r n Hroom) as Hchannel;
+        discriminate Hchannel
+    end.
+    all: try match goal with
+    | Hroom :
+        post_room_fails ?c ?s (Ctl (OutboundRing ?d0)) ?r = Some ?n,
+      Hboth :
+        (_ && writer_live ?s (Ctl (OutboundRing ?d0))) = true
+      |- forall d, (2 <= d)%nat -> _ =>
+        pose proof
+          (post_room_fails_outbound c s (Ctl (OutboundRing d0)) r n
+             Hroom) as Hchannel;
+        unfold outbound in Hchannel; injection Hchannel as <-;
+        apply andb_true_iff in Hboth as [_ Hlive];
+        unfold writer_live in Hlive;
+        apply andb_true_iff in Hlive as [Hlt _];
+        apply Nat.ltb_lt in Hlt;
+        intros d Hd; cbv beta;
+        destruct (Nat.eqb d d0) eqn:E;
+        [apply Nat.eqb_eq in E; subst d; lia
+        | rewrite E; apply I1; exact Hd]
+    end.
+    pose proof
+      (post_room_fails_outbound c s (Ctl (OutboundRing d0)) r n Heqo)
+      as Hchannel;
+      unfold outbound in Hchannel; injection Hchannel as <-;
+      apply andb_true_iff in Heqb as [_ Hlive];
+      unfold writer_live in Hlive;
+      apply andb_true_iff in Hlive as [Hlt _];
+      apply Nat.ltb_lt in Hlt;
+      intros d Hd; cbv beta;
+      destruct (Nat.eqb d d0) eqn:E;
+      [apply Nat.eqb_eq in E; subst d; lia
+      | apply I1; exact Hd].
 Qed.
 
 Lemma drain_next_lt : forall m d, drain_next m = Some d -> (d < 2)%nat.

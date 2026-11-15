@@ -638,7 +638,7 @@ int be_mvp_control_mgmt(struct be_mvp_control *ctl,
  * awaits its answer; a SHUTDOWN that claims to is INVALID as ring.
  *
  * A record out of order or malformed is INVALID as ring; a PONG not asked
- * for, or a SHUTDOWN still owing its PONG, as ipi. INVALID and FAIL fail
+ * for, or a SHUTDOWN still owing its PONG, as tick. INVALID and FAIL fail
  * the run; once it failed or is done, every record is INVALID. The run is
  * done once every domain has shut down or been terminated; a paused one
  * has not ended.
@@ -664,6 +664,17 @@ enum be_mvp_step be_mvp_control_record(struct be_mvp_control *ctl,
  */
 enum be_mvp_class be_mvp_control_wake(struct be_mvp_control *ctl,
 				      be_u64 now);
+
+/**
+ * be_mvp_control_deadline - next control-hart tick, clipped to the budget
+ * @ctl: the control loop
+ * @now: the time CSR
+ * @deadline: the resulting stimecmp value
+ *
+ * Return: 1, or 0 for invalid input or a failed or completed run.
+ */
+int be_mvp_control_deadline(const struct be_mvp_control *ctl, be_u64 now,
+			    be_u64 *deadline);
 
 /**
  * be_mvp_control_running - the domains console input may reach (M7, D-3)

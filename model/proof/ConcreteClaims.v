@@ -304,14 +304,22 @@ Qed.
 (*
  * Erratum S-2, denial_iff_entry: the literal property is false on this
  * model, faithful to M1's denial path: an exit whose fault satisfies
- * Entry(e, d), taken when the domain's exit count has reached its
- * ceiling, fails the domain (exit_decide checks the ceiling first) and is
- * not denied. denial_iff_entry_below_ceiling proves the property below
- * the ceiling.
+ * Entry(e, d), taken when the VS domain's exit count has reached its
+ * ceiling, fails the VS domain (after the uncharged tick test,
+ * exit_decide checks the ceiling first) and is not denied.
+ * denial_iff_entry_below_ceiling proves the property below the ceiling.
  *)
 
 Lemma gpf_not_ssi : forall e, is_gpf (ex_scause e) = true ->
   (ex_scause e =? scause_ssi) = false.
+Proof.
+  intros e H; unfold is_gpf in H.
+  repeat (apply orb_true_iff in H as [H | H]); apply N.eqb_eq in H;
+    rewrite H; reflexivity.
+Qed.
+
+Lemma gpf_not_sti : forall e, is_gpf (ex_scause e) = true ->
+  (ex_scause e =? scause_sti) = false.
 Proof.
   intros e H; unfold is_gpf in H.
   repeat (apply orb_true_iff in H as [H | H]); apply N.eqb_eq in H;
@@ -355,7 +363,7 @@ Proof.
     replace (cs_mem s (WBlock d (BConfig 0)) <=? core (cs_mem s) d CoreExits)
       with false by (symmetry; apply N.leb_gt; exact Hceil).
     destruct (N.testbit (ex_hstatus e) hstatus_spv_bit) eqn:Hspv.
-    - cbn [negb]; rewrite (gpf_not_ssi e Hg), Hg; reflexivity.
+    - cbn [negb]; rewrite (gpf_not_sti e Hg), Hg; reflexivity.
     - cbn [negb]; rewrite (denial_spv true _ e Hspv); reflexivity. }
   simpl in Hexec; exec_destruct Hexec; state_simpl.
   all: split; [reflexivity |].
