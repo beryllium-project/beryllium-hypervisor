@@ -1684,3 +1684,29 @@ text above as it says; the text above is otherwise as accepted.
   run: a run that ends within the doubled limit after it reached the
   earlier one in the base is recorded as an effect of the limit, and
   any other difference is stop 9, as before.
+- **2026-11-15, `m11 checks run here on l1`, confirmed by `hosts:
+  l1`** (Q22; the entry `verify: wp3`). The workspace moved back from
+  the laptop `lx2` to the workstation `l1` on 2026-11-15. `l1` is the
+  development host again, and the host for `verify`, in place of
+  `lx2`.
+  - The tool lock. `l1` has the lock's bytes for every role but one:
+    its `git` is 2.56.1, and the lock names 2.56.0. One commit
+    refreshes the MVP's lock and its closure on `l1`, by the lock's
+    own `refresh`, and changes the files that "The development host"
+    lists and no other. The gates that the section names are run at
+    that commit, before any other change. No record was made on `l1`
+    under the lock of 2026-11-11, so the reference is the build that
+    `lx2` made of the same sources on 2026-11-15, in the checks that
+    M11-4's commit message records: every flat image must have that
+    build's digest, and `check`'s deterministic records must equal
+    that build's. A difference is stop 11.
+  - `verify`. M11-3's point was run on `lx2`, and M11-4's point is run
+    on `l1`: a departure from "D-11's four points are run on the same
+    host". So `verify` is run once more at M11-3's point, on `l1`, as
+    the base for M11-4's point. Its differences from the run on `lx2`
+    at the same commit are read run by run. A run that ends within its
+    time limit on one host and reaches it on the other is recorded as
+    an effect of the host. Any other difference is stop 9. The WP
+    arm's provers and mutant jobs at once follow the host, as the
+    entry `verify: wp3` has it: six and two on `l1`. The time limits
+    stay doubled.
