@@ -1710,3 +1710,27 @@ text above as it says; the text above is otherwise as accepted.
     arm's provers and mutant jobs at once follow the host, as the
     entry `verify: wp3` has it: six and two on `l1`. The time limits
     stay doubled.
+- **2026-11-16, `harness: 10000, descriptor: 4000, monitor: 8000`**
+  (stop 16, put to the responsible human before a lane reached its
+  limit). Three soft limits are re-set:
+  - "The harness, the oracle, the capture checker's rules, the
+    scenarios' generator, the ledger's tool, and the model's tools":
+    10,000 counted lines, in place of 7,000. The working branch holds
+    4,357. M11-7's sub-steps written so far, which are not yet
+    landed, bring the lane to 6,987: the checker of D-10's four
+    checks of every boundary-on run, the oracle's PMP mode, record
+    table, and device registers, the capture checker's rules for the
+    boundary-on forms and M-mode's record, and the run harness, the
+    typed sessions, the rehearsal, and the evidence bundle under the
+    boundary. About half of those lines are the tools' own tests. The
+    hostile-monitor images' generator and the boundary's negatives
+    follow in M11-7, and M11-8 and M11-9 after it.
+  - "The descriptor's generator, backend, and checker, with their
+    tests": 4,000, in place of 3,500. The working branch holds 3,266,
+    and M11-7's sub-steps bring it to 3,347; M11-8 follows.
+  - "The monitor: the layout, signalling, the stub and entries, the
+    failure path, the test hook; with the image checker's rules and
+    the board tools' layout rule": 8,000, in place of 6,000. The
+    working branch holds 2,978, and M11-7's sub-steps bring it to
+    4,146; the hostile-monitor hook follows in M11-7, and M11-8 after
+    it.
