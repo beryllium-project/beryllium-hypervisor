@@ -35,6 +35,7 @@ signatory, reviewer, or public-release approver.
 | Project | Relationship | Policy revision checked | Local status |
 | --- | --- | --- | --- |
 | Linux kernel | Primary prospective parent/integration project | `36aad21d50d1af3f6954bb0c988257a908202477` (v7.3-19809), 2026-10-31; rechecked 2026-11-06 against mainline `d48723711bae9b8cdc56719c448ba42fef28cbee`, at which `coding-assistants.rst`, `generated-content.rst`, and `submitting-patches.rst` are byte for byte those of the revision checked; before that `481ed5dd3ed7136f627b8ec372ba39f5b2e7d27f`, 2026-07-16 | Process aligned; the `Assisted-by` tag the earlier revision required was dropped upstream on 2026-10-14 and this document follows (below); current Beryllium license incompatible for direct code inclusion |
+| Sail RISC-V model (`riscv/sail-riscv`) | Destination of the M12 lane (`planning/mvp-m12-plan.md`): the table walk (M12-4), on its pull request #1727; M12-1 builds the model at that pull request's head and runs its own tests | `CONTRIBUTING.md` at `master` `a2ad4b5663c487de12260e9bc9e1bbbc5fcd4eb7`, read 2026-11-16; unchanged since `29e6158f0a88bdb26b9fbcd0718ab919449b5179` (2026-09-05), so the same as at the plan's reading at `0d1c7cb9` | BSD-2-Clause; a Developer Certificate of Origin sign-off on every commit; any use of generative AI tools, for code, comments, documentation, or pull-request text, must be disclosed, with no trailer key given. Nothing offered; the M12 plan's rules apply |
 
 ## Linux kernel alignment
 
