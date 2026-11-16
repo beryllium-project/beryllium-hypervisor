@@ -1667,7 +1667,16 @@ public push now.
   questions for the specification's authors, directed tests, the table
   walk for the Sail model, and testing of the emulator and firmware
   series, each offered by the responsible human alone; eleven rules,
-  M12-1 to M12-5, fourteen stops, Q1 to Q12. Proposed 2026-11-11.
+  M12-1 to M12-5, fourteen stops, Q1 to Q12. Proposed 2026-11-11, and
+  accepted 2026-11-15 by the responsible human's sign-off of its
+  commit.
+- `mvp-m12-1-environment.md`: the packet and the record of M12-1, the
+  environment, the M12 plan's first work package: the step's exit
+  commit in the lane's tests' repository, the readings that the plan's
+  rules 1 and 11 require, what the environment holds and which choices
+  it makes, and what was run in it. The runs' results wait for their
+  authors, as the plan's section 6 has it. Accepted 2026-11-16 by the
+  responsible human's sign-off of its commits.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and
