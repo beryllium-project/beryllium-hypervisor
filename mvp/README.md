@@ -915,7 +915,7 @@ plan, "Architecture" and "The triggers for Instance 3").
 | `guest/`, `guest.mk`, `tools/{build-guest.sh,gen-dts.py,gen-payload.py,guest-pins.py,guest-reference-check.py,run-reference-boot.sh}` | Guest inputs, pins, reference boots, and the repeat build; the init's role arguments and te-poc's DTBs (M1-1, M1-3); the MVP's Kconfig fragment with the `.config` delta check, the init's roles, and its forked child (M1-4, M1-A); anchor's DTBs (M2-1); the management module (`guest/mgmt/`, `guest/be/types.h`), `CONFIG_MODULES=y` and its `.config` delta, the init's `host` and `prot` roles, and the module in the pins (M2-4); the reference boots and the shell's smoke test under the firmware base, its pin checked before each boot (M11-2) | M0-1, M1-1, M1-3, M1-4, M2-1, M2-4, M11-2 |
 | `firmware/` | M11's upstream OpenSBI base pin, verified fetch, reproducible default-`generic` build, and build instructions; the source stays under `build/`; every plain emulated run but `firmware-version` boots the binary; the patch series (`patches/`, nine patches: the domain-switch contexts allocated at cold boot, a hart stopped when its switch fails to program its PMP, the PMP entries checked against an OpenSBI domain, a per-hart record of PMP faults, the SBI call filter of an OpenSBI domain with an allowlist, the allowlists and a configuration digest parsed from the device tree, the experimental domain-commit extension and its records at system reset, and their documentation), the reduced configuration (`config`, with `CONFIG_HARTMASK_MAX_BITS=32`), and the firmware's own tests (`tests/`: the host tests of the series' two pure decisions, and the rows of `fwtest.py` on QEMU's `k3-like` machine) (M11-6) | M11-2, M11-6 |
 | `tools/make-control.py` | The Make controls (S1 H33); `MVP_SCENARIO_NAME` and `SCENARIO` (M1-1, M1-5) | M0-1, M1-1, M1-5 |
-| `tools/lock/` | The tool lock, its tool, and the evaluator's closure; the closure's RPM digests, the host-only roles, and schema v2 (M0-B.1, M0-B.4); refreshed under direction for host updates (`804fa95f`; on `l1` for M0-6; on `lx2` for M11-2); the role `cross_ar`, and the firmware base's binary pin beside the earlier firmware's (M11-2); the firmware's pin moved to the build with the patch series (M11-6) | M0-1, M0-B, M11-2, M11-6 |
+| `tools/lock/` | The tool lock, its tool, and the evaluator's closure; the closure's RPM digests, the host-only roles, and schema v2 (M0-B.1, M0-B.4); refreshed under direction for host updates (`804fa95f`; on `l1` for M0-6; on `lx2` for M11-2; on `l1` again on 2026-11-15); the role `cross_ar`, and the firmware base's binary pin beside the earlier firmware's (M11-2); the firmware's pin moved to the build with the patch series (M11-6) | M0-1, M0-B, M11-2, M11-6 |
 | `tools/evaluator/` | The clean evaluator's Containerfile and runner; the closure fetcher and the build from its verified cache with repositories disabled (M0-B.2, M0-B.3); the firmware base built inside from a read-only mirror, and the earlier firmware mounted for `firmware-version` alone (M11-2) | M0-1, M0-B, M11-2 |
 | `tools/licence-manifest.py`, `docs/licence-manifest.md`, root `COPYING` | The licence manifest's tool and its generated page; the patch series' files, licensed as OpenSBI's (`BSD-2-Clause`), named by path in `COPYING` (M11-6) | M11-6 |
 | `mvp`, `Makefile` | The wrapper and the build graph; M1's two scenarios, `policy-negatives`, the deny test, the te-poc images and variants, and the host tests' new pinned counts, and the wrapper's `SCENARIO` and reset settings; anchor's scenario with its measured inputs, its two policy negatives, and anchor's DTBs in the payload test (M2-1); the SHA-256 objects and test, the anchor images, and their page and measurement variants (M2-2); the `no-grant-check` image and the host tests' counts (M2-3); the wrapper's `SCENARIO=anchor` (M2-5); the firmware base in every plain run, the earlier firmware for `firmware-version`, and the `live` line (M11-2); `layout-source-check` in `check` and the hart test's count (M11-3); the firmware built with its patch series and configuration, and `firmware-test` in `check` (M11-6); the partition descriptors, the backend's OpenSBI-domain trees and PMP tables, their independent check, and `partition-check` in `check` (M11-5); an assembly object rule, so that the probe monitors build `mvp-trap.S` with `-DBE_MVP_PROBE_IMAGE`, and the host tests' new pinned counts (M11-4) | M0-1, M1-1 to M1-5, M1-B, M2-1 to M2-3, M2-5, M11-2, M11-3, M11-6, M11-5, M11-4 |
@@ -1884,7 +1884,12 @@ roles and four closure lines (see
 refreshed it on the laptop `lx2` on 2026-11-11 (`python3`, the host GCC
 with its `cc1` and `collect2`, `sfdisk`, and the closure, 259 packages to
 257), then added the role `cross_ar`, the RISC-V archiver that the
-firmware base's build runs. The table is the lock as it now stands.
+firmware base's build runs. The workspace moved back to the workstation
+`l1` on 2026-11-15, and the lock was refreshed there (the M11 plan's
+decision record): `git` 2.56.0 to 2.56.1, and the closure, 257 packages
+to 259 (`git-core` and four `libvirt` packages at newer versions;
+`glibc-langpack-en` and `systemd-rpm-macros`, which the refresh on `lx2`
+dropped, back in it). The table is the lock as it now stands.
 
 | Role (33) | Version | Package |
 | --- | --- | --- |
@@ -1902,7 +1907,7 @@ firmware base's build runs. The table is the lock as it now stands.
 | `dtc` | DTC 1.8.1 | `dtc-1.8.1-6.fc44.x86_64` |
 | `sha256sum` | GNU coreutils 9.10 | `coreutils-9.10-5.fc44.x86_64` |
 | `rpm` | RPM 6.0.2 | `rpm-6.0.2-1.fc44.x86_64` |
-| `git` | git 2.56.0 | `git-core-2.56.0-1.fc44.x86_64` |
+| `git` | git 2.56.1 | `git-core-2.56.1-1.fc44.x86_64` |
 | `podman` (host-only) | podman 5.8.9 | `podman-5:5.8.9-1.fc44.x86_64` |
 | `ssh` (host-only, `-V`) | OpenSSH_10.2p1, OpenSSL 3.5.9 | `openssh-clients-10.2p1-16.fc44.x86_64` (`-14` until the refresh on `l1`) |
 | `scp` (host-only) | its usage line, exit status 1 (no version option) | `openssh-clients-10.2p1-16.fc44.x86_64` (`-14` until the refresh on `l1`) |
