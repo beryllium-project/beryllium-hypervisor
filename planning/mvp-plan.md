@@ -2687,3 +2687,464 @@ s3_revision_s3d_review=three-candidates-reviewed-independently-never-signed;this
 s3_revision_s3d_authorization_if_accepted=terminology-and-documentation;characterization-with-read-only-board-inventory;write-Revision-4-the-M11-plan-and-the-M12-plan;nothing-else
 s3_revision_s3d_release=MVP-1.0-published-2026-11-08-tag-mvp-1.0-unchanged
 ```
+
+## Plan revision S3-E: the board-firmware amendment
+
+**Status.** Directed by Plan revision S3-D (D25), and proposed by the
+commit that adds this section. It is made on the public development
+line, as S3-D was. So: if the commit that adds this section is on the
+public `main` with the responsible human's `Signed-off-by`, this
+revision is accepted as written, with Q62 to Q67 at their defaults. Any
+other answer needs a revised commit before the sign-off. Both commit IDs
+and the instruction are kept in the project's internal records.
+
+This is the amendment that S3-D.6 names as its step 2, "proposed when
+step 1's facts are known". Step 1, the read-only inventory, was taken on
+2026-11-16. The responsible human's words `when ready, proceed with
+development, you have ownership of k3 and dongle` were read as opening
+its sessions from the board's own Linux. Two more reads, at the U-Boot
+prompt, went beyond what step 1 names, each on his explicit word: `nor:
+read`, for digests of the NOR, and `make the NOR copy`, for a copy of
+its bytes. The vendor's sources and published files were read on the
+workstation the same day.
+
+The revision is deliberately narrow. It records what step 1 found. It
+adds five items to the board policy, for the steps that S3-D.6 staged.
+It authorizes two board steps now: readings of the NOR, and one
+rehearsal that goes no further than the boot ROM. It fixes what a card
+may hold, and leaves every card session, and the one choice that the
+facts force, to the M11 plan's board addendum (that plan's D-15), whose
+writing it also authorizes. It selects no firmware base. It changes no
+claim text.
+
+### S3-E.1 What step 1 found
+
+Each statement names its evidence.
+
+- *Board*: read on the board on 2026-11-16 by the board's own software,
+  its Linux or its resident U-Boot at the prompt.
+- *Files*: the vendor's published images of 2026-05-21, read on the
+  workstation.
+- *Source*: the vendor's published source. Most of it was read at the
+  tag that follows the commits to which the binaries correspond. Every
+  line cited is the same at both; the SPL's board file differs only
+  after the lines cited, and the list of device trees was read at the
+  binaries' own commit.
+- *Logs*: the operator's serial log of earlier boots, counted on
+  2026-11-16.
+
+A board reading is a diagnostic reading on one board, by firmware that
+reports on itself; it is not hardware validation. The inventory's full
+record is internal, because it holds the board's environment and
+identifiers (S3-A.1 item 7).
+
+1. **The NOR holds the vendor's published build.** The flash is a
+   `gd25lq64c`: 8 MiB, with 4 KiB erase blocks (board). Its layout
+   (files, source):
+
+   | Partition | Offset | Size | The published file at its start | The file's SHA-256 |
+   | --- | --- | --- | --- | --- |
+   | `bootinfo` | 0 | 128 KiB | `factory/bootinfo_spinor.bin`, the 80 bytes of boot information that the boot ROM reads | `a4be70145c80f73569c6231439d8281c9f74de043ad2ca7e5fe98fa543b3a1a1` |
+   | `fsbl` | 128 KiB | 512 KiB | `factory/FSBL.bin`, the SPL | `7991c200a80e05dde2918ab9b2194505df81df109ed99bb4703f2d0f8feab85d` |
+   | `env` | 640 KiB | 64 KiB | None: U-Boot's saved environment | |
+   | `esos` | 704 KiB | 1 MiB | `esos.itb`, the image for two real-time cores | `4c20db8ad3fae1083b938c3d897abc13cf5770bb68b9d0a52763437d71ad9e70` |
+   | `opensbi` | 1,728 KiB | 384 KiB | `fw_dynamic.itb`, the firmware | `c52886d9656f5e3d4623582dff1a580a69dac8c3974057df58d628aece9911a4` |
+   | `uboot` | 2,112 KiB | The rest | `u-boot.itb` | `850d1005cff4d8ea408a01ce5737832a86244b2acb0e20fcb8bd5d23a7f8d647` |
+
+   Each published file is in the NOR byte for byte, from its
+   partition's start (board and workstation: U-Boot's MD5 over the
+   file's length; and SHA-256, on the workstation, over a copy of the
+   whole flash that was read out at the U-Boot prompt the same day).
+   The copy is kept privately: it holds the saved environment and, in
+   the record of statement 3, the chip's ID. In the copy:
+   - the rest of `bootinfo` is erased flash, but for that record;
+   - the rest of `esos` and of `opensbi` is `0xff` to the next 4 KiB
+     boundary, and then `0x00`;
+   - the rest of `fsbl` and of `uboot` is erased flash, but for three
+     residues: 10,272 bytes after the SPL, read as the tail of an
+     earlier, longer SPL image; 32 bytes at `0x450000`, not identified;
+     and a device tree of 31,789 bytes at `0x4d0000`, followed by `0x00`
+     to `0x510000`.
+
+   The SPL and U-Boot correspond to the vendor's U-Boot commit
+   `0dcf0d83`, and the firmware to its OpenSBI commit `e4d27728` (files
+   and source: the build times, the set of device trees, the version
+   strings).
+2. **The boot ROM tries a microSD card before the NOR** (logs; the
+   vendor's document). The SPL takes the environment, the firmware, the
+   real-time cores' image, and U-Boot from the medium that it was
+   booted from, and from no other, and it checks no CRC, hash, or
+   signature of them (source). So a chain that boots from a card reads
+   nothing from the NOR before U-Boot (source: no boot from a card has
+   been made on this board). The device tree that the SPL hands to the
+   firmware is the one in U-Boot's image whose name is the product name
+   in the board's identity EEPROM, `k3_com260_ifx` here; if the EEPROM
+   holds no name that matches, it is the image's default, another
+   board's (source; logs).
+3. **The vendor's own boot writes the NOR, and more.**
+   - *The flash's status register*, at every probe of the flash: by the
+     SPL and by U-Boot at every boot from the NOR, and by U-Boot
+     whenever it writes the record below (source; the code is in both
+     published binaries). The `sf probe` that both of the inventory's
+     sessions at the prompt typed did the same (source). What the write
+     does to the part was not observed, and the part's datasheet was
+     not read.
+   - *A memory-training record*: 38,912 bytes at NOR `0x10000`, after
+     an erase of `0x10000` to `0x19fff`, written by U-Boot after every
+     full training of the memory (source). That range is inside the
+     `bootinfo` partition: above the first 4 KiB erase block, which
+     holds the boot information, and below the SPL. The vendor's
+     document puts the boot ROM's second copy of the boot information
+     at `0x10000`, the record's place; so this NOR holds one copy of
+     the boot information. A boot from the NOR that finds a valid
+     record trains quickly and writes nothing: the logs show 80 such
+     boots, none with a write. A boot of the vendor's SPL and U-Boot
+     staged through the boot ROM's USB mode always trains fully: the
+     logs show the write at each of the seven such boots of this board.
+     By the source, a boot from a card always trains fully too. The
+     copy shows the record where the source puts it: at `0x10000`, with
+     its magic and a good CRC, and erased flash from its end to
+     `0x19fff`.
+   - No other write to the NOR at boot was found: no environment saved
+     by itself, and no boot counter.
+   - *Outside the NOR.* At every boot U-Boot clears three bits of a
+     register of the power-management chip. It rewrites the board's
+     identity EEPROM if that holds no valid MAC address, no serial
+     number, or a serial number other than the environment's `serial#`.
+     If the EEPROM's checksum reads bad, U-Boot takes it as empty, and
+     so rewrites it with new addresses and a serial number, and without
+     its product name (source). The logs show the board's product name,
+     a serial number, and valid addresses at every boot.
+4. **The SPL starts two real-time cores at every boot**, from either
+   medium and before the firmware, and the resident firmware's system
+   reset goes through them (source; an inference from the firmware
+   calls that Linux detects on the board).
+5. **Recovery.** The boot ROM's USB mode is entered by holding the
+   board's recovery pin through a reset, and the ROM then answers
+   `fastboot` (logs; the operator's notes; the vendor's document). The
+   logs hold a visit to that mode with nothing staged, after which the
+   next boot came from the NOR, trained quickly, and wrote nothing. A
+   boot staged through that mode does not depend on the NOR's images:
+   of the NOR it takes only the environment, and it falls back to its
+   built-in one (source). So a restore that is cut short can be made
+   again. The vendor's flows that restore the NOR stage its SPL and
+   U-Boot that way and then write the NOR, `bootinfo` and `fsbl`
+   included. Such a write erases and rewrites an image's length
+   rounded up to 4 KiB, with no rollback, and the NOR holds no second
+   copy of the SPL (source, files). The reset dongle has a `recovery`
+   command for that mode, which its author marks as untested; it can
+   work only if the dongle's recovery line is wired to the board.
+6. **A card can start a flash by itself.** On a boot from a card, the
+   vendor's U-Boot looks on the card for a partition named `bootfs`
+   that holds a FAT file system with the vendor's flashing table,
+   `partition_universal.json`. If it finds one, it writes the NOR,
+   `bootinfo` and `fsbl` included, and the first block device that it
+   finds, which is the UFS on this board (source). It also takes
+   `env_k3.txt` from any partition named `bootfs`, and its default boot
+   command boots a kernel from the card (source).
+7. **Not established:** what the boot ROM checks, and the state of the
+   eFuses; and the number of PMP entries, their grain, and Smepmp on
+   these cores, which only M-mode can read.
+
+Statement 4, the SPL's loading in statement 2, and statement 5's flows
+are one research pass's reading of the source. The rest of what is
+marked as source here was read again there: statement 3's writes, the
+card's full training, the identity EEPROM's paths, the device tree's
+choice, a staged boot's environment, and statement 6. The boots were
+counted again in the logs, and an independent reviewer checked the
+table's digests against the files.
+
+### S3-E.2 What statement 3 means for the staging, and where the choice is made (D28)
+
+S3-D.6 fixed the staging in words that statement 3 does not allow for.
+Its step 4 is a card "with the NOR untouched". And its last paragraph
+says: "Never, under any amendment this revision foresees: a write to
+the NOR's `bootinfo` or `fsbl` areas". But the stage after the firmware
+is the vendor's U-Boot, and with it a boot from a card erases and
+rewrites NOR `0x10000` to `0x19fff`, inside the `bootinfo` partition,
+and writes the status register. There are three ways to answer that:
+
+| | A | B | C |
+| --- | --- | --- | --- |
+| The rule | The vendor's record write is accepted in a card session, as the vendor's own. It is named and bounded, and readings of the NOR before and after each session show that nothing else changed | No card session causes the record's write, and no boot from a card probes the NOR, so its console shows no `SF: Detected` line. The project's firmware keeps the record from the vendor's U-Boot: it clears the record's mark in memory before U-Boot runs, so that U-Boot finds nothing to save | No vendor U-Boot on the card: the project's firmware enters the MVP's image itself |
+| What it needs | Nothing new. It also allows a first card session that tests the card's path alone, with the vendor's own firmware on the card | A small addition to the project's firmware build. In the board's own code, a card-booted U-Boot probes the NOR only to save the record, so the card session would then not touch the NOR at all; whether U-Boot's generic code probes it otherwise was not read. Untried: the console and the readings around the first card session would show it | A new boot path, in place of S3-A.1 item 1's `booti` from U-Boot. Not proposed |
+| The risk | An erase of 40 KiB and a write of 38,912 bytes, between the first 4 KiB block and the SPL, over the place where the vendor's document puts the second copy of the boot information. If either is cut short, the record is invalid, and the next boot from the NOR trains fully and writes a new one (source). The status register is written too; what a write of it that is cut short, or that puts back a misread byte, does to the part is not established. And the vendor's flash-writing code would run on top of the project's own firmware build, which is new: a defect there that disturbed U-Boot could send the erase elsewhere. If the NOR were damaged, the boot ROM's USB mode and a card would still boot without depending on its images (source), and the restore would be the responsible human's | More code of the project's own in M-mode on the board. If the addition failed, the session would do what A accepts, and the reading after it would show so | A change to the MVP's accepted boot path |
+
+**This revision does not choose.** Nothing that it authorizes depends on
+the choice: the rehearsal stops at the boot ROM, and a reading adds no
+kind of write that a boot from the NOR does not already make. The M11
+plan's board addendum puts the choice, with the card's design (Q62).
+Until that addendum is accepted with its choice, S3-D.6's step 4 and
+the first sentence of its last paragraph stand as they are: no card
+session runs, and none may cause a write to the NOR.
+
+If the addendum proposes A and the responsible human accepts it there,
+that acceptance reads step 4 as "A microSD card that carries our
+firmware build, or, for a session that tests the card's path alone,
+the vendor's published firmware, with the NOR untouched, but for the
+vendor's training record at `0x10000` to `0x19fff`", and S3-D.6's
+"never" as not covering that record's write by the vendor's U-Boot in a
+card session. This revision pre-authorizes those two readings, which
+are option A's, and no other change. The addendum's commit then records
+the choice in this section's status lines as well, so that this plan
+says what its staging is.
+
+| ID | Open item and its source | Decision |
+| --- | --- | --- |
+| D28 | The board's firmware steps (S3-D.6, step 2; D25; the human: `we will change the NOR policy, and we can always reset the K3 to factory when/if needed`; the facts of S3-E.1) | Items 9 to 13 of the board policy (S3-E.3), with S3-A.1's items 1 to 8 standing for every session: readings of the NOR; one rehearsal that goes no further than the boot ROM; a card of fixed contents, made on the workstation, whose sessions run only under a milestone plan; no write to the NOR by a step of the project's own beyond S3-A.1 item 3's recorded `saveenv`. Whether a card session may cause the vendor's own record write is not decided here: the M11 plan's board addendum puts that choice (Q62) |
+
+### S3-E.3 The board policy, as amended
+
+S3-A.1's items 1 to 8 stand for every session, a card session
+included, as item 12 reads items 1 and 3 there, and as item 10 reads
+item 5 for the rehearsal. Items 9 to 13 are added. As before, a
+milestone plan restates what it uses and may narrow
+it, never widen it, but for the one choice that S3-E.2 leaves to the
+M11 plan's board addendum.
+
+9. **Reading the NOR.**
+   - *A write to the NOR*, in this policy and in its stops, is a
+     program or an erase of the flash's array. The flash's status
+     register is another thing: every probe of the flash writes it, at
+     every boot by the vendor's code (statement 3), and so does a typed
+     `sf probe`.
+   - *A reading* is made at the U-Boot prompt of a boot from the NOR,
+     in a recorded session, on the responsible human's word or inside
+     a session that a milestone plan names. Its lines are typed from
+     fixed templates and recorded, as item 6 has every typed line: the
+     inventory's `sf probe` and `sf read` of the flash into memory, and
+     six `md5sum` lines over that copy in memory, which are new
+     templates. They write nothing to the NOR.
+   - A reading is the MD5 that U-Boot prints for each of six ranges:
+     `0x0` to `0xffff`; `0x10000` to `0x19fff`, the record's; `0x1a000`
+     to `0x9ffff`; `0xa0000` to `0xaffff`, the `env` partition;
+     `0xb0000` to the end; and the whole flash. Two readings are equal
+     over a range when their MD5 values for it are equal.
+   - A copy of the flash's bytes (the same lines, and `md.b` over the
+     copy in memory) is taken only on his word.
+   - A milestone plan may put another read line in the place of the
+     two `sf` lines, one that makes no probe of its own, which its
+     session's record shows by the absence of an `SF: Detected` line,
+     once a reading made with it has been shown equal to one made with
+     them.
+   - *Private* (item 7): a copy of the NOR's bytes, and every digest of
+     a range that holds the `env` partition, the record, or the rest of
+     `fsbl` or of `uboot` after its published file. A record of a
+     reading that leaves the private store says which ranges were
+     equal, and carries no such digest.
+10. **The rehearsal (S3-D.6, step 3).** Once, on the responsible
+    human's word and with him present. Its commands, its waits, and
+    what ends each are written down first, and his word is given on
+    that text: the session improvises nothing.
+    - A reading is taken (item 9).
+    - The board is put into the boot ROM's USB mode. If the dongle's
+      recovery line is wired to the board, which is his to say, the
+      dongle's `recovery` command is sent once, with the pinned client
+      and outside the board tools, which still never issue it (the M1
+      plan's Q14). The command is thereby tried for the first time, and
+      the reset that it makes is one of item 5's. Otherwise, or if the
+      command brings a boot from the NOR in place of the mode, he
+      enters the mode by hand; that boot from the NOR is then a
+      planned one.
+    - The mode is entered when the boot ROM prints its line for it on
+      the console. The workstation then sends the ROM one fastboot
+      command, `getvar version-brom`, from the session's account and
+      not as root. Nothing is staged. If the ROM does not answer, that
+      is recorded, and nothing is sent again.
+    - One reset returns the board to its boot from the NOR, after the
+      dongle's status shows its recovery line released.
+    - A second reading is taken. The two must be equal in all six
+      ranges.
+
+    The rehearsal shows that the mode can be entered and left from this
+    workstation. It does not show that a restore over USB works.
+11. **A card (S3-D.6, step 4).**
+    - *What it holds.* The firmware areas at the vendor's card offsets,
+      the partition table that the boot ROM needs if it needs one, and
+      nothing else. The areas hold the vendor's boot information for a
+      card, its SPL, its real-time cores' image, and its U-Boot, each
+      the published file byte for byte; in the firmware's place, the
+      project's firmware build, or the vendor's published firmware for
+      a session that tests the card's path alone, which only option A
+      of S3-E.2 allows; and an environment of the project's making.
+      The card has no partition named `bootfs`, no `env_k3.txt`, no
+      flashing table, and no kernel or file system (statement 6).
+    - *Its environment* is made from the vendor's published default and
+      the declared `be_` variables with the `bootcmd` that runs them,
+      never from the board's saved environment. It holds no `serial#`,
+      no MAC address, and no other identity variable (statement 3). Its
+      `bootcmd` ends at the prompt if the MVP's load fails, and boots
+      nothing else.
+    - *How it is made.* On the workstation, never on the board, as one
+      image whose SHA-256 is recorded. The tool that writes it takes
+      the card reader by its stable ID path, refuses a device that is
+      mounted or larger than a bound, and runs dry first.
+    - *How it is checked.* The card is read back on the workstation and
+      compared with the image before its first use and after every
+      session.
+    - *A card session* is every boot between the card's insertion and
+      its removal, both by the responsible human. Its boots are from
+      system reset (item 5), and its typing is from templates (item 6).
+      No `saveenv` is typed in it, so nothing on the board writes the
+      card.
+    - *When.* Only in a session that a milestone plan names (for M11,
+      its board addendum, once accepted with S3-E.2's choice), on the
+      responsible human's word for each session, and with him present
+      (S3-D.6).
+    - *The NOR around it.* A reading before the card goes in, and one
+      after it comes out (item 9). The two must be equal in every
+      range. Only option A of S3-E.2, once chosen, allows a difference:
+      in the record's range, and so in the whole flash, when the other
+      four ranges are equal.
+
+    A card that departs from this, such as one whose U-Boot image is
+    packed again with other device trees, needs a further amendment.
+12. **The firmware in a card session.** S3-A.1's items 1 to 8 hold in
+    a card session with two readings. Item 1's firmware and environment
+    are the card's: the SPL, the real-time cores' image, and U-Boot are
+    the same published bytes as the NOR's, and the firmware is what
+    item 11 allows in its place, the project's build being under the
+    M11 plan's rules for it (S3-D's stop (m)). And item 3's `saveenv`
+    is never typed. The firmware's device tree is `k3_com260_ifx`'s,
+    which the SPL chooses from the card's U-Boot image by the board's
+    product name (statement 2), unless the project's firmware build
+    carries its own, which the milestone plan must then state. The
+    words for a board result made so are the M11 plan's board
+    addendum's to fix (S3-D.7).
+13. **Never**, by any tool of the project's or in any session under
+    this policy:
+    - a write to an eFuse or to any other one-time-programmable bit,
+      or a closed flashing tool (S3-D.6). A probe's write of the
+      flash's status register, which puts back the second status byte
+      as the probe read it, is not counted here; whether that byte
+      holds such bits in this part was not read;
+    - a write to the NOR by a step of the project's own, other than
+      item 3's recorded `saveenv` in a session that boots from the NOR;
+      so no typed line that programs or erases the flash's array, and
+      none that writes its status register but item 9's `sf probe`;
+    - anything staged to the boot ROM, to the SPL, or to U-Boot over
+      USB, or any fastboot command other than item 10's one question;
+    - a write to the board's identity EEPROM or to its embedded
+      controller, whether typed or caused by an environment;
+    - a card that holds a flashing table, or a card written on the
+      board;
+    - in a card session, U-Boot entering anything other than the MVP's
+      images: the card's own SPL, real-time image, firmware, and U-Boot
+      are the boot chain, and are not meant;
+    - any dongle command other than the client's `ping` handshake,
+      `status`, `reset`, and item 10's `recovery`.
+
+    A restore of the board by the vendor's own flow stays the
+    responsible human's own act, as his earlier ones were. No tool of
+    the project's takes part in it, and this policy does not describe
+    it.
+
+**The staging, as it stands after this revision:**
+
+| S3-D.6's step | State |
+| --- | --- |
+| 1. The read-only inventory | Done, as far as reads go. Readings of the NOR continue under item 9 |
+| 2. The amendment | This revision |
+| 3. A rehearsal | Item 10: authorized by this revision, once |
+| 4. A card | Item 11 fixes what it holds. A card session runs only in a session that a milestone plan names: for M11, its board addendum, once that is accepted with S3-E.2's choice |
+| 5. A NOR write of the project's own | **Not authorized.** S3-A.1 item 3 and stop (a) stand for it. It stays last, under its own authorization, and its first instance writes back the bytes that step 1 read, which the copy now holds for every partition |
+
+### S3-E.4 Stops
+
+Stop (j) is amended by name, and two are added. Each returns the work
+to the responsible human.
+
+- **(j)**, as amended: any board firmware step that items 9 to 12 do
+  not allow. That is:
+  - a write to the NOR by any step of the project's own, other than
+    S3-A.1 item 3's recorded `saveenv`;
+  - a card inserted to boot the board, other than item 11's card in a
+    session that a milestone plan names, once S3-E.2's choice is
+    accepted;
+  - a recovery or download mode entered, other than the boot ROM's USB
+    mode in item 10's rehearsal: whether by a command, by a typed line
+    (`fastboot`, `ums`, `dfu`), or by the vendor's U-Boot of itself;
+  - any fastboot command other than item 10's one question;
+  - a boot of the board under firmware other than its resident
+    firmware or what item 12 allows, or under a firmware device tree
+    other than `k3_com260_ifx`'s from the resident U-Boot image or the
+    card's, or the one that item 12 lets a milestone plan state;
+- **(p)** a difference between the two readings that bracket a
+  rehearsal or a card session, other than the one that item 11 allows
+  under option A; or a board that does not come back to a boot from
+  the NOR and its prompt for the second reading;
+- **(q)** a card that differs from its image when it is read back
+  after a session; a boot from a card outside a card session (each
+  boot's boot ROM lines show its medium, and every session's audit
+  reads them); a boot that a session did not plan; a card session in
+  which U-Boot enters anything other than the MVP's images; or a boot
+  whose U-Boot prints `reset tlv data`, or a product name other than
+  `k3_com260_ifx`.
+
+Stop (a) stands as written. This revision reads its words on the NOR as
+item 9 defines a write, and as about steps of the project's own.
+
+### Accepted lines this revision supersedes
+
+| Where | Text | Now |
+| --- | --- | --- |
+| S3-D.6, step 3 | "A recovery rehearsal that writes nothing" | Item 10: it goes no further than the boot ROM, and "writes nothing" is read as item 9 defines a write to the NOR |
+| S3-D.6, step 4, and its last paragraph | "A microSD card that carries our firmware build"; "with the NOR untouched"; "Never, under any amendment this revision foresees: a write to the NOR's `bootinfo` or `fsbl` areas" | They stand, and item 11 fixes the card's other contents. Only the M11 plan's board addendum, accepted with option A of S3-E.2, would read them otherwise, as S3-E.2 says: the vendor's published firmware on the card for a session that tests the card's path alone, and the vendor's record write |
+| S3-D.6, the last paragraph | "The M1 plan's rule that `k3ctl`'s `recovery` is never sent stands until the amendment decides it" | Decided for item 10's rehearsal alone. Any later use needs a further amendment of this plan |
+| The M1 plan: Q14, "What the tools send", and the risk row "The dongle enters recovery" | The tools never issue `recovery` | Unchanged for the board tools. Item 10's rehearsal sends it once, outside them |
+| S3-A.1, items 1 to 8 | The board policy | They stand for every session, as item 12 reads items 1 and 3 in a card session, and as item 10 reads item 5 for the rehearsal; items 9 to 13 added |
+| S3-D.8, stop (j) | "any board firmware step before the amendment of S3-D.6 is accepted" | As amended in S3-E.4 |
+
+Not superseded: S3-A.1 item 3 and stop (a), for any NOR write of the
+project's own; the M5 plan's "No SD card", for M5; S3-D's stops (k) to
+(o); and the claim (S3-D.7).
+
+### Open questions and defaults
+
+The numbering continues S3-D's (Q47 to Q61).
+
+| ID | Question | Default | Alternative |
+| --- | --- | --- | --- |
+| Q62 | The vendor's own writes in a card session (S3-E.2) | Not chosen here. The M11 plan's board addendum puts the choice between A and B, with the card's design; until then no card session runs | A now; or B now |
+| Q63 | How far the rehearsal goes | To the boot ROM's answer, with nothing staged | Through the vendor's SPL and U-Boot, staged over USB, which writes the training record and the status register, as the seven earlier boots with U-Boot staged over USB did |
+| Q64 | The dongle's `recovery` command | Tried once in the rehearsal, with the responsible human present, if its line is wired | Never sent: his hand only |
+| Q65 | A NOR write of the project's own (S3-D.6, step 5) | Not authorized by this revision | Authorized now, for the `opensbi` partition alone |
+| Q66 | Readings of the NOR around a card session | Around every session | Around the first, and afterwards only on a finding |
+| Q67 | The name | S3-E | The human's |
+
+### What acceptance would authorize
+
+Accepting this revision would record D28, items 9 to 13 of the board
+policy, the amended stop (j), stops (p) and (q), the superseded lines,
+and Q62 to Q67 at their defaults. It would authorize:
+
+- readings of the NOR under item 9, each on the responsible human's
+  word or inside a session that a milestone plan names;
+- the rehearsal of item 10, once, on his word and with him present;
+- the writing of the M11 plan's board addendum, as a proposal at its
+  own exact commit.
+
+It would authorize no card session, which needs that addendum accepted
+with S3-E.2's choice, and then his word for each session, with him
+present; no firmware build of the project's own run on the board; no
+write to the NOR by a step of the project's own beyond S3-A.1 item 3's
+recorded `saveenv`; nothing staged over USB; no claim-text change; and
+no push, merge, tag, or release step.
+
+### Status record addendum
+
+```text
+s3_revision_s3e=accepted-if-its-proposing-commit-is-on-the-public-main-with-the-responsible-human's-sign-off;otherwise-proposed
+s3_revision_s3e_base=b732cecd26815f1ab8e5d9758ff98087ed271c68
+s3_revision_s3e_directed_by=S3-D.6-step-2;D25
+s3_revision_s3e_inventory=2026-11-16;board-readings-and-the-vendor's-sources-and-files;the-full-record-internal
+s3_revision_s3e_decision=D28-items-9-13;readings-and-one-rehearsal-to-the-boot-ROM;a-card-of-fixed-contents-run-only-under-a-milestone-plan;no-NOR-write-of-the-project's-own-beyond-item-3's-recorded-saveenv;the-vendor's-own-record-write-in-a-card-session-not-decided-here
+s3_revision_s3e_board_policy=S3-A.1-items-1-8-stand-for-every-session-as-item-12-reads-items-1-and-3-in-a-card-session-and-item-10-reads-item-5-for-the-rehearsal;items-9-13-added
+s3_revision_s3e_stops=j-amended-by-name;p-and-q-added;a-stands
+s3_revision_s3e_open_questions=Q62-Q67;defaults;Q62-left-to-the-M11-board-addendum
+s3_revision_s3e_staging=1-done;2-this-revision;3-authorized-once;4-contents-fixed-and-sessions-only-under-a-milestone-plan-after-the-choice;5-not-authorized
+s3_revision_s3e_choice=not-made;recorded-here-by-the-M11-board-addendum's-commit-when-it-is
+s3_revision_s3e_claim=unchanged
+s3_revision_s3e_review=three-candidates-reviewed-independently-never-signed;this-text-answers-those-reviews
+s3_revision_s3e_authorization_if_accepted=NOR-readings;one-rehearsal-to-the-boot-ROM;write-the-M11-board-addendum;nothing-else
+```
