@@ -1734,3 +1734,17 @@ text above as it says; the text above is otherwise as accepted.
     working branch holds 2,978, and M11-7's sub-steps bring it to
     4,146; the hostile-monitor hook follows in M11-7, and M11-8 after
     it.
+- **2026-11-16, `harness: 15000`** (stop 16, put to the responsible
+  human a second time that day, before the lane reached its limit).
+  The soft limit of the lane "The harness, the oracle, the capture
+  checker's rules, the scenarios' generator, the ledger's tool, and
+  the model's tools" is 15,000 counted lines, in place of the 10,000
+  of the entry above. That number rested on an estimate of 900 to
+  1,300 lines for the rest of M11-7. The hostile-monitor images and
+  the boundary's negatives took 2,839, and the lane stands at 9,826
+  with M11-7's sub-steps written and not yet landed: the generator of
+  the attempts and of what each run must show (1,190 lines, 231 of
+  them its own tests), the judging of the attempts in the boundary's
+  checker, and the generator of the negatives' device trees. The
+  fixes that M11-7's first runs under emulation bring, M11-8, and
+  M11-9 follow.
