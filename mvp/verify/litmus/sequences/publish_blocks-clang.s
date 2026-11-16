@@ -6,7 +6,7 @@
    10207b376:	c8e080e7          	jalr	-882(ra) # 102079000 <be_mvp_block_fill>
 # L1 P0: the fence w, w, then the generation words, domain 0's and domain
 #   1's (a1 = 1)
-   10207b534:	73c080e7          	jalr	1852(ra) # 102008c6c <be_mvp_exec_fence_w_w>
+   10207b534:	72c080e7          	jalr	1836(ra) # 102008c5c <be_mvp_exec_fence_w_w>
    10207b53c:	4585                	li	a1,1
    10207b540:	e14c                	sd	a1,128(a0)
    10207b548:	e14c                	sd	a1,128(a0)

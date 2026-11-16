@@ -18,12 +18,12 @@ RISCV L1
                      called at                          10207b402 10207b534
      sd x8,0(x12)    the generation word, 1             10207b40c 10207b540
    P1, the domain hart in be_mvp_hart_main:
-     ld x5,0(x12)    the generation word                1020705f4 10207040c
-     bne x5,x9,LC00  not 1: the hart parks              1020705f8 102070412
+     ld x5,0(x12)    the generation word                1020705f2 1020703ec
+     bne x5,x9,LC00  not 1: the hart parks              1020705f6 1020703f2
      fence r,r       be_mvp_arch_fence_r_r, through be_mvp_exec_fence_r_r,
-                     called at                          102070600 10207041a
-     ld x6,0(x10)    desc->hart, be_mvp_block_check     102071572 10207179a
-     ld x7,0(x11)    desc->hgatp, for the one install   102070692 102070496
+                     called at                          1020705fe 1020703fa
+     ld x6,0(x10)    desc->hart, be_mvp_block_check     1020716a8 1020718da
+     ld x7,0(x11)    desc->hgatp, for the one install   102070690 102070476
    Every other word hart 0 publishes (the cleared state page, the rest of
    the descriptor, the entry frame, the walked map and leaves, the ring
    views) is stored before the same fence, and every other word the domain
@@ -37,22 +37,22 @@ RISCV L1
    Forbidden: the domain hart reads generation 1 with an old (zero)
    descriptor word.
    Digests (mvp/verify/litmus/sequences.txt):
-   be_mvp_block_fill@gcc sha256=df1148d5fb31db406b4764691ee84afa24e9cfa2e022ec699552a07c8fec8183
-   be_mvp_block_fill@clang sha256=5c747946bae4a1392889224652ea70a40cd84b7e1bb4a8224bccf0aeccd58d35
-   be_mvp_runtime_main@gcc sha256=d59f9173c81d126be77d3484c8976a41157f7b8897c4bffe591e7c05f00a84d7
-   publish_blocks@clang sha256=12110d3437e4dbed057d6e5fbe39b5a724e72a1412c5613495e7ac782b071ff5
-   be_mvp_exec_fence_w_w@gcc sha256=8acd9ed5fd8fc2ba9f99adaf372142f1969beb6a6dec9e826e1d3793f8cf54df
-   be_mvp_exec_fence_w_w@clang sha256=1a1b3373e3f36ff8f4253edcd298268b397eff9aad50195ae68fb06b13f480e7
+   be_mvp_block_fill@gcc sha256=bfeb1bbdb541651725c52f6f7a1e5ba87724b61314f19707f036f8ac454ccf94
+   be_mvp_block_fill@clang sha256=4e25dc0546c290174045e7d1db63cadcc5c1de83af40f8850d2638a95da12985
+   be_mvp_runtime_main@gcc sha256=5b610b92f18e362927b8068ece0a9ae7ae60c9625543ec0b30cb81da3fe06d6f
+   publish_blocks@clang sha256=979a529c0aaf27689d3358b66347c5607ebcbf8cbb73fbed3ec07cf579203654
+   be_mvp_exec_fence_w_w@gcc sha256=474e4d5a697a0e3f4f1068e2a0489498d6ae509f161a5df319696b3f6ab83478
+   be_mvp_exec_fence_w_w@clang sha256=b075360f5073e1d04a754811ed6cc0f22f7847cd780615f54f2cedff41973a20
    be_mvp_arch_fence_w_w@gcc sha256=4a9c49b5aeb97cd559e75906fa16144d0b05bd33affb259ae823429b7fb89d2b
    be_mvp_arch_fence_w_w@clang sha256=4a9c49b5aeb97cd559e75906fa16144d0b05bd33affb259ae823429b7fb89d2b
-   be_mvp_hart_main@gcc sha256=575a418566c3a9ad623170ae9b58d35a6ce2bc2d614f60b6638032a915161460
-   be_mvp_hart_main@clang sha256=980acf51bcaa2e7f5a03fa7045d5f9b01e554c606d3613fae0e9971f4a21a7d7
-   be_mvp_exec_fence_r_r@gcc sha256=8acd9ed5fd8fc2ba9f99adaf372142f1969beb6a6dec9e826e1d3793f8cf54df
-   be_mvp_exec_fence_r_r@clang sha256=1a1b3373e3f36ff8f4253edcd298268b397eff9aad50195ae68fb06b13f480e7
+   be_mvp_hart_main@gcc sha256=6faa7daa6687112b8b76f28deb4048a09801fc8e682b36484dcf390d6da5d5a1
+   be_mvp_hart_main@clang sha256=7e5c2e9613f80b09a19ad3bafcbf1da8dada91820194ce55184b3184f092d690
+   be_mvp_exec_fence_r_r@gcc sha256=474e4d5a697a0e3f4f1068e2a0489498d6ae509f161a5df319696b3f6ab83478
+   be_mvp_exec_fence_r_r@clang sha256=b075360f5073e1d04a754811ed6cc0f22f7847cd780615f54f2cedff41973a20
    be_mvp_arch_fence_r_r@gcc sha256=a173287af103bb3df9e7a542c380e51560c7777708cf7ac49430094df5ce713b
    be_mvp_arch_fence_r_r@clang sha256=a173287af103bb3df9e7a542c380e51560c7777708cf7ac49430094df5ce713b
-   be_mvp_block_check@gcc sha256=d8ab95cd6267f5d0ef9076f23694d335abf81835abf8cc0be622f984c3ff19de
-   be_mvp_block_check@clang sha256=755f20c8916e648cb0c082b4b513041ab2c2c60742e83f9db047e145234c7eb8 *)
+   be_mvp_block_check@gcc sha256=a32ea6981ed47836f31f124e9046bf7e4780f3408288729706cd68489ac15fcd
+   be_mvp_block_check@clang sha256=853f181ff06e91ef60dbfe9055ff87ff5c79f958a8dcfba97d9a40040c041e4b *)
 {
 desc_hart=0; desc_hgatp=0; generation=0;
 0:x10=desc_hart; 0:x11=desc_hgatp; 0:x12=generation;

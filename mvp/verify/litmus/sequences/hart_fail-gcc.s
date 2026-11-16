@@ -3,11 +3,11 @@
 # hart_fail (mvp-hartmain.c), gcc: the lines the litmus tests mirror, as
 # objdump -d prints them (litmus.py --check-sequences). Specification SHA-256 ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d.
 # L2 writer, call site 4 (outbound ring, FAIL): post; fence w, w; the head
-   102070134:	1dc080e7          	jalr	476(ra) # 10207130c <be_mvp_post_fail>
-   10207013e:	ba6080e7          	jalr	-1114(ra) # 102008ce0 <be_mvp_exec_fence_w_w>
-   10207014a:	8c6080e7          	jalr	-1850(ra) # 102008a0c <be_mvp_ring_publish>
+   102070132:	2f2080e7          	jalr	754(ra) # 102071420 <be_mvp_post_fail>
+   10207013c:	b84080e7          	jalr	-1148(ra) # 102008cbc <be_mvp_exec_fence_w_w>
+   102070148:	8c8080e7          	jalr	-1848(ra) # 102008a0c <be_mvp_ring_publish>
 # L2 reader (acknowledged, inbound ring): acquire; fence r, r; take; nothing
 #   released
-   10207018c:	8a8080e7          	jalr	-1880(ra) # 102008a30 <be_mvp_ring_acquire>
-   1020701dc:	b10080e7          	jalr	-1264(ra) # 102008ce8 <be_mvp_exec_fence_r_r>
-   1020701f6:	88a080e7          	jalr	-1910(ra) # 102008a7c <be_mvp_ring_take>
+   1020701aa:	88a080e7          	jalr	-1910(ra) # 102008a30 <be_mvp_ring_acquire>
+   1020701f2:	ad6080e7          	jalr	-1322(ra) # 102008cc4 <be_mvp_exec_fence_r_r>
+   10207020a:	876080e7          	jalr	-1930(ra) # 102008a7c <be_mvp_ring_take>

@@ -8,8 +8,8 @@
 # them, and the pins. A proved result holds for these bytes only; a merge
 # that changes one of them without the re-proof rule run first is stop (i)
 # (D-2). Re-written only on the responsible human's direction.
-# Target commit: 5d0d784600e674c32f951353230b9212972c399a (its mvp/src and mvp/Makefile equal this tree's)
-unit leaf=A file=mvp/src/mvp-sbi.c sha256=6a7b7007393b330b7537e37a331180a73ed350163d99d2d76b623057c7b229c5
+# Target commit: c63347085bdb11b09d2ce62f7c92186425f61ae9 (its mvp/src and mvp/Makefile equal this tree's)
+unit leaf=A file=mvp/src/mvp-sbi.c sha256=61989b4505c162818bb481cf2d9a4155cffcd9ccdd0287b5a6d77205e62b6aac
 unit leaf=B file=mvp/src/mvp-ring.c sha256=432dbc511397da4b051da37f3860b1f8d078ef87fa175ea47d7b3c7a1bc267ba
 header file=build/mvp/port/include/be/manifest.h sha256=f3aeb609348850d3c5051d6ffdcb2ef68f0c7a03ce5034fbf0aa655448d7b57d included_by=A,B port=rewrite
 header file=build/mvp/port/include/be/r2.h sha256=348ec6ba84d978e06c0c2c1c0b9a78cabd90a16348e3e58878ffa635de932e07 included_by=A,B port=equal-to:include/be/r2.h
@@ -21,7 +21,7 @@ header file=mvp/src/mvp-gstage.h sha256=24fd5681ec63a839dcf05596f553a9cbc8d6d1ad
 header file=mvp/src/mvp-layout.h sha256=b5536372ace2edbd98b4d233d54c9ceeea6beba7abf17718fd4c26ce234cc16b included_by=A,B
 header file=mvp/src/mvp-ring.h sha256=0db53a2d1484244bad033c0963ad9ac619c36c24ec90c0b4eb79ba4024533148 included_by=A,B
 header file=mvp/src/mvp-sbi.h sha256=12f02187a9b07b135ab44c9954c633c995b2184db97ef37bf7dff3cab128f594 included_by=A
-header file=mvp/src/mvp.h sha256=004ebeba71db5aee4ba59232dc0eab1c3c32c1e538adcdc843be192c66a6faa8 included_by=A,B
+header file=mvp/src/mvp.h sha256=2ef66b76b6eaddc9601d10510d8d306d93f140f850774e67ba96aa1cbe069291 included_by=A,B
 flag recipe=$$(CC_$(2)) $$(TARGET_FLAGS) $$(MVP_OPT) -c $$< -o $$@
 flag make WARNINGS=-Wall -Wextra -Werror -Wconversion -Wformat=2 -Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef
 flag make MARCH=rv64imac_zicsr_zifencei

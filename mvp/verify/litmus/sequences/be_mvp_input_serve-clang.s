@@ -3,4 +3,4 @@
 # be_mvp_input_serve (mvp-input.c), clang: the lines the litmus tests mirror, as
 # objdump -d prints them (litmus.py --check-sequences). Specification SHA-256 ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d.
 # L5 P0: the take
-   1020716b4:	31a080e7          	jalr	794(ra) # 1020089ca <be_mvp_ring_take>
+   1020717f4:	1ee080e7          	jalr	494(ra) # 1020089de <be_mvp_ring_take>
