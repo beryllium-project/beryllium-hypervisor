@@ -10,10 +10,13 @@ human's sign-off, `77eabce5` on `main`) and its decision record. M11's
 work lands on one working branch from that commit, and this record grows
 with it: one section per work package, each written when the package
 ends. It records what was run, when, on which commit, and what it
-printed; it makes no claim beyond those lines. Every run here is on the
-development host `lx2` (an Intel i7-10610U, 4 cores and 8 threads,
-46 GB, Fedora 44, the performance profile) and under emulation; nothing
-here ran on a board.
+printed; it makes no claim beyond those lines. Every run here is under
+emulation; nothing here ran on a board. Through M11-3 the runs are on
+the development host `lx2` (an Intel i7-10610U, 4 cores and 8 threads,
+46 GB, Fedora 44, the performance profile). From 2026-11-15 they are on
+the workstation `l1` (an Intel i9-14900K, 24 cores and 32 threads,
+62 GB, Fedora 44, the throughput-performance profile), by the decision
+record's entry of that date; M11-4's section tells the move.
 
 ## M11-2: preparation
 
@@ -360,3 +363,251 @@ no stop 9. Leaf A's code is token-equal to the base's.
 - **The witness of `room`** is read as above: a bounded model checker's
   counterexample is one assignment among many, and this one follows
   from the compiled inputs.
+
+## M11-4: signalling
+
+### Outcome first
+
+M11-4's required result (the plan's work-package table) holds at its
+point, exact commit `47136f70`:
+
+- `check` passes on both toolchains with no IPI call in any scenario
+  image: the image checker refuses a scenario image that links either
+  of the monitor's IPI send functions, and refuses each of its 133,
+  137, and 147 mutations of the three scenarios' images;
+- the counts are pinned: each scenario's expectation fixes `ipi` at 0
+  and bounds `tick` by the run's interval, and the capture checker
+  passes its 320 cases and refuses its 461 mutations;
+- the six typed shell sessions pass, and each outbound ring's peak
+  stays within its budget: the largest that a VS-domain hart reports in
+  the point's runs is 2,696 bytes, of a budget of 16,384;
+- `./be model-check` passes with stage 1 proved again: its 26 theorems,
+  their statements unchanged, 26 assumption sets closed, 100 citations,
+  and the generated layout `b5536372…`;
+- at the point, every verifier suite gives the base's verdicts and
+  counts on the same host. One more prover run reached its time limit,
+  in a mutant that is killed either way (below).
+
+### The commits
+
+On the working branch `m11`, over the public `main` at `5ea5243a`,
+unsigned:
+
+| Commit | Content |
+| --- | --- |
+| `e52308a2` | Signalling on each hart's own timer tick (D-7), with the boundary off; the concrete model's exit decision and ring steps; the claim ledger's seventeen pins in C-10, C-40, C-41, C-48, and C-51 to C-58 |
+| `cb9716ca` | The decision record: the checks' host is the workstation `l1` again (`hosts: l1`) |
+| `c6334708` | The tool lock moved to `l1`; ledger rows C-20 and C-21 |
+| `47136f70` | The point's records: the target digests and the litmus record at `c6334708` |
+| `9540c69c`, `0ab4bd34` | The decision record: three soft limits re-set, and the harness lane's again |
+
+By the plan's count from `77eabce5`, M11-4 adds 1,070 lines to the
+monitor's lane and 202 to the harness lane. At the point the lanes
+stand at: the firmware additions 708 (limit 800); the firmware's tests
+and build rules 2,763 (3,000); the monitor 2,978 (8,000); the
+descriptor's tools 3,266 (4,000); the harness 4,357 (15,000). The
+limits are those of the decision record's entries of 2026-11-12 and
+2026-11-16; the two of 2026-11-16 were asked for M11-7's work, which is
+not on the branch at this point.
+
+### The host
+
+The workspace moved back from the laptop `lx2` to the workstation `l1`
+on 2026-11-15, after M11-4 had landed. The decision record's entry of
+that date (`cb9716ca`) makes `l1` the development host and the host for
+`verify`, and names what follows here.
+
+**Before the move, on `lx2`.** M11-4's content passed, from a clean
+clone of a scratch commit of it (2026-11-15, 07:33Z to 08:52Z): the tool
+lock, `check`, `./be model-check`, `evaluate` (609 of 609 images
+identical), and the U-Boot rehearsal. Its commit message has the
+counts.
+
+**The lock.** `l1` had the lock's bytes for every role but `git`
+(2.56.1; the lock named 2.56.0). The lock commit, `c6334708`, refreshes
+the MVP's lock and its closure by the lock's own `refresh`: that role,
+and the evaluator's closure from 257 packages to 259 (five at newer
+versions, two added again, none dropped). It changes the files that
+"The development host" lists, and no other.
+
+**The gates at the lock commit**, from a clean clone on `l1`
+(2026-11-16, 00:11Z to 00:56Z), before any other change: the tool lock
+(33 roles, 259 packages); `check` (64 QEMU runs in 85 attempts, the 21
+others refused because the firmware had booted on a VS-domain hart, and
+repeated; 6 typed sessions in 7 attempts); `evaluate` (609 of 609
+images identical; evaluator image `87263109e660-009c2eba5655`); the
+U-Boot rehearsal (7 cases in 8 attempts); the kernel's second build (23
+outputs identical); `./be model-check`; and the model's evaluator, at
+its second attempt (below).
+
+**Against the reference.** No record had been made on `l1` under the
+lock of 2026-11-11, so the reference is the build that `lx2` made of
+the same sources in M11-4's checks. All 162 flat images have that
+build's digests, and `check`'s five deterministic records equal that
+build's (the image check, the variants, the probes, the capture
+checker's self-test, and its mutation test). Of the 609 listed build
+outputs, 94 differ, all by the clone's path: the 50 monitor ELF files,
+each identical once its debug sections are stripped, and the 44
+expected-table files, which differ only in the digest of the firmware's
+ELF file; the firmware binaries are equal. No stop 11.
+
+### The re-proof point
+
+M11-4 changes two of the leaves' pinned inputs: `src/mvp-sbi.c`, Leaf
+A's translation unit, and `src/mvp.h`. Its point is D-11's third. The
+two commits after M11-4 change no input of a leaf and nothing of the
+monitor, so the records were written at the lock commit, `c6334708`,
+from the build of the clean clone whose gates passed there:
+
+- `mvp/verify/target-digests.txt`: the target commit, and the two
+  files' digests; the other eleven files' digests, the flags, and the
+  pins are unchanged. Written with the frozen specification's export,
+  as at M11-2.
+- The litmus record: the 55 excerpts were found again by role in the
+  new monitors. Of their 206 lines, 103 keep their encoding (49 of them
+  at the same address), and 103 are the same instruction to the same
+  function or branch target with a new PC-relative offset; none has a
+  new register or offset. Of the 55 symbols' digests, 35 changed. The
+  five tests' initial states, programs, and conditions are
+  byte-identical. Their comments' addresses and digests are derived
+  again; L2 and L4 name the tick where they named the IPI; and L3 gains
+  one sentence, on the room that a VS-domain hart now keeps in its
+  outbound ring. The scan of the ring's callers finds no reader or
+  writer added or removed and no fence changed; the one new load of a
+  word that another hart writes is the room check's read of the
+  reader's tail before a post, which the proof-impact review foresaw
+  (its section 5).
+- The claim ledger's pins in C-54, C-56 (two), C-57, and C-58, each
+  with a note on its row.
+
+At `47136f70` the other gates passed from a fresh clean clone on `l1`
+(2026-11-16, 14:23Z to 15:03Z): the tool lock; `check` (64 QEMU runs in
+89 attempts, 25 refused and repeated; 6 typed sessions in 10 attempts,
+4 refused; 50 images within their budgets; the claim ledger's 9 checks
+of 58 claims); `evaluate` (609 of 609 images identical; the same
+evaluator image); the U-Boot rehearsal (7 cases in 10 attempts, 3
+refused); the kernel's second build (23 outputs identical); `./be
+model-check` (as above, with the model's differential check); and the
+model's evaluator.
+
+**The base on `l1`.** M11-3's point was run on `lx2`, so `verify` was
+run once more at that commit, `0e074244`, on `l1` (2026-11-16, 06:44Z
+to 12:16Z; 19,913 s, against 56,297 s on `lx2`). Every suite gives
+`lx2`'s verdict: the WP arm 130 of 134 goals, with 18 of the 24 mutants
+killed; CN 5 of 55; Leaf A's bounded check successful, 336 properties;
+the ring's bounded check 13,547 of 14,931 properties. Of the record's
+32 files, 26 are equal to `lx2`'s once run metadata is set aside (12
+byte for byte). The other six, read run by run:
+
+- the verifier image's local ID. Its tag, closure digest, sources
+  digest, and the digest of its 613 packages are equal. `l1` still
+  holds the image that it built before the workspace moved to `lx2`,
+  and its ID is the one in the last record before M11
+  (`mvp/results/20261109-verify-cheri-integration/`);
+- three cases in which the prover must fail, and does on both hosts:
+  the WP qualification's `known-fail`, and the vacuity cases
+  `vacuity-ensures` and `vacuity-ensures+lemma-options`. On `l1` the
+  prover gave up within the limit; on `lx2` it reached the limit;
+- mutant m17, killed on both hosts: two of its goals reached the limit
+  on `lx2`, and one on `l1`;
+- round 0 of the WP arm: 1,088 split obligations proved on `l1` and
+  1,080 on `lx2`; the same 124 of 129 goals proved, the same five open,
+  the same counts by prover, and five timeouts on both;
+- the near-limit list: of 4,419 runs, none near its limit and 264 over
+  it on `l1`; one and 273 on `lx2`.
+
+Each is a run that ends within its time limit on one host and reaches
+it on the other, which the decision record's entry records as an
+effect of the host, or the list of such runs, or the image's local ID.
+No verdict differs: no stop 9.
+
+**The point's `verify`** ran on `l1` from 15:03Z to 20:39Z on
+2026-11-16 (20,161 s). Every suite's line gives the base's verdict and
+counts: the WP arm 130 of 134 goals in one round, with 18 of the 24
+mutants killed; CN 5 of 55; Leaf A's bounded check successful, 336
+properties; the ring's bounded check 13,547 of 14,931 properties; the
+five litmus tests Never. Against the base on `l1`, 24 of its 32 record
+files are equal once run metadata is set aside (10 byte for byte). The
+other eight, read run by run:
+
+- the leaf's place in its file. Leaf A's five functions lie three
+  lines lower in `src/mvp-sbi.c` (lines 204 to 327, for 201 to 324).
+  The token gate passes on the same 686 tokens. The new line numbers
+  appear in its line of the summary, in CN's transcription record, in
+  each mutant's place in the three arms' mutant records, and in the
+  unreachable statements that the WP vacuity record lists. With those
+  three lines taken off, CN's and the bounded check's mutant records
+  and the vacuity record equal the base's;
+- the litmus record's digest and the five tests' digests, written again
+  at this point (above); each test's result and its states are the
+  base's;
+- mutant m17 of the WP arm, killed in both runs: two of its goals
+  reached the 120 s limit, where one did at the base on `l1`. Both did
+  at the base on `lx2`;
+- the near-limit list, by that run: of 4,419 runs, none near its limit
+  and 265 over it (264 at the base);
+- the ring's recorded finding `room`: the same assertion and reason,
+  and the same four contradictions confirmed by its reproducer, with
+  different values in its counterexample. The ring's header includes
+  `src/mvp.h`, which M11-4 changed. At the base, the two hosts' records
+  hold the same counterexample, value for value: it follows from the
+  compiled inputs. Another witness of the same finding, not a verdict.
+
+No verdict changed, and no suite's count. One run crossed its time
+limit, m17's second goal, and with it the near-limit list's count. By
+the plan's rule for D-11's points, a count that changes only because a
+run crossed its limit is recorded as that and goes to the responsible
+human under stop 9 with that reading: it is put to him with this
+section. Leaf A's code is token-equal to the base's.
+
+### Departures and readings for review
+
+- **One run crossed its time limit at the point**, as above. It is read
+  as an effect of the limit and not of the code: the mutant is killed
+  either way, and the same run crossed the limit at the base on `lx2`.
+  The responsible human's sign-off of the commit that adds this section
+  accepts that reading.
+- **Light work ran beside both runs of `verify` on `l1`**: builds, tool
+  dry runs, and reading for the next work packages, by four delegates
+  at most at once, each held to one core of the host's 32 threads, and
+  the owner session's own short commands. Nothing that starts QEMU or a
+  container ran beside either run.
+- **The point's records are in the third commit after M11-4.** M11-4's
+  message has them "in the commit after it". The decision record's
+  entry on the host and the lock's move came between, and neither
+  changes a leaf's input or the monitor; the records name the lock
+  commit as their target, whose `mvp/src` and `mvp/Makefile` are
+  M11-4's.
+- **One change to M11-4's code was made at review, by the owner
+  session.** The session that wrote M11-4 ended with the power loss of
+  2026-11-14, with its work complete. The owner session's review of
+  every line found no defect and made one cleanup, which the commit
+  message names: the static `wait_serve()` takes no time arguments, and
+  `wait_tick()` returns nothing.
+- **The model's evaluator at the lock commit.** Its first attempt
+  failed its tool check inside an image that podman had cached on `l1`
+  on 2026-10-28, whose `python3` was 3.14.8; the gate had built
+  nothing. The old image was set aside, and the gate, run again, built
+  a fresh image and passed. This is read as the host's state, and not
+  as stop 11's "a tool check that fails inside the model's evaluator".
+- **The base's `verify` ran twice on `l1`**, by the owner session's
+  mistake: it changed its scratch driver while the night's chain was
+  reading that file, and the chain started `verify` again in the same
+  clone, over the first run's record. The first run (01:09Z to 06:44Z)
+  had ended with exit status 0, and what was read of it before it was
+  lost agrees with the second: the first six suites passed, the WP arm
+  stood at 130 of 134 goals and 18 mutants, CN at 5 of 55, and Leaf A's
+  bounded check at 336 properties. The record is the second run's, from
+  its start. The first run had also fetched the pinned Linux from its
+  default address, where the second used the host's mirror; the
+  kernel's bytes are pinned either way.
+- **M11-7's first runs under emulation were made between the base's
+  `verify` and the point's gates** (12:20Z to 14:20Z), in a scratch
+  clone, to use the time that the second run had cost.
+- **Two observations of the litmus re-extraction**, recorded in
+  `47136f70`'s message and not acted on there. L4's program stores an
+  ACK's type byte while its comment cites the PING's call site, as it
+  has since M8; both callers reach the same cited lines. And the
+  failure path has no guard against a second entry; M11-7 changes that
+  path for a confined hart, and its section says what a second entry
+  does there.
