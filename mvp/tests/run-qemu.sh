@@ -75,12 +75,15 @@
 # all (default 8), until one completes; a run whose every attempt is
 # refused fails. A run passes only when an attempt completes and its
 # verdict is PASS. Every attempt's capture, checker output, checker record,
-# and oracle record (a full read, or CHERI's fixed NOT-ATTACHED record) are
-# kept: OUT_DIR/TOOLCHAIN-NAME.ATTEMPT.
-# {console.log,check.txt,result.json,oracle.json}, and OUT_DIR/attempts.tsv
-# lists each attempt's boot hart and verdict, with the boot ELF it ran
-# (relative to BUILD_DIR) and that ELF's SHA-256, which bind the run to its
-# image (tools/evidence.py).
+# oracle record (a full read, or CHERI's fixed NOT-ATTACHED record), and
+# boundary record (tests/check-boundary.py's; a boundary-off run's is its
+# one NOT-APPLICABLE line) are kept: OUT_DIR/TOOLCHAIN-NAME.ATTEMPT.
+# {console.log,check.txt,result.json,oracle.json,boundary.txt}, and
+# OUT_DIR/attempts.tsv lists each attempt's boot hart and verdict, with the
+# boot ELF it ran (relative to BUILD_DIR) and that ELF's SHA-256, which bind
+# the run to its image (tools/evidence.py), and whether the boundary was
+# on, with its PMP mode, its device tree's SHA-256, and control_hart=boot
+# (M11-7's step 1), or off, with - for each.
 #
 #   run-qemu.sh BUILD_DIR FIRMWARE_BIN OUT_DIR [RUN ...]
 #
@@ -147,6 +150,7 @@ selected=("$@")
 here=$(cd -- "$(dirname -- "$0")" && pwd)
 checker=$here/check-capture.py
 oracle=$here/qemu_oracle.py
+boundary_checker=$here/check-boundary.py
 lock=$(dirname -- "$here")/tools/lock/tool-lock.conf
 expect_dir=$build/gen/expect
 te_poc_dir=$build/gen/te-poc
@@ -401,7 +405,7 @@ attempts_file=$output/attempts.tsv
 # beryllium-cheri: the CPU addition, for the record.
 [ -z "$cheri_cpu" ] ||
 	printf 'BE_MVP_QEMU_CHERI_CPU: %s\n' "$cheri_cpu" | tee -a -- "$summary"
-printf 'toolchain\trun\tattempt\tboot_hart\tqemu_exit\tverdict\tcapture_sha256\telf\telf_sha256\n' \
+printf 'toolchain\trun\tattempt\tboot_hart\tqemu_exit\tverdict\tcapture_sha256\telf\telf_sha256\tboundary\tpmp_mode\tdtb_sha256\tcontrol_hart\n' \
 	>"$attempts_file"
 
 # Check and select the firmware for one run immediately before QEMU starts.
@@ -537,10 +541,13 @@ print(fields.get("boot_hart", "none"))' "$stem.result.json" 2>/dev/null || echo 
 			oracle_verdict=FAIL
 			oracle_detail='record unavailable'
 		fi
+		"$python" -I -B "$boundary_checker" not-applicable \
+			--out "$stem.boundary.txt"
 		sha=$(sha256sum -- "$stem.console.log" | cut -d' ' -f1)
-		printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$toolchain" \
-			"$name" "$attempt" "$hart" "$status" "${verdict:-none}" "$sha" \
-			"${elf#"$build"/}" "$elf_sha" >>"$attempts_file"
+		printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\toff\t-\t-\t-\n' \
+			"$toolchain" "$name" "$attempt" "$hart" "$status" \
+			"${verdict:-none}" "$sha" "${elf#"$build"/}" "$elf_sha" \
+			>>"$attempts_file"
 		harts=${harts:+$harts,}$hart
 		[ "$status" = 0 ] || verdict=FAIL
 		if { [ "$monitor" = cheri ] &&

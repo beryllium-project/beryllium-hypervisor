@@ -173,8 +173,8 @@ K3_ENV = K3_KERNEL=$(MVP_GUEST_IMAGE) K3_PINS=$(MVP_GUEST_PINS) \
 
 .PHONY: tools-check capture-check platform-probe-check partition-tool-check \
 	evidence-check rc-record-check run-tool-check qemu-test evidence \
-	session-typist-check qemu-oracle-check verify-tools-check \
-	platform-record-check sessions \
+	session-typist-check qemu-oracle-check boundary-check \
+	verify-tools-check platform-record-check sessions \
 	verifier-image verify print-k3-plan \
 	k3-preflight k3-stage k3-env-record k3-env-install k3-env-restore \
 	k3-characterize k3-campaign k3-probe k3-input-characterize board-evidence
@@ -265,6 +265,12 @@ session-typist-check:
 qemu-oracle-check:
 	$(QEMU_ORACLE) --self-test --scratch $(TMPDIR)/qemu-oracle-self-test
 
+# D-10's four checks of a boundary-on run (tests/check-boundary.py; M11-7)
+# on synthetic records: each declared state's rules, the started hart's,
+# the identity, the counts, ring-full's state words, and each refusal.
+boundary-check:
+	$(PYTHON) -I -B $(MVP_DIR)/tests/check-boundary.py --self-test
+
 # The M8 verifier's tools (planning/mvp-m8-plan.md, D-5, D-7, D-9, D-10,
 # Q7), each self-test on the host, with no podman and no network: the
 # seeded single-defect mutant generator (verify/tools/mutate.py) on a
@@ -317,8 +323,8 @@ verify-tools-check:
 
 tools-check: capture-check platform-probe-check partition-tool-check \
 		evidence-check rc-record-check run-tool-check \
-		session-typist-check qemu-oracle-check verify-tools-check \
-		platform-record-check
+		session-typist-check qemu-oracle-check boundary-check \
+		verify-tools-check platform-record-check
 	@echo "BE_MVP_TOOLS_CHECK: PASS"
 
 # ------------------------------------------------------- the M8 verifier

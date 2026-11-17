@@ -322,6 +322,25 @@ whole log surface comes from the current reference; M7's stay against
 the expectations of their time (tests/fixtures/pre-m9/). The self-test
 also adds the log module's own cases.
 
+M11-7's boundary-on runs (planning/mvp-m11-plan.md, D-6, D-10, D-12; step
+1, the VS-domain harts confined): an expectation with a "boundary" section
+(tools/gen-scenario.py's) has BE_MVP:02 in its on form, `hsm=H ipi=I
+boundary=B status=1:S,2:S started=none identity=<64 hex or none>`, both
+statuses 1, and a boot on hart 0 (the tree restricts the cold boot to
+it): a refusal is never declared, so one is a FAIL. A hart-start DETAIL
+has no status field, and the boundary class's DETAIL is `boundary=B
+word=W error=E` or `boundary=1 expected=<64 hex>`. Where the section says
+the tree holds a digest ("record"), the firmware's banner (where the
+capture shows one) has exactly one `Domain commit digest : <64 hex>`
+line, and M-mode's commit records (the firmware's patch 0008) follow the
+monitor's last line and end the capture: for harts 0 to 7 in order, each
+one's counts line, and for a committed hart its menvcfg and mseccfg, pmpcfg,
+pmpaddr0, and pmpaddr8 lines. A record line anywhere else, or in a run
+whose tree holds no digest, or any of these lines in a boundary-off run,
+is a finding. The values are tests/check-boundary.py's to judge.
+current_log_standin() renders a current stand-in in that form when the
+expectation declares it.
+
 --check-image runs tests/check-image.py's boot-image rules (B3's header and
 descriptor, the shim, the ranges, the payload, the DTBs and kernel against
 their pins) on a board image before any loader sees it; a te-poc or anchor
@@ -521,6 +540,21 @@ UBOOT_NOISE = ("fail to get alias node efuse_power",
 FIRMWARE = re.compile(r"BE_MVP:02 FIRMWARE_PROBED hsm=([01]) ipi=([01]) "
                       rf"status=((?:[0-9]+:{SIGNED},)*[0-9]+:{SIGNED}) "
                       r"started=(none|[0-9]+)")
+# M11-7: a boundary-on run's BE_MVP:02, the firmware's digest line, and
+# M-mode's commit records (the firmware's patch 0008), by line.
+FIRMWARE_ON = re.compile(r"BE_MVP:02 FIRMWARE_PROBED hsm=([01]) ipi=([01]) "
+                         rf"boundary=([01]) status=1:({SIGNED}),2:({SIGNED}) "
+                         r"started=none identity=(none|[0-9a-f]{64})")
+DIGEST_LINE = re.compile(r"Domain commit digest\s*:\s*([0-9a-f]{64})")
+RECORD_TAG = "Domain commit "
+RECORD_LINE = re.compile(r"Domain commit hart([0-9]+): (.*)")
+ADDRESSES = r"(?:0x[0-9a-f]{16},){7}0x[0-9a-f]{16}"
+RECORD_FORMS = (re.compile(r"committed=([01]) pmp_faults=[0-9]+ "
+                           r"blocked_calls=[0-9]+ failed_calls=[0-9]+"),
+                re.compile(r"menvcfg=0x[0-9a-f]{16} mseccfg=0x[0-9a-f]{16}"),
+                re.compile(r"pmpcfg=[0-9a-f]{32}"),
+                re.compile(rf"pmpaddr0={ADDRESSES}"),
+                re.compile(rf"pmpaddr8={ADDRESSES}"))
 LEGACY_COUNTERS = ("exits", "sbi", "ipi", "base", "time", "dbcn_write",
                    "dbcn_read", "dbcn_byte", "srst", "refused", "lines")
 COUNTERS = ("exits", "sbi", "ipi", "tick", "base", "time", "dbcn_write",
@@ -711,6 +745,16 @@ CLASS_DETAIL["measurement"] = ("measurement",)
 # M9's log (planning/mvp-m9-plan.md, D-4; mvp/docs/log-profile.md): a log
 # failure (overflow, or a page that cannot close) prints no DETAIL (4.5).
 CLASS_DETAIL["log"] = ()
+# M11-7's boundary-on images: hart-start's DETAIL without status, and the
+# boundary class's (an absent extension or a failed read, or another
+# image's identity).
+DETAIL_FORMS["start-on"] = re.compile(rf"BE_MVP:DETAIL domain=({DEC}) "
+                                      rf"hart=({DEC}) result=({SIGNED}) "
+                                      rf"ticks=({HEX})")
+DETAIL_FORMS["boundary"] = re.compile(
+    rf"BE_MVP:DETAIL boundary=([01]) (?:word=({DEC}) error=({SIGNED})|"
+    r"expected=([0-9a-f]{64}))")
+CLASS_DETAIL["boundary"] = ("boundary",)
 
 
 def load_log_module():
@@ -1224,6 +1268,26 @@ def boot_facts(capture, mode, options, findings, facts):
     return (int(hart) if hart is not None else None), None
 
 
+def boundary_loader_findings(capture, boundary, boot_hart, facts):
+    """M11-7: the firmware's digest line among the loader's lines, where
+    the capture shows the firmware's banner and the tree holds a digest,
+    and none elsewhere; a boundary-on run's boot hart is 0."""
+    digests = [line for line in capture.loader if RECORD_TAG in line]
+    banner = any(SBI_VERSION.search(line) for line in capture.loader)
+    if boundary is None:
+        return ["the firmware's commit digest or record before the markers "
+                "of a boundary-off run"] if digests else []
+    facts["boundary"] = "on"
+    findings = [] if boot_hart in (None, 0) else [
+        f"a boundary-on run's boot hart is {boot_hart}, not 0"]
+    wanted = 1 if boundary.get("record") and banner else 0
+    if len(digests) != wanted or not all(DIGEST_LINE.fullmatch(line)
+                                         for line in digests):
+        findings.append(f"{len(digests)} configuration digest lines before "
+                        f"the markers, expected {wanted}")
+    return findings
+
+
 def shim_findings(stream, expect, boot_hart, kexec_fdt, findings, facts):
     """The start rule's line and the SHIM line; returns (rule hart, the
     stream after them)."""
@@ -1261,8 +1325,26 @@ def shim_findings(stream, expect, boot_hart, kexec_fdt, findings, facts):
     return rule, stream
 
 
-def firmware_findings(line, rule, shim_rule, findings, facts):
-    """BE_MVP:02's statuses and started field (Plan revision M0-A.2)."""
+def firmware_findings(line, rule, shim_rule, findings, facts,
+                      boundary=False):
+    """BE_MVP:02's statuses and started field (Plan revision M0-A.2); in a
+    boundary-on run (M11-7), its on form: harts 1 and 2 STOPPED, none
+    started, and no start rule."""
+    if boundary:
+        match = FIRMWARE_ON.fullmatch(line.text)
+        if not match:
+            findings.append(f"line {line.number}: malformed boundary-on "
+                            f"BE_MVP:02 {line.text!r}")
+            return None
+        facts.update(started="none", firmware_boundary=match.group(3),
+                     identity=match.group(6))
+        findings += [f"BE_MVP:02 hart {hart} status {status} in a "
+                     f"boundary-on run" for hart, status in
+                     ((1, match.group(4)), (2, match.group(5)))
+                     if status != "1"]
+        if rule is not None:
+            findings.append("a start-rule line in a boundary-on run")
+        return None
     match = FIRMWARE.fullmatch(line.text)
     if not match:
         findings.append(f"line {line.number}: malformed BE_MVP:02 "
@@ -2485,6 +2567,8 @@ def detail_findings(klass, outcome, detail, expect, state, findings):
     variant that declares its DETAIL lines (M1's) needs one of them, even
     for a class whose own form takes none (gstage, the channel check)."""
     forms = CLASS_DETAIL.get(klass)
+    if "boundary" in expect and forms == ("start",):
+        forms = ("start-on",)
     declared = outcome.get("detail_lines")
     if detail is None:
         if forms or outcome.get("detail") or declared:
@@ -2510,7 +2594,7 @@ def detail_findings(klass, outcome, detail, expect, state, findings):
                         f"{'/'.join(allowed)} DETAIL for class {klass}")
         return
     form, match = named[0]
-    if form in ("henvcfg", "ticks"):
+    if form in ("henvcfg", "ticks", "boundary"):
         if outcome.get("detail") == "domain":
             findings.append(f"line {detail.number}: the DETAIL names no "
                             f"domain")
@@ -3111,6 +3195,51 @@ def forged_findings(capture, expect):
     return findings
 
 
+def record_block(text, boundary):
+    """M11-7: (the capture before M-mode's commit records, findings): the
+    records cut from its end, where a boundary-on run whose tree holds a
+    digest (BOUNDARY, the expectation's section) prints them, each hart's
+    lines in the firmware's form; a record line elsewhere, or in any other
+    run, is a finding."""
+    parts = text.split("\n")
+    end = len(parts) - (parts[-1] == "")
+    start = end
+    while start and RECORD_LINE.fullmatch(parts[start - 1].rstrip("\r")):
+        start -= 1
+    block = [line.rstrip("\r") for line in parts[start:end]]
+    early = [number for number, line in enumerate(parts[:start], 1)
+             if RECORD_LINE.search(line)]
+    if not (boundary and boundary.get("record")):
+        return text, ["M-mode's commit record in a " + (
+            "run whose tree holds no digest" if boundary else
+            "boundary-off run")] if block or early else []
+    findings = [f"line {number}: a commit-record line before the monitor's "
+                f"last line" for number in early]
+    if not block:
+        return text, findings + ["no commit record after the monitor's "
+                                 "last line"]
+    hart = at = 0
+    while at < len(block):
+        match = RECORD_LINE.fullmatch(block[at])
+        counts = RECORD_FORMS[0].fullmatch(match.group(2)) \
+            if int(match.group(1)) == hart else None
+        size = 5 if counts and counts.group(1) == "1" else 1
+        for offset in range(size):
+            match = RECORD_LINE.fullmatch(block[at + offset]) \
+                if at + offset < len(block) else None
+            if not counts or not match or int(match.group(1)) != hart or \
+                    not RECORD_FORMS[offset].fullmatch(match.group(2)):
+                return text, findings + [
+                    f"line {start + at + offset + 1}: not the firmware's "
+                    f"commit-record line {offset} of hart {hart}"]
+        at += size
+        hart += 1
+    if hart != LAYOUT["HARTS"]:
+        findings.append(f"the commit record holds {hart} harts, not "
+                        f"{LAYOUT['HARTS']}")
+    return "\n".join(parts[:start]) + "\n", findings
+
+
 def evaluate(data, expect, mode="direct", pins=None, report=None,
              **options):
     """(verdict, record) for one capture against one expectation; REPORT,
@@ -3120,7 +3249,11 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
     pins = pins or read_pins()
     prefixes = [domain["prefix"] for domain in expect["domains"]]
     console = expect.get("console_input")
-    capture = Capture(data, prefixes, {
+    boundary = expect.get("boundary")
+    text, recorded = record_block(
+        data.decode("utf-8", "replace") if isinstance(data, bytes) else data,
+        boundary)
+    capture = Capture(text, prefixes, {
         int(domain): texts for domain, texts in expect.get(
             "forged", {}).items()}, bool(console or "forged" in expect))
     findings, facts = [], {"mode": mode, "image": expect["image"]}
@@ -3130,6 +3263,8 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
         findings.append("no marker line")
     boot_hart, kexec_fdt = boot_facts(capture, mode, options, findings,
                                       facts)
+    findings += recorded + boundary_loader_findings(capture, boundary,
+                                                    boot_hart, facts)
     outcome = expect["outcome"]
     rule, stream = shim_findings(capture.monitor, expect, boot_hart,
                                  kexec_fdt, findings, facts)
@@ -3189,7 +3324,8 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
             findings += cross_findings(state, capture, expect)
         firmware = state.matched.get(("BE_MVP:02", None))
         started = firmware_findings(firmware, rule, "shim_line" in outcome,
-                                    findings, facts) if firmware else None
+                                    findings, facts, boundary is not None) \
+            if firmware else None
         findings += monitor_value_findings(state, pins)
         found, waited = ping_findings(state, expect, mgmts)
         findings += found
@@ -3270,6 +3406,10 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
         verdict = "FAIL" if findings else "STOP" if stops else "PASS"
     if verdict == "REFUSED":
         findings = []
+        if boundary is not None:
+            verdict, findings = "FAIL", [
+                "a boundary-on run is no refusal: its tree restricts the "
+                "cold boot to hart 0"]
     last = capture.monitor[-1].text if capture.monitor else ""
     terminal = "fail-marker" if any(
         line.text.startswith((FAIL_PREFIX, "BE_K3_B3: FAIL"))
@@ -3850,7 +3990,78 @@ def uboot_options(name):
 def current_log_standin(text, expect, root):
     """TEXT with its whole measurement-log surface rendered for the
     current image from its reference, preserving only the retained run's
-    ticks. The result is a synthetic stand-in, never a captured log."""
+    ticks, and in the boundary-on form where EXPECT declares it. The
+    result is a synthetic stand-in, never a captured log."""
+    text = log_standin(text, expect, root)
+    return boundary_form(text, expect) if "boundary" in expect else text
+
+
+# M11-7: a stand-in's configuration digest, and the commit-record values
+# of a hart it shows committed (shapes only: tests/check-boundary.py
+# judges a run's values).
+STANDIN_DIGEST = "5a" * 32
+STANDIN_COMMITTED = ("menvcfg=0x8000000000000000 mseccfg=0x0000000000000000",
+                     "pmpcfg=" + "00" * 16,
+                     "pmpaddr0=" + ",".join(["0x" + "0" * 16] * 8),
+                     "pmpaddr8=" + ",".join(["0x" + "0" * 16] * 8))
+
+
+def boundary_form(text, expect):
+    """TEXT, a passing current stand-in, in the boundary-on form of EXPECT
+    (M11-7): BE_MVP:02 as its template gives it, each :08 without its
+    status, the firmware's digest line in the banner where the tree holds
+    a digest, and then M-mode's records after the monitor's last line."""
+    boundary = expect["boundary"]
+    template = next(entry["template"] for entry in expect["control_lines"]
+                    if entry["template"].startswith("BE_MVP:02 "))
+    parts = [template.replace("<Z>", STANDIN_DIGEST)
+             if line.startswith("BE_MVP:02 ") else
+             re.sub(r" status=-?[0-9]+ ", " ", line)
+             if line.startswith("BE_MVP:08 HART_STARTED ") else line
+             for line in lines(text.rstrip("\n"))]
+    if boundary.get("record"):
+        first = next(index for index, line in enumerate(parts)
+                     if line.startswith(("Platform Name", RULE_TAG,
+                                         SHIM_TAG)))
+        parts.insert(first, f"Domain commit digest        : "
+                            f"{STANDIN_DIGEST}")
+        for hart in range(LAYOUT["HARTS"]):
+            committed = boundary["harts"].get(str(hart)) == "confined"
+            tag = f"Domain commit hart{hart}: "
+            parts.append(f"{tag}committed={int(committed)} pmp_faults=0 "
+                         f"blocked_calls=0 failed_calls=0")
+            parts += [tag + line for line in STANDIN_COMMITTED] \
+                if committed else []
+    return text_of(parts) + "\n"
+
+
+def boundary_expect(expect):
+    """EXPECT itself if it declares the boundary; otherwise a synthetic
+    boundary-on form of it (step 1, the image paired with itself), for the
+    self-test and the mutations before any image is built on."""
+    if "boundary" in expect:
+        return expect
+    out = json.loads(json.dumps(expect))
+    for entry in out["control_lines"]:
+        if entry["template"].startswith("BE_MVP:02 "):
+            entry["template"] = ("BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 "
+                                 "boundary=1 status=1:1,2:1 started=none "
+                                 "identity=<Z>")
+            entry["regex"] = "^" + re.escape(entry["template"]).replace(
+                "<Z>", "[0-9a-f]{64}") + "$"
+        elif entry["template"].startswith("BE_MVP:08 "):
+            entry["template"] = entry["template"].replace(" status=0", "")
+            entry["regex"] = entry["regex"].replace("\\ status=0", "")
+    out["boundary"] = {"control_hart": "boot", "pair": out["image"],
+                       "record": True, "harts": {"0": "boot",
+                                                 "1": "confined",
+                                                 "2": "confined"}}
+    return out
+
+
+def log_standin(text, expect, root):
+    """current_log_standin()'s log surface: TEXT with every measurement-log
+    line rendered from the current reference."""
     parts = lines(text)
 
     if tick_signalling(expect):
@@ -4588,6 +4799,76 @@ def current_m9_fixture_cases(expects, reports, root):
     return cases
 
 
+def boundary_cases(latest, root):
+    """M11-7's base: two-guests' current stand-in in its boundary-on form
+    (boundary_expect()), its expectation, and the same without a digest in
+    the tree; [(name, expectation, text, wanted)]."""
+    on = boundary_expect(latest["two-guests"])
+    bare = json.loads(json.dumps(on))
+    bare["boundary"]["record"] = False
+    source = fixture(M9_FIXTURES["two-guests"])
+    return [("M11-7 boundary-on stand-in", on,
+             current_log_standin(source, on, root), "PASS"),
+            ("M11-7 boundary-on stand-in, no digest in the tree", bare,
+             current_log_standin(source, bare, root), "PASS")]
+
+
+def boundary_mutations(on, text, off, off_text):
+    """M11-7's rules, each one's smallest edit of a passing boundary-on
+    stand-in TEXT (expectation ON), or of the boundary-off OFF_TEXT
+    (expectation OFF): [(name, expectation, text, wanted finding)]."""
+    parts = lines(text)
+    first = where(parts, "Domain commit hart0: ")
+    block = parts[first:-1]
+    last = where(parts, "BE_MVP:14 SHUTDOWN")
+    bare = json.loads(json.dumps(on))
+    bare["boundary"]["record"] = False
+    off_parts = lines(off_text)
+    return [
+        ("the record before the monitor's last line", on, text_of(
+            parts[:last] + block + parts[last:first] + [""]),
+         "a commit-record line before the monitor's last line"),
+        ("the record in a boundary-off run", off, text_of(
+            off_parts[:-1] + block + [""]),
+         "commit record in a boundary-off run"),
+        ("the digest line in a boundary-off run", off, insert(
+            off_text, "Platform Name", "Domain commit digest        : " +
+            STANDIN_DIGEST, after=False),
+         "commit digest or record before the markers of a boundary-off"),
+        ("the record where the tree holds no digest", bare, text,
+         "a run whose tree holds no digest"),
+        ("a third status", on, replace_in(
+            text, "BE_MVP:02 ", "status=1:1,2:1", "status=1:1,2:1,3:1"),
+         "malformed boundary-on BE_MVP:02"),
+        ("hart 1 started before BE_MVP:02", on, replace_in(
+            text, "BE_MVP:02 ", "status=1:1,", "status=1:0,"),
+         "hart 1 status 0 in a boundary-on run"),
+        ("a started hart named", on, replace_in(
+            text, "BE_MVP:02 ", "started=none", "started=1"),
+         "malformed boundary-on BE_MVP:02"),
+        ("a status in a boundary-on :08", on, replace_in(
+            text, "BE_MVP:08 HART_STARTED hart=1 ", " result=0 ",
+            " result=0 status=0 "), "is not 'BE_MVP:08 HART_STARTED"),
+        ("a boot on hart 1", on, replace_in(
+            text, "Boot HART ID", ": 0", ": 1"),
+         "boundary-on run's boot hart is 1, not 0"),
+        ("no digest line", on, delete(text, "Domain commit digest"),
+         "0 configuration digest lines before the markers, expected 1"),
+        ("two digest lines", on, insert(
+            text, "Domain commit digest", "Domain commit digest        : " +
+            STANDIN_DIGEST), "2 configuration digest lines"),
+        ("a record of seven harts", on, delete(text, "Domain commit hart7: "),
+         "the commit record holds 7 harts, not 8"),
+        ("a committed hart's record without its pmpaddr8", on, delete(
+            text, "Domain commit hart1: pmpaddr8="),
+         "commit-record line 4 of hart 1"),
+        ("the harts' records out of order", on, replace_in(
+            text, "Domain commit hart3: ", "hart3", "hart4"),
+         "commit-record line 0 of hart 3"),
+        ("text after the record", on, text + "x\n",
+         "no commit record after the monitor's last line")]
+
+
 def relogged(text, change):
     """TEXT, an M9 capture, with CHANGE (its lines, edited in place)
     applied, and every register it prints (the :20 lines', each LAUNCH
@@ -4862,6 +5143,10 @@ def self_test(expects, pins, reports, measured, current, prior, latest,
          for case in m9_fixture_cases(era, reports, era_references)] + \
         [case + (pins, latest)
          for case in current_m9_fixture_cases(latest, reports, root)]
+    cases += [(name, "two-guests", "direct", text, {
+        "sbi_version": "2.0", "toolchain": "gcc", "build_root": root},
+        wanted, pins, {"two-guests": table})
+        for name, table, text, wanted in boundary_cases(latest, root)]
     classes = {}
     for name, image, mode, text, options, wanted, case_pins, table in cases:
         verdict, record = evaluate(text, table[image], mode, case_pins,
@@ -6157,6 +6442,22 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
         count += 1
         failed += not ok
         print(f"{'ok  ' if ok else 'FAIL'} [{claim}] {base}: {name}: "
+              f"{verdict} {named[:1] if ok else record['findings'][:3]}")
+    # M11-7: the boundary-on form's rules, on two-guests' stand-in.
+    _, on, on_text, _ = boundary_cases(latest, root)[0]
+    options = {"sbi_version": "2.0", "toolchain": "gcc", "build_root": root}
+    base_verdict = evaluate(on_text, on, "direct", pins, **options)[0]
+    off_text = current_log_standin(fixture(M9_FIXTURES["two-guests"]),
+                                   latest["two-guests"], root)
+    for name, table, text, wanted in boundary_mutations(
+            on, on_text, latest["two-guests"], off_text):
+        verdict, record = evaluate(text, table, "direct", pins, **options)
+        named = [finding for finding in record["findings"]
+                 if wanted in finding]
+        ok = base_verdict == "PASS" and verdict != "PASS" and bool(named)
+        count += 1
+        failed += not ok
+        print(f"{'ok  ' if ok else 'FAIL'} [boundary] two: {name}: "
               f"{verdict} {named[:1] if ok else record['findings'][:3]}")
     for base, name, text in seeded_mutations(
             current=lambda image, data: current_log_standin(

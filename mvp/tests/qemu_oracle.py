@@ -6,9 +6,10 @@
   qemu_oracle.py run --record FILE --exit-file FILE --qemu-output FILE
       --terminal-file FILE --terminal-regex REGEX --timeout S --grace S
       --harts N --machine-class NAME [--boundary-on]
-      --pmp CLASS --menvcfg CLASS --mseccfg CLASS
+      --pmp CLASS --menvcfg CLASS --mseccfg CLASS [--pmp-mode MODE]
       --ram-base ADDRESS --ram-size BYTES
-      --elf-word NAME=ELF -- QEMU ARG...
+      --elf-word NAME=ELF [--record-table FW_ELF --nm NM]
+      [--words FILE] -- QEMU ARG...
   qemu_oracle.py result FILE
   qemu_oracle.py not-attached FILE
   qemu_oracle.py --self-test --scratch DIR
@@ -42,6 +43,18 @@ emulator's test finisher exits QEMU directly, outside QEMU's shutdown
 request path, so no stopped machine exists for this client.  Those attempts
 run without QMP and carry the fixed one-line NOT-ATTACHED record written by
 the `not-attached` command.
+
+M11-7 (planning/mvp-m11-plan.md, D-10, D-12): a boundary-on run declares
+its PMP mode, plain or smepmp, and is refused before QEMU starts unless it
+is on k3-like with the PMP registers and menvcfg readable and mseccfg
+readable under Smepmp and absent under plain PMP (the decision record's
+erratum to `oracle: absent`); a boundary-off run declares none.
+--record-table names the firmware's commit records, sbi_dcommit_harts in
+FW_ELF by the lock's nm, 24 words per hart (t<hart>-<index>), which the
+boundary's checker (tests/check-boundary.py) judges. --words FILE names
+further RAM words and device registers; a device register must be one of
+a closed list, each read with no side effect at its own width: the UART's
+scratch register and the S-level APLIC's source configurations.
 """
 
 import argparse
@@ -71,6 +84,24 @@ UNKNOWN_REGISTER = 'unknown register\r\nTry "help p" for more information\r\n'
 REGISTER_CLASSES = ("readable", "absent")
 PMP_REGISTERS = ("pmpcfg0", "pmpcfg2",
                  *(f"pmpaddr{number}" for number in range(16)))
+PMP_MODES = ("plain", "smepmp", "none")
+WORDS_SCHEMA = "be-mvp-oracle-words-v1"
+# The firmware's ELF addresses are offsets from QEMU virt's RAM base, where
+# -bios loads it; its commit record of a hart is 24 words (struct
+# sbi_dcommit_hart: six words, sixteen configuration bytes, sixteen
+# addresses).
+FIRMWARE_BASE = 0x80000000
+RECORD_SYMBOL = "sbi_dcommit_harts"
+RECORD_WORDS = 24
+NM_LINE = re.compile(r"([0-9a-f]+) ([A-Za-z]) (\S+)")
+HEX_TEXT = re.compile(r"0x[0-9a-f]{1,16}")
+# The device registers a run may name, each read without a side effect at
+# its width: the UART's scratch register, and the S-level APLIC's
+# sourcecfg[1..96] (k3-like's base tree: riscv,num-sources = 96).
+DEVICE_WIDTHS = dict([(0x10000007, 1)] +
+                     [(0x0d000000 + 4 * source, 4)
+                      for source in range(1, 97)])
+DEVICE_UNITS = {1: ("b", 2), 4: ("w", 8)}
 
 
 class OracleError(Exception):
@@ -80,6 +111,15 @@ class OracleError(Exception):
 @dataclasses.dataclass(frozen=True)
 class NamedWord:
     """One named little-endian 64-bit physical word."""
+
+    name: str
+    address: int
+    expected: int | None
+
+
+@dataclasses.dataclass(frozen=True)
+class DeviceWord:
+    """One named device register of DEVICE_WIDTHS, read at its width."""
 
     name: str
     address: int
@@ -99,6 +139,8 @@ class OracleConfig:
     ram_base: int
     ram_size: int
     words: tuple[NamedWord, ...]
+    pmp_mode: str = "none"
+    devices: tuple[DeviceWord, ...] = ()
 
     def validate(self):
         if self.harts < 1:
@@ -108,10 +150,18 @@ class OracleConfig:
         declarations = (self.pmp, self.menvcfg, self.mseccfg)
         if any(value not in REGISTER_CLASSES for value in declarations):
             raise OracleError("a register class declaration is invalid")
-        if self.boundary_on and self.machine == "k3-like" and \
-                any(value != "readable" for value in declarations):
-            raise OracleError("a boundary-on k3-like run requires readable "
-                              "register classes")
+        if self.pmp_mode not in PMP_MODES:
+            raise OracleError("the PMP mode is not plain, smepmp, or none")
+        if self.boundary_on:
+            mseccfg = "readable" if self.pmp_mode == "smepmp" else "absent"
+            if self.machine != "k3-like" or self.pmp_mode == "none" or \
+                    declarations != ("readable", "readable", mseccfg):
+                raise OracleError(
+                    "a boundary-on run must be on k3-like in a PMP mode, "
+                    "with PMP and menvcfg readable and mseccfg readable "
+                    "under smepmp and absent under plain")
+        elif self.pmp_mode != "none":
+            raise OracleError("a boundary-off run declares no PMP mode")
         if self.ram_base < 0 or self.ram_size <= 0 or \
                 self.ram_base + self.ram_size > 1 << 64:
             raise OracleError("the RAM range is not a 64-bit range")
@@ -127,6 +177,18 @@ class OracleConfig:
                 raise OracleError(f"named word {word.name} is outside RAM")
             if word.expected is not None and not 0 <= word.expected < 1 << 64:
                 raise OracleError(f"named word {word.name} has no 64-bit value")
+        for device in self.devices:
+            if not NAME.fullmatch(device.name) or device.name in names:
+                raise OracleError("a named word has an invalid or repeated name")
+            names.add(device.name)
+            width = DEVICE_WIDTHS.get(device.address)
+            if width is None:
+                raise OracleError(f"device word {device.name} is not on the "
+                                  f"device list")
+            if device.expected is not None and \
+                    not 0 <= device.expected < 1 << (8 * width):
+                raise OracleError(f"device word {device.name} has no "
+                                  f"{8 * width}-bit value")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -210,6 +272,72 @@ def word_from_binary_elf(name, binary, elf):
     if len(binary_data) < 8 or binary_data[:8] != elf_data:
         raise OracleError("the flat binary's first word differs from its ELF")
     return NamedWord(name, address, int.from_bytes(binary_data[:8], "little"))
+
+
+def parse_nm(text, names):
+    """Each of NAMES's address in nm's output, each defined once."""
+    found = {}
+    for line in text.splitlines():
+        match = NM_LINE.fullmatch(line)
+        if match and match.group(3) in names:
+            if match.group(3) in found:
+                raise OracleError(f"{match.group(3)} is defined twice")
+            found[match.group(3)] = int(match.group(1), 16)
+    missing = sorted(set(names) - set(found))
+    if missing:
+        raise OracleError(f"the firmware's ELF has no {', '.join(missing)}")
+    return found
+
+
+def symbol_addresses(nm, elf, names):
+    output = subprocess.run([str(nm), str(elf)], capture_output=True,
+                            text=True, check=True).stdout
+    return parse_nm(output, names)
+
+
+def table_words(table, harts):
+    """The commit records' words, t<hart>-<index>, from TABLE's address."""
+    return tuple(NamedWord(f"t{hart}-{index}",
+                           table + 8 * (hart * RECORD_WORDS + index), None)
+                 for hart in range(harts) for index in range(RECORD_WORDS))
+
+
+def record_table_words(nm, elf, harts):
+    symbol = symbol_addresses(nm, elf, (RECORD_SYMBOL,))[RECORD_SYMBOL]
+    return table_words(FIRMWARE_BASE + symbol, harts)
+
+
+def words_from_file(path):
+    """--words FILE: (RAM words, device registers), each entry a name, a
+    hexadecimal address, and a hexadecimal expected value or null."""
+    try:
+        value = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise OracleError("the words file is not JSON") from error
+    if not isinstance(value, dict) or \
+            set(value) != {"schema", "words", "devices"} or \
+            value["schema"] != WORDS_SCHEMA:
+        raise OracleError("the words file is not of its schema")
+    out = []
+    for kind, make in (("words", NamedWord), ("devices", DeviceWord)):
+        if not isinstance(value[kind], list):
+            raise OracleError("the words file is not of its schema")
+        rows = []
+        for row in value[kind]:
+            if not isinstance(row, dict) or \
+                    set(row) != {"name", "address", "expected"} or \
+                    not isinstance(row["name"], str) or \
+                    not isinstance(row["address"], str) or \
+                    not HEX_TEXT.fullmatch(row["address"]) or \
+                    not (row["expected"] is None or
+                         (isinstance(row["expected"], str) and
+                          HEX_TEXT.fullmatch(row["expected"]))):
+                raise OracleError("a words-file entry is malformed")
+            rows.append(make(row["name"], int(row["address"], 16),
+                             None if row["expected"] is None
+                             else int(row["expected"], 16)))
+        out.append(tuple(rows))
+    return out[0], out[1]
 
 
 def write_new(path, data):
@@ -610,12 +738,35 @@ class OracleProcess:
             if word.expected is not None and value != word.expected:
                 raise OracleError(f"named word {word.name}: value mismatch")
 
+    def _read_devices(self):
+        for device in self.config.devices:
+            unit, digits = DEVICE_UNITS[DEVICE_WIDTHS[device.address]]
+            reply = self._hmp(f"xp /1{unit}x 0x{device.address:016x}", 0)
+            match = re.fullmatch(
+                rf"{device.address:016x}: 0x([0-9a-f]{{{digits}}})\r\n",
+                reply)
+            if not match:
+                raise OracleError(f"device word {device.name}: unexpected "
+                                  f"reply")
+            value = int(match.group(1), 16)
+            self.words.append({
+                "name": device.name,
+                "address": hex64(device.address),
+                "value": hex64(value),
+                "expected": (hex64(device.expected)
+                             if device.expected is not None else None),
+            })
+            if device.expected is not None and value != device.expected:
+                raise OracleError(f"device word {device.name}: value "
+                                  f"mismatch")
+
     def _snapshot(self):
         self.status_before = self._status(self.qmp.command("query-status"))
         if self.status_before["running"]:
             raise OracleError("the machine is running before the read")
         self._read_harts()
         self._read_words()
+        self._read_devices()
         self.status_after = self._status(self.qmp.command("query-status"))
         if self.status_after["running"]:
             raise OracleError("the machine is running after the read")
@@ -719,16 +870,23 @@ def direct_run(args):
         raise OracleError("the run limits are invalid")
     if not args.command:
         raise OracleError("no QEMU command was given")
-    words = []
+    words, devices = [], ()
     for spec in args.elf_word:
         name, separator, path = spec.partition("=")
         if not separator:
             raise OracleError("--elf-word must be NAME=ELF")
         words.append(word_from_elf(name, path))
+    if args.record_table:
+        if not args.nm:
+            raise OracleError("--record-table requires --nm")
+        words += record_table_words(args.nm, args.record_table, args.harts)
+    if args.words:
+        extra, devices = words_from_file(args.words)
+        words += extra
     config = OracleConfig(
         args.harts, args.machine_class, args.boundary_on, args.pmp,
         args.menvcfg, args.mseccfg, args.ram_base, args.ram_size,
-        tuple(words))
+        tuple(words), args.pmp_mode, devices)
     config.validate()
     terminal = re.compile(args.terminal_regex.encode("ascii"))
     terminal_file = pathlib.Path(args.terminal_file)
@@ -881,6 +1039,14 @@ class ScriptedPeer:
             value = self.word ^ (1 if self.defect == "word-mismatch" else 0)
             address = int(command.split()[-1], 0)
             return f"{address:016x}: 0x{value:016x}\r\n"
+        if command.startswith(("xp /1bx ", "xp /1wx ")):
+            if self.defect == "bad-device":
+                return "device\r\n"
+            digits = 2 if command.startswith("xp /1bx ") else 8
+            value = (0xa5 if digits == 2 else 1) ^ (
+                1 if self.defect == "device-mismatch" else 0)
+            address = int(command.split()[-1], 0)
+            return f"{address:016x}: 0x{value:0{digits}x}\r\n"
         return "unexpected\r\n"
 
     def run(self):
@@ -953,9 +1119,13 @@ def self_test(scratch):
     cases = []
     word = NamedWord("entry-word", 0x80000000, 0x1122334455667788)
 
+    devices = (DeviceWord("uart-scratch", 0x10000007, 0xa5),
+               DeviceWord("aplic-s-source-9", 0x0d000024, 1))
+
     def run_one(name, defect=None, end="guest-shutdown",
                 classes=("readable", "readable", "absent"),
-                machine="test", boundary=False, harness=False, status=0):
+                machine="test", boundary=False, harness=False, status=0,
+                attached=()):
         client, server = socket.socketpair()
         process = FakeProcess(status)
         peer = ScriptedPeer(server, process, defect, end, 2, classes,
@@ -963,8 +1133,8 @@ def self_test(scratch):
         record = scratch / f"{name}.json"
         qmp = QMPClient(client)
         oracle = OracleProcess(process, qmp, OracleConfig(
-            2, machine, boundary, *classes, 0x80000000, 0x100000, (word,)),
-            record)
+            2, machine, boundary, *classes, 0x80000000, 0x100000, (word,),
+            devices=attached), record)
         finish_end = None
         if not harness:
             finish_end = oracle.wait_end(1)
@@ -1069,15 +1239,123 @@ def self_test(scratch):
     case("an address outside RAM", lambda: refused_config(
         NamedWord("entry-word", 0x80001000, 0), "outside RAM"))
 
-    def refused_config_declaration():
+    def declared(boundary, machine, classes, mode):
         try:
-            OracleConfig(8, "k3-like", True, "absent", "readable",
-                         "readable", 0x80000000, 0x1000, (word,)).validate()
+            OracleConfig(8, machine, boundary, *classes, 0x80000000, 0x1000,
+                         (word,), mode).validate()
         except OracleError as error:
-            return "requires readable register classes" in str(error)
-        return False
-    case("a boundary-on k3-like row with a non-readable class", lambda: (
-        refused_config_declaration(), "refused before launch"))
+            return str(error)
+        return None
+    plain = ("readable", "readable", "absent")
+    smepmp = ("readable", "readable", "readable")
+    for name, boundary, machine, classes, mode, wanted in (
+            ("boundary-on plain", True, "k3-like", plain, "plain", None),
+            ("boundary-on smepmp", True, "k3-like", smepmp, "smepmp", None),
+            ("boundary-off without a mode", False, "rva23",
+             ("absent", "readable", "absent"), "none", None),
+            ("boundary-on plain with mseccfg readable", True, "k3-like",
+             smepmp, "plain", "boundary-on run must be"),
+            ("boundary-on smepmp with mseccfg absent", True, "k3-like",
+             plain, "smepmp", "boundary-on run must be"),
+            ("boundary-on with PMP absent", True, "k3-like",
+             ("absent", "readable", "absent"), "plain",
+             "boundary-on run must be"),
+            ("boundary-on off k3-like", True, "plic", plain, "plain",
+             "boundary-on run must be"),
+            ("boundary-on without a mode", True, "k3-like", plain, "none",
+             "boundary-on run must be"),
+            ("boundary-off with a mode", False, "k3-like", plain, "plain",
+             "declares no PMP mode"),
+            ("an unknown mode", False, "k3-like", plain, "epmp",
+             "not plain, smepmp, or none")):
+        case(f"declaration: {name}", lambda boundary=boundary,
+             machine=machine, classes=classes, mode=mode, wanted=wanted: (
+                 (error := declared(boundary, machine, classes, mode),
+                  error is None if wanted is None
+                  else wanted in (error or ""))[1], error or "accepted"))
+
+    case("device registers read at their widths", lambda: (
+        (outcome := run_one("devices", attached=devices)[0]).passed and
+        [item["value"] for item in json.loads(
+            (scratch / "devices.json").read_text())["words"][1:]] ==
+        [hex64(0xa5), hex64(1)], outcome.detail))
+    for name, defect, wanted in (
+            ("an unexpected device reply", "bad-device",
+             "device word uart-scratch: unexpected"),
+            ("a mismatching device value", "device-mismatch",
+             "device word uart-scratch: value mismatch")):
+        case(name, lambda defect=defect, wanted=wanted, name=name: (
+            not (outcome := run_one(re.sub(r"[^a-z]+", "-", name).strip("-"),
+                                    defect, attached=devices)[0]).passed and
+            wanted in outcome.detail, outcome.detail))
+
+    def refused_device(device, wanted):
+        try:
+            OracleConfig(8, "test", False, *plain, 0x80000000, 0x1000,
+                         (word,), devices=(device,)).validate()
+        except OracleError as error:
+            return wanted in str(error), str(error)
+        return False, "the device word was accepted"
+    case("a device address off the list", lambda: refused_device(
+        DeviceWord("uart-data", 0x10000000, None), "not on the device list"))
+    case("an APLIC source past 96", lambda: refused_device(
+        DeviceWord("aplic", 0x0d000000 + 4 * 97, None),
+        "not on the device list"))
+    case("a device value wider than its register", lambda: refused_device(
+        DeviceWord("uart-scratch", 0x10000007, 0x100), "no 8-bit value"))
+    case("a device name repeating a word's", lambda: refused_device(
+        DeviceWord("entry-word", 0x10000007, None), "repeated name"))
+
+    nm_text = ("0000000000000000 T _fw_start\n"
+               "0000000000041230 B sbi_dcommit_harts\n"
+               "0000000000052000 A _fw_end\n")
+
+    def nm_case(text, names, wanted):
+        try:
+            found = parse_nm(text, names)
+        except OracleError as error:
+            return wanted in str(error), str(error)
+        return wanted == found, str(found)
+    case("nm: the symbols found", lambda: nm_case(
+        nm_text, ("_fw_start", "_fw_end", RECORD_SYMBOL),
+        {"_fw_start": 0, "_fw_end": 0x52000, RECORD_SYMBOL: 0x41230}))
+    case("nm: a missing symbol", lambda: nm_case(
+        nm_text, ("_fw_rw_start",), "has no _fw_rw_start"))
+    case("nm: a symbol defined twice", lambda: nm_case(
+        nm_text + "0000000000041230 b sbi_dcommit_harts\n",
+        (RECORD_SYMBOL,), "defined twice"))
+
+    def table_case():
+        words = table_words(FIRMWARE_BASE + 0x41230, 8)
+        first, last = words[0], words[-1]
+        return (len(words) == 8 * RECORD_WORDS and
+                first == NamedWord("t0-0", 0x80041230, None) and
+                last == NamedWord("t7-23", 0x80041230 + 8 * (8 * 24 - 1),
+                                  None)), f"{len(words)} words"
+    case("the commit records' names and addresses", table_case)
+
+    def words_file_case(content, wanted):
+        path = scratch / "words.json"
+        path.unlink(missing_ok=True)
+        path.write_text(json.dumps(content), encoding="utf-8")
+        try:
+            found = words_from_file(path)
+        except OracleError as error:
+            return wanted in str(error), str(error)
+        return found == wanted, str(found)
+    good = {"schema": WORDS_SCHEMA,
+            "words": [{"name": "g0-phase", "address": "0x102063130",
+                       "expected": None}],
+            "devices": [{"name": "uart-scratch", "address": "0x10000007",
+                         "expected": "0xa5"}]}
+    case("a words file", lambda: words_file_case(good, (
+        (NamedWord("g0-phase", 0x102063130, None),),
+        (DeviceWord("uart-scratch", 0x10000007, 0xa5),))))
+    case("a words file of another schema", lambda: words_file_case(
+        dict(good, schema="other"), "not of its schema"))
+    case("a words-file entry with a decimal address", lambda: words_file_case(
+        dict(good, words=[{"name": "w", "address": "4096",
+                           "expected": None}]), "entry is malformed"))
 
     def not_attached_record():
         first, second = scratch / "not-attached-a.json", \
@@ -1129,9 +1407,13 @@ def main(argv):
     for register_class in ("pmp", "menvcfg", "mseccfg"):
         run.add_argument(f"--{register_class}", choices=REGISTER_CLASSES,
                          required=True)
+    run.add_argument("--pmp-mode", choices=PMP_MODES, default="none")
     run.add_argument("--ram-base", type=integer, required=True)
     run.add_argument("--ram-size", type=integer, required=True)
     run.add_argument("--elf-word", action="append", default=[])
+    run.add_argument("--record-table")
+    run.add_argument("--nm")
+    run.add_argument("--words")
     run.add_argument("command", nargs=argparse.REMAINDER)
     result = commands.add_parser("result")
     result.add_argument("record")

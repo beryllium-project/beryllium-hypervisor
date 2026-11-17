@@ -51,10 +51,17 @@ the last step of `check`) holds:
                     anchor, each with its report, its self-test and
                     mutations, and the build-time negatives
   qemu/             every QEMU attempt's capture, checker output, checker
-                    record, and oracle record (a full read, or CHERI's
-                    fixed NOT-ATTACHED record), with the log's export
+                    record, oracle record (a full read, or CHERI's fixed
+                    NOT-ATTACHED record), and boundary record
+                    (tests/check-boundary.py's, or its NOT-APPLICABLE line
+                    for a boundary-off run), with the log's export
                     (STEM.log.json) where the rule below wants one, the
-                    attempts table, and the suite's summary
+                    attempts table, and the suite's summary; the table's
+                    boundary, pmp_mode, dtb_sha256, and control_hart
+                    columns say, for each attempt, whether the boundary was
+                    on, its PMP mode and device tree (each tree among the
+                    partition outputs of images.sha256), and that the
+                    control hart was boot code (M11-7's step 1), or -
   sessions/         M7-4's typed sessions (tests/session-typist.py,
                     planning/mvp-m7-plan.md, D-11): sessions.txt and
                     sessions.tsv, and each attempt's capture, checker
@@ -274,13 +281,21 @@ FIRMWARE_IMAGE = pathlib.Path(
     "firmware/platform/generic/firmware/fw_dynamic.bin")
 # A v3 expectation's measured input's file name in BUILD/guest.
 GUEST_NAME_FORM = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
-ATTEMPT_COLUMNS = ("toolchain", "run", "attempt", "boot_hart", "qemu_exit",
-                   "verdict", "capture_sha256", "elf", "elf_sha256")
-ATTEMPT_FILES = ("console.log", "check.txt", "result.json", "oracle.json")
+RUN_COLUMNS = ("toolchain", "run", "attempt", "boot_hart", "qemu_exit",
+               "verdict", "capture_sha256", "elf", "elf_sha256")
+ATTEMPT_COLUMNS = RUN_COLUMNS + ("boundary", "pmp_mode", "dtb_sha256",
+                                 "control_hart")
+ATTEMPT_FILES = ("console.log", "check.txt", "result.json", "oracle.json",
+                 "boundary.txt")
+# M11-7: a boundary-off attempt's boundary record, and the form of a
+# boundary-on one's last line (step 1: the control hart is boot code).
+NOT_APPLICABLE = "BE_MVP_BOUNDARY: NOT-APPLICABLE boundary=off\n"
+BOUNDARY_ON = re.compile(r"BE_MVP_BOUNDARY: (?:PASS|FAIL) image=\S+ pair=\S+ "
+                         r"pmp_mode=(plain|smepmp) control_hart=boot .*")
 # M7-4's sessions (tests/session-typist.py suite), under BUILD/qemu: the
 # summary, the attempts table, and each attempt's records, in
 # TOOLCHAIN/IMAGE/attempt-N/.
-TYPED_COLUMNS = ATTEMPT_COLUMNS + ("keys", "steps", "seconds")
+TYPED_COLUMNS = RUN_COLUMNS + ("keys", "steps", "seconds")
 TYPED_FILES = ("console.log", "check.txt", "result.json", "oracle.json",
                "typed.txt", "nonce.txt", "session.txt", "steps.txt")
 TYPED_ELF = re.compile(r"^variants/(?:gcc|clang)/[a-z0-9][a-z0-9.-]{0,63}/"
@@ -655,11 +670,43 @@ def qemu_attempts(build):
         for suffix in ATTEMPT_FILES:
             if not (suite / f"{stem}.{suffix}").is_file():
                 raise Refused(f"{stem}.{suffix} is missing")
+        boundary_row(attempt, row, suite / f"{stem}.boundary.txt")
         attempt["stem"] = stem
         attempts.append(attempt)
     if not attempts:
         raise Refused("attempts.tsv has no attempt")
     return suite, summary, attempts
+
+
+def boundary_row(attempt, row, record):
+    """M11-7: an attempt's boundary columns and record agree: on, with a
+    PMP mode, a device tree, control_hart=boot, and check-boundary's line
+    in that mode; or off, with none, and the NOT-APPLICABLE line."""
+    text = record.read_text(encoding="utf-8")
+    last = text.splitlines()[-1] if text.strip() else ""
+    on = attempt["boundary"] == "on" and \
+        attempt["pmp_mode"] in ("plain", "smepmp") and \
+        SHA_FORM.match(attempt["dtb_sha256"]) and \
+        attempt["control_hart"] == "boot"
+    off = (attempt["boundary"], attempt["pmp_mode"], attempt["dtb_sha256"],
+           attempt["control_hart"]) == ("off", "-", "-", "-")
+    match = BOUNDARY_ON.fullmatch(last)
+    if not (on and match and match.group(1) == attempt["pmp_mode"]) and \
+            not (off and text == NOT_APPLICABLE):
+        raise Refused(f"attempts.tsv row {row!r} and its boundary record "
+                      f"{last!r} do not agree")
+
+
+def boundary_trees(attempts, images):
+    """Each boundary-on attempt's device tree among the partition outputs
+    images.sha256 lists."""
+    trees = {digest for digest, path in images
+             if path.startswith("partition/") and path.endswith(".dtb")}
+    for attempt in attempts:
+        if attempt["boundary"] == "on" and attempt["dtb_sha256"] not in trees:
+            raise Refused(f"{attempt['stem']} ran a device tree "
+                          f"{attempt['dtb_sha256'][:12]} that no partition "
+                          f"output has")
 
 
 def session_attempts(build):
@@ -874,6 +921,7 @@ def development(build, out, home):
     generated = scenarios(build)
     images = image_manifest(build)
     suite, summary, attempts = qemu_attempts(build)
+    boundary_trees(attempts, images)
     runs = qemu_runs(attempts)
     sessions_root, sessions_summary, sessions = session_attempts(build)
     made = rehearsal_cases(build)
@@ -1582,6 +1630,9 @@ def synthetic_build(root):
                 ("gcc", "payload", 1, "0", "PASS", "variants/gcc/payload"),
                 ("gcc", "te-poc-k3-like", 1, "0", "PASS", "gcc/te-poc"),
                 ("gcc", "anchor-k3-like", 1, "5", "PASS", "gcc/anchor"))
+    tree = build / "partition" / "two-guests" / "payload" / "plain"
+    tree.mkdir(parents=True)
+    (tree / "payload.dtb").write_bytes(b"\xd0\x0d\xfe\xed tree\n")
     for toolchain, run_name, attempt, hart, verdict, directory in attempts:
         stem = f"{toolchain}-{run_name}.{attempt}"
         elf = f"{directory}/be-mvp-boot.elf"
@@ -1592,9 +1643,18 @@ def synthetic_build(root):
         (suite / f"{stem}.oracle.json").write_text("{}\n", encoding="ascii")
         judged(build, suite / f"{stem}.result.json", image, verdict,
                {"hart0_idle_ticks": 7} if verdict == "PASS" else {})
+        columns = ("off", "-", "-", "-")
+        record = NOT_APPLICABLE
+        if run_name == "payload":
+            columns = ("on", "plain", file_sha(tree / "payload.dtb"), "boot")
+            record = ("BE_MVP_BOUNDARY: PASS image=payload pair=two-guests "
+                      "pmp_mode=plain control_hart=boot harts=0:boot,"
+                      "1:never-started,2:never-started,3-7:never-started "
+                      "identity=0123456789ab\n")
+        (suite / f"{stem}.boundary.txt").write_text(record, encoding="ascii")
         rows.append("\t".join((toolchain, run_name, str(attempt), hart, "0",
                                verdict, "0" * 64, elf,
-                               file_sha(build / elf))))
+                               file_sha(build / elf)) + columns))
     (suite / "attempts.tsv").write_text("\n".join(rows) + "\n",
                                         encoding="ascii")
     for relative in ("gen/partition", "records/partition",
@@ -1893,7 +1953,33 @@ def self_test(scratch):
     case("a recorded image path outside its form refuses the bundle",
          "is not of its form" in
          (refused(development, build, scratch / "bundle-3", home) or ""))
+    tree = build / "partition" / "two-guests" / "payload" / "plain" / \
+        "payload.dtb"
+    for name, old, new in (
+            ("a boundary-on attempt without control_hart=boot",
+             "\tplain\t" + file_sha(tree) + "\tboot",
+             "\tplain\t" + file_sha(tree) + "\t-"),
+            ("a boundary-on attempt in another PMP mode than its record's",
+             "\tplain\t" + file_sha(tree), "\tsmepmp\t" + file_sha(tree)),
+            ("a boundary-off attempt with a PMP mode",
+             "\toff\t-\t-\t-\n", "\toff\tplain\t-\t-\n")):
+        table.write_text(original.replace(old, new, 1), encoding="ascii")
+        case(f"{name} refuses the bundle",
+             "do not agree" in
+             (refused(development, build, scratch / "bundle-3", home) or ""))
+    table.write_text(original.replace(file_sha(tree), "e" * 64),
+                     encoding="ascii")
+    case("a boundary-on attempt's tree that no partition output has "
+         "refuses the bundle", "that no partition output has" in
+         (refused(development, build, scratch / "bundle-3", home) or ""))
     table.write_text(original, encoding="ascii")
+    record = build / "qemu" / "suite" / "gcc-k3-like.2.boundary.txt"
+    record.write_text("BE_MVP_BOUNDARY: PASS image=two-guests\n",
+                      encoding="ascii")
+    case("a boundary-off attempt with a boundary verdict refuses the bundle",
+         "do not agree" in
+         (refused(development, build, scratch / "bundle-3", home) or ""))
+    record.write_text(NOT_APPLICABLE, encoding="ascii")
     record = build / "records" / "budgets.txt"
     record.unlink()
     case("a missing record refuses the bundle",
