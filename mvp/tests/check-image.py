@@ -286,6 +286,21 @@ line. An off image links none of these. Each scenario's off copy
 MVP profile itself; a variant whose boundary differs from its
 reference's is checked against the scenario's off copy (shim-rule's
 always).
+M11-8 (planning/mvp-m11-plan.md, D-4 rule 1; I22): in a boundary-on
+image, each constant that the control role's code names in the MVP
+control constants or the monitor's shared constants, and each constant
+that its words name in turn, holds no image address outside the control
+profile but be_mvp_bindings' two G-stage roots (C8); each object that
+boot code hands to hart 0's state (the management grants and state, the
+sealed maps and pages or channel, the ring views, console input and its
+buffer) lies in the control profile with the rights hart 0 uses, and
+each one that the scenario's kind has is linked (C9); and no function in
+a role's text extents and no constant in a role's constant range is
+reached from be_reset without being reached from that role, or for the
+shared extents from either role (C10). What no root reaches is not
+refused, and a constant without a symbol of its own (a merged string)
+runs on to the next symbol: one that only boot code names, after one
+that the role names, is not refused.
 --mutation-test applies known defects in memory, to the images, their
 ELF headers and symbols, the link map, or the layout they are built from,
 and requires each to be rejected for its own reason.
@@ -461,8 +476,7 @@ ROLE_EXTENTS = (
     ("MVP control", LAYOUT["MVP_CONTROL_TEXT_HPA"],
      LAYOUT["MVP_CONTROL_TEXT_HPA"] + LAYOUT["MVP_CONTROL_TEXT_BYTES"],
      {"mvp-trap.o", "mvp-runtime.o", "mvp-hart.o", "mvp-input.o",
-      "mvp-executor.o", "mvp-sha256.o", "mvp-sbi.o", "mvp-log.o",
-      "mvp-probe.o"}),
+      "mvp-executor.o", "mvp-sha256.o", "mvp-sbi.o", "mvp-probe.o"}),
     ("MVP VS-domain-hart", LAYOUT["MVP_DOMAIN_TEXT_HPA"],
      LAYOUT["MVP_DOMAIN_TEXT_HPA"] + LAYOUT["MVP_DOMAIN_TEXT_BYTES"],
      {"mvp-hartentry.o", "mvp-trap.o", "mvp-hartmain.o", "mvp-sbi.o",
@@ -608,6 +622,8 @@ MVP_INJECT = "be_mvp_arch_inject"
 # The executor's install and injection (planning/mvp-m6-plan.md, D-5).
 EXEC_INSTALL = "be_mvp_exec_install_hgatp"
 EXEC_INJECT = "be_mvp_exec_inject"
+# The executor's henvcfg arm, which boot code and each VS-domain hart call.
+EXEC_STCE = "be_mvp_exec_arm_stce"
 # M11-7 (planning/mvp-m11-plan.md, D-3 "Pairing", D-6, D-8, D-12): a
 # boundary-on image's confining stub, the domain commit extension's two
 # executor functions, and the image's configuration identity, the
@@ -1348,6 +1364,7 @@ class Elf:
             self.section_headers[name] = shoff + index * shentsize
         self.symbols = {}
         self.functions = []
+        self.objects = []
         self.undefined = []
         for section in sections:
             if section[1] != 2:  # SHT_SYMTAB
@@ -1369,6 +1386,8 @@ class Elf:
                     name, value) == value else None
                 if st_info & 0xF == 2 and size:  # STT_FUNC
                     self.functions.append((value, size, name))
+                elif st_info & 0xF == 1 and size:  # STT_OBJECT
+                    self.objects.append((value, size, name))
 
     def section_bytes(self, name):
         section = self.sections.get(name)
@@ -2106,14 +2125,20 @@ def check_helpers(elf, flat, base, symbols, profile):
 
 
 def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
-                       inject_sites=0, boundary=False, breach_map=None):
+                       inject_sites=0, boundary=False, breach_map=None,
+                       scenario_kind=(False, False)):
     """The ecall/sret/fence/CSR rules over the monitor's code: the accepted
     code extent and the MVP region's text, each [start, end); the injection
     helper with inject_sites call sites (1 in an image that accepts
     denials, else 0); in a boundary-on image (M11-7) its stub and
-    extension calls (check_boundary_code()); and in a breach image (M11-7,
-    BREACH_MAP its link map) its hook's sites, writers, instructions, and
-    calls (check_breach_code())."""
+    extension calls (check_boundary_code()), and (M11-8) its constants and
+    placement (check_role_constants(), SCENARIO_KIND its scenario's
+    (management, pages)); and in a breach image (M11-7, BREACH_MAP its link map) its
+    hook's sites, writers, instructions, and calls (check_breach_code())."""
+    require(not boundary or profile == "mvp",
+            f"a boundary-on image of profile {profile}: only an MVP "
+            f"scenario image has the control role whose rules the "
+            f"boundary needs")
     install_extra, hgatp_extra, _ = PROFILES[profile]
     if profile == "mvp":
         require("be_mvp_send_ipi" not in symbols and
@@ -2159,19 +2184,24 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
     check_sites(sites, writers, csr_writers, expected_sites)
     found = check_references(functions, decoded_all, symbols, install_extra,
                              install_callers, inject_sites, boundary)
+    nodes = role_nodes(functions, decoded_all)
     check_domain_reach(elf, functions, found, symbols, profile)
-    check_role_reach(
+    _, domain = check_role_reach(
         elf, functions, decoded_all, symbols, DOMAIN_ROOTS,
         DOMAIN_CODE_EXTENTS,
         DOMAIN_REFERENCE_EXTENTS if profile == "mvp"
         else PROBE_REFERENCE_EXTENTS,
-        "VS-domain-hart")
+        "VS-domain-hart", nodes)
     if profile == "mvp":
-        check_control_reach(elf, functions, decoded_all, symbols)
+        control = check_control_reach(elf, functions, decoded_all, symbols,
+                                      nodes)
     # M11-7: after the role rules, so that each of their defects is still
     # reported as theirs.
     if boundary:
         check_boundary_code(functions, decoded_all, found, symbols)
+        # M11-8: the constants and placement rules, after the code's.
+        check_role_constants(elf, flat, nodes, control, domain, symbols,
+                             scenario_kind)
     if breach_map is not None:
         check_breach_code(functions, found, symbols, breach_map)
     check_canary(elf, flat, base, found, symbols)
@@ -2429,9 +2459,9 @@ def check_domain_reach(elf, functions, found, symbols, profile="mvp"):
     return names
 
 
-def check_role_reach(elf, functions, decoded_all, symbols, roots, allowed,
-                     reference_extents, label):
-    """A duplicate-symbol-safe transitive role and data closure."""
+def role_nodes(functions, decoded_all):
+    """The role rules' graph, once per image: each function's (start, end,
+    owner, its references, its words by pc)."""
     require(len(functions) == len(decoded_all),
             "the role reachability inputs differ in length")
     nodes = []
@@ -2439,12 +2469,25 @@ def check_role_reach(elf, functions, decoded_all, symbols, roots, allowed,
         nodes.append((start, start + size, owner,
                       references(decoded, f"{owner}@0x{start:x}"),
                       {pc: (width, word) for pc, width, word in decoded}))
-    starts = [start for start, _, _, _, _ in nodes]
+    return nodes
+
+
+def node_owner(nodes):
+    """The index of the node whose extent holds an address, or None."""
+    starts = [node[0] for node in nodes]
 
     def owner_at(address):
         index = bisect.bisect_right(starts, address) - 1
         return index if index >= 0 and address < nodes[index][1] else None
+    return owner_at
 
+
+def check_role_reach(elf, functions, decoded_all, symbols, roots, allowed,
+                     reference_extents, label, nodes=None):
+    """A duplicate-symbol-safe transitive role and data closure."""
+    if nodes is None:
+        nodes = role_nodes(functions, decoded_all)
+    owner_at = node_owner(nodes)
     reached = {owner_at(symbols[root]) for root in roots}
     require(None not in reached, f"a {label} root is not a function")
     parent = {index: None for index in reached}
@@ -2509,15 +2552,245 @@ def check_role_reach(elf, functions, decoded_all, symbols, roots, allowed,
     return nodes, reached
 
 
-def check_control_reach(elf, functions, decoded_all, symbols):
-    """The post-barrier control loop and synchronous-exception terminal."""
-    nodes, _ = check_role_reach(
+def check_control_reach(elf, functions, decoded_all, symbols, nodes=None):
+    """The post-barrier control loop and synchronous-exception terminal;
+    returns the control role's reached nodes."""
+    nodes, reached = check_role_reach(
         elf, functions, decoded_all, symbols, (CONTROL_LOOP, MVP_TERMINAL),
-        CONTROL_CODE_EXTENTS, CONTROL_REFERENCE_EXTENTS, "control")
+        CONTROL_CODE_EXTENTS, CONTROL_REFERENCE_EXTENTS, "control", nodes)
     vector = next(node for node in nodes if node[0] == symbols[MVP_VECTOR])
     require(any(target == symbols[MVP_TERMINAL]
                 for _, target, _ in vector[3]),
             "the shared trap vector does not reach the control terminal")
+    return reached
+
+
+# M11-8 (planning/mvp-m11-plan.md, D-4 rule 1; I22 (b)): the objects that
+# boot code hands to hart 0's state (rule C9), each with the rights hart 0
+# uses on it. By the registration calls before the barrier: by pointer,
+# be_mvp_control_mgmt() the management state (be_mvp_ctl's mgmt) and the
+# grants (the state's grants), which the control loop reads after the
+# barrier through those pointers alone (no instruction of its own forms
+# the grants' address); filled by boot code and then addressed by the
+# control loop itself, the three ring views (ring_views(): their buffer
+# and index pointers into the mailboxes) and the console input state and
+# its buffer (be_mvp_input_arm()); by copy, be_mvp_control_pages() or
+# be_mvp_control_channel() and seal_windows() the sealed pages or channel
+# and each map's window into be_mvp_ctl, after which the control loop
+# reads only the copies. Every boundary-on scenario image links the names
+# of HANDED_EVERY; the others by the scenario's kind (handed_names()).
+HANDED_OVER = (
+    (MVP_GRANTS_SYMBOL, "r"), (MVP_MGMT_STATE_SYMBOL, "rw"),
+    ("be_mvp_maps", "r"), ("be_mvp_sealed_pages", "r"),
+    ("be_mvp_sealed_channel", "r"), ("be_mvp_inbound", "rw"),
+    ("be_mvp_outbound", "rw"), (MVP_INPUT_RINGS_SYMBOL, "rw"),
+    (MVP_CONSOLE_IN_SYMBOL, "rw"), (MVP_CONSOLE_BUFFER_SYMBOL, "rw"))
+HANDED_EVERY = ("be_mvp_maps", "be_mvp_sealed_pages", "be_mvp_inbound",
+                "be_mvp_outbound", MVP_INPUT_RINGS_SYMBOL,
+                MVP_CONSOLE_IN_SYMBOL, MVP_CONSOLE_BUFFER_SYMBOL)
+# Each role's constant ranges, by their link symbols: rule C8 reads the
+# control role's, rule C10 all three.
+ROLE_CONSTANTS = (
+    ("control", "__be_mvp_control_constants_start",
+     "__be_mvp_control_constants_end"),
+    ("shared", "__be_monitor_shared_constants_start",
+     "__be_monitor_shared_constants_end"),
+    ("VS-domain-hart", "__be_mvp_domain_constants_start",
+     "__be_mvp_domain_constants_end"))
+# A breach image's table of attempts holds its targets' addresses as
+# numbers (M11-7), which the breach rules judge: no pointer is read there.
+ADDRESS_NUMBERS = ("be_mvp_breach_attempts",)
+# Rule C10's role extents, each with the roles whose reach may hold it.
+ROLE_CODE = (
+    ("monitor control text", "MONITOR_CONTROL_TEXT", ("control",)),
+    ("monitor shared text", "MONITOR_SHARED_TEXT",
+     ("control", "VS-domain-hart")),
+    ("monitor VS-domain-hart text", "MONITOR_DOMAIN_TEXT",
+     ("VS-domain-hart",)),
+    ("MVP control text", "MVP_CONTROL_TEXT", ("control",)),
+    ("MVP VS-domain-hart text", "MVP_DOMAIN_TEXT", ("VS-domain-hart",)))
+
+
+def handed_names(mgmt, pages):
+    """The names of HANDED_OVER that a boundary-on image links by its
+    scenario's kind: HANDED_EVERY; the grants and the management state with
+    the management extension (MGMT); the sealed channel record where the
+    scenario has no pages (PAGES), a channel or none."""
+    return set(HANDED_EVERY) | \
+        ({MVP_GRANTS_SYMBOL, MVP_MGMT_STATE_SYMBOL} if mgmt else set()) | \
+        (set() if pages else {"be_mvp_sealed_channel"})
+
+
+def closure(nodes, owner_at, starts):
+    """The nodes reached from the node indices STARTS, every edge followed,
+    and the addresses they form outside every function."""
+    reached = set(starts)
+    work = sorted(reached)
+    while work:
+        source = work.pop()
+        for _, target, _ in nodes[source][3]:
+            owner = owner_at(target)
+            if owner is not None and owner not in reached:
+                reached.add(owner)
+                work.append(owner)
+    return reached, data_targets(nodes, owner_at, reached)
+
+
+def data_targets(nodes, owner_at, reached):
+    """The addresses that the reached nodes form outside every function."""
+    return {target for index in reached
+            for _, target, link in nodes[index][3]
+            if link is None and owner_at(target) is None}
+
+
+def constant_finder(elf, symbols):
+    """A function from an address to the constant that holds it in a role's
+    constant range (ROLE_CONSTANTS): its sized object, else (a jump table,
+    a string) the bytes from the address to the next symbol or the
+    range's end; (start, end, name), or None outside every range. A
+    constant without a symbol of its own is so taken to run on to the next
+    symbol: a merged string that only boot code names, after one that a
+    role names and before the next symbol, is held by that role's."""
+    ranges = [(symbols[low], symbols[high]) for _, low, high in
+              ROLE_CONSTANTS if symbols.get(low) is not None and
+              symbols.get(high) is not None]
+    objects = sorted(elf.objects)
+    starts = [value for value, _, _ in objects]
+    longest = max((size for _, size, _ in objects), default=0)
+    values = sorted({value for value in symbols.values()
+                     if value is not None})
+
+    def find(address):
+        held = [high for low, high in ranges if low <= address < high]
+        if not held:
+            return None
+        index = bisect.bisect_right(starts, address) - 1
+        while index >= 0 and objects[index][0] + longest > address:
+            value, size, name = objects[index]
+            if value <= address < value + size:
+                return value, value + size, name
+            index -= 1
+        following = bisect.bisect_right(values, address)
+        end = values[following] if following < len(values) else held[0]
+        return address, min(end, held[0]), f"0x{address:x}"
+    return find
+
+
+def pointer_closure(flat, find, addresses, check=None):
+    """The constants that ADDRESSES fall in, and those that their 8-byte
+    words name in turn, transitively; CHECK(name, at, start, word) sees
+    each word that is an address inside the image. Returns {start: (end,
+    name)} and every image address those words hold."""
+    found, named = {}, set()
+    work = sorted(addresses)
+    while work:
+        extent = find(work.pop())
+        if extent is None or extent[0] in found:
+            continue
+        start, end, name = extent
+        found[start] = (end, name)
+        if name in ADDRESS_NUMBERS:
+            continue
+        for at in range(start + (-start) % 8, end - 7, 8):
+            word = struct.unpack_from("<Q", flat, at - BASE)[0]
+            if not BASE <= word < BASE + SPAN:
+                continue
+            if check is not None:
+                check(name, at, start, word)
+            named.add(word)
+            work.append(word)
+    return found, named
+
+
+def check_role_constants(elf, flat, nodes, control, domain, symbols,
+                         kind=(False, False)):
+    """M11-8's rules C8 to C10 in a boundary-on image (planning/
+    mvp-m11-plan.md, D-4 rule 1; I22).
+
+    C8: each constant that control-reached code names, in the MVP control
+    constants or the monitor's shared constants, and each constant its
+    words name in turn, holds no 8-byte word that is an image address
+    outside the control profile, but be_mvp_bindings' two G-stage root
+    words, which the binding rule pins as numbers. C9: each object that
+    boot code hands to hart 0's state (HANDED_OVER) lies in the control
+    profile with the rights hart 0 uses, and the image links each one that
+    its scenario's KIND, (management, pages), has (handed_names()). C10:
+    no function in a role's text extents and no constant in a role's
+    constant range is reached from the boot roots without being reached
+    from that role (for the shared extents, from either role); what no
+    root reaches is not refused, and a constant without a symbol is taken
+    to run on to the next symbol (constant_finder()), so that a merged
+    string only boot code names is not refused where it follows one that
+    the role names."""
+    owner_at = node_owner(nodes)
+    find = constant_finder(elf, symbols)
+    roots = (LAYOUT["G0_ROOT_HPA"], LAYOUT["G1_ROOT_HPA"])
+
+    def profile(name, at, start, word):
+        if name == MVP_BINDINGS_SYMBOL and (at - start) % 24 == 16 and \
+                word in roots:
+            return
+        require(any(low <= word < high
+                    for _, low, high, _ in CONTROL_REFERENCE_EXTENTS),
+                f"the control role's constant {name} holds 0x{word:x} at "
+                f"0x{at:x}, an address outside the control profile")
+    control_constants, control_named = pointer_closure(
+        flat, find, data_targets(nodes, owner_at, control), profile)
+    handed = set()
+    linked = handed_names(*kind)
+    for name, rights in HANDED_OVER:
+        if name not in symbols:
+            require(name not in linked,
+                    f"the image links no {name}, which boot code hands to "
+                    f"hart 0's state in every image of its kind (C9)")
+            continue
+        start = symbols[name]
+        require(start is not None, f"{name} is not one symbol")
+        end = start + symbol_size(elf, name)
+        require(any(low <= start and end <= high and rights in held
+                    for _, low, high, held in CONTROL_REFERENCE_EXTENTS),
+                f"{name}, which boot code hands to hart 0's state, lies at "
+                f"0x{start:x}-0x{end:x}, outside the control profile with "
+                f"rights {rights} (C9)")
+        handed.add(start)
+    handed_constants, handed_named = pointer_closure(flat, find, handed,
+                                                     profile)
+    control_constants.update(handed_constants)
+    boot, boot_data = closure(nodes, owner_at,
+                              [owner_at(symbols["be_reset"])])
+    boot_constants, boot_named = pointer_closure(flat, find, boot_data)
+    domain_constants, domain_named = pointer_closure(
+        flat, find, data_targets(nodes, owner_at, domain))
+
+    def functions(reached, named):
+        return reached | {owner_at(address) for address in named
+                          if owner_at(address) is not None}
+    reach = {"control": (functions(control, control_named | handed_named),
+                         control_constants),
+             "VS-domain-hart": (functions(domain, domain_named),
+                                domain_constants)}
+    boot = functions(boot, boot_named)
+    for label, extent, roles in ROLE_CODE:
+        low = LAYOUT[f"{extent}_HPA"]
+        high = low + LAYOUT[f"{extent}_BYTES"]
+        for index in sorted(boot):
+            start, end, owner, _, _ = nodes[index]
+            require(not low <= start < high or
+                    any(index in reach[role][0] for role in roles),
+                    f"{owner} at 0x{start:x}-0x{end:x} lies in the {label} "
+                    f"and only boot code reaches it (C10)")
+    for label, start_symbol, end_symbol in ROLE_CONSTANTS:
+        low, high = symbols[start_symbol], symbols[end_symbol]
+        roles = ("control", "VS-domain-hart") if label == "shared" \
+            else (label,)
+        held = [(begin, finish) for role in roles
+                for begin, (finish, _) in reach[role][1].items()]
+        for start, (end, name) in sorted(boot_constants.items()):
+            require(not low <= start < high or
+                    any(begin <= start < finish for begin, finish in held),
+                    f"the constant {name} at 0x{start:x}-0x{end:x} lies in "
+                    f"the {label} constants and only boot code reaches it "
+                    f"(C10)")
 
 
 def store_fields(word):
@@ -3857,12 +4130,15 @@ def report_grants(report):
     return grants
 
 
-def check_mgmt_record(elf, flat, base, scenario):
-    """An image of a scenario with the management extension
-    (planning/mvp-m2-plan.md): the linked grants, by their own rules and
-    the scenario's report's and expectation's; where they and hart 0's
-    management state lie; and the extension's functions linked. An image
-    of any other scenario links none of them. Returns the grants."""
+def check_mgmt_placement(elf, scenario):
+    """Where the management extension's objects lie (planning/mvp-m2-plan.md;
+    M11-8): in an image of a scenario with the extension, its symbols
+    linked, the grants 1 to MGMT_GRANTS_MAX whole grants in the MVP control
+    constants and hart 0's management state in the control writable-data
+    extent; in any other image, none of them linked. Checked before the
+    code's rules, so that each object's placement is refused in its own
+    words where a more general rule (M11-8's C9 or C10) would otherwise
+    see the misplaced object first. Returns the grants' count, or None."""
     symbols = elf.symbols
     if not scenario.mgmt:
         for name in MGMT_SYMBOLS:
@@ -3875,11 +4151,32 @@ def check_mgmt_record(elf, flat, base, scenario):
     address = symbols[MVP_GRANTS_SYMBOL]
     size = symbol_size(elf, MVP_GRANTS_SYMBOL)
     count = size // (8 * len(GRANT_WORDS))
+    low = symbols["__be_mvp_control_constants_start"]
+    high = symbols["__be_mvp_control_constants_end"]
     require(size == count * 8 * len(GRANT_WORDS) and
             1 <= count <= MGMT_GRANTS_MAX and
-            inside_section(elf, ".mvp.rodata", address, size),
+            low <= address and address + size <= high,
             f"{MVP_GRANTS_SYMBOL} at 0x{address:x} is not 1 to "
-            f"{MGMT_GRANTS_MAX} grants in .mvp.rodata")
+            f"{MGMT_GRANTS_MAX} grants in the MVP control constants")
+    state = symbols[MVP_MGMT_STATE_SYMBOL]
+    state_size = symbol_size(elf, MVP_MGMT_STATE_SYMBOL)
+    require(state_size and symbols["__be_control_data_start"] <= state and
+            state + state_size <= symbols["__be_control_data_end"],
+            f"{MVP_MGMT_STATE_SYMBOL} at 0x{state:x} is not in the control "
+            f"writable-data extent")
+    return count
+
+
+def check_mgmt_record(elf, flat, base, scenario):
+    """An image of a scenario with the management extension
+    (planning/mvp-m2-plan.md): the linked grants, by their own rules and
+    the scenario's report's and expectation's; where they and hart 0's
+    management state lie (check_mgmt_placement()); and the extension's
+    functions linked. An image of any other scenario links none of them.
+    Returns the grants."""
+    count = check_mgmt_placement(elf, scenario)
+    if count is None:
+        return None
     words = linked_words(elf, flat, base, MVP_GRANTS_SYMBOL,
                          count * len(GRANT_WORDS))
     grants = [dict(zip(GRANT_WORDS, words[index * len(GRANT_WORDS):
@@ -3903,12 +4200,6 @@ def check_mgmt_record(elf, flat, base, scenario):
         wanted = report_grants(scenario.report)
         require(grants == wanted,
                 f"the linked grants {grants} are not the report's {wanted}")
-    state = symbols[MVP_MGMT_STATE_SYMBOL]
-    state_size = symbol_size(elf, MVP_MGMT_STATE_SYMBOL)
-    require(state_size and symbols["__be_control_data_start"] <= state and
-            state + state_size <= symbols["__be_control_data_end"],
-            f"{MVP_MGMT_STATE_SYMBOL} at 0x{state:x} is not in the control "
-            f"writable-data extent")
     return grants
 
 
@@ -4141,12 +4432,14 @@ def check_monitor(toolchain, elf_data, flat, base, layout, map_text=None,
         start = function[0][0] - base
         require(sha256(flat[start:start + size]) == digest,
                 f"{name} differs from B2's")
+    # The management objects' placement, before the code's rules (M11-8).
+    check_mgmt_placement(elf, scenario)
     functions, words = check_instructions(
         elf, flat, base, ((code_start, code_end),
                           (symbols["__be_mvp_text_start"],
                            symbols["__be_mvp_text_end"])), symbols, profile,
         1 if scenario.accepts_denial(variant) else 0, boundary,
-        map_text if breach else None)
+        map_text if breach else None, (scenario.mgmt, scenario.pages))
     if boundary:
         check_partition_identity(elf, flat, base, symbols, image)
     check_guests(elf, flat, base, variant, expect)
@@ -5998,11 +6291,12 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
              grants + 8 * GRANT_WORDS.index("permissions"),
              quad(MGMT_PERMISSIONS["pause"]), "the linked grants"),
         ]
+        moved = elf.sections[".mvp.rodata"][3]
         elfs.append(
             ("the management state in the MVP region's constants",
-             *symbol_value(elf, MVP_MGMT_STATE_SYMBOL,
-                           elf.sections[".mvp.rodata"][3]),
-             f"{MVP_MGMT_STATE_SYMBOL} at"))
+             *symbol_value(elf, MVP_MGMT_STATE_SYMBOL, moved),
+             f"{MVP_MGMT_STATE_SYMBOL} at 0x{moved:x} is not in the control "
+             f"writable-data extent"))
     # The measurement log (planning/mvp-m9-plan.md, D-1 to D-4; I19): code
     # a domain hart runs that reads hart 0's page or registers; the page
     # unaligned or outside the MVP region's BSS, the registers or the
@@ -6114,6 +6408,10 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
     if on:
         monitor += boundary_mutations(elf, flat, symbols, dispatch_slot,
                                       boot_slot)
+        placed, moved = placement_mutations(elf, flat, symbols,
+                                            dispatch_slot, control_slot)
+        monitor += placed
+        elfs += moved
     mutations = [(name, "monitor", address, value, expected)
                  for name, address, value, expected in monitor] + \
         [(name, "boot", address, value, expected)
@@ -6132,6 +6430,70 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
     return run_mutations(toolchain, elf_data, flat, boot_img, pins, kernel,
                          layout, mutations, map_text=map_text,
                          scenario=scenario)
+
+
+def call_site_in(elf, flat, caller, callee):
+    """The auipc of caller's first call pair (auipc, jalr ra) to callee."""
+    value, size = function_start(elf, caller)
+    decoded = instructions(flat, value, value + size, BASE)
+    for pc, target, link in references(decoded, caller):
+        word = struct.unpack_from("<I", flat, pc - 4 - BASE)[0]
+        if target == elf.symbols[callee] and link == 1 and \
+                word & 0x7F == 0x17:
+            return pc - 4
+    raise ImageError(f"no call pair from {caller} to {callee}")
+
+
+def placement_mutations(elf, flat, symbols, dispatch_slot, control_slot):
+    """M11-8's placement rules, each one's defect in a boundary-on
+    monitor: a role's edge into boot text, which a name missing from the
+    linker script's lists gives (the role rules refuse it); a pointer word
+    of a control constant into MVP boot rodata (C8); an object handed to
+    hart 0's state out of its profile (C9); in an image with the
+    management extension, the grants in the profile but out of the MVP
+    control constants (the grants rule, which C9 lets pass); and a function
+    that only boot code reaches left in the control, VS-domain-hart, and
+    shared text, each by its one role call removed (C10)."""
+    nops = struct.pack("<II", NOP, NOP)
+    rodata = symbols["__be_mvp_rodata_start"] + 0x20
+    monitor = [
+        ("the control loop reaches boot code", control_slot,
+         call_pair(control_slot, symbols["be_mvp_log_append"]),
+         "through control_loop -> be_mvp_log_append"),
+        ("a VS-domain hart reaches boot code", dispatch_slot,
+         call_pair(dispatch_slot, symbols["be_mvp_hsm_census_add"]),
+         f"{MVP_DISPATCH} -> be_mvp_hsm_census_add"),
+        ("a control constant's word names MVP boot rodata",
+         symbols["drop_names"], struct.pack("<Q", symbols[MVP_DESCS_SYMBOL]),
+         "the control role's constant drop_names holds"),
+        ("the control text keeps a function only boot code reaches",
+         call_site_in(elf, flat, "be_mvp_input_flush",
+                      "be_mvp_sha256_update"), nops,
+         "be_mvp_sha256_update at"),
+        ("the VS-domain-hart text keeps a function only boot code reaches",
+         call_site_in(elf, flat, MVP_HART_MAIN, EXEC_STCE), nops,
+         f"{MVP_STCE} at"),
+        ("the shared text keeps a function only boot code reaches",
+         call_site_in(elf, flat, "be_mvp_block_check",
+                      "be_mvp_bindings_valid"), nops,
+         "be_mvp_bindings_valid at"),
+    ]
+    moved = [
+        ("be_mvp_maps, handed to hart 0, in MVP boot rodata",
+         *symbol_value(elf, "be_mvp_maps", rodata),
+         f"be_mvp_maps, which boot code hands to hart 0's state, lies at "
+         f"0x{rodata:x}-"),
+    ]
+    if MVP_GRANTS_SYMBOL in symbols:
+        # On hart 0's stack: inside its profile, with read rights (C9
+        # holds), named by no code a domain hart runs, but not among the
+        # MVP control constants.
+        moved.append(
+            ("the grants in hart 0's data, not its constants",
+             *symbol_value(elf, MVP_GRANTS_SYMBOL,
+                           symbols["__be_control_stack_start"]),
+             "grants in the MVP control constants"))
+    return monitor, moved
 
 
 def boundary_mutations(elf, flat, symbols, dispatch_slot, boot_slot):

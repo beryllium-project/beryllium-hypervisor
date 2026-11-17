@@ -664,7 +664,13 @@ static const char marker_mgmt_values[] = " target=%d result=%i target_state=";
 static const char marker_mgmt_ticks[] = " ticks=%x service=%x";
 static const char marker_fid_pause[] = "pause";
 static const char marker_fid_terminate[] = "terminate";
-static const char *const marker_target_state[BE_MVP_TARGET_COUNT + 1U] = {
+/*
+ * The names as arrays, not pointers to literals: the strings stay in this
+ * table's own section, which the linker script places with the control
+ * hart's constants (M11-8). The longest name sizes each row.
+ */
+static const char marker_target_state[BE_MVP_TARGET_COUNT + 1U]
+				      [sizeof("terminated")] = {
 	[BE_MVP_TARGET_RUNNING] = "running",
 	[BE_MVP_TARGET_PAUSED] = "paused",
 	[BE_MVP_TARGET_TERMINATED] = "terminated",
@@ -1453,6 +1459,15 @@ static void check_pages(void)
  * that the two walked roots share exactly the channel page, or map exactly
  * the pages, with the derived rights. Each is installed later, once, on
  * its own domain hart.
+ *
+ * Each walked hgatp must be the layout's. That it is also the value a
+ * domain hart installs, be_mvp_hgatp() of its binding, is checked where
+ * that value is made (M11-8): publish_blocks() compares the hgatp that
+ * be_mvp_block_fill() publishes with the walked root's, before the
+ * barrier, and each domain hart checks the published hgatp against
+ * be_mvp_hgatp() of its binding itself. No call of be_mvp_hgatp() is made
+ * here, so Clang, which inlines it everywhere else, links no copy that
+ * only boot code would call.
  */
 static void build_gstage(void)
 {
@@ -1497,8 +1512,6 @@ static void build_gstage(void)
 			    BE_MVP_GSTAGE_OK ||
 #endif
 		    map->hgatp != be_mvp_hgatps[domain] ||
-		    map->hgatp != be_mvp_hgatp(be_mvp_bindings[domain].vmid,
-					       be_mvp_bindings[domain].root) ||
 		    map->leaves != BE_MVP_GUEST_LEAVES)
 			be_mvp_runtime_terminal(BE_MVP_CLASS_GSTAGE);
 #if !BE_MVP_RUN_PAGES
@@ -2072,6 +2085,13 @@ static void publish_blocks(void)
 				      BE_MVP_RUN_OUTBOUND_BYTES) !=
 		    BE_MVP_BLOCK_OK)
 			boot_fail();
+		/*
+		 * The hgatp the domain hart will install, its binding's, is
+		 * the root walked for it (M11-8: build_gstage() no longer
+		 * calls be_mvp_hgatp()).
+		 */
+		if (published->desc.hgatp != be_mvp_maps[domain].hgatp)
+			be_mvp_runtime_terminal(BE_MVP_CLASS_GSTAGE);
 		be_mvp_entry_frame(&published->entry,
 				   be_mvp_plans[domain].kernel_gpa,
 				   BE_MVP_GUEST_HART,
@@ -2810,7 +2830,12 @@ static void wake_failed(enum be_mvp_class failure, be_u64 now)
 	fail_detail(failure, marker_detail_waited, values);
 }
 
-/* The READY wait: scenario rings are read on hart 0's timer tick. */
+/*
+ * The READY wait: scenario rings are read on hart 0's timer tick. Out of
+ * line, so that the image checker finds it by name (M11-8: in step 2 only
+ * the confined entry's path reaches it).
+ */
+static void wait_ready(void) __attribute__((noinline));
 static void wait_ready(void)
 {
 	for (;;) {

@@ -63,44 +63,80 @@ SECTIONS
 		/* Role-alignment padding, inside the output section. */
 		. = ABSOLUTE(0x102008000);
 		__be_monitor_shared_start = .;
+		/*
+		 * M11-8: each role's input sections by exact name, each NAME with
+		 * NAME.* for its compilers' suffixes (GCC's .constprop, .isra,
+		 * and .part clones; Clang's static locals). A name a role reaches
+		 * that these lists miss falls to a boot catch-all below, which
+		 * the image checker's role rules refuse; a boot-only name kept in
+		 * a role's extent is refused by its rule C10 (D-4 rule 1).
+		 */
 		*freestanding.o(.text .text.*)
-		*r3.o(.text.fail_dbcn* .text.be_r3_dbcn_begin*
-			.text.be_r3_dbcn_consume* .text.be_r3_srst_result*)
-		*platform.o(.text.be_r3_text_length*
-			.text.be_r3_platform_write*
-			.text.be_r3_platform_reset*)
+		*r3.o(.text.fail_dbcn .text.fail_dbcn.*
+			.text.be_r3_dbcn_begin .text.be_r3_dbcn_begin.*
+			.text.be_r3_dbcn_consume .text.be_r3_dbcn_consume.*
+			.text.be_r3_srst_result .text.be_r3_srst_result.*)
+		*platform.o(.text.be_r3_text_length .text.be_r3_text_length.*
+			.text.be_r3_platform_write .text.be_r3_platform_write.*
+			.text.be_r3_platform_reset .text.be_r3_platform_reset.*)
 		*privileged.o(.text.be.shared)
 		*mvp-trap.o(.text.mvp.shared)
-		*mvp-ring.o(.text .text.*)
+		*mvp-ring.o(
+			.text.be_mvp_record_word .text.be_mvp_record_word.*
+			.text.be_mvp_ring_acquire .text.be_mvp_ring_acquire.*
+			.text.be_mvp_ring_peak .text.be_mvp_ring_peak.*
+			.text.be_mvp_ring_post .text.be_mvp_ring_post.*
+			.text.be_mvp_ring_post_words .text.be_mvp_ring_post_words.*
+			.text.be_mvp_ring_publish .text.be_mvp_ring_publish.*
+			.text.be_mvp_ring_published .text.be_mvp_ring_published.*
+			.text.be_mvp_ring_record_bytes
+			.text.be_mvp_ring_record_bytes.*
+			.text.be_mvp_ring_release .text.be_mvp_ring_release.*
+			.text.be_mvp_ring_room .text.be_mvp_ring_room.*
+			.text.be_mvp_ring_take .text.be_mvp_ring_take.*
+			.text.be_mvp_ring_taken .text.be_mvp_ring_taken.*
+			.text.load_le .text.load_le.*
+			.text.store_le .text.store_le.*
+			.text.usable .text.usable.*)
 		*mvp-executor.o(
-			.text.be_mvp_exec_console_write*
-			.text.be_mvp_exec_system_reset*
-			.text.be_mvp_exec_reset_hs_state*
-			.text.be_mvp_exec_clear_ssip*
-			.text.be_mvp_exec_read_time*
-			.text.be_mvp_exec_fence_w_w*
-			.text.be_mvp_exec_fence_r_r*
-			.text.be_mvp_exec_fence_r_w*
-			.text.be_mvp_exec_send_ipi*
-			.text.be_mvp_exec_wait*
-			.text.be_mvp_exec_halt*
-			.text.be_mvp_fw_call*)
+			.text.be_mvp_exec_console_write
+			.text.be_mvp_exec_console_write.*
+			.text.be_mvp_exec_system_reset
+			.text.be_mvp_exec_system_reset.*
+			.text.be_mvp_exec_reset_hs_state
+			.text.be_mvp_exec_reset_hs_state.*
+			.text.be_mvp_exec_clear_ssip .text.be_mvp_exec_clear_ssip.*
+			.text.be_mvp_exec_read_time .text.be_mvp_exec_read_time.*
+			.text.be_mvp_exec_fence_w_w .text.be_mvp_exec_fence_w_w.*
+			.text.be_mvp_exec_fence_r_r .text.be_mvp_exec_fence_r_r.*
+			.text.be_mvp_exec_fence_r_w .text.be_mvp_exec_fence_r_w.*
+			.text.be_mvp_exec_wait .text.be_mvp_exec_wait.*
+			.text.be_mvp_exec_halt .text.be_mvp_exec_halt.*
+			.text.be_mvp_fw_call .text.be_mvp_fw_call.*)
 		*mvp-runtime.o(
-			.text.be_mvp_line_format* .text.be_mvp_detail_line*
-			.text.be_mvp_send_ipi*)
+			.text.be_mvp_line_format .text.be_mvp_line_format.*
+			.text.be_mvp_detail_line .text.be_mvp_detail_line.*)
 		*mvp-sbi.o(
-			.text.be_mvp_class_name* .text.be_mvp_line_decimal*
-			.text.be_mvp_line_hex* .text.be_mvp_line_reset*
-			.text.be_mvp_line_text* .text.be_mvp_record_word*
-			.text.be_mvp_vcsr_name* .text.be_mvp_ipi_target*
-			.text.be_mvp_apply_return* .text.line_byte*)
-		*mvp-hart.o(.text.be_mvp_ipi_target*
-			.text.be_mvp_bindings_valid* .text.be_mvp_hgatp*
-			.text.be_mvp_overlap* .text.be_mvp_concurrent*
-			.text.ring_bytes_valid* .text.published_hpa*
-			.text.control_mailbox_hpa* .text.hart_mailbox_hpa*)
+			.text.be_mvp_apply_return .text.be_mvp_apply_return.*
+			.text.be_mvp_class_name .text.be_mvp_class_name.*
+			.text.be_mvp_line_decimal .text.be_mvp_line_decimal.*
+			.text.be_mvp_line_hex .text.be_mvp_line_hex.*
+			.text.be_mvp_line_reset .text.be_mvp_line_reset.*
+			.text.be_mvp_line_text .text.be_mvp_line_text.*
+			.text.be_mvp_vcsr_name .text.be_mvp_vcsr_name.*
+			.text.line_byte .text.line_byte.*)
+		*mvp-hart.o(
+			.text.be_mvp_bindings_valid .text.be_mvp_bindings_valid.*
+			.text.be_mvp_hgatp .text.be_mvp_hgatp.*
+			.text.be_mvp_overlap .text.be_mvp_overlap.*
+			.text.be_mvp_concurrent .text.be_mvp_concurrent.*
+			.text.ring_bytes_valid .text.ring_bytes_valid.*
+			.text.published_hpa .text.published_hpa.*
+			.text.control_mailbox_hpa .text.control_mailbox_hpa.*
+			.text.hart_mailbox_hpa .text.hart_mailbox_hpa.*)
 		__be_monitor_shared_constants_start = .;
-		*r3.o(.rodata.be_r3_dbcn_consume* .rodata.be.shared)
+		*r3.o(.rodata.be_r3_dbcn_consume .rodata.be_r3_dbcn_consume.*
+			.rodata.be.shared)
 		*mvp-runtime.o(
 			.rodata.be_mvp_bindings .rodata.mvp.shared
 			.rodata.marker_detail_domain
@@ -269,73 +305,149 @@ SECTIONS
 		. += 0x1000;
 		__be_control_confined_entry_slot_end = .;
 		*mvp-trap.o(.text.mvp.control)
+		/*
+		 * M11-8: by exact name, as the monitor's shared block says: the
+		 * functions of each object that the control role reaches, in its
+		 * source, from control_loop() and be_mvp_runtime_terminal().
+		 */
 		*mvp-runtime.o(
-			.text.answer* .text.apply* .text.arm_control_tick*
-			.text.control_loop*
-			.text.domain_failed* .text.drain* .text.emit*
-			.text.emit_line* .text.emit_record* .text.emit_text*
-			.text.fail_detail* .text.fail_domain* .text.input_report*
-			.text.input_summary* .text.line_hex* .text.line_start*
-			.text.log_terminal* .text.be_mvp_runtime_terminal*
-			.text.write_text* .text.write_line* .text.terminal*
-			.text.page_rights* .text.poll_input* .text.post_inbound*
-			.text.run_complete* .text.settle* .text.target_state*
-			.text.wait_control_tick* .text.wake_failed*)
-		*mvp-log.o(.text .text.*)
+			.text.answer .text.answer.*
+			.text.arm_control_tick .text.arm_control_tick.*
+			.text.be_mvp_runtime_terminal
+			.text.be_mvp_runtime_terminal.*
+			.text.control_loop .text.control_loop.*
+			.text.deliver .text.deliver.*
+			.text.domain_failed .text.domain_failed.*
+			.text.drain .text.drain.*
+			.text.drain_held .text.drain_held.*
+			.text.emit .text.emit.*
+			.text.emit_denial .text.emit_denial.*
+			.text.emit_line .text.emit_line.*
+			.text.emit_record .text.emit_record.*
+			.text.emit_terminated .text.emit_terminated.*
+			.text.emit_text .text.emit_text.*
+			.text.fail_detail .text.fail_detail.*
+			.text.fail_domain .text.fail_domain.*
+			.text.input_report .text.input_report.*
+			.text.input_summary .text.input_summary.*
+			.text.launch_register .text.launch_register.*
+			.text.line_hex .text.line_hex.*
+			.text.line_start .text.line_start.*
+			.text.log_terminal .text.log_terminal.*
+			.text.ping .text.ping.*
+			.text.poll_input .text.poll_input.*
+			.text.post_inbound .text.post_inbound.*
+			.text.run_complete .text.run_complete.*
+			.text.since .text.since.*
+			.text.step .text.step.*
+			.text.symbol_address .text.symbol_address.*
+			.text.terminal .text.terminal.*
+			.text.visit .text.visit.*
+			.text.wait_control_tick .text.wait_control_tick.*
+			.text.wake_failed .text.wake_failed.*
+			.text.write_line .text.write_line.*
+			.text.write_text .text.write_text.*)
 		*mvp-hart.o(
-			.text.be_mvp_control_* .text.be_mvp_drain_*
-			.text.be_mvp_line_output* .text.control_fail*
-			.text.add_saturating* .text.seal_windows*
-			.text.invalid* .text.words_are* .text.line_printable*
-			.text.complete* .text.settle* .text.domain_*
-			.text.injected_cause* .text.within*
-			.text.page_rights* .text.target_state* .text.apply*)
-		*mvp-sbi.o(.text.be_mvp_mgmt_decide* .text.apply*)
+			.text.add_saturating .text.add_saturating.*
+			.text.apply .text.apply.*
+			.text.be_mvp_control_deadline
+			.text.be_mvp_control_deadline.*
+			.text.be_mvp_control_overlap .text.be_mvp_control_overlap.*
+			.text.be_mvp_control_record .text.be_mvp_control_record.*
+			.text.be_mvp_control_running .text.be_mvp_control_running.*
+			.text.be_mvp_control_waited .text.be_mvp_control_waited.*
+			.text.be_mvp_control_wake .text.be_mvp_control_wake.*
+			.text.be_mvp_drain_begin .text.be_mvp_drain_begin.*
+			.text.be_mvp_drain_next .text.be_mvp_drain_next.*
+			.text.be_mvp_drain_visited .text.be_mvp_drain_visited.*
+			.text.be_mvp_line_output .text.be_mvp_line_output.*
+			.text.complete .text.complete.*
+			.text.control_fail .text.control_fail.*
+			.text.domain_denial .text.domain_denial.*
+			.text.domain_fail .text.domain_fail.*
+			.text.domain_request .text.domain_request.*
+			.text.domain_shutdown .text.domain_shutdown.*
+			.text.domain_transition .text.domain_transition.*
+			.text.injected_cause .text.injected_cause.*
+			.text.invalid .text.invalid.*
+			.text.line_printable .text.line_printable.*
+			.text.page_rights .text.page_rights.*
+			.text.settle .text.settle.*
+			.text.target_state .text.target_state.*
+			.text.within .text.within.*
+			.text.words_are .text.words_are.*)
+		*mvp-sbi.o(.text.be_mvp_mgmt_decide .text.be_mvp_mgmt_decide.*)
 		*mvp-input.o(
-			.text.be_mvp_focus_step* .text.be_mvp_input_byte*
-			.text.be_mvp_input_digest* .text.be_mvp_input_drop_name*
-			.text.be_mvp_input_flush* .text.be_mvp_input_poll_begin*
-			.text.be_mvp_input_poll_end* .text.be_mvp_input_rearm*
-			.text.classify* .text.add_saturating* .text.bit*
-			.text.drop*)
+			.text.add_saturating .text.add_saturating.*
+			.text.be_mvp_focus_step .text.be_mvp_focus_step.*
+			.text.be_mvp_input_byte .text.be_mvp_input_byte.*
+			.text.be_mvp_input_digest .text.be_mvp_input_digest.*
+			.text.be_mvp_input_drop_name .text.be_mvp_input_drop_name.*
+			.text.be_mvp_input_flush .text.be_mvp_input_flush.*
+			.text.be_mvp_input_poll_begin
+			.text.be_mvp_input_poll_begin.*
+			.text.be_mvp_input_poll_end .text.be_mvp_input_poll_end.*
+			.text.be_mvp_input_rearm .text.be_mvp_input_rearm.*
+			.text.bit .text.bit.*
+			.text.classify .text.classify.*
+			.text.drop .text.drop.*)
 		*mvp-executor.o(
-			.text.be_mvp_exec_arm_budget*
-			.text.be_mvp_exec_console_read*
-			.text.be_mvp_exec_hart_start*
-			.text.be_mvp_exec_hart_status*
-			.text.be_mvp_exec_sbi_probe*
-			.text.be_mvp_exec_sbi_version*)
-		*mvp-sha256.o(.text.compress* .text.be_mvp_sha256_update*
-			.text.be_mvp_sha256_final*)
+			.text.be_mvp_exec_arm_budget .text.be_mvp_exec_arm_budget.*
+			.text.be_mvp_exec_console_read
+			.text.be_mvp_exec_console_read.*)
+		*mvp-sha256.o(
+			.text.be_mvp_sha256_final .text.be_mvp_sha256_final.*
+			.text.be_mvp_sha256_update .text.be_mvp_sha256_update.*
+			.text.big_sigma0 .text.big_sigma0.*
+			.text.big_sigma1 .text.big_sigma1.*
+			.text.choose .text.choose.*
+			.text.compress .text.compress.*
+			.text.load_be32 .text.load_be32.*
+			.text.majority .text.majority.*
+			.text.rotate_right .text.rotate_right.*
+			.text.small_sigma0 .text.small_sigma0.*
+			.text.small_sigma1 .text.small_sigma1.*
+			.text.store_be32 .text.store_be32.*)
 		__be_mvp_control_constants_start = .;
+		/*
+		 * The management grants are here, not in .mvp.rodata: boot code
+		 * hands their address to hart 0's state, and the control loop
+		 * reads them at each request (M11-8).
+		 */
 		*mvp-runtime.o(
-			.rodata.marker_started* .rodata.marker_ready*
-			.rodata.marker_entered* .rodata.marker_tick*
-			.rodata.marker_domain_shutdown* .rodata.marker_complete*
-			.rodata.marker_input
-			.rodata.marker_input_* .rodata.marker_focus*
-			.rodata.marker_denial* .rodata.marker_kind_*
-			.rodata.marker_mgmt* .rodata.marker_fid_*
-			.rodata.marker_target_state*
-			.rodata.marker_domain_paused*
-			.rodata.marker_domain_terminated*
-			.rodata.marker_terminated_ticks*
-			.rodata.marker_shutdown* .rodata.marker_failure*
-			.rodata.marker_status_* .rodata.marker_detail_*
-			.rodata.marker_register_* .rodata.marker_srst*
-			.rodata.marker_newline* .rodata.values_*
-			.rodata.drain .rodata.ranges*
-			.rodata.mvp.control)
+			.rodata.be_mvp_grants
+			.rodata.drain .rodata.drain.*
+			.rodata.marker_complete
+			.rodata.marker_denial .rodata.marker_denial_values
+			.rodata.marker_detail_record .rodata.marker_detail_ticks
+			.rodata.marker_detail_waited
+			.rodata.marker_domain_paused .rodata.marker_domain_shutdown
+			.rodata.marker_domain_terminated
+			.rodata.marker_entered .rodata.marker_failure
+			.rodata.marker_fid_pause .rodata.marker_fid_terminate
+			.rodata.marker_focus
+			.rodata.marker_input .rodata.marker_input_count
+			.rodata.marker_input_domain .rodata.marker_input_drop
+			.rodata.marker_input_dropped .rodata.marker_input_next
+			.rodata.marker_input_none
+			.rodata.marker_kind_read_only .rodata.marker_kind_unmapped
+			.rodata.marker_mgmt .rodata.marker_mgmt_ticks
+			.rodata.marker_mgmt_values
+			.rodata.marker_ready .rodata.marker_shutdown
+			.rodata.marker_srst .rodata.marker_target_state
+			.rodata.marker_terminated_ticks .rodata.marker_tick
+			.rodata.mvp.control
+			.rodata.values_entered .rodata.values_paused
+			.rodata.values_pong .rodata.values_ready
+			.rodata.values_shutdown)
+		/*
+		 * Every constant of these two objects is the control role's,
+		 * their strings included, which Clang emits per object, not per
+		 * function; rule C10 refuses a boot-only one.
+		 */
 		*mvp-hart.o(.rodata .rodata.*)
-		*mvp-log.o(
-			.rodata.str* .rodata.put_hex*
-			.rodata.be_mvp_log_render_*
-			.rodata.names* .rodata.hex_digits*
-			.rodata.state_names* .rodata.outcome_names*
-			.rodata.repr_names* .rodata.object_names*
-			.rodata.type_names*)
 		*mvp-input.o(.rodata .rodata.*)
-		*mvp-sha256.o(.rodata .rodata.*)
+		*mvp-sha256.o(.rodata.round_constants)
 		__be_mvp_control_constants_end = .;
 		. = ABSOLUTE(0x102070000);
 		__be_mvp_control_text_end = .;
@@ -350,29 +462,89 @@ SECTIONS
 		*mvp-trap.o(.text.mvp.domain)
 		*mvp-probe-arch.o(.text.mvp.probe)
 		*mvp-hartmain.o(.text .text.*)
-		*mvp-sbi.o(.text .text.*)
-		*mvp-gstage.o(.text.be_mvp_gstage_translate*)
-		*mvp-input.o(.text.be_mvp_input_serve*)
-		*mvp-hart.o(
-			.text.be_mvp_ack_wait_* .text.be_mvp_block_check*
-			.text.be_mvp_block_hpa*)
+		/* M11-8: what a VS-domain hart reaches, by exact name. */
+		*mvp-sbi.o(
+			.text.accepts_input .text.accepts_input.*
+			.text.accepts_mgmt .text.accepts_mgmt.*
+			.text.access_fault .text.access_fault.*
+			.text.answerable .text.answerable.*
+			.text.be_mvp_ack_wait_start .text.be_mvp_ack_wait_start.*
+			.text.be_mvp_ack_wait_step .text.be_mvp_ack_wait_step.*
+			.text.be_mvp_classify_cause .text.be_mvp_classify_cause.*
+			.text.be_mvp_console_feed .text.be_mvp_console_feed.*
+			.text.be_mvp_console_flush .text.be_mvp_console_flush.*
+			.text.be_mvp_controls_valid .text.be_mvp_controls_valid.*
+			.text.be_mvp_denial_decide .text.be_mvp_denial_decide.*
+			.text.be_mvp_fail .text.be_mvp_fail.*
+			.text.be_mvp_handle_exit .text.be_mvp_handle_exit.*
+			.text.be_mvp_inject_mismatch .text.be_mvp_inject_mismatch.*
+			.text.be_mvp_inject_vcsr .text.be_mvp_inject_vcsr.*
+			.text.be_mvp_inject_words .text.be_mvp_inject_words.*
+			.text.be_mvp_ipi_serve .text.be_mvp_ipi_serve.*
+			.text.be_mvp_post_denial .text.be_mvp_post_denial.*
+			.text.be_mvp_post_entered .text.be_mvp_post_entered.*
+			.text.be_mvp_post_fail .text.be_mvp_post_fail.*
+			.text.be_mvp_post_mgmt_request
+			.text.be_mvp_post_mgmt_request.*
+			.text.be_mvp_post_ready .text.be_mvp_post_ready.*
+			.text.be_mvp_post_shutdown .text.be_mvp_post_shutdown.*
+			.text.be_mvp_record_spp .text.be_mvp_record_spp.*
+			.text.be_mvp_stce_class .text.be_mvp_stce_class.*
+			.text.be_mvp_vcsr_initial .text.be_mvp_vcsr_initial.*
+			.text.be_mvp_vcsr_mismatch .text.be_mvp_vcsr_mismatch.*
+			.text.be_mvp_wait_serve .text.be_mvp_wait_serve.*
+			.text.console_valid .text.console_valid.*
+			.text.count_call .text.count_call.*
+			.text.failure_room .text.failure_room.*
+			.text.htinst_accepted .text.htinst_accepted.*
+			.text.inside .text.inside.*
+			.text.leaf_at .text.leaf_at.*
+			.text.post_line .text.post_line.*
+			.text.probe_available .text.probe_available.*
+			.text.refuse .text.refuse.*
+			.text.sbi_base .text.sbi_base.*
+			.text.sbi_dbcn .text.sbi_dbcn.*
+			.text.sbi_mgmt .text.sbi_mgmt.*
+			.text.sbi_return .text.sbi_return.*
+			.text.sbi_srst .text.sbi_srst.*
+			.text.serve .text.serve.*
+			.text.serve_record .text.serve_record.*
+			.text.terminal .text.terminal.*)
+		*mvp-gstage.o(.text.be_mvp_gstage_translate
+			.text.be_mvp_gstage_translate.*)
+		*mvp-input.o(.text.be_mvp_input_serve .text.be_mvp_input_serve.*)
+		*mvp-hart.o(.text.be_mvp_block_check .text.be_mvp_block_check.*
+			.text.be_mvp_block_hpa .text.be_mvp_block_hpa.*)
 		*mvp-executor.o(
-			.text.be_mvp_exec_arm_controls*
-			.text.be_mvp_exec_arm_stce*
-			.text.be_mvp_exec_dbcn_write*
-			.text.be_mvp_exec_fence_i*
-			.text.be_mvp_exec_inject*
-			.text.be_mvp_exec_install_hgatp*
-			.text.be_mvp_exec_park*
-			.text.be_mvp_exec_rearm_tick*
-			.text.be_mvp_exec_resume*
-			.text.be_mvp_exec_set_timer*
-			.text.be_mvp_exec_switch_hgatp*
-			.text.be_mvp_exec_breach*)
+			.text.be_mvp_exec_arm_controls
+			.text.be_mvp_exec_arm_controls.*
+			.text.be_mvp_exec_arm_stce .text.be_mvp_exec_arm_stce.*
+			.text.be_mvp_exec_breach_attempt
+			.text.be_mvp_exec_breach_attempt.*
+			.text.be_mvp_exec_breach_enter
+			.text.be_mvp_exec_breach_enter.*
+			.text.be_mvp_exec_breach_leave
+			.text.be_mvp_exec_breach_leave.*
+			.text.be_mvp_exec_breach_translate
+			.text.be_mvp_exec_breach_translate.*
+			.text.be_mvp_exec_dbcn_write .text.be_mvp_exec_dbcn_write.*
+			.text.be_mvp_exec_fence_i .text.be_mvp_exec_fence_i.*
+			.text.be_mvp_exec_inject .text.be_mvp_exec_inject.*
+			.text.be_mvp_exec_install_hgatp
+			.text.be_mvp_exec_install_hgatp.*
+			.text.be_mvp_exec_park .text.be_mvp_exec_park.*
+			.text.be_mvp_exec_rearm_tick .text.be_mvp_exec_rearm_tick.*
+			.text.be_mvp_exec_resume .text.be_mvp_exec_resume.*
+			.text.be_mvp_exec_set_timer .text.be_mvp_exec_set_timer.*
+			.text.be_mvp_exec_switch_hgatp
+			.text.be_mvp_exec_switch_hgatp.*)
 		*mvp-probe.o(
-			.text.set_phase* .text.receipt* .text.ipi_hs*
-			.text.order_reader*
-			.text.probe_call* .text.be_mvp_probe_exit*)
+			.text.set_phase .text.set_phase.*
+			.text.receipt .text.receipt.*
+			.text.ipi_hs .text.ipi_hs.*
+			.text.order_reader .text.order_reader.*
+			.text.probe_call .text.probe_call.*
+			.text.be_mvp_probe_exit .text.be_mvp_probe_exit.*)
 		/* M11-7: a breach image's hook, which no other image links. */
 		*mvp-breach.o(.text .text.*)
 		*mvp-breach-arch.o(.text.mvp.breach)
