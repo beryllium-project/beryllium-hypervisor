@@ -199,9 +199,10 @@ def lock_command(name, lock=LOCK):
 
 
 def boundary_inputs(build, expect, toolchain):
-    """A boundary-on expectation's pair's step-1 tree and tables, the
-    partition checker's record of them, and the partition authority, under
-    BUILD as tests/run-qemu.sh finds them; None for an off one."""
+    """A boundary-on expectation's pair's tree and tables (of the step it
+    declares), the partition checker's record of them, and the partition
+    authority, under BUILD as tests/run-qemu.sh finds them; None for an off
+    one."""
     boundary = expect.get("boundary")
     if not isinstance(boundary, dict):
         return None
@@ -670,8 +671,9 @@ def run(args):
             (out / "result.txt").write_text(line + "\n", encoding="utf-8")
             print(line, flush=True)
             return False, []
+        # M11-8: the tree's step, as the expectation declares it.
         limit, columns = 1, ("on", "plain", sha256(
-            inputs["dtb"].read_bytes()), "boot")
+            inputs["dtb"].read_bytes()), expect["boundary"]["control_hart"])
     for number in range(1, limit + 1):
         directory = out / f"attempt-{number}"
         status, error, keys, seconds = attempt(args, expect, directory,

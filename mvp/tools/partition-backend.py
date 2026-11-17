@@ -4,8 +4,9 @@
 """Render an OpenSBI device tree and expected PMP tables from a descriptor.
 
 --control-hart boot (M11-7, step 1) renders no OpenSBI domain for hart 0,
-which stays in be_boot, and its tables say so; confined, the default, is
-M11-5's output byte for byte."""
+which stays in be_boot; confined (M11-8, step 2), the default, renders
+M11-5's tree, with be_control. The tables name their step either way
+("control_hart")."""
 
 import argparse
 import dataclasses
@@ -540,9 +541,7 @@ def expected_tables(value, identity, roots, firmware_sha, base_sha,
                  (row.m and not row.su)]
     result = {"schema": TABLE_SCHEMA, "descriptor_identity": identity,
               "firmware_sha256": firmware_sha, "base_tree_sha256": base_sha,
-              "modes": {}}
-    if control == "boot":
-        result["control_hart"] = "boot"
+              "control_hart": control, "modes": {}}
     for mode in ("plain", "smepmp"):
         boot = table(roots, mode)
         tables = []
@@ -790,7 +789,8 @@ def self_test(descriptor, dtc, scratch):
     require("ecall-allowlist;" in tree and "config-digest" in tree and
             "cold-boot-harts" in tree, "rendered tree lacks the interface")
     step = expected_tables(value, identity, roots, "0" * 64, "1" * 64, "boot")
-    require(step["control_hart"] == "boot" and "control_hart" not in tables
+    require(step["control_hart"] == "boot" and
+            tables["control_hart"] == "confined"
             and [sum(row["state"] == state for row in step["modes"][mode])
                  for mode in step["modes"] for state in ("never-started",
                                                          "boot", "confined")]

@@ -231,7 +231,8 @@ gen_scenario = $(PYTHON) -B $(MVP_DIR)/tools/gen-scenario.py \
 	--scenario $(MVP_DIR)/scenarios/$(1)/scenario.json \
 	--layout $(MVP_DIR)/src/mvp-layout.h \
 	--dts-tool $(MVP_DIR)/tools/gen-dts.py --policy-tool $(MVP_POLICY_CHECK) \
-	--guest $(GUEST_BUILD) $(MVP_VARIANT_ARGS) $(MVP_BOUNDARY_ARGS)
+	--guest $(GUEST_BUILD) $(MVP_VARIANT_ARGS) $(MVP_BOUNDARY_ARGS) \
+	--control-hart $(PARTITION_CONTROL_HART)
 # Each scenario's header, MVP core profile (mvp-config.c, M6), and
 # expectations; the te-poc and anchor reports too.
 MVP_SCENARIO_H := $(MVP_SCENARIO_GEN_two-guests)/mvp-scenario.h
@@ -467,11 +468,15 @@ endef
 $(foreach s,$(sort $(MVP_SCENARIOS) $(MVP_SCENARIO_NAME)),$(eval $(call mvp_scenario,$(s))))
 
 # M11-7: the boundary-on images as built (MVP_BOUNDARY_ON), a file whose
-# time changes only with its content.
+# time changes only with its content; M11-8: with the trees' step
+# (PARTITION_CONTROL_HART), on which the expectations, the trees, their
+# tables, and their records depend.
 .PHONY: mvp-boundary-stamp
 $(MVP_BOUNDARY_STAMP): mvp-boundary-stamp
 	mkdir -p $(@D)
-	printf '%s\n' '$(strip $(MVP_BOUNDARY) $(MVP_BOUNDARY_ON))' >$@.new
+	printf '%s\n' \
+		'$(strip $(MVP_BOUNDARY) $(PARTITION_CONTROL_HART) $(MVP_BOUNDARY_ON))' \
+		>$@.new
 	if cmp -s -- $@.new $@; then rm -f -- $@.new; else mv -- $@.new $@; fi
 
 scenario: $(MVP_SCENARIO_GEN_$(MVP_SCENARIO_NAME))/mvp-scenario.h
@@ -1113,7 +1118,7 @@ $(call partition_backend_dtb,$(1),$(2),$(3)) \
 $(call partition_backend_pmp,$(1),$(2),$(3)) &: \
 		$(call partition_descriptor,$(1),$(2)) \
 		$$(PARTITION_BASE_$(3)) $$(PARTITION_WARN_$(3)) \
-		$(FIRMWARE_ELF) $(PARTITION_BACKEND)
+		$(FIRMWARE_ELF) $(PARTITION_BACKEND) $(MVP_BOUNDARY_STAMP)
 	rm -rf -- $(call partition_backend_dir,$(1),$(2),$(3))
 	$$(PYTHON) -I -B $(PARTITION_BACKEND) \
 		--descriptor $(call partition_descriptor,$(1),$(2)) \
@@ -1231,7 +1236,8 @@ $(call partition_record,$(3),$(4),$(1),$(2)): \
 		$(call partition_backend_dtb,$(1),$(2),$(3)) \
 		$(PARTITION_BASE_$(3)) \
 		$(call partition_backend_pmp,$(1),$(2),$(3)) \
-		$(FIRMWARE_ELF) $(call partition_elf,$(1),$(4),$(2)) $(PARTITION_CHECK)
+		$(FIRMWARE_ELF) $(call partition_elf,$(1),$(4),$(2)) $(PARTITION_CHECK) \
+		$(MVP_BOUNDARY_STAMP)
 	mkdir -m 700 -p -- $$(@D)
 	rm -f -- $$@
 	$$(PYTHON) -I -B $(PARTITION_CHECK) \
@@ -1311,7 +1317,7 @@ $(call negative_record,$(1)) &: $(BOUNDARY_NEGATIVES_TOOL) \
 		$(PARTITION_WARN_plain) $(FIRMWARE_ELF) \
 		$(call partition_elf,two-guests,gcc,two-guests) \
 		$(MVP_DIR)/scenarios/two-guests/scenario.json \
-		$(MVP_DIR)/src/mvp-layout.h
+		$(MVP_DIR)/src/mvp-layout.h $(MVP_BOUNDARY_STAMP)
 	rm -rf -- $(call negative_dir,$(1))
 	$$(PYTHON) -I -B $(BOUNDARY_NEGATIVES_TOOL) tree --name $(1) \
 		--dts $(call partition_backend_dts,two-guests,two-guests,plain) \
@@ -1333,7 +1339,8 @@ $(call negative_record,$(1)) &: $(BOUNDARY_NEGATIVES_TOOL) \
 		$(call partition_backend_pmp,two-guests,two-guests,plain)) \
 		$(call negative_dir,$(1))/$(1)-pmp.json
 	$$(PYTHON) -I -B $(BOUNDARY_NEGATIVES_TOOL) record --name $(1) \
-		--image two-guests --dtb $(call negative_dir,$(1))/$(1).dtb \
+		--image two-guests --control-hart $(PARTITION_CONTROL_HART) \
+		--dtb $(call negative_dir,$(1))/$(1).dtb \
 		--tables $(call negative_dir,$(1))/$(1)-pmp.json \
 		--out $(call negative_record,$(1)) -- \
 		$$(PYTHON) -I -B $$(PARTITION_CHECK_ARGS_two-guests)

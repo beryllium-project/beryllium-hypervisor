@@ -6,8 +6,8 @@ D-10's five), made from the backend's step-1 tree of two-guests.
 
   boundary-negatives.py tree --name NAME --dts PAIR.dts --include DIR
       --dtc DTC --descriptor PAIR.json --authority REPORT --out DIR
-  boundary-negatives.py record --name NAME --image IMAGE --dtb DTB
-      --tables TABLES --out RECORD -- CHECKER [ARGUMENT ...]
+  boundary-negatives.py record --name NAME --image IMAGE --control-hart
+      STEP --dtb DTB --tables TABLES --out RECORD -- CHECKER [ARGUMENT ...]
   boundary-negatives.py gates --checker CHECK-BOUNDARY --expect-dir DIR
       --run NAME ... --negative NAME:DIR ...
   boundary-negatives.py --self-test --scratch DIR
@@ -37,9 +37,10 @@ without the boundary extension, and has no tree here.
 `record` runs the independent checker (tests/check-partition.py, its
 arguments after --) on DTB and TABLES and requires it to refuse them; the
 record (schema be-boundary-negative-v1) names the negative, the image,
-step 1's control hart, the result `refused`, the checker's reason, and the
+the tree's step (--control-hart: boot, M11-7's step 1, or confined,
+M11-8's step 2), the result `refused`, the checker's reason, and the
 tree's and tables' SHA-256. The run harness admits such a tree only for a
-run whose declaration names that negative and that reason
+run whose declaration names that negative, that reason, and that step
 (tests/check-boundary.py gate; M11-7's A-9).
 
 `gates` runs the run harness's gate (CHECK-BOUNDARY's gate()) on each
@@ -222,8 +223,10 @@ def make_record(args):
     require(result.returncode == 1 and len(reasons) == 1,
             f"the checker did not refuse {args.name}'s tree (exit "
             f"{result.returncode}): {output[-1:] or 'no output'}")
+    require(args.control_hart in ("boot", "confined"),
+            f"--control-hart {args.control_hart!r} is not boot or confined")
     record = {"schema": SCHEMA, "negative": args.name, "image": args.image,
-              "control_hart": "boot", "result": "refused",
+              "control_hart": args.control_hart, "result": "refused",
               "reason": reasons[0], "dtb_sha256": sha(args.dtb),
               "tables_sha256": sha(args.tables)}
     write_new(args.out, canonical(record))
@@ -375,28 +378,33 @@ def self_test(scratch):
     tree.write_bytes(b"\xd0\x0d\xfe\xed tree\n")
     tables = scratch / "tables.json"
     tables.write_text("{}\n", encoding="ascii")
-    for label, script, want in (
+    refusing = ("print('BE_MVP_PARTITION_CHECK: FAIL be_g0: harts differs'); "
+                "raise SystemExit(1)")
+    for label, script, step, want in (
             ("a refused tree is recorded with the checker's reason",
-             "print('BE_MVP_PARTITION_CHECK: FAIL be_g0: harts differs'); "
-             "raise SystemExit(1)", None),
+             refusing, "boot", None),
+            ("a refused tree of step 2 is recorded with its step", refusing,
+             "confined", None),
+            ("a step that is neither is refused", refusing, "parked",
+             "is not boot or confined"),
             ("a tree the checker accepts is refused",
              "print('BE_MVP_PARTITION_CHECK: PASS image=two-guests')",
-             "did not refuse"),
+             "boot", "did not refuse"),
             ("a crash of the checker is refused",
-             "raise SystemExit(3)", "did not refuse")):
+             "raise SystemExit(3)", "boot", "did not refuse")):
         out = scratch / f"record-{len(cases)}.json"
         arguments = argparse.Namespace(
             name="boundary-two-narrow", image="two-guests", dtb=str(tree),
-            tables=str(tables), out=str(out),
+            tables=str(tables), out=str(out), control_hart=step,
             command_line=[sys.executable, "-I", "-B", "-c", script])
 
         def recorded(arguments=arguments, out=out):
             with contextlib.redirect_stdout(io.StringIO()):
                 make_record(arguments)
             return json.loads(out.read_bytes())
-        case(label, recorded, lambda value: value == {
+        case(label, recorded, lambda value, step=step: value == {
             "schema": SCHEMA, "negative": "boundary-two-narrow",
-            "image": "two-guests", "control_hart": "boot",
+            "image": "two-guests", "control_hart": step,
             "result": "refused", "reason": "be_g0: harts differs",
             "dtb_sha256": sha(tree), "tables_sha256": sha(tables)},
             want)
@@ -425,7 +433,7 @@ def main(argv):
                  "out"):
         tree.add_argument(f"--{name}", required=True)
     record = commands.add_parser("record")
-    for name in ("name", "image", "dtb", "tables", "out"):
+    for name in ("name", "image", "control-hart", "dtb", "tables", "out"):
         record.add_argument(f"--{name}", required=True)
     gates = commands.add_parser("gates")
     for name in ("checker", "expect-dir"):

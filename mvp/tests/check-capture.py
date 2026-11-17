@@ -323,13 +323,15 @@ the expectations of their time (tests/fixtures/pre-m9/). The self-test
 also adds the log module's own cases.
 
 M11-7's boundary-on runs (planning/mvp-m11-plan.md, D-6, D-10, D-12; step
-1, the VS-domain harts confined): an expectation with a "boundary" section
-(tools/gen-scenario.py's) has BE_MVP:02 in its on form, `hsm=H ipi=I
-boundary=B status=1:S,2:S started=none identity=<64 hex or none>`, both
-statuses 1, and a boot on hart 0 (the tree restricts the cold boot to
-it): a refusal is never declared, so one is a FAIL. A hart-start DETAIL
-has no status field, and the boundary class's DETAIL is `boundary=B
-word=W error=E` or `boundary=1 expected=<64 hex>`. Where the section says
+1, the VS-domain harts confined; M11-8's step 2, the control hart too): an
+expectation with a "boundary" section (tools/gen-scenario.py's) has
+BE_MVP:02 in its on form, `hsm=H ipi=I boundary=B status=1:S,2:S
+started=none identity=<64 hex or none>`, both statuses 1, and a boot on
+hart 0 (the tree restricts the cold boot to it): a refusal is never
+declared, so one is a FAIL. A hart-start DETAIL has no status field, and
+the boundary class's DETAIL is `boundary=B word=W error=E`, `boundary=1
+expected=<64 hex>`, or, for the control hart's refused confine (M11-8),
+`boundary=1 confine=E`. Where the section says
 the tree holds a digest ("record"), the firmware's banner (where the
 capture shows one) has exactly one `Domain commit digest : <64 hex>`
 line, and M-mode's commit records (the firmware's patch 0008) follow the
@@ -749,13 +751,13 @@ CLASS_DETAIL["measurement"] = ("measurement",)
 CLASS_DETAIL["log"] = ()
 # M11-7's boundary-on images: hart-start's DETAIL without status, and the
 # boundary class's (an absent extension or a failed read, or another
-# image's identity).
+# image's identity; M11-8: the control hart's confine refused, its error).
 DETAIL_FORMS["start-on"] = re.compile(rf"BE_MVP:DETAIL domain=({DEC}) "
                                       rf"hart=({DEC}) result=({SIGNED}) "
                                       rf"ticks=({HEX})")
 DETAIL_FORMS["boundary"] = re.compile(
     rf"BE_MVP:DETAIL boundary=([01]) (?:word=({DEC}) error=({SIGNED})|"
-    r"expected=([0-9a-f]{64}))")
+    rf"expected=([0-9a-f]{{64}})|confine=({SIGNED}))")
 CLASS_DETAIL["boundary"] = ("boundary",)
 
 
@@ -4042,27 +4044,29 @@ def boundary_form(text, expect):
     return text_of(parts) + "\n"
 
 
-def boundary_expect(expect):
-    """EXPECT itself if it declares the boundary; otherwise a synthetic
-    boundary-on form of it (step 1, the image paired with itself), for the
-    self-test and the mutations before any image is built on."""
-    if "boundary" in expect:
-        return expect
+def boundary_expect(expect, control_hart):
+    """EXPECT, a passing image's expectation, in its boundary-on form under a
+    tree of step CONTROL_HART: boot, step 1, or confined, step 2, where hart
+    0 too ends confined (M11-8). An expectation that declares the boundary
+    keeps its declaration but for the step and hart 0's state; any other
+    gets a synthetic boundary-on form (the image paired with itself), for
+    the self-test and the mutations before any image is built on."""
     out = json.loads(json.dumps(expect))
-    for entry in out["control_lines"]:
-        if entry["template"].startswith("BE_MVP:02 "):
-            entry["template"] = ("BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 "
-                                 "boundary=1 status=1:1,2:1 started=none "
-                                 "identity=<Z>")
-            entry["regex"] = "^" + re.escape(entry["template"]).replace(
-                "<Z>", "[0-9a-f]{64}") + "$"
-        elif entry["template"].startswith("BE_MVP:08 "):
-            entry["template"] = entry["template"].replace(" status=0", "")
-            entry["regex"] = entry["regex"].replace("\\ status=0", "")
-    out["boundary"] = {"control_hart": "boot", "pair": out["image"],
-                       "record": True, "harts": {"0": "boot",
-                                                 "1": "confined",
-                                                 "2": "confined"}}
+    if "boundary" not in out:
+        for entry in out["control_lines"]:
+            if entry["template"].startswith("BE_MVP:02 "):
+                entry["template"] = ("BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 "
+                                     "boundary=1 status=1:1,2:1 started=none "
+                                     "identity=<Z>")
+                entry["regex"] = "^" + re.escape(entry["template"]).replace(
+                    "<Z>", "[0-9a-f]{64}") + "$"
+            elif entry["template"].startswith("BE_MVP:08 "):
+                entry["template"] = entry["template"].replace(" status=0", "")
+                entry["regex"] = entry["regex"].replace("\\ status=0", "")
+        out["boundary"] = {"pair": out["image"], "record": True,
+                           "harts": {"1": "confined", "2": "confined"}}
+    out["boundary"]["control_hart"] = control_hart
+    out["boundary"]["harts"]["0"] = control_hart
     return out
 
 
@@ -4807,17 +4811,22 @@ def current_m9_fixture_cases(expects, reports, root):
 
 
 def boundary_cases(latest, root):
-    """M11-7's base: two-guests' current stand-in in its boundary-on form
-    (boundary_expect()), its expectation, and the same without a digest in
-    the tree; [(name, expectation, text, wanted)]."""
-    on = boundary_expect(latest["two-guests"])
+    """M11-7's and M11-8's base: two-guests' current stand-in in its
+    boundary-on form (boundary_expect()) under a step-1 tree, the same
+    without a digest in the tree, and under a step-2 tree, each with its
+    expectation, whatever step the build's own expectation declares;
+    [(name, expectation, text, wanted)]."""
+    on = boundary_expect(latest["two-guests"], "boot")
     bare = json.loads(json.dumps(on))
     bare["boundary"]["record"] = False
+    second = boundary_expect(latest["two-guests"], "confined")
     source = fixture(M9_FIXTURES["two-guests"])
     return [("M11-7 boundary-on stand-in", on,
              current_log_standin(source, on, root), "PASS"),
             ("M11-7 boundary-on stand-in, no digest in the tree", bare,
-             current_log_standin(source, bare, root), "PASS")]
+             current_log_standin(source, bare, root), "PASS"),
+            ("M11-8 boundary-on stand-in, step 2: hart 0's record committed",
+             second, current_log_standin(source, second, root), "PASS")]
 
 
 def boundary_mutations(on, text, off, off_text):

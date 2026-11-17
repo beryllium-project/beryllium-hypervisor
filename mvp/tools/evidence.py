@@ -65,8 +65,10 @@ the last step of `check`) holds:
                     boundary, pmp_mode, dtb_sha256, and control_hart
                     columns say, for each attempt, whether the boundary was
                     on, its PMP mode and device tree (each tree among the
-                    partition outputs of images.sha256), and that the
-                    control hart was boot code (M11-7's step 1), or -
+                    partition outputs of images.sha256), and the tree's
+                    step that the run's expectation declares, boot (M11-7's
+                    step 1) or confined (M11-8's step 2), as its boundary
+                    record names it, or -
   sessions/         M7-4's typed sessions (tests/session-typist.py,
                     planning/mvp-m7-plan.md, D-11): sessions.txt and
                     sessions.tsv, and each attempt's capture, checker
@@ -298,8 +300,10 @@ ATTEMPT_COLUMNS = RUN_COLUMNS + ("boundary", "pmp_mode", "dtb_sha256",
 ATTEMPT_FILES = ("console.log", "check.txt", "result.json", "oracle.json",
                  "boundary.txt")
 # M11-7: a boundary-off attempt's boundary record, and the form of a
-# boundary-on one's last line (step 1: the control hart is boot code).
+# boundary-on one's last line, with the step its expectation declares
+# (M11-8: boot, step 1, or confined, step 2).
 NOT_APPLICABLE = "BE_MVP_BOUNDARY: NOT-APPLICABLE boundary=off\n"
+CONTROL_STEPS = ("boot", "confined")
 # M11-7: a breach image's plan beside its ELF (tools/gen-breach.py), and
 # each of its attempts' hook record (tests/check-boundary.py breach): its
 # verdict line, or the line of a run that could not be judged.
@@ -308,7 +312,8 @@ BREACH_LINE = re.compile(r"BE_MVP_BREACH: (?:PASS|FAIL) image=(\S+) "
                          r"boundary=(on|off) hart=[12] rows=\d+ .*")
 BREACH_UNJUDGED = re.compile(r"BE_MVP_BREACH: FAIL .*")
 BOUNDARY_ON = re.compile(r"BE_MVP_BOUNDARY: (?:PASS|FAIL) image=\S+ pair=\S+ "
-                         r"pmp_mode=(plain|smepmp) control_hart=boot .*")
+                         r"pmp_mode=(plain|smepmp) "
+                         r"control_hart=(boot|confined) .*")
 # M7-4's sessions (tests/session-typist.py suite), under BUILD/qemu: the
 # summary, the attempts table, and each attempt's records, in
 # TOOLCHAIN/IMAGE/attempt-N/.
@@ -722,20 +727,21 @@ def breach_row(build, attempt, row, suite):
 
 def boundary_row(attempt, row, record, table="attempts.tsv"):
     """M11-7: an attempt's boundary columns (in TABLE) and record agree:
-    on, with a PMP mode, a device tree, control_hart=boot, and
-    check-boundary's line in that mode; or off, with none, and the
-    NOT-APPLICABLE line."""
+    on, with a PMP mode, a device tree, a step (M11-8), and check-boundary's
+    line in that mode and naming that step, which it takes from the run's
+    expectation; or off, with none, and the NOT-APPLICABLE line."""
     text = record.read_text(encoding="utf-8")
     last = text.splitlines()[-1] if text.strip() else ""
     on = attempt["boundary"] == "on" and \
         attempt["pmp_mode"] in ("plain", "smepmp") and \
         SHA_FORM.match(attempt["dtb_sha256"]) and \
-        attempt["control_hart"] == "boot"
+        attempt["control_hart"] in CONTROL_STEPS
     off = (attempt["boundary"], attempt["pmp_mode"], attempt["dtb_sha256"],
            attempt["control_hart"]) == ("off", "-", "-", "-")
     match = BOUNDARY_ON.fullmatch(last)
-    if not (on and match and match.group(1) == attempt["pmp_mode"]) and \
-            not (off and text == NOT_APPLICABLE):
+    if not (on and match and match.groups() == (attempt["pmp_mode"],
+                                                attempt["control_hart"])) \
+            and not (off and text == NOT_APPLICABLE):
         raise Refused(f"{table} row {row!r} and its boundary record "
                       f"{last!r} do not agree")
 
@@ -2090,9 +2096,12 @@ def self_test(scratch):
     tree = build / "partition" / "two-guests" / "payload" / "plain" / \
         "payload.dtb"
     for name, old, new in (
-            ("a boundary-on attempt without control_hart=boot",
+            ("a boundary-on attempt without its step",
              "\tplain\t" + file_sha(tree) + "\tboot",
              "\tplain\t" + file_sha(tree) + "\t-"),
+            ("a boundary-on attempt of another step than its record's",
+             "\tplain\t" + file_sha(tree) + "\tboot",
+             "\tplain\t" + file_sha(tree) + "\tconfined"),
             ("a boundary-on attempt in another PMP mode than its record's",
              "\tplain\t" + file_sha(tree), "\tsmepmp\t" + file_sha(tree)),
             ("a boundary-off attempt with a PMP mode",
@@ -2101,6 +2110,20 @@ def self_test(scratch):
         case(f"{name} refuses the bundle",
              "do not agree" in
              (refused(development, build, scratch / "bundle-3", home) or ""))
+    # M11-8: a step-2 attempt, and its record naming step 2.
+    second_step = scratch / "step-2.boundary.txt"
+    second_step.write_text(
+        "BE_MVP_BOUNDARY: PASS image=two-guests pair=two-guests "
+        "pmp_mode=smepmp control_hart=confined harts=0:confined,1:confined,"
+        "2:confined,3-7:never-started identity=0123456789ab\n",
+        encoding="ascii")
+    step_row = {"boundary": "on", "pmp_mode": "smepmp",
+                "dtb_sha256": file_sha(tree), "control_hart": "confined"}
+    case("a step-2 attempt whose record names step 2 agrees",
+         refused(boundary_row, step_row, ["step 2"], second_step) is None)
+    case("a step-1 attempt whose record names step 2 refuses",
+         "do not agree" in (refused(boundary_row, dict(
+             step_row, control_hart="boot"), ["step 1"], second_step) or ""))
     table.write_text(original.replace(file_sha(tree), "e" * 64),
                      encoding="ascii")
     case("a boundary-on attempt's tree that no partition output has "
@@ -2151,8 +2174,14 @@ def self_test(scratch):
     original = status.read_text(encoding="ascii")
     status.write_text(original.replace("control_hart=boot\n",
                                        "control_hart=-\n"), encoding="ascii")
-    case("a boundary-on rehearsal case without control_hart=boot refuses "
-         "the bundle", "status.txt row" in
+    case("a boundary-on rehearsal case without its step refuses the "
+         "bundle", "status.txt row" in
+         (refused(development, build, scratch / "bundle-3", home) or ""))
+    status.write_text(original.replace("control_hart=boot\n",
+                                       "control_hart=confined\n"),
+                      encoding="ascii")
+    case("a boundary-on rehearsal case of another step than its record's "
+         "refuses the bundle", "status.txt row" in
          (refused(development, build, scratch / "bundle-3", home) or ""))
     status.write_text(original.replace("boundary=on\n", ""),
                       encoding="ascii")

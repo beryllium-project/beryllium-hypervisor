@@ -18,9 +18,10 @@
   check-boundary.py --self-test --scratch DIR
 
 Purpose: D-10's four checks of a boundary-on run (planning/mvp-m11-plan.md,
-D-10; M11-7, step 1: the VS-domain harts confined, the control hart not),
-from what the QEMU oracle (tests/qemu_oracle.py) read with the machine
-stopped and what M-mode printed:
+D-10; M11-7's step 1, the VS-domain harts confined and the control hart
+not, and M11-8's step 2, the control hart confined too), from what the
+QEMU oracle (tests/qemu_oracle.py) read with the machine stopped and what
+M-mode printed:
 
   1. Tables. Harts 0 to 2 each in the state the expectation's boundary
      section declares: confined, the backend's confined table of the
@@ -37,7 +38,12 @@ stopped and what M-mode printed:
      never committed where the read is not, and both readbacks equal when
      both are; with neither, never-started's. A hart declared confined has
      its READY line in the capture, one declared never-started no start
-     line, and one declared boot its start line alone. Configuration bytes
+     line, and one declared boot its start line alone. The control hart
+     (hart 0) is boot under a step-1 tree; under a step-2 tree it is
+     declared boot only where the run failed in boot code (a FAIL of class
+     boundary or hart-start, or no BE_MVP:07), and confined only where the
+     capture holds both VS-domain harts' BE_MVP:08 lines and no FAIL of
+     either class (C-1, M11-8). Configuration bytes
      are compared for all sixteen entries, an address only where the entry
      is not off. The committed harts are the ones so judged confined, and
      a started one only where the read says so.
@@ -60,8 +66,9 @@ record: the one line `BE_MVP_BOUNDARY: FAIL <reason>`.
 
 --fallthrough checks a run under the tree of the expectation's pair in
 which no monitor ran (the U-Boot rehearsal's fall-through): the
-expectation's declaration with harts 1 and 2 never started, the banner's
-digest and no printed record (the run ends with no reset).
+expectation's declaration with harts 1 and 2 never started and hart 0
+boot (no monitor confined it), the banner's digest and no printed record
+(the run ends with no reset).
 
 `breach` judges a breach image's run (M11-7; D-10's hostile-monitor rows)
 by its plan (tools/gen-breach.py plan): the hook's record, which the
@@ -75,19 +82,20 @@ value; and writes STEM.breach.txt, one line per row and the verdict line
 
 `gate` is the run harness's admission of a boundary-on run's device tree
 (D-3, D-10): the run starts only if the partition checker's record of the
-paired image (tests/check-partition.py --record) passed, names step 1's
-control hart, and gives this tree's and these tables' SHA-256; or, for a
+paired image (tests/check-partition.py --record) passed, names the
+declaration's control hart, and gives this tree's and these tables'
+SHA-256; or, for a
 run whose declaration names a boundary negative and the checker's refusal
 of its tree (M11-7, A-9), only by that tree's own record
 (tests/boundary-negatives.py record), which names that negative, the
-refusal declared, and this tree's and these tables' SHA-256. A negative's
-record admits no other run. It prints `BE_MVP_BOUNDARY_GATE: ADMIT` or
+refusal declared, the declaration's step, and this tree's and these
+tables' SHA-256. A negative's record admits no other run. It prints `BE_MVP_BOUNDARY_GATE: ADMIT` or
 `REFUSE <reason>` and exits 0 or 1.
 
-Every artifact names step 1: the tables document's and the declaration's
-control_hart is boot, and the result line says control_hart=boot. A
-boundary-off run's file is the one line `BE_MVP_BOUNDARY: NOT-APPLICABLE
-boundary=off`.
+Every artifact names its tree's step: the declaration's control_hart,
+boot (step 1) or confined (step 2), must be the tables document's, and the
+result line says it. A boundary-off run's file is the one line
+`BE_MVP_BOUNDARY: NOT-APPLICABLE boundary=off`.
 
 Trust: a test checker; it reads its inputs once, runs only the lock's nm
 on the firmware's ELF, and writes only --out. Scope: QEMU's k3-like
@@ -113,6 +121,12 @@ import qemu_oracle  # noqa: E402 pylint: disable=wrong-import-position
 HARTS = 8
 VS_HARTS = (1, 2)
 STATES = ("confined", "boot", "never-started", "started")
+# M11-8: a tree's step, by its control hart's state; the classes that only
+# the control hart's boot code prints after the barrier (C-1 for hart 0).
+CONTROL_HART = ("boot", "confined")
+BOOT_FAILURES = ("boundary", "hart-start")
+FAIL_CLASS = re.compile(r"BE_MVP:FAIL ([a-z0-9-]+)")
+BARRIER = "BE_MVP:07 "
 # A-1 and C-1 (M11-7's review): a VS-domain hart may be declared started,
 # between its start and its confinement when the run ends, only where the
 # outcome fails after the barrier and before both READY lines; the
@@ -166,6 +180,16 @@ def declaration(expect):
             any(state not in STATES for state in harts.values()):
         raise Refused("the boundary section declares no state for harts 0 "
                       "to 2")
+    if boundary["control_hart"] not in CONTROL_HART:
+        raise Refused(f"the boundary section's control_hart "
+                      f"{boundary['control_hart']!r} is not boot or "
+                      f"confined")
+    if harts["0"] not in CONTROL_HART:
+        raise Refused(f"the boundary section declares hart 0 "
+                      f"{harts['0']}; the control hart is boot or confined")
+    if boundary["control_hart"] == "boot" and harts["0"] != "boot":
+        raise Refused(f"the boundary section declares hart 0 {harts['0']} "
+                      f"under a step-1 tree, which leaves it boot")
     return boundary
 
 
@@ -259,6 +283,38 @@ def effective_states(expect, states, seen, findings):
                             f"lines for it are {sorted(lines)}, not its "
                             f"BE_MVP:08 alone")
     return out
+
+
+def control_findings(boundary, text, seen):
+    """C-1 for the control hart (M11-8), from the run's own lines (under
+    a step-1 tree it is boot, which declaration() requires): under a
+    step-2 tree, declared boot, the run failed in its boot code (its first
+    FAIL of class boundary or hart-start, or no BE_MVP:07 line); declared
+    confined, both VS-domain harts' BE_MVP:08 lines are in the capture and
+    no FAIL of either class."""
+    state = boundary["harts"]["0"]
+    if boundary["control_hart"] == "boot":
+        return []
+    lines = text.replace("\r", "").split("\n")
+    failed = [match.group(1) for match in map(FAIL_CLASS.match, lines)
+              if match]
+    barrier = any(line.startswith(BARRIER) for line in lines)
+    what = f"hart 0 ({state})"
+    if state == "boot":
+        if barrier and not (failed and failed[0] in BOOT_FAILURES):
+            return [f"{what}: the capture passed BE_MVP:07 and its first "
+                    f"FAIL is {failed[0] if failed else 'none'}, not "
+                    f"boundary or hart-start"]
+        return []
+    findings = []
+    if any("08" not in seen.get(hart, set()) for hart in VS_HARTS):
+        findings.append(f"{what}: the capture has not both VS-domain harts' "
+                        f"BE_MVP:08 HART_STARTED")
+    if any(klass in BOOT_FAILURES for klass in failed):
+        findings.append(f"{what}: the capture has a FAIL of class "
+                        f"{next(k for k in failed if k in BOOT_FAILURES)}, "
+                        f"which only boot code prints")
+    return findings
 
 
 def printed_record(lines):
@@ -374,11 +430,10 @@ def judge(expect, record, text, tables, mode, authority, symbols,
     findings, facts = [], {"image": image, "pair": boundary["pair"],
                            "pmp_mode": mode,
                            "control_hart": boundary["control_hart"]}
-    if boundary["control_hart"] != "boot" or \
-            tables.get("control_hart") != "boot":
-        findings.append(f"step 1 declares control_hart=boot; the "
-                        f"declaration says {boundary['control_hart']!r} and "
-                        f"the tables {tables.get('control_hart')!r}")
+    if tables.get("control_hart") != boundary["control_hart"]:
+        findings.append(f"the declaration's control_hart "
+                        f"{boundary['control_hart']!r} is not the tables' "
+                        f"{tables.get('control_hart')!r}")
     if record.get("result", {}).get("verdict") != "PASS":
         raise Refused("the oracle's read did not complete")
     classes = record["register_classes"]
@@ -418,8 +473,9 @@ def judge(expect, record, text, tables, mode, authority, symbols,
                        for hart, state in boundary["harts"].items()}
     declared_states.update({hart: "never-started"
                             for hart in range(3, HARTS)})
-    states = effective_states(expect, declared_states, lifecycle(text),
-                              findings)
+    seen = lifecycle(text)
+    states = effective_states(expect, declared_states, seen, findings)
+    findings += control_findings(boundary, text, seen)
     committed = set()
     for hart in range(HARTS):
         fields, cfg, addr = decode(words[hart])
@@ -635,7 +691,7 @@ def gate(expect, record, dtb, tables):
     declared refusal."""
     boundary = declaration(expect)
     reasons = []
-    wanted = {"result": "pass", "control_hart": "boot",
+    wanted = {"result": "pass", "control_hart": boundary["control_hart"],
               "image": boundary["pair"],
               "dtb_sha256": hashlib.sha256(dtb).hexdigest(),
               "tables_sha256": hashlib.sha256(tables).hexdigest()}
@@ -715,10 +771,11 @@ def unjudged(path, line):
 def fallthrough(expect):
     """EXPECT's declaration for a run under its pair's tree in which no
     monitor ran (the U-Boot rehearsal's fall-through, --fallthrough): the
-    VS-domain harts never started, no state word is read, and, as the run
-    ends with no reset, M-mode prints no record."""
+    VS-domain harts never started, the control hart boot (no monitor ran,
+    so none confined it), no state word is read, and, as the run ends with
+    no reset, M-mode prints no record."""
     boundary = dict(declaration(expect), fallthrough=True, harts=dict(
-        declaration(expect)["harts"], **{"1": "never-started",
+        declaration(expect)["harts"], **{"0": "boot", "1": "never-started",
                                          "2": "never-started"}))
     boundary.pop("phase", None)
     return dict(expect, image="fallthrough", boundary=boundary)
@@ -750,9 +807,10 @@ def check(args):
 
 # ------------------------------------------------------------ self-test
 
-def synthetic_tables():
-    """Two modes' tables: hart 0's boot table, harts 1 and 2's boot and
-    confined ones, every hart's never-started one."""
+def synthetic_tables(control_hart="boot"):
+    """Two modes' tables: hart 0's boot table (and under a step-2 tree its
+    confined one), harts 1 and 2's boot and confined ones, every hart's
+    never-started one."""
     def entries(rows):
         out = [{"index": index, "config": f"0x{config:02x}",
                 "address": f"0x{address:x}", "region": f"r{index}"}
@@ -761,7 +819,9 @@ def synthetic_tables():
                        "address": "not-compared", "region": "off"}
                       for index in range(len(out), 16)]
     boot = [(0x18, 0x20000fff), (0x1f, (1 << 64) - 1)]
-    confined = {1: [(0x1b, 0x40801fff), (0x19, 0x40803fff), (0x18,
+    confined = {0: [(0x1d, 0x408013ff), (0x19, 0x40800bff), (0x18,
+                                                             0x20000fff)],
+                1: [(0x1b, 0x40801fff), (0x19, 0x40803fff), (0x18,
                                                              0x20000fff)],
                 2: [(0x1b, 0x40805fff), (0x19, 0x40807fff), (0x18,
                                                              0x20000fff)]}
@@ -774,12 +834,14 @@ def synthetic_tables():
             if hart <= 2:
                 rows.append({"hart": hart, "state": "boot",
                              "entries": entries(boot)})
-            if hart in VS_HARTS:
+            if hart in VS_HARTS or (hart == 0 and
+                                    control_hart == "confined"):
                 rows.append({"hart": hart, "state": "confined",
-                             "profile": f"g{hart - 1}",
+                             "profile": f"g{hart - 1}" if hart else
+                             "control",
                              "entries": entries(confined[hart])})
         modes[mode] = rows
-    return {"schema": TABLE_SCHEMA, "control_hart": "boot",
+    return {"schema": TABLE_SCHEMA, "control_hart": control_hart,
             "descriptor_identity": "a" * 64, "firmware_sha256": "f" * 64,
             "base_tree_sha256": "b" * 64, "modes": modes}
 
@@ -792,13 +854,15 @@ HEADER = {"BOUNDARY_PHASE_OFFSET": 0x130, "BOUNDARY_PHASE_FAILED": 2,
           "BOUNDARY_CLASS_RING": 22}
 
 
-def synthetic_run(mode, states, record=True, counts=None, seen=None):
-    """A passing run's oracle record and console for STATES: each hart's
-    registers its declared table's, its commit record what M-mode keeps,
-    and the console's banner, BE_MVP:02, each VS-domain hart's BE_MVP:08
-    and BE_MVP:09 lines (SEEN's, or by its state: confined, both; boot or
-    started, its start alone), and the printed records."""
-    tables = synthetic_tables()
+def synthetic_run(mode, states, record=True, counts=None, seen=None,
+                  control_hart="boot"):
+    """A passing run's oracle record and console for STATES under a tree
+    of CONTROL_HART's step: each hart's registers its declared table's,
+    its commit record what M-mode keeps, and the console's banner,
+    BE_MVP:02, BE_MVP:07, each VS-domain hart's BE_MVP:08 and BE_MVP:09
+    lines (SEEN's, or by its state: confined, both; boot or started, its
+    start alone), and the printed records."""
+    tables = synthetic_tables(control_hart)
     counts = counts or {}
     harts, words, lines = [], [], []
     identity = "a" * 64
@@ -861,6 +925,8 @@ def synthetic_run(mode, states, record=True, counts=None, seen=None):
     text = (f"Domain commit digest        : {identity}\n" if record else "")
     text += ("BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 boundary=1 "
              f"status=1:1,2:1 started=none identity={identity}\n")
+    text += ("BE_MVP:07 BLOCKS_PUBLISHED region=0x102060000 bytes=0x8000 "
+             "generation=1 budget_ticks=0x1\n")
     for hart in VS_HARTS:
         state = states.get(hart, "never-started")
         shown = (seen or {}).get(hart, {"confined": ("08", "09"),
@@ -1031,17 +1097,20 @@ def self_test(scratch):
     base_states = {0: "boot", 1: "confined", 2: "confined"}
     cases = []
 
-    def expectation(image="two-guests", harts=None, outcome=None, **extra):
+    def expectation(image="two-guests", harts=None, outcome=None,
+                    control_hart="boot", **extra):
         harts = harts or {"0": "boot", "1": "confined", "2": "confined"}
         return {"image": image, "outcome": outcome or {"pass": True},
                 "boundary": dict(
-                    {"control_hart": "boot", "pair": "two-guests",
+                    {"control_hart": control_hart, "pair": "two-guests",
                      "record": True, "harts": harts}, **extra)}
 
     def run(name, change=None, mode="plain", states=None, expect=None,
-            want=None, record=True, counts=None, header=HEADER, seen=None):
+            want=None, record=True, counts=None, header=HEADER, seen=None,
+            control_hart="boot"):
         oracle, text, tables = synthetic_run(mode, states or base_states,
-                                             record, counts, seen)
+                                             record, counts, seen,
+                                             control_hart)
         expect = expect or expectation()
         if change:
             text = change(oracle, tables, expect, text) or text
@@ -1119,8 +1188,96 @@ def self_test(scratch):
                                                    ["0x0000000020000ffe"] +
                                                    ["0x0"] * 15),
         want="hart 0 (boot) as read: pmpaddr0")
-    run("the tables of step 2", lambda oracle, tables, expect, text:
-        tables.update(control_hart="confined"), want="control_hart=boot")
+    run("the tables of step 2 for a step-1 declaration",
+        lambda oracle, tables, expect, text:
+        tables.update(control_hart="confined"),
+        want="the declaration's control_hart 'boot' is not the tables' "
+        "'confined'")
+    # M11-8: step 2, the control hart confined, and C-1 for hart 0.
+    step2 = {0: "confined", 1: "confined", 2: "confined"}
+
+    def second(harts=None, outcome=None, **extra):
+        return expectation(harts=harts or {"0": "confined", "1": "confined",
+                                           "2": "confined"},
+                           outcome=outcome, control_hart="confined", **extra)
+    run("step 2, plain", states=step2, expect=second(),
+        control_hart="confined")
+    run("step 2, Smepmp", mode="smepmp", states=step2, expect=second(),
+        control_hart="confined")
+    run("step 2: hart 0's table differs", oracle_hart(
+        0, "pmpaddr", ["0x00000000408013fe"] + ["0x0"] * 15), states=step2,
+        expect=second(), control_hart="confined",
+        want="hart 0 as read: pmpaddr0")
+    run("step 2: hart 0 printed committed, read not", word("t0-0", 0),
+        states=step2, expect=second(), control_hart="confined",
+        want="hart 0 (confined): printed committed but read not")
+    run("step 2: hart 0 with a fault", counts={0: (1, 0, 0)}, states=step2,
+        expect=second(), control_hart="confined",
+        want="hart 0 (confined): pmp_faults=1 as read, declared 0")
+    run("step 2: hart 0 with its declared fault", counts={0: (1, 0, 0)},
+        states=step2, control_hart="confined",
+        expect=second(counts={"0": {"pmp_faults": 1}},
+                      outcome={"fail": "exception", "after": "BE_MVP:08"}),
+        change=lambda oracle, tables, expect, text:
+        text + "BE_MVP:FAIL exception\n")
+    run("step 2: hart 0 declared boot, the run's lines confined",
+        states={0: "boot", 1: "confined", 2: "confined"}, control_hart=
+        "confined", expect=second({"0": "boot", "1": "confined",
+                                   "2": "confined"}),
+        want="hart 0 (boot): the capture passed BE_MVP:07 and its first "
+        "FAIL is none")
+    run("step 2: hart 0 declared confined, the run failed at a start",
+        states=step2, expect=second(), control_hart="confined",
+        change=lambda oracle, tables, expect, text:
+        text + "BE_MVP:FAIL hart-start\n",
+        want="hart 0 (confined): the capture has a FAIL of class "
+        "hart-start")
+    run("step 2: hart 0 declared confined, a VS-domain hart's start "
+        "missing", states={0: "confined", 1: "confined", 2: "never-started"},
+        seen={1: ("08", "09"), 2: ()}, control_hart="confined",
+        expect=second({"0": "confined", "1": "confined",
+                       "2": "never-started"}),
+        want="hart 0 (confined): the capture has not both VS-domain harts' "
+        "BE_MVP:08")
+    run("step 2: a refused confine, hart 0 boot, both harts started",
+        states={0: "boot", 1: "confined", 2: "confined"},
+        seen={1: ("08",), 2: ("08",)}, control_hart="confined",
+        expect=second({"0": "boot", "1": "started", "2": "started"},
+                      {"fail": "boundary", "after": "BE_MVP:08"}),
+        change=lambda oracle, tables, expect, text:
+        text + "BE_MVP:FAIL boundary\n")
+    run("step 2: a failure before the barrier, hart 0 boot",
+        states={0: "boot", 1: "never-started", 2: "never-started"},
+        seen={1: (), 2: ()}, control_hart="confined",
+        expect=second({"0": "boot", "1": "never-started",
+                       "2": "never-started"},
+                      {"fail": "payload", "after": "BE_MVP:03"}),
+        change=lambda oracle, tables, expect, text:
+        text.replace("BE_MVP:07 ", "BE_MVP:FAIL payload ", 1))
+    run("step 1: hart 0 declared confined",
+        expect=expectation(harts={"0": "confined", "1": "confined",
+                                  "2": "confined"}),
+        want="refused: the boundary section declares hart 0 confined under "
+        "a step-1 tree")
+    run("step 2: hart 0 declared never-started", states=step2,
+        control_hart="confined", expect=second(
+            {"0": "never-started", "1": "confined", "2": "confined"}),
+        want="refused: the boundary section declares hart 0 never-started")
+    run("step 2 declared, the tables step 1's", states=base_states,
+        expect=second({"0": "boot", "1": "confined", "2": "confined"},
+                      {"fail": "boundary", "after": "BE_MVP:08"}),
+        change=lambda oracle, tables, expect, text:
+        text + "BE_MVP:FAIL boundary\n",
+        want="the declaration's control_hart 'confined' is not the tables' "
+        "'boot'")
+    run("a control hart neither boot nor confined",
+        expect=expectation(control_hart="parked"),
+        want="refused: the boundary section's control_hart 'parked'")
+    run("step 2, the fall-through: no monitor ran, hart 0 boot",
+        lambda oracle, tables, expect, text: "=> no monitor ran\n",
+        states={0: "boot", 1: "never-started", 2: "never-started"},
+        control_hart="confined", record=False,
+        expect=fallthrough(second(record=False)))
     run("the tables of another image", lambda oracle, tables, expect, text:
         tables.update(descriptor_identity="e" * 64),
         want="not the paired image")
@@ -1329,8 +1486,8 @@ def self_test(scratch):
     for name, edit, want in (
             ("the checker's passing record of this tree", {}, None),
             ("a record that did not pass", {"result": "fail"}, "result"),
-            ("a record of step 2's tree", {"control_hart": "confined"},
-             "control_hart"),
+            ("a record of step 2's tree for step 1's declaration",
+             {"control_hart": "confined"}, "control_hart"),
             ("another image's record", {"image": "two-guests-shell"},
              "image"),
             ("a record of another tree", {"dtb_sha256": "0" * 64},
@@ -1338,6 +1495,19 @@ def self_test(scratch):
             ("a record of other tables", {"tables_sha256": "0" * 64},
              "tables_sha256")):
         reasons = gate(expectation(), dict(passed, **edit), dtb, tables)
+        ok = not reasons if want is None else \
+            len(reasons) == 1 and f"record's {want} is" in reasons[0]
+        cases.append((f"the gate: {name}", ok, "; ".join(reasons) or
+                      "admitted"))
+    # M11-8: a step-2 declaration, by a step-2 record only.
+    for name, edit, want in (
+            ("step 2's record of this tree for step 2's declaration",
+             {"control_hart": "confined"}, None),
+            ("step 1's record for step 2's declaration", {},
+             "control_hart")):
+        reasons = gate(expectation(control_hart="confined", harts={
+            "0": "confined", "1": "confined", "2": "confined"}),
+            dict(passed, **edit), dtb, tables)
         ok = not reasons if want is None else \
             len(reasons) == 1 and f"record's {want} is" in reasons[0]
         cases.append((f"the gate: {name}", ok, "; ".join(reasons) or
@@ -1359,6 +1529,8 @@ def self_test(scratch):
              {"dtb_sha256": "0" * 64}, "record's dtb_sha256 is"),
             ("a negative's record with another refusal", declared,
              {"reason": "be_g0: harts differs"}, "record's reason is"),
+            ("a negative's record of another step", declared,
+             {"control_hart": "confined"}, "record's control_hart is"),
             ("a passing record for a declared refusal", declared,
              {"schema": None, "result": "pass", "negative": None,
               "reason": None}, "record's schema is")):

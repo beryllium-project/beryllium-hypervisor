@@ -5,7 +5,10 @@
 
 --control-hart boot (M11-7, step 1): the tree has no OpenSBI domain for
 hart 0, which be_boot alone lists, and the tables no confined table for
-it; the record names the step and binds the tree's and tables' SHA-256."""
+it; confined (M11-8, step 2), the default: be_control holds hart 0, and the
+tables its confined tables. The tables name their step ("control_hart",
+required), and the record names it and binds the tree's and tables'
+SHA-256."""
 
 import argparse
 import copy
@@ -993,7 +996,7 @@ def table_equal(got, wanted, label):
 def tables_check(tables, identity, firmware, base_dts, fdt, extent_ranges,
                  profiles, symbols, control="confined"):
     require(tables.get("schema") == "be-pmp-tables-v1" and
-            tables.get("control_hart", "confined") == control and
+            tables.get("control_hart") == control and
             tables["descriptor_identity"] == identity and
             tables["firmware_sha256"] == sha(firmware) and
             tables["base_tree_sha256"] == sha(base_dts),
@@ -1333,19 +1336,28 @@ def tree_mutations(descriptor_path, value, identity, domains, extent_ranges,
          if row["config"] == "0x00")["address"] = "0x1"
     tables_check(off, identity, firmware, base, clean_fdt, extent_ranges,
                  profiles, symbols, control)
+    # M11-8: the tables name their step, the tree's.
+    table_case("tables of the other step", "expected-table identities differ",
+               lambda doc: doc.update(control_hart="boot" if control ==
+                                      "confined" else "confined"))
+    table_case("tables that name no step", "expected-table identities differ",
+               lambda doc: doc.pop("control_hart"))
+    check("hart 0 in a narrow domain", "be_g0: harts differs",
+          lambda text: block(text, "be_g0", lambda body: body.replace(
+              "possible-harts = <&{/cpus/cpu@1}>;",
+              "possible-harts = <&{/cpus/cpu@0} &{/cpus/cpu@1}>;")))
     if control == "boot":
         check("step 1 with be_control", "OpenSBI domain names differ",
               lambda text: text, render("step-2.dts", "confined"))
-        check("hart 0 in a narrow domain", "be_g0: harts differs",
-              lambda text: block(text, "be_g0", lambda body: body.replace(
-                  "possible-harts = <&{/cpus/cpu@1}>;",
-                  "possible-harts = <&{/cpus/cpu@0} &{/cpus/cpu@1}>;")))
         table_case("hart 0 confined in step 1", "plain: state table counts",
                    lambda doc: doc["modes"]["plain"].append(dict(
                        hart=0, state="confined", entries=confined(doc,
                                                                   "plain"))))
+    else:
+        check("step 2 without be_control", "OpenSBI domain names differ",
+              lambda text: text, render("step-1.dts", "boot"))
     shutil.rmtree(scratch)
-    return 16 + 3 * (control == "boot")
+    return 20 + (control == "boot")
 
 
 def actual_check(args):

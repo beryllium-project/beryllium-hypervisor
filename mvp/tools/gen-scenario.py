@@ -356,16 +356,19 @@ BREACH_TOOL = pathlib.Path(__file__).resolve().with_name("gen-breach.py")
 # never boundary-on. Its name is the image's with -off.
 OFF_COPY_KEY = "off_copy_of"
 # The boundary-on form of an expectation (M11-7, step 1: the VS-domain
-# harts confined, the control hart not): BE_MVP:02 with the extension's
-# probe, harts 1 and 2 STOPPED, none STARTED, and the identity the
-# firmware read; each BE_MVP:08 without its status; and the "boundary"
-# section that tests/check-capture.py and tests/check-boundary.py read:
-# the control hart's step, the image whose descriptor the run's tree is,
-# whether that tree holds a digest, each of harts 0 to 2's state at the
-# run's end, and for ring-full the VS domains whose state word the oracle
-# reads (A-2). A VS-domain hart is declared started where the outcome
-# fails after BE_MVP:07, :08, or :09 and before both READY lines: the
-# capture's own lines then decide its rules (A-1 and C-1 of M11-7).
+# harts confined, the control hart not; M11-8, step 2: the control hart
+# confined too): BE_MVP:02 with the extension's probe, harts 1 and 2
+# STOPPED, none STARTED, and the identity the firmware read; each BE_MVP:08
+# without its status; and the "boundary" section that tests/check-capture.py
+# and tests/check-boundary.py read: the control hart's step (the tree's,
+# mvp/Makefile's PARTITION_CONTROL_HART), the image whose descriptor the
+# run's tree is, whether that tree holds a digest, each of harts 0 to 2's
+# state at the run's end, and for ring-full the VS domains whose state word
+# the oracle reads (A-2). A VS-domain hart is declared started where the
+# outcome fails after BE_MVP:07, :08, or :09 and before both READY lines:
+# the capture's own lines then decide its rules (A-1 and C-1 of M11-7).
+# Under step 2 the control hart's own confinement is its synchronous call,
+# so its state is decided by the outcome (CONTROL_BOOT_FAILURES).
 BOUNDARY_FIRMWARE = ("BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 boundary=1 "
                      "status=1:{stopped},2:{stopped} started=none "
                      "identity=<Z>")
@@ -382,6 +385,14 @@ BOUNDARY_HARTS = {"hart-start": {"0": "boot", "1": "started",
 BEFORE_BARRIER = ("none", "BE_MVP:00", "BE_MVP:01", "BE_MVP:02", "BE_MVP:03",
                   "BE_MVP:04", "BE_MVP:05", "BE_MVP:06", "BE_MVP:19")
 STARTING = ("BE_MVP:07", "BE_MVP:08", "BE_MVP:09")
+# M11-8: the control hart's steps (the tree's), and under step 2 the
+# failures its boot code prints after the barrier, so that it ends in
+# be_boot: a VS-domain hart's start refused, or its own confine refused
+# (after the :08 lines). Every other failure after the barrier comes from
+# its confined phase.
+CONTROL_STEPS = ("boot", "confined")
+CONTROL_BOOT_FAILURES = {"hart-start": STARTING,
+                         "boundary": ("BE_MVP:07", "BE_MVP:08")}
 # A variant's one compile-time change, as the layout names its value.
 VARIANT_VALUES = {"exit_ceiling": "VARIANT_EXIT_CEILING",
                   "run_budget_ticks": "VARIANT_RUN_BUDGET",
@@ -1042,7 +1053,8 @@ def negative_form(out, name, negative):
             boundary[key] = copy.deepcopy(negative[key])
     if "harts" in negative:
         boundary["harts"] = boundary_harts(name, out["outcome"], {name: dict(
-            boundary["harts"], **negative["harts"])})
+            boundary["harts"], **negative["harts"])},
+            boundary["control_hart"])
     if out["outcome"]["fail"] != "boundary":
         return
     probe = negative.get("probe", 1)
@@ -1085,13 +1097,28 @@ def read_pairing(path):
                          path)
 
 
-def boundary_harts(name, outcome, declared=None):
-    """Harts 0 to 2's states when a boundary-on run of image NAME ends: hart
-    0 in the boot OpenSBI domain (step 1); harts 1 and 2 confined after a
-    pass or a failure after BE_MVP:10, started after a failure after one
-    of STARTING, never started after a failure before the barrier; or the
-    image's own declaration in DECLARED (BOUNDARY_HARTS), started only
-    where the rule allows it."""
+def control_state(outcome, control):
+    """Hart 0's state when a boundary-on run with OUTCOME ends under a tree
+    of step CONTROL: in the boot OpenSBI domain under step 1; under step 2
+    in it where the run fails before the barrier or with one of
+    CONTROL_BOOT_FAILURES, and confined otherwise (M11-8)."""
+    require(control in CONTROL_STEPS, f"the control hart's step {control!r} "
+            f"is not one of {', '.join(CONTROL_STEPS)}")
+    if control == "boot" or outcome.get("pass"):
+        return control
+    after = outcome.get("after")
+    return "boot" if after in BEFORE_BARRIER or after in \
+        CONTROL_BOOT_FAILURES.get(outcome.get("fail"), ()) else "confined"
+
+
+def boundary_harts(name, outcome, declared=None, control="boot"):
+    """Harts 0 to 2's states when a boundary-on run of image NAME ends under
+    a tree of step CONTROL: hart 0 by control_state(); harts 1 and 2
+    confined after a pass or a failure after BE_MVP:10, started after a
+    failure after one of STARTING, never started after a failure before
+    the barrier; or the image's own declaration in DECLARED
+    (BOUNDARY_HARTS), started only where the rule allows it, and its hart
+    0 the rule's."""
     after = None if outcome.get("pass") else outcome.get("after")
     harts = (declared or BOUNDARY_HARTS).get(name)
     if harts is None:
@@ -1101,16 +1128,21 @@ def boundary_harts(name, outcome, declared=None):
                 f"states are decided")
         state = "confined" if after in (None, "BE_MVP:10") else \
             "started" if after in STARTING else "never-started"
-        harts = {"0": "boot", "1": state, "2": state}
+        harts = {"1": state, "2": state}
     require("started" not in harts.values() or after in STARTING,
             f"{name} declares a started hart, but its outcome does not fail "
             f"after {', '.join(STARTING)}")
-    return dict(harts)
+    hart0 = control_state(outcome, control)
+    require(harts.get("0", hart0) == hart0,
+            f"{name} declares hart 0 {harts.get('0')}, but under a step-"
+            f"{CONTROL_STEPS.index(control) + 1} tree its outcome leaves it "
+            f"{hart0}")
+    return {"0": hart0, "1": harts["1"], "2": harts["2"]}
 
 
-def boundary_form(image, name, pair):
+def boundary_form(image, name, pair, control="boot"):
     """IMAGE, the expectation of image NAME, in its boundary-on form, run
-    under the descriptor and tree of image PAIR."""
+    under the descriptor and tree of image PAIR, a tree of step CONTROL."""
     out = copy.deepcopy(image)
     negative = out.pop("negative", None)
     entries = []
@@ -1129,8 +1161,9 @@ def boundary_form(image, name, pair):
             entries.append(entry)
     require(firmware == 1, f"{name} has no one BE_MVP:02")
     out["control_lines"] = entries
-    out["boundary"] = {"control_hart": "boot", "pair": pair, "record": True,
-                       "harts": boundary_harts(name, out["outcome"])}
+    out["boundary"] = {"control_hart": control, "pair": pair,
+                       "record": True, "harts": boundary_harts(
+                           name, out["outcome"], control=control)}
     if "breach" in out:
         # M11-7: the hooked hart's counts, each attempt refused as declared.
         out["boundary"]["counts"] = {str(out["breach"]["hart"]): {
@@ -1163,10 +1196,11 @@ def breach_counts(scenario_path, images):
             path, image["breach"]["domain"])
 
 
-def apply_boundary(images, scenario, boundary_images, pairing):
+def apply_boundary(images, scenario, boundary_images, pairing,
+                   control="boot"):
     """Each image the build makes boundary-on (its own name, or the image it
-    is paired with, in BOUNDARY_IMAGES) in its boundary-on form; an off copy
-    or a probe never."""
+    is paired with, in BOUNDARY_IMAGES) in its boundary-on form under trees
+    of step CONTROL; an off copy or a probe never."""
     copies = {variant["name"] for variant in off_copies(scenario)}
     probes = {probe["name"] for probe in scenario.get("probes", [])}
     for name in sorted(images):
@@ -1178,7 +1212,7 @@ def apply_boundary(images, scenario, boundary_images, pairing):
             continue
         require(name not in copies and name not in probes,
                 f"{name}, an off copy or a probe, is named boundary-on")
-        images[name] = boundary_form(images[name], name, pair)
+        images[name] = boundary_form(images[name], name, pair, control)
 
 
 def boundary_self_test(scenario, images):
@@ -1333,6 +1367,70 @@ def boundary_self_test(scenario, images):
         ("a negative without the boundary is no run", not any(
             name in off_only for name in negatives)),
     ]
+    # M11-8: the same under step 2's trees, the control hart confined by
+    # its own call where its boot code does not end the run.
+    second = copy.deepcopy(images)
+    apply_boundary(second, scenario, named, pairs, "confined")
+    neg2 = copy.deepcopy(images)
+    apply_boundary(neg2, scenario, {"two-guests"}, dict.fromkeys(
+        negatives, "two-guests"), "confined")
+
+    def states(image, name):
+        return image[name]["boundary"]["harts"]
+    checks += [
+        ("step 2: the scenario image's section", second["two-guests"][
+            "boundary"] == {"control_hart": "confined", "pair": "two-guests",
+                            "record": True, "harts": {
+                                "0": "confined", "1": "confined",
+                                "2": "confined"}}),
+        ("step 2: the lines as step 1's", all(
+            second[name]["control_lines"] == every[name]["control_lines"]
+            and second[name]["outcome"] == every[name]["outcome"]
+            for name in named)),
+        ("step 2: payload, a failure before the barrier, hart 0 boot",
+         states(second, "payload") == {"0": "boot", "1": "never-started",
+                                       "2": "never-started"}),
+        ("step 2: hart-start, its boot code's failure, hart 0 boot",
+         states(second, "hart-start") == {"0": "boot", "1": "started",
+                                          "2": "never-started"}),
+        ("step 2: run-timeout, from the confined phase",
+         states(second, "run-timeout") == {"0": "confined", "1": "started",
+                                           "2": "started"}),
+        ("step 2: a failure after BE_MVP:10, all three confined",
+         all(states(second, name) == {"0": "confined", "1": "confined",
+                                      "2": "confined"}
+             for name in ("exit-budget", "ring-full", "init-exit",
+                          "rdcycle"))),
+        ("step 2: the control hart's refused confine, after the :08 lines",
+         boundary_harts("x", {"fail": "boundary", "after": "BE_MVP:08"},
+                        control="confined") == {
+                            "0": "boot", "1": "started", "2": "started"}),
+        ("step 2: a hart-ready failure, hart 0 confined", all(
+            boundary_harts("x", {"fail": "hart-ready", "after": after},
+                           control="confined") == {
+                               "0": "confined", "1": "started",
+                               "2": "started"}
+            for after in ("BE_MVP:08", "BE_MVP:09"))),
+        ("step 2: a failure at BE_MVP:19's gate, hart 0 boot",
+         boundary_harts("x", {"fail": "measurement", "after": "BE_MVP:19"},
+                        control="confined") == {
+                            "0": "boot", "1": "never-started",
+                            "2": "never-started"}),
+        ("step 2: the negatives' trees name step 2", all(
+            neg2[name]["boundary"]["control_hart"] == "confined"
+            for name in negatives)),
+        ("step 2: the probe negatives, hart 0 boot", all(
+            states(neg2, name)["0"] == "boot" for name in (
+                "boundary-absent", "boundary-no-identity",
+                "boundary-identity"))),
+        ("step 2: a VS-domain hart's refused confine, hart 0 confined", all(
+            states(neg2, name) == {"0": "confined", "1": "boot", "2": "boot"}
+            for name in ("boundary-two-narrow", "boundary-wrong-boot",
+                         "boundary-no-list"))),
+        ("step 2: boundary-no-window, all three confined",
+         states(neg2, "boundary-no-window") == {
+             "0": "confined", "1": "confined", "2": "confined"}),
+    ]
     refusals = []
 
     def refused(label, call, reason):
@@ -1358,6 +1456,21 @@ def boundary_self_test(scenario, images):
                     "x", outcome, {"x": {"0": "boot", "1": "started",
                                          "2": "confined"}}),
                 "declares a started hart")
+    refused("hart 0 declared confined under a step-1 tree",
+            lambda: boundary_harts("x", {"pass": True}, {"x": {
+                "0": "confined", "1": "confined", "2": "confined"}}),
+            "under a step-1 tree its outcome leaves it boot")
+    refused("hart 0 declared boot where step 2 confines it",
+            lambda: boundary_harts("x", {"pass": True}, {"x": {
+                "0": "boot", "1": "confined", "2": "confined"}}, "confined"),
+            "under a step-2 tree its outcome leaves it confined")
+    refused("hart 0 declared confined where its boot code fails",
+            lambda: boundary_harts("x", {"fail": "hart-start",
+                                         "after": "BE_MVP:07"}, {"x": {
+                "0": "confined", "1": "started", "2": "never-started"}},
+                "confined"), "its outcome leaves it boot")
+    refused("a step that is neither", lambda: boundary_harts(
+        "x", {"pass": True}, control="parked"), "is not one of")
     refused("an off copy named on", lambda: apply_boundary(
         copy.deepcopy(images), scenario, {"two-guests-off"}, {}),
         "an off copy or a probe")
@@ -4152,7 +4265,7 @@ def scenario_logs(scenario, binding, layout, files, core_of, sealed, policy,
 
 def generate(scenario_path, layout_path, dts_path, out, policy_path=None,
              negative=None, guest=None, flavour="linux", boundary_images=(),
-             pairing=None):
+             pairing=None, control=None):
     data = pathlib.Path(scenario_path).read_bytes()
     digest = hashlib.sha256(data).hexdigest()
     scenario = monitor_variants(flavour_lines(json.loads(data), flavour),
@@ -4235,9 +4348,13 @@ def generate(scenario_path, layout_path, dts_path, out, policy_path=None,
         apply_log(image, logs[name], bindings[name])
     # beryllium-cheri: cap-store's control run, its image's, logged.
     cap_store_control(images)
-    # M11-7: the boundary-on images' forms (the build's MVP_BOUNDARY_IMAGES).
+    # M11-7: the boundary-on images' forms (the build's MVP_BOUNDARY_IMAGES);
+    # M11-8: under the trees' step (the build's PARTITION_CONTROL_HART).
+    require(control in CONTROL_STEPS or not boundary_images,
+            "boundary-on images need the control hart's step "
+            "(--control-hart)")
     apply_boundary(images, scenario, set(boundary_images),
-                   read_pairing(pairing))
+                   read_pairing(pairing), control or "boot")
     (out / "mvp-scenario.h").write_text(
         header(scenario["name"], binding, digest, layout, sealed,
                log_header(scenario, logs, [probe["name"] for probe in
@@ -5338,6 +5455,8 @@ def main(argv):
     # and the pairing (scenarios/pairing.txt).
     parser.add_argument("--boundary-image", action="append", default=[])
     parser.add_argument("--pairing")
+    # M11-8: the trees' step (mvp/Makefile's PARTITION_CONTROL_HART).
+    parser.add_argument("--control-hart", choices=CONTROL_STEPS)
     args = parser.parse_args(argv[1:])
     global MONITOR
     MONITOR = args.monitor
@@ -5358,7 +5477,8 @@ def main(argv):
             parser.error("--out is required")
         generate(args.scenario, args.layout, args.dts_tool, args.out,
                  args.policy_tool, args.negative, args.guest,
-                 args.guest_flavour, args.boundary_image, args.pairing)
+                 args.guest_flavour, args.boundary_image, args.pairing,
+                 args.control_hart)
     except (ScenarioError, OSError, ValueError, KeyError, TypeError,
             AttributeError, IndexError) as error:
         print(f"BE_MVP_SCENARIO: FAIL {error}")

@@ -63,16 +63,18 @@
 # passes if an attempt changed its disk.
 # M11-7: a case whose expectation declares the physical boundary (each
 # default case; the fall-through runs under two-guests' GCC image's) runs
-# as tests/run-qemu.sh runs a boundary-on row: under its pair's step-1 tree
-# in plain PMP, given to QEMU (-dtb) and so to U-Boot and the monitor,
+# as tests/run-qemu.sh runs a boundary-on row: under its pair's tree (of
+# the step the expectation declares) in plain PMP, given to QEMU (-dtb)
+# and so to U-Boot and the monitor,
 # admitted only by the partition checker's record of that tree
 # (tests/check-boundary.py gate; refused, no QEMU starts), the oracle
 # reading the firmware's commit records and the declared words, each
 # attempt judged by tests/check-boundary.py as well (the fall-through's
 # with --fallthrough: no VS-domain hart started and no record printed), in
 # one attempt, its boot on hart 0. status.txt names the boundary, its PMP
-# mode, the tree and its SHA-256, and the control hart (boot code, step
-# 1), and each attempt's boundary verdict; CASE/words.json and
+# mode, the tree and its SHA-256, and the control hart's step that the
+# expectation declares (boot, M11-7's step 1, or confined, M11-8's step
+# 2), and each attempt's boundary verdict; CASE/words.json and
 # CASE/attempt-N/boundary.txt (NOT-APPLICABLE for an off case) join the
 # records.
 # The QEMU-only image (plan, "Tool changes (M5-2)"): the board image with
@@ -309,6 +311,7 @@ run_case() {
 	local qemu_exit=none adir boot_hart line built path key note='' disk_sha
 	local disk=same oracle_status=none oracle_detail=
 	local declared=$expect pair=- scenario dtb=- tables record authority
+	local control=-
 	local boundary=off boundary_args=() fallthrough=() bounded=- limit
 
 	dir=$output/$name
@@ -360,10 +363,11 @@ run_case() {
 	[ "$declared" = - ] || pair=$("$python" -I -B -c 'import json, sys
 expect = json.load(open(sys.argv[1]))
 boundary = expect.get("boundary")
-print(boundary["pair"] + " " + expect["scenario"]
-      if isinstance(boundary, dict) else "-")' "$build/$declared")
+print(boundary["pair"] + " " + expect["scenario"] + " " +
+      boundary["control_hart"] if isinstance(boundary, dict) else "-")' \
+		"$build/$declared")
 	if [ "$pair" != - ]; then
-		read -r pair scenario <<<"$pair"
+		read -r pair scenario control <<<"$pair"
 		dtb=partition/$scenario/$pair/plain/$pair.dtb
 		tables=$build/partition/$scenario/$pair/plain/$pair-pmp.json
 		record=$build/records/partition/plain/$toolchain/$scenario/$pair.json
@@ -383,8 +387,8 @@ print(boundary["pair"] + " " + expect["scenario"]
 		printf 'label=%s\nimage=%s\nimage_sha256=%s\n' "$label" "$image" \
 			"$(sha "$build/$image")"
 		if [ "$boundary" = on ]; then
-			printf 'boundary=on\npmp_mode=plain\ndtb=%s\ndtb_sha256=%s\ncontrol_hart=boot\n' \
-				"$dtb" "$(sha "$build/$dtb")"
+			printf 'boundary=on\npmp_mode=plain\ndtb=%s\ndtb_sha256=%s\ncontrol_hart=%s\n' \
+				"$dtb" "$(sha "$build/$dtb")" "$control"
 		else
 			printf 'boundary=off\npmp_mode=-\ndtb=-\ndtb_sha256=-\ncontrol_hart=-\n'
 		fi

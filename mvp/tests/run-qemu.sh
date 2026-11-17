@@ -127,8 +127,9 @@
 # OUT_DIR/attempts.tsv lists each attempt's boot hart and verdict, with the
 # boot ELF it ran (relative to BUILD_DIR) and that ELF's SHA-256, which bind
 # the run to its image (tools/evidence.py), and whether the boundary was
-# on, with its PMP mode, its device tree's SHA-256, and control_hart=boot
-# (M11-7's step 1), or off, with - for each.
+# on, with its PMP mode, its device tree's SHA-256, and the control_hart
+# its expectation declares (the tree's step: boot, M11-7's step 1, or
+# confined, M11-8's step 2), or off, with - for each.
 #
 #   run-qemu.sh BUILD_DIR FIRMWARE_BIN OUT_DIR [RUN ...]
 #
@@ -684,7 +685,7 @@ run() {
 	local hart sha check elf_sha reported=() addition=$cheri_cpu
 	local oracle_verdict oracle_detail oracle_failure=''
 	local pair mode=off dtb=- tables=- record=- authority=- dtb_sha=-
-	local negative
+	local negative control=-
 	local scenario_name limit=$max_attempts boundary_verdict
 	local boundary_failure='' breach=no plan=- breach_words=- extra=()
 	local breach_verdict breach_failure=''
@@ -707,6 +708,8 @@ run() {
 	pair=$(boundary_pair "$expect")
 	if [ "$pair" != - ]; then
 		mode=$boundary limit=1
+		# M11-8: the tree's step, as the expectation declares it.
+		control=$(boundary_field "$expect" control_hart)
 		scenario_name=$(expect_field "$expect" scenario)
 		dtb=$build/partition/$scenario_name/$pair/$mode/$pair.dtb
 		tables=$build/partition/$scenario_name/$pair/$mode/$pair-pmp.json
@@ -806,8 +809,7 @@ print(fields.get("boot_hart", "none"))' "$stem.result.json" 2>/dev/null || echo 
 			"${verdict:-none}" "$sha" "${elf#"$build"/}" "$elf_sha" \
 			"$([ "$mode" = off ] && echo off || echo on)" \
 			"$([ "$mode" = off ] && echo - || echo "$mode")" "$dtb_sha" \
-			"$([ "$mode" = off ] && echo - || echo boot)" \
-			>>"$attempts_file"
+			"$control" >>"$attempts_file"
 		harts=${harts:+$harts,}$hart
 		[ "$status" = 0 ] || verdict=FAIL
 		if { [ "$monitor" = cheri ] &&
