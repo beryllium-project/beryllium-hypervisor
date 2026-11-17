@@ -978,8 +978,10 @@ CAP_MON_DDC = 880
 DDC_CSR = 0x416
 CSRRS_CT6_SSCRATCH = 0x14002FF3  # csrrs t6, sscratch, zero
 # beryllium-cheri: the vector's restore of sscratchc, csrrw zero, sscratch,
-# sp, in Capability Pointer Mode; and the CSRs the CHERI rules name.
+# sp, in Capability Pointer Mode; its bad-stack path's step back below the
+# top, addi sp, sp, -16; and the CSRs the CHERI rules name.
 CSRW_SSCRATCH_SP = 0x14011073
+ADDI_SP_SP_M16 = 0xFF010113
 SSCRATCH, SEPC, VSTVEC, VSEPC, VSSTATUS, VSCAUSE, VSTVAL = \
     0x140, 0x141, 0x205, 0x241, 0x200, 0x242, 0x243
 # beryllium-cheri: SCADDR and SCBNDSR (.insn r 0x33, 1, 0x06 and 0x07),
@@ -3174,7 +3176,10 @@ def check_trap_entry_cheri(decoded, symbols):
     address; and it writes each register's address into the integer
     record, from the frame, before the CSRs. The review of the CHERI rules
     added: one ddc read then one ddc write (F1); ct0, ct1, and csp saved
-    from where they are held, and sscratchc restored whole (F2).
+    from where they are held, and sscratchc restored whole (F2). Since
+    M11-3 its first checks are the trusted top's two comparisons with the
+    private blocks' stack tops, each branch to its own target, before the
+    SPV check.
     """
     require(all(size == 4 for _, size, _ in decoded),
             "trap entry holds a compressed instruction")
@@ -3280,9 +3285,39 @@ def check_trap_entry_cheri(decoded, symbols):
     _, reads, checks, _ = track(decoded)
     require([csr for _, csr in reads].count("vsstatus") == 1,
             "trap entry does not read vsstatus exactly once")
-    require([check[1:] for check in checks] ==
+    # Since M11-3 the trusted top, t0 by mv t0, sp after the exchange, is
+    # compared with each private block's stack top, exactly, before any
+    # other check: beq past the second comparison on the first block's,
+    # then bne to the bad-stack path off the second's. The tracker holds
+    # both, as it does not in the RISC-V monitor's vector, whose t0 is
+    # sp + 16 after sp - 16, a value it does not hold.
+    tops = [block + LAYOUT["BLOCK_STACK_TOP_OFFSET"] for block in BLOCKS]
+    require([check[1:] for check in checks[:2]] ==
+            [("ne", "sscratch", MASK64, tops[0]),
+             ("eq", "sscratch", MASK64, tops[1])],
+            f"trap entry does not require exactly the private blocks' "
+            f"stack tops {[hex(top) for top in tops]}, in order, of its "
+            f"trusted top: {checks}")
+    require([check[1:] for check in checks[2:]] ==
             [("ne", "hstatus", HSTATUS_SPV, 0)],
             f"trap entry does not fail closed on hstatus.SPV: {checks}")
+    at = {pc: index for index, (pc, _, _) in enumerate(decoded)}
+    first, second = (decode(words[index], 4, decoded[index][0])["branch"]
+                     for index, *_ in checks[:2])
+    require(checks[1][0] + 1 < len(decoded) and
+            first == decoded[checks[1][0] + 1][0],
+            "trap entry's first block comparison does not land just after "
+            "its second")
+    # The bad-stack path: back in Integer Pointer Mode with sp 16 below
+    # the top, as the RISC-V monitor's vector leaves it, and from there no
+    # call and every path to hart 0's terminal or the halt.
+    start = at.get(second)
+    require(start is not None and
+            words[start:start + 2] == [MODESW_INT, ADDI_SP_SP_M16] and
+            path_ends(decoded, start) ==
+            {symbols[MVP_TERMINAL], symbols[R3_HALT]},
+            "trap entry's second block comparison does not land on its "
+            "bad-stack path")
     targets = {(target, link) for _, target, link in references(decoded)}
     require((symbols[MVP_DISPATCH], 1) in targets,
             "trap entry does not call be_mvp_dispatch")
@@ -3291,6 +3326,45 @@ def check_trap_entry_cheri(decoded, symbols):
             (symbols[R3_HALT], 0) in targets,
             "trap entry does not end every failure in a terminal path")
     check_block_arithmetic(decoded, symbols, MVP_VECTOR)
+
+
+def path_ends(decoded, start):
+    """beryllium-cheri: the tail targets in which the paths from
+    decoded[start] end, each branch followed both ways and each jump
+    inside DECODED to its target; None when a path calls (an ecall
+    among calls), meets a word it cannot decode, returns by sret or mret,
+    branches out of DECODED, leaves by a jump whose target is unknown, or
+    runs off DECODED's end."""
+    at = {pc: index for index, (pc, _, _) in enumerate(decoded)}
+    tails = {pc: target for pc, target, link in references(decoded)
+             if link == 0}
+    ends, seen, work = set(), set(), [start]
+    while work:
+        index = work.pop()
+        if index in seen:
+            continue
+        seen.add(index)
+        if index >= len(decoded):
+            return None
+        pc, size, word = decoded[index]
+        insn = decode(word, size, pc)
+        if insn.get("call") or insn.get("unknown"):
+            return None
+        if insn.get("branch") is not None:
+            if insn["branch"] not in at:
+                return None
+            work += [index + 1, at[insn["branch"]]]
+        elif insn.get("stop"):
+            target = insn.get("jump", tails.get(pc))
+            if target in at:
+                work.append(at[target])
+            elif target is not None:
+                ends.add(target)
+            else:
+                return None
+        else:
+            work.append(index + 1)
+    return ends
 
 
 def check_block_arithmetic(decoded, symbols, owner):
@@ -5336,10 +5410,13 @@ def check_variant(name, boot_elf_data, data, reference, pins, kernel,
         allowed = [(0, MONITOR_OFFSET)]
     elif name in OFF_COPIES:
         # Its own monitor, without the boundary; the payload the
-        # reference's.
+        # reference's. Where the reference is built without the boundary
+        # too (every CHERI-aware image, D-12), the off copy is the same
+        # build, so the reference itself, byte for byte.
         variant_monitor(name, monitor, flat, reference, layout, scenario,
                         boot, data)
-        allowed = [(0, MONITOR_OFFSET + SPAN)]
+        allowed = [(0, MONITOR_OFFSET + SPAN)] if \
+            boundary_image(scenario.name) else []
     elif name == FLIP_VARIANT:
         elf = variant_monitor(name, monitor, flat, reference, layout,
                               scenario, boot, data)
@@ -5367,8 +5444,43 @@ def check_variant(name, boot_elf_data, data, reference, pins, kernel,
     require(stray is None,
             f"variant {name} differs from the reference at 0x{stray:x}"
             if stray is not None else "")
-    require(data != reference["boot"], f"variant {name} is the reference")
+    require(data != reference["boot"] or
+            name in OFF_COPIES and not boundary_image(scenario.name),
+            f"variant {name} is the reference")
     return boot
+
+
+def off_copy_mutations(name, boot_elf, data, reference, pins, kernel,
+                       monitor, layout, scenario):
+    """An off copy of an image built without the boundary (every
+    CHERI-aware image, D-12): its own files with bit 0 of
+    be_mvp_log_canary's first byte flipped (self-report-flip's change,
+    which every other rule accepts), so no longer the reference, must be
+    refused. Returns their number."""
+    label = "its canary's bit 0 flipped"
+    elf_data, flat, map_text = monitor
+    canary = Elf(elf_data).symbols[MVP_LOG_CANARY_SYMBOL]
+    value = bytes([flat[canary - BASE] ^ 1])
+    mutated_elf, mutated_flat = bytearray(elf_data), bytearray(flat)
+    mutated_data, mutated_boot_elf = bytearray(data), bytearray(boot_elf)
+    patch(mutated_elf, mutated_flat, mutated_data, canary, value, BASE)
+    # The boot ELF's load of the same byte, which its loads must match.
+    address = STAGING + MONITOR_OFFSET + canary - BASE
+    for vaddr, _, offset, filesz, _, _ in Elf(boot_elf).segments:
+        if vaddr <= address < vaddr + filesz:
+            mutated_boot_elf[offset + address - vaddr] ^= 1
+            break
+    try:
+        check_variant(name, bytes(mutated_boot_elf), bytes(mutated_data),
+                      reference, pins, kernel, None,
+                      (bytes(mutated_elf), bytes(mutated_flat), map_text),
+                      layout, scenario)
+    except ImageError as error:
+        require("differs from the reference at" in str(error),
+                f"variant {name}'s mutation {label!r} rejected for another "
+                f"reason: {error}")
+        return 1
+    raise ImageError(f"variant {name}'s mutation {label!r} was accepted")
 
 
 def cheri_variant_check(name, *args):
@@ -5943,6 +6055,114 @@ def cheri_fill_mutations(elf, flat):
     ]
 
 
+def cheri_block_mutations(elf, flat):
+    """beryllium-cheri: the mutations of the vector's two comparisons of
+    its trusted top with the private blocks' stack tops (M11-3), each a
+    defect that check_trap_entry_cheri() rejects: a constant a block or a
+    page off, a branch's sense flipped, a comparison removed, the two in
+    the other order, another register compared, and a branch or the
+    bad-stack path's jump landing elsewhere: (name, address, bytes, the
+    rule's message), in-place replacements."""
+    def word(value):
+        return struct.pack("<I", value)
+
+    def li_t1(value):
+        # lui t1, addiw t1, t1, slli t1, t1, 12: a page multiple in t1.
+        upper = value >> 12
+        high = (upper + 0x800) >> 12
+        return b"".join(map(word, (
+            (high & 0xFFFFF) << 12 | 6 << 7 | 0x37,
+            ((upper - (high << 12)) & 0xFFF) << 20 | 6 << 15 | 6 << 7 |
+            0x1B,
+            12 << 20 | 6 << 15 | 1 << 12 | 6 << 7 | 0x13)))
+
+    def branch_to(pc, value, target):
+        offset = target - pc
+        return word(value & 0x01FFF07F | (offset >> 12 & 1) << 31 |
+                    (offset >> 5 & 0x3F) << 25 | (offset >> 1 & 0xF) << 8 |
+                    (offset >> 11 & 1) << 7)
+
+    def jump_to(pc, target):
+        offset = target - pc
+        return word((offset >> 20 & 1) << 31 | (offset >> 1 & 0x3FF) << 21 |
+                    (offset >> 11 & 1) << 20 | (offset >> 12 & 0xFF) << 12 |
+                    0x6F)
+
+    start, size = function_start(elf, MVP_VECTOR)
+    decoded = instructions(flat, start, start + size, BASE)
+    words = [value for _, _, value in decoded]
+    tops = [block + LAYOUT["BLOCK_STACK_TOP_OFFSET"] for block in BLOCKS]
+
+    def li_t1_before(index):
+        # lui t1, then addi or addiw t1, t1, then slli t1, t1.
+        lui, add, shift = words[index - 3:index]
+        return lui & 0xFFF == 6 << 7 | 0x37 and \
+            add & 0xFFFFF in (6 << 15 | 6 << 7 | 0x13,
+                              6 << 15 | 6 << 7 | 0x1B) and \
+            shift & 0xFC0FFFFF == 6 << 15 | 1 << 12 | 6 << 7 | 0x13
+
+    compared = [index for index, value in enumerate(words)
+                if value & 0x7F == 0x63 and
+                materialized(words, index, 6) in tops]
+    require(len(compared) == 2 and
+            [materialized(words, index, 6) for index in compared] == tops
+            and compared[1] == compared[0] + 4 and
+            all(li_t1_before(index) for index in compared),
+            "the vector's block comparisons are not li t1 and a branch, "
+            "twice")
+    first, second = compared
+    first_pc, second_pc = decoded[first][0], decoded[second][0]
+    stack_ok = decoded[second + 1][0]
+    bad = decode(words[second], 4, second_pc)["branch"]
+    at = {pc: index for index, (pc, _, _) in enumerate(decoded)}
+    require(bad in at and
+            words[at[bad]:at[bad] + 2] == [MODESW_INT, ADDI_SP_SP_M16] and
+            words[at[bad] + 2] & 0xFFF == 0x6F,
+            "the vector's bad-stack path is not its mode switch, its step "
+            "back, and a jump")
+    jump_pc = decoded[at[bad] + 2][0]
+    move, _ = matching_word(elf, flat, MVP_VECTOR, BASE,
+                            lambda value: value == 2 << 15 | 5 << 7 | 0x13)
+    tops_message = "does not require exactly the private blocks' stack tops"
+    first_message = "first block comparison does not land just after its " \
+        "second"
+    bad_message = "second block comparison does not land on its bad-stack " \
+        "path"
+    return [
+        ("the vector's first block top a block on, the second's",
+         decoded[first - 3][0], li_t1(tops[0] + BLOCK_BYTES), tops_message),
+        ("the vector's first block top a page on",
+         decoded[first - 3][0], li_t1(tops[0] + PAGE), tops_message),
+        ("the vector's second block top a block back, the first's",
+         decoded[second - 3][0], li_t1(tops[1] - BLOCK_BYTES), tops_message),
+        ("the vector's second block top a page on",
+         decoded[second - 3][0], li_t1(tops[1] + PAGE), tops_message),
+        ("the vector's first block comparison's sense flipped", first_pc,
+         word(words[first] ^ 1 << 12), tops_message),
+        ("the vector's second block comparison's sense flipped", second_pc,
+         word(words[second] ^ 1 << 12), tops_message),
+        ("the vector without its first block comparison", first_pc,
+         word(NOP), tops_message),
+        ("the vector without its second block comparison", second_pc,
+         word(NOP), tops_message),
+        ("the vector compares the second block's top first",
+         decoded[first - 3][0],
+         li_t1(tops[1]) + word(words[first]) + li_t1(tops[0]), tops_message),
+        ("the vector compares the guest's gp, not its trusted top", move,
+         word(3 << 15 | 5 << 7 | 0x13), tops_message),
+        ("the vector's first block comparison lands on the bad-stack path",
+         first_pc, branch_to(first_pc, words[first], bad), first_message),
+        ("the vector's second block comparison lands past itself",
+         second_pc, branch_to(second_pc, words[second], stack_ok),
+         bad_message),
+        ("the vector's second block comparison lands past the mode switch",
+         second_pc, branch_to(second_pc, words[second], bad + 4),
+         bad_message),
+        ("the vector's bad-stack path jumps to its saves", jump_pc,
+         jump_to(jump_pc, stack_ok), bad_message),
+    ]
+
+
 def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
                   layout, scenario=TWO_GUESTS):
     elf_data = open(elf_path, "rb").read()
@@ -6135,7 +6355,7 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
             lambda value: value == 0x14129073)[0],
          word(0x14161073), "sepc written as"),
     ] + cheri_rule_mutations(elf, flat) + cheri_fill_mutations(elf, flat) \
-        if MONITOR == "cheri" else [
+        + cheri_block_mutations(elf, flat) if MONITOR == "cheri" else [
         ("vector skips s2", matching_word(
             elf, flat, MVP_VECTOR, BASE,
             lambda value: store_fields(value) == (18, 5, 136))[0],
@@ -7727,6 +7947,15 @@ def main(argv):
                                     boot=data)
             print(f"variant {name}: boot_sha256={sha256(data)}")
             checked.append(f"variant-{name}")
+            if name in OFF_COPIES and monitor is not None and \
+                    not boundary_image(scenario.name):
+                # An off copy of an image built without the boundary: its
+                # mutation, rejected.
+                count = off_copy_mutations(name, read(boot_elf), data,
+                                           against, pins, kernel, monitor,
+                                           layout, scenario)
+                print(f"variant {name}: mutations rejected: {count}")
+                checked.append(f"variant-{name}-mutations={count}")
             if name in BREACH and monitor is not None:
                 # M11-7: the hook's rules, each refusing its mutation.
                 elf = Elf(monitor[0])

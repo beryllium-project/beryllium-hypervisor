@@ -228,7 +228,8 @@ k3_machine='virt,aia=aplic-imsic,aia-guests=7'
 k3_cpu='rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true'
 # beryllium-cheri: the CHERI QEMU (8.1) has no svade or svadu property,
 # so k3-like cannot run there; BE_MVP_QEMU_K3_LIKE=plic runs the runs
-# that use k3-like (the variants and the probes) on the plic machine.
+# that use k3-like (the scenarios' k3-like rows, the variants, and the
+# probes) on the plic machine.
 if [ "${BE_MVP_QEMU_K3_LIKE:-}" = plic ]; then
 	k3_machine=virt
 	k3_cpu='rv64,h=true'

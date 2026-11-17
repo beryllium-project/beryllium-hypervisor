@@ -335,7 +335,7 @@ HOST_ASSERTIONS_sbi := 16350
 # assertions: hedeleg without cause 28 refused, and henvcfg STCE without
 # CRE refused.
 ifeq ($(MVP_MONITOR),cheri)
-HOST_ASSERTIONS_sbi := 16294
+HOST_ASSERTIONS_sbi := 16352
 endif
 HOST_SCENARIOS_gstage := 44
 HOST_ASSERTIONS_gstage := 39647

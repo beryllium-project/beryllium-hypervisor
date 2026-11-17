@@ -9,7 +9,8 @@
 #    its CHERI Linux guests (make's MVP_MONITOR=cheri
 #    MVP_GUEST_FLAVOUR=cheri-linux, in build/mvp.cheri.cheri-linux) and
 #    judges them: the guest build against guest/cheri-pins.txt first, then
-#    each check of `make check` that the branch passes, then
+#    each check of `make check` that judges the CHERI variant's own build
+#    (the others are named below, each with its reason), then
 #    tests/run-qemu.sh's 56 runs (two-guests, te-poc, and anchor, the ten
 #    monitor variants, the four probes, te-poc's five negatives and
 #    anchor's five, and cap-store's control, for GCC and Clang) and
@@ -27,7 +28,26 @@
 #    (tests/check-capture.py --cheri-mutations). Before the runs,
 #    tests/run-qemu.sh must refuse the firmware with one byte changed
 #    (exit 2, no QEMU start): its pin is the firmware line of
-#    guest/cheri-pins.txt (S-01).
+#    guest/cheri-pins.txt (S-01). Of the checks of `make check`, it leaves
+#    out opensbi, firmware, firmware-test, and partition-check, which pin,
+#    build, and test the plain variant's firmware and the boundary's trees
+#    for it (no run here boots that firmware, and no CHERI-aware image is
+#    built with the boundary); capture-check, whose fixtures are the plain
+#    monitor's captures, and run-tool-check, whose dry run starts from them
+#    and needs that firmware and the boundary too; guest-pin-check, which
+#    holds the guests to the Linux guests' facts, and reference-boot, which
+#    boots them on the tool lock's QEMU, not the CHERI emulator, under that
+#    firmware; qemu-test and sessions, which mvp/tools.mk refuses for this
+#    monitor and whose runs and sessions are those above; and evidence,
+#    which bundles every check's records, those left out among them, and
+#    claim-ledger-check, which joins that bundle. The three scenarios run
+#    in their k3-like rows: since M11-7 tests/run-qemu.sh's plic rows boot
+#    each scenario's off copy, while its k3-like rows boot the scenarios'
+#    own images against their own expectations, and
+#    BE_MVP_QEMU_K3_LIKE=plic runs them on the same plic machine and CPU;
+#    in a CHERI-aware build an off copy is its scenario's image byte for
+#    byte (tests/check-image.py requires it), so the k3-like rows run every
+#    image that the plic rows ran.
 # 2. The plain variant's identity. The defaults' build (build/mvp), its
 #    images cleaned and rebuilt by `image variants probes qemu-images`,
 #    must equal a build of the development line byte for byte: every
@@ -185,10 +205,12 @@ cheri_mutations() {
 
 # ---------------------------------------------------- 1. the CHERI variant
 for t in "image references" image-check reference-check port-check lint \
-	policy-negatives guest-self-test host-test target-check budgets \
-	tool-lock-check platform-probe-check partition-tool-check \
-	evidence-check rc-record-check session-typist-check \
-	verify-tools-check platform-record-check uboot-rehearsal-check; do
+	layout-source-check policy-negatives guest-self-test host-test \
+	target-check budgets tool-lock-check platform-probe-check \
+	partition-tool-check evidence-check rc-record-check \
+	session-typist-check qemu-oracle-check boundary-check breach-check \
+	verify-tools-check platform-record-check uboot-rehearsal-check \
+	partition-descriptor-tools-check; do
 	if ! make_step "make $t" "$out/make-${t// /-}.log" "$top/mvp" "$t" \
 		"${inputs[@]}"; then
 		echo "BE_MVP_CHERI_CHECK: FAIL" | tee -a "$summary"
@@ -200,7 +222,7 @@ grep -hE '^(BE_MVP_GUEST_BUILD|BE_MVP_IMAGE_CHECK: PASS mutations|BE_MVP_HOST: )
 
 runs=()
 for t in gcc clang; do
-	runs+=("$t/plic" "te-poc/$t/plic" "anchor/$t/plic")
+	runs+=("$t/k3-like" "te-poc/$t/k3-like" "anchor/$t/k3-like")
 	for v in payload exit-budget run-timeout ring-full hart-start init-exit \
 		rdcycle sbi-time shim-rule hostile; do
 		runs+=("variant/$t/$v")
