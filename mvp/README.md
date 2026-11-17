@@ -12431,7 +12431,23 @@ M5's reset rule.
     issue, are unchanged, and the dongle's firmware was not reflashed
     (`ver=1.0`). Open as a standing procedure until the human directs a
     pin move; a small tool that makes and checks the copy (with a dry-run
-    case) would close it.
+    case) would close it. **2026-11-16: the dongle's firmware is 1.1.1,
+    and the console tool takes both.** The operator's dongle now runs
+    firmware 1.1.1, whose `status` line carries three more fields after
+    `ver=1.1.1` (`inpwr`, `inrst`, and `ev`). The pinned client relays
+    the line as it is, so the pin is unchanged (`7ca3d78a…`, v1.0's
+    bytes) and the procedure above stands. On the responsible human's
+    direction of that day (`update console tool to accept latest dongle
+    fw`), `tools/k3-console.sh` takes as a clean status firmware 1.0's
+    whole line or firmware 1.1.1's, each matched whole, by its bytes
+    (`inpwr` and `inrst` `0` or `1`; `ev` one of the firmware's own event
+    names); any other line is stop 1, as before. `tests/fake-k3ctl.py`
+    plays firmware 1.1.1, the dry run's `dongle-firmware` case tests both
+    forms and the refusals, and `tools/platform-record.py` reads both.
+    Four resets through the dongle on firmware 1.1.1 were made that day,
+    in two read-only sessions at the U-Boot prompt, under a scratch rule
+    that admitted the same line: each was acknowledged, with a clean
+    `status` before and after it.
 115. **The platform record has no console-input section.** M7-5's
     `tools/platform-record.py` accepts `probe-console-input`'s two values
     so that a campaign that ran the probe is not refused, and lists the

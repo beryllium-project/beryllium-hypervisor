@@ -169,6 +169,22 @@
 #                     reset answered ERR, rst=1 after the reset, and a client
 #                     that differs from the pin: each stop 1, with exactly
 #                     the dongle lines it needed
+#   dongle-firmware   the dongle's firmware 1.1.1, with the pinned client:
+#                     a reset from the bench's status line of 2026-11-16
+#                     (ev=PWR, then RST), and one from the dongle's
+#                     power-up (ev=-, then RST), each line in the reset
+#                     record, of 1.0's shape; resets with each other event
+#                     the firmware records, ON and OFF beside k3=on and
+#                     off, the uptime's bounds, and inpwr=0; refused before
+#                     the pulse, each by the tool's stop line with only
+#                     ping and status sent: another version, 1.1.1 without
+#                     its three fields, 1.0 with them, a sensed level of -
+#                     or 2, an event outside the firmware's list or in
+#                     lower case, ON or OFF beside k3=n/a, trailing text, a
+#                     doubled space, an uptime the firmware cannot print,
+#                     rst=1, fcrec=1, or pwr=1, and, in en_US.UTF-8, a
+#                     non-ASCII digit or capital; rst=1 inrst=- after the
+#                     pulse, stop 1 after it
 #   run-from-reset    one run from reset, judged in uboot mode: PASS, its
 #                     five attribution conditions, and its records
 #   staged-sha256     k3-run.sh's staged SHA-256 condition (open item 116),
@@ -1925,6 +1941,159 @@ case_reset() {
 	pass reset "fcrec, ver 1.1, ERR, a device error, a reset ERR, rst=1 after, a client not the pin's: each stop 1"
 }
 
+# dongle-firmware: the dongle's firmware 1.1.1 (reported on the bench on
+# 2026-11-16), whose status line adds the sensed levels inpwr and inrst and
+# the last event ev, with the pinned client. dongle_spec BASE SETTINGS: the
+# case's fake dongle answers by the JSON members BASE, then SETTINGS, from
+# its next command on.
+dongle_spec() {
+	"$python" -B -c 'import json, sys
+device, base, settings, path = sys.argv[1:]
+json.dump({"device": device, **json.loads("{%s}" % base),
+           **json.loads("{%s}" % settings)}, open(path, "w"))' \
+		"$fake_dev" "$1" "$2" "$FAKE_K3CTL/spec.json"
+}
+# dongle_count: the protocol lines the case's fake dongle has received.
+dongle_count() {
+	if [ -f "$FAKE_K3CTL/commands.log" ]; then
+		wc -l <"$FAKE_K3CTL/commands.log"
+	else
+		echo 0
+	fi
+}
+# dongle_halt NAME: Fedora's clean shutdown on the case's board, then the
+# port-open rule's fedora-down (k3-console.sh can-reset, which contacts no
+# dongle), so that each reset's stop is the dongle's.
+dongle_halt() {
+	local _
+
+	ssh "$fake_host" sudo -n systemctl reboot
+	for _ in $(seq 100); do
+		"$console" can-reset >/dev/null 2>&1 && break
+		sleep 0.1
+	done
+	expect "$1.halted" 0 "$console" can-reset
+	grep -qx fedora-down "$out/$1.halted.txt" || fail "$1: the board is not halted"
+}
+case_dongle_firmware() {
+	local bench='"firmware": "1.1.1", "inrst": 0, "ev": "PWR"' line name where \
+		settings reply count lines='' refused=0 events=0 utf8=en_US.UTF-8
+
+	# Each line refused before the pulse, at the bench's dongle (its levels
+	# and event of 2026-11-16) with one setting changed: the dongle's
+	# status its only command, the reply in the record, and the tool's stop
+	# line. A reply's UP is the fake's uptime and \xHH a byte; utf8: the
+	# tool runs with LANG and LC_ALL en_US.UTF-8, where bash's [0-9] admits
+	# a superscript two and [A-Z] an R with caron (the case first sees that
+	# they do), so that only matching by bytes refuses the digits (the
+	# event list refuses the capital in any locale).
+	LC_ALL=$utf8 bash -c '[[ $1 =~ ^[0-9]$ && $2 =~ ^[A-Z]$ ]]' _ $'\xc2\xb2' \
+		$'\xc5\x98' 2>/dev/null ||
+		fail "dongle-firmware: in $utf8, bash's [0-9] and [A-Z] admit no non-ASCII digit and capital"
+	board dongle-1.1.1 '{}' '{}' "{$bench}"
+	expect dongle-1.1.1.start 0 "$console" start
+	dongle_halt dongle-1.1.1
+	for line in \
+		'version-1.1.0|-|"version": "1.1.0"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.0 inpwr=1 inrst=0 ev=PWR' \
+		'version-1.1.10|-|"version": "1.1.10"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.10 inpwr=1 inrst=0 ev=PWR' \
+		'version-1.2|-|"version": "1.2"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.2 inpwr=1 inrst=0 ev=PWR' \
+		'version-2.0|-|"version": "2.0"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=2.0 inpwr=1 inrst=0 ev=PWR' \
+		'version-1.1|-|"version": "1.1"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1 inpwr=1 inrst=0 ev=PWR' \
+		'unsensed|-|"sensed": false|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1' \
+		'sensed-1.0|-|"firmware": "1.0", "sensed": true|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.0 inpwr=1 inrst=0 ev=PWR' \
+		'inpwr-driven|-|"inpwr": "-"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=- inrst=0 ev=PWR' \
+		'inrst-driven|-|"inrst": "-"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=1 inrst=- ev=PWR' \
+		'inpwr-2|-|"inpwr": 2|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=2 inrst=0 ev=PWR' \
+		'inrst-2|-|"inrst": 2|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=1 inrst=2 ev=PWR' \
+		'event-hold|-|"ev": "HOLD"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=1 inrst=0 ev=HOLD' \
+		'event-on-unsensed|-|"ev": "ON"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=1 inrst=0 ev=ON' \
+		'event-off-unsensed|-|"ev": "OFF"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=1 inrst=0 ev=OFF' \
+		'event-lower|-|"ev": "rst"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=1 inrst=0 ev=rst' \
+		'trailing|-|"tail": " x=1"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=1 inrst=0 ev=PWR x=1' \
+		'double-space|-|"gap": "  "|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1  inpwr=1 inrst=0 ev=PWR' \
+		'up-leading-zero|-|"up": "05000"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=05000 ver=1.1.1 inpwr=1 inrst=0 ev=PWR' \
+		'up-eleven-digits|-|"up": "42949672950"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=42949672950 ver=1.1.1 inpwr=1 inrst=0 ev=PWR' \
+		'rst|-|"rst": 1|OK status rst=1 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=1 inrst=0 ev=PWR' \
+		'fcrec|-|"fcrec": 1|OK status rst=0 fcrec=1 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=1 inrst=0 ev=PWR' \
+		'pwr|-|"pwr": 1|OK status rst=0 fcrec=0 pwr=1 k3=n/a up=UP ver=1.1.1 inpwr=1 inrst=0 ev=PWR' \
+		'utf8-digit|utf8|"up": "1\u00b23"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=1\xc2\xb23 ver=1.1.1 inpwr=1 inrst=0 ev=PWR' \
+		'utf8-digit-1.0|utf8|"firmware": "1.0", "up": "1\u00b23"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=1\xc2\xb23 ver=1.0' \
+		'utf8-capital|utf8|"ev": "PW\u0158"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=1 inrst=0 ev=PW\xc5\x98'; do
+		IFS='|' read -r name where settings reply <<<"$line"
+		name=dongle-1.1.1.$name
+		dongle_spec "$bench" "$settings"
+		count=$(dongle_count)
+		reply=$(printf '%b' "${reply/UP/$((1000 * (count + 2)))}")
+		if [ "$where" = utf8 ]; then
+			expect "$name" 1 env LANG="$utf8" LC_ALL="$utf8" "$console" reset
+		else
+			expect "$name" 1 "$console" reset
+		fi
+		grep -qxF "BE_MVP_K3_CONSOLE: STOP stop=1 the dongle's status before the reset is not clean: $reply" \
+			"$out/$name.txt" || fail "$name: not its stop"
+		has "$out/$name.txt" "status_before=$reply"
+		lines="$lines ping status"
+		expect_dongle "$name" "${lines# }"
+		refused=$((refused + 1))
+	done
+	[ ! -e "$FAKE_K3CTL/pulses.log" ] || fail "dongle-firmware: a pulse for a refused line"
+	# The bench's lines (2026-11-16): ev=PWR before the reset, RST after it,
+	# in a reset record of the shape firmware 1.0's makes.
+	dongle_spec "$bench" ''
+	count=$(dongle_count)
+	expect dongle-1.1.1 0 "$console" reset
+	has "$out/dongle-1.1.1.txt" \
+		"status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=$((1000 * (count + 2))) ver=1.1.1 inpwr=1 inrst=0 ev=PWR" \
+		status_before_exit=0 'reset_reply=OK reset' reset_exit=0 \
+		"status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=$((1000 * (count + 6))) ver=1.1.1 inpwr=1 inrst=0 ev=RST" \
+		status_after_exit=0 outcome=reset
+	[ "$(sed 's/=.*//' "$out/dongle-1.1.1.txt" | tr '\n' ' ')" = 'method reason reset_seq offset_before client_sha256 client_pin device status_before_utc status_before status_before_exit reset_utc reset_reply reset_exit status_after_utc status_after status_after_exit spl_banner_offset uboot_banner_offset banner_utc outcome ' ] ||
+		fail "dongle-1.1.1: the reset record's keys: $(sed 's/=.*//' "$out/dongle-1.1.1.txt" | tr '\n' ' ')"
+	expect_dongle dongle-1.1.1 "${lines# } ping status ping reset ping status"
+	# Firmware 1.1.1 from its power-up (ev=-, and the README's inrst=1) to
+	# its first reset; then, each reset from the prompt the last one left,
+	# the other events it may hold, before the reset and after it alike,
+	# with the uptime's bounds and inpwr=0 among them.
+	board dongle-events '{}' '{}' '{"firmware": "1.1.1"}'
+	expect dongle-events.start 0 "$console" start
+	dongle_halt dongle-events
+	expect dongle-events 0 "$console" reset
+	has "$out/dongle-events.txt" \
+		'status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=2000 ver=1.1.1 inpwr=1 inrst=1 ev=-' \
+		'reset_reply=OK reset' \
+		'status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=6000 ver=1.1.1 inpwr=1 inrst=1 ev=RST' \
+		outcome=reset
+	lines='ping status ping reset ping status'
+	for line in \
+		'ERR|"inpwr": 0|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=UP ver=1.1.1 inpwr=0 inrst=1 ev=ERR' \
+		'REC|"up": "0"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=0 ver=1.1.1 inpwr=1 inrst=1 ev=REC' \
+		'DC|"up": "4294967295"|OK status rst=0 fcrec=0 pwr=0 k3=n/a up=4294967295 ver=1.1.1 inpwr=1 inrst=1 ev=DC' \
+		'ON|"k3": "on"|OK status rst=0 fcrec=0 pwr=0 k3=on up=UP ver=1.1.1 inpwr=1 inrst=1 ev=ON' \
+		'OFF|"k3": "off"|OK status rst=0 fcrec=0 pwr=0 k3=off up=UP ver=1.1.1 inpwr=1 inrst=1 ev=OFF'; do
+		IFS='|' read -r name settings reply <<<"$line"
+		expect "dongle-events.stop-$name" 0 "$console" stop-autoboot
+		dongle_spec '"firmware": "1.1.1"' "$settings, \"after_reset\": {\"ev\": \"$name\"}"
+		count=$(dongle_count)
+		expect "dongle-events.$name" 0 "$console" reset
+		has "$out/dongle-events.$name.txt" \
+			"status_before=${reply/UP/$((1000 * (count + 2)))}" 'reset_reply=OK reset' \
+			"status_after=${reply/UP/$((1000 * (count + 6)))}" outcome=reset
+		lines="$lines ping status ping reset ping status"
+		events=$((events + 1))
+	done
+	expect_dongle dongle-events "$lines"
+	# A dongle that drives the reset line after the pulse (rst=1, inrst=-):
+	# stop 1 after it.
+	board dongle-held '{}' '{}' '{"firmware": "1.1.1", "after_reset": {"rst": 1, "inrst": "-"}}'
+	expect dongle-held.start 0 "$console" start
+	dongle_halt dongle-held
+	expect dongle-held 1 "$console" reset
+	grep -qxF "BE_MVP_K3_CONSOLE: STOP stop=1 the dongle's status after the reset is not clean: OK status rst=1 fcrec=0 pwr=0 k3=n/a up=6000 ver=1.1.1 inpwr=1 inrst=- ev=RST" \
+		"$out/dongle-held.txt" || fail "dongle-held: not its stop"
+	expect_dongle dongle-held "ping status ping reset ping status"
+	pass dongle-firmware "firmware 1.1.1 with the pinned client: the bench's lines (ev=PWR, then RST) and the power-up's (ev=-, then RST) in the reset record, and $events resets with another event before and after (ERR, REC, DC; ON and OFF beside k3=on and off), the uptime's bounds, and inpwr=0; $refused lines refused before the pulse, each by its stop line, none pulsed: versions 1.1.0, 1.1.10, 1.2, 2.0, and 1.1; 1.1.1 without its three fields, and 1.0 with them; inpwr and inrst - and 2; events HOLD and rst, and ON and OFF beside k3=n/a; trailing text; a doubled space; an uptime with a leading zero, and of eleven digits; rst=1, fcrec=1, and pwr=1; and in en_US.UTF-8 a non-ASCII digit in 1.1.1's and 1.0's uptime and a non-ASCII capital in the event; rst=1 inrst=- after the pulse: stop 1 after it"
+}
+
 case_run_from_reset() {
 	session run-from-reset
 	install run-from-reset
@@ -2500,13 +2669,14 @@ case_input_characterize() {
 # dry run.
 cases=(env-session console-window preconditions missed-s late-s late-prompt
 	echo-mismatch restore-mismatch unexplained-banner bad-environment-crc
-	saveenv-fresh port-open-rule mvp-hang fall-through reset run-from-reset
-	staged-sha256 campaign campaign-session campaign-session-stops
-	characterize diagnostic guest-type input-characterize)
+	saveenv-fresh port-open-rule mvp-hang fall-through reset dongle-firmware
+	run-from-reset staged-sha256 campaign campaign-session
+	campaign-session-stops characterize diagnostic guest-type
+	input-characterize)
 lanes=("campaign unexplained-banner bad-environment-crc saveenv-fresh late-s campaign-session"
 	"echo-mismatch env-session preconditions console-window diagnostic staged-sha256 late-prompt campaign-session-stops"
 	"missed-s restore-mismatch run-from-reset port-open-rule input-characterize"
-	"mvp-hang fall-through reset characterize guest-type")
+	"mvp-hang fall-through reset dongle-firmware characterize guest-type")
 [ "$(printf '%s\n' "${lanes[@]}" | tr ' ' '\n' | sort)" = \
 	"$(printf '%s\n' "${cases[@]}" | sort)" ] || fail "the lanes do not hold each case once"
 lane() {

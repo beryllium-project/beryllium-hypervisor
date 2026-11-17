@@ -137,9 +137,11 @@ SHUTDOWN = ("hart", "domain", "exits", "sbi", "ipi", "tick", "base", "time",
 # The campaign's Serial log paragraph (M0 open item 40, as M1 makes it an
 # input), written by hand and kept by tools/evidence.py --board.
 SERIAL_NOTE = pathlib.Path("mvp") / "serial-log-note.txt"
-# A k3ctl status reply (the firmware's, as the client relays it).
+# A k3ctl status reply (the firmware's, as the client relays it): firmware
+# 1.0's, or firmware 1.1.1's, whose sensed levels and last event after ver=
+# are read and are not among the fields.
 STATUS = re.compile(r"OK status rst=(\d+) fcrec=(\d+) pwr=(\d+) k3=(\S+) "
-                    r"up=(\d+) ver=(\S+)")
+                    r"up=(\d+) ver=(\S+)(?: inpwr=\S+ inrst=\S+ ev=\S+)?")
 STATUS_FIELDS = ("rst", "fcrec", "pwr", "k3", "up", "ver")
 RESET_COLUMNS = ("run", "method", "reason", "outcome", "client_sha256",
                  "status_before", "reset_reply", "status_after",
@@ -1313,7 +1315,9 @@ def self_test():
     milliseconds, and the loader observation. console_facts() and
     console_sections() likewise (item 115): a record with no typed run
     renders console input as not run; a typed characterization and two
-    typed sessions render each field from its record."""
+    typed sessions render each field from its record. resets() on
+    synthetic reset records: the dongle's status replies, firmware 1.0's
+    and 1.1.1's, give their fields and versions."""
     def run(name, image, log, declared=(), facts=None, markers=()):
         return {"run": name, "image": image, "toolchain": "gcc", "log": log,
                 "log_declared": list(declared), "facts": facts or {},
@@ -1453,6 +1457,38 @@ def self_test():
          "| 20261104T000000Z | 4 | 1 | 62/64 | 2.7 |" in shown and
          "### The typed characterization\n\nNot run in this record" in alone
          and "### The typed sessions\n\nEach" in alone)]
+    # The reset records' status replies (resets()), before and after each
+    # reset: firmware 1.0's lines, firmware 1.1.1's, and, before the third
+    # reset, a 1.1.1 line with a field after its three.
+    status = "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=5 ver="
+    replies = {"20261116T000000Z": ("1.0", "1.0"),
+               "20261116T000100Z": ("1.1.1 inpwr=1 inrst=0 ev=PWR",
+                                    "1.1.1 inpwr=1 inrst=0 ev=RST"),
+               "20261116T000200Z": ("1.1.1 inpwr=1 inrst=0 ev=RST x=1",
+                                    "1.1.1 inpwr=1 inrst=1 ev=RST")}
+
+    class Records:
+        record = pathlib.Path("record")
+
+        def text(self, _section, path):
+            before, after = replies[path.stem]
+            return (f"method=k3ctl\nstatus_before={status}{before}\n"
+                    f"status_after={status}{after}\n")
+
+    found = resets(Records(), [{"run": run} for run in replies])
+    versions = [[record[f"status_{when}_fields"]["ver"] for when in
+                 ("before", "after")] for _, record in
+                sorted(found["records"].items())]
+    checks += [
+        ("each reset's status replies: firmware 1.0's and 1.1.1's lines "
+         "give their fields and versions; a field after 1.1.1's three, none",
+         versions == [["1.0", "1.0"], ["1.1.1", "1.1.1"], [None, "1.1.1"]]
+         and found["versions"] == ["1.0", "1.1.1"] and
+         found["records"]["20261116T000100Z"]["status_after_fields"] == {
+             "rst": "0", "fcrec": "0", "pwr": "0", "k3": "n/a", "up": "5",
+             "ver": "1.1.1"} and
+         found["records"]["20261116T000200Z"]["status_before_fields"] ==
+         dict.fromkeys(STATUS_FIELDS))]
     for name, ok in checks:
         print(f"{'ok  ' if ok else 'FAIL'} {name}")
     failed = sum(not ok for _, ok in checks)

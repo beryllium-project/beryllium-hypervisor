@@ -26,10 +26,20 @@ Trust:   test-only. It opens no device and nothing outside the directory
          would be; a device other than the spec's fails to open, as the
          client's would. Nothing it receives is run.
 Scope:   MVP board-tool dry run. spec.json keys: device (the one device it
-         opens; required), version (in pong and status; default 1.0), rst,
-         fcrec, and pwr (status's line flags; default 0), k3 (default n/a),
-         ping (ok, or silent: no pong in the client's window), status and
-         reset (ok, err, or device), and after_reset (keys that replace
+         opens; required); firmware (1.0, the default, or 1.1.1, whose
+         status line adds the sensed levels inpwr and inrst and the last
+         event ev); version (in pong and status; default the firmware's);
+         rst, fcrec, and pwr (status's line flags; default 0); k3 (default
+         n/a); up (status's uptime, verbatim; default 1000 times the
+         protocol lines received); inpwr and inrst (default 1; independent
+         of rst and pwr, so that a line can break one rule alone, where the
+         firmware prints `-` for a line it drives); ev (the last event
+         before any reset, default `-`; once a reset is received, RST, as
+         firmware 1.1.1 records each reset); sensed (whether the line holds
+         the three fields: by default with firmware 1.1.1 alone); gap (the
+         text before them; default one space); tail (text after the line);
+         ping (ok, or silent: no pong in the client's window); status and
+         reset (ok, err, or device); and after_reset (keys that replace
          these once a reset has been received). tests/fake-board.py reads
          pulses.log: each pulse restarts its board.
 """
@@ -41,8 +51,11 @@ import shlex
 import sys
 
 COMMANDS = ("ping", "status", "reset")
-DEFAULTS = {"version": "1.0", "rst": 0, "fcrec": 0, "pwr": 0, "k3": "n/a",
-            "ping": "ok", "status": "ok", "reset": "ok", "after_reset": {}}
+FIRMWARES = ("1.0", "1.1.1")
+DEFAULTS = {"firmware": "1.0", "version": None, "rst": 0, "fcrec": 0,
+            "pwr": 0, "k3": "n/a", "up": None, "inpwr": 1, "inrst": 1,
+            "ev": "-", "sensed": None, "gap": " ", "tail": "", "ping": "ok",
+            "status": "ok", "reset": "ok", "after_reset": {}}
 
 
 def directory():
@@ -71,7 +84,15 @@ def spec(root):
     settings.update(json.loads((root / "spec.json").read_text(
         encoding="utf-8")))
     if "reset" in received(root):
+        settings["ev"] = "RST"
         settings.update(settings["after_reset"])
+    if settings["firmware"] not in FIRMWARES:
+        sys.exit(f"fake-k3ctl: firmware {settings['firmware']!r} is not one "
+                 f"of {', '.join(FIRMWARES)}")
+    if settings["version"] is None:
+        settings["version"] = settings["firmware"]
+    if settings["sensed"] is None:
+        settings["sensed"] = settings["firmware"] == "1.1.1"
     return settings
 
 
@@ -96,10 +117,16 @@ def answer(root, settings, command):
     if command == "reset":
         append(root / "pulses.log", "reset")
         return 0, "OK reset", ""
-    up = 1000 * len(received(root))
-    return 0, (f"OK status rst={settings['rst']} fcrec={settings['fcrec']} "
-               f"pwr={settings['pwr']} k3={settings['k3']} up={up} "
-               f"ver={settings['version']}"), ""
+    up = settings["up"]
+    if up is None:
+        up = 1000 * len(received(root))
+    line = (f"OK status rst={settings['rst']} fcrec={settings['fcrec']} "
+            f"pwr={settings['pwr']} k3={settings['k3']} up={up} "
+            f"ver={settings['version']}")
+    if settings["sensed"]:
+        line += (f"{settings['gap']}inpwr={settings['inpwr']} "
+                 f"inrst={settings['inrst']} ev={settings['ev']}")
+    return 0, line + settings["tail"], ""
 
 
 def main(argv):

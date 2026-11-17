@@ -1748,3 +1748,14 @@ text above as it says; the text above is otherwise as accepted.
   checker, and the generator of the negatives' device trees. The
   fixes that M11-7's first runs under emulation bring, M11-8, and
   M11-9 follow.
+- **2026-11-16, `update console tool to accept latest dongle fw`.**
+  The reset dongle runs firmware 1.1.1 since its operator reflashed
+  it, and its `status` line carries three more fields. The console
+  tool's rule for a clean status admitted firmware 1.0's line alone,
+  so it refused every reset. The tool now admits firmware 1.0's whole
+  line or firmware 1.1.1's, each by its bytes. The client's pin does
+  not move: the client relays the line. The change lies in the
+  harness lane (282 counted lines, most of them the dry run's new
+  case), and it touches no image, no monitor source, and no pin of
+  the claim ledger. It gives the board tools their reset back. It
+  authorizes no board step: D-15 stands.

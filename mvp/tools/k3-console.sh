@@ -97,7 +97,23 @@
 # status` or `... reset`, nothing else, so that no module beside the client
 # or on PYTHONPATH is imported; the client pings first): `status` clean, then
 # `reset` once, then `status` clean again; or K3_RESET=human, the tool asks
-# for the reset and waits K3_HUMAN_SECONDS. The dongle's port is opened only
+# for the reset and waits K3_HUMAN_SECONDS. A clean `status` is the client's
+# exit status 0 and one whole line, matched by its bytes (LC_ALL=C), of one
+# of two dongle firmware versions: 1.0's,
+#   OK status rst=0 fcrec=0 pwr=0 k3=on|off|n/a up=N ver=1.0
+# or 1.1.1's,
+#   OK status rst=0 fcrec=0 pwr=0 k3=on|off|n/a up=U ver=1.1.1 inpwr=0|1 inrst=0|1 ev=E
+# where N is one or more digits; U is the dongle's uptime in ms as that
+# firmware prints it, 0 or one to ten digits without a leading zero; inpwr
+# and inrst are the levels the dongle reads on the power and reset lines
+# (it prints `-` for a line it drives, which is not clean); and E is the
+# dongle's last event, `-` (none since its power-up), DC, ERR, PWR, REC, or
+# RST, or, only beside k3=on or k3=off (a dongle built to sense the K3's
+# power), ON or OFF. Any other reply is not clean. The dongle reported
+# firmware 1.1.1 on the bench on 2026-11-16; the client and its pin are
+# unchanged: the client that came with firmware 1.0 relays either line as
+# the dongle prints it, and `reset` is the same 200 ms pulse in both
+# versions. The dongle's port is opened only
 # when the log since the last reset (or the session's start) shows one of
 # the port-open rule's conditions, which tools/k3-uboot.py can-reset reads:
 # an idle prompt after a completed command (a saveenv in progress has no
@@ -469,9 +485,22 @@ k3ctl_command() {
 	rm -f -- "$error_file"
 }
 
+# The clean `status` lines (the header's "Resets"), each whole: firmware
+# 1.0's; and firmware 1.1.1's, without the K3's power sensed (k3=n/a) and
+# with it (k3=on or off, and ON and OFF among the events).
+status_lines=(
+	'^OK status rst=0 fcrec=0 pwr=0 k3=(on|off|n/a) up=[0-9]+ ver=1\.0$'
+	'^OK status rst=0 fcrec=0 pwr=0 k3=n/a up=(0|[1-9][0-9]{0,9}) ver=1\.1\.1 inpwr=[01] inrst=[01] ev=(-|DC|ERR|PWR|REC|RST)$'
+	'^OK status rst=0 fcrec=0 pwr=0 k3=(on|off) up=(0|[1-9][0-9]{0,9}) ver=1\.1\.1 inpwr=[01] inrst=[01] ev=(-|DC|ERR|OFF|ON|PWR|REC|RST)$')
+
 status_clean() {
-	[ "$k3ctl_status" = 0 ] &&
-		[[ $k3ctl_reply =~ ^OK\ status\ rst=0\ fcrec=0\ pwr=0\ k3=(on|off|n/a)\ up=[0-9]+\ ver=1\.0$ ]]
+	local LC_ALL=C line
+
+	[ "$k3ctl_status" = 0 ] || return 1
+	for line in "${status_lines[@]}"; do
+		[[ $k3ctl_reply =~ $line ]] && return 0
+	done
+	return 1
 }
 
 # reply status_before|status_after UTC: the last status reply in the record.
