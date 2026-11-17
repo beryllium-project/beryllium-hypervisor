@@ -1,0 +1,110 @@
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com> -->
+
+# The claim ledger: the M11 candidate
+
+This file is rendered from [`claim-ledger.json`](claim-ledger.json)
+by `tools/claim-ledger.py render`, and `tools/claim-ledger.py check`
+fails if the two differ: edit the JSON, then render. It is the
+ledger's second set: the rows of [the page](claim-boundary.md)
+that states the claim, kept apart from MVP 1.0's rows in
+[the MVP 1.0 claim ledger](claim-ledger.md). No row here names one
+of those, and nothing here is part of MVP 1.0's claim. Each claim
+row is a part of the page's clause, in order, and the parts are the
+whole clause. Each non-claim row is a sentence of the page's limit,
+in order, and every sentence has its row. Every part is read with
+the whole limit. Each artifact's full SHA-256 is under
+[Evidence](#evidence), with a note. The evidence is the candidate's
+own, at the tree that the table below names once the gates have
+passed at it.
+
+## Candidate
+
+| Field | Value |
+| --- | --- |
+| Name | M11 candidate |
+| Scope | M11-E: the physical boundary under the monitor, under emulation, in the candidate's own images and firmware build. No row here is part of MVP 1.0's claim, and none is about a released image. |
+| Page | [`claim-boundary.md`](claim-boundary.md) |
+| OpenSBI commit | `ed70256dd22c09962d146e433834239825ef0616` |
+| Candidate tree | not named yet |
+
+## Claims
+
+| ID | Part of the clause | Method | Evidence |
+| --- | --- | --- | --- |
+| M11-C01 | In QEMU, under a firmware build of the project's own (OpenSBI at the commit that the ledger names, with the project's M-mode additions), | semantic checker; emulation | `mvp/firmware/pins.mk` (`56f567938720`); `mvp/firmware/patches/series` (`3fab0b70a617`); `mvp/tools/lock/tool-lock.conf` (`7fba0ae202de`); `mvp/tests/run-qemu.sh` (`88852c0a48ef`) |
+| M11-C02 | each of the two harts that run a VS domain is confined before its first guest entry, | adversarial test; semantic checker; emulation | `mvp/src/mvp-hartentry.S` (`6d3b99588738`); `mvp/tests/check-image.py` (`9dbef8ac6ecb`); `mvp/tests/check-boundary.py` (`e2270bb63f63`); `mvp/tests/boundary-negatives.py` (`759c98ea114c`) |
+| M11-C03 | and the control hart at the end of its boot work, before it reads anything that they write: | adversarial test; semantic checker; emulation | `mvp/src/mvp-runtime.c` (`94ec9739457d`); `mvp/tests/check-image.py` (`9dbef8ac6ecb`); `mvp/tests/check-boundary.py` (`e2270bb63f63`); `mvp/tests/boundary-negatives.py` (`759c98ea114c`) |
+| M11-C04 | each to a physical access profile that M-mode installs from a partition descriptor built offline. | host unit test; adversarial test; semantic checker; emulation | `mvp/tools/gen-partition.py` (`56c320e4d32e`); `mvp/tools/partition-backend.py` (`9c98f60f9ff2`); `mvp/tests/check-partition.py` (`5cf08791fe5d`); `mvp/firmware/tests/fwtest.py` (`bc6d57373d12`); `mvp/firmware/tests/host-decisions.c` (`cb180b109f49`); `mvp/tests/check-boundary.py` (`e2270bb63f63`) |
+| M11-C05 | The five harts that the monitor does not use stay stopped. | adversarial test; semantic checker; emulation | `mvp/tests/check-boundary.py` (`e2270bb63f63`); `mvp/scenarios/anchor/breach.json` (`cc86ac95d9e4`); `mvp/scenarios/anchor/breach-control.json` (`c5aa2157be89`); `mvp/tests/boundary-negatives.py` (`759c98ea114c`) |
+| M11-C06 | In the hostile-monitor test images, with plain PMP and with Smepmp, each tested attempt by HS-mode code on a confined hart to reach memory outside its profile, or to make a firmware call outside its list, had no effect and was counted by M-mode. | adversarial test; semantic checker; emulation | `mvp/scenarios/anchor/breach.json` (`cc86ac95d9e4`); `mvp/scenarios/anchor/breach-control.json` (`c5aa2157be89`); `mvp/tools/gen-breach.py` (`e9ab8e5199d0`); `mvp/src/mvp-breach.c` (`ca9941195cde`); `mvp/tests/check-boundary.py` (`e2270bb63f63`) |
+| M11-C07 | With the boundary built off, each of those memory attempts that the tests can discriminate took effect. | adversarial test; semantic checker; emulation | `mvp/tools/gen-breach.py` (`e9ab8e5199d0`); `mvp/tests/check-boundary.py` (`e2270bb63f63`); `mvp/tests/run-qemu.sh` (`88852c0a48ef`) |
+
+## Non-claims
+
+| ID | Sentence of the limit | Note |
+| --- | --- | --- |
+| M11-N01 | This is emulation evidence, by adversarial tests and a semantic checker; nothing is proved. | The plan's D-11: the confinement is not modelled in M11, and no proof arm runs on it. No board run is part of this candidate (D-15). |
+| M11-N02 | PMP's behaviour is the emulator's, which has no cache. | QEMU's PMP is an emulator's, and QEMU has no cache: the cache-block control is shown by its value and by the invalidate instruction's trap (the plan's F22), never by an effect on memory. |
+| M11-N03 | The firmware, the hardware's physical memory protection, the descriptor's generator, the boot chain, and the monitor's boot code before each hart's activation are trusted for the containment, and the offline check of the descriptor for the evidence. | Security model v1, Part 1 Revision 4 (R4.4): each of these is a row of the boundary's trusted computing base, the first five in the running one and the offline check in the evidence's. The attacker there is HS-mode code on a hart after that hart's activation. |
+| M11-N04 | The tests are a list of attempts made by a test hook: not every access, and not an exploit. | The lists are scenarios/anchor/breach.json and breach-control.json. The hook shows what the boundary does to HS-mode code that tries, not that any flaw exists that would let a guest run such code (D-10). |
+| M11-N05 | The runs with the boundary off do not cover the attempts on M-mode's own memory, on another hart's interrupt file, or on the machine's power device, nor the jumps, the cache-block invalidate, and the calls. | D-10, Discrimination: the firmware denies an attempt on M-mode's memory in both builds; an attempt on an interrupt file or on the power device leaves nothing that a read can show, or ends the run. The evidence record lists the attempts that are not discriminated, by row. |
+| M11-N06 | A breached hart keeps its own VS domain and the mailboxes that it writes, and may stop or withhold its work. | A profile allows what its hart's role needs (security model v1, I22): for a VS-domain hart, its own VS domain's window and the mailboxes that it writes among them. The boundary takes none of that from a breached hart. |
+| M11-N07 | The control hart stays a hub between the others. | The two VS-domain harts exchange nothing directly: each one's rings are with the control hart (D-7). |
+| M11-N08 | A breached control hart can also pause or terminate a VS domain, see every line that any VS domain prints, type into a VS domain that is granted console input, with that VS domain's shell's reach, print anything, and shut the system down. | These are the control role's own powers: its mailboxes, and its call list's console write, console read where a VS domain is granted input, and shutdown (D-8). |
+| M11-N09 | What a breached hart prints is not evidence: the evidence is M-mode's counts and the reads from outside the machine. | D-10: the hook's own report is secondary. The judge reads the hook's record, the witness words, the PMP registers, and M-mode's commit records through the QEMU oracle, with the machine stopped. |
+| M11-N10 | Nothing here protects against cache or timing channels between harts, or against a defective firmware. | No test here looks for such a channel. The firmware is trusted (the third sentence), and its own tests are a list of rows, as the monitor's are. |
+| M11-N11 | The released MVP 1.0 images have no such boundary. | MVP 1.0's claim is claim.md, unchanged, and its rows are the first set's. The tag mvp-1.0 holds none of this candidate's code. |
+
+## Evidence
+
+### M11-C01
+
+- [`mvp/firmware/pins.mk`](../../mvp/firmware/pins.mk): SHA-256 `56f5679387209ec58ed9f79ef9ee03afad3611932ebfc44657115d5e7ba508bb`. The OpenSBI base, by commit and Git tree: firmware/fetch.sh checks both before a build, and firmware/build.sh checks them again. The set's opensbi_commit is this file's MVP_FIRMWARE_COMMIT.
+- [`mvp/firmware/patches/series`](../../mvp/firmware/patches/series): SHA-256 `3fab0b70a617f682a50639cdcd539a4c50a9659cbe7d4921886ed4bbd86d356b`. The project's M-mode additions: ten patches, which firmware/build.sh applies over the base in this order.
+- [`mvp/tools/lock/tool-lock.conf`](../../mvp/tools/lock/tool-lock.conf): SHA-256 `7fba0ae202de3a9d5f34dad3ab3cbfe4faa2b68d68dd2b59af93dfb65c3fd391`. MVP_PIN_FIRMWARE_BIN_SHA256 is the built firmware binary's SHA-256: ./mvp/mvp firmware refuses a build with another, and evaluate builds the binary again in the pinned evaluator image and compares it with the host's.
+- [`mvp/tests/run-qemu.sh`](../../mvp/tests/run-qemu.sh): SHA-256 `88852c0a48ef47e448e4e878a34325cdac1610440dcbb8957b8d4df599a1b002`. The run harness: every emulated run boots that binary under the locked QEMU, and none uses QEMU's bundled firmware. Two negatives boot another binary, by their declarations: firmware-version the earlier OpenSBI v1.6, and boundary-absent the same build without the boundary extension, each pinned in the lock.
+
+### M11-C02
+
+- [`mvp/src/mvp-hartentry.S`](../../mvp/src/mvp-hartentry.S): SHA-256 `6d3b9958873857e54dc9d6e1cde8c55590e21a2044ad72f7b4f5772a318f27c6`. A VS-domain hart starts at the confine stub, be_mvp_confine_entry, which checks its block, sets its stack, and calls the executor's confine; a hart whose confine returns parks. The firmware enters the confined hart at be_mvp_hart_entry, and the hart reaches its runtime, and through it its guest, from there alone.
+- [`mvp/tests/check-image.py`](../../mvp/tests/check-image.py): SHA-256 `9dbef8ac6ecb0835fd4204ed1db650f0d4266a8c50105be092c8ca140817f74a`. The rules for every image built with the boundary: the confine stub is the address that hart 0's start names; no instruction forms the hart entry's address; the executor's confine is called by the stub and by hart 0's own confinement alone; no firmware call is reachable from a VS-domain hart's entry or from the trap vector. The mutation test applies known defects to the images, and each must be refused for its own reason.
+- [`mvp/tests/check-boundary.py`](../../mvp/tests/check-boundary.py): SHA-256 `e2270bb63f63587d4ce8ba7fa307e818d2a0d283ff2728f758dfae7b9e937526`. The first of D-10's four checks, on every run under the boundary, from what the QEMU oracle read with the machine stopped: each VS-domain hart that printed its READY line holds the backend's confined table for its profile and the run's PMP mode, equal to M-mode's readback in its commit record, as read and as printed. A hart between its start and its confinement is admitted only in a run whose declared outcome fails after the barrier and before both READY lines.
+- [`mvp/tests/boundary-negatives.py`](../../mvp/tests/boundary-negatives.py): SHA-256 `759c98ea114c8c95edaf36c075c5cafb422c2de5df4433968a43f06f6337a675`. The boundary's negatives: device trees made from two-guests' tree by one named edit each, which the independent checker must refuse, and which run only as the negative that declares the refusal. Under a tree that lists a VS-domain hart in two narrow OpenSBI domains, names another boot hart for its OpenSBI domain, or gives that OpenSBI domain no call list, the declared outcome is a failure at hart 0's wait for READY, with the VS-domain harts read in the boot state, not confined, and no guest entered.
+
+### M11-C03
+
+- [`mvp/src/mvp-runtime.c`](../../mvp/src/mvp-runtime.c): SHA-256 `94ec9739457defa96ad610703c3f65f1dcd2978de443512a3009d2810375904c`. start_harts(): after the barrier, hart 0 starts each VS-domain hart at the confine stub and then calls the confine for itself. The firmware enters the confined hart 0 at be_mvp_control_entry; the start lines, the wait for READY, and the control loop run from there, and they hold hart 0's only reads of the rings that the VS-domain harts write. A refused start or a confine that returns ends the run in boot code.
+- [`mvp/tests/check-image.py`](../../mvp/tests/check-image.py): SHA-256 `9dbef8ac6ecb0835fd4204ed1db650f0d4266a8c50105be092c8ca140817f74a`. Step 2's rules for every image built with the boundary: the control entry alone in its slot, its address formed only as the MVP region's start in hart 0's region check; boot code never reaching the control loop; no firmware call and no ring read between a start and hart 0's confine, by control flow; hart 0's confined code reaching the firmware through the console write, the reset, and the console read alone; each object that boot code hands to hart 0 inside the control profile. The mutation test holds defects of each rule.
+- [`mvp/tests/check-boundary.py`](../../mvp/tests/check-boundary.py): SHA-256 `e2270bb63f63587d4ce8ba7fa307e818d2a0d283ff2728f758dfae7b9e937526`. Under a step-2 tree, a run may declare the control hart in the boot state only where it failed in boot code, and confined only where its capture holds both VS-domain harts' start lines and no failure of boot code's classes. A confined hart 0 is judged by the backend's confined table for the control profile, equal to M-mode's readback.
+- [`mvp/tests/boundary-negatives.py`](../../mvp/tests/boundary-negatives.py): SHA-256 `759c98ea114c8c95edaf36c075c5cafb422c2de5df4433968a43f06f6337a675`. The control hart's five negatives: without its OpenSBI domain, without its call list, with another boot hart, or listed with a second narrow OpenSBI domain, hart 0's confine is refused and the run fails in boot code; without its mailbox extent, the confined hart 0 faults, M-mode counts the fault, and the run is judged failed.
+
+### M11-C04
+
+- [`mvp/tools/gen-partition.py`](../../mvp/tools/gen-partition.py): SHA-256 `56c320e4d32ec7a329fba4a9cecf2b1e809131b42ff3d48f60dd828c0776d736`. The descriptor's generator: from the scenario file and the layout header alone, one immutable descriptor for each image, with its identity (the SHA-256 of the descriptor file) and a detached partition-authority section.
+- [`mvp/tools/partition-backend.py`](../../mvp/tools/partition-backend.py): SHA-256 `9c98f60f9ff25b155873402d45149571066067401a1d8c9bb9e1893f0a53d825`. The descriptor's PMP backend: each image's OpenSBI-domain device tree, joined to QEMU's base tree for plain PMP and for Smepmp, and the expected PMP entry table of every hart in every state.
+- [`mvp/tests/check-partition.py`](../../mvp/tests/check-partition.py): SHA-256 `5cf08791fe5d6dd8275bc97ec41726a48efb9c4589cdced86c5701899ba9d0d8`. The independent checker of a descriptor, its tree, and its tables against the scenario, the layout, the linked image, and the firmware, with its self-test and its mutations. Its record binds the tree and the tables by SHA-256: the run harness starts a run under the boundary only if that record passed for this tree and these tables, and a refused tree only as the negative that declares its refusal.
+- [`mvp/firmware/tests/fwtest.py`](../../mvp/firmware/tests/fwtest.py): SHA-256 `bc6d57373d128fa188c6bbe0e0fa76a5243e1fc109dfc138385b8229e787d0aa`. The firmware's own rows on QEMU's k3-like machine, in plain PMP and in Smepmp mode, each judged from what the oracle read with the machine stopped. Among them: D-6's sequence in both orders, in which hart 0's boot code starts harts 1 and 2 and each hart commits to its own narrow OpenSBI domain (d6-vs-first, d6-control-first); the commit guard's four conditions (guard-caller, guard-targets, guard-domains); the call list's refusals, each counted (filter); and every access outside the OpenSBI domain, from HS, VS, and VU alike, coming back as an access fault, counted, and changing nothing (faults). The expected PMP tables are computed in the test, independently of the firmware.
+- [`mvp/firmware/tests/host-decisions.c`](../../mvp/firmware/tests/host-decisions.c): SHA-256 `cb180b109f49ca871496b2bfda99a3b501df187167f625ddc478c1529629ebf1`. The host tests of the patch series' two pure decisions, compiled from the patched OpenSBI header of the firmware build: the commit guard against its four conditions, and the SBI call filter.
+- [`mvp/tests/check-boundary.py`](../../mvp/tests/check-boundary.py): SHA-256 `e2270bb63f63587d4ce8ba7fa307e818d2a0d283ff2728f758dfae7b9e937526`. On every run under the boundary: each confined hart's sixteen PMP entries equal the backend's table for its profile (the configuration bytes of all sixteen, and the address of each entry that is not off); and the configuration digest in the firmware's banner is the partition authority's identity of the image that the run declares, and equals the identity in the monitor's BE_MVP:02 line where the monitor printed one.
+
+### M11-C05
+
+- [`mvp/tests/check-boundary.py`](../../mvp/tests/check-boundary.py): SHA-256 `e2270bb63f63587d4ce8ba7fa307e818d2a0d283ff2728f758dfae7b9e937526`. The second of D-10's four checks, on every run under the boundary, read with the machine stopped: each of harts 3 to 7 has every PMP entry off, is not committed, and has its program counter inside the firmware.
+- [`mvp/scenarios/anchor/breach.json`](../../mvp/scenarios/anchor/breach.json): SHA-256 `cc86ac95d9e48b9cb3704cdb1a5632032b4d7d5166bb34734d4f0a8b8a543279`. The hostile-monitor attempts of a VS-domain hart: rows M6 to M10 are HSM hart_start calls for harts 3 to 7, each declared refused.
+- [`mvp/scenarios/anchor/breach-control.json`](../../mvp/scenarios/anchor/breach-control.json): SHA-256 `c5aa2157be89f3f44c7537fe26013b9cd3cbbed33b7c546a0445b3461417bd7d`. The hostile-monitor attempts of the control hart: rows M6 to M10 are HSM hart_start calls for harts 3 to 7, each declared refused.
+- [`mvp/tests/boundary-negatives.py`](../../mvp/tests/boundary-negatives.py): SHA-256 `759c98ea114c8c95edaf36c075c5cafb422c2de5df4433968a43f06f6337a675`. The negative boundary-no-cold-boot: a device tree without the firmware's cold-boot restriction. The independent checker refuses it, and the run harness's gate admits it for no run.
+
+### M11-C06
+
+- [`mvp/scenarios/anchor/breach.json`](../../mvp/scenarios/anchor/breach.json): SHA-256 `cc86ac95d9e48b9cb3704cdb1a5632032b4d7d5166bb34734d4f0a8b8a543279`. The attempts of a VS-domain hart, 112 for each of the two: 76 on memory outside its profile and 30 calls outside its list, with one cache-block invalidate and five attempts inside the profile, which must succeed.
+- [`mvp/scenarios/anchor/breach-control.json`](../../mvp/scenarios/anchor/breach-control.json): SHA-256 `c5aa2157be89f3f44c7537fe26013b9cd3cbbed33b7c546a0445b3461417bd7d`. The attempts of the control hart, 132: 88 on memory outside its profile and 28 calls outside its list, with seven listed calls that the firmware must reject, two console writes of no byte, two cache-block invalidates, and five attempts inside the profile, which must succeed.
+- [`mvp/tools/gen-breach.py`](../../mvp/tools/gen-breach.py): SHA-256 `e9ab8e5199d0773ce2e7b7eda9b98248c2d821452be3625892bf891d0fdddaff`. The attempts' generator: the table that the hook runs, and the plan that a run must show, each memory attempt judged from the hooked hart's profile and each call from its role's call list.
+- [`mvp/src/mvp-breach.c`](../../mvp/src/mvp-breach.c): SHA-256 `ca9941195cdecfa3fabeaccb487fc97d5107b8b7463344f68c1bcda2695c1e7b`. The test hook, linked into the breach images and no other: after its hart's activation, HS-mode code on the hooked hart makes each access and call of the generated table once (a VS-domain hart at its VS domain's first exit, hart 0 before it reads any ring) and records each one's trap.
+- [`mvp/tests/check-boundary.py`](../../mvp/tests/check-boundary.py): SHA-256 `e2270bb63f63587d4ce8ba7fa307e818d2a0d283ff2728f758dfae7b9e937526`. The judge of a hostile-monitor run, by its plan: the hook's record done once, every row run, and no unexpected trap; each row's trap cause and address, the value that it kept, and the call's error; each witness word and device register at its value, as the oracle read them with the machine stopped. And D-10's fourth check: the hooked hart's PMP faults, blocked calls, and failed calls, as read from M-mode's commit record and as M-mode printed them, are the counts that the generator computes from the attempts.
+
+### M11-C07
+
+- [`mvp/tools/gen-breach.py`](../../mvp/tools/gen-breach.py): SHA-256 `e9ab8e5199d0773ce2e7b7eda9b98248c2d821452be3625892bf891d0fdddaff`. The boundary-off table of each hostile-monitor image holds only the attempts that can be discriminated: 63 and 62 for the two VS-domain harts and 73 for the control hart. Its plan requires each to succeed, with the write's witness word changed or the read's value equal to the target's known content.
+- [`mvp/tests/check-boundary.py`](../../mvp/tests/check-boundary.py): SHA-256 `e2270bb63f63587d4ce8ba7fa307e818d2a0d283ff2728f758dfae7b9e937526`. The same judge, for a boundary-off run: every row of the plan allowed, each witness word and device register at the value that the attempt leaves.
+- [`mvp/tests/run-qemu.sh`](../../mvp/tests/run-qemu.sh): SHA-256 `88852c0a48ef47e448e4e878a34325cdac1610440dcbb8957b8d4df599a1b002`. Each boundary-off image runs under the same firmware binary with QEMU's own device tree, which declares no narrow OpenSBI domain.

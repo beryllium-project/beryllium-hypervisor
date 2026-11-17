@@ -2,14 +2,18 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
 """The MVP claim ledger and the release surfaces (planning/mvp-m4-plan.md,
-"The claim ledger (M4-1)").
+"The claim ledger (M4-1)"), and the ledger's second set: a milestone
+candidate's claim, kept apart from the release's rows
+(planning/mvp-m11-plan.md, "Claim text").
 
   claim-ledger.py check [--ledger PATH] [--docs DIR] [--repo DIR] [--no-git]
   claim-ledger.py render [--ledger PATH] [--out PATH]
   claim-ledger.py join --bundle DIR RECORD ...
   claim-ledger.py --self-test --scratch DIR
 
-render writes mvp/docs/claim-ledger.md from claim-ledger.json. check prints
+render writes mvp/docs/claim-ledger.md from claim-ledger.json, and the
+second set's table beside it (claim-ledger-boundary.md for the set's page
+claim-boundary.md). check prints
 one line per check, then BE_MVP_CLAIM_LEDGER: PASS|FAIL: the schema, exactly,
 with the fixed method vocabulary and claim.md's review items; the methods
 (`not run` alone and without evidence, none naming "verified", "hardware
@@ -30,11 +34,29 @@ eight hex digits once it is named, and none describes itself as another
 candidate's); each ./mvp/mvp command in guide.md's code against `mvp/mvp help`;
 claim.md's "Forbidden phrasings", its list's single source and only allowed
 place, over mvp/docs/*.md; the privacy rule over mvp/docs/*.md and
-mvp/results/*-rc/; and the SPDX and copyright lines. join adds records to a
+mvp/results/*-rc/; and the SPDX and copyright lines. Then the second set's
+eight checks: its schema (exactly its keys; its name, M<number> candidate,
+whose first word prefixes its IDs, in order; its page, a claim-<name>.md;
+its tree null or 40 hex digits; no text naming a row of the first set), and
+if that fails, the other seven skip; its methods (host unit test,
+adversarial test, semantic checker, and emulation alone, and evidence for
+every row); its evidence, by the release's rules, and a gates' record (a
+cited MANIFEST.sha256 beside an rc.txt) only once the set names its tree,
+which the record's rc.txt must name; its tree, a tree of this repository
+that a commit on this line (HEAD and its ancestors) has, skipped as the
+commits check is but never for a marker, and skipped in a shallow clone
+where the tree is not found; its OpenSBI commit, the one in
+mvp/firmware/pins.mk; its rendering; its page (exactly two blockquotes: the
+claim rows' parts, each ending at . , ; or :, joined by one space, are the
+first, and the non-claim rows' sentences, one each, the second; once the
+set names its tree, the page names it too); and the plan's three words,
+never used of the boundary. join adds records to a
 verified bundle under records/claim-ledger/ and writes its manifest again
 (`check` runs it after the bundle). --self-test: seeded single-defect
 mutations of a copy, each failing exactly its own check (S1 H39), variants
-that pass, and the two markers' cases in a scratch repository.
+that pass, and the two markers' cases in a scratch repository; then the
+second set's cases, from a generator of their own and counted apart, with
+its tree's cases in another scratch repository and a shallow clone of it.
 """
 
 import argparse
@@ -77,11 +99,16 @@ NOT_RUN = "not run"
 OVERCLAIM = re.compile(r"verified|hardware validation|formal verification",
                        re.I)
 KEYS = {"ledger": "schema release method_vocabulary claims unproved_boundary "
-                  "review_items",
+                  "review_items candidate",
         "release": "name candidate_tree_commit release_candidate_commit",
         "claim": "id claim methods evidence non_claim historical",
         "evidence": "path sha256 evidence_source_commit note",
-        "boundary": "id item coverage note"}
+        "boundary": "id item coverage note",
+        "candidate": "name scope page opensbi_commit candidate_tree claims "
+                     "non_claims",
+        "candidate claim": "id claim methods evidence",
+        "candidate evidence": "path sha256 note",
+        "candidate non-claim": "id sentence note"}
 COMMIT, SHA256 = re.compile(r"[0-9a-f]{40}"), re.compile(r"[0-9a-f]{64}")
 # A fresh-history snapshot of another repository (tools/snapshot.sh) carries
 # this marker at its root; the ledger's commits are then the source's.
@@ -126,6 +153,24 @@ PRIVACY = [(name, re.compile(pattern)) for name, pattern in (
     ("serial number", r"(?i:serial#)\s*[=:]\s*(?!<serial>)\S"))]
 WRAPPER_COMMAND = re.compile(r"(?<![\w./-])\./mvp(?:/mvp)?[ \t]+([^\s;&|)`]+)")
 SEED = 20261028
+# The second set (planning/mvp-m11-plan.md, "Claim text"): a milestone
+# candidate's claim on a page of its own, which the set's rows quote, kept
+# apart from the release's rows, which none of its texts names.
+CANDIDATE_NAME = re.compile(r"(M[1-9][0-9]*) candidate")
+CANDIDATE_PAGE = re.compile(r"claim-(?!ledger)[a-z0-9]+(?:-[a-z0-9]+)*\.md")
+CANDIDATE_METHODS = ["host unit test", "adversarial test", "semantic checker",
+                     "emulation"]
+RELEASE_ROW = re.compile(r"(?<![A-Za-z0-9-])[CU]-[0-9]{2,}")
+# The words that the plan's "Claim text" never uses of the boundary: whole,
+# or in a hyphenated compound, in any case ("unverified" is another word).
+WORDS = ("isolated", "sandboxed", "verified")
+WORD = re.compile(r"(?<![A-Za-z0-9_])(?:" + "|".join(WORDS) +
+                  r")(?![A-Za-z0-9_])", re.I)
+PINS = "mvp/firmware/pins.mk"
+FIRMWARE_COMMIT = re.compile(r"^MVP_FIRMWARE_COMMIT :=[ \t]*(\S+)[ \t]*$",
+                             re.M)
+SHALLOW = ("a shallow clone: the commit that has the candidate's tree may be "
+           "absent (fetch the history to check it)")
 
 
 class Skip(Exception):
@@ -323,20 +368,31 @@ def check_methods(context):
     return out, ""
 
 
+def repository_file(repo, relative):
+    """REPO/RELATIVE where it is a regular file of the repository REPO
+    (resolved): no absolute or backslashed path, no empty, '.', or '..' part,
+    and no symbolic link; else None."""
+    path = repo / relative
+    if relative.startswith("/") or "\\" in relative or any(
+            part in ("", ".", "..") for part in relative.split("/")) \
+            or path.is_symlink() or not path.is_file() or \
+            not path.resolve().is_relative_to(repo):
+        return None
+    return path
+
+
 def check_evidence(context):
     repo, out, count, records = context["repo"].resolve(), [], 0, {}
     for row in context["data"]["claims"]:
         for index, entry in enumerate(row["evidence"], 1):
             where, relative = f"{row['id']} evidence {index}", entry["path"]
-            path = repo / relative
-            if relative.startswith("/") or "\\" in relative or any(
-                    part in ("", ".", "..") for part in relative.split("/")) \
-                    or path.is_symlink() or not path.is_file() or \
-                    not path.resolve().is_relative_to(repo):
+            path = repository_file(repo, relative)
+            if path is None:
                 out.append(f"{where}: {relative} is not a regular file in the "
                            "repository" + (" (cite a record by its "
                                            "MANIFEST.sha256)"
-                                           if path.is_dir() else ""))
+                                           if (repo / relative).is_dir()
+                                           else ""))
                 continue
             count += 1
             digest = file_sha(path)
@@ -412,17 +468,22 @@ def check_commits(context):
     return out, f"commits={len(shas)}"
 
 
-def check_rendering(context):
-    path, rendered = context["docs"] / "claim-ledger.md", render(
-        context["data"])
+def stale(path, rendered):
+    """[finding] where PATH does not hold RENDERED: the first line that
+    differs."""
     committed = path.read_text(encoding="utf-8") if path.is_file() else ""
     if committed == rendered:
-        return [], ""
+        return []
     first = next((number for number, (left, right) in enumerate(zip(
         committed.splitlines(), rendered.splitlines()), 1) if left != right),
         min(committed.count("\n"), rendered.count("\n")) + 1)
-    return [f"claim-ledger.md differs from the rendered JSON from line "
-            f"{first}; run tools/claim-ledger.py render"], ""
+    return [f"{path.name} differs from the rendered JSON from line "
+            f"{first}; run tools/claim-ledger.py render"]
+
+
+def check_rendering(context):
+    return stale(context["docs"] / "claim-ledger.md",
+                 render(context["data"])), ""
 
 
 def check_release(context):
@@ -519,19 +580,343 @@ def check_headers(context):
         f"surfaces={len(surfaces)}"
 
 
+# ------------------------------------------------------- the second set
+def candidate_texts(candidate):
+    """(where, text) of each free text of the second set."""
+    yield "candidate name", candidate["name"]
+    yield "candidate scope", candidate["scope"]
+    for row in candidate["claims"]:
+        yield f"{row['id']} part", row["claim"]
+        yield from ((f"{row['id']} evidence {index} note", entry["note"])
+                    for index, entry in enumerate(row["evidence"], 1))
+    for row in candidate["non_claims"]:
+        yield f"{row['id']} sentence", row["sentence"]
+        yield f"{row['id']} note", row["note"]
+
+
+def rendering_name(candidate):
+    """The set's table: its page's name, claim- made claim-ledger-."""
+    return "claim-ledger-" + candidate["page"][len("claim-"):]
+
+
+def check_candidate_schema(context):
+    """The second set's form: its keys, name, page, OpenSBI commit, and
+    tree; its rows, with their IDs in order; and its texts, each one line
+    and none naming a row of the first set (the sets are kept apart)."""
+    candidate, out = context["data"].get("candidate"), []
+
+    def keys(value, kind, where):
+        if isinstance(value, dict) and set(value) == set(KEYS[kind].split()):
+            return True
+        out.append(f"{where}: keys are not exactly {KEYS[kind]}")
+        return False
+
+    def matches(pattern, value):
+        return isinstance(value, str) and pattern.fullmatch(value) is not None
+    if not keys(candidate, "candidate", "candidate"):
+        return out, ""
+    name = CANDIDATE_NAME.fullmatch(candidate["name"]) if isinstance(
+        candidate["name"], str) else None
+    prefix, tree = name.group(1) if name else "M?", candidate["candidate_tree"]
+    out += [f"candidate: {key} {what}" for key, wrong, what in (
+        ("name", name is None, "is not 'M<number> candidate'"),
+        ("page", not matches(CANDIDATE_PAGE, candidate["page"]),
+         "is not a claim-<name>.md of docs/ other than the release's"),
+        ("opensbi_commit", not matches(COMMIT, candidate["opensbi_commit"]),
+         "is not a full commit"),
+        ("candidate_tree", tree is not None and not matches(COMMIT, tree),
+         "is neither null nor 40 hex digits"),
+        ("claims", not (isinstance(candidate["claims"], list) and
+                        candidate["claims"]), "is not a non-empty list"),
+        ("non_claims", not (isinstance(candidate["non_claims"], list) and
+                            candidate["non_claims"]),
+         "is not a non-empty list")) if wrong]
+    for key, kind, letter in (("claims", "candidate claim", "C"),
+                              ("non_claims", "candidate non-claim", "N")):
+        rows = candidate[key] if isinstance(candidate[key], list) else []
+        for number, row in enumerate(rows, 1):
+            where = f"candidate {key} {number}"
+            wanted = f"{prefix}-{letter}{number:02d}"
+            if not keys(row, kind, where):
+                continue
+            if row["id"] != wanted:
+                out.append(f"{where}: id is not {wanted}")
+            if letter == "N":
+                continue
+            if not (isinstance(row["methods"], list) and row["methods"] and
+                    all(isinstance(term, str) for term in row["methods"])):
+                out.append(f"{where}: methods is not a non-empty list of "
+                           "terms")
+            if not isinstance(row["evidence"], list):
+                out.append(f"{where}: evidence is not a list")
+                continue
+            for index, entry in enumerate(row["evidence"], 1):
+                if keys(entry, "candidate evidence",
+                        f"{where} evidence {index}") and \
+                        not matches(SHA256, entry["sha256"]):
+                    out.append(f"{where} evidence {index}: sha256 is not 64 "
+                               "hex digits")
+    if out:
+        return out, ""
+    paths = [(f"{row['id']} evidence {index} path", entry["path"])
+             for row in candidate["claims"]
+             for index, entry in enumerate(row["evidence"], 1)]
+    for where, text in [*candidate_texts(candidate), *paths]:
+        if not (isinstance(text, str) and text.strip() == text != "" and
+                not re.search(r"[|\x00-\x1f]", text)):
+            out.append(f"{where} is not one line without '|'")
+        elif not where.endswith(" path"):
+            out += [f"{where} names {match.group(0)}, a row of MVP 1.0's set; "
+                    "the sets are kept apart"
+                    for match in RELEASE_ROW.finditer(text)]
+    return out, (f"candidate={prefix} claims={len(candidate['claims'])} "
+                 f"non_claims={len(candidate['non_claims'])}")
+
+
+def check_candidate_methods(context):
+    """The methods that the plan's "Claim text" names, and no other (no
+    board run, no proof, no `not run`); none repeated; evidence for every
+    row."""
+    out = []
+    for row in context["data"]["candidate"]["claims"]:
+        name, methods = row["id"], row["methods"]
+        for method in methods:
+            if OVERCLAIM.search(method):
+                out.append(f"{name}: {method!r} names an evidence term the "
+                           "vocabulary excludes")
+            elif method not in CANDIDATE_METHODS:
+                out.append(f"{name}: {method!r} is not a method of the "
+                           "candidate's rows "
+                           f"({', '.join(CANDIDATE_METHODS)})")
+        if len(set(methods)) != len(methods):
+            out.append(f"{name}: a method is repeated")
+        if not row["evidence"]:
+            out.append(f"{name}: a claim of the candidate needs evidence")
+    return out, ""
+
+
+def record_trees(manifest):
+    """The candidate_tree= values of the rc.txt beside a gates' record's
+    MANIFEST.sha256."""
+    return [line.partition("=")[2] for line in manifest.with_name(
+        "rc.txt").read_text(encoding="utf-8", errors="replace").splitlines()
+        if line.startswith("candidate_tree=")]
+
+
+def check_candidate_evidence(context):
+    """The release's evidence rules over the set's rows; and a cited gates'
+    record (a MANIFEST.sha256 beside an rc.txt) only once the set names its
+    tree, which the record's rc.txt names on its one candidate_tree= line."""
+    candidate, repo = context["data"]["candidate"], context["repo"].resolve()
+    out, detail = check_evidence({"repo": repo,
+                                  "data": {"claims": candidate["claims"]}})
+    tree = candidate["candidate_tree"]
+    for row in candidate["claims"]:
+        for index, entry in enumerate(row["evidence"], 1):
+            where = f"{row['id']} evidence {index}"
+            path = repository_file(repo, entry["path"])
+            if path is None or path.name != "MANIFEST.sha256" or \
+                    not path.with_name("rc.txt").is_file():
+                continue
+            named = record_trees(path)
+            if tree is None:
+                out.append(f"{where}: cites a gates' record while the set "
+                           "names no candidate tree")
+            elif len(named) != 1:
+                out.append(f"{where}: the record's rc.txt holds {len(named)} "
+                           "candidate_tree= lines, not one")
+            elif named[0] != tree:
+                out.append(f"{where}: the record's rc.txt names the tree "
+                           f"{named[0][:8]}, not the set's candidate tree "
+                           f"{tree[:8]}")
+    return out, detail
+
+
+def not_found(repo, finding):
+    """([FINDING], "") where the candidate's tree is not found in a full
+    clone. In a shallow clone the commit that has it may be absent, and a
+    check does not fail for how the repository was cloned: it skips."""
+    if git(repo, "rev-parse", "--is-shallow-repository").stdout.strip() == \
+            "true":
+        raise Skip(SHALLOW)
+    return [finding], ""
+
+
+def check_candidate_tree(context):
+    """The candidate's tree: null until the gates have passed at it, then a
+    tree of this repository that a commit on this line (HEAD and its
+    ancestors) has as its root tree, the nearest such commit named. The
+    responsible human's sign-off rewrites a range's commits and keeps their
+    trees, so the set names a tree. Skipped as the commits check is, but
+    never for a marker: RELEASE.txt speaks for the release's rows alone.
+    Skipped too in a shallow clone where the tree is not found (not_found);
+    found, it passes there as anywhere."""
+    if context["git"]:
+        raise Skip(context["git"])
+    tree = context["data"]["candidate"]["candidate_tree"]
+    repo = context["repo"]
+    if tree is None:
+        return [], "tree=none (not named yet)"
+    if git(repo, "cat-file", "-t", tree).stdout.strip() != "tree":
+        return not_found(repo, f"candidate_tree {tree[:8]} is not a tree in "
+                         "the repository")
+    # Commit: [tree, parents...], HEAD first; then a walk by parents, so
+    # that the first commit found is the nearest.
+    graph = {fields[0]: fields[1:] for fields in (
+        line.split() for line in git(repo, "log", "--format=%H %T %P",
+                                     "HEAD").stdout.splitlines()) if fields}
+    order = list(graph)[:1]
+    seen = set(order)
+    for commit in order:
+        if graph[commit][0] == tree:
+            return [], f"tree={tree[:8]} commit={commit[:8]}"
+        for parent in graph[commit][1:]:
+            if parent in graph and parent not in seen:
+                seen.add(parent)
+                order.append(parent)
+    return not_found(repo, f"candidate_tree {tree[:8]} is the tree of no "
+                     "commit on this line (HEAD and its ancestors)")
+
+
+def check_candidate_firmware(context):
+    """The set's OpenSBI commit is the firmware build's: the one
+    MVP_FIRMWARE_COMMIT line of mvp/firmware/pins.mk."""
+    commit = context["data"]["candidate"]["opensbi_commit"]
+    pins = context["repo"] / PINS
+    pinned = FIRMWARE_COMMIT.findall(pins.read_text(encoding="utf-8")) \
+        if pins.is_file() else []
+    if len(pinned) != 1:
+        return [f"{PINS} holds {len(pinned)} MVP_FIRMWARE_COMMIT lines, not "
+                "one"], ""
+    if pinned[0] != commit:
+        return [f"opensbi_commit {commit} is not {PINS}'s "
+                f"MVP_FIRMWARE_COMMIT {pinned[0]}"], ""
+    return [], f"commit={commit[:8]}"
+
+
+def check_candidate_rendering(context):
+    name = rendering_name(context["data"]["candidate"])
+    return stale(context["docs"] / name, render_candidate(context["data"])), \
+        name
+
+
+def blockquotes(text):
+    """The blockquotes outside fenced code, each its text with its
+    whitespace collapsed, and the numbers of the lines that continue one
+    without '>': a blockquote ends at a blank line or at the end."""
+    quotes, lazy, current, fenced = [], [], None, False
+    for number, line in enumerate(text.splitlines(), 1):
+        if not fenced and re.match(r" {0,3}>", line):
+            if current is None:
+                current = []
+                quotes.append(current)
+            current.append(re.sub(r"^ {0,3}> ?", "", line))
+            continue
+        if current is not None and line.strip():
+            lazy.append(number)
+        current = None
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+    return [" ".join(" ".join(lines).split()) for lines in quotes], lazy
+
+
+def parting(rows, page):
+    """Where the rows' text and the page's part: the first word that
+    differs."""
+    left, right = rows.split(" "), page.split(" ")
+    number = next((number for number, (one, other) in enumerate(zip(
+        left, right)) if one != other), min(len(left), len(right)))
+
+    def word(words):
+        return repr(words[number]) if number < len(words) else "no more words"
+    return (f"from word {number + 1} (the page has {word(right)}, the rows "
+            f"{word(left)})")
+
+
+def check_candidate_page(context):
+    """The set's page: a regular file of docs/ with exactly two blockquotes
+    outside fenced code, the clause and then the limit, each ended by a
+    blank line or the end. The claim rows' parts, joined by one space, are
+    the clause, each ending at a mark of punctuation; the non-claim rows'
+    sentences, joined by one space, are the limit, each one sentence. Once
+    the set names its tree, the page names it, by its first eight hex digits
+    in backticks or in full."""
+    candidate = context["data"]["candidate"]
+    page = context["docs"] / candidate["page"]
+    if page.is_symlink() or not page.is_file():
+        return [f"{page.name} is not a regular file in docs/"], ""
+    text = page.read_text(encoding="utf-8")
+    quotes, lazy = blockquotes(text)
+    out = [f"{page.name} line {number} continues a blockquote without '>'"
+           for number in lazy]
+    parts = [row["claim"] for row in candidate["claims"]]
+    sentences = [row["sentence"] for row in candidate["non_claims"]]
+    if len(quotes) != 2:
+        out.append(f"{page.name} has {len(quotes)} blockquotes, not two (the "
+                   "clause, then the limit)")
+    else:
+        out += [f"{what}, {parting(' '.join(rows), quote)}" for rows, what,
+                quote in ((parts, "the claim rows' parts are not the page's "
+                           "clause", quotes[0]),
+                          (sentences, "the non-claim rows' sentences are not "
+                           "the page's limit", quotes[1]))
+                if " ".join(rows) != quote]
+    out += [f"{row['id']}'s part does not end at a mark of punctuation "
+            "(. , ; :)" for row in candidate["claims"]
+            if not row["claim"].endswith((".", ",", ";", ":"))]
+    out += [f"{row['id']} is not one sentence of the limit"
+            for row in candidate["non_claims"]
+            if not re.fullmatch(r"[A-Z0-9].*\.", row["sentence"]) or
+            re.search(r"[.!?] [A-Z0-9]", row["sentence"])]
+    tree = candidate["candidate_tree"]
+    if tree and f"`{tree[:8]}`" not in text and tree not in text:
+        out.append(f"{page.name} does not name the candidate tree {tree[:8]}")
+    return out, (f"page={page.name} parts={len(parts)} "
+                 f"sentences={len(sentences)}")
+
+
+def check_candidate_words(context):
+    """The plan's three words, never used of the boundary: not on the set's
+    page, not in its table, and not in any text of the set."""
+    candidate, docs, out = context["data"]["candidate"], context["docs"], []
+    why = ('is not used of the boundary (planning/mvp-m11-plan.md, '
+           '"Claim text")')
+    for name in (candidate["page"], rendering_name(candidate)):
+        path = docs / name
+        text = path.read_text(encoding="utf-8") if path.is_file() else ""
+        out += [f"{name} line {line_of(text, match.start())}: "
+                f"{match.group(0)!r} {why}" for match in WORD.finditer(text)]
+    out += [f"{where}: {match.group(0)!r} {why}"
+            for where, text in candidate_texts(candidate)
+            for match in WORD.finditer(text)]
+    return out, f"words={len(WORDS)}"
+
+
+CANDIDATE_CHECKS = (("candidate schema", check_candidate_schema),
+                    ("candidate methods", check_candidate_methods),
+                    ("candidate evidence", check_candidate_evidence),
+                    ("candidate tree", check_candidate_tree),
+                    ("candidate firmware", check_candidate_firmware),
+                    ("candidate rendering", check_candidate_rendering),
+                    ("candidate page", check_candidate_page),
+                    ("candidate words", check_candidate_words))
 CHECKS = (("schema", check_schema), ("methods", check_methods),
           ("evidence", check_evidence), ("commits", check_commits),
           ("rendering", check_rendering), ("release surfaces", check_release),
           ("guide commands", check_guide),
           ("phrasing", check_phrasing), ("privacy", check_privacy),
-          ("headers", check_headers))
+          ("headers", check_headers)) + CANDIDATE_CHECKS
 LEDGER_CHECKS = ("methods", "evidence", "commits", "rendering",
-                 "release surfaces")
+                 "release surfaces") + tuple(
+    name for name, _ in CANDIDATE_CHECKS)
+# The second set's checks after its schema, skipped when that fails.
+CANDIDATE_LATER = tuple(name for name, _ in CANDIDATE_CHECKS[1:])
 
 
 def run_checks(ledger, docs, repo, git_reason):
     """[(check, PASS|FAIL|skipped, findings, detail)], and the ledger;
-    GIT_REASON is None, or why the commit check cannot run."""
+    GIT_REASON is None, or why the commit check and the set's tree check
+    cannot run."""
     context = {"docs": docs, "repo": repo, "git": git_reason, "data": None}
     try:
         context["data"] = json.loads(ledger.read_text(encoding="utf-8"))
@@ -542,6 +927,8 @@ def run_checks(ledger, docs, repo, git_reason):
         try:
             if name in LEDGER_CHECKS and not isinstance(context["data"], dict):
                 raise Skip("no ledger")
+            if name in CANDIDATE_LATER and context.get("candidate failed"):
+                raise Skip("the candidate set's schema failed")
             findings, detail = function(context)
             status = "FAIL" if findings else "PASS"
         except Skip as reason:
@@ -549,6 +936,8 @@ def run_checks(ledger, docs, repo, git_reason):
         except (OSError, ValueError, KeyError, TypeError,
                 AttributeError) as error:
             status, findings, detail = "FAIL", [repr(error)], ""
+        if name == "candidate schema" and status != "PASS":
+            context["candidate failed"] = True
         results.append((name, status, findings, detail))
     return results, context["data"]
 
@@ -606,6 +995,55 @@ def render(data):
     return "\n".join(lines) + "\n"
 
 
+def render_candidate(data):
+    """The second set's table (rendering_name): the candidate, its claim
+    rows (the parts of its page's clause), its non-claim rows (the
+    sentences of the limit), and each artifact's full identity."""
+    candidate = data["candidate"]
+    tree = candidate["candidate_tree"]
+    named = f"`{tree}`" if tree else "not named yet"
+    lines = HEADER + [
+        "", f"# The claim ledger: the {candidate['name']}", "",
+        "This file is rendered from [`claim-ledger.json`](claim-ledger.json)",
+        "by `tools/claim-ledger.py render`, and `tools/claim-ledger.py check`",
+        "fails if the two differ: edit the JSON, then render. It is the",
+        f"ledger's second set: the rows of [the page]({candidate['page']})",
+        "that states the claim, kept apart from MVP 1.0's rows in",
+        "[the MVP 1.0 claim ledger](claim-ledger.md). No row here names one",
+        "of those, and nothing here is part of MVP 1.0's claim. Each claim",
+        "row is a part of the page's clause, in order, and the parts are the",
+        "whole clause. Each non-claim row is a sentence of the page's limit,",
+        "in order, and every sentence has its row. Every part is read with",
+        "the whole limit. Each artifact's full SHA-256 is under",
+        "[Evidence](#evidence), with a note. The evidence is the candidate's",
+        "own, at the tree that the table below names once the gates have",
+        "passed at it.",
+        "", "## Candidate", "", "| Field | Value |", "| --- | --- |",
+        f"| Name | {candidate['name']} |",
+        f"| Scope | {candidate['scope']} |",
+        f"| Page | [`{candidate['page']}`]({candidate['page']}) |",
+        f"| OpenSBI commit | `{candidate['opensbi_commit']}` |",
+        f"| Candidate tree | {named} |",
+        "", "## Claims", "",
+        "| ID | Part of the clause | Method | Evidence |",
+        "| --- | --- | --- | --- |"]
+    lines += [f"| {row['id']} | {row['claim']} | {'; '.join(row['methods'])} "
+              "| " + ("; ".join(f"`{entry['path']}` (`{entry['sha256'][:12]}`)"
+                                for entry in row["evidence"]) or "none")
+              + " |" for row in candidate["claims"]]
+    lines += ["", "## Non-claims", "", "| ID | Sentence of the limit | Note |",
+              "| --- | --- | --- |"]
+    lines += [f"| {row['id']} | {row['sentence']} | {row['note']} |"
+              for row in candidate["non_claims"]]
+    lines += ["", "## Evidence"]
+    for row in (row for row in candidate["claims"] if row["evidence"]):
+        lines += ["", f"### {row['id']}", ""] + [
+            f"- [`{entry['path']}`](../../{entry['path']}): SHA-256 "
+            f"`{entry['sha256']}`. {entry['note']}"
+            for entry in row["evidence"]]
+    return "\n".join(lines) + "\n"
+
+
 # --------------------------------------------------------------- commands
 def check(ledger, docs, repo, no_git):
     results, data = run_checks(ledger, docs, repo,
@@ -617,9 +1055,16 @@ def check(ledger, docs, repo, no_git):
     sizes = [len(data[key]) if isinstance(data, dict) and
              isinstance(data.get(key), list) else 0
              for key in ("claims", "unproved_boundary")]
+    candidate = data.get("candidate") if isinstance(data, dict) else None
+    candidate = candidate if isinstance(candidate, dict) else {}
+    name = CANDIDATE_NAME.fullmatch(str(candidate.get("name")))
+    sizes += [len(candidate[key]) if isinstance(candidate.get(key), list)
+              else 0 for key in ("claims", "non_claims")]
     print(f"BE_MVP_CLAIM_LEDGER: {'FAIL' if failed else 'PASS'} checks="
           f"{sum(status == 'PASS' for _, status, _, _ in results)} "
-          f"claims={sizes[0]} boundary={sizes[1]}")
+          f"claims={sizes[0]} boundary={sizes[1]} "
+          f"candidate={name.group(1) if name else 'none'} "
+          f"candidate_claims={sizes[2]} candidate_non_claims={sizes[3]}")
     return int(failed)
 
 
@@ -628,6 +1073,17 @@ def render_command(ledger, out):
     out.write_text(render(data), encoding="utf-8")
     print(f"claim ledger render: PASS {out.name} claims={len(data['claims'])}"
           f" boundary={len(data['unproved_boundary'])}")
+    candidate = data["candidate"]
+    if not CANDIDATE_PAGE.fullmatch(str(candidate["page"])):
+        print("claim ledger render: FAIL the candidate set's page is not a "
+              "claim-<name>.md")
+        return 1
+    table = out.parent / rendering_name(candidate)
+    table.write_text(render_candidate(data), encoding="utf-8")
+    print(f"claim ledger render: PASS {table.name} "
+          f"candidate={candidate['name'].split()[0]} "
+          f"claims={len(candidate['claims'])} "
+          f"non_claims={len(candidate['non_claims'])}")
     return 0
 
 
@@ -652,20 +1108,235 @@ def join(bundle, records):
 
 # --------------------------------------------------------------- self-test
 def mutate(work, kind, argument):
-    """A ledger edit, the table rendered again so that only the edit
-    differs, or a surface's text edit: (name, old, new), or new appended."""
-    if kind == "ledger":
+    """A ledger edit, ARGUMENT(data), or for "both" ARGUMENT(data, work),
+    which may edit a surface too, both tables rendered again so that only
+    the edit differs; or a surface's text edit: (name, old, new), or new
+    appended."""
+    if kind in ("ledger", "both"):
         data = json.loads((work / "claim-ledger.json").read_text("utf-8"))
-        argument(data)
+        if kind == "both":
+            argument(data, work)
+        else:
+            argument(data)
         (work / "claim-ledger.json").write_text(json.dumps(data, indent=2)
                                                 + "\n", encoding="utf-8")
         (work / "claim-ledger.md").write_text(render(data), encoding="utf-8")
+        (work / rendering_name(data["candidate"])).write_text(
+            render_candidate(data), encoding="utf-8")
     elif kind == "text":
         path, old, new = work / argument[0], argument[1], argument[2]
         text = path.read_text("utf-8") if path.is_file() else "\n".join(
             HEADER) + "\n"
         path.write_text(text.replace(old, new, 1) if old else
                         f"{text}\n{new}\n", encoding="utf-8")
+
+
+def candidate_cases(head_tree, claims):
+    """The second set's cases for self_test's loop, as its own: (name,
+    expected check or None, (target, kind, argument)), with picks from a
+    generator of their own, so that the first set's do not move; and a gates'
+    record that the release's rows CLAIMS cite, with an evidence entry for
+    it. HEAD_TREE is a tree on this line."""
+    rng = random.Random(SEED + 11)
+    candidate = json.loads((DOCS / "claim-ledger.json").read_text("utf-8"))[
+        "candidate"]
+    parts, sentences = candidate["claims"], candidate["non_claims"]
+    prefix, page = candidate["name"].split()[0], candidate["page"]
+    cited = [(row, index) for row, part in enumerate(parts)
+             for index in range(len(part["evidence"]))]
+    rows = [rng.randrange(len(parts)) for _ in range(7)]
+    swap = rng.sample(range(len(parts)), 2)
+    notes = [rng.randrange(len(sentences)) for _ in range(2)]
+    picks = [rng.choice(cited) for _ in range(3)]
+    record = rng.choice(sorted({
+        entry["path"] for claim in claims for entry in claim["evidence"]
+        if entry["path"].endswith("/MANIFEST.sha256") and
+        (REPO / entry["path"]).with_name("rc.txt").is_file()}))
+    entry = {"path": record, "sha256": file_sha(REPO / record),
+             "note": "A gates' record of the candidate."}
+    # The first line of each of the page's blockquotes, with a word added.
+    lines = (DOCS / page).read_text("utf-8").splitlines()
+    starts = [f"\n{line}\n" for number, line in enumerate(lines)
+              if line.startswith(">") and not (
+                  number and lines[number - 1].startswith(">"))]
+
+    def plainly(start):
+        return re.sub(r"\n> ?", "\n> plainly ", start, count=1)
+
+    def flip(sha):
+        return f"{int(sha[0], 16) ^ 1:x}" + sha[1:]
+
+    def row(number, change):
+        return (parts[number]["id"], "ledger", lambda data: change(
+            data["candidate"]["claims"][number]))
+
+    def note(number, change):
+        return (sentences[number]["id"], "ledger", lambda data: change(
+            data["candidate"]["non_claims"][number]))
+
+    def artifact(pick, key, change):
+        def edit(data):
+            item = data["candidate"]["claims"][pick[0]]["evidence"][pick[1]]
+            item[key] = change(item[key])
+        return (f"{parts[pick[0]]['id']} evidence {pick[1] + 1}", "ledger",
+                edit)
+
+    def text(name, new, old=None):
+        return ("", "text", (name, old, new))
+
+    def swapped(data):
+        first, second = (data["candidate"]["claims"][number]
+                         for number in swap)
+        first["id"], second["id"] = second["id"], first["id"]
+
+    def cites(number, tree):
+        """Row NUMBER cites the gates' record; the set names TREE, and the
+        page names it too."""
+        def edit(data, work):
+            data["candidate"]["claims"][number]["evidence"].append(
+                dict(entry))
+            if tree:
+                data["candidate"]["candidate_tree"] = tree
+                path = work / page
+                path.write_text(path.read_text("utf-8") + f"\nIts tree is "
+                                f"`{tree[:8]}`.\n", encoding="utf-8")
+        return (f"{parts[number]['id']} evidence "
+                f"{len(parts[number]['evidence']) + 1}", "both", edit)
+
+    def split(key, field, letter):
+        """The last row of KEY cut in two at the space nearest the middle of
+        its FIELD after a word that ends in no mark of punctuation; the
+        second half a new row with the next ID and the rest copied."""
+        def edit(data):
+            rows_, last = data["candidate"][key], data["candidate"][key][-1]
+            words = last[field]
+            cut = min((index for index, char in enumerate(words)
+                       if char == " " and words[index - 1] not in ".,;:!?"),
+                      key=lambda index: abs(2 * index - len(words)))
+            rows_.append(dict(last, **{
+                "id": f"{prefix}-{letter}{len(rows_) + 1:02d}",
+                field: words[cut + 1:]}))
+            last[field] = words[:cut]
+        return (candidate[key][-1]["id"], "ledger", edit)
+    return [
+        ("an extra key in a candidate row", "candidate schema", row(
+            rows[0], lambda part: part.update(extra=True))),
+        ("two candidate rows' IDs swapped", "candidate schema",
+         (" and ".join(parts[number]["id"] for number in swap), "ledger",
+          swapped)),
+        ("a candidate note naming a release row", "candidate schema", note(
+            notes[0], lambda row_: row_.update(note=row_["note"] +
+                                               " (C-25)"))),
+        ("a board run as a candidate method", "candidate methods", row(
+            rows[1], lambda part: part["methods"].append(
+                "diagnostic board run"))),
+        ("a proof as a candidate method", "candidate methods", row(
+            rows[2], lambda part: part["methods"].append(
+                "proof about the abstract model"))),
+        ("not run as a candidate method", "candidate methods", row(
+            rows[3], lambda part: part.update(methods=[NOT_RUN]))),
+        ("a candidate row without evidence", "candidate methods", row(
+            rows[4], lambda part: part.update(evidence=[]))),
+        ("a wrong hash in a candidate row", "candidate evidence",
+         artifact(picks[0], "sha256", flip)),
+        ("a missing path in a candidate row", "candidate evidence",
+         artifact(picks[1], "path", lambda path: path + ".missing")),
+        ("a cited record whose rc.txt names another tree",
+         "candidate evidence", cites(rows[5], head_tree)),
+        ("a cited record while the set names no tree", "candidate evidence",
+         cites(rows[6], None)),
+        ("an OpenSBI commit that is not the build's", "candidate firmware",
+         ("", "ledger", lambda data: data["candidate"].update(
+             opensbi_commit=flip(data["candidate"]["opensbi_commit"])))),
+        ("a stale candidate table", "candidate rendering",
+         text(rendering_name(candidate), "A row the JSON does not hold.")),
+        ("a word added to the page's clause", "candidate page",
+         text(page, plainly(starts[0]), starts[0])),
+        ("a word added to the page's limit", "candidate page",
+         text(page, plainly(starts[1]), starts[1])),
+        ("a third blockquote on the page", "candidate page",
+         text(page, "> A third quote.")),
+        ("a sentence of the limit cut over two rows", "candidate page",
+         split("non_claims", "sentence", "N")),
+        ("a part of the clause cut mid-phrase", "candidate page",
+         split("claims", "claim", "C")),
+        ("a named tree that the page does not name", "candidate page",
+         ("", "ledger", lambda data: data["candidate"].update(
+             candidate_tree=head_tree))),
+        ('"isolated" in a candidate note', "candidate words", note(
+            notes[1], lambda row_: row_.update(note=row_["note"] +
+                                               " The run is isolated."))),
+        ('"Sandboxed" on the page', "candidate words",
+         text(page, "Sandboxed runs are another matter.")),
+        ('"verified" in a candidate evidence note', "candidate words",
+         artifact(picks[2], "note", lambda note_: note_ +
+                  " The tool verified it.")),
+        ("the three words in a release surface", None, text(
+            "guide.md", "Isolated, sandboxed, and verified are words of the "
+                        "release's text.")),
+        ('"unverified", "isolation", and "verify" on the page', None,
+         text(page, "The unverified parts, the isolation, and how to verify "
+                    "them are elsewhere."))], (record, entry)
+
+
+def candidate_direct_cases(scratch, record):
+    """The second set's cases that call one check alone: its tree's, in a
+    scratch repository whose line is a first commit and its child (HEAD),
+    with a side branch from the first, and in a shallow clone of that line;
+    and a cited gates' record whose rc.txt names the set's tree. [(name, the
+    outcome wanted, the outcome, findings, detail, the detail wanted or
+    None)], a skip's detail its reason in parentheses, as check prints it."""
+    line = scratch / "line"
+    line.mkdir()
+    git(line, "-c", "init.defaultBranch=main", "init", "-q")
+    ids = {}
+    for name, parent in (("first", None), ("child", "first"),
+                         ("side", "first")):
+        blob = git(line, "hash-object", "-w", "--stdin",
+                   stdin=f"{name}\n").stdout.strip()
+        ids[f"{name} tree"] = git(line, "mktree", stdin=f"100644 blob {blob}"
+                                  "\tfile\n").stdout.strip()
+        ids[name] = git(line, "-c", "user.name=t", "-c", "user.email=t@t",
+                        "commit-tree", "--no-gpg-sign", "-m", name,
+                        *(("-p", ids[parent]) if parent else ()),
+                        ids[f"{name} tree"]).stdout.strip()
+    git(line, "update-ref", "refs/heads/main", ids["child"])
+    git(line, "update-ref", "refs/heads/side", ids["side"])
+    # A reader's clone of the line's tip alone (a local URL, no network).
+    shallow = scratch / "shallow"
+    git(scratch, "clone", "-q", "--depth", "1", "--no-checkout",
+        line.as_uri(), str(shallow))
+
+    def run(check_, context):
+        try:
+            findings, detail = check_(context)
+        except Skip as reason:
+            return "skipped", [], f"({reason})"
+        return "FAIL" if findings else "PASS", findings, detail
+    out = []
+    for name, wanted, repo, tree, detail in (
+            ("a commit named where a tree is wanted", "FAIL", line,
+             ids["child"], None),
+            ("a tree that only a side branch's commit has", "FAIL", line,
+             ids["side tree"], None),
+            ("the tree of an ancestor of HEAD", "PASS", line,
+             ids["first tree"],
+             f"tree={ids['first tree'][:8]} commit={ids['first'][:8]}"),
+            ("the first commit's tree in a shallow clone of the line",
+             "skipped", shallow, ids["first tree"], f"({SHALLOW})")):
+        out.append((name, wanted, *run(check_candidate_tree, {
+            "git": None, "repo": repo,
+            "data": {"candidate": {"candidate_tree": tree}}}), detail))
+    path, entry = record
+    out.append(("a cited record whose rc.txt names the set's tree (the "
+                "evidence check alone)", "PASS", *run(
+                    check_candidate_evidence, {
+                        "repo": REPO, "data": {"candidate": {
+                            "candidate_tree": (record_trees(REPO / path) +
+                                               [None])[0],
+                            "claims": [{"id": "M11-C01",
+                                        "evidence": [entry]}]}}}), None))
+    return out
 
 
 def self_test(scratch):
@@ -782,8 +1453,11 @@ def self_test(scratch):
         ("a guide of wrapper commands and kernel-repro", None, text(
             "guide.md", "```sh\n./mvp/mvp check\n"
             "make -C mvp kernel-repro LINUX_GIT=<mirror>\n```"))]
-    passed, counts = [], [0, 0]
-    for name, expected, (target, kind, argument) in cases:
+    # The second set's cases follow the first's, counted apart.
+    second, record = candidate_cases(tree.strip() or "e" * 40, claims)
+    passed, counts = [], [0, 0, 0, 0]
+    for number, (name, expected, (target, kind, argument)) in enumerate(
+            cases + second):
         if expected == "commits" and commits_reason:
             print(f"skip {name} ({commits_reason})")
             continue
@@ -794,7 +1468,7 @@ def self_test(scratch):
         results, _ = run_checks(work / "claim-ledger.json", work, REPO, reason)
         failed = [check for check, status, _, _ in results if status == "FAIL"]
         passed.append(failed == ([expected] if expected else []))
-        counts[expected is None] += 1
+        counts[2 * (number >= len(cases)) + (expected is None)] += 1
         print(f"{'ok  ' if passed[-1] else 'FAIL'} {name}"
               + (f" ({target})" * bool(target)) + ": "
               + (f"failed {', '.join(failed)}" if failed else "passed"))
@@ -851,9 +1525,18 @@ def self_test(scratch):
         counts[expected is None] += 1
         print(f"{'ok  ' if passed[-1] else 'FAIL'} {name}: {outcome}"
               f"{' ' + findings[0] if findings else ''}")
+    # The second set's direct cases: a FAIL wanted is a mutation, a PASS or
+    # a skip a variant (as the first set counts a well-formed marker's).
+    for name, wanted, outcome, findings, detail, details in \
+            candidate_direct_cases(scratch, record):
+        passed.append(outcome == wanted and details in (None, detail))
+        counts[2 + (wanted != "FAIL")] += 1
+        print(f"{'ok  ' if passed[-1] else 'FAIL'} {name}: {outcome} "
+              f"{findings[0] if findings else detail}")
     shutil.rmtree(scratch)
     print(f"claim ledger self-test: {'PASS' if all(passed) else 'FAIL'} "
-          f"mutations={counts[0]} variants={counts[1]}")
+          f"mutations={counts[0]} variants={counts[1]} "
+          f"candidate_mutations={counts[2]} candidate_variants={counts[3]}")
     return int(not all(passed))
 
 
