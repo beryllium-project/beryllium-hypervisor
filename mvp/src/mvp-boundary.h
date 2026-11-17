@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2026 James Morris <jmorris@namei.org>
  *
- * Purpose: the physical boundary's monitor side in step 1
+ * Purpose: the physical boundary's monitor side in steps 1 and 2
  *          (planning/mvp-m11-plan.md, D-3 "Pairing", D-6, D-8, D-12): the
  *          firmware's domain commit extension (EID 0x08004246; function 0
  *          confine, function 1 one word of the configuration identity),

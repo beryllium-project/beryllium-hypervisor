@@ -42,11 +42,12 @@ Monitor (ELF and its flat image):
   page, and hart 0's stack, with all padding inside output sections;
 - the fourth and fifth PT_LOAD segments are the two 64 KiB read clusters
   and the writer-split hart region: NOLOAD and RW;
-- the MVP region (Plan revision M0-A.1): the fifth to seventh PT_LOAD
-  segments, R-X, R, and RW, hold .mvp.text at 0x1_0206_4000, .mvp.rodata,
-  and .mvp.data, in order, inside the region's 0x40000 bytes and never
-  inside the core, with the script's four region conjuncts; the flat
-  image is exactly 0xa4000 bytes, the region ending it;
+- the MVP region (Plan revision M0-A.1): the sixth to eighth PT_LOAD
+  segments, R-X, R, and RW, hold .mvp.text at 0x1_0206_8000, .mvp.rodata,
+  and .mvp.data, in order, inside the region's 0x3c000 bytes (at most
+  0x40000) and never inside the core, with the script's two region
+  conjuncts; the flat image is exactly 0xa4000 bytes, the region ending
+  it;
 - the configuration (planning/mvp-m6-plan.md, D-1): the inventory and
   proposal (be_mvp_inventory, be_mvp_proposal) in the input section,
   which by the link map holds mvp-config.o's constants alone;
@@ -73,12 +74,13 @@ Monitor (ELF and its flat image):
   text together: exactly three sret (the dead R3 entry, the MVP resume tail,
   B1's skip); exactly one ecall, the accepted be_r3_arch_sbi_call, reached
   only from the accepted platform helpers and the executor's be_mvp_fw_call;
-  exactly one fence.i, in be_mvp_arch_fence_i; exactly five wfi (the
-  accepted halts' three, hart 0's wait, be_mvp_arch_wait, and the domain
-  park, be_mvp_arch_park); hgatp writes and hfence.gvma only in the accepted
-  R3 functions; no hfence.vvma, H load or store (hlv, hlvx, hsv), mret,
-  ebreak, or F, D, or V instruction; no access at all to hstateen0, hvictl,
-  hvien, hviprio1, or hviprio2;
+  exactly one fence.i, in be_mvp_arch_fence_i; exactly six wfi (the
+  accepted halts' three, the wait, be_mvp_arch_wait, the domain park,
+  be_mvp_arch_park, and the park page's entry, be_mvp_park_entry); hgatp
+  writes and hfence.gvma only in the accepted R3 functions; no hfence.vvma,
+  H load or store (hlv, hlvx, hsv), mret, ebreak, or F, D, or V
+  instruction; no access at all to hstateen0, hvictl, hvien, hviprio1, or
+  hviprio2;
 - the CSR writer table: vsstatus, vsie, vstvec, vsscratch, vsepc,
   vscause, vstval, vsatp, scounteren, and senvcfg written after the R3
   reset only by the arm helper, be_mvp_arch_arm_controls; vstimecmp also
@@ -173,14 +175,14 @@ Monitor (ELF and its flat image):
   .monitor.input, .mvp.text, and .mvp.rodata;
 - in an image of a scenario whose accepted-exit set names the management
   extension (mgmt; planning/mvp-m2-plan.md, "The management extension"):
-  the sealed grants (be_mvp_grants), one to four in .mvp.rodata, each
-  from one domain to the other with pause (1), terminate (2), or both,
-  no pair twice, and equal to the domain grants of the scenario's
-  authority report and its expectation's; hart 0's management state
-  (be_mvp_mgmt_state) in the MVP region's BSS; and the domain hart's
-  request and wait (be_mvp_post_mgmt_request, be_mvp_wait_serve) and
-  hart 0's setup (be_mvp_control_mgmt) linked. An image of any other
-  scenario links none of these;
+  the sealed grants (be_mvp_grants), one to four in the MVP control
+  constants, each from one domain to the other with pause (1), terminate
+  (2), or both, no pair twice, and equal to the domain grants of the
+  scenario's authority report and its expectation's; hart 0's management
+  state (be_mvp_mgmt_state) in the control writable-data extent; and the
+  domain hart's request and wait (be_mvp_post_mgmt_request,
+  be_mvp_wait_serve) and hart 0's setup (be_mvp_control_mgmt) linked. An
+  image of any other scenario links none of these;
 - the code a domain hart runs ("The measurement"): every function the
   hart entry and the vector reach through the calls and addresses their
   instruction words form, transitively, names no byte of hart 0's
@@ -274,18 +276,27 @@ each image whose monitor is built with the boundary (a run image named in
 --pairing's file runs its paired image's monitor), and the expectation
 must agree. A boundary-on monitor links the confine stub
 (be_mvp_confine_entry, in MVP boot text past the park page, which checks
-its block and sets sp as the hart entry does) with the one confine call
-site, named once by hart 0's start; the two executor functions, which call
-be_mvp_fw_call alone; the identity read from hart 0's firmware probe
-alone; no formed hart-entry address; no firmware call reachable from the
-domain harts' entry or the trap vector; and be_mvp_partition_identity,
-32 bytes of the MVP boot read-only extent, its descriptor's identity
-(--partition-report). Its shim makes no HSM call and holds the refused
-line. An off image links none of these. Each scenario's off copy
-(SCENARIO-off, the same monitor built without the boundary) passes the
-MVP profile itself; a variant whose boundary differs from its
-reference's is checked against the scenario's off copy (shim-rule's
-always).
+its block and sets sp as the hart entry does, then calls the executor's
+confine), named once by hart 0's start; since M11-8 start_harts calls
+confine too, for hart 0 itself, and no other code does (C6); the two
+executor functions, which call be_mvp_fw_call alone; the identity read
+from hart 0's firmware probe alone; no formed hart-entry address; no
+firmware call reachable from the domain harts' entry or the trap vector;
+and be_mvp_partition_identity, 32 bytes of the MVP boot read-only extent,
+its descriptor's identity (--partition-report). Its shim makes no HSM
+call and holds the refused line. An off image links none of these. Each
+scenario's off copy (SCENARIO-off, the same monitor built without the
+boundary) passes the MVP profile itself; a variant whose boundary differs
+from its reference's is checked against the scenario's off copy
+(shim-rule's always). A breach image (--breach NAME:DECLARATION:DOMAIN,
+DOMAIN 0, 1, or since M11-8 control) is checked under rules of its own:
+its hook's instruction sites and CSR writers (BREACH_SITES,
+BREACH_WRITERS) join the profile's, the hook's own instructions
+(BREACH_KINDS) lie in its attempt helper alone, its functions lie in MVP
+VS text, or the control hart's hook's in MVP control text, and the hook
+is called once: by the dispatch, or the control hart's by hart 0's
+confined C (in its -off copy by start_run() or the main that a compiler
+folds it into). Every other image links none of the hook.
 M11-8 (planning/mvp-m11-plan.md, D-4 rule 1; I22): in a boundary-on
 image, each constant that the control role's code names in the MVP
 control constants or the monitor's shared constants, and each constant
@@ -300,7 +311,22 @@ reached from be_reset without being reached from that role, or for the
 shared extents from either role (C10). What no root reaches is not
 refused, and a constant without a symbol of its own (a merged string)
 runs on to the next symbol: one that only boot code names, after one
-that the role names, is not refused.
+that the role names, is not refused. Step 2's own rules (D-6 step 6), in
+a boundary-on image: the control hart's confined entry alone in its slot,
+at the MVP region's first byte (C1); its seven words, sp formed as hart
+0's stack top, the call of its C side, the exception class, and the tail
+of the terminal, with no other instruction (C2, C14); its address formed
+by no code but hart 0's region check, at most once, as the MVP region's
+start, and never as a call or a jump (C3); the control roots' reach, from
+the confined entry as from the control loop, inside the control role's
+extents and holding the shared trap vector (C4); boot code reaching none
+of the confined entry, its C side, the READY wait, and the control loop
+(C5); the executor's confine called by the stub and by start_harts
+alone (C6); on every path from a start to hart 0's confine, no call but
+a start again, a helper that reaches no firmware call and no ring, or a
+function that does not return (C7); and the control roots reaching the
+firmware through the console write, the reset, and the console read
+alone, and none of boot code's firmware helpers (C13).
 --mutation-test applies known defects in memory, to the images, their
 ELF headers and symbols, the link map, or the layout they are built from,
 and requires each to be rejected for its own reason.
@@ -6003,7 +6029,7 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
          word(with_immediate(hvip_word, -1)), "resume checks differ"),
         ("missing fence.i", symbols[MVP_FENCE_I], word(NOP),
          "fence.i sites"),
-        ("a sixth wfi", nth_word(elf, flat, MVP_DISPATCH, BASE),
+        ("a seventh wfi", nth_word(elf, flat, MVP_DISPATCH, BASE),
          word(0x10500073), "wfi sites"),
         ("missing wait wfi", matching_word(
             elf, flat, MVP_WAIT, BASE, lambda value: value == 0x10500073)[0],
@@ -7530,7 +7556,8 @@ def main(argv):
     parser.add_argument("--boundary-image", action="append", default=[])
     parser.add_argument("--pairing")
     parser.add_argument("--partition-report", action="append", default=[])
-    # M11-7: each breach image, its declaration, and its hooked VS domain.
+    # M11-7: each breach image, its declaration, and its hooked VS domain,
+    # or since M11-8 control, the control hart.
     parser.add_argument("--breach", action="append", default=[])
     args = parser.parse_args(argv[1:])
     select_variant(args.monitor, args.guest_flavour)

@@ -78,10 +78,10 @@ long be_mvp_exec_hart_status(be_u64 hart, be_u64 *status);
 /**
  * be_mvp_exec_confine - the domain commit extension's function 0, confine
  *
- * Called only from be_mvp_confine_entry (mvp-hartentry.S), on a VS-domain
- * hart in the boot OpenSBI domain (planning/mvp-m11-plan.md, D-6). On
- * success the firmware enters the hart's narrow OpenSBI domain at its
- * confined entry and the call does not return.
+ * Called by be_mvp_confine_entry (mvp-hartentry.S) on a VS-domain hart, and
+ * since M11-8 by start_harts (mvp-runtime.c) on hart 0, in the boot OpenSBI
+ * domain (planning/mvp-m11-plan.md, D-6). On success the hart enters its
+ * narrow OpenSBI domain at its confined entry; the call does not return.
  *
  * Return: the SBI error of a refused or failed call.
  */

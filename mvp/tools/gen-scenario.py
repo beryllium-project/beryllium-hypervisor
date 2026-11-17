@@ -3111,7 +3111,8 @@ def expectations_v3(scenario, binding, layout, digest, sealed, report_sha):
         if variant.get("pass"):
             # self-report-flip (M9, D-4): the scenario's own run; its log
             # and its finding are apply_log()'s. A breach image (M11-7) is
-            # the scenario's own run too, its hooked VS domain named.
+            # the scenario's own run too, its hooked VS domain, or since
+            # M11-8 the control role, named with its hart.
             breach = outcome.pop("breach", None)
             images[variant["name"]] = dict(
                 copy.deepcopy(images[name]), image=variant["name"],

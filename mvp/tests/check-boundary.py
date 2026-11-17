@@ -72,13 +72,14 @@ boot (no monitor confined it), the banner's digest and no printed record
 
 `breach` judges a breach image's run (M11-7; D-10's hostile-monitor rows)
 by its plan (tools/gen-breach.py plan): the hook's record, which the
-oracle read from the hooked hart's mailbox, done once, every row run, and
-no unexpected trap; each row's slot, its trap's cause and stval, the
-value it kept, and the call's error, as the plan has them for a
-boundary-on or an -off run; each witness word and device register at its
-value; and writes STEM.breach.txt, one line per row and the verdict line
-`BE_MVP_BREACH: PASS` or `FAIL`, or the one line `BE_MVP_BREACH: FAIL
-<reason>` when the run cannot be judged.
+oracle read where the plan places it (the hooked VS-domain hart's
+mailbox, or since M11-8 the control hart's control tail), done once,
+every row run, and no unexpected trap; each row's slot, its trap's cause
+and stval, the value it kept, and the call's error, as the plan has them
+for a boundary-on or an -off run; each witness word and device register
+at its value; and writes STEM.breach.txt, one line per row and the
+verdict line `BE_MVP_BREACH: PASS` or `FAIL`, or the one line
+`BE_MVP_BREACH: FAIL <reason>` when the run cannot be judged.
 
 `gate` is the run harness's admission of a boundary-on run's device tree
 (D-3, D-10): the run starts only if the partition checker's record of the

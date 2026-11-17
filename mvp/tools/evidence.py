@@ -42,12 +42,13 @@ the last step of `check`) holds:
                     and the guest inputs and separately pinned userland
                     outputs (the Image, the init, the management module,
                     BusyBox, musl's libc archive, and every DTB), plus
-                    M11's unmodified OpenSBI firmware base binary, and
-                    (M11-7) the firmware without the boundary extension
-                    where the build made it: required, the bundle refused
-                    without it, when an attempt's expectation names it
-                    (its boundary's "firmware": "no-boundary", D-10's
-                    negative 1, boundary-absent)
+                    M11's firmware binary (the OpenSBI base with the
+                    project's patch series), and (M11-7) the firmware
+                    without the boundary extension where the build made
+                    it: required, the bundle refused without it, when an
+                    attempt's expectation names it (its boundary's
+                    "firmware": "no-boundary", D-10's negative 1,
+                    boundary-absent)
   records/          the checks' outputs: the image checker on the images,
                     the variants, and the probes, with its mutation tests;
                     the budgets; the loader's layout rule; the board-tool
@@ -60,15 +61,19 @@ the last step of `check`) holds:
                     NOT-ATTACHED record), and boundary record
                     (tests/check-boundary.py's, or its NOT-APPLICABLE line
                     for a boundary-off run), with the log's export
-                    (STEM.log.json) where the rule below wants one, the
-                    attempts table, and the suite's summary; the table's
-                    boundary, pmp_mode, dtb_sha256, and control_hart
-                    columns say, for each attempt, whether the boundary was
-                    on, its PMP mode and device tree (each tree among the
-                    partition outputs of images.sha256), and the tree's
-                    step that the run's expectation declares, boot (M11-7's
-                    step 1) or confined (M11-8's step 2), as its boundary
-                    record names it, or -
+                    (STEM.log.json) where the rule below wants one, and,
+                    for each breach image's attempt (M11-7, M11-8), the
+                    hook's record (STEM.breach.txt), with each breach
+                    image's plan (qemu/breach/TOOLCHAIN-NAME.plan.json);
+                    the attempts table, and the suite's summary; the
+                    table's boundary, pmp_mode, dtb_sha256, and
+                    control_hart columns say, for each attempt, whether
+                    the boundary was on, its PMP mode and device tree
+                    (each tree among the partition outputs of
+                    images.sha256), and the tree's step that the run's
+                    expectation declares, boot (M11-7's step 1) or
+                    confined (M11-8's step 2), as its boundary record
+                    names it, or -
   sessions/         M7-4's typed sessions (tests/session-typist.py,
                     planning/mvp-m7-plan.md, D-11): sessions.txt and
                     sessions.tsv, and each attempt's capture, checker
@@ -284,7 +289,8 @@ IMAGE_NAMES = ("be-mvp.elf", "be-mvp.bin", "be-mvp-boot.elf",
 # The guest inputs and userland outputs, M2's management module
 # (be-mgmt.ko) and M7's BusyBox and musl archive among them.
 GUEST_PATTERNS = ("Image", "init", "busybox", "musl-libc.a", "*.ko", "*.dtb")
-# M11's unmodified OpenSBI base, built by Makefile's firmware target.
+# M11's firmware: the OpenSBI base with firmware/patches/series, built by
+# Makefile's firmware target.
 FIRMWARE_IMAGE = pathlib.Path(
     "firmware/platform/generic/firmware/fw_dynamic.bin")
 # M11-7: the firmware without the boundary extension (D-10's negative 1),

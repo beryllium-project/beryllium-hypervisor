@@ -273,9 +273,10 @@ boundary-check:
 		--scratch $(TMPDIR)/boundary-self-test
 
 # The hostile-monitor rows' generator (tools/gen-breach.py; M11-7, D-10) on
-# anchor's declaration and synthetic images: the table, each row judged by
-# a synthetic profile, the -off plans, the witnesses, the oracle's reading
-# of each words file, and each refusal.
+# anchor's two declarations (breach.json and, since M11-8, the control
+# hart's breach-control.json) and synthetic images: the table, each row
+# judged by a synthetic profile, the -off plans, the witnesses, the
+# oracle's reading of each words file, and each refusal.
 breach-check:
 	$(PYTHON) -I -B $(MVP_DIR)/tools/gen-breach.py --self-test \
 		--scratch $(TMPDIR)/breach-self-test

@@ -14,7 +14,7 @@
  *          and a1 must name one of the region's blocks first, by arithmetic
  *          alone; anything else parks the hart without a stack. C then
  *          checks the published block before the hart touches anything else.
- * Scope:   the MVP line's domain harts. Hart 0 never comes here.
+ * Scope:   the MVP line's domain harts, and hart 0's confined entry (M11-8).
  *
  * In a boundary-on image (M11-7; planning/mvp-m11-plan.md, D-6 step 5)
  * hart 0 starts each VS-domain hart at be_mvp_confine_entry instead, in the
