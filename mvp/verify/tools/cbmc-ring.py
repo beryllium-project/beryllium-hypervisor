@@ -508,6 +508,17 @@ def execute(command, cwd, seconds, tmp_root=None):
             round(time.monotonic() - started, 1))
 
 
+def task_state(stat):
+    """(running, state) of a task from STAT, its /proc/PID/stat text, or
+    None if that could not be read (state None). The state is the field
+    after the last ')', as the command name before it may hold spaces and
+    ')'. A task is running unless its stat could not be read or its state
+    is Z (a zombie: exited, not yet reaped) or X (dead: being reaped, its
+    entry about to go)."""
+    state = None if stat is None else stat.rsplit(")", 1)[-1].split()[0]
+    return state not in (None, "Z", "X"), state
+
+
 def class_order(part, capacity):
     """The position classes of PART at CAPACITY, first classes first."""
     if part == "buffer":
@@ -1621,23 +1632,40 @@ def self_test():
          "mvp/src" in dirs and "-Werror" in host, (dirs, host))
     refused("target digests without the flags",
             lambda: target_flags("files=0\n"), "no include_dirs")
-    # A timed-out command's children (CBMC's cvc5) do not outlive it.
-    def running(pid):
+    # A timed-out command's children (CBMC's cvc5) do not outlive it. A
+    # killed child is gone when its stat cannot be read or reads Z (a
+    # zombie, until its new parent reaps it) or X (dead, being reaped): a
+    # read can come at either step. The verdict is the read that ended the
+    # wait, not a second one, which reads a later moment and can disagree.
+    found = [task_state(f"123 (sleep) {letter} 1 120 120 0 -1\n")
+             for letter in "RSDTtIZX"]
+    case("a task in state R, S, D, T, t, or I is running, in Z or X it is not",
+         found == [(True, "R"), (True, "S"), (True, "D"), (True, "T"),
+                   (True, "t"), (True, "I"), (False, "Z"), (False, "X")],
+         found)
+    case("a task whose stat cannot be read is not running",
+         task_state(None) == (False, None), task_state(None))
+    found = [task_state("123 (a b) c) Z 1 120 120 0 -1\n"),
+             task_state("123 (a) Z b) S 1 120 120 0 -1\n")]
+    case("a task's state is the field after its command name's last ')'",
+         found == [(False, "Z"), (True, "S")], found)
+    def read_stat(pid):
         try:
-            state = pathlib.Path(f"/proc/{pid}/stat").read_text(
+            return pathlib.Path(f"/proc/{pid}/stat").read_text(
                 encoding="utf-8", errors="replace")
         except OSError:
-            return False
-        return state.rsplit(")", 1)[-1].split()[0] != "Z"
+            return None
     status, output, _ = execute(["/bin/sh", "-c", "sleep 60 & echo $!; "
                                  "wait"], REPO, 1)
     child = output.split()[0] if output.split() else ""
     deadline = time.monotonic() + 5
-    while child.isdigit() and running(child) and \
-            time.monotonic() < deadline:
+    running, state = task_state(
+        read_stat(child) if child.isdigit() else None)
+    while running and time.monotonic() < deadline:
         time.sleep(0.1)
+        running, state = task_state(read_stat(child))
     case("a timeout kills the command's children", status == "timeout" and
-         child.isdigit() and not running(child), (status, output))
+         child.isdigit() and not running, (status, output, state))
     # A job's temporary files (cvc5's) do not outlive it (mvp/README.md,
     # item 118): its TMPDIR is a directory of its own, mode 0700, under
     # the run's tmp root, gone when it times out and when it finishes.
