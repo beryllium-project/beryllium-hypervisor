@@ -250,19 +250,36 @@ These runs are emulation: QEMU's harts, timer ticks, the probe images' IPIs,
 memory ordering, translation caching, console, and timing are not the
 board's.
 
+Since M11-7 an image that has a partition descriptor of its own (each
+scenario image, each variant with a monitor of its own, and each shell
+image) is built with the physical boundary's step 1, and its `k3-like`
+runs boot under its own device tree (`-dtb`), which declares the OpenSBI
+domains that the two VS-domain harts confine themselves to. Such a run is
+judged by a third checker as well, `mvp/tests/check-boundary.py`, from the
+oracle's read of every hart's PMP registers and of M-mode's commit
+records. The runs that have no physical boundary to run under boot a copy
+of the scenario image built without it (`two-guests-off`, `te-poc-off`,
+`anchor-off`).
+
 | Machine | QEMU configuration | Runs |
 | --- | --- | --- |
-| `k3-like` | AIA with IMSIC guest files; an `rv64` CPU with H, Sstc, Svade, and Smstateen, without Svadu, Sv48, or Sv57, as recorded for the COM260 | each scenario, every variant, and the probe images |
-| `rva23` | QEMU's RVA23S64 profile CPU, with AIA | each scenario |
-| `plic` | an `rv64` CPU with H, and the PLIC | each scenario |
-| `no-sstc` | the accepted R5 QEMU CPU profile, without Sstc | `two-guests`, which must fail as `sstc` |
-| `firmware-version` | `k3-like` with the earlier firmware, OpenSBI v1.6 as pinned by `MVP_PIN_OPENSBI_*` (SBI 2.0) | `two-guests`, which must fail as `boot` |
+| `k3-like` | AIA with IMSIC guest files; an `rv64` CPU with H, Sstc, Svade, and Smstateen, without Svadu, Sv48, or Sv57, as recorded for the COM260 | each scenario, every variant, and the probe images; under the boundary but for the probe images, `shim-rule`, and the copies built without it |
+| `k3-like-smepmp` (M11-7) | `k3-like` with Smepmp, under the image's Smepmp device tree and tables | each scenario, with GCC; `anchor`'s two breach images |
+| `rva23` | QEMU's RVA23S64 profile CPU, with AIA | each scenario's off copy |
+| `plic` | an `rv64` CPU with H, and the PLIC | each scenario's off copy |
+| `no-sstc` | the accepted R5 QEMU CPU profile, without Sstc | `two-guests`' off copy, which must fail as `sstc` |
+| `firmware-version` | `k3-like` with the earlier firmware, OpenSBI v1.6 as pinned by `MVP_PIN_OPENSBI_*` (SBI 2.0) | `two-guests`' off copy, which must fail as `boot` |
 
 For each attempt, `build/mvp/qemu/suite/` keeps the capture,
 `<toolchain>-<run>.<attempt>.console.log`; the checker's output,
-`.check.txt`; its JSON record, `.result.json`; and the oracle's
-`.oracle.json`. `attempts.tsv` lists each attempt's boot hart, verdict, and
-capture SHA-256, with the boot ELF it ran and that ELF's SHA-256.
+`.check.txt`; its JSON record, `.result.json`; the oracle's
+`.oracle.json`; and, since M11-7, `.boundary.txt`, check-boundary's line
+for a run under the boundary and a fixed not-applicable line for any
+other (a breach image's attempt also has `.breach.txt`, the judgement of
+its hook's record). `attempts.tsv` lists each attempt's boot hart,
+verdict, and capture SHA-256, with the boot ELF it ran and that ELF's
+SHA-256, and four columns for the boundary: on or off, the PMP mode, the
+device tree's SHA-256, and the control hart's state.
 `summary.txt` has one line per run and ends with the totals line,
 `BE_MVP_QEMU: PASS` followed by the numbers of runs, attempts, and refused
 attempts.
@@ -276,7 +293,10 @@ with exactly `BE_MVP:FAIL firmware`. The checker's verdict is then
 suite runs the image again, up to eight attempts in all
 (`BE_MVP_QEMU_ATTEMPTS`); a run whose every attempt is refused fails. A
 refused attempt exercises nothing of the run it replaced. On the board the
-same refusal stops the campaign and is never repeated (section 4). In the
+same refusal stops the campaign and is never repeated (section 4). Only a
+run without the boundary can be refused: under the boundary the device
+tree restricts the cold boot to hart 0, the shim makes no HSM call, and a
+boot on another hart is a failure. In the
 suite run the excerpt below comes from, `gcc/te-poc-k3-like` was refused on
 boot hart 2 and passed on boot hart 4:
 
@@ -306,6 +326,19 @@ Since M11-3 the scenario line names the MVP region at `0x102068000`,
 level-0 pages at `0x102025000` and `0x102035000`, and the `hgatp` values
 change with them; `:07` names the hart region at `0x102040000`, `0x28000`
 bytes; and `CONFIG_SEALED` counts four more extents, 19 for `te-poc`.
+The excerpt is also of a run without the boundary. Since M11-7 a
+`k3-like` run of `te-poc` is under the boundary: it enters on hart 0, so
+it has no `BE_MVP_SHIM` line; OpenSBI's banner lists the image's OpenSBI
+domains (`root`, `be_boot`, `be_g0`, `be_g1`, `be_park`) and has a line
+`Domain commit digest : <64 hex>`, the partition identity that the
+device tree gave M-mode; `:02` reads `BE_MVP:02 FIRMWARE_PROBED hsm=1
+ipi=1 boundary=1 status=1:1,2:1 started=none identity=<64 hex>`, with
+that identity, which the monitor has compared with its own; each `:08`
+has no `status`; and after `:14` the firmware prints M-mode's commit
+record of each of the eight harts, lines that begin `Domain commit
+hart<N>:`, with `committed=1` and the hart's PMP entries for harts 1
+and 2. A run on the `rva23` or `plic` machine, of `te-poc-off`, still
+prints the forms below.
 
 ```text
 BE_MVP_SHIM: boot_hart=0x4 starting hart 0
@@ -538,7 +571,7 @@ BE_MVP:DETAIL channel=0 domain=1 hart=2 walked=0x460000d7 declared=0x46000053
 | `two-guests` (`MVP_VARIANTS`) | `payload` | the staged kernel's `magic2` altered | `FAIL payload` | QEMU and the board |
 | | `exit-budget` | each domain's exit ceiling is 64 | `FAIL exit-budget` | QEMU |
 | | `run-timeout` | the run budget is 2^20 ticks | `FAIL run-timeout` | QEMU |
-| | `ring-full` | 1 KiB outbound rings, and hart 0's first drain delayed | each domain hart's own `FAIL ring` | QEMU |
+| | `ring-full` | 1 KiB outbound rings, and hart 0's first drain delayed | since M11-7, under the boundary: hart 0's `FAIL ring` for the first failure record that it drains, with both VS-domain harts' state words failed with the ring's class; `ring-full-off`, the copy without the boundary, keeps each domain hart's own `FAIL ring` | QEMU |
 | | `hart-start` | domain 1 bound to hart 9 | `FAIL hart-start` | QEMU |
 | | `init-exit` | G1's DTB runs `/init-exit` | `FAIL guest-reboot` | QEMU |
 | | `rdcycle` | G0's DTB runs `/init-rdcycle` | `FAIL virtual-instruction` | QEMU |
@@ -553,11 +586,34 @@ BE_MVP:DETAIL channel=0 domain=1 hart=2 walked=0x460000d7 declared=0x46000053
 | | `no-grant-check` | hart 0 decides management requests without the grants; the run budget is 2^27 ticks | the protected domain terminates the host, then `FAIL run-timeout` | QEMU and the board |
 
 The `no-sstc` and `firmware-version` runs above are two more `two-guests` negatives,
-made with the scenario image under another CPU or firmware. Four negatives
+made with the scenario's off copy under another CPU or firmware. Four negatives
 stop at the offline policy check and build no image: `undeclared-flow` and
 `grant-without-rule` for `te-poc` (`MVP_POLICY_NEGATIVES`), and
 `grant-without-rule` and `secret-flow` for `anchor`
 (`ANCHOR_POLICY_NEGATIVES`); section 5 shows one.
+
+Since M11-7 a variant with a device tree or a console grant of its own
+has a partition descriptor of its own, so its monitor also differs from
+the scenario image's in its partition identity, which the image checker
+compares with that descriptor. M11-7 adds two more kinds of run:
+
+- `anchor`'s `breach-g0` and `breach-g1`, the hostile-monitor images
+  (`mvp/scenarios/anchor/breach.json`): test images in which HS-mode code
+  on one VS-domain hart makes 112 attempts on memory, device registers,
+  and firmware calls outside that hart's profile. Under the boundary each
+  attempt must end as it declares (an access fault, a refused call, or an
+  illegal instruction; five controls inside the profile succeed), M-mode's
+  counts must equal those sums, and the scenario must still run to
+  `anchor`'s end. Their copies without the boundary, `breach-g0-off` and
+  `breach-g1-off`, must show the effect of every attempt that has a
+  witness.
+- `two-guests`' seven `boundary-…` runs, the boundary's own negatives:
+  its image under a firmware without the boundary extension
+  (`boundary-absent`), or under a device tree changed in one place
+  (`boundary-no-identity`, `boundary-identity`, `boundary-two-narrow`,
+  `boundary-wrong-boot`, `boundary-no-list`, `boundary-no-window`). Each
+  must fail closed for its declared reason, and each changed tree is
+  admitted only for its own run.
 
 ### Console input: the shell images and their sessions (M7)
 
@@ -612,7 +668,10 @@ focused domain in its own focus period and nowhere else (so a canned
 transcript satisfies nothing), each denial's `MVPINIT 08` line, the
 channel's text read back. A `te-poc` session types 22 steps in about 8 s
 and ends with both shells exited and both domains powered off inside the
-run budget. `./mvp/mvp live` prints the QEMU command line for a human
+run budget. Since M11-7 each shell image is built with the boundary and
+its session runs under its step-1 device tree, in one attempt, judged by
+`mvp/tests/check-boundary.py` too. `./mvp/mvp live` prints the QEMU command
+line, with that device tree, for a human
 session at each shell image: a demonstration, never evidence.
 
 Board evidence for the console path is one typed characterization under
@@ -766,7 +825,12 @@ after B3's, stops the autoboot, types the session's `be_*` lines and
 exactly the line, types `boot`, and judges the capture with its own
 checks; the capture checker then judges it in `uboot` mode (below). An
 attempt whose firmware starts on a domain hart is refused and made again,
-as in the QEMU suite.
+as in the QEMU suite. Since M11-7 each case runs under the boundary, with
+its image's step-1 device tree (the fall-through with `two-guests`' GCC
+image's): the firmware starts on hart 0, each case has one attempt, and
+the oracle's read and `mvp/tests/check-boundary.py` judge it as in the
+suite; the fall-through, which ends with no reset, must show the banner's
+digest, no VS-domain hart started, and no commit record.
 
 The rehearsal departs from the board's session where QEMU must, and its
 `summary.txt` says so: `be_ld` loads from `virtio 0:${be_part}` where the
@@ -794,7 +858,8 @@ needs the network once, when it is missing or differs. The records are
 under `build/mvp/uboot-rehearsal/`: `summary.txt`, whose last line is
 `BE_MVP_UBOOT_REHEARSAL: PASS` or `FAIL`, and for each case `status.txt`
 and each attempt's `console.log`, `uart.log`, `qemu.txt`, `typed.txt`,
-`session.txt`, `check.txt`, `result.json`, and `oracle.json`. The rehearsal
+`session.txt`, `check.txt`, `result.json`, `oracle.json`, and, since
+M11-7, `boundary.txt`. The rehearsal
 is not part of `check`; its driver's self-test is.
 
 **The `uboot` mode.** For a boot by U-Boot's `booti`, the capture checker's
@@ -813,7 +878,8 @@ and `Booting using the fdt blob at 0xA`; `Loading Device Tree to F, end E
 and `Starting kernel ...`. The shim's `fdt` must be F, U-Boot's control
 device tree, which must lie, through E, outside every MVP extent. On the
 board the boot hart must be 0; in QEMU it is the OpenSBI banner's, and a
-domain hart's boot is `REFUSED`. The BSP's three-decimal `[ nnn.nnn] `
+domain hart's boot is `REFUSED` (a failure, for an image built with the
+boundary). The BSP's three-decimal `[ nnn.nnn] `
 stamps are stripped from U-Boot's lines only. Its two fixtures,
 `mvp/tests/fixtures/board-uboot-two-guests-gcc.log` and
 `qemu-uboot-two-guests-clang-hart6.log`, put a fixed template of U-Boot's
