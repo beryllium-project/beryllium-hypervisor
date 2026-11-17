@@ -67,7 +67,10 @@ Scope:   DIR/config.json: session, panes (the session's panes, each
          second `s` lands at the prompt; mvp/README.md, item 121),
          spurious_boot (seconds after the Nth prompt at which the board
          boots again with no reset, as [N, seconds]), slow_saveenv
-         (seconds), corrupt_after_saveenv ([N, {name: value}]: the saved
+         (seconds a saveenv stays in progress after its first words,
+         unless DIR/saveenv.release appears or a reset is pulsed first;
+         DIR/saveenv.log records how each of them ended),
+         corrupt_after_saveenv ([N, {name: value}]: the saved
          environment changed after the Nth saveenv), and bad_crc (the
          boots, counted from 1, at which U-Boot reports a bad environment
          CRC and uses its default environment). serve records received.log
@@ -730,7 +733,7 @@ class Board:
 
     def saveenv(self):
         self.write(self.stamp() + "Saving Environment to mtdENV... ")
-        time.sleep(self.faults.get("slow_saveenv", 0))
+        self.slow_saveenv()
         self.counts["saves"] += 1
         self.saved = dict(self.env)
         corrupt = self.faults.get("corrupt_after_saveenv")
@@ -738,6 +741,33 @@ class Board:
             self.saved.update(corrupt[1])
         save(self.root / "saved_env.json", self.saved)
         self.write("OK\r\n")
+
+    def slow_saveenv(self):
+        """The slow_saveenv fault: the saveenv, its first words written,
+        stays in progress for its seconds, or until DIR/saveenv.release
+        exists, a reset is pulsed (served after the command, as any), or
+        serve is stopped; DIR/saveenv.log records which, and after how
+        long."""
+        seconds = self.faults.get("slow_saveenv", 0)
+        if not seconds:
+            return
+        start, release = time.time(), self.root / "saveenv.release"
+        pulses = pathlib.Path(self.config["k3ctl"]) / "pulses.log"
+        ended = None
+        while not ended:
+            if release.exists():
+                ended = "released"
+            elif pulses.is_file() and \
+                    pulses.read_text().count("reset") > self.counts["pulses"]:
+                ended = "pulse"
+            elif not (self.root / "pid").exists():
+                ended = "stopped"
+            elif time.time() - start >= seconds:
+                ended = "elapsed"
+            else:
+                time.sleep(POLL)
+        append(self.root / "saveenv.log",
+               {"ended": ended, "seconds": round(time.time() - start, 3)})
 
     def step(self):
         pulses = (pathlib.Path(self.config["k3ctl"]) / "pulses.log")

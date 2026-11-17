@@ -150,8 +150,10 @@
 #                     board held at the prompt
 #   saveenv-fresh     saveenv after `nvme scan`, or not after a printenv:
 #                     refused, and not typed
-#   port-open-rule    no reset while Fedora is up, or while a saveenv runs:
-#                     no dongle command; a session whose first step shut
+#   port-open-rule    no reset while Fedora is up, or while a saveenv runs
+#                     (the fake holds the saveenv in progress until the
+#                     reset has ended): the port-open rule's stop, and no
+#                     dongle command; a session whose first step shut
 #                     Fedora down and stopped leaves the board down, and the
 #                     next session's first reset rests on that prior state
 #                     (prior-fedora-down, or the idle prompt a session
@@ -1816,17 +1818,44 @@ case_saveenv_fresh() {
 }
 
 case_port_open_rule() {
+	local from _
+
 	board port-open
 	expect port-open.start 0 "$console" start
 	expect port-open.fedora-up 1 "$console" reset
 	expect_dongle port-open ""
-	session port-open-saveenv '{}' '{"faults": {"slow_saveenv": 1.5}}'
+	# A reset asked while a typed saveenv runs. The fake writes the
+	# saveenv's first words and holds it in progress (slow_saveenv's 600 s
+	# at most) until it is released below, after the reset has ended, or a
+	# reset is pulsed: a reset made during it is served after it, and its
+	# banner comes. The reset is asked only once the first words are in
+	# the log, so neither tool's start, however slow under load, decides
+	# the order. The typed line waits 5 s for its echo (the tool's
+	# default) and 660 s for its prompt, longer than the hold; every wait
+	# is bounded.
+	session port-open-saveenv '{}' '{"faults": {"slow_saveenv": 600}}'
 	before=$(cat "$FAKE_K3CTL/commands.log")
-	"$console" type saveenv >"$out/port-open.saveenv.txt" 2>&1 &
+	from=$(stat -c %s -- "$K3_SERIAL_LOG")
+	K3_ECHO_SECONDS=5 K3_PROMPT_SECONDS=660 "$console" type saveenv \
+		>"$out/port-open.saveenv.txt" 2>&1 &
 	saving=$!
-	sleep 0.8
+	for _ in $(seq 600); do
+		grep -q 'Saving Environment to mtdENV' \
+			<(tail -c "+$((from + 1))" -- "$K3_SERIAL_LOG") && break
+		kill -0 "$saving" 2>/dev/null || break
+		sleep 0.1
+	done
+	grep -q 'Saving Environment to mtdENV' \
+		<(tail -c "+$((from + 1))" -- "$K3_SERIAL_LOG") ||
+		fail "port-open-rule: no saveenv in progress within 60 s, or its typing ended first: $(tail -n 1 -- "$out/port-open.saveenv.txt")"
 	expect port-open.during-saveenv 1 "$console" reset
+	grep -q 'STOP stop=1 the port-open rule holds no reason to reset now' \
+		"$out/port-open.during-saveenv.txt" ||
+		fail "port-open-rule: the reset during the saveenv was not refused by the port-open rule"
+	: >"$FAKE_UBOOT/saveenv.release"
 	wait "$saving" || fail "port-open-rule: the saveenv"
+	[ "$(cut -d, -f1 -- "$FAKE_UBOOT/saveenv.log")" = '{"ended": "released"' ] ||
+		fail "port-open-rule: the saveenv was not held until the reset had ended: $(cat -- "$FAKE_UBOOT/saveenv.log")"
 	[ "$(cat "$FAKE_K3CTL/commands.log")" = "$before" ] ||
 		fail "port-open-rule: a dongle command during the saveenv"
 	! grep -q busy "$FAKE_UBOOT/resets.log" || fail "port-open-rule: a reset during a command"
@@ -1926,8 +1955,7 @@ case_reset() {
 		IFS='|' read -r name dongle lines <<<"$case"
 		board "reset-$name" '{}' '{}' "$dongle"
 		expect "reset-$name.start" 0 "$console" start
-		ssh "$fake_host" sudo -n systemctl reboot
-		sleep 0.5
+		dongle_halt "reset-$name"
 		expect "reset-$name" 1 "$console" reset
 		grep -q 'STOP stop=1 ' "$out/reset-$name.txt" || fail "reset-$name: no stop 1"
 		expect_dongle "reset-$name" "$lines"

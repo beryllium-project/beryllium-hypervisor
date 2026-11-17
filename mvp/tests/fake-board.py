@@ -408,8 +408,12 @@ def ssh(args):
     elif command in ("sudo -n systemctl reboot", "sudo -n systemctl poweroff"):
         current["fedora"] = "down"
         save_json(root / "state.json", current)
-        (root / "poweroff").write_text(command.rsplit(" ", 1)[1] + "\n",
-                                       encoding="ascii")
+        # Whole, then renamed: the fake U-Boot polls for the file, and a read
+        # of it half-written would take a reboot for a poweroff.
+        temporary = root / "poweroff.new"
+        temporary.write_text(command.rsplit(" ", 1)[1] + "\n",
+                             encoding="ascii")
+        temporary.replace(root / "poweroff")
     else:
         return unsupported(command)
     return 0
