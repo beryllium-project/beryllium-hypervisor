@@ -1677,6 +1677,21 @@ public push now.
   it makes, and what was run in it. The runs' results wait for their
   authors, as the plan's section 6 has it. Accepted 2026-11-16 by the
   responsible human's sign-off of its commits.
+- `mvp-m12-2-questions.md`: the packet and the record of M12-2, the
+  questions, a work package of the M12 plan: the step's exit commit in
+  the lane's tests' repository, the readings that the plan's rules 1
+  and 11 require, and the eleven questions for the specification's
+  authors, by subject. The document is the responsible human's to send
+  with first contact; nothing has been sent. Accepted 2026-11-17 by
+  the responsible human's sign-off of its commit.
+- `mvp-m12-3-tests.md`: the packet and the record of M12-3, the
+  directed tests, a work package of the M12 plan: the step's exit
+  commit, the readings that the plan's rule 1 requires, how the suite
+  follows the plan's design rules (an M-mode harness, one source for
+  several runners, seven groups, each case citing its text), and what
+  was run. The runs' result tables wait for their authors, as the
+  plan's section 6 has it. Accepted 2026-11-17 by the responsible
+  human's sign-off of its commit.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and

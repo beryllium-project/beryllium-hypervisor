@@ -596,6 +596,14 @@ export default defineConfig({
             link: '/mvp-m12-1-environment'
           },
           {
+            text: 'MVP M12-2, the questions: packet and record',
+            link: '/mvp-m12-2-questions'
+          },
+          {
+            text: 'MVP M12-3, the directed tests: packet and record',
+            link: '/mvp-m12-3-tests'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1240,6 +1248,14 @@ export default defineConfig({
             link: '/mvp-m12-1-environment'
           },
           {
+            text: 'MVP M12-2, the questions: packet and record',
+            link: '/mvp-m12-2-questions'
+          },
+          {
+            text: 'MVP M12-3, the directed tests: packet and record',
+            link: '/mvp-m12-3-tests'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1767,6 +1783,14 @@ export default defineConfig({
           {
             text: 'MVP M12-1, the environment: packet and record',
             link: '/mvp-m12-1-environment'
+          },
+          {
+            text: 'MVP M12-2, the questions: packet and record',
+            link: '/mvp-m12-2-questions'
+          },
+          {
+            text: 'MVP M12-3, the directed tests: packet and record',
+            link: '/mvp-m12-3-tests'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',
