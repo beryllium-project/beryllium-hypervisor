@@ -978,3 +978,449 @@ review or during the work; none is a stop of the plan.
   M11-8 moves these functions to the boot-only text and makes the rule
   a check of the image checker's, for every role; its first sub-step
   confirms this list by the checker's own reach.
+
+## M11-8: step 2, the control hart confined
+
+### Outcome first
+
+M11-8's required result (the plan's work-package table: as M11-7's,
+"for all three harts and all eight") holds at exact commit `77666b8b`,
+the sixth of the range's nine commits:
+
+- every scenario passes with the boundary on in step 2, with D-10's
+  four checks: `check` runs 111 QEMU runs, 77 of them under the
+  boundary, each of those judged by the capture checker, the oracle,
+  and `tests/check-boundary.py`. Wherever a run gets past both hart
+  starts, hart 0 calls `confine` for itself, and where M-mode does not
+  refuse it (four negatives are built so that it does) hart 0 is
+  confined as harts 1 and 2 are: its PMP entries, as the oracle reads
+  them from the stopped machine and as M-mode prints them, equal the
+  tables of its own OpenSBI domain, `be_control`. The six typed
+  sessions and the U-Boot rehearsal's seven cases run under step-2
+  device trees too;
+- the hostile-monitor image for the control hart passes: after its
+  confinement, HS-mode code on hart 0 makes 132 attempts on what lies
+  outside its profile and its call list, and each ends as it declares
+  (88 denied with an access fault, 2 instructions illegal, 28 calls
+  refused, 7 listed calls rejected, 2 console writes of no byte, 5
+  controls allowed); M-mode's counts for hart 0 equal those sums (88
+  PMP faults, 28 blocked calls, 7 failed calls) and are zero for every
+  other hart; and the scenario runs to `anchor`'s end with `anchor`'s
+  lines and counts;
+- that image's run without the boundary shows the effect of each of
+  the 73 attempts that have a witness: no failed discrimination;
+- the parked harts' tests (D-9's row): the start and the status of
+  each of the eight harts, stop, and suspend are now refused from
+  every confined role, the control hart's among them, and in every run
+  under the boundary the oracle's read shows harts 3 to 7 never
+  started, with no PMP entry and no commit;
+- the control hart's five negatives each fail closed for their
+  declared reason, on both toolchains; with M11-7's seven, twelve;
+- `evaluate`: 801 of 801 images identical between the host's build and
+  the evaluator's;
+- `./be model-check` passes with no file under `model/` changed.
+
+With this step every hart that the monitor uses is confined to its
+physical access profile before it takes its first input from another
+hart's VS domain (D-6; Revision 4's I26).
+
+It is emulation: nothing is proved, the attempts are a list and not
+every access, and nothing here ran on a board (D-10, "What this
+evidence is not").
+
+### The commits
+
+On the working branch `m11`, unsigned, over `1023f3ec` (M11-7's
+evidence section, the tip of M11-7's range, unsigned too):
+
+| Commit | Content |
+| --- | --- |
+| `668883af` | Not M11-8's: the board tools' dry run no longer races its own tools ("The dry run's race", below) |
+| `2235f642` | Each role's extents hold what that role reaches: the linker script's lists by exact name, and the image checker's rules C8 to C10 |
+| `26e5551f` | The harness reads the boundary's step from each run's declaration. The build still names step 1 |
+| `3ab26bc7` | Step 2: hart 0's own `confine`, its confined entry, and the image checker's rules C1 to C7, C13, and C14 |
+| `27eab153` | The control hart's five negatives |
+| `77666b8b` | The hostile-monitor image for the control hart, `breach-c`, and its copy without the boundary |
+| `cdd47511` | The README's and the guide's words |
+| `46ffa531` | Sixteen comments and opening texts that the boundary's steps left untrue. No code changes ("The sweep of comments", below) |
+| `5a8db9ba` | Not M11-8's: the ring arm's self-test reads a dead task as dead ("The ring arm's self-test", below) |
+
+M11-8's own content, the second to the sixth commits, was written by
+the coding delegate (Claude Opus 5.5 in the GitHub Copilot CLI),
+sub-step by sub-step, and reviewed line by line by the owner session,
+in three parts, before the first run under emulation; the claim
+ledger's notes in those commits, and the seventh commit's README and
+guide, are the owner session's. The delegate then split the reviewed
+tree into those five patches. The owner session checked each state of
+that series against the sub-step trees that it had reviewed: the fifth
+state is the reviewed tree; the fourth and the third are reviewed
+sub-steps, the third with the second review's two rules; the first two
+are reviewed sub-steps with the first review's fixes. Twenty lines
+exist only in a middle state, each an earlier sub-step's line that a
+later one extends; each was read. The first commit, the eighth
+commit's texts, and the ninth commit were each written by a coding
+delegate of the same tool (the eighth's by M11-9's), and each was read
+line by line by the owner session, the eighth's texts each against the
+code that makes it true.
+
+**Checked at each commit**, from a fresh clean clone on `l1`: the tool
+lock and `./mvp/mvp check`. The checks ran at the scratch commits that
+were then landed here; each landed commit's tree equals its scratch
+commit's.
+
+| Commit | When (UTC, 2026-11-17) | QEMU runs (under the boundary) | Attempts, refused | The six sessions' attempts |
+| --- | --- | --- | --- | --- |
+| `668883af` | 02:12 to 02:33 | 95 (63) | 100, 5 | 6 |
+| `2235f642` | 04:05 to 04:25 | 95 (63) | 102, 7 | 6 |
+| `26e5551f` | 04:25 to 04:45 | 95 (63) | 106, 11 | 6 |
+| `3ab26bc7` | 04:45 to 05:06 | 95 (63) | 97, 2 | 6 |
+| `27eab153` | 05:06 to 05:26 | 105 (73) | 118, 13 | 6 |
+| `77666b8b` | 06:27 to 06:48, its second check ("The ring arm's self-test", below) | 111 (77) | 123, 12 | 6 |
+| `cdd47511` | 03:12 to 03:33, in the gates | 111 (77) | 116, 5 | 6 |
+| `46ffa531` | 05:37 to 05:58, in the gates | 111 (77) | 116, 5 | 6 |
+| `5a8db9ba` | 06:48 to 07:09 | 111 (77) | 128, 17 | 6 |
+
+Every refused attempt is a run without the boundary that QEMU's
+firmware booted on a VS-domain hart, repeated as since M0.
+
+The seven gates were run twice, each time from a fresh clean clone: at
+the seventh commit's content (03:12 to 04:05), and at the eighth's
+(05:37 to 06:27). The ninth commit, the range's tip, changes one
+verifier tool's self-test and no image: `check` at it is the table's
+last row.
+Both times: the tool lock; `./mvp/mvp check` (111 QEMU runs in 116
+attempts, 77 under the boundary; the six sessions in six attempts);
+`./mvp/mvp evaluate` (801 of 801 images identical between the host's
+build and the evaluator's); the U-Boot rehearsal (7 cases);
+`kernel-repro` (23 outputs identical); `./be model-check`; and the
+model's evaluator.
+
+The two builds were made in different directories. Of the 801 outputs
+that `check` records, 566 are the same byte for byte in both, among
+them every flat image, boot image, device tree, descriptor, firmware
+binary, and guest binary. The other 235 are the monitors' ELF files
+(70), whose debug information names the build's directory as the
+firmware's ELF does, and the expected tables and the checker's records
+(165), which bind the firmware ELF's digest or a table's. In the one
+pair of ELF files that was read section by section, every loaded
+section is equal and the debug strings differ in the directory's name
+alone.
+
+### What a run under step 2 shows
+
+The `k3-like` run of `two-guests` (GCC), as an example of the 77:
+
+- OpenSBI's banner lists six OpenSBI domains: M11-7's five (`root`,
+  `be_boot`, `be_g0`, `be_g1`, `be_park`) and `be_control`, hart 0's
+  own, whose call list is the console write and the shutdown (and, in
+  an image whose scenario grants console input, the console read);
+- `BE_MVP:02` is as in step 1: hart 0 reads the partition identity in
+  boot code and compares it with the image's own;
+- both `BE_MVP:08 HART_STARTED` lines have step 1's text. Hart 0 now
+  prints them from its confined entry, after its own `confine`, with
+  the ticks that it kept at each start; no line that the monitor prints
+  differs from step 1's;
+- after `BE_MVP:14 SHUTDOWN` the firmware prints each hart's commit
+  record: harts 0, 1, and 2 `committed=1`, each with `menvcfg`,
+  `mseccfg`, and its PMP entries; harts 3 to 7 `committed=0`; every
+  count zero;
+- the oracle's read of the stopped machine gives the same tables, and
+  `check-boundary.py` prints `BE_MVP_BOUNDARY: PASS … control_hart=confined
+  harts=0:confined,1:confined,2:confined,3-7:never-started`.
+
+In the runs that end in hart 0's boot code (a failure before the
+barrier, a refused start, or hart 0's own refused `confine`), hart 0 is
+left in the boot OpenSBI domain with no commit, and the judge requires
+exactly that: a declared state of hart 0 is admitted only where the
+run's own lines show it.
+
+**What crosses the move.** M-mode's move gives hart 0 fresh supervisor
+registers, and the first entry is made as a hart start makes one. The
+confined entry trusts no register: it forms the stack pointer from the
+link, and its C side resets hart 0's HS-mode state with the trap
+vector and arms the control tick again; the run's deadline holds,
+because the budget is kept in hart 0's own data and the timer
+comparator carries over. The comment above `be_mvp_control_confined()`
+lists each register across the move. One interval has no vector of the
+monitor's: from the move to that reset, an HS-mode exception would
+enter the confined entry again, and the run would loop without output
+until the harness's timeout failed it. Nothing in that interval can
+fault unless hart 0's text or stack lies outside its profile, and the
+independent checker refuses such a descriptor or tree before any run.
+
+### The placement by role
+
+Step 2 needs each role's extents to hold what that role reaches, and
+nothing that only boot code uses (D-4's rule 1). The second commit
+makes it so, and makes it checked:
+
+- the linker script names each role's input sections exactly. Against
+  M11-7's images, 57 names (GCC) and 48 (Clang) leave the roles'
+  extents for the boot extents: the measurement log's functions and
+  tables, the boot-time executor calls, the functions that hand
+  objects to hart 0's state, and the five functions of M11-7's
+  residual (`be_mvp_ring_reset`, `be_mvp_ring_init`,
+  `be_mvp_entry_frame`, `be_mvp_hsm_census_init`,
+  `be_mvp_hsm_census_add`). Clang no longer links a copy of
+  `be_mvp_hgatp`;
+- two things that the control loop reads after the barrier move into
+  the control hart's constants: the target states' names, and the
+  management grants (which were in the MVP boot read-only data, and
+  are still measured, now in the MVP text's record of stream 0);
+- the image checker's rules C8 to C10 hold for every image built with
+  the boundary, each with its mutations: no pointer out of the control
+  profile in the control role's constants; each object that boot code
+  hands to hart 0 inside the control profile; no boot-only function or
+  constant in a role's extents. A name that the lists miss falls to
+  the boot extents, and the role rules then refuse the image: shown by
+  removing one entry of the script at a time.
+
+One comparison moved with it. `build_gstage()` compared each walked
+`hgatp` with `be_mvp_hgatp()` of its binding; that call was Clang's
+only out-of-line use of the function, in boot code. The comparison is
+now in `publish_blocks()`: the `hgatp` that hart 0 publishes for each
+VS-domain hart must be the walked G-stage root's, or the run fails as
+class `gstage` before the barrier. Each VS-domain hart still compares
+the published value with `be_mvp_hgatp()` of its binding itself.
+
+### The hostile-monitor image for the control hart
+
+`anchor`'s `breach-c`: the hook runs once on hart 0, after its
+activation and before it reads any ring. Six runs: the image under
+plain PMP and under Smepmp, and its copy without the boundary, with
+both toolchains.
+
+| Attempts | Rows | Declared, and shown under the boundary |
+| --- | --- | --- |
+| Loads, stores, and jumps on forbidden memory and devices: both guest windows; every declared page; the secret's source, boot-only text, constants, and data, and the staged boot image; the monitor's text, the sealed configuration, and the log, to write; the VS role's text; both G-stage pools, both VS-domain harts' published words and private state; M-mode's memory, the timer, the M-level interrupt controller, and memory that no extent names. An atomic operation, a load-reserved and store-conditional pair, and the cache-block zero on each mailbox that hart 0 may only read. An extent's edge, and misaligned accesses. Accesses through an HS-mode page table and a forged G-stage root that hart 0 can read, through each VS domain's own G-stage root, and through VS-stage tables in forbidden memory | 88 | An access fault of the access's own kind, recorded by the hook with its address; every witness word unchanged; M-mode counts 88 PMP faults |
+| The cache-block invalidate on each mailbox that hart 0 may only read | 2 | An illegal-instruction fault; no count |
+| Firmware calls outside `be_control`'s list, from every family that the build keeps: two Base calls; the start and the status of each of the eight harts, stop, and suspend; a console byte write, and the console read (not on `anchor`'s list); both reboots, and a reset type above the list's; an IPI; `confine` again, and the identity read | 28 | The call's error, with nothing changed; M-mode counts 28 blocked calls |
+| The console write, which is on the list, with a buffer that hart 0 may not read and write (the secret page, a guest window, the sealed configuration, M-mode's memory, past its data's end), with a wrapping length, and with a non-zero upper address word | 7 | The firmware's error (`invalid-param`, or `failed` for the upper word); nothing written; M-mode counts 7 failed calls |
+| The console write of no byte, once with the secret page as its buffer | 2 | Success; nothing written; no count |
+| Controls inside the profile: a load, a store, a hypervisor load of the sealed configuration through the forged G-stage root, a cache-block zero, and a load-reserved and store-conditional pair | 5 | Each succeeds |
+
+The oracle reads 63 words of memory and two device registers with the
+machine stopped: under the boundary every witness of a forbidden
+attempt is unchanged. Under Smepmp, the entry that the firmware
+reserves for reaching a caller's console buffer is off at the end of
+every run, the rejected writes' runs included.
+
+**Discrimination.** The copy without the boundary makes the 73
+attempts that have a witness, and every one takes effect: stop 15 is
+not reached. Not discriminated, by attempt, as D-10 foresees:
+
+| Attempts | Rows | Why |
+| --- | --- | --- |
+| The jumps | A3, A6, B7, C5, C7, D9, D10, H11, I8, J3 | No witness: a jump that was allowed would run what it reached |
+| The cache-block invalidates | H5, H10 | No effect on memory to witness: QEMU has no cache |
+| The VS-domain harts' interrupt files; the power device | I5, I6; I7 | They leave nothing that a read can show, or end the run |
+| M-mode's memory, the timer, and the M-level interrupt controller | J1, J2, J4 to J8 | The firmware denies them in both builds |
+| The calls | M1 to M28, R1 to R7, Z1, Z2 | Each kept call's own working is shown by every run: hart 0 prints through the console write, polls through the console read in the images that take input, and ends the run by the shutdown |
+
+The console read's own rows (a buffer outside the profile, a wrapping
+length) are not made from the monitor: `anchor`'s list does not hold
+the read, so `breach-c` shows it refused, and the firmware's checks of
+a listed read are shown by M11-6's firmware test `console-checks`,
+which makes them from hart 0 with the read listed ("Departures",
+below).
+
+### The control hart's negatives
+
+Runs of `two-guests`' own image, built with the boundary, on both
+toolchains:
+
+| Negative | What the run shows |
+| --- | --- |
+| `boundary-control-absent`: step 1's device tree, with no OpenSBI domain for hart 0 | M-mode refuses hart 0's `confine` (`-4`). Both VS-domain harts are started by then. Hart 0 prints both `BE_MVP:08` lines, `BE_MVP:DETAIL boundary=1 confine=-4`, and `FAIL boundary` from its boot code, and reads no ring. It ends in the boot OpenSBI domain, with no commit |
+| `boundary-control-no-list`, `-wrong-boot`, `-two-narrow`: `be_control` without its call list, with another boot hart, or hart 0 also in a VS-domain hart's OpenSBI domain | The same |
+| `boundary-control-no-mailbox`: `be_control` without the mailboxes that the VS-domain harts write | Hart 0's `confine` succeeds. Its first read of a mailbox faults, and its vector ends the run: `FAIL exception`. M-mode counts one PMP fault, on hart 0 |
+
+Each changed device tree is refused by the independent checker for the
+reason that its run declares, and is admitted for that run alone:
+`boundary-negatives-check` tries every tree against every run (12
+trees, 13 runs, 11 admitted). Repeated by the coding delegate, the
+four refusals gave `confine=-4` and `FAIL boundary` in 168 runs of
+168, and the fifth gave `FAIL exception` with one PMP fault in 22 of
+22.
+
+### The dry run's race
+
+The range's first commit, `668883af`, is not part of M11-8. It fixes the
+test whose failure M11-7's evidence records (its first commit's first
+check). Three races of the board tools' dry run against its own fake
+tools are closed, with no change to a tool or an image: the fake
+U-Boot's slow `saveenv` is a hold that the test releases, so the case
+no longer sleeps a fixed 0.8 s before a reset that must be refused;
+the `reset-*` cases wait for the fake board's halt; and the fake board
+writes its power-off file whole. The coding delegate showed the old
+case failing 10 times of 10 beside six busy processes and the new one
+passing 10 of 10 there; a console tool with the port-open rule removed
+fails the new case.
+
+### The ring arm's self-test
+
+The range's last commit, `5a8db9ba`, is not part of M11-8 either. The
+first check at the sixth commit's content failed (05:26 to 05:36), in
+`verify-tools-check` and in a file that M11-8 does not change: the
+self-test of `mvp/verify/tools/cbmc-ring.py` printed `FAIL a timeout
+kills the command's children`, a case that M8-6 wrote. The check was
+made again from a fresh clean clone and passed (06:27 to 06:48); the
+failed run's logs are kept.
+
+The child was dead. The case kills a command at its time limit and
+then requires the command's child to be gone, and the arm's own code
+was right: the kill reaches the child, and `execute()` returns only
+when the child has closed its output. The case's reading was wrong in
+two ways. It took every state of the child but `Z`, a zombie, for
+running, and a task that its new parent is reaping reads `X`, dead,
+for a moment before its entry goes. And it read the state twice, in
+the wait's condition and again in the verdict: a first read of `Z`
+ended the wait, and the second, a moment later, could find `X`.
+
+The owner session measured that pair of reads 4 times in 1,500 kills
+on `l1`, then gave the fix to a coding delegate. In the fix a task is
+gone when its stat cannot be read or reads `Z` or `X` (a function of
+the stat's text, with three cases on fixed texts), and the case's
+verdict is the read that ended its wait. `execute()` and everything
+else that the arm's runs use are unchanged byte for byte, so no
+verdict, bound, solver, setting, or record changes. With the tool's
+own `execute()`, 6,000 kills: the old rule failed 4 times, each on `Z`
+and then `X` with the child dead, and the new rule never. The
+self-test, now 36 cases, passed 200 times of 200. Each of the three
+new cases fails when its rule is replaced by a wrong one (only `Z`
+gone; the first `)`; an unreadable stat taken for running).
+
+The race is as old as the case. No earlier failure of it is recorded.
+
+### The proofs' records, and the CHERI variant
+
+M11-8 is not one of D-11's points. It changes no input of a proved
+leaf: the two units, their eleven headers, and the flags that
+`mvp/verify/target-digests.txt` names are M11-7's, and the record's
+check passes at the eighth commit's build (13 files). `./be
+model-check` passes with no file under `model/`
+changed (stage 1: 26 theorems, 100 citations read).
+
+The litmus record stays stale until the candidate, as since M11-7.
+Against M11-7's build, GCC's 28 cited symbols are 6 with the same
+bytes, 21 that differ in addresses or PC-relative offsets only, and 1
+that differs otherwise (`be_mvp_runtime_main`); Clang's 27 are 9, 14,
+and 4 (`publish_blocks`, `domain_failed`, `drain`, `poll_input`).
+Clang's last three differ only in offsets into hart 0's data, where
+objects moved. The other two hold the first test's publication
+sequence, and changed by design: the hart starts left GCC's
+`be_mvp_runtime_main` for `start_harts()`, and the comparison that
+moved into `publish_blocks()` adds one load pair and one branch between
+the block's fill and the fence. No store, call, or fence was added
+there, and the fence and the two generation-word stores follow in the
+same order. The coding delegate's report lists the instructions for
+the candidate's re-derivation, which is made by extraction and
+reading.
+
+Not run for M11-8: `./mvp/mvp verify`, for that reason; and the CHERI
+check, which D-11 asks for at the candidate (stop 10).
+
+### The checkpoint: the soft limits
+
+By the plan's count from `77eabce5`, at the range's tip:
+
+| Lane | At M11-7's tip | Since | Now | Limit |
+| --- | --- | --- | --- | --- |
+| The firmware additions | 720 | 0 | 720 | 800 |
+| The firmware's tests and build rules | 2,825 | 0 | 2,825 | 3,000 |
+| The monitor | 5,371 | 1,535 | 6,906 | 8,000 |
+| The descriptor's tools | 3,349 | 24 | 3,373 | 4,000 |
+| The harness | 10,308 | 1,252 | 11,560 | 15,000 |
+
+No limit is reached. Of the harness lane's lines since M11-7's tip, 73
+are the race fix's, 8 the sweep's, and 36 the self-test fix's. The
+monitor lane counts the image checker, which has most of this step's
+lines; 49 of them are the sweep's comments.
+
+### Departures and readings for review
+
+Each was decided by the owner session's judgement, at the design's
+review or during the work; none is a stop of the plan.
+
+- **A refused `confine` of the control hart** (D-6, "Refusal": "The
+  control hart ends the run with a failure line"). The run ends in
+  hart 0's boot code with both `BE_MVP:08` lines, since both starts
+  succeeded, then the DETAIL with the call's error and `FAIL
+  boundary`. Hart 0 reads no ring on that path and enters no control
+  loop. D-10's words for a refused `confine`, "no guest is entered",
+  are read as of the refused hart. The VS-domain harts were started
+  before hart 0's call, as D-6's order has it: each is on its way to
+  its own confinement, or confined, when the run ends, and a confined
+  one may have entered its guest. The judge declares them started and
+  admits either state: in 167 of the delegate's 168 runs neither had
+  committed at the end, and in one both had, after the firmware
+  printed its records.
+- **Hart 0's declared end state follows from the run's own lines**, as
+  a VS-domain hart's does since M11-7: left at boot only where the run
+  fails before the barrier or with a failure that only boot code
+  prints; confined only where the capture holds both `BE_MVP:08` lines
+  and no such failure.
+- **The confined entry's address is formed once in the image**, as
+  data: hart 0's boot code forms the MVP region's start for its region
+  check, and since M11-3 the control hart's entry slot is that
+  region's first byte. D-6 has the entry named by the device tree
+  alone. The image checker admits that one formation, by that
+  function, and refuses a call, a jump, or any other formation.
+- **No hostile-monitor image for a shell scenario.** D-10's rows for a
+  listed call with a bad buffer are made from the monitor for the
+  console write. For the console read they would need a breach copy of
+  a shell image, run as a typed session; they are left to M11-6's
+  firmware test instead, and `breach-c` shows the read refused where
+  it is not granted.
+- **The control hart's negatives are D-10's rows made for
+  `be_control`**: the third row's three trees (`-two-narrow`,
+  `-wrong-boot`, `-no-list`); the fourth row's (`-no-mailbox`: the
+  extent removed is the pair of mailboxes that the VS-domain harts
+  write); and one more, `boundary-control-absent`, an image of step 2
+  under a step-1 tree, which M11-7's evidence said would fail closed
+  from this step.
+- **M11-7's negatives under step 2.** In the three whose VS-domain
+  hart is refused, hart 0's own `confine` succeeds, and the run fails
+  as before (`FAIL hart-ready`), now with hart 0 confined.
+- **Every monitor rebuilds its own hart entry.** The confined entry is
+  kept by the linker script and calls a function that only a monitor
+  built with the boundary defines, so the object can no longer be
+  shared with the copies built without it. M11-7's copies were checked:
+  none linked the confine stub.
+- **The image checker's rule C10 has a stated limit.** A constant
+  without a symbol of its own (a merged string) is taken to run on to
+  the next symbol, so a boot-only string that follows one of a role's
+  is not refused. No such string lies in a role's constants in the
+  eight images that were read. And what no role reaches is not
+  refused: `be_mvp_arch_inject` stays in the VS role's text in
+  `two-guests`, which never calls it, as before this step.
+- **One sentence of M11-7's ledger notes is corrected** (the fifth
+  commit). C-52's note on `tools/gen-scenario.py` said that a boundary
+  negative's run class is its image's. The class is the negative's
+  own, by the place of its failure (`run_class()`): pre-measurement
+  for the three that fail at `BE_MVP:02`, post-launch-failure for the
+  four after the start. No claim and no check read the sentence.
+- **The sweep of comments** (the eighth commit). After M11-8's commits
+  were built, a reading of every comment in the MVP's code against what
+  M11-8 changed found ten that it had left untrue, and six older ones
+  on the way (three since M11-3, one since M11-6, two since M11-7):
+  among them `tests/check-image.py`'s opening text, which still placed
+  the grants in `.mvp.rodata` and named none of step 2's rules. The
+  eighth commit makes each true. It changes no code: the four Python
+  files' syntax trees are equal but for docstrings and one mutation's
+  label, which nothing reads; under `src/` and in `tools.mk` only
+  comment lines change, and each file under `src/` keeps its number of
+  lines. Two of the files are pinned by the ledger (rows C-40, C-41,
+  and C-52), and each pin's note names the reading. It is in this
+  range, and not in M11-9's, so that the candidate's proof records can
+  name a commit of this line whose monitor sources are the
+  candidate's.
+- **The first runs under emulation were made on the coding delegate's
+  tree**, as in M11-7 (2026-11-17, 00:49 to 01:50: `check`, the U-Boot
+  rehearsal, the experiments, and `evaluate`). The checks recorded
+  above were then made from clean clones of the commits.
+- **One check was made twice.** The first check at the sixth commit's
+  content failed in the ring arm's self-test, which that commit does
+  not change. The second, from a fresh clean clone, passed, and the
+  range's last commit removes the cause ("The ring arm's self-test",
+  above). The failed check stopped there, before its runs under QEMU.
