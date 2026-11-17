@@ -97,8 +97,10 @@ def facts(root):
                      f"MVP_PIN_{key}")
             for key in ("LINUX_TAG", "LINUX_COMMIT", "LINUX_TAG_OBJECT",
                         "OPENSBI_TAG", "OPENSBI_COMMIT",
-                        "FIRMWARE_BIN_SHA256", "UBOOT_TAG", "UBOOT_COMMIT",
-                        "UBOOT_DEFCONFIG", "UBOOT_BIN_SHA256")}
+                        "FIRMWARE_BIN_SHA256",
+                        "FIRMWARE_NO_BOUNDARY_BIN_SHA256", "UBOOT_TAG",
+                        "UBOOT_COMMIT", "UBOOT_DEFCONFIG",
+                        "UBOOT_BIN_SHA256")}
     try:
         sources = GUEST.parse_sources(text[PINS])
     except GUEST.Finding as error:
@@ -211,7 +213,9 @@ def components(known):
          f"(tree `{known['firmware']['tree']}`), patched by this "
          f"repository's series `{FIRMWARE_SERIES}` in the reduced "
          f"configuration `{FIRMWARE_CONFIG}` (`fw_dynamic.bin` SHA-256 "
-         f"`{lock['FIRMWARE_BIN_SHA256']}`)",
+         f"`{lock['FIRMWARE_BIN_SHA256']}`; with `CONFIG_SBI_ECALL_DCOMMIT` "
+         f"off, the firmware without the boundary extension, SHA-256 "
+         f"`{lock['FIRMWARE_NO_BOUNDARY_BIN_SHA256']}`)",
          "BSD-2-Clause",
          "`LICENSES/BSD-2-Clause` (OpenSBI's own text); in the pinned source, "
          "`COPYING.BSD`; the patch series is BSD-2-Clause too (`COPYING`), "
@@ -222,8 +226,10 @@ def components(known):
          f"and this repository's `{FIRMWARE_SERIES}` with the patches it "
          "names",
          f"{none}: built under `build/mvp/firmware` from the base and the "
-         "series; every plain emulated run except `firmware-version` boots "
-         "it"),
+         "series, and without the extension under "
+         "`build/mvp/firmware-no-boundary`; every plain emulated run but "
+         "`firmware-version` and `boundary-absent` boots the first, and "
+         "`boundary-absent` the second"),
         ("U-Boot", "u-boot", "pin:UBOOT", (),
          f"`{lock['UBOOT_TAG']}`, commit `{lock['UBOOT_COMMIT']}` "
          f"(`{lock['UBOOT_DEFCONFIG']}`; `u-boot.bin` SHA-256 "

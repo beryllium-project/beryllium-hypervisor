@@ -42,7 +42,12 @@ the last step of `check`) holds:
                     and the guest inputs and separately pinned userland
                     outputs (the Image, the init, the management module,
                     BusyBox, musl's libc archive, and every DTB), plus
-                    M11's unmodified OpenSBI firmware base binary
+                    M11's unmodified OpenSBI firmware base binary, and
+                    (M11-7) the firmware without the boundary extension
+                    where the build made it: required, the bundle refused
+                    without it, when an attempt's expectation names it
+                    (its boundary's "firmware": "no-boundary", D-10's
+                    negative 1, boundary-absent)
   records/          the checks' outputs: the image checker on the images,
                     the variants, and the probes, with its mutation tests;
                     the budgets; the loader's layout rule; the board-tool
@@ -280,6 +285,10 @@ GUEST_PATTERNS = ("Image", "init", "busybox", "musl-libc.a", "*.ko", "*.dtb")
 # M11's unmodified OpenSBI base, built by Makefile's firmware target.
 FIRMWARE_IMAGE = pathlib.Path(
     "firmware/platform/generic/firmware/fw_dynamic.bin")
+# M11-7: the firmware without the boundary extension (D-10's negative 1),
+# by its firmware-no-boundary target, wherever the build made it.
+FIRMWARE_NB_IMAGE = pathlib.Path(
+    "firmware-no-boundary/platform/generic/firmware/fw_dynamic.bin")
 # A v3 expectation's measured input's file name in BUILD/guest.
 GUEST_NAME_FORM = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 RUN_COLUMNS = ("toolchain", "run", "attempt", "boot_hart", "qemu_exit",
@@ -509,6 +518,8 @@ def image_manifest(build):
     if not firmware.is_file():
         raise Refused(f"{firmware} is missing; run make -C mvp firmware")
     paths.append(firmware)
+    if (build / FIRMWARE_NB_IMAGE).is_file():
+        paths.append(build / FIRMWARE_NB_IMAGE)
     # M11-5: descriptors and their detached authority sections, each
     # backend's source/tree/table, and the path-free GCC/Clang checker
     # records. The fresh QEMU base dumps are deliberately excluded: their
@@ -739,6 +750,32 @@ def boundary_trees(attempts, images):
             raise Refused(f"{attempt['stem']} ran a device tree "
                           f"{attempt['dtb_sha256'][:12]} that no partition "
                           f"output has")
+
+
+def no_boundary_attempts(suite, attempts, generated):
+    """M11-7 (D-10's negative 1): the stems of the attempts whose
+    expectation's boundary section names the firmware without the boundary
+    extension ("firmware": "no-boundary"), each expectation found by its
+    capture checker record's image among the generated ones (an image with
+    none declares no firmware). The records are log_export()'s, checked."""
+    known = expectations(generated)
+    stems = []
+    for attempt in attempts:
+        record = json.loads((suite / f"{attempt['stem']}.result.json")
+                            .read_text(encoding="utf-8"))
+        entry = known.get(f"{record['expect']['image']}.json")
+        if entry is None:
+            continue
+        try:
+            boundary = json.loads(entry[0].read_text(
+                encoding="utf-8")).get("boundary") or {}
+            firmware = boundary.get("firmware")
+        except (ValueError, AttributeError) as error:
+            raise Refused(f"{attempt['stem']}: expectation {entry[0].name} "
+                          f"is malformed ({error})") from error
+        if firmware == "no-boundary":
+            stems.append(attempt["stem"])
+    return stems
 
 
 def session_attempts(build):
@@ -992,6 +1029,15 @@ def development(build, out, home):
                 if state == "current" and result.is_file()]
         except Stale:
             made[name] = ("stale", text, fields)
+    # M11-7 (D-10's negative 1): a run that booted the firmware without the
+    # boundary extension needs that image among the identity inputs; a
+    # build with no such run needs none.
+    needs = no_boundary_attempts(suite, attempts, generated)
+    if needs and not (build / FIRMWARE_NB_IMAGE).is_file():
+        raise Refused(f"{build / FIRMWARE_NB_IMAGE} is missing, and "
+                      f"{', '.join(needs)} booted it (its expectation's "
+                      f"boundary names \"firmware\": \"no-boundary\"); run "
+                      f"make -C mvp firmware-no-boundary")
     commit, tree = source_state()
 
     prepare(out)
@@ -1627,6 +1673,9 @@ def synthetic_build(root):
     firmware = build / FIRMWARE_IMAGE
     firmware.parent.mkdir(parents=True)
     firmware.write_bytes(b"firmware\n")
+    firmware = build / FIRMWARE_NB_IMAGE
+    firmware.parent.mkdir(parents=True)
+    firmware.write_bytes(b"firmware without the boundary extension\n")
     expect = build / "gen" / "expect"
     expect.mkdir(parents=True)
     source = MVP_DIR / "scenarios" / "two-guests" / "scenario.json"
@@ -1846,6 +1895,10 @@ def self_test(scratch):
          any(line.endswith(f"  {FIRMWARE_IMAGE}") for line in
              (first / "images.sha256").read_text(
                  encoding="ascii").splitlines()))
+    case("the firmware without the boundary extension is an identity "
+         "input", any(line.endswith(f"  {FIRMWARE_NB_IMAGE}") for line in
+                      (first / "images.sha256").read_text(
+                          encoding="ascii").splitlines()))
     case("te-poc's scenario, policy, report, records, run, and rehearsal",
          all((first / name).is_file() for name in (
              "scenario/te-poc/scenario.json", "scenario/te-poc/policy.te",
@@ -2118,6 +2171,32 @@ def self_test(scratch):
          "do not agree" in
          (refused(development, build, scratch / "bundle-3", home) or ""))
     table.write_text(original, encoding="ascii")
+    # M11-7 (D-10's negative 1): k3-like's attempts stand in for
+    # boundary-absent's, their expectation naming the firmware without the
+    # boundary extension.
+    expectation = build / "gen" / "expect" / "two-guests.json"
+    firmware = build / FIRMWARE_NB_IMAGE
+    kept = firmware.read_bytes()
+    firmware.unlink()
+    expectation.write_text('{"boundary": {"firmware": "no-boundary"}}\n',
+                           encoding="ascii")
+    case("a run under the firmware without the boundary extension refuses "
+         "the bundle when that image is missing, naming it",
+         f"{firmware} is missing, and gcc-k3-like.1, gcc-k3-like.2 booted "
+         f"it" in
+         (refused(development, build, scratch / "bundle-3", home) or ""))
+    expectation.write_text("{}\n", encoding="ascii")
+    fifth = scratch / "bundle-5"
+    stdout, sys.stdout = sys.stdout, quiet
+    try:
+        development(build, fifth, home)
+    finally:
+        sys.stdout = stdout
+    case("a build with no such run needs no second firmware",
+         not any(line.endswith(f"  {FIRMWARE_NB_IMAGE}") for line in
+                 (fifth / "images.sha256").read_text(
+                     encoding="ascii").splitlines()))
+    firmware.write_bytes(kept)
     record = build / "records" / "budgets.txt"
     record.unlink()
     case("a missing record refuses the bundle",

@@ -124,6 +124,14 @@ FIRMWARE_ELF := $(FIRMWARE_BUILD)/platform/generic/firmware/fw_dynamic.elf
 FIRMWARE_SERIES := $(MVP_DIR)/firmware/patches/series
 FIRMWARE_CONFIG := $(MVP_DIR)/firmware/config
 FIRMWARE_PATCHES := $(sort $(wildcard $(MVP_DIR)/firmware/patches/*.patch))
+# M11-7 (D-10's negative 1): the M11 firmware without the boundary
+# extension, from the same source and series, its configuration derived
+# from FIRMWARE_CONFIG with CONFIG_SBI_ECALL_DCOMMIT off (firmware/build.sh,
+# FIRMWARE_WITHOUT) and pinned by the lock's
+# MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256; negative 1's rows boot it alone.
+FIRMWARE_NB_BUILD := $(BUILD)/firmware-no-boundary
+FIRMWARE_NB_BIN := $(FIRMWARE_NB_BUILD)/platform/generic/firmware/fw_dynamic.bin
+FIRMWARE_NB_ELF := $(FIRMWARE_NB_BUILD)/platform/generic/firmware/fw_dynamic.elf
 
 .DEFAULT_GOAL := all
 -include $(MVP_DIR)/guest.mk
@@ -1262,6 +1270,98 @@ partition-check: partition-base-check partition-backend image variants \
 # dry run boots k3-like's row with a stand-in QEMU.
 qemu-test sessions uboot-rehearsal run-tool-check: $(PARTITION_CHECK_RECORDS)
 
+# --- the boundary's own negatives (M11-7; planning/mvp-m11-plan.md, D-10)
+# Each negative's tree (tests/boundary-negatives.py tree): two-guests'
+# plain step-1 tree by one named edit, compiled as the backend compiles;
+# its tables, the pair's, but boundary-no-window's, which the backend makes
+# from that negative's descriptor; and its record, the independent
+# checker's refusal of that tree with the checker's reason. The run
+# harness admits a refused tree only for the run that declares that
+# negative and that reason (tests/check-boundary.py gate, A-9). $(1)
+# negative
+BOUNDARY_NEGATIVES := $(if $(filter on,$(MVP_BOUNDARY)),boundary-no-identity \
+	boundary-identity boundary-two-narrow boundary-wrong-boot \
+	boundary-no-list boundary-no-window boundary-no-cold-boot)
+# The negatives' runs (two-guests' variants of the same names, and
+# boundary-absent under the firmware without the extension); every
+# negative but boundary-no-cold-boot, which no run may boot.
+BOUNDARY_NEGATIVE_RUNS := $(if $(BOUNDARY_NEGATIVES),boundary-absent \
+	$(filter-out boundary-no-cold-boot,$(BOUNDARY_NEGATIVES)))
+BOUNDARY_NEGATIVES_TOOL := $(MVP_DIR)/tests/boundary-negatives.py
+negative_dir = $(BUILD)/partition/two-guests/negatives/$(1)
+negative_record = $(call negative_dir,$(1))/record.json
+PARTITION_CHECK_ARGS_two-guests = $(PARTITION_CHECK) \
+	--descriptor $(call partition_descriptor,two-guests,two-guests) \
+	--partition-authority $(PARTITION_AUTHORITY_two-guests) \
+	--scenario $(MVP_DIR)/scenarios/two-guests/scenario.json \
+	--layout $(MVP_DIR)/src/mvp-layout.h --base-dts $(PARTITION_BASE_plain) \
+	--firmware-elf $(FIRMWARE_ELF) \
+	--image-elf $(call partition_elf,two-guests,gcc,two-guests) \
+	--nm $(MVP_TOOL_cross_nm_command) \
+	--readelf $(MVP_TOOL_cross_readelf_command) \
+	--control-hart $(PARTITION_CONTROL_HART)
+define boundary_negative_rule
+$(call negative_dir,$(1))/$(1).dtb $(call negative_dir,$(1))/$(1)-pmp.json \
+$(call negative_record,$(1)) &: $(BOUNDARY_NEGATIVES_TOOL) \
+		$(PARTITION_BACKEND) $(PARTITION_CHECK) \
+		$(call partition_backend_dts,two-guests,two-guests,plain) \
+		$(call partition_backend_pmp,two-guests,two-guests,plain) \
+		$(call partition_descriptor,two-guests,two-guests) \
+		$(PARTITION_AUTHORITY_two-guests) $(PARTITION_BASE_plain) \
+		$(PARTITION_WARN_plain) $(FIRMWARE_ELF) \
+		$(call partition_elf,two-guests,gcc,two-guests) \
+		$(MVP_DIR)/scenarios/two-guests/scenario.json \
+		$(MVP_DIR)/src/mvp-layout.h
+	rm -rf -- $(call negative_dir,$(1))
+	$$(PYTHON) -I -B $(BOUNDARY_NEGATIVES_TOOL) tree --name $(1) \
+		--dts $(call partition_backend_dts,two-guests,two-guests,plain) \
+		--include $(PARTITION_BASE_DIR) --dtc $$(MVP_TOOL_dtc_command) \
+		--descriptor $(call partition_descriptor,two-guests,two-guests) \
+		--authority $(PARTITION_AUTHORITY_two-guests) \
+		--out $(call negative_dir,$(1))
+	$(if $(filter boundary-no-window,$(1)),$$(PYTHON) -I -B \
+		$(PARTITION_BACKEND) \
+		--descriptor $(call negative_dir,$(1))/descriptor.json \
+		--base-dts $(PARTITION_BASE_plain) \
+		--base-warnings $(PARTITION_WARN_plain) \
+		--firmware-elf $(FIRMWARE_ELF) --dtc $$(MVP_TOOL_dtc_command) \
+		--nm $$(MVP_TOOL_cross_nm_command) \
+		--readelf $$(MVP_TOOL_cross_readelf_command) \
+		--control-hart $(PARTITION_CONTROL_HART) \
+		--out $(call negative_dir,$(1))/backend && cp -- \
+		$(call negative_dir,$(1))/backend/two-guests-pmp.json,cp -- \
+		$(call partition_backend_pmp,two-guests,two-guests,plain)) \
+		$(call negative_dir,$(1))/$(1)-pmp.json
+	$$(PYTHON) -I -B $(BOUNDARY_NEGATIVES_TOOL) record --name $(1) \
+		--image two-guests --dtb $(call negative_dir,$(1))/$(1).dtb \
+		--tables $(call negative_dir,$(1))/$(1)-pmp.json \
+		--out $(call negative_record,$(1)) -- \
+		$$(PYTHON) -I -B $$(PARTITION_CHECK_ARGS_two-guests)
+endef
+$(foreach n,$(BOUNDARY_NEGATIVES),$(eval $(call \
+	boundary_negative_rule,$(n))))
+BOUNDARY_NEGATIVE_RECORDS := $(foreach n,$(BOUNDARY_NEGATIVES),\
+	$(call negative_record,$(n)))
+# The tool's self-test, then the gate on every record against every
+# negative run's declaration and two-guests' own: each record admitted for
+# its own run alone, boundary-no-cold-boot's for none.
+.PHONY: boundary-negatives-check
+boundary-negatives-check: $(BOUNDARY_NEGATIVE_RECORDS) $(MVP_EXPECT)
+	$(PYTHON) -I -B $(BOUNDARY_NEGATIVES_TOOL) --self-test \
+		--scratch $(TMPDIR)/boundary-negatives-self-test
+	$(if $(BOUNDARY_NEGATIVES),$(PYTHON) -I -B $(BOUNDARY_NEGATIVES_TOOL) \
+		gates --checker $(MVP_DIR)/tests/check-boundary.py \
+		--expect-dir $(MVP_SCENARIO_GEN_two-guests)/expect \
+		$(foreach r,two-guests $(BOUNDARY_NEGATIVE_RUNS),--run $(r)) \
+		$(foreach n,$(BOUNDARY_NEGATIVES),--negative \
+		$(n):$(call negative_dir,$(n))))
+qemu-test: $(if $(BOUNDARY_NEGATIVES),boundary-negatives-check \
+	firmware-no-boundary)
+# The board tools' dry run runs boundary-two-narrow's row under that
+# negative's tree, admitted by its record, then refused with the tree
+# changed (its boundary-gate case, A-9).
+run-tool-check: $(BOUNDARY_NEGATIVE_RECORDS)
+
 # --- the hostile-monitor hook (M11-7)
 # Each breach image's table (tools/gen-breach.py table), its two hook
 # objects, built with its own flags beside its runtime objects, and, after
@@ -1562,6 +1662,7 @@ variant_elf = $(if $(filter $(2),$(MVP_OWN_MONITOR_VARIANTS)),$(BUILD)/variants/
 reference_specs = \
 	$(call reference_spec,two-guests,$(MVP_SCENARIO_GEN_two-guests)/expect/two-guests.json,$(MVP_ELF_$(1)),$(MVP_BOOT_IMG_$(1)),$(MVP_GUEST_DTB_G0),$(MVP_GUEST_DTB_G1)) \
 	$(foreach e,no-sstc firmware-version,$(call reference_spec,$(e),$(MVP_SCENARIO_GEN_two-guests)/expect/$(e).json,$(call off_dir,$(1),two-guests-off)/be-mvp.elf,$(call off_dir,$(1),two-guests-off)/be-mvp-boot.img,$(MVP_GUEST_DTB_G0),$(MVP_GUEST_DTB_G1))) \
+	$(foreach e,$(BOUNDARY_NEGATIVE_RUNS),$(call reference_spec,$(e),$(MVP_SCENARIO_GEN_two-guests)/expect/$(e).json,$(MVP_ELF_$(1)),$(MVP_BOOT_IMG_$(1)),$(MVP_GUEST_DTB_G0),$(MVP_GUEST_DTB_G1))) \
 	$(foreach v,$(MVP_VARIANTS),$(v):$(MVP_SCENARIO_GEN_two-guests)/expect/$(v).json:$(call variant_elf,$(1),$(v)):$(MVP_VARIANT_BOOT_IMG_$(1)_$(v)):$(call variant_kernel,$(v)):$(call variant_dtb0,$(v)):$(call variant_dtb1,$(v))) \
 	$(foreach p,$(MVP_PROBES),$(call reference_spec,$(p),$(MVP_SCENARIO_GEN_two-guests)/expect/$(p).json,$(BUILD)/probes/$(1)/$(p)/be-mvp.elf,$(BUILD)/probes/$(1)/$(p)/be-mvp-boot.img,$(MVP_GUEST_DTB_G0),$(MVP_GUEST_DTB_G1))) \
 	$(foreach o,$(MVP_OFF_COPIES),$(call reference_spec,$(o),$(MVP_SCENARIO_GEN_$(OFF_SCENARIO_$(o)))/expect/$(o).json,$(call off_dir,$(1),$(o))/be-mvp.elf,$(call off_dir,$(1),$(o))/be-mvp-boot.img,$(OFF_DTB0_$(o)),$(OFF_DTB1_$(o)))) \
@@ -1666,11 +1767,7 @@ $(FIRMWARE_SOURCE_STAMP): $(MVP_DIR)/firmware/pins.mk \
 		  printf 'tree=%s\n' '$(MVP_FIRMWARE_TREE)'; } >'$@.part'; \
 		/usr/bin/mv -- '$@.part' '$@'
 
-$(FIRMWARE_BIN): $(FIRMWARE_SOURCE_STAMP) \
-		$(MVP_DIR)/firmware/build.sh $(MVP_DIR)/firmware/pins.mk \
-		$(FIRMWARE_SERIES) $(FIRMWARE_CONFIG) $(FIRMWARE_PATCHES) \
-		$(MVP_DIR)/tools/lock/tool-lock.conf
-	FIRMWARE_COMMIT='$(MVP_FIRMWARE_COMMIT)' \
+FIRMWARE_BUILD_ENV = FIRMWARE_COMMIT='$(MVP_FIRMWARE_COMMIT)' \
 		FIRMWARE_TREE='$(MVP_FIRMWARE_TREE)' \
 		FIRMWARE_SERIES='$(FIRMWARE_SERIES)' \
 		FIRMWARE_CONFIG='$(FIRMWARE_CONFIG)' \
@@ -1681,17 +1778,33 @@ $(FIRMWARE_BIN): $(FIRMWARE_SOURCE_STAMP) \
 		MVP_FIRMWARE_TOOL_AR='$(MVP_TOOL_cross_ar_command)' \
 		MVP_FIRMWARE_TOOL_LD='$(MVP_TOOL_cross_ld_command)' \
 		MVP_FIRMWARE_TOOL_OBJCOPY='$(MVP_TOOL_cross_objcopy_command)' \
-		MVP_FIRMWARE_TOOL_DTC='$(MVP_TOOL_dtc_command)' \
+		MVP_FIRMWARE_TOOL_DTC='$(MVP_TOOL_dtc_command)'
+FIRMWARE_INPUTS := $(FIRMWARE_SOURCE_STAMP) \
+		$(MVP_DIR)/firmware/build.sh $(MVP_DIR)/firmware/pins.mk \
+		$(FIRMWARE_SERIES) $(FIRMWARE_CONFIG) $(FIRMWARE_PATCHES) \
+		$(MVP_DIR)/tools/lock/tool-lock.conf
+$(FIRMWARE_BIN): $(FIRMWARE_INPUTS)
+	$(FIRMWARE_BUILD_ENV) \
 		$(MVP_DIR)/firmware/build.sh $(FIRMWARE_SRC) $(FIRMWARE_BUILD)
 
 $(FIRMWARE_ELF): $(FIRMWARE_BIN)
 	test -s "$@"
 
-.PHONY: firmware-source firmware
+$(FIRMWARE_NB_BIN): $(FIRMWARE_INPUTS)
+	$(FIRMWARE_BUILD_ENV) FIRMWARE_WITHOUT=CONFIG_SBI_ECALL_DCOMMIT \
+		$(MVP_DIR)/firmware/build.sh $(FIRMWARE_SRC) $(FIRMWARE_NB_BUILD)
+
+$(FIRMWARE_NB_ELF): $(FIRMWARE_NB_BIN)
+	test -s "$@"
+
+.PHONY: firmware-source firmware firmware-no-boundary
 firmware-source: $(FIRMWARE_SOURCE_STAMP)
 
 firmware: tool-lock-check $(FIRMWARE_BIN)
 	$(MVP_FIRMWARE_PIN_CHECK)
+
+firmware-no-boundary: tool-lock-check $(FIRMWARE_NB_BIN)
+	$(MVP_FIRMWARE_NB_PIN_CHECK)
 
 # The firmware's own tests (planning/mvp-m11-plan.md, M11-6): the host
 # tests of the series' two pure decisions, built from the patched header

@@ -101,6 +101,18 @@
 # (breach-plan.json beside its ELF): OUT_DIR/TOOLCHAIN-NAME.ATTEMPT.
 # breach.txt. Such a run passes only when that judge passes too.
 #
+# M11-7 (D-10's negatives): two-guests' own boot image, boundary-on on
+# k3-like under plain PMP, for each toolchain in
+# BE_MVP_QEMU_VARIANT_TOOLCHAINS, against the expectation of each negative
+# (BUILD_DIR/gen/expect/NAME.json): boundary-absent under the pair's tree
+# and the firmware without the boundary extension, BE_MVP_NO_BOUNDARY_FIRMWARE
+# (its SHA-256 the lock's MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256, checked
+# before the suite and before each run; the oracle and check-boundary read
+# the record table of its own ELF beside it); every other under its own
+# tree and tables (BUILD_DIR/partition/two-guests/negatives/NAME/), which
+# the gate admits only by that tree's own record (record.json there), for
+# the run that declares that negative and the checker's refusal of it.
+#
 # QEMU's boot hart is a lottery (planning research 2). A boot hart that is
 # a domain hart of its run is refused, as Plan revision M0-A.2 declares:
 # the checker's REFUSED verdict, a precondition failing rather than an
@@ -315,6 +327,15 @@ cap_store_control=
 # self-report-flip.
 anchor_variants=(secret-shared response-writable wrong-measurement
 	no-grant-check self-report-flip)
+# M11-7: the boundary negatives' runs, each "run firmware-role" (the plain
+# monitor only, where the build made their expectations).
+negative_runs=()
+[ "$monitor" != riscv ] || [ ! -e "$expect_dir/boundary-absent.json" ] ||
+	negative_runs=("boundary-absent no-boundary" "boundary-no-identity base"
+		"boundary-identity base" "boundary-two-narrow base"
+		"boundary-wrong-boot base" "boundary-no-list base"
+		"boundary-no-window base")
+no_boundary_firmware=${BE_MVP_NO_BOUNDARY_FIRMWARE:-}
 # M11-7: the breach rows, each "run image CPU oracle-fields" (the plain
 # monitor only): the boundary-on images in both PMP modes, and their -off
 # copies under QEMU's own tree (their expectations declare no boundary).
@@ -431,6 +452,11 @@ for toolchain in "${variant_toolchains[@]}"; do
 		wanted "anchor/$toolchain/$name" || continue
 		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 base $firmware_sbi $anchor_dir/expect/$name.json $anchor_dir/authority-report.json $measured")
 	done
+	for entry in "${negative_runs[@]}"; do
+		read -r name role <<<"$entry"
+		wanted "variant/$toolchain/$name" || continue
+		runs+=("$toolchain/$name $(row_elf "$toolchain" '' two-guests) $k3_machine $k3_cpu $oracle_k3 $role $firmware_sbi $expect_dir/$name.json - -")
+	done
 	for entry in "${breach_runs[@]}"; do
 		read -r name image cpu machine_class pmp menvcfg mseccfg boundary \
 			<<<"$entry"
@@ -440,14 +466,28 @@ for toolchain in "${variant_toolchains[@]}"; do
 done
 earlier_firmware=${BE_MVP_EARLIER_FIRMWARE:-}
 needs_earlier=0
+needs_no_boundary=0
 for entry in "${runs[@]}"; do
 	read -r _ _ _ _ _ _ _ _ _ firmware_role _ _ _ _ <<<"$entry"
 	case $firmware_role in
 	base) ;;
 	earlier) needs_earlier=1 ;;
+	no-boundary) needs_no_boundary=1 ;;
 	*) printf 'unknown firmware role %s\n' "$firmware_role" >&2; exit 2 ;;
 	esac
 done
+if [ "$needs_no_boundary" = 1 ]; then
+	[ -n "$no_boundary_firmware" ] ||
+		{ printf 'boundary-absent requires BE_MVP_NO_BOUNDARY_FIRMWARE\n' >&2; exit 2; }
+	[ -r "$no_boundary_firmware" ] ||
+		{ printf 'BE_MVP_NO_BOUNDARY_FIRMWARE %s is not readable\n' "$no_boundary_firmware" >&2; exit 2; }
+	no_boundary_pin=$(sed -n 's/^MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256=\([0-9a-f]\{64\}\)$/\1/p' -- "$lock")
+	[ -n "$no_boundary_pin" ] ||
+		{ printf '%s pins no firmware without the boundary extension (MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256)\n' "$lock" >&2; exit 2; }
+	pinned_firmware "$no_boundary_firmware" "$no_boundary_pin" \
+		"the lock's MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256" \
+		BE_MVP_NO_BOUNDARY_FIRMWARE
+fi
 if [ "$needs_earlier" = 1 ]; then
 	[ "$monitor" = riscv ] ||
 		{ printf 'the CHERI-aware monitor has no firmware-version run\n' >&2; exit 2; }
@@ -472,6 +512,12 @@ expect_field() {
 	"$python" -I -B -c 'import json, sys
 print(json.load(open(sys.argv[1]))[sys.argv[2]])' "$1" "$2"
 }
+# M11-7: one field of an expectation's boundary section, or -.
+boundary_field() {
+	"$python" -I -B -c 'import json, sys
+boundary = json.load(open(sys.argv[1])).get("boundary") or {}
+print(boundary.get(sys.argv[2], "-"))' "$1" "$2"
+}
 # M11-7: whether a run's expectation is a breach image's (its "breach"
 # section): yes or no.
 breach_image() {
@@ -488,7 +534,15 @@ for entry in "${runs[@]}"; do
 			{ printf '%s declares the boundary, but its row %s has no PMP mode\n' "$expect" "$label" >&2; exit 2; }
 		[ -r "$firmware_elf" ] || missing+=("$firmware_elf")
 		[ -x "$nm_tool" ] || missing+=("the lock's nm ($lock)")
+		negative=$(boundary_field "$expect" refusal)
+		if [ "$negative" != - ]; then
+			negative=$build/partition/two-guests/negatives/$(boundary_field "$expect" negative)
+			[ -r "$negative/record.json" ] || missing+=("$negative/record.json")
+		fi
 	fi
+	[[ $entry != *" no-boundary "* ]] ||
+		[ -r "${no_boundary_firmware%.bin}.elf" ] ||
+		missing+=("${no_boundary_firmware%.bin}.elf")
 	if [ -r "$expect" ] && [ "$(breach_image "$expect")" = yes ]; then
 		[ -r "${elf%/*}/breach-plan.json" ] ||
 			missing+=("${elf%/*}/breach-plan.json")
@@ -520,12 +574,21 @@ pinned_role() {
 	base)
 		pinned_base
 		run_firmware=$firmware
+		run_firmware_elf=$firmware_elf
 		;;
 	earlier)
 		pinned_firmware "$earlier_firmware" "$earlier_pin" \
 			"the lock's MVP_PIN_OPENSBI_BIN_SHA256" \
 			BE_MVP_EARLIER_FIRMWARE
 		run_firmware=$earlier_firmware
+		run_firmware_elf=-
+		;;
+	no-boundary)
+		pinned_firmware "$no_boundary_firmware" "$no_boundary_pin" \
+			"the lock's MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256" \
+			BE_MVP_NO_BOUNDARY_FIRMWARE
+		run_firmware=$no_boundary_firmware
+		run_firmware_elf=${no_boundary_firmware%.bin}.elf
 		;;
 	*)
 		printf 'unknown firmware role %s\n' "$1" >&2
@@ -586,7 +649,7 @@ boot() {
 		# M11-7: a boundary-on run, its tree, its PMP mode, the
 		# firmware's commit records, and its declared words.
 		boundary_arg=(--boundary-on --pmp-mode "$boundary"
-			--record-table "$firmware_elf" --nm "$nm_tool"
+			--record-table "$run_firmware_elf" --nm "$nm_tool"
 			--words "$stem.words.json")
 		tree_arg=(-dtb "$dtb")
 		;;
@@ -621,6 +684,7 @@ run() {
 	local hart sha check elf_sha reported=() addition=$cheri_cpu
 	local oracle_verdict oracle_detail oracle_failure=''
 	local pair mode=off dtb=- tables=- record=- authority=- dtb_sha=-
+	local negative
 	local scenario_name limit=$max_attempts boundary_verdict
 	local boundary_failure='' breach=no plan=- breach_words=- extra=()
 	local breach_verdict breach_failure=''
@@ -647,6 +711,14 @@ run() {
 		dtb=$build/partition/$scenario_name/$pair/$mode/$pair.dtb
 		tables=$build/partition/$scenario_name/$pair/$mode/$pair-pmp.json
 		record=$build/records/partition/$mode/$toolchain/$scenario_name/$pair.json
+		# A boundary negative whose tree the checker refuses runs under
+		# that tree, admitted only by its own record (A-9).
+		if [ "$(boundary_field "$expect" refusal)" != - ]; then
+			negative=$build/partition/$scenario_name/negatives/$(boundary_field "$expect" negative)
+			dtb=$negative/${negative##*/}.dtb
+			tables=$negative/${negative##*/}-pmp.json
+			record=$negative/record.json
+		fi
 		authority=$build/gen/partition/$scenario_name/authority-report.json
 		if ! check=$("$python" -I -B "$boundary_checker" gate \
 			--expect "$expect" --record "$record" --dtb "$dtb" \
@@ -707,7 +779,7 @@ print(fields.get("boot_hart", "none"))' "$stem.result.json" 2>/dev/null || echo 
 				--console "$stem.console.log" --expect "$expect" \
 				--tables "$tables" --pmp-mode "$mode" \
 				--partition-authority "$authority" \
-				--firmware-elf "$firmware_elf" --nm "$nm_tool" \
+				--firmware-elf "$run_firmware_elf" --nm "$nm_tool" \
 				--layout "$layout_header" \
 				--boundary-header "$boundary_header" \
 				--out "$stem.boundary.txt" >/dev/null 2>&1 || true

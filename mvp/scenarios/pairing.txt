@@ -5,8 +5,19 @@
 # planning/mvp-m11-plan.md, D-3, "Pairing"), each with the image whose
 # descriptor, identity, and device tree it runs under: payload boots
 # two-guests' monitor, and self-report-flip is anchor's monitor with one
-# bit flipped after the link. Every other image pairs with itself. The
+# bit flipped after the link. The boundary's negatives (D-10) boot
+# two-guests' image itself: boundary-absent under its tree and the firmware
+# without the boundary extension, every other under its own edited tree
+# (tests/boundary-negatives.py), which the run harness admits by that
+# tree's own record alone. Every other image pairs with itself. The
 # Makefile, tests/run-qemu.sh, and tests/check-image.py read this file,
 # and nothing else states a pairing.
 payload two-guests
 self-report-flip anchor
+boundary-absent two-guests
+boundary-no-identity two-guests
+boundary-identity two-guests
+boundary-two-narrow two-guests
+boundary-wrong-boot two-guests
+boundary-no-list two-guests
+boundary-no-window two-guests

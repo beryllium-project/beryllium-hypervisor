@@ -1415,7 +1415,8 @@ def default_paths(root, toolchain, expect):
     """The reference and boot image of EXPECT's image as the build lays
     them out (mvp/Makefile): references/TOOLCHAIN/IMAGE.json, and the
     boot image of the scenario (two-guests' under TOOLCHAIN/; retained
-    sbi-3.0 records have the same shape; te-poc's and anchor's under
+    sbi-3.0 records have the same shape, and M11-7's boundary negatives,
+    whose expectations name one, run it; te-poc's and anchor's under
     TOOLCHAIN/SCENARIO/), of the scenario's off copy for no-sstc and the
     live firmware-version negative (variants/TOOLCHAIN/SCENARIO-off/), a
     variant (variants/TOOLCHAIN/VARIANT/), or a probe
@@ -1423,11 +1424,13 @@ def default_paths(root, toolchain, expect):
     their place."""
     root, image = pathlib.Path(root), expect["image"]
     scenario = expect["scenario"]
+    negative = (expect.get("boundary") or {}).get("negative")
     if (expect.get("outcome") or {}).get("probe"):
         boot = root / "probes" / toolchain / image
     elif image in OFF_COPY_RUNS:
         boot = root / "variants" / toolchain / f"{scenario}-off"
-    elif image == scenario or image in SCENARIO_IMAGE_RUNS:
+    elif image == scenario or image in SCENARIO_IMAGE_RUNS or \
+            negative == image:
         boot = root / toolchain / ("" if scenario == "two-guests" else
                                    scenario)
     else:

@@ -17,11 +17,17 @@
 #          explicitly.
 # Scope:   the upstream default generic configuration followed by the
 #          overrides in FIRMWARE_CONFIG. OUT is scratch under build/.
+#          FIRMWARE_WITHOUT (M11-7, D-10's negative 1) names the one setting
+#          that FIRMWARE_CONFIG turns on as =y and that this build turns
+#          off: the derived configuration differs from the committed one in
+#          exactly that line (OUT/config), or the build stops; such a build
+#          goes to a build tree's firmware-no-boundary directory alone.
 #
 #   build.sh SOURCE OUT
 #
 # Environment: FIRMWARE_COMMIT, FIRMWARE_TREE, FIRMWARE_SERIES (the series
-# file; the patches are beside it), FIRMWARE_CONFIG, and MVP_FIRMWARE_TOOL_*.
+# file; the patches are beside it), FIRMWARE_CONFIG, MVP_FIRMWARE_TOOL_*,
+# and, for the firmware without the boundary extension, FIRMWARE_WITHOUT.
 set -euo pipefail
 
 fail() {
@@ -50,9 +56,18 @@ case $src:$out:$FIRMWARE_SERIES:$FIRMWARE_CONFIG in
 *) fail "SOURCE, OUT, FIRMWARE_SERIES and FIRMWARE_CONFIG must be absolute" ;;
 esac
 # OUT is emptied first, so only a build tree's firmware directory is taken:
-# build/mvp/firmware, or a variant's build/mvp.MONITOR.FLAVOUR/firmware.
-[[ $out =~ /build/mvp(\.[a-z]+\.[a-z-]+)?/firmware$ ]] ||
-	fail "OUT is not a build tree's firmware directory: $out"
+# build/mvp/firmware, or a variant's build/mvp.MONITOR.FLAVOUR/firmware;
+# the build without a setting, its firmware-no-boundary directory alone.
+without=${FIRMWARE_WITHOUT:-}
+if [ -n "$without" ]; then
+	[[ $without =~ ^CONFIG_[A-Z0-9_]+$ ]] ||
+		fail "FIRMWARE_WITHOUT is not a Kconfig symbol: $without"
+	[[ $out =~ /build/mvp/firmware-no-boundary$ ]] ||
+		fail "OUT is not a build tree's firmware-no-boundary directory: $out"
+else
+	[[ $out =~ /build/mvp(\.[a-z]+\.[a-z-]+)?/firmware$ ]] ||
+		fail "OUT is not a build tree's firmware directory: $out"
+fi
 case $MVP_FIRMWARE_TOOL_CC in
 /*-gcc) ;;
 *) fail "MVP_FIRMWARE_TOOL_CC is not an absolute cross gcc: $MVP_FIRMWARE_TOOL_CC" ;;
@@ -100,9 +115,28 @@ while IFS= read -r line || [ -n "$line" ]; do
 	fail "$FIRMWARE_CONFIG: not a setting: $line"
 done <"$FIRMWARE_CONFIG"
 [ "${#settings[@]}" -gt 0 ] || fail "$FIRMWARE_CONFIG holds no setting"
+# The derivation: the one line that sets FIRMWARE_WITHOUT=y, and no other
+# that names it, becomes its "is not set" form; nothing else changes.
+if [ -n "$without" ]; then
+	named=0
+	changed=0
+	for index in "${!settings[@]}"; do
+		case ${settings[index]} in
+		"$without=y")
+			settings[index]="# $without is not set"
+			changed=$((changed + 1))
+			named=$((named + 1))
+			;;
+		"$without="* | "# $without is not set") named=$((named + 1)) ;;
+		esac
+	done
+	[ "$changed" = 1 ] && [ "$named" = 1 ] ||
+		fail "$FIRMWARE_CONFIG does not set $without=y in exactly one line"
+fi
 
 /usr/bin/rm -rf -- "$out"
 /usr/bin/mkdir -p -- "$out/home" "$out/tmp"
+[ -z "$without" ] || printf '%s\n' "${settings[@]}" >"$out/config"
 
 # The copy: the pinned commit, checked out of the source, then patched.
 copy=$out/source
@@ -149,6 +183,7 @@ status=$("$MVP_FIRMWARE_TOOL_GIT" -C "$src" status --porcelain --ignored \
 	printf 'source_date_epoch=0\nopensbi_version_git=empty\n'
 	printf 'archive_flags=rcsD\n'
 	printf 'parallel_jobs=3\nbinary=platform/generic/firmware/fw_dynamic.bin\n'
+	[ -z "$without" ] || printf 'without=%s\nconfig=config\n' "$without"
 } >"$out/FIRMWARE-BUILD.txt"
 printf 'BE_MVP_FIRMWARE_BUILD: PASS commit=%s tree=%s patches=%s patched_tree=%s binary=%s\n' \
 	"$commit" "$tree" "${#patches[@]}" "$patched_tree" "$binary"

@@ -81,6 +81,13 @@
 #                     selected firmware changes as its first QEMU run starts
 #                     refused before its second; firmware-version without
 #                     BE_MVP_EARLIER_FIRMWARE refused before QEMU
+#   boundary-gate     tests/run-qemu.sh's gate for a boundary-on run (M11-7,
+#                     A-9), on a mirror of BUILD_DIR whose two trees are
+#                     copies: gcc/k3-like and variant/gcc/boundary-two-narrow
+#                     under their trees as their records admit them, one
+#                     stand-in QEMU start each; with one byte of each tree
+#                     changed after its record, each FAIL attempts=0 with
+#                     the gate's reason, and no QEMU start
 #   evaluate-environment  ./mvp/mvp evaluate on the wrapper's copy with a
 #                     stand-in evaluate.sh: only the wrapper's variables,
 #                     the evaluator's settings, and the admitted arguments
@@ -1209,6 +1216,82 @@ grep -qF "BE_MVP_EVALUATE: FAIL MVP_OPENSBI_FW $fw/changed.bin has SHA-256 $chan
 [ "$(find "$evaluator_records" -mindepth 1 -maxdepth 1 2>/dev/null | LC_ALL=C sort || true)" = "$records_before" ] ||
 	fail "firmware-pin: the evaluator made a record for the firmware it refused"
 pass firmware-pin "one changed byte of the base and of the earlier firmware: each refused by its launchers before QEMU, the earlier firmware by the evaluator before a record; pinned bytes passed to each next step; each selected firmware rechecked before the next run; firmware-version without the earlier firmware refused"
+
+# ------------------------------------------------------- the boundary's gate
+# M11-7 (A-9): tests/run-qemu.sh starts a boundary-on run only under a tree
+# that its record admits (tests/check-boundary.py gate): the partition
+# checker's passing record of the pair's tree, or, for a run that declares
+# a boundary negative, that tree's own record. The runs: gcc/k3-like, under
+# two-guests' plain tree, and variant/gcc/boundary-two-narrow, under its
+# negative's tree, on a BUILD_DIR that mirrors this one by symbolic links
+# but for those two trees, each a copy (run-qemu.sh writes nothing under
+# BUILD_DIR). As copied, each run passes the gate and starts the stand-in
+# QEMU once; with one byte of each tree changed after its record, each run
+# ends FAIL, attempts=0, with the gate's reason, and QEMU never starts.
+gate=$out/boundary-gate
+[ -r "$expect_dir/boundary-two-narrow.json" ] ||
+	fail "boundary-gate: BUILD_DIR has no boundary negative's expectation (run-tool-check needs the boundary-on build, MVP_BOUNDARY=on)"
+# shadow SOURCE MIRROR PATH: MIRROR holds a symbolic link to each entry of
+# SOURCE, but for PATH (relative), a copy, each directory on the way to it
+# a directory of such links.
+shadow() {
+	local source=$1 mirror=$2 path=$3 head=${3%%/*} entry
+	if [ -L "$mirror" ]; then
+		rm -- "$mirror"
+	fi
+	mkdir -p -- "$mirror"
+	for entry in "$source"/*; do
+		[ -e "$mirror/${entry##*/}" ] || [ -L "$mirror/${entry##*/}" ] ||
+			ln -s -- "$entry" "$mirror/${entry##*/}"
+	done
+	if [ "$head" = "$path" ]; then
+		rm -f -- "$mirror/$head"
+		cp -R -- "$source/$head" "$mirror/$head"
+	else
+		shadow "$source/$head" "$mirror/$head" "${path#*/}"
+	fi
+}
+plain_tree=partition/two-guests/two-guests/plain
+narrow_tree=partition/two-guests/negatives/boundary-two-narrow
+shadow "$build" "$gate/build" "$plain_tree"
+shadow "$build" "$gate/build" "$narrow_tree"
+for tree in "$plain_tree/two-guests" "$narrow_tree/boundary-two-narrow"; do
+	cmp -s -- "$build/$tree.dtb" "$gate/build/$tree.dtb" &&
+		[ ! -L "$gate/build/$tree.dtb" ] ||
+		fail "boundary-gate: $tree.dtb is not a copy of the build's"
+done
+expect boundary-gate-admitted 1 env QEMU="$fw/qemu" \
+	FAKE_QEMU_LOG="$gate/qemu-admitted.log" \
+	"$here/run-qemu.sh" "$gate/build" "$fw/base-pinned.bin" \
+	"$gate/admitted" gcc/k3-like variant/gcc/boundary-two-narrow
+[ "$(wc -l <"$gate/qemu-admitted.log")" = 2 ] ||
+	fail "boundary-gate: the trees as their records admit them did not start QEMU once for each run"
+! grep -q 'attempts=0' "$out/boundary-gate-admitted.txt" ||
+	fail "boundary-gate: a run under a tree its record admits made no attempt"
+for tree in "$plain_tree/two-guests" "$narrow_tree/boundary-two-narrow"; do
+	was=$(sha "$gate/build/$tree.dtb")
+	flip_byte "$gate/build/$tree.dtb"
+	now=$(sha "$gate/build/$tree.dtb")
+	[ "$was" != "$now" ] || fail "boundary-gate: $tree.dtb did not change"
+	printf '%s %s\n' "$was" "$now" >>"$gate/changed.txt"
+done
+expect boundary-gate-refused 1 env QEMU="$fw/qemu" \
+	FAKE_QEMU_LOG="$gate/qemu-refused.log" \
+	"$here/run-qemu.sh" "$gate/build" "$fw/base-pinned.bin" \
+	"$gate/refused" gcc/k3-like variant/gcc/boundary-two-narrow
+[ ! -e "$gate/qemu-refused.log" ] ||
+	fail "boundary-gate: run-qemu.sh started QEMU under a tree its record does not admit"
+run=0
+while read -r was now; do
+	run=$((run + 1))
+	label=$([ "$run" = 1 ] && echo gcc/k3-like || echo gcc/boundary-two-narrow)
+	grep -qF "BE_MVP_QEMU[$label]: FAIL attempts=0 refused=0 boot_harts= qemu_exit=- (BE_MVP_BOUNDARY_GATE: REFUSE the partition record's dtb_sha256 is '$was', not '$now')" \
+		"$out/boundary-gate-refused.txt" ||
+		fail "boundary-gate: $label did not end FAIL with no attempt and the gate's reason"
+done <"$gate/changed.txt"
+grep -qF 'BE_MVP_QEMU: FAIL' "$out/boundary-gate-refused.txt" ||
+	fail "boundary-gate: the suite under the changed trees did not fail"
+pass boundary-gate "gcc/k3-like and variant/gcc/boundary-two-narrow: under their trees as their records admit them, one QEMU start each; with one byte of each tree changed after its record, FAIL attempts=0 with the gate's reason, and no QEMU start"
 
 # ------------------------------------------------- the evaluator's environment
 # ./mvp/mvp evaluate and tools/evaluator/evaluate.sh keep the clean

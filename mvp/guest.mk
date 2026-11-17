@@ -125,6 +125,14 @@ MVP_FIRMWARE_PIN_CHECK = @digest=$$(sha256sum <'$(FIRMWARE_BIN)' | cut -d' ' -f1
 	echo "BE_MVP_FIRMWARE: PASS $(FIRMWARE_BIN) sha256=$$digest" || \
 	{ echo "BE_MVP_FIRMWARE: FAIL $(FIRMWARE_BIN) has SHA-256 $${digest:-none}, not the lock's MVP_PIN_FIRMWARE_BIN_SHA256 $(MVP_PIN_FIRMWARE_BIN_SHA256)" >&2; \
 	exit 1; }
+# M11-7: the M11 firmware without the boundary extension (D-10's negative
+# 1), against its own pin.
+FIRMWARE_NB_BIN ?= $(BUILD)/firmware-no-boundary/platform/generic/firmware/fw_dynamic.bin
+MVP_FIRMWARE_NB_PIN_CHECK = @digest=$$(sha256sum <'$(FIRMWARE_NB_BIN)' | cut -d' ' -f1) && \
+	[ "$$digest" = '$(MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256)' ] && \
+	echo "BE_MVP_FIRMWARE_NO_BOUNDARY: PASS $(FIRMWARE_NB_BIN) sha256=$$digest" || \
+	{ echo "BE_MVP_FIRMWARE_NO_BOUNDARY: FAIL $(FIRMWARE_NB_BIN) has SHA-256 $${digest:-none}, not the lock's MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256 $(MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256)" >&2; \
+	exit 1; }
 
 # The guest kernel source: upstream v7.2, B6's external input under BUILD,
 # never committed, at the tool lock's pins.

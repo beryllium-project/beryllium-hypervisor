@@ -76,8 +76,13 @@ value; and writes STEM.breach.txt, one line per row and the verdict line
 `gate` is the run harness's admission of a boundary-on run's device tree
 (D-3, D-10): the run starts only if the partition checker's record of the
 paired image (tests/check-partition.py --record) passed, names step 1's
-control hart, and gives this tree's and these tables' SHA-256; it prints
-`BE_MVP_BOUNDARY_GATE: ADMIT` or `REFUSE <reason>` and exits 0 or 1.
+control hart, and gives this tree's and these tables' SHA-256; or, for a
+run whose declaration names a boundary negative and the checker's refusal
+of its tree (M11-7, A-9), only by that tree's own record
+(tests/boundary-negatives.py record), which names that negative, the
+refusal declared, and this tree's and these tables' SHA-256. A negative's
+record admits no other run. It prints `BE_MVP_BOUNDARY_GATE: ADMIT` or
+`REFUSE <reason>` and exits 0 or 1.
 
 Every artifact names step 1: the tables document's and the declaration's
 control_hart is boot, and the result line says control_hart=boot. A
@@ -129,6 +134,7 @@ CFG_FORM = re.compile(r"pmpcfg=([0-9a-f]{32})")
 ADDR_FORM = re.compile(r"pmpaddr(0|8)=((?:0x[0-9a-f]{16},){7}0x[0-9a-f]{16})")
 FIRMWARE_ON = re.compile(r"BE_MVP:02 FIRMWARE_PROBED .* "
                          r"identity=(none|[0-9a-f]{64})")
+EXPECTED_DETAIL = re.compile(r"BE_MVP:DETAIL boundary=1 expected=([0-9a-f]{64})")
 DEFINE = re.compile(r"^#define\s+BE_MVP_(\w+)\s+BE_MVP_C\((0x[0-9a-fA-F]+|"
                     r"[0-9]+)\)", re.M)
 NOT_APPLICABLE = "BE_MVP_BOUNDARY: NOT-APPLICABLE boundary=off\n"
@@ -150,7 +156,8 @@ def declaration(expect):
     if not isinstance(boundary, dict):
         raise Refused("the expectation declares no boundary")
     known = {"control_hart", "pair", "identity", "record", "firmware",
-             "harts", "counts", "phase", "negative", "fallthrough"}
+             "harts", "counts", "phase", "negative", "refusal",
+             "fallthrough"}
     if set(boundary) - known or not {"control_hart", "pair", "record",
                                      "harts"} <= set(boundary):
         raise Refused("the boundary section is not of its form")
@@ -482,6 +489,13 @@ def judge(expect, record, text, tables, mode, authority, symbols,
                     match.group(1) not in digests:
                 findings.append(f"BE_MVP:02's identity {match.group(1)} is "
                                 f"not the banner's")
+    if named != boundary["pair"]:
+        # The monitor's DETAIL names its own identity, the paired image's.
+        shown_expected = EXPECTED_DETAIL.findall(text)
+        if shown_expected != [identities[boundary["pair"]]]:
+            findings.append(f"the DETAIL's expected identities "
+                            f"{shown_expected}, not {boundary['pair']}'s "
+                            f"{identities[boundary['pair']]}")
     for domain in boundary.get("phase", ()):
         if layout is None or header is None:
             raise Refused("phase words need the layout and mvp-boundary.h")
@@ -609,19 +623,33 @@ def breach_text(findings, lines, facts):
             f"words={facts['words']} devices={facts['devices']}\n")
 
 
+NEGATIVE_RECORD = "be-boundary-negative-v1"
+
+
 def gate(expect, record, dtb, tables):
     """The reasons a boundary-on run of EXPECT may not start under the tree
-    DTB with the tables TABLES (bytes), by the partition RECORD."""
+    DTB with the tables TABLES (bytes), by the partition RECORD: the
+    checker's passing record of the paired image's tree; or, for a run that
+    declares a boundary negative's refused tree (M11-7, A-9), that tree's
+    own record (tests/boundary-negatives.py), naming that negative and the
+    declared refusal."""
     boundary = declaration(expect)
     reasons = []
-    for key, wanted in (("result", "pass"), ("control_hart", "boot"),
-                        ("image", boundary["pair"]),
-                        ("dtb_sha256", hashlib.sha256(dtb).hexdigest()),
-                        ("tables_sha256",
-                         hashlib.sha256(tables).hexdigest())):
-        if record.get(key) != wanted:
+    wanted = {"result": "pass", "control_hart": "boot",
+              "image": boundary["pair"],
+              "dtb_sha256": hashlib.sha256(dtb).hexdigest(),
+              "tables_sha256": hashlib.sha256(tables).hexdigest()}
+    if "refusal" in boundary:
+        wanted.update(schema=NEGATIVE_RECORD, result="refused",
+                      negative=boundary.get("negative"),
+                      reason=boundary["refusal"])
+    elif record.get("schema") == NEGATIVE_RECORD:
+        reasons.append("the record is a boundary negative's, which this run "
+                       "does not declare")
+    for key, value in wanted.items():
+        if record.get(key) != value:
             reasons.append(f"the partition record's {key} is "
-                           f"{record.get(key)!r}, not {wanted!r}")
+                           f"{record.get(key)!r}, not {value!r}")
     return reasons
 
 
@@ -1120,9 +1148,18 @@ def self_test(scratch):
     run("a printed record where the tree holds no digest",
         expect=expectation(record=False),
         want="the tree holds no digest")
+    def another_identity(expected):
+        def change(oracle, tables, expect, text):
+            return text.replace("a" * 64, "c" * 64) + \
+                f"BE_MVP:DETAIL boundary=1 expected={expected}\n"
+        return change
     run("another image's identity, as declared",
-        lambda oracle, tables, expect, text: text.replace("a" * 64, "c" * 64),
+        another_identity("a" * 64),
         expect=expectation(identity="two-guests-shell"))
+    run("another image's identity, the DETAIL not the image's own",
+        another_identity("c" * 64),
+        expect=expectation(identity="two-guests-shell"),
+        want="the DETAIL's expected identities")
     def records_cut(oracle, tables, expect, text):
         return text.split("Domain commit hart0:")[0]
     run("the fall-through: no VS-domain hart started, no record printed",
@@ -1303,6 +1340,31 @@ def self_test(scratch):
         reasons = gate(expectation(), dict(passed, **edit), dtb, tables)
         ok = not reasons if want is None else \
             len(reasons) == 1 and f"record's {want} is" in reasons[0]
+        cases.append((f"the gate: {name}", ok, "; ".join(reasons) or
+                      "admitted"))
+    # A-9: a refused tree, admitted only for the run that declares its
+    # negative and reason, by its own record.
+    refused = dict(passed, schema=NEGATIVE_RECORD, result="refused",
+                   negative="boundary-no-list", reason="be_g0: allow differs")
+    declared = expectation(negative="boundary-no-list",
+                           refusal="be_g0: allow differs")
+    for name, expect, edit, want in (
+            ("a refused tree, declared, by its own record", declared, {},
+             None),
+            ("a refused tree for a run that declares no negative",
+             expectation(), {}, "does not declare"),
+            ("another negative's record", declared,
+             {"negative": "boundary-two-narrow"}, "record's negative is"),
+            ("a negative's record of another tree", declared,
+             {"dtb_sha256": "0" * 64}, "record's dtb_sha256 is"),
+            ("a negative's record with another refusal", declared,
+             {"reason": "be_g0: harts differs"}, "record's reason is"),
+            ("a passing record for a declared refusal", declared,
+             {"schema": None, "result": "pass", "negative": None,
+              "reason": None}, "record's schema is")):
+        reasons = gate(expect, dict(refused, **edit), dtb, tables)
+        ok = not reasons if want is None else \
+            any(want in reason for reason in reasons)
         cases.append((f"the gate: {name}", ok, "; ".join(reasons) or
                       "admitted"))
     breach_cases(scratch, cases)

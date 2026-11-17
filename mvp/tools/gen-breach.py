@@ -29,10 +29,13 @@ hooked hart's profile first: denied needs a right the profile lacks
 needs, refused a call the empty list refuses. counts gives the expected
 commit-record counts.
 Trust: a generator and a checker of its own declaration. It refuses a
-row of unknown form, a target its mode cannot reach, two witnessed rows
-whose written or read bytes meet (so each effect is one row's), a row in
-the hook's own record or roots, and a declaration that does not fit the
-record. The record's layout is read from src/mvp-breach.h.
+row of unknown form, a target its mode cannot reach, a cache-block row
+(cbo.zero, cbo.inval) whose address is not its block's first byte, a row
+it would judge allowed whose bytes lie in more than one extent of the
+profile (an access must lie wholly inside one PMP entry), two witnessed
+rows whose written or read bytes meet (so each effect is one row's), a
+row in the hook's own record or roots, and a declaration that does not
+fit the record. The record's layout is read from src/mvp-breach.h.
 Scope: anchor's breach-g0 and breach-g1 and their -off copies.
 """
 
@@ -74,6 +77,10 @@ SATP_SV39 = 8 << 60
 VMID_SHIFT = 44
 CAUSES = {"load": 5, "hlv": 5, "jump": 1, "store": 7, "amoadd": 7,
           "lrsc": 7, "cbo.zero": 7, "hsv": 7}
+# The cache block that cbo.zero and cbo.inval name (QEMU's cboz and cbom
+# block sizes): a row's address is its first byte, so that the stval QEMU
+# reports, the block-aligned address, is the row's own (judged()).
+CACHE_BLOCK = 64
 ILLEGAL = 2
 DENIED = (-4) & MASK
 SECRET_SYMBOL = "be_mvp_secret"
@@ -375,6 +382,10 @@ def resolve(declaration, facts, discriminate=False, symbols=None):
             require(mode == "bare" or not str(row["at"]).startswith(
                 "secret-source"),
                     f"{label}: the secret's source is reached directly")
+            require(op not in ("cbo.zero", "cbo.inval") or target is None or
+                    target % CACHE_BLOCK == 0,
+                    f"{label}: a {op} at 0x{target or 0:x}, not the first "
+                    f"byte of a {CACHE_BLOCK}-byte cache block")
             item.update(at=target, extra=0, call=0)
             item["access"] = None if target is None else \
                 facts.access(mode, target, label)
@@ -413,8 +424,8 @@ def span(item):
     if item["at"] is None or item["op"] in ("jump", "ecall", "cbo.inval"):
         return []
     if item["op"] == "cbo.zero":
-        low = item["at"] & ~(64 - 1)
-        return [(low, low + 64)]
+        low = item["at"] & ~(CACHE_BLOCK - 1)
+        return [(low, low + CACHE_BLOCK)]
     return [(item["at"], item["at"] + item["width"])]
 
 
@@ -532,6 +543,15 @@ def has(profile, low, high, right):
     return None
 
 
+def within_one(profile, low, high, right):
+    """Whether one extent of the profile gives RIGHT to all of [LOW, HIGH).
+    An access that is not wholly inside one PMP entry fails whatever the
+    entries allow (F-23), and two extents may be two entries, so only then
+    can a row be judged allowed (W-1)."""
+    return any(start <= low and high <= end and right in given
+               for start, end, given in profile)
+
+
 def judged(item, facts, profile, empty_calls):
     """(outcome, stval) a boundary-on run must show for ITEM."""
     op = item["op"]
@@ -562,6 +582,13 @@ def judged(item, facts, profile, empty_calls):
                 # crossing, and target/riscv/pmp.c fails an access only
                 # partly inside an entry (M11-7's first run, 2026-11-16).
                 return "denied", item["access"]
+    for right, ranges in needs:
+        for low, high in ranges:
+            require(within_one(profile, low, high, right),
+                    f"row {item['row']}: its bytes 0x{low:x} to 0x{high:x} "
+                    f"lie in more than one extent that gives {right}, "
+                    f"which may be more than one PMP entry: a row this "
+                    f"generator cannot judge")
     return "allowed", None
 
 
@@ -625,8 +652,8 @@ def written(item, facts):
     boundary."""
     words = item["witness"]["word"]
     if item["op"] == "cbo.zero":
-        low = item["at"] & ~63
-        changes = {word: 0 for word in range(low, low + 64, 8)}
+        low = item["at"] & ~(CACHE_BLOCK - 1)
+        changes = {word: 0 for word in range(low, low + CACHE_BLOCK, 8)}
     else:
         data = (item["value"] if item["op"] != "amoadd" else 0)
         changes = {}
@@ -1107,13 +1134,47 @@ def self_test(scratch):
                                    "a0": "0x8", "a1": "secret-source"}),
              "secret's source"),
             ("the secret's source under a translation",
-             row_edit("C1", mode="satp"), "reached directly")):
+             row_edit("C1", mode="satp"), "reached directly"),
+            ("a cbo.zero off its cache block's first byte",
+             row_edit("H4", at="own.control-mailbox+0x3f88"),
+             "not the first byte of a 64-byte cache block"),
+            ("a cbo.inval off its cache block's first byte",
+             row_edit("H5", at="own.control-mailbox+0x3f48"),
+             "not the first byte of a 64-byte cache block")):
         case(f"refused: {name}", edited(change), want)
     case("refused: a declared outcome the profile does not give",
          lambda: make_plan(declaration, facts[0], False, "breach-g0",
                            symbols, inputs, synthetic_descriptor(
                                {1: ((0x118002000, 0x1000, "r"),)})),
          "but the profile gives allowed")
+
+    def split_window(hart, at):
+        """The synthetic descriptor, HART's window two extents at AT."""
+        descriptor = synthetic_descriptor()
+        base, size = {1: (0x110000000, 0x4000000),
+                      2: (0x114000000, 0x4000000)}[hart]
+        name = f"x{hart}-{base:x}-{size:x}"
+        halves = ((base, at - base), (at, base + size - at))
+        descriptor["extents"] = [
+            extent for extent in descriptor["extents"]
+            if extent["name"] != name] + [
+                {"name": f"x{hart}-half-{low:x}", "base": f"0x{low:x}",
+                 "size": f"0x{length:x}"} for low, length in halves]
+        profile = next(profile for profile in descriptor["profiles"]
+                       if profile["hart"] == hart)
+        profile["access"] = [
+            access for access in profile["access"]
+            if access["extent"] != name] + [
+                {"extent": f"x{hart}-half-{low:x}",
+                 "rights": ["read", "write", "execute"]}
+                for low, _ in halves]
+        return descriptor
+    case("refused: an allowed row whose bytes span two extents that both "
+         "give its right (W-1)",
+         lambda: make_plan(declaration, facts[0], False, "breach-g0",
+                           symbols, inputs,
+                           split_window(1, g0["P1"]["at"] + 4)),
+         "lie in more than one extent that gives read")
     case("refused: a boundary-on plan without its descriptor",
          lambda: make_plan(declaration, facts[0], False, "breach-g0",
                            symbols, inputs), "needs its descriptor")

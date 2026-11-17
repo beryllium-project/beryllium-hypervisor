@@ -313,7 +313,19 @@ VARIANT_KEYS = {"name", "toolchains", "where", "change", "fail", "after",
                 "time_above_zero", "shim_line", "exit_ceiling",
                 "run_budget_ticks", "outbound_bytes", "drain_delay_ticks",
                 "rdinit", "console_input", "session", "mutate", "findings",
-                "off_copy_of"}
+                "off_copy_of", "negative"}
+# M11-7 (planning/mvp-m11-plan.md, D-10's negatives): a run of the
+# scenario's own boundary-on image that the pairing pairs with it, under the
+# firmware without the boundary extension ("firmware") or under its own
+# edited tree, which the independent checker refuses with "refusal"
+# (tests/boundary-negatives.py makes it); with the probe and the error of
+# its BE_MVP:02, the image whose identity the firmware gives, whether that
+# tree holds a digest ("record"), and its VS-domain harts' states and
+# counts where the outcome does not decide them.
+NEGATIVE_KEYS = {"firmware", "refusal", "probe", "error", "identity",
+                 "record", "harts", "counts"}
+NEGATIVE_FIRMWARE = "no-boundary"
+COUNT_NAMES = ("pmp_faults", "blocked_calls", "failed_calls")
 # A v2 variant may also name the leaf a refused channel check walked and
 # declared (reader-write), or each domain's first fault and the accepted
 # exits it builds with (no-inject).
@@ -902,6 +914,7 @@ def check(scenario, layout, dts):
                     f"variant {variant['name']} does not name the layout's "
                     "absent hart for domain 1")
     check_off_copies(scenario)
+    check_negatives(scenario)
     # Q13: M0's platform record stands, so a v2 scenario has no probes.
     require(version == 1 or not scenario.get("probes"),
             "a v2 scenario declares no probe images (M1 plan, Q13)")
@@ -967,6 +980,88 @@ def off_copy_images(scenario, images):
     return copies
 
 
+def check_negatives(scenario):
+    """Each boundary negative's declaration (NEGATIVE_KEYS): a failing run
+    under either the firmware without the extension or a tree the checker
+    refuses, never both; its probe 1 but under that firmware; another
+    image's identity an image of the scenario; harts 1 and 2 alone, each a
+    state; counts for those harts alone."""
+    names = {scenario["name"]} | {variant["name"] for variant in
+                                  scenario.get("variants", [])}
+    for variant in scenario.get("variants", []):
+        negative = variant.get("negative")
+        if negative is None:
+            continue
+        label = f"negative {variant['name']}"
+        require(isinstance(negative, dict) and set(negative) <= NEGATIVE_KEYS
+                and "fail" in variant, f"{label} is not a failing run of "
+                f"{', '.join(sorted(NEGATIVE_KEYS))}")
+        require(("firmware" in negative) != ("refusal" in negative),
+                f"{label} names neither or both of its firmware and its "
+                f"tree's refusal")
+        require(negative.get("firmware", NEGATIVE_FIRMWARE) ==
+                NEGATIVE_FIRMWARE, f"{label}'s firmware is not "
+                f"{NEGATIVE_FIRMWARE}")
+        require(isinstance(negative.get("refusal", "x"), str) and
+                negative.get("refusal", "x"), f"{label}'s refusal is empty")
+        require(negative.get("probe", 1) in (0, 1) and
+                (negative.get("probe", 1) == 1) != ("firmware" in negative),
+                f"{label}'s probe is not 0 under the firmware without the "
+                f"extension and 1 otherwise")
+        require(isinstance(negative.get("error", -1), int) and
+                negative.get("error", -1) < 0, f"{label}'s error is not an "
+                f"SBI error")
+        require(negative.get("identity", variant["name"]) in names,
+                f"{label} names no image of the scenario")
+        require(isinstance(negative.get("record", True), bool),
+                f"{label}'s record is not true or false")
+        harts = negative.get("harts", {})
+        require(isinstance(harts, dict) and set(harts) <= {"1", "2"} and
+                all(state in ("boot", "confined", "never-started")
+                    for state in harts.values()),
+                f"{label}'s harts are not VS-domain harts' states")
+        counts = negative.get("counts", {})
+        require(isinstance(counts, dict) and set(counts) <= {"1", "2"} and
+                all(isinstance(row, dict) and set(row) <= set(COUNT_NAMES)
+                    and all(isinstance(value, int) and value > 0
+                            for value in row.values())
+                    for row in counts.values()),
+                f"{label}'s counts are not VS-domain harts' counts")
+
+
+def negative_form(out, name, negative):
+    """OUT, image NAME's boundary-on expectation, as boundary negative
+    NEGATIVE's run (check_negatives()): its section names the negative and
+    its declared facts; a boundary failure's BE_MVP:02 shows the probe and
+    the identity read, or none, and its DETAIL the read's error or the
+    image's own identity."""
+    boundary = out["boundary"]
+    boundary["negative"] = name
+    for key in ("firmware", "refusal", "identity", "record", "counts"):
+        if key in negative:
+            boundary[key] = copy.deepcopy(negative[key])
+    if "harts" in negative:
+        boundary["harts"] = boundary_harts(name, out["outcome"], {name: dict(
+            boundary["harts"], **negative["harts"])})
+    if out["outcome"]["fail"] != "boundary":
+        return
+    probe = negative.get("probe", 1)
+    read = probe == 1 and "error" not in negative
+    entries = []
+    for entry in out["control_lines"]:
+        if entry["template"].startswith("BE_MVP:02 "):
+            entry = line(f"BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 "
+                         f"boundary={probe} status=1:{HSM_STOPPED},"
+                         f"2:{HSM_STOPPED} started=none "
+                         f"identity={'<Z>' if read else 'none'}")
+        entries.append(entry)
+    out["control_lines"] = entries
+    out["outcome"]["detail_lines"] = [line(
+        "BE_MVP:DETAIL boundary=1 expected=<Z>" if read else
+        f"BE_MVP:DETAIL boundary={probe} word=0 "
+        f"error={negative.get('error', 0)}")]
+
+
 def parse_pairing(text, label):
     """The pairing's TEXT: {run image: the image it is paired with}."""
     pairs = {}
@@ -1017,6 +1112,7 @@ def boundary_form(image, name, pair):
     """IMAGE, the expectation of image NAME, in its boundary-on form, run
     under the descriptor and tree of image PAIR."""
     out = copy.deepcopy(image)
+    negative = out.pop("negative", None)
     entries = []
     firmware = 0
     for entry in out["control_lines"]:
@@ -1040,6 +1136,8 @@ def boundary_form(image, name, pair):
         out["boundary"]["counts"] = {str(out["breach"]["hart"]): {
             key: value for key, value in out["breach"].pop("counts").items()
             if value}}
+    if negative is not None:
+        negative_form(out, name, negative)
     if out["outcome"].pop("fallback", False):
         # ring-full (Q-C2, A-2): a confined VS-domain hart prints nothing,
         # so hart 0 reports the first FAIL it drains, of either VS domain,
@@ -1074,6 +1172,9 @@ def apply_boundary(images, scenario, boundary_images, pairing):
     for name in sorted(images):
         pair = pairing.get(name, name)
         if pair not in boundary_images:
+            # A boundary negative is a run of the boundary alone.
+            if "negative" in images[name]:
+                del images[name]
             continue
         require(name not in copies and name not in probes,
                 f"{name}, an off copy or a probe, is named boundary-on")
@@ -1171,6 +1272,67 @@ def boundary_self_test(scenario, images):
         ("every descriptor image on", all(
             every[name]["boundary"]["pair"] == name for name in named)),
     ]
+    # M11-7's boundary negatives, each a run of two-guests' on image.
+    negatives = [variant["name"] for variant in scenario["variants"]
+                 if "negative" in variant]
+    neg = copy.deepcopy(images)
+    apply_boundary(neg, scenario, {"two-guests"}, dict.fromkeys(
+        negatives, "two-guests"))
+    off_only = copy.deepcopy(images)
+    apply_boundary(off_only, scenario, set(), {})
+
+    def section(name):
+        return neg[name]["boundary"]
+
+    def detail(name):
+        return [entry["template"] for entry in
+                neg[name]["outcome"].get("detail_lines", [])]
+    checks += [
+        ("the negatives: each a run of two-guests' on image", len(
+            negatives) == 7 and all(
+                section(name)["pair"] == "two-guests" and
+                section(name)["negative"] == name and
+                "negative" not in neg[name] for name in negatives)),
+        ("boundary-absent: no extension, under the other firmware",
+         matches(tagged(neg["boundary-absent"], "BE_MVP:02 ")[0],
+                 "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 boundary=0 "
+                 "status=1:1,2:1 started=none identity=none") and
+         detail("boundary-absent") == [
+             "BE_MVP:DETAIL boundary=0 word=0 error=0"] and
+         section("boundary-absent")["firmware"] == "no-boundary" and
+         "refusal" not in section("boundary-absent") and
+         section("boundary-absent")["harts"] == {
+             "0": "boot", "1": "never-started", "2": "never-started"}),
+        ("boundary-no-identity: the read's error, no digest, its refusal",
+         detail("boundary-no-identity") == [
+             "BE_MVP:DETAIL boundary=1 word=0 error=-2"] and
+         section("boundary-no-identity")["record"] is False and
+         section("boundary-no-identity")["refusal"] == "FDT lacks "
+         "/chosen/opensbi-domains:config-digest"),
+        ("boundary-identity: another image's identity read, the DETAIL the "
+         "image's own", matches(tagged(neg["boundary-identity"],
+                                       "BE_MVP:02 ")[0],
+                                "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 "
+                                f"boundary=1 status=1:1,2:1 started=none "
+                                f"identity={identity}") and
+         detail("boundary-identity") == [
+             "BE_MVP:DETAIL boundary=1 expected=<Z>"] and
+         section("boundary-identity")["identity"] == "two-guests-shell"),
+        ("the refused confines: both harts boot, the scenario's BE_MVP:02",
+         all(section(name)["harts"] == {"0": "boot", "1": "boot",
+                                        "2": "boot"} and
+             tagged(neg[name], "BE_MVP:02 ") == tagged(
+                 on["two-guests"], "BE_MVP:02 ") and not detail(name)
+             for name in ("boundary-two-narrow", "boundary-wrong-boot",
+                          "boundary-no-list"))),
+        ("boundary-no-window: hart 1's one PMP fault, both confined",
+         section("boundary-no-window")["counts"] == {
+             "1": {"pmp_faults": 1}} and
+         section("boundary-no-window")["harts"] == {
+             "0": "boot", "1": "confined", "2": "confined"}),
+        ("a negative without the boundary is no run", not any(
+            name in off_only for name in negatives)),
+    ]
     refusals = []
 
     def refused(label, call, reason):
@@ -1227,6 +1389,45 @@ def boundary_self_test(scenario, images):
             else:
                 entry[key] = value
         refused(label, lambda: check_off_copies(mutated), reason)
+    for label, edit, reason in (
+            ("a negative under both the other firmware and a refused tree",
+             {"firmware": "no-boundary"}, "neither or both"),
+            ("a negative's other firmware unknown", {
+                "firmware": "earlier", "refusal": None}, "firmware is not"),
+            ("a probe of 0 under its own tree", {"probe": 0},
+             "probe is not 0"),
+            ("an unknown key", {"tree": "x"}, "is not a failing run"),
+            ("an empty refusal", {"refusal": ""}, "refusal is empty"),
+            ("an error that is not an SBI error", {"error": 2},
+             "is not an SBI error"),
+            ("another scenario's image", {"identity": "anchor"},
+             "names no image"),
+            ("a record neither true nor false", {"record": 1},
+             "is not true or false"),
+            ("hart 0's state", {"harts": {"0": "confined"}},
+             "harts' states"),
+            ("a started hart declared", {"harts": {"1": "started"}},
+             "harts' states"),
+            ("a count of zero", {"counts": {"1": {"pmp_faults": 0}}},
+             "harts' counts"),
+            ("an unknown count", {"counts": {"1": {"denied": 1}}},
+             "harts' counts")):
+        mutated = copy.deepcopy(scenario)
+        entry = next(variant for variant in mutated["variants"]
+                     if variant["name"] == "boundary-identity")
+        for key, value in edit.items():
+            if value is None:
+                entry["negative"].pop(key)
+            else:
+                entry["negative"][key] = value
+        refused(label, lambda: check_negatives(mutated), reason)
+    mutated = copy.deepcopy(scenario)
+    entry = next(variant for variant in mutated["variants"]
+                 if variant["name"] == "boundary-identity")
+    entry.pop("fail")
+    entry["pass"] = True
+    refused("a negative that passes", lambda: check_negatives(mutated),
+            "is not a failing run")
     for label, ok in checks + refusals:
         if not ok:
             failures.append(f"boundary: {label}")
@@ -2352,7 +2553,8 @@ def expectations(scenario, binding, layout, digest, core_of):
         if variant in console_variants(scenario):
             continue  # console_images()
         outcome = {key: variant[key] for key in variant
-                   if key not in ("name", "toolchains", "where", "change")}
+                   if key not in ("name", "toolchains", "where", "change",
+                                  "negative")}
         # The variant's one change shows in the lines that print it.
         changed = copy.deepcopy(binding)
         if "hart" in variant:
@@ -2374,6 +2576,10 @@ def expectations(scenario, binding, layout, digest, core_of):
             domain_control_lines=lines[1], final_lines=lines[2],
             counters=runtime_counters(scenario["expect"]["counters"],
                                       variant_budget, layout))
+        if "negative" in variant:
+            # M11-7: boundary_form() applies it (negative_form()).
+            images[variant["name"]]["negative"] = copy.deepcopy(
+                variant["negative"])
     for probe in scenario.get("probes", []):
         images[probe["name"]] = {
             "schema": EXPECT_SCHEMA, "scenario": name,
@@ -4080,11 +4286,17 @@ PROFILE_RUNS = {
                  "breach-g1", "breach-g0-off", "breach-g1-off"),
     "pre-measurement": ("payload", "no-sstc", "firmware-version",
                         "reader-write", "secret-shared",
-                        "response-writable"),
+                        "response-writable",
+                        # M11-7's boundary negatives at BE_MVP:02.
+                        "boundary-absent", "boundary-no-identity",
+                        "boundary-identity"),
     "gate-fail": ("wrong-measurement",),
     "post-launch-failure": ("exit-budget", "run-timeout", "ring-full",
                             "hart-start", "init-exit", "rdcycle",
-                            "no-inject", "no-grant-check", "ring-full-off"),
+                            "no-inject", "no-grant-check", "ring-full-off",
+                            # M11-7's boundary negatives after the start.
+                            "boundary-two-narrow", "boundary-wrong-boot",
+                            "boundary-no-list", "boundary-no-window"),
     SELF_REPORT_FLIP: (SELF_REPORT_FLIP,)}
 
 

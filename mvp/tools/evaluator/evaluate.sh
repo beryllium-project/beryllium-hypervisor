@@ -12,7 +12,8 @@
 #          it built with the host's, byte for byte: the host's last `mvp
 #          check` bundle (build/mvp/evidence/check) must verify and hold the
 #          host's images as they are now, and its images.sha256 must equal
-#          the evaluator's, including M11's firmware base binary
+#          the evaluator's, including M11's firmware base binary and, built
+#          inside too, the firmware without the boundary extension (M11-7)
 #          (tools/evidence.py --compare-images).
 # Trust:   podman is the lock's host-only role, checked with the rest of the
 #          host's lock first. ./mvp/mvp evaluate runs this script under
@@ -39,7 +40,10 @@
 #          its QEMU run whole; the release's security review, S-01), and
 #          mvp check inside checks the mounted bytes again before each
 #          firmware-version run. The base is checked against
-#          MVP_PIN_FIRMWARE_BIN_SHA256 before every other run. The gates run
+#          MVP_PIN_FIRMWARE_BIN_SHA256 before every other run, and the
+#          firmware without the boundary extension against
+#          MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256 before each of
+#          boundary-absent's (M11-7). The gates run
 #          under env -i with PATH=/usr/bin, LC_ALL=C, LANG=C,
 #          SHELL=/bin/bash, and GIT_OPTIONAL_LOCKS=0. Inside, the tool
 #          lock must pass with the same lock (mvp check runs it first), with

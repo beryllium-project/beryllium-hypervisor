@@ -385,6 +385,7 @@ qemu-test: image variants probes firmware opensbi $(MVP_EXPECT_STAMP) \
 		references
 	QEMU=$(QEMU) PYTHON=$(PYTHON) \
 		BE_MVP_EARLIER_FIRMWARE=$(OPENSBI_FW) \
+		$(if $(BOUNDARY_NEGATIVES),BE_MVP_NO_BOUNDARY_FIRMWARE=$(FIRMWARE_NB_BIN)) \
 		$(MVP_DIR)/tests/run-qemu.sh $(BUILD) \
 		$(FIRMWARE_BIN) $(BUILD)/qemu/suite
 

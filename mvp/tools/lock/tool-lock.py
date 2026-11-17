@@ -155,6 +155,13 @@ PINS = {
     # the evaluator. Every plain run except firmware-version boots it.
     "MVP_PIN_FIRMWARE_BIN_SHA256":
         "53005931558a7f7dee18a6b13c3a6385d4cba4841273661d64ce9a500f0f2a35",
+    # M11-7 (D-10's negative 1): the M11 firmware without the boundary
+    # extension: the same source, series, and tools, its configuration
+    # firmware/config's with CONFIG_SBI_ECALL_DCOMMIT off (firmware/
+    # build.sh, FIRMWARE_WITHOUT), built on the host and inside the
+    # evaluator. Negative 1's rows alone boot it.
+    "MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256":
+        "e3ff46f0a4e24fa20b70a6fbf59f631fd34ebf595b9148bd73df1c70c42e8ee3",
     # The U-Boot rehearsal's U-Boot (planning/mvp-m5-plan.md, Q9): B3's
     # pinned upstream build, an external input never committed, which its
     # script builds from these and the rehearsal requires by SHA-256.
@@ -525,6 +532,9 @@ def verify_opensbi(values, root=REPO_ROOT):
         raise Drift("the OpenSBI binary's SHA-256 is malformed")
     if not HEX64.match(values["MVP_PIN_FIRMWARE_BIN_SHA256"]):
         raise Drift("the M11 firmware base binary's SHA-256 is malformed")
+    if not HEX64.match(values["MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256"]):
+        raise Drift("the M11 firmware without the boundary extension's "
+                    "SHA-256 is malformed")
 
 
 def verify_uboot(values, root=REPO_ROOT):
@@ -799,6 +809,17 @@ def self_test():
                line for line in lines.split("\n")
                if not line.startswith("MVP_PIN_FIRMWARE_BIN_SHA256="))),
            "keys differ")
+    name = "MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256"
+    expect("a malformed digest of the firmware without the boundary "
+           "extension", lambda: verify_opensbi(dict(PINS, **{
+               name: "0" * 63})), "malformed")
+    expect("another digest of the firmware without the boundary extension",
+           lambda: load(lines.replace(PINS[name], "0" * 64)),
+           "not the plan's")
+    expect("a lock without the firmware without the boundary extension",
+           lambda: load("\n".join(
+               line for line in lines.split("\n")
+               if not line.startswith(f"{name}="))), "keys differ")
     expect("the U-Boot pins", lambda: verify_uboot(PINS))
     expect("another U-Boot commit", lambda: verify_uboot(
         dict(PINS, MVP_PIN_UBOOT_COMMIT="0" * 40)), "does not build")
