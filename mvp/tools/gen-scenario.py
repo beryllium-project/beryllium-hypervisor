@@ -346,8 +346,11 @@ VARIANT_KEYS_V3 = {"name", "toolchains", "where", "change", "fail", "after",
 # M11-7 (planning/mvp-m11-plan.md, D-10): a v3 scenario's hostile-monitor
 # images, each its own run with its hook on one VS domain's hart, whose
 # attempts tools/gen-breach.py makes from this file beside the scenario;
-# a boundary-on one declares that hart's commit-record counts.
+# a boundary-on one declares that hart's commit-record counts. M11-8: the
+# control hart's (its breach role control), from BREACH_CONTROL_FILE.
 BREACH_FILE = "breach.json"
+BREACH_CONTROL = "control"
+BREACH_CONTROL_FILE = "breach-control.json"
 BREACH_TOOL = pathlib.Path(__file__).resolve().with_name("gen-breach.py")
 # M11-7 (planning/mvp-m11-plan.md, D-12): an off copy, an image of the
 # scenario (the scenario's own, or a variant's) built without the physical
@@ -1211,15 +1214,17 @@ def boundary_form(image, name, pair, control="boot"):
 
 def breach_counts(scenario_path, images):
     """Each breach image's commit-record counts (M11-7), from the
-    scenario's BREACH_FILE by tools/gen-breach.py."""
+    scenario's BREACH_FILE, or for the control hart's (M11-8) its
+    BREACH_CONTROL_FILE, by tools/gen-breach.py."""
     hooked = [image for image in images.values() if "breach" in image]
     if not hooked:
         return
     tool = load_tool(BREACH_TOOL, "mvp_gen_breach")
-    path = pathlib.Path(scenario_path).parent / BREACH_FILE
     for image in hooked:
-        image["breach"]["counts"] = tool.expected_counts(
-            path, image["breach"]["domain"])
+        domain = image["breach"]["domain"]
+        path = pathlib.Path(scenario_path).parent / (
+            BREACH_CONTROL_FILE if domain == BREACH_CONTROL else BREACH_FILE)
+        image["breach"]["counts"] = tool.expected_counts(path, domain)
 
 
 def apply_boundary(images, scenario, boundary_images, pairing,
@@ -2031,9 +2036,11 @@ def check_v3(scenario, layout, dts, binding, report, policy):
         expected[SELF_REPORT_FLIP] = {"pass": True, "mutate": CANARY,
                                       "findings": [SELF_REPORT_FINDING]}
     # M11-7 (planning/mvp-m11-plan.md, D-10): the hostile-monitor images,
-    # anchor's own run with its hook on each VS domain's hart.
+    # anchor's own run with its hook on each VS domain's hart; M11-8's on
+    # the control hart.
     for domain in range(DOMAINS):
         expected[f"breach-g{domain}"] = {"pass": True, "breach": domain}
+    expected["breach-c"] = {"pass": True, "breach": BREACH_CONTROL}
     variants = [variant for variant in own_variants(scenario)
                 if variant not in console_variants(scenario)]
     require(sorted(variant["name"] for variant in variants) == sorted(
@@ -3112,7 +3119,8 @@ def expectations_v3(scenario, binding, layout, digest, sealed, report_sha):
                 where=variant["where"], change=variant["change"])
             if breach is not None:
                 images[variant["name"]]["breach"] = {
-                    "domain": breach, "hart": binding[breach]["hart"]}
+                    "domain": breach, "hart": layout["CONTROL_HART"]
+                    if breach == BREACH_CONTROL else binding[breach]["hart"]}
             continue
         image = dict(common, image=variant["name"], outcome=outcome,
                      toolchains=variant["toolchains"],
@@ -4470,9 +4478,11 @@ PROFILE_RUNS = {
                  "anchor-shell", "probe-platform", "probe-vmid-distinct",
                  "probe-vmid-shared", "probe-console-input",
                  # M11-7's off copies (OFF_COPY_KEY), each its image's;
-                 # and its hostile-monitor images, anchor's own run.
+                 # and its hostile-monitor images, anchor's own run; and
+                 # M11-8's on the control hart.
                  "two-guests-off", "te-poc-off", "anchor-off", "breach-g0",
-                 "breach-g1", "breach-g0-off", "breach-g1-off"),
+                 "breach-g1", "breach-g0-off", "breach-g1-off", "breach-c",
+                 "breach-c-off"),
     "pre-measurement": ("payload", "no-sstc", "firmware-version",
                         "reader-write", "secret-shared",
                         "response-writable",
@@ -5326,7 +5336,7 @@ def self_test_v3(scenario_path, scenario, layout, dts, policy, files,
     detail = {name: images[name]["outcome"].get("detail_lines", [{}])[0].get(
         "template") for name in images if name != scenario["name"]}
     hooked = copy.deepcopy({name: images[name] for name in
-                            ("breach-g0", "breach-g1")})
+                            ("breach-g0", "breach-g1", "breach-c")})
     breach_counts(scenario_path, hooked)
     hooked_on = {name: boundary_form(image, name, name)
                  for name, image in hooked.items()}
@@ -5350,6 +5360,21 @@ def self_test_v3(scenario_path, scenario, layout, dts, policy, files,
             hooked_off[f"breach-g{domain}-off"]["breach"] ==
             {"domain": domain, "hart": domain + 1}
             for domain in (0, 1))),
+        # M11-8: the control hart's, its counts hart 0's, each rejected
+        # console write a failed call.
+        ("the control breach image",
+         images["breach-c"]["outcome"] == {"pass": True} and
+         images["breach-c"]["control_lines"] == mine["control_lines"] and
+         hooked["breach-c"]["breach"] == {
+             "domain": BREACH_CONTROL, "hart": 0, "counts": {
+                 "pmp_faults": 88, "blocked_calls": 28,
+                 "failed_calls": 7}} and
+         hooked_on["breach-c"]["boundary"]["counts"] == {
+             "0": {"pmp_faults": 88, "blocked_calls": 28,
+                   "failed_calls": 7}} and
+         hooked_on["breach-c"]["breach"] ==
+         hooked_off["breach-c-off"]["breach"] ==
+         {"domain": BREACH_CONTROL, "hart": 0}),
         ("the bootargs", [domain["bootargs"].split(" -- ")[1]
                           for domain in binding] == [
             "be.guest=0 be.role=host be.pages=0x84000000,0x84001000,"
@@ -5452,7 +5477,8 @@ def self_test_v3(scenario_path, scenario, layout, dts, policy, files,
             "response-writable": "BE_MVP:DETAIL page=1 domain=0 hart=1 "
             "walked=0x460004d7 declared=0x46000453",
             "wrong-measurement": None, "no-grant-check": None,
-            SELF_REPORT_FLIP: None, "breach-g0": None, "breach-g1": None}),
+            SELF_REPORT_FLIP: None, "breach-g0": None, "breach-g1": None,
+            "breach-c": None}),
         ("the negatives' places", [[entry["template"].split(" ", 3)[2]
                                     for entry in images[name][
                                         "control_lines"] if entry[

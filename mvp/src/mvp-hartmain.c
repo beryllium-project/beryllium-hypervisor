@@ -554,11 +554,11 @@ void be_mvp_dispatch(struct be_mvp_exit *record)
 
 	if (page == (struct be_mvp_hart_page *)0)
 		be_mvp_exec_park();
-#if defined(BE_MVP_BREACH)
-	/* M11-7's hostile-monitor hook, a breach image alone: at the hooked
-	 * VS domain's first exit, before the leaf counts it. A tick is never
-	 * an exit (the leaf counts it apart, M11-4), so it is skipped: the
-	 * leaf's own test of one. */
+#if defined(BE_MVP_BREACH_DOMAIN)
+	/* M11-7's hostile-monitor hook, a VS-domain breach image alone: at
+	 * the hooked VS domain's first exit, before the leaf counts it. A
+	 * tick is never an exit (the leaf counts it apart, M11-4), so it is
+	 * skipped: the leaf's own test of one. */
 	if (record->frame.reserved != 0U ||
 	    (record->hstatus & BE_MVP_HSTATUS_SPV) == 0U ||
 	    record->frame.scause != BE_MVP_SCAUSE_SUPERVISOR_TIMER)

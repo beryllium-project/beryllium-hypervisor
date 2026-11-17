@@ -625,7 +625,11 @@ def judge_breach(plan, record):
         findings.append(f"the hook ran {rows} rows, not "
                         f"{len(plan['rows'])}")
     if domain != plan["domain"]:
-        findings.append(f"the hook ran on VS domain {domain}, not "
+        # M11-8: the control hart's hook names its role's word.
+        findings.append(f"the hook's record names 0x{domain:x}, not the "
+                        f"control role's 0x{plan['domain']:x}"
+                        if plan.get("role") == "control" else
+                        f"the hook ran on VS domain {domain}, not "
                         f"{plan['domain']}")
     if resume or cause or sepc or stval:
         findings.append(f"an unexpected trap: cause 0x{cause:x} at sepc "
@@ -660,11 +664,14 @@ def judge_breach(plan, record):
                             f"{item['address']} is 0x{got:x}, expected "
                             f"{item['expected']}")
     outcomes = [row["outcome"] for row in plan["rows"]]
+    # M11-8: a listed call the firmware rejected, or of no byte, where the
+    # plan has one.
+    kinds = ("denied", "illegal", "refused", "allowed") + tuple(
+        outcome for outcome in ("rejected", "zero") if outcome in outcomes)
     facts = {"image": plan["image"], "boundary": plan["boundary"],
              "hart": plan["hart"], "rows": len(outcomes),
              "outcomes": " ".join(f"{outcome}={outcomes.count(outcome)}"
-                                  for outcome in ("denied", "illegal",
-                                                  "refused", "allowed")),
+                                  for outcome in kinds),
              "words": len(plan["words"]), "devices": len(plan["devices"])}
     return findings, lines, facts
 
@@ -1061,6 +1068,50 @@ def breach_cases(scratch, cases):
     run("the oracle's read not complete",
         lambda plan, oracle: oracle["result"].update(verdict="FAIL"),
         want="refused: the oracle's read did not complete")
+
+    def as_control(plan, oracle):
+        """M11-8: the plan and the read as the control hart's: its role's
+        record word, and a listed call the firmware rejected and one of no
+        byte."""
+        plan.update(image="breach-c", domain=0xC0, role="control", hart=0)
+        none = (1 << 64) - 1
+        for name, outcome, error in (("R1", "rejected", (-3) & none),
+                                     ("Z1", "zero", 0)):
+            plan["rows"].append({"row": name, "slot": len(plan["rows"]),
+                                 "outcome": outcome, "cause": "none",
+                                 "stval": "0x0", "value": "0x0",
+                                 "error": f"0x{error:x}"})
+            oracle["words"] += [
+                {"name": breach_name(name, field), "address": "0x0",
+                 "value": qemu_oracle.hex64(value), "expected": None}
+                for field, value in zip(BREACH_FIELDS, (none, 0, 0, error))]
+        last = int(plan["record"], 16) + 128 + \
+            BREACH_SLOT_BYTES * (len(plan["rows"]) - 1)
+        for index, value in ((2, len(plan["rows"])), (3, 0xC0), (4, last)):
+            word(f"breach-header-{index}", value)(plan, oracle)
+
+    def then(*changes):
+        def change(plan, oracle):
+            for item in changes:
+                item(plan, oracle)
+        return change
+    run("the control hart's run as planned", as_control)
+    run("the control hart's record naming a VS domain",
+        then(as_control, word("breach-header-3", 0)),
+        want="the hook's record names 0x0, not the control role's 0xc0")
+    run("a listed call refused where the firmware rejects it",
+        then(as_control, word("breach-r1-error", (-4) & ((1 << 64) - 1))),
+        want="row R1: error 0xfffffffffffffffc, expected "
+        "0xfffffffffffffffd")
+    plan, oracle = synthetic_breach()
+    as_control(plan, oracle)
+    last = breach_text(*judge_breach(plan, oracle)).splitlines()[-1]
+    cases.append(("breach: the control hart's verdict counts its rejected "
+                  "and no-byte calls", last == (
+                      "BE_MVP_BREACH: PASS image=breach-c boundary=on "
+                      "hart=0 rows=6 denied=2 illegal=0 refused=1 "
+                      "allowed=1 rejected=1 zero=1 words=1 devices=1"),
+                  last))
     run("another plan schema",
         lambda plan, oracle: plan.update(schema="be-mvp-breach-plan-v0"),
         want="refused: the plan is not of schema")

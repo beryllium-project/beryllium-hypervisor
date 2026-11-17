@@ -237,23 +237,28 @@ void be_mvp_exec_halt(void)
 }
 
 #if defined(BE_MVP_BREACH)
+/* In the control role (M11-8), in the hook's own section (mvp-breach.h). */
+BE_MVP_BREACH_TEXT
 void be_mvp_exec_breach_enter(struct be_mvp_breach_saved *saved,
 			      be_u64 frame)
 {
 	be_mvp_breach_arch_enter(saved, frame);
 }
 
+BE_MVP_BREACH_TEXT
 void be_mvp_exec_breach_translate(be_u64 satp, be_u64 hgatp, be_u64 vsatp)
 {
 	be_mvp_breach_arch_translate(satp, hgatp, vsatp);
 }
 
+BE_MVP_BREACH_TEXT
 void be_mvp_exec_breach_attempt(const struct be_mvp_breach_attempt *row,
 				struct be_mvp_breach_slot *slot, be_u64 frame)
 {
 	be_mvp_breach_arch_attempt(row, slot, frame);
 }
 
+BE_MVP_BREACH_TEXT
 void be_mvp_exec_breach_leave(const struct be_mvp_breach_saved *saved)
 {
 	be_mvp_breach_arch_leave(saved);

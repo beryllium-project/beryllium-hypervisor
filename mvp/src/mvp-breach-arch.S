@@ -16,7 +16,9 @@
  *          An attempt uses t3 to t6 and a3 to a7; the vector uses t0 to t2
  *          alone, so an attempt's slot (t4), frame (t5), and value (t6)
  *          survive its trap.
- * Scope:   the breach images (BE_MVP_BREACH).
+ * Scope:   the breach images (BE_MVP_BREACH); in the control role
+ *          (BE_MVP_BREACH_CONTROL, M11-8), in a section of their own, which
+ *          mvp-monitor.lds places in the MVP control text.
  */
 
 #include "mvp-breach.h"
@@ -26,7 +28,11 @@
 
 	.equ MVP_BREACH_HSTATUS_SPVP, 0x100
 
+#if defined(BE_MVP_BREACH_CONTROL)
+	.section .text.mvp.breach.control, "ax"
+#else
 	.section .text.mvp.breach, "ax"
+#endif
 
 /* be_mvp_breach_arch_enter(saved a0, frame a1) */
 	.align 2

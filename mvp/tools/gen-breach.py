@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 James Morris <jmorris@namei.org>
-"""The hostile-monitor attempts of the breach images (M11-7).
+"""The hostile-monitor attempts of the breach images (M11-7, M11-8).
 
   gen-breach.py table --declaration FILE --layout H --header H --domain N
                 [--discriminate] --out mvp-breach-table.h
@@ -12,31 +12,38 @@
   gen-breach.py counts --declaration FILE --domain N
   gen-breach.py --self-test --scratch DIR
 
-Purpose: planning/mvp-m11-plan.md, D-10's VS-domain column, as anchor's
-breach images run it. table writes, before the link, the C table the
-hook (src/mvp-breach.c) runs: one row per attempt of the declaration
-(scenarios/anchor/breach.json), VS domain 1's rows its own where it names
-them, each row's access address made from its physical target by its
-translation mode, and the five modes' satp, hgatp, and vsatp; under
---discriminate, the rows with a witness alone. plan writes, after the
-link, what a run of the linked image must show (tests/check-boundary.py
-breach): for each slot, its trap's cause and stval, the value it kept, and
-the call's error; each witness word's value at the end; and the device
-registers'; with the oracle's words file (tests/qemu_oracle.py --words).
-For a boundary-on image (--descriptor) each row is checked against the
-hooked hart's profile first: denied needs a right the profile lacks
-(an access's own, or its translation's walk), allowed every right it
-needs, refused a call the empty list refuses. counts gives the expected
-commit-record counts.
+  N is the hooked VS domain, 0 or 1, or control, the control hart (M11-8).
+
+Purpose: planning/mvp-m11-plan.md, D-10's VS-domain column and, for the
+control role, its control-hart column, as anchor's breach images run them.
+table writes, before the link, the C table the hook (src/mvp-breach.c)
+runs: one row per attempt of the declaration (scenarios/anchor/
+breach.json, or breach-control.json for the control role), VS domain 1's
+rows its own where it names them, each row's access address made from its
+physical target by its translation mode, and the role's modes' satp,
+hgatp, and vsatp; under --discriminate, the rows with a witness alone.
+plan writes, after the link, what a run of the linked image must show
+(tests/check-boundary.py breach): for each slot, its trap's cause and
+stval, the value it kept, and the call's error; each witness word's value
+at the end; and the device registers'; with the oracle's words file
+(tests/qemu_oracle.py --words). For a boundary-on image (--descriptor)
+each row is checked against the hooked hart's profile and its role's call
+list first: denied needs a right the profile lacks (an access's own, or
+its translation's walk), allowed every right it needs, refused a call the
+list does not hold, rejected a listed console write whose buffer or upper
+address word the firmware refuses (with that error), and zero a listed
+console write of no byte. counts gives the expected commit-record counts.
 Trust: a generator and a checker of its own declaration. It refuses a
 row of unknown form, a target its mode cannot reach, a cache-block row
 (cbo.zero, cbo.inval) whose address is not its block's first byte, a row
 it would judge allowed whose bytes lie in more than one extent of the
 profile (an access must lie wholly inside one PMP entry), two witnessed
 rows whose written or read bytes meet (so each effect is one row's), a
-row in the hook's own record or roots, and a declaration that does not
+row in the hook's own record or roots, a listed call that would succeed
+with an effect (a console write of bytes, a shutdown) or that it does not
+model, a declaration of the other role, and a declaration that does not
 fit the record. The record's layout is read from src/mvp-breach.h.
-Scope: anchor's breach-g0 and breach-g1 and their -off copies.
+Scope: anchor's breach-g0, breach-g1, and breach-c and their -off copies.
 """
 
 import argparse
@@ -58,13 +65,25 @@ OPS = {"load": 1, "store": 2, "jump": 3, "amoadd": 4, "lrsc": 5,
        "cbo.zero": 6, "cbo.inval": 7, "hlv": 8, "hsv": 9, "ecall": 10}
 MODES = {"bare": 0, "satp": 1, "gstage-own": 2, "gstage-other": 3,
          "vs-forged": 4}
-OUTCOMES = ("denied", "illegal", "refused", "allowed")
-COPIES = ("image", "boot-image", "dtb", "pages", "zero", "end", "device")
+# M11-8: the control role, hart 0 (breach-c), and its modes: its own
+# forged hgatp, each VS domain's own G-stage root, and its forged hgatp
+# with the VS-stage root in forbidden memory.
+CONTROL = "control"
+CONTROL_MODES = {"bare": 0, "satp": 1, "gstage-forged": 2, "gstage-g0": 3,
+                 "gstage-g1": 4, "vs-forged": 5}
+OUTCOMES = ("denied", "illegal", "refused", "rejected", "zero", "allowed")
+# A call's outcomes: refused by the list (SBI_ERR_DENIED, blocked_calls),
+# listed and rejected by the firmware with ERRORS' error (failed_calls),
+# or listed, of no byte, and successful with value 0.
+CALL_OUTCOMES = ("refused", "rejected", "zero")
+ERRORS = {"failed": -1, "invalid-param": -3}
+COPIES = ("image", "boot-image", "dtb", "pages", "zero", "end", "device",
+          "fill")
 READS = ("load", "hlv")
 WRITES = ("store", "amoadd", "lrsc", "cbo.zero", "hsv")
 WIDTHS = (1, 4, 8)
 ROW_KEYS = {"row", "target", "op", "width", "mode", "at", "value",
-            "outcome", "witness", "call"}
+            "outcome", "error", "witness", "call"}
 CALL_KEYS = {"eid", "fid", "a0", "a1", "a2"}
 DEVICE_KEYS = {"uart", "aplic-m", "aplic-s", "aplic-source", "imsic-m",
                "imsic-m-stride", "imsic-s", "imsic-s-stride", "test", "mtime",
@@ -83,6 +102,9 @@ CAUSES = {"load": 5, "hlv": 5, "jump": 1, "store": 7, "amoadd": 7,
 CACHE_BLOCK = 64
 ILLEGAL = 2
 DENIED = (-4) & MASK
+# The console write (DBCN function 0), the one listed call whose result
+# the generator models (M11-8).
+DBCN_WRITE = (0x4442434E, 0)
 SECRET_SYMBOL = "be_mvp_secret"
 ATTEMPT_HELPER = "be_mvp_breach_arch_attempt"
 TABLE_SYMBOL = "be_mvp_breach_attempts"
@@ -118,14 +140,15 @@ def pattern(row_number):
 
 class Facts:
     """The layout's and the header's constants, the declaration's devices,
-    and the hooked VS domain."""
+    and the hooked role: VS domain 0 or 1, or the control hart (CONTROL;
+    M11-8), whose names call each VS domain's extents g0 and g1."""
 
     def __init__(self, layout, header, devices, domain):
-        require(domain in (0, 1), f"VS domain {domain} is not 0 or 1")
+        require(domain in (0, 1, CONTROL),
+                f"the hooked role {domain!r} is not VS domain 0 or 1 or "
+                f"the control hart")
         self.layout, self.header, self.domain = layout, header, domain
-        own, other = domain, 1 - domain
-        self.hart = layout[f"DOMAIN{own}_HART"]
-        self.other_hart = layout[f"DOMAIN{other}_HART"]
+        self.control = domain == CONTROL
         require(set(devices) == DEVICE_KEYS,
                 f"the devices are {sorted(devices)}, not "
                 f"{sorted(DEVICE_KEYS)}")
@@ -138,6 +161,14 @@ class Facts:
         dtb = layout["DTB_GPA"] - layout["GUEST_GPA"]
         names = {
             "park": layout["PARK_ENTRY_HPA"],
+            "monitor.control-text": layout["MONITOR_CONTROL_TEXT_HPA"],
+            "monitor.input": layout["MONITOR_INPUT_HPA"],
+            "mvp.boot-data": layout["MVP_BOOT_DATA_HPA"],
+            "diagnostic": layout["DIAGNOSTIC_HPA"],
+            "control.tail": layout["CONTROL_STACK_HPA"] +
+            layout["CONTROL_STACK_BYTES"],
+            "core.padding": layout["CONTROL_PROFILE_HPA"] +
+            layout["CONTROL_PROFILE_BYTES"],
             "request": layout["SHARED_PAGES_HPA"],
             "response": layout["SHARED_PAGES_HPA"] + PAGE,
             "secret": layout["SHARED_PAGES_HPA"] + 2 * PAGE,
@@ -161,15 +192,23 @@ class Facts:
             "aplic-s.source": device["aplic-s"] + 4 * device["aplic-source"],
             "imsic-m.hart0": device["imsic-m"],
             "imsic-s.hart0": device["imsic-s"],
-            "imsic-s.other": device["imsic-s"] +
-            self.other_hart * device["imsic-s-stride"],
             "test": device["test"],
             "mtime": device["mtime"],
             "mtimecmp.hart0": device["mtimecmp"],
             "m-memory": device["m-memory"],
             "unnamed-ram": device["unnamed-ram"],
         }
-        for side, index in (("own", own), ("other", other)):
+        if self.control:
+            self.hart = layout["CONTROL_HART"]
+            sides = (("g0", 0), ("g1", 1))
+        else:
+            own, other = domain, 1 - domain
+            self.hart = layout[f"DOMAIN{own}_HART"]
+            self.other_hart = layout[f"DOMAIN{other}_HART"]
+            sides = (("own", own), ("other", other))
+        for side, index in sides:
+            names[f"imsic-s.{side}"] = device["imsic-s"] + \
+                layout[f"DOMAIN{index}_HART"] * device["imsic-s-stride"]
             names.update({
                 f"{side}.window": layout[f"G{index}_HPA"],
                 f"{side}.dtb": layout[f"G{index}_HPA"] + dtb,
@@ -183,26 +222,52 @@ class Facts:
         self.names = names
         self.devices = {device["uart"] + 7: 1,
                         names["aplic-s.source"]: 4}
-        self.mailbox = layout[f"G{own}_HART_MAILBOX_HPA"]
-        self.control_mailbox = layout[f"G{own}_CONTROL_MAILBOX_HPA"]
         self.windows = {layout[f"G{index}_HPA"]: index for index in (0, 1)}
         self.window_bytes = layout["GUEST_BYTES"]
-        self.record = self.mailbox + header["BREACH_RECORD_OFFSET"]
         self.gigapage = header["BREACH_GIGAPAGE"]
-        hgatp_own = SATP_SV39 | header["BREACH_VMID"] << VMID_SHIFT | \
-            (self.mailbox + header["BREACH_SV39X4_OFFSET"]) >> 12
         keep = header["BREACH_KEEP"]
-        self.modes = (
-            (keep, keep, keep),
-            (SATP_SV39 | (self.mailbox + header["BREACH_SV39_OFFSET"]) >> 12,
-             keep, keep),
-            (keep, hgatp_own, 0),
-            (keep, SATP_SV39 | header["BREACH_VMID"] << VMID_SHIFT |
-             layout[f"G{other}_ROOT_HPA"] >> 12, 0),
-            (keep, hgatp_own, SATP_SV39 |
-             (header["BREACH_FORGED_VS_ROOT"] - self.gigapage +
-              header["BREACH_FORGED_GPA"]) >> 12),
-        )
+        vmid = header["BREACH_VMID"] << VMID_SHIFT
+        if self.control:
+            self.mode_names = CONTROL_MODES
+            self.record = header["BREACH_CONTROL_RECORD_HPA"]
+            self.slots = header["BREACH_CONTROL_SLOTS"]
+            forged = SATP_SV39 | vmid | \
+                header["BREACH_CONTROL_SV39X4_HPA"] >> 12
+            self.modes = (
+                (keep, keep, keep),
+                (SATP_SV39 | header["BREACH_CONTROL_SV39_HPA"] >> 12, keep,
+                 keep),
+                (keep, forged, 0),
+                (keep, SATP_SV39 | vmid | layout["G0_ROOT_HPA"] >> 12, 0),
+                (keep, SATP_SV39 | vmid | layout["G1_ROOT_HPA"] >> 12, 0),
+                (keep, forged, SATP_SV39 |
+                 (header["BREACH_CONTROL_VS_ROOT_HPA"] - self.gigapage +
+                  header["BREACH_FORGED_GPA"]) >> 12),
+            )
+            count = header["BREACH_CONTROL_MODES"]
+        else:
+            self.mode_names = MODES
+            self.mailbox = layout[f"G{own}_HART_MAILBOX_HPA"]
+            self.control_mailbox = layout[f"G{own}_CONTROL_MAILBOX_HPA"]
+            self.record = self.mailbox + header["BREACH_RECORD_OFFSET"]
+            self.slots = header["BREACH_SLOTS"]
+            hgatp_own = SATP_SV39 | vmid | \
+                (self.mailbox + header["BREACH_SV39X4_OFFSET"]) >> 12
+            self.modes = (
+                (keep, keep, keep),
+                (SATP_SV39 | (self.mailbox + header["BREACH_SV39_OFFSET"]) >>
+                 12, keep, keep),
+                (keep, hgatp_own, 0),
+                (keep, SATP_SV39 | vmid | layout[f"G{other}_ROOT_HPA"] >> 12,
+                 0),
+                (keep, hgatp_own, SATP_SV39 |
+                 (header["BREACH_FORGED_VS_ROOT"] - self.gigapage +
+                  header["BREACH_FORGED_GPA"]) >> 12),
+            )
+            count = header["BREACH_MODES"]
+        require(len(self.modes) == len(self.mode_names) == count,
+                f"the role's {len(self.modes)} modes are not the header's "
+                f"{count}")
 
     def address(self, text, label, symbols=None):
         """An address expression's value: NAME or NAME+0xOFFSET, a hex
@@ -225,21 +290,39 @@ class Facts:
         """The address an attempt names to reach TARGET under MODE."""
         if mode == "bare":
             return target
-        if mode == "gstage-other":
-            base = self.layout[f"G{1 - self.domain}_HPA"]
+        if mode in ("gstage-other", "gstage-g0", "gstage-g1"):
+            index = 1 - self.domain if mode == "gstage-other" else \
+                int(mode[-1])
+            base = self.layout[f"G{index}_HPA"]
             require(base <= target < base + self.window_bytes,
-                    f"{label}: the other's root reaches its own window "
-                    f"alone, not 0x{target:x}")
+                    f"{label}: VS domain {index}'s root reaches its own "
+                    f"window alone, not 0x{target:x}")
             return target - base + self.layout["GUEST_GPA"]
         require(self.gigapage <= target < self.gigapage + (1 << 30),
                 f"{label}: 0x{target:x} is outside the hook's gigapage")
         offset = target - self.gigapage
         return offset + {"satp": self.header["BREACH_ALIAS_VA"],
                          "gstage-own": self.header["BREACH_FORGED_GPA"],
+                         "gstage-forged": self.header["BREACH_FORGED_GPA"],
                          "vs-forged": 0}[mode]
 
     def walk(self, mode):
         """The memory MODE's translation reads: (what, address)."""
+        if self.control:
+            header = self.header
+            forged = ("the hook's forged Sv39x4 root",
+                      header["BREACH_CONTROL_SV39X4_HPA"])
+            return {"bare": (),
+                    "satp": (("the hook's Sv39 root",
+                              header["BREACH_CONTROL_SV39_HPA"]),),
+                    "gstage-forged": (forged,),
+                    "gstage-g0": (("VS domain 0's G-stage root",
+                                   self.layout["G0_ROOT_HPA"]),),
+                    "gstage-g1": (("VS domain 1's G-stage root",
+                                   self.layout["G1_ROOT_HPA"]),),
+                    "vs-forged": (forged, (
+                        "the forged VS-stage root",
+                        header["BREACH_CONTROL_VS_ROOT_HPA"]))}[mode]
         own_root = self.mailbox + self.header["BREACH_SV39X4_OFFSET"]
         return {"bare": (),
                 "satp": (("the hook's Sv39 root",
@@ -251,9 +334,40 @@ class Facts:
                               ("hart 0's forged VS-stage root",
                                self.header["BREACH_FORGED_VS_ROOT"]))}[mode]
 
+    def hook_regions(self):
+        """The hook's own record and roots, which no row may reach:
+        [(low, high)], and the parts of them its control rows may."""
+        header = self.header
+        if self.control:
+            record = (self.record, self.record +
+                      header["BREACH_HEADER_BYTES"] +
+                      self.slots * header["BREACH_SLOT_BYTES"])
+            roots = [(address, address + size) for address, size in (
+                (header["BREACH_CONTROL_SV39_HPA"], PAGE),
+                (header["BREACH_CONTROL_SV39X4_HPA"], 4 * PAGE),
+                (header["BREACH_CONTROL_VS_ROOT_HPA"], PAGE))]
+            return [record] + roots, []
+        control = self.mailbox + header["BREACH_CONTROL_OFFSET"]
+        return [(self.record, self.mailbox +
+                 self.layout["HART_MAILBOX_BYTES"])], \
+            [(control, control + header["BREACH_BLOCK_BYTES"] + 16)]
+
     def initial(self, word):
         """A word's value before any attempt: a fill, or zero."""
         header = self.header
+        if self.control:
+            block = header["BREACH_CONTROL_BLOCK_HPA"]
+            fills = [(block, block + header["BREACH_CONTROL_FILL_BYTES"],
+                      self.record)]
+            for index in (0, 1):
+                mailbox = self.layout[f"G{index}_HART_MAILBOX_HPA"]
+                low = mailbox + header["BREACH_MAILBOX_FILL"]
+                fills.append((low, low + header["BREACH_MAILBOX_FILL_BYTES"],
+                              mailbox))
+            for low, high, base in fills:
+                if low <= word < high:
+                    return header["BREACH_FILL"] | (word - base)
+            return 0
         control = (self.control_mailbox + header["BREACH_FILL_BLOCK"],
                    self.control_mailbox + header["BREACH_FILL_WORDS"] +
                    8 * header["BREACH_FILL_COUNT"])
@@ -278,7 +392,13 @@ def load(path):
 
 
 def declared_rows(declaration, domain):
-    """The declaration's rows for VS DOMAIN: VS domain 1's own in place."""
+    """The declaration's rows for the hooked role DOMAIN: VS domain 1's own
+    in place; a control declaration (its role CONTROL) the control hart's
+    alone, and a VS-domain one never the control hart's."""
+    role = declaration.get("role", "vs-domain")
+    want = CONTROL if domain == CONTROL else "vs-domain"
+    require(role == want, f"the declaration is the {role} role's, not "
+            f"the {want} role's")
     rows = declaration.get("rows")
     require(isinstance(rows, list) and rows, "the declaration has no rows")
     replacements = declaration.get("g1", {})
@@ -301,14 +421,16 @@ def declared_rows(declaration, domain):
     return out
 
 
-def shape(row, label):
-    """A row's op, width, mode, outcome, and witness, checked."""
+def shape(row, label, modes=None):
+    """A row's op, width, mode, outcome, and witness, checked: its mode one
+    of MODES (the hooked role's, by name)."""
     op = row.get("op")
     require(op in OPS, f"{label}: op {op!r}")
     outcome = row.get("outcome")
     require(outcome in OUTCOMES, f"{label}: outcome {outcome!r}")
     mode = row.get("mode", "bare")
-    require(mode in MODES, f"{label}: mode {mode!r}")
+    require(mode in (MODES if modes is None else modes),
+            f"{label}: mode {mode!r}")
     width = row.get("width", 0)
     if op in ("load", "store"):
         require(width in WIDTHS, f"{label}: width {width!r}")
@@ -319,15 +441,19 @@ def shape(row, label):
     require((op in ("hlv", "hsv")) == mode.startswith(("gstage", "vs")),
             f"{label}: an H load or store, and only one, names a G-stage")
     require(op not in ("hlv", "hsv", "jump", "ecall", "cbo.zero",
-                       "cbo.inval") or mode in ("bare", "gstage-own",
-                                                "gstage-other", "vs-forged"),
+                       "cbo.inval") or mode != "satp",
             f"{label}: a {op} under satp")
     require((op == "ecall") == ("call" in row) and
             (op == "ecall") != ("at" in row),
             f"{label}: a call names call, and an access at")
-    require((op == "ecall") == (outcome == "refused") and
+    require((op == "ecall") == (outcome in CALL_OUTCOMES) and
             (op == "cbo.inval") == (outcome == "illegal"),
-            f"{label}: a call is refused, and cbo.inval illegal")
+            f"{label}: a call is refused, rejected, or of no byte, and "
+            f"cbo.inval illegal")
+    require(("error" in row) == (outcome == "rejected") and
+            row.get("error", "failed") in ERRORS,
+            f"{label}: a rejected call names its error, one of "
+            f"{sorted(ERRORS)}, and no other row names one")
     require("value" not in row or op == "store",
             f"{label}: a value for a store alone")
     witness = row.get("witness")
@@ -360,12 +486,14 @@ def resolve(declaration, facts, discriminate=False, symbols=None):
     for number_, row in enumerate(declared_rows(declaration,
                                                 facts.domain), 1):
         label = f"row {row['row']}"
-        op, width, mode, outcome, witness = shape(row, label)
+        op, width, mode, outcome, witness = shape(row, label,
+                                                  facts.mode_names)
         if discriminate and witness is None:
             continue
         item = {"row": row["row"], "number": number_, "op": op,
                 "width": width, "mode": mode, "outcome": outcome,
-                "witness": witness, "target": row["target"]}
+                "witness": witness, "target": row["target"],
+                "error": row.get("error")}
         if op == "ecall":
             call = row["call"]
             require(isinstance(call, dict) and set(call) <= CALL_KEYS and
@@ -409,12 +537,11 @@ def resolve(declaration, facts, discriminate=False, symbols=None):
                     target in facts.devices,
                     f"{label}: 0x{target or 0:x} is not a device register "
                     f"the oracle reads")
-        item["kind"] = number_ << 32 | OPS[op] << 16 | MODES[mode] << 8 | \
-            width
+        item["kind"] = number_ << 32 | OPS[op] << 16 | \
+            facts.mode_names[mode] << 8 | width
         rows.append(item)
-    require(len(rows) <= facts.header["BREACH_SLOTS"],
-            f"{len(rows)} rows, more than the record's "
-            f"{facts.header['BREACH_SLOTS']} slots")
+    require(len(rows) <= facts.slots,
+            f"{len(rows)} rows, more than the record's {facts.slots} slots")
     check_bytes(rows, facts)
     return rows
 
@@ -432,15 +559,12 @@ def span(item):
 def check_bytes(rows, facts):
     """No witnessed row's bytes meet another's written bytes, and none
     reaches the hook's own record or roots."""
-    record = (facts.mailbox + facts.header["BREACH_RECORD_OFFSET"],
-              facts.mailbox + facts.layout["HART_MAILBOX_BYTES"])
-    control = (facts.mailbox + facts.header["BREACH_CONTROL_OFFSET"],
-               facts.mailbox + facts.header["BREACH_CONTROL_OFFSET"] +
-               facts.header["BREACH_BLOCK_BYTES"] + 16)
+    own, open_ = facts.hook_regions()
     for item in rows:
         for low, high in span(item):
-            inside = record[0] < high and low < record[1]
-            require(not inside or (control[0] <= low and high <= control[1]),
+            inside = any(start < high and low < end for start, end in own)
+            require(not inside or any(start <= low and high <= end
+                                      for start, end in open_),
                     f"row {item['row']} reaches the hook's own record or "
                     f"roots")
     witnessed = [item for item in rows if item["witness"] is not None]
@@ -476,14 +600,15 @@ def table_text(declaration, facts, discriminate):
              "",
              f"#define BE_MVP_BREACH_ROWS {len(rows)}U",
              "",
-             "static const be_u64 be_mvp_breach_modes[BE_MVP_BREACH_MODES]"
-             "[3] = {"]
+             "static const be_u64 be_mvp_breach_modes"
+             "[BE_MVP_BREACH_ROLE_MODES][3] BE_MVP_BREACH_RODATA = {"]
     for mode in facts.modes:
         lines.append("\t{ " + ", ".join(f"0x{value:x}UL" for value in mode) +
                      " },")
     lines += ["};", "",
               "static const struct be_mvp_breach_attempt "
-              "be_mvp_breach_attempts[BE_MVP_BREACH_ROWS] = {"]
+              "be_mvp_breach_attempts[BE_MVP_BREACH_ROWS] "
+              "BE_MVP_BREACH_RODATA = {"]
     for item in rows:
         lines.append(f"\t/* {item['row']}: {item['target']} */")
         lines.append(f"\t{{ 0x{item['kind']:x}UL, "
@@ -510,9 +635,10 @@ def nm_symbols(nm, elf):
     return symbols
 
 
-def rights(descriptor, hart):
-    """The hooked hart's profile: [(low, high, {rights})]; and whether its
-    role's call list is empty."""
+def rights(descriptor, hart, role="vs-domain"):
+    """The hooked hart's profile: [(low, high, {rights})]; and its ROLE's
+    call list: [(extension, function, argument index or None for any,
+    maximum)]."""
     extents = {extent["name"]: (int(extent["base"], 16),
                                 int(extent["size"], 16))
                for extent in descriptor["extents"]}
@@ -524,10 +650,56 @@ def rights(descriptor, hart):
     for access in profiles[0]["access"]:
         base, size = extents[access["extent"]]
         out.append((base, base + size, set(access["rights"])))
-    calls = [role for role in descriptor["calls"]
-             if role.get("role") == "vs-domain"]
-    require(len(calls) == 1, "the descriptor has no one vs-domain call list")
-    return out, calls[0]["allow"] == []
+    calls = [entry for entry in descriptor["calls"]
+             if entry.get("role") == role]
+    require(len(calls) == 1, f"the descriptor has no one {role} call list")
+    allow = []
+    for entry in calls[0]["allow"]:
+        argument = entry["argument"]
+        require(argument == "any" or isinstance(argument, int) and
+                0 <= argument < 6, f"a {role} list entry's argument "
+                f"{argument!r}")
+        allow.append((number(entry["extension"], "an extension"),
+                      number(entry["function"], "a function"),
+                      None if argument == "any" else argument,
+                      number(entry["maximum"], "a maximum")))
+    return out, allow
+
+
+def listed(calls, eid, fid, arguments):
+    """Whether the call list CALLS holds a call (the firmware's
+    sbi_dcommit_call_allowed()): an entry of its extension and function
+    whose argument is any, or whose argument is at most its maximum."""
+    return any((extension, function) == (eid, fid) and (
+        argument is None or arguments[argument] <= maximum)
+        for extension, function, argument, maximum in calls)
+
+
+def judged_call(item, profile, calls):
+    """(outcome, error) a boundary-on run must show for a call: refused
+    where CALLS do not list it; a listed console write as the firmware's
+    handler decides it (lib/sbi/sbi_ecall_dbcn.c): an upper address word
+    not zero, rejected FAILED; no byte, zero; a buffer that wraps, or is
+    not readable and writable in the profile, rejected INVALID_PARAM. Any
+    other listed call would have an effect, or is not modelled."""
+    eid, fid = item["call"] >> 32, item["call"] & 0xFFFFFFFF
+    length, buffer, upper = item["access"], item["value"], item["extra"]
+    # The attempt helper's a3 to a5 hold a0 to a2 at its ecall.
+    if not listed(calls, eid, fid, (length, buffer, upper) * 2):
+        return "refused", None
+    require((eid, fid) == DBCN_WRITE, f"row {item['row']}: a listed call "
+            f"of extension 0x{eid:x}, function {fid}, which this generator "
+            f"does not model")
+    if upper:
+        return "rejected", ERRORS["failed"]
+    if length == 0:
+        return "zero", None
+    if buffer + length > MASK or \
+            has(profile, buffer, buffer + length, "read") is not None or \
+            has(profile, buffer, buffer + length, "write") is not None:
+        return "rejected", ERRORS["invalid-param"]
+    raise Refused(f"row {item['row']}: a listed console write of {length} "
+                  f"bytes, which the console would print")
 
 
 def has(profile, low, high, right):
@@ -552,11 +724,12 @@ def within_one(profile, low, high, right):
                for start, end, given in profile)
 
 
-def judged(item, facts, profile, empty_calls):
-    """(outcome, stval) a boundary-on run must show for ITEM."""
+def judged(item, facts, profile, calls):
+    """(outcome, detail) a boundary-on run must show for ITEM: a denied
+    access's stval, a rejected call's error, or None."""
     op = item["op"]
     if op == "ecall":
-        return ("refused" if empty_calls else "allowed"), None
+        return judged_call(item, profile, calls)
     if op == "cbo.inval":
         return "illegal", None
     for what, address in facts.walk(item["mode"]):
@@ -643,7 +816,11 @@ def copy_value(item, facts, inputs):
     if source == "device":
         return item["device"]
     require(low % 8 == 0 and high - low == 8,
-            f"row {item['row']}: an end read is one aligned word")
+            f"row {item['row']}: an end or fill read is one aligned word")
+    if source == "fill":
+        value = facts.initial(low)
+        require(value != 0, f"row {item['row']}: 0x{low:x} holds no fill")
+        return value
     return {"end": f"0x{low:x}"}
 
 
@@ -677,8 +854,7 @@ def written(item, facts):
             for word, after in sorted(changes.items())]
 
 
-def plan_rows(rows, facts, boundary, inputs, profile=None,
-              empty_calls=True):
+def plan_rows(rows, facts, boundary, inputs, profile=None, calls=()):
     """Each slot's expectation and each witness, for a run of the image."""
     out, words, devices = [], {}, {}
     illegal = inputs["illegal"]
@@ -687,10 +863,16 @@ def plan_rows(rows, facts, boundary, inputs, profile=None,
         outcome = "allowed"
         stval = None
         if boundary:
-            outcome, stval = judged(item, facts, profile, empty_calls)
+            outcome, stval = judged(item, facts, profile, calls)
+            source = "the call list" if item["op"] == "ecall" else \
+                "the profile"
             require(outcome == item["outcome"],
-                    f"{label}: declared {item['outcome']}, but the profile "
+                    f"{label}: declared {item['outcome']}, but {source} "
                     f"gives {outcome}")
+            require(outcome != "rejected" or
+                    stval == ERRORS[item["error"]],
+                    f"{label}: declared the error {item['error']}, but the "
+                    f"firmware gives {stval}")
         expect = {"cause": "none", "stval": "0x0", "value": "sentinel",
                   "error": "sentinel"}
         if outcome == "denied":
@@ -700,6 +882,10 @@ def plan_rows(rows, facts, boundary, inputs, profile=None,
             expect.update(cause=f"0x{ILLEGAL:x}", stval=f"0x{illegal:x}")
         elif outcome == "refused":
             expect.update(value="0x0", error=f"0x{DENIED:x}")
+        elif outcome == "rejected":
+            expect.update(value="0x0", error=f"0x{stval & MASK:x}")
+        elif outcome == "zero":
+            expect.update(value="0x0", error="0x0")
         if item["op"] == "lrsc":
             expect["value"] = f"0x{facts.initial(item['at']):x}"
             if outcome == "allowed":
@@ -731,7 +917,8 @@ def plan_rows(rows, facts, boundary, inputs, profile=None,
     counts = {"pmp_faults": sum(row["outcome"] == "denied" for row in out),
               "blocked_calls": sum(row["outcome"] == "refused"
                                    for row in out),
-              "failed_calls": 0}
+              "failed_calls": sum(row["outcome"] == "rejected"
+                                  for row in out)}
     return out, sorted(words.values(), key=lambda word: word["address"]), \
         sorted(devices.values(), key=lambda device: device["address"]), \
         counts
@@ -797,12 +984,17 @@ def make_plan(declaration, facts, discriminate, image, symbols, inputs,
         facts.layout["SECRET_BYTES"]],
         illegal=illegal_word(inputs["flat"], facts.layout["MONITOR_HPA"],
                              symbols))
-    profile, empty = rights(descriptor, facts.hart) if descriptor else \
-        (None, True)
+    role = CONTROL if facts.control else "vs-domain"
+    profile, calls = rights(descriptor, facts.hart, role) if descriptor \
+        else (None, [])
     out, words, devices, counts = plan_rows(
-        rows, facts, not discriminate, inputs, profile, empty)
-    plan = {"schema": PLAN_SCHEMA, "image": image, "domain": facts.domain,
-            "hart": facts.hart,
+        rows, facts, not discriminate, inputs, profile, calls)
+    # The record's domain word: the hooked VS domain, or the control
+    # role's word.
+    domain = facts.header["BREACH_CONTROL_ROLE"] if facts.control else \
+        facts.domain
+    plan = {"schema": PLAN_SCHEMA, "image": image, "domain": domain,
+            "role": role, "hart": facts.hart,
             "boundary": "off" if discriminate else "on",
             "record": f"0x{facts.record:x}",
             "header_words": facts.header["BREACH_HEADER_BYTES"] // 8,
@@ -816,15 +1008,16 @@ def make_plan(declaration, facts, discriminate, image, symbols, inputs,
 
 
 def expected_counts(declaration_path, domain):
-    """The commit record's counts a boundary-on breach run of VS DOMAIN
-    declares: denied rows, refused rows, and no failed call."""
+    """The commit record's counts a boundary-on breach run of the hooked
+    role DOMAIN declares: denied rows, refused rows, and rejected rows."""
     declaration = load(declaration_path)
     rows = declared_rows(declaration, domain)
     return {"pmp_faults": sum(row.get("outcome") == "denied"
                               for row in rows),
             "blocked_calls": sum(row.get("outcome") == "refused"
                                  for row in rows),
-            "failed_calls": 0}
+            "failed_calls": sum(row.get("outcome") == "rejected"
+                                for row in rows)}
 
 
 def write_new(path, text):
@@ -837,9 +1030,19 @@ def write_new(path, text):
 HERE = pathlib.Path(__file__).resolve().parent
 SOURCES = HERE.parent / "src"
 DECLARATION = HERE.parent / "scenarios" / "anchor" / "breach.json"
-# anchor's two VS-domain profiles as its descriptor states them
-# (tools/gen-partition.py): (extent base, size, rights) per hart.
+CONTROL_DECLARATION = HERE.parent / "scenarios" / "anchor" / \
+    "breach-control.json"
+# anchor's control profile in step 2 (M11-8) and its two VS-domain
+# profiles as its descriptor states them (tools/gen-partition.py):
+# (extent base, size, rights) per hart.
 ANCHOR_PROFILES = {
+    0: ((0x102004000, 0x2000, "rx"), (0x102008000, 0x2000, "rx"),
+        (0x102010000, 0x2000, "rw"), (0x102012000, 0x1000, "rw"),
+        (0x102013000, 0x1000, "rw"), (0x102014000, 0x2000, "rw"),
+        (0x102016000, 0x2000, "rw"), (0x10202c000, 0x4000, "rw"),
+        (0x10203c000, 0x4000, "rw"), (0x102040000, 0x10000, "r"),
+        (0x102050000, 0x10000, "r"), (0x102068000, 0x8000, "rx"),
+        (0x102084000, 0x2000, "r"), (0x102086000, 0x2000, "r")),
     1: ((0x102008000, 0x2000, "rx"), (0x10200a000, 0x2000, "rx"),
         (0x102020000, 0x8000, "r"), (0x102028000, 0x1000, "r"),
         (0x102029000, 0x1000, "r"), (0x10202a000, 0x2000, "r"),
@@ -859,8 +1062,10 @@ RIGHT_NAMES = {"r": "read", "w": "write", "x": "execute"}
 
 
 def synthetic_descriptor(changes=None):
-    """A descriptor of anchor's two VS-domain profiles, with CHANGES:
-    {hart: [(base, size, rights)]} added."""
+    """A descriptor of anchor's control and two VS-domain profiles, with
+    CHANGES: {hart: [(base, size, rights)]} added, and their call lists:
+    the control role's anchor's (the console write, and the shutdown of
+    type 0), the VS role's empty."""
     extents, profiles = [], []
     for hart, rows in ANCHOR_PROFILES.items():
         access = []
@@ -870,10 +1075,15 @@ def synthetic_descriptor(changes=None):
                             "size": f"0x{size:x}"})
             access.append({"extent": name, "rights": [
                 RIGHT_NAMES[letter] for letter in given]})
-        profiles.append({"name": f"g{hart - 1}", "hart": hart,
-                         "access": access})
+        profiles.append({"name": f"g{hart - 1}" if hart else "control",
+                         "hart": hart, "access": access})
     return {"extents": extents, "profiles": profiles,
-            "calls": [{"role": "vs-domain", "allow": []}]}
+            "calls": [{"role": "control", "allow": [
+                {"argument": "any", "extension": "0x4442434e",
+                 "function": "0x0", "maximum": "0x0"},
+                {"argument": 0, "extension": "0x53525354",
+                 "function": "0x0", "maximum": "0x0"}]},
+                      {"role": "vs-domain", "allow": []}]}
 
 
 def synthetic_inputs(facts, symbols):
@@ -917,6 +1127,171 @@ def oracle_reads(scratch, documents):
     except oracle.OracleError as error:
         return False, str(error)
     return True, f"{len(documents)} documents"
+
+
+def control_cases(case, cases, layout, header, symbols, inputs, scratch):
+    """The control role's cases (M11-8): its declaration's rows, modes,
+    and counts; its plan judged by anchor's control profile and call list;
+    its -off plan; and its refusals."""
+    declaration = load(CONTROL_DECLARATION)
+    facts = Facts(layout, header, declaration["devices"], CONTROL)
+    plain = {name: value[0] for name, value in symbols.items()}
+    rows = resolve(declaration, facts, False, plain)
+    off = resolve(declaration, facts, True, plain)
+    outcomes = [row["outcome"] for row in rows]
+    cases.append(("control: 132 rows, 88 denied, two illegal, 28 refused, "
+                  "seven rejected, two of no byte, five controls; 73 "
+                  "witnessed",
+                  len(rows) == 132 and outcomes.count("denied") == 88 and
+                  outcomes.count("illegal") == 2 and
+                  outcomes.count("refused") == 28 and
+                  outcomes.count("rejected") == 7 and
+                  outcomes.count("zero") == 2 and
+                  outcomes.count("allowed") == 5 and len(off) == 73,
+                  f"{len(rows)} {len(off)}"))
+    counts = expected_counts(CONTROL_DECLARATION, CONTROL)
+    cases.append(("control: its counts, each rejected call a failed one",
+                  counts == {"pmp_faults": 88, "blocked_calls": 28,
+                             "failed_calls": 7}, str(counts)))
+    vmid = 0x3fff << VMID_SHIFT
+    cases.append(("control: the modes, its Sv39 root in its padding page, "
+                  "its forged roots in VS domain 0's mailbox and pool",
+                  facts.modes[1][0] == SATP_SV39 | 0x102013 and
+                  facts.modes[2][1] == SATP_SV39 | vmid | 0x10204c and
+                  facts.modes[3][1] == SATP_SV39 | vmid | 0x102020 and
+                  facts.modes[4][1] == SATP_SV39 | vmid | 0x102030 and
+                  facts.modes[5] == (header["BREACH_KEEP"],
+                                     facts.modes[2][1],
+                                     SATP_SV39 | 0xc2026),
+                  str(facts.modes)))
+    by_row = {row["row"]: row for row in rows}
+    cases.append(("control: addresses by mode",
+                  by_row["L1"]["access"] == 0x58002000 and
+                  by_row["L3"]["access"] == 0xd8002008 and
+                  by_row["L5"]["access"] == 0x83e00000 and
+                  by_row["L6"]["access"] == 0x83e00ff0 and
+                  by_row["L7"]["access"] == 0x18002010 and
+                  by_row["P3"]["access"] == 0xc2084000 and
+                  by_row["I5"]["at"] == 0x28008000 and
+                  by_row["I6"]["at"] == 0x28010000,
+                  str([hex(by_row[name]["access"]) for name in
+                       ("L1", "L3", "L5", "L6", "L7", "P3")])))
+    descriptor = synthetic_descriptor()
+    plan = case("control: its rows judged by the control profile and its "
+                "call list", lambda: make_plan(
+                    declaration, facts, False, "breach-c", symbols, inputs,
+                    descriptor))
+    fill = header["BREACH_FILL"]
+    if plan:
+        got = {row["row"]: row for row in plan["rows"]}
+        cases.append(("control: the record's place and role word, and the "
+                      "plan's counts",
+                      plan["record"] == "0x102016000" and plan["hart"] == 0
+                      and plan["domain"] == 0xc0 and
+                      plan["role"] == CONTROL and plan["counts"] == counts,
+                      str(plan["counts"])))
+        cases.append(("control: a listed write's buffer refused by the "
+                      "firmware, its upper word not zero, and no byte",
+                      got["R1"]["error"] == f"0x{(-3) & MASK:x}" and
+                      got["R5"]["error"] == f"0x{(-3) & MASK:x}" and
+                      got["R6"]["error"] == f"0x{(-3) & MASK:x}" and
+                      got["R7"]["error"] == f"0x{(-1) & MASK:x}" and
+                      got["R1"]["value"] == "0x0" and
+                      got["Z2"]["error"] == "0x0" and
+                      got["Z2"]["value"] == "0x0" and
+                      got["M22"]["error"] == f"0x{DENIED:x}",
+                      str(got["R7"])))
+        cases.append(("control: edges, walks, and the read-only mailbox",
+                      got["K1"]["stval"] == "0x102087ffc" and
+                      got["K1"]["cause"] == "0x5" and
+                      got["K2"]["stval"] == "0x102017ffc" and
+                      got["L5"]["stval"] == "0x83e00000" and
+                      got["L7"]["cause"] == "0x5" and
+                      got["L8"]["cause"] == "0x7" and
+                      got["H3"]["value"] == f"0x{fill | 0xbfd0:x}" and
+                      got["H5"]["cause"] == "0x2" and
+                      got["P1"]["value"] == f"0x{fill | 0x1f40:x}" and
+                      got["P5"]["error"] == "0x0",
+                      str(got["K1"])))
+    off_plan = case("control: its -off plan, every witnessed row run",
+                    lambda: make_plan(declaration, facts, True,
+                                      "breach-c-off", symbols, inputs))
+    if off_plan:
+        words = {word["address"]: word["expected"]
+                 for word in off_plan["words"]}
+        cases.append(("control -off: the straddling write's two words, the "
+                      "mailbox's zeroed block, and its own block",
+                      words["0x102017ff8"] == "0xb5ea005000000000" and
+                      words["0x102018000"] == "0xb5ea0050" and
+                      words[f"0x{0x102040000 + 0xbf80:x}"] == "0x0" and
+                      words["0x102017f00"] == "0x0" and
+                      words["0x102017f48"] == "0xb5ea0081b5ea0081",
+                      str({key: words[key] for key in
+                           ("0x102017ff8", "0x102018000")})))
+        cases.append(("control: the oracle reads its plans' words files",
+                      *oracle_reads(scratch / "control", (
+                          words_document(off_plan),) + ((
+                              words_document(plan),) if plan else ()))))
+
+    def edited(change, domain=CONTROL, source=declaration):
+        def call():
+            copied = json.loads(json.dumps(source))
+            change(copied)
+            role = Facts(layout, header, copied["devices"], domain)
+            return make_plan(copied, role, False, "breach-c", symbols,
+                             inputs, descriptor) if domain == CONTROL \
+                else resolve(copied, role, False, plain)
+        return call
+
+    def row_edit(name, **values):
+        def change(copied):
+            row = next(row for row in copied["rows"] if row["row"] == name)
+            row.update(values)
+            for key in [key for key, value in values.items()
+                        if value is None]:
+                del row[key]
+        return change
+    write = {"eid": "0x4442434e", "fid": "0x0", "a0": "0x8",
+             "a1": "diagnostic"}
+    for name, change, want in (
+            ("a listed console write of bytes",
+             row_edit("R1", call=write, outcome="rejected"),
+             "a listed console write of 8 bytes"),
+            ("a listed shutdown",
+             row_edit("M23", call={"eid": "0x53525354", "fid": "0x0",
+                                   "a0": "0x0"}),
+             "which this generator does not model"),
+            ("a rejected call declaring another error",
+             row_edit("R7", error="invalid-param"),
+             "declared the error invalid-param, but the firmware gives -1"),
+            ("a rejected call naming no error", row_edit("R1", error=None),
+             "names its error"),
+            ("a refused call naming an error",
+             row_edit("M1", error="failed"), "names its error"),
+            ("a listed call declared refused",
+             row_edit("Z1", outcome="refused"),
+             "declared refused, but the call list gives zero"),
+            ("a row in its own record",
+             row_edit("P2", at="control.tail+0x100"),
+             "reaches the hook's own record or roots"),
+            ("a row in its own Sv39 root",
+             row_edit("P2", at="control.padding+0x8"),
+             "reaches the hook's own record or roots"),
+            ("a row in its forged VS-stage root",
+             row_edit("E2", at="g0.pool+0x6008"),
+             "reaches the hook's own record or roots"),
+            ("a fill read where no fill lies",
+             row_edit("P1", at="control.tail+0x1fe0"), "holds no fill"),
+            ("a VS role's mode", row_edit("L3", mode="gstage-own"),
+             "mode 'gstage-own'")):
+        case(f"control refused: {name}", edited(change), want)
+    case("control refused: its declaration for a VS domain",
+         edited(lambda copied: None, domain=0),
+         "the declaration is the control role's, not the vs-domain role's")
+    case("control refused: a VS-domain declaration for the control hart",
+         edited(lambda copied: None,
+                source=load(DECLARATION)),
+         "the declaration is the vs-domain role's, not the control role's")
 
 
 def self_test(scratch):
@@ -1178,12 +1553,22 @@ def self_test(scratch):
     case("refused: a boundary-on plan without its descriptor",
          lambda: make_plan(declaration, facts[0], False, "breach-g0",
                            symbols, inputs), "needs its descriptor")
+    control_cases(case, cases, layout, header, symbols, inputs, scratch)
     failed = [item for item in cases if not item[1]]
     for name, ok, detail in cases:
         print(f"{'ok  ' if ok else 'FAIL'} {name}: {detail}")
     print(f"BE_MVP_BREACH_SELF_TEST: {'FAIL' if failed else 'PASS'} "
           f"cases={len(cases)}")
     return 1 if failed else 0
+
+
+def hooked_role(text):
+    """--domain's value: the hooked VS domain, 0 or 1, or CONTROL."""
+    if text in ("0", "1"):
+        return int(text)
+    if text == CONTROL:
+        return CONTROL
+    raise argparse.ArgumentTypeError(f"{text!r} is not 0, 1, or {CONTROL}")
 
 
 def main(argv):
@@ -1196,7 +1581,7 @@ def main(argv):
     for name in ("table", "plan", "counts"):
         command = commands.add_parser(name)
         command.add_argument("--declaration", required=True)
-        command.add_argument("--domain", type=int, required=True)
+        command.add_argument("--domain", type=hooked_role, required=True)
         if name == "counts":
             continue
         command.add_argument("--layout", required=True)

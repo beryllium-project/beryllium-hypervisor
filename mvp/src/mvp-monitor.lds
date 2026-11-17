@@ -420,6 +420,15 @@ SECTIONS
 			.text.small_sigma0 .text.small_sigma0.*
 			.text.small_sigma1 .text.small_sigma1.*
 			.text.store_be32 .text.store_be32.*)
+		/*
+		 * M11-8: the control breach image's hook (breach-c), which no
+		 * other image links: its functions, its executor functions, and
+		 * its helpers, each in the section src/mvp-breach.h names for
+		 * the control role, ahead of the VS role's patterns below.
+		 */
+		*mvp-breach.o(.text.mvp.breach.control)
+		*mvp-executor.o(.text.mvp.breach.control)
+		*mvp-breach-arch.o(.text.mvp.breach.control)
 		__be_mvp_control_constants_start = .;
 		/*
 		 * The management grants are here, not in .mvp.rodata: boot code
@@ -461,6 +470,7 @@ SECTIONS
 		*mvp-hart.o(.rodata .rodata.*)
 		*mvp-input.o(.rodata .rodata.*)
 		*mvp-sha256.o(.rodata.round_constants)
+		*mvp-breach.o(.rodata.mvp.breach.control)
 		__be_mvp_control_constants_end = .;
 		. = ABSOLUTE(0x102070000);
 		__be_mvp_control_text_end = .;

@@ -3,19 +3,22 @@
  * Copyright (C) 2026 James Morris <jmorris@namei.org>
  *
  * Purpose: the hostile-monitor test hook of the breach images (M11-7;
- *          planning/mvp-m11-plan.md, D-10's VS-domain column): the
- *          attempt table's row, the translation modes, the record the hook
- *          keeps in its own hart mailbox, and the words hart 0 fills before
- *          the barrier, which tools/gen-breach.py writes and reads.
+ *          planning/mvp-m11-plan.md, D-10's VS-domain column; M11-8, its
+ *          control-hart column): the attempt table's row, the translation
+ *          modes, the record the hook keeps (a VS-domain hart's in its own
+ *          hart mailbox, the control hart's in its control tail), and the
+ *          words hart 0 fills before the barrier, which tools/gen-breach.py
+ *          writes and reads.
  * Trust:   test code. Only the breach images (BE_MVP_BREACH, with
- *          BE_MVP_BREACH_DOMAIN) link the hook (mvp-breach.c,
- *          mvp-breach-arch.S); a scenario image includes no part of it.
- *          The table is generated before the link from
- *          scenarios/anchor/breach.json (mvp-breach-table.h) and decoded
- *          again after it by tests/check-image.py.
- * Scope:   anchor's breach-g0 and breach-g1 and their -off copies
- *          (BE_MVP_BREACH_DISCRIMINATE, which run every attempt that has a
- *          witness, with no boundary).
+ *          BE_MVP_BREACH_DOMAIN or BE_MVP_BREACH_CONTROL) link the hook
+ *          (mvp-breach.c, mvp-breach-arch.S); a scenario image includes no
+ *          part of it. The table is generated before the link from
+ *          scenarios/anchor/breach.json or breach-control.json
+ *          (mvp-breach-table.h) and decoded again after it by
+ *          tests/check-image.py.
+ * Scope:   anchor's breach-g0, breach-g1, and breach-c and their -off
+ *          copies (BE_MVP_BREACH_DISCRIMINATE, which run every attempt
+ *          that has a witness, with no boundary).
  */
 
 #ifndef BE_MVP_BREACH_H
@@ -125,13 +128,62 @@
 #define BE_MVP_BREACH_FORGED_GPA	BE_MVP_C(0xc0000000)
 #define BE_MVP_BREACH_VMID		BE_MVP_C(0x3fff)
 
+/*
+ * The control role (M11-8, breach-c; D-10's control-hart column). Its
+ * record, header and slots, at the start of the control tail, which hart
+ * 0's profile holds and nothing else uses; then its control rows' block
+ * and words at the tail's end, each its fill. Its own Sv39 root in the
+ * control padding page, which it writes itself. Its forged Sv39x4 root in
+ * VS domain 0's hart mailbox, which it may read, and the forged VS-stage
+ * root in VS domain 0's G-stage pool's spare page, which it may not: hart
+ * 0's boot code writes both before the barrier, as it fills the words of
+ * each VS-domain hart's mailbox that the hart-mailbox rows change
+ * (BE_MVP_BREACH_FILL with the word's offset in its mailbox). The record's
+ * domain word holds BE_MVP_BREACH_CONTROL_ROLE.
+ */
+#define BE_MVP_BREACH_CONTROL_RECORD_HPA	BE_MVP_C(0x102016000)
+#define BE_MVP_BREACH_CONTROL_SLOTS	BE_MVP_C(144)
+#define BE_MVP_BREACH_CONTROL_BLOCK_HPA	BE_MVP_C(0x102017f00)
+#define BE_MVP_BREACH_CONTROL_FILL_BYTES BE_MVP_C(0x80)
+#define BE_MVP_BREACH_CONTROL_SV39_HPA	BE_MVP_C(0x102013000)
+#define BE_MVP_BREACH_CONTROL_SV39X4_HPA BE_MVP_C(0x10204c000)
+#define BE_MVP_BREACH_CONTROL_VS_ROOT_HPA BE_MVP_C(0x102026000)
+#define BE_MVP_BREACH_MAILBOX_FILL	BE_MVP_C(0xbf40)
+#define BE_MVP_BREACH_MAILBOX_FILL_BYTES BE_MVP_C(0xc0)
+#define BE_MVP_BREACH_CONTROL_ROLE	BE_MVP_C(0xc0)
+/* The control role's modes: bare, satp, its forged hgatp, each VS
+ * domain's own G-stage root, and its forged hgatp with the VS-stage root
+ * in forbidden memory. */
+#define BE_MVP_BREACH_CONTROL_MODES	BE_MVP_C(6)
+
 #ifndef __ASSEMBLER__
 #include <be/types.h>
 
 #if defined(BE_MVP_BREACH) && \
-	(!defined(BE_MVP_BREACH_DOMAIN) || \
-	 (BE_MVP_BREACH_DOMAIN != 0 && BE_MVP_BREACH_DOMAIN != 1))
-#error "a breach image names its hooked VS domain, 0 or 1"
+	(defined(BE_MVP_BREACH_CONTROL) ? defined(BE_MVP_BREACH_DOMAIN) : \
+	 (!defined(BE_MVP_BREACH_DOMAIN) || \
+	  (BE_MVP_BREACH_DOMAIN != 0 && BE_MVP_BREACH_DOMAIN != 1)))
+#error "a breach image hooks one VS domain, 0 or 1, or the control hart"
+#endif
+
+/*
+ * The hook's sections: in the control role, every function and constant
+ * of the hook, of its executor functions, and of its table goes into
+ * sections of its own, which mvp-monitor.lds places in the MVP control
+ * text and constants, ahead of the VS role's patterns.
+ */
+#if defined(BE_MVP_BREACH_CONTROL)
+#define BE_MVP_BREACH_TEXT \
+	__attribute__((section(".text.mvp.breach.control")))
+#define BE_MVP_BREACH_RODATA \
+	__attribute__((section(".rodata.mvp.breach.control")))
+#define BE_MVP_BREACH_ROLE_SLOTS	BE_MVP_BREACH_CONTROL_SLOTS
+#define BE_MVP_BREACH_ROLE_MODES	BE_MVP_BREACH_CONTROL_MODES
+#else
+#define BE_MVP_BREACH_TEXT
+#define BE_MVP_BREACH_RODATA
+#define BE_MVP_BREACH_ROLE_SLOTS	BE_MVP_BREACH_SLOTS
+#define BE_MVP_BREACH_ROLE_MODES	BE_MVP_BREACH_MODES
 #endif
 
 struct be_mvp_breach_attempt {
@@ -160,7 +212,7 @@ struct be_mvp_breach_record {
 	be_u64 abort_sepc;
 	be_u64 abort_stval;
 	be_u64 reserved[7];
-	struct be_mvp_breach_slot slots[BE_MVP_BREACH_SLOTS];
+	struct be_mvp_breach_slot slots[BE_MVP_BREACH_ROLE_SLOTS];
 };
 
 struct be_mvp_breach_saved {
@@ -187,18 +239,60 @@ _Static_assert(__builtin_offsetof(struct be_mvp_breach_record, slot) ==
 	       __builtin_offsetof(struct be_mvp_breach_record, abort_stval) ==
 	       BE_MVP_BREACH_FRAME_OFFSET + BE_MVP_BREACH_FRAME_STVAL &&
 	       __builtin_offsetof(struct be_mvp_breach_record, slots) ==
-	       BE_MVP_BREACH_HEADER_BYTES &&
-	       BE_MVP_BREACH_RECORD_OFFSET + sizeof(struct be_mvp_breach_record)
-	       <= BE_MVP_BREACH_CONTROL_OFFSET &&
+	       BE_MVP_BREACH_HEADER_BYTES, "the record's header");
+#if defined(BE_MVP_BREACH_CONTROL)
+_Static_assert(BE_MVP_BREACH_CONTROL_RECORD_HPA ==
+	       BE_MVP_CONTROL_STACK_HPA + BE_MVP_CONTROL_STACK_BYTES &&
+	       BE_MVP_BREACH_CONTROL_RECORD_HPA +
+	       sizeof(struct be_mvp_breach_record) <=
+	       BE_MVP_BREACH_CONTROL_BLOCK_HPA &&
+	       BE_MVP_BREACH_CONTROL_BLOCK_HPA +
+	       BE_MVP_BREACH_CONTROL_FILL_BYTES <=
+	       BE_MVP_CONTROL_PROFILE_HPA + BE_MVP_CONTROL_PROFILE_BYTES &&
+	       BE_MVP_BREACH_CONTROL_SV39_HPA ==
+	       BE_MVP_DIAGNOSTIC_HPA + BE_MVP_DIAGNOSTIC_BYTES &&
+	       BE_MVP_BREACH_CONTROL_SV39_HPA + 0x1000 <=
+	       BE_MVP_CONTROL_STACK_HPA &&
+	       BE_MVP_BREACH_CONTROL_SV39X4_HPA + 0x4000 ==
+	       BE_MVP_G0_HART_MAILBOX_HPA + BE_MVP_HART_MAILBOX_BYTES &&
+	       BE_MVP_HART_OUTBOUND_HEAD_OFFSET + 0xc0 <=
+	       BE_MVP_BREACH_MAILBOX_FILL &&
+	       BE_MVP_G0_HART_MAILBOX_HPA + BE_MVP_BREACH_MAILBOX_FILL +
+	       BE_MVP_BREACH_MAILBOX_FILL_BYTES ==
+	       BE_MVP_BREACH_CONTROL_SV39X4_HPA &&
+	       BE_MVP_BREACH_CONTROL_VS_ROOT_HPA ==
+	       BE_MVP_G0_LEVEL0_HPA + 0x1000 &&
+	       BE_MVP_BREACH_CONTROL_VS_ROOT_HPA + 0x1000 <=
+	       BE_MVP_G0_ROOT_HPA + BE_MVP_GUEST_POOL_BYTES,
+	       "the control role's record, roots, and fill");
+#else
+_Static_assert(BE_MVP_BREACH_RECORD_OFFSET +
+	       sizeof(struct be_mvp_breach_record) <=
+	       BE_MVP_BREACH_CONTROL_OFFSET &&
 	       BE_MVP_BREACH_CONTROL_OFFSET + BE_MVP_BREACH_BLOCK_BYTES +
 	       2 * 8 <= BE_MVP_BREACH_SV39_OFFSET &&
 	       BE_MVP_HART_OUTBOUND_HEAD_OFFSET + 0xc0 <=
 	       BE_MVP_BREACH_RECORD_OFFSET &&
 	       BE_MVP_BREACH_SV39X4_OFFSET + 0x4000 <=
 	       BE_MVP_HART_MAILBOX_BYTES, "the record's place in the mailbox");
+#endif
 _Static_assert(__builtin_offsetof(struct be_mvp_breach_saved, vsatp) ==
 	       BE_MVP_BREACH_SAVED_VSATP, "the saved registers' layout");
 
+#if defined(BE_MVP_BREACH_CONTROL)
+/**
+ * be_mvp_breach_hook_control - the control hart's hostile-monitor
+ * attempts, once (M11-8)
+ *
+ * Called once by hart 0 after its activation, before it reads any ring:
+ * from its confined entry, after the BE_MVP:08 lines, in a boundary-on
+ * image; after the starts in an -off copy. Runs every row of
+ * be_mvp_breach_attempts from HS mode and records each one's trap in the
+ * record in the control tail. A record already begun is marked
+ * BE_MVP_BREACH_STATE_AGAIN, and nothing runs again.
+ */
+void be_mvp_breach_hook_control(void);
+#else
 /**
  * be_mvp_breach_hook - the hostile-monitor attempts, once, from a dispatch
  * @block: the dispatching hart's block
@@ -211,6 +305,7 @@ _Static_assert(__builtin_offsetof(struct be_mvp_breach_saved, vsatp) ==
  * marked BE_MVP_BREACH_STATE_AGAIN, and nothing runs again.
  */
 void be_mvp_breach_hook(be_u64 block, be_u64 exits);
+#endif
 
 /* The secret's source (mvp-runtime.c), with external linkage in a breach
  * image alone, for the row that names it (finding F-4). */

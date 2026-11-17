@@ -2029,7 +2029,49 @@ static int ring_views(struct be_mvp_ring *writer, struct be_mvp_ring *reader,
  * indices, with the views of the three rings, hart 0's and the domain
  * hart's; then a fence w, w, and the generation words last.
  */
-#if defined(BE_MVP_BREACH)
+#if defined(BE_MVP_BREACH_CONTROL)
+/*
+ * The control breach image's words, before the barrier (M11-8): hart 0's
+ * record header cleared, so that a second run of its hook shows; the
+ * words of each VS-domain hart's mailbox that its hart-mailbox rows
+ * change, each its fill; its forged Sv39x4 root, one gigapage leaf at
+ * BE_MVP_BREACH_FORGED_GPA, in VS domain 0's hart mailbox, which hart 0
+ * may read once confined but not write; and the forged Sv39 VS-stage
+ * root, one gigapage leaf at VA 0 to BE_MVP_BREACH_FORGED_GPA, in VS
+ * domain 0's G-stage pool's spare page, which it may not read. That
+ * pool's spare bytes were checked zero when its root was walked
+ * (build_gstage()), and nothing reads them again.
+ */
+static void breach_fill(void)
+{
+	volatile be_u64 *record = (volatile be_u64 *)(void *)
+		BE_MVP_BREACH_CONTROL_RECORD_HPA;
+	volatile be_u64 *forged = (volatile be_u64 *)(void *)
+		BE_MVP_BREACH_CONTROL_SV39X4_HPA;
+	volatile be_u64 *root = (volatile be_u64 *)(void *)
+		BE_MVP_BREACH_CONTROL_VS_ROOT_HPA;
+	be_u64 index, offset;
+	be_u32 domain;
+
+	for (index = 0U; index < BE_MVP_BREACH_HEADER_BYTES / 8U; ++index)
+		record[index] = 0U;
+	for (domain = 0U; domain < BE_MVP_DOMAINS; ++domain)
+		for (offset = BE_MVP_BREACH_MAILBOX_FILL;
+		     offset < BE_MVP_BREACH_MAILBOX_FILL +
+			      BE_MVP_BREACH_MAILBOX_FILL_BYTES;
+		     offset += 8U)
+			*(volatile be_u64 *)(void *)
+				((be_u64)(void *)hart_mailbox(domain) +
+				 offset) = BE_MVP_BREACH_FILL | offset;
+	for (index = 0U; index < 2048U; ++index)
+		forged[index] = 0U;
+	forged[BE_MVP_BREACH_FORGED_GPA >> 30] =
+		((BE_MVP_BREACH_GIGAPAGE >> 12) << 10) | 0xdfU;
+	for (index = 0U; index < 512U; ++index)
+		root[index] = 0U;
+	root[0] = ((BE_MVP_BREACH_FORGED_GPA >> 12) << 10) | 0xcfU;
+}
+#elif defined(BE_MVP_BREACH)
 /*
  * A breach image's words, before the barrier (M11-7): the hooked VS
  * domain's record cleared, so that a second run of its hook shows; the
@@ -2984,6 +3026,11 @@ void be_mvp_control_confined(void)
 	be_mvp_exec_reset_hs_state(symbol_address(be_mvp_trap_vector), &hs);
 	arm_control_tick(be_mvp_exec_read_time());
 	emit_started(BE_MVP_RUN_DOMAINS);
+#if defined(BE_MVP_BREACH_CONTROL)
+	/* M11-8's hostile-monitor hook, the control breach image alone: once,
+	 * after hart 0's activation and before it reads any ring. */
+	be_mvp_breach_hook_control();
+#endif
 	wait_ready();
 	control_loop();
 }
@@ -3065,6 +3112,10 @@ static void start_run(void)
 #endif
 	start_harts();
 #if !defined(BE_MVP_BOUNDARY)
+#if defined(BE_MVP_BREACH_CONTROL)
+	/* The control breach image's -off copy: its hook after the starts. */
+	be_mvp_breach_hook_control();
+#endif
 	wait_ready();
 #if defined(BE_MVP_PROBE_IMAGE)
 	be_mvp_probe_run();

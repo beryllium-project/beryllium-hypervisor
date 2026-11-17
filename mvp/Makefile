@@ -271,22 +271,32 @@ ANCHOR_VARIANT_OBJECTS_no-grant-check :=
 # attempts that have a witness. Each one's table is generated before the
 # link from scenarios/anchor/breach.json (tools/gen-breach.py table), and
 # its plan after it (breach-plan.json, breach-words.json; plan), which the
-# run harness judges a run by (tests/check-boundary.py breach).
+# run harness judges a run by (tests/check-boundary.py breach). breach-c
+# (M11-8, D-10's control-hart column) is the same with the hook on the
+# control hart, its role control, from scenarios/anchor/
+# breach-control.json.
 MVP_BREACH_VARIANTS := $(if $(filter cheri,$(MVP_MONITOR)),,breach-g0 \
-	breach-g1)
+	breach-g1 breach-c)
 ANCHOR_VARIANTS += $(MVP_BREACH_VARIANTS)
 ANCHOR_VARIANT_OBJECTS_breach-g0 :=
 ANCHOR_VARIANT_OBJECTS_breach-g1 :=
+ANCHOR_VARIANT_OBJECTS_breach-c :=
 MVP_BREACH_OFF := $(addsuffix -off,$(MVP_BREACH_VARIANTS))
 BREACH_DECLARATION := $(MVP_DIR)/scenarios/anchor/breach.json
+BREACH_CONTROL_DECLARATION := $(MVP_DIR)/scenarios/anchor/breach-control.json
 BREACH_GEN := $(MVP_DIR)/tools/gen-breach.py
 BREACH_DOMAIN_breach-g0 := 0
 BREACH_DOMAIN_breach-g1 := 1
+BREACH_DOMAIN_breach-c := control
 BREACH_DOMAIN_breach-g0-off := 0
 BREACH_DOMAIN_breach-g1-off := 1
-# $(1) breach image: its compile-time hook, and where its table lies.
+BREACH_DOMAIN_breach-c-off := control
+# $(1) breach image: its compile-time hook, its declaration, and where its
+# table lies.
 breach_table_dir = $(GEN)/breach/$(1)
-breach_flags = -DBE_MVP_BREACH -DBE_MVP_BREACH_DOMAIN=$(BREACH_DOMAIN_$(1)) \
+breach_declaration = $(if $(filter control,$(BREACH_DOMAIN_$(1))),$(BREACH_CONTROL_DECLARATION),$(BREACH_DECLARATION))
+breach_flags = -DBE_MVP_BREACH $(if $(filter control,$(BREACH_DOMAIN_$(1))),\
+	-DBE_MVP_BREACH_CONTROL,-DBE_MVP_BREACH_DOMAIN=$(BREACH_DOMAIN_$(1))) \
 	$(if $(filter %-off,$(1)),-DBE_MVP_BREACH_DISCRIMINATE) \
 	-iquote $(call breach_table_dir,$(1))
 # $(1) toolchain, $(2) image: a breach image's two hook objects, else none.
@@ -461,6 +471,7 @@ $(MVP_SCENARIO_GEN_$(1))/mvp-scenario.h \
 		$(MVP_DIR)/guest/initramfs.list.in $(MVP_BOUNDARY_STAMP) \
 		$(MVP_DIR)/scenarios/pairing.txt \
 		$(wildcard $(MVP_DIR)/scenarios/$(1)/breach.json) \
+		$(wildcard $(MVP_DIR)/scenarios/$(1)/breach-control.json) \
 		$(MVP_DIR)/tools/gen-breach.py
 	$$(call gen_scenario,$(1)) --self-test
 	$$(call gen_scenario,$(1)) --out $(MVP_SCENARIO_GEN_$(1))
@@ -1408,12 +1419,13 @@ run-tool-check: $(BOUNDARY_NEGATIVE_RECORDS)
 # boundary-on image's rows against its descriptor's profile first. $(1)
 # image
 define mvp_breach_table
-$(call breach_table_dir,$(1))/mvp-breach-table.h: $(BREACH_DECLARATION) \
+$(call breach_table_dir,$(1))/mvp-breach-table.h: \
+		$(call breach_declaration,$(1)) \
 		$(BREACH_GEN) $(MVP_DIR)/src/mvp-layout.h \
 		$(MVP_DIR)/src/mvp-breach.h
 	mkdir -p $$(@D)
 	$$(PYTHON) -I -B $(BREACH_GEN) table \
-		--declaration $(BREACH_DECLARATION) \
+		--declaration $(call breach_declaration,$(1)) \
 		--layout $(MVP_DIR)/src/mvp-layout.h \
 		--header $(MVP_DIR)/src/mvp-breach.h \
 		--domain $(BREACH_DOMAIN_$(1)) \
@@ -1437,11 +1449,11 @@ $(BUILD)/variants/$(1)/$(2)/breach-words.json &: \
 		$(BUILD)/variants/$(1)/$(2)/be-mvp.elf \
 		$(BUILD)/variants/$(1)/$(2)/be-mvp.bin \
 		$(BUILD)/variants/$(1)/$(2)/be-mvp-boot.img $(ANCHOR_DTB0) \
-		$(ANCHOR_DTB1) $(BREACH_DECLARATION) $(BREACH_GEN) \
+		$(ANCHOR_DTB1) $(call breach_declaration,$(2)) $(BREACH_GEN) \
 		$(MVP_DIR)/src/mvp-layout.h $(MVP_DIR)/src/mvp-breach.h \
 		$(if $(filter %-off,$(2)),,$(call partition_descriptor,anchor,$(2)))
 	$$(PYTHON) -I -B $(BREACH_GEN) plan \
-		--declaration $(BREACH_DECLARATION) \
+		--declaration $(call breach_declaration,$(2)) \
 		--layout $(MVP_DIR)/src/mvp-layout.h \
 		--header $(MVP_DIR)/src/mvp-breach.h \
 		--domain $(BREACH_DOMAIN_$(2)) \
@@ -1568,7 +1580,7 @@ variants: image $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_VARIANTS) \
 		$(call off_spec,$(t),anchor-off) $(call anchor_variant_specs,$(t)) \
 		$(foreach o,$(MVP_BREACH_OFF),$(call off_spec,$(t),$(o))) \
 		$(foreach v,$(MVP_BREACH_VARIANTS) $(MVP_BREACH_OFF),--breach \
-		$(v):$(BREACH_DECLARATION):$(BREACH_DOMAIN_$(v))) \
+		$(v):$(call breach_declaration,$(v)):$(BREACH_DOMAIN_$(v))) \
 		--variant anchor-shell:$(call shell_spec,$(t),anchor) &&) true; } 2>&1 | \
 		tee -a $(RECORDS)/variants.txt
 

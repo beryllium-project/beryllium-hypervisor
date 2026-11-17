@@ -306,10 +306,11 @@ NOT_APPLICABLE = "BE_MVP_BOUNDARY: NOT-APPLICABLE boundary=off\n"
 CONTROL_STEPS = ("boot", "confined")
 # M11-7: a breach image's plan beside its ELF (tools/gen-breach.py), and
 # each of its attempts' hook record (tests/check-boundary.py breach): its
-# verdict line, or the line of a run that could not be judged.
+# verdict line, or the line of a run that could not be judged. The hooked
+# hart is a VS-domain hart's, or since M11-8 the control hart's.
 BREACH_PLAN = "breach-plan.json"
 BREACH_LINE = re.compile(r"BE_MVP_BREACH: (?:PASS|FAIL) image=(\S+) "
-                         r"boundary=(on|off) hart=[12] rows=\d+ .*")
+                         r"boundary=(on|off) hart=[0-2] rows=\d+ .*")
 BREACH_UNJUDGED = re.compile(r"BE_MVP_BREACH: FAIL .*")
 BOUNDARY_ON = re.compile(r"BE_MVP_BOUNDARY: (?:PASS|FAIL) image=\S+ pair=\S+ "
                          r"pmp_mode=(plain|smepmp) "
@@ -2158,6 +2159,15 @@ def self_test(scratch):
         sys.stdout = stdout
     case("a breach image's attempt that could not be judged has its record",
          unjudged is None)
+    record.write_text(original.replace(" hart=1 ", " hart=0 "),
+                      encoding="ascii")
+    stdout, sys.stdout = sys.stdout, quiet
+    try:
+        control = refused(development, build, scratch / "bundle-3", home)
+    finally:
+        sys.stdout = stdout
+    case("a breach image's attempt whose hook record names the control "
+         "hart (M11-8) has its record", control is None)
     record.unlink()
     case("a breach image's attempt without its hook record refuses the "
          "bundle", "gcc-payload.1.breach.txt is missing" in

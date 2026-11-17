@@ -99,7 +99,11 @@
 # and tests/check-boundary.py breach judges the hook's record, each
 # witness word, and each device register against the image's plan
 # (breach-plan.json beside its ELF): OUT_DIR/TOOLCHAIN-NAME.ATTEMPT.
-# breach.txt. Such a run passes only when that judge passes too.
+# breach.txt. Such a run passes only when that judge passes too. M11-8's
+# breach-c (D-10's control-hart column) is run the same way: its hook is
+# hart 0's, once, after its activation, from
+# scenarios/anchor/breach-control.json (breach-c, breach-c-smepmp,
+# breach-c-off).
 #
 # M11-7 (D-10's negatives): two-guests' own boot image, boundary-on on
 # k3-like under plain PMP, for each toolchain in
@@ -356,7 +360,10 @@ breach_runs=()
 	"breach-g0-smepmp breach-g0 $k3_cpu,smepmp=true $oracle_smepmp"
 	"breach-g1-smepmp breach-g1 $k3_cpu,smepmp=true $oracle_smepmp"
 	"breach-g0-off breach-g0-off $k3_cpu $oracle_k3"
-	"breach-g1-off breach-g1-off $k3_cpu $oracle_k3")
+	"breach-g1-off breach-g1-off $k3_cpu $oracle_k3"
+	"breach-c breach-c $k3_cpu $oracle_k3"
+	"breach-c-smepmp breach-c $k3_cpu,smepmp=true $oracle_smepmp"
+	"breach-c-off breach-c-off $k3_cpu $oracle_k3")
 # beryllium-cheri: the CHERI-aware monitor's firmware has its own pin, the
 # firmware line of guest/cheri-pins.txt in this script's tree (S-01).
 if [ "$monitor" = cheri ]; then
