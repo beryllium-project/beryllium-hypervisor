@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 James Morris <jmorris@namei.org>
-"""Independent checker for be-partition-v1, its tree, tables, and image."""
+"""Independent checker for be-partition-v1, its tree, tables, and image.
+
+--control-hart boot (M11-7, step 1): the tree has no OpenSBI domain for
+hart 0, which be_boot alone lists, and the tables no confined table for
+it; the record names the step and binds the tree's and tables' SHA-256."""
 
 import argparse
 import copy
@@ -566,7 +570,8 @@ def domain_nodes(fdt):
     instances = [path for path in fdt.order if fdt_parent(path) == base and
                  "opensbi,domain,instance" in fdt_strings(
                      fdt_prop(fdt, path, "compatible", False) or b"\0")]
-    require(len(instances) == 5, "FDT does not have five OpenSBI domains")
+    require(len(instances) in (4, 5),
+            "FDT does not have four or five OpenSBI domains")
     return base, {path.rsplit("/", 1)[1]: path for path in instances}
 
 
@@ -613,12 +618,13 @@ def expected_calls(value):
     return out
 
 
-def expected_tree_model(value, domains, extent_ranges, profiles):
+def expected_tree_model(value, domains, extent_ranges, profiles,
+                        control="confined"):
     calls = expected_calls(value)
     life = {row["hart"]: row for row in value["lifecycle"]}
     combined = {hart: combine(profile, extent_ranges)
                 for hart, profile in profiles.items()}
-    return {
+    model = {
         "cold": [0],
         "domains": {
             "be_boot": {"harts": [0, 1, 2], "boot": 0, "order": 1,
@@ -652,6 +658,9 @@ def expected_tree_model(value, domains, extent_ranges, profiles):
                                    (), ("execute",))]},
         },
     }
+    if control == "boot":
+        del model["domains"]["be_control"]
+    return model
 
 
 def guard_model(model, expected):
@@ -667,18 +676,22 @@ def guard_model(model, expected):
     for name, row in model["domains"].items():
         for hart in row["harts"]:
             listed[hart].append(name)
-    require(all(sorted(listed[hart]) == sorted([
-                "be_boot", "be_control" if hart == 0 else f"be_g{hart - 1}"])
+    own = {0: [name for name in ("be_control",) if name in model["domains"]],
+           1: ["be_g0"], 2: ["be_g1"]}
+    require(all(sorted(listed[hart]) == sorted(["be_boot"] + own[hart])
                 for hart in (0, 1, 2)) and
             all(listed[hart] == ["be_park"] for hart in range(3, 8)),
             "OpenSBI domain membership fails the guard")
 
 
-def tree_check(fdt, value, identity, profiles, domains, extent_ranges):
+def tree_check(fdt, value, identity, profiles, domains, extent_ranges,
+               control="confined"):
     handles = cpu_phandles(fdt)
     config, nodes = domain_nodes(fdt)
-    require(set(nodes) == {"be_boot", "be_control", "be_g0", "be_g1",
-                           "be_park"}, "OpenSBI domain names differ")
+    expected = expected_tree_model(value, domains, extent_ranges, profiles,
+                                   control)
+    require(set(nodes) == set(expected["domains"]),
+            "OpenSBI domain names differ")
     digest_cells = fdt_cells(fdt_prop(fdt, config, "config-digest"))
     require("".join(f"{cell:08x}" for cell in digest_cells) == identity,
             "config-digest differs")
@@ -740,7 +753,6 @@ def tree_check(fdt, value, identity, profiles, domains, extent_ranges):
                      else None),
             "regions": regions,
         }
-    expected = expected_tree_model(value, domains, extent_ranges, profiles)
     guard_model(model, expected)
     for name, row in model["domains"].items():
         wanted = expected["domains"][name]["regions"]
@@ -979,8 +991,9 @@ def table_equal(got, wanted, label):
 
 
 def tables_check(tables, identity, firmware, base_dts, fdt, extent_ranges,
-                 profiles, symbols):
+                 profiles, symbols, control="confined"):
     require(tables.get("schema") == "be-pmp-tables-v1" and
+            tables.get("control_hart", "confined") == control and
             tables["descriptor_identity"] == identity and
             tables["firmware_sha256"] == sha(firmware) and
             tables["base_tree_sha256"] == sha(base_dts),
@@ -992,7 +1005,8 @@ def tables_check(tables, identity, firmware, base_dts, fdt, extent_ranges,
         rows = tables["modes"][mode]
         require(sum(row["state"] == "never-started" for row in rows) == 8 and
                 sum(row["state"] == "boot" for row in rows) == 3 and
-                sum(row["state"] == "confined" for row in rows) == 3,
+                sum(row["state"] == "confined" for row in rows) ==
+                3 - (control == "boot"),
                 f"{mode}: state table counts")
         for hart in range(8):
             never = [row for row in rows if row["hart"] == hart and
@@ -1006,10 +1020,12 @@ def tables_check(tables, identity, firmware, base_dts, fdt, extent_ranges,
         for hart in profiles:
             got_boot = next(row["entries"] for row in rows
                             if row["hart"] == hart and row["state"] == "boot")
+            table_equal(got_boot, boot, f"{mode}: hart {hart} boot table")
+            if (hart, control) == (0, "boot"):
+                continue
             got_confined = next(row["entries"] for row in rows
                                 if row["hart"] == hart and
                                 row["state"] == "confined")
-            table_equal(got_boot, boot, f"{mode}: hart {hart} boot table")
             expected = pmp_table(combine(profiles[hart], extent_ranges) +
                                  inherited, mode)
             table_equal(got_confined, expected,
@@ -1170,7 +1186,7 @@ def expected_refusal(name, prefix, action):
 
 
 def tree_mutations(descriptor_path, value, identity, domains, extent_ranges,
-                   profiles, dtc, backend, scratch):
+                   profiles, dtc, backend, scratch, control="confined"):
     scratch = pathlib.Path(scratch)
     if scratch.exists():
         shutil.rmtree(scratch)
@@ -1192,21 +1208,24 @@ def tree_mutations(descriptor_path, value, identity, domains, extent_ranges,
  timer@2000000 { compatible = "riscv,clint0"; reg = <0 0x2000000 0 0x10000>; };
 }; 
 """, encoding="utf-8")
+    def render(name, mode):
+        result = subprocess.run([
+            sys.executable, "-I", "-B", backend, "--render", "--descriptor",
+            descriptor_path, "--base-name", base.name, "--out-dts",
+            scratch / name, "--dtc", dtc, "--control-hart", mode],
+            check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        require(result.returncode == 0, "backend render failed")
+        return (scratch / name).read_text(encoding="utf-8")
+    original = render("tree.dts", control)
     rendered = scratch / "tree.dts"
-    result = subprocess.run([sys.executable, "-I", "-B", backend, "--render",
-                             "--descriptor", descriptor_path, "--base-name",
-                             base.name, "--out-dts", rendered, "--dtc", dtc],
-                            check=False,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    require(result.returncode == 0, "backend render failed")
-    original = rendered.read_text(encoding="utf-8")
     clean_dtb = scratch / "clean.dtb"
     subprocess.run([dtc, "-I", "dts", "-O", "dtb", "-i", str(scratch),
                     "-o", str(clean_dtb), str(rendered)], check=True,
                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     raw = clean_dtb.read_bytes()
     clean_fdt = fdt_parse(raw)
-    tree_check(clean_fdt, value, identity, profiles, domains, extent_ranges)
+    tree_check(clean_fdt, value, identity, profiles, domains, extent_ranges,
+               control)
     _, total, struct_at, strings_at, _, _, _, _, _, struct_size = \
         struct.unpack_from(">10I", raw)
     at = struct_at + struct_size
@@ -1223,7 +1242,8 @@ def tree_mutations(descriptor_path, value, identity, domains, extent_ranges,
         sys.executable, "-I", "-B", backend, "--test-tables",
         "--descriptor", descriptor_path, "--base-dtb", clean_dtb,
         "--firmware-elf", firmware, "--base-dts", base,
-        "--out-tables", table_path, "--dtc", dtc], check=False,
+        "--out-tables", table_path, "--dtc", dtc, "--control-hart",
+        control], check=False,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(made.returncode == 0, "backend test-table generation failed")
     table_document, _ = read_json(table_path, True)
@@ -1235,10 +1255,10 @@ def tree_mutations(descriptor_path, value, identity, domains, extent_ranges,
         end = text.index("\t\t\t};", start) + len("\t\t\t};")
         return text[:start] + edit(text[start:end]) + text[end:]
 
-    def check(name, prefix, edit):
+    def check(name, prefix, edit, text=original):
         source = scratch / f"{name}.dts"
         output = scratch / f"{name}.dtb"
-        source.write_text(edit(original), encoding="utf-8")
+        source.write_text(edit(text), encoding="utf-8")
         compiled = subprocess.run([dtc, "-I", "dts", "-O", "dtb", "-i",
                                    str(scratch), "-o", str(output), str(source)],
                                   check=False, stdout=subprocess.PIPE,
@@ -1246,7 +1266,7 @@ def tree_mutations(descriptor_path, value, identity, domains, extent_ranges,
         require(compiled.returncode == 0, f"{name}: dtc failed")
         expected_refusal(name, prefix, lambda: tree_check(
             fdt_parse(output.read_bytes()), value, identity, profiles,
-            domains, extent_ranges))
+            domains, extent_ranges, control))
 
     check("two-narrow", "be_g1: harts differs", lambda text: block(
         text, "be_g1", lambda body: body.replace(
@@ -1286,34 +1306,46 @@ def tree_mutations(descriptor_path, value, identity, domains, extent_ranges,
         mutate(changed)
         expected_refusal(name, prefix, lambda: tables_check(
             changed, identity, firmware, base, clean_fdt, extent_ranges,
-            profiles, symbols))
+            profiles, symbols, control))
 
+    own = 0 if control == "confined" else 1
     confined = lambda doc, mode: next(
         row for row in doc["modes"][mode]
-        if row["hart"] == 0 and row["state"] == "confined")["entries"]
+        if row["hart"] == own and row["state"] == "confined")["entries"]
     table_case("active config",
-               "plain: hart 0 confined table: entry 0 metadata differs",
+               f"plain: hart {own} confined table: entry 0 metadata differs",
                lambda doc: confined(doc, "plain")[0].update(config="0x19"))
     table_case("active address",
-               "plain: hart 0 confined table: entry 0 address differs",
+               f"plain: hart {own} confined table: entry 0 address differs",
                lambda doc: confined(doc, "plain")[0].update(address="0x1"))
     inherited_at = next(index for index, row in enumerate(
         confined(table_document, "plain")) if row["region"] == "aplic-m")
     table_case("missing inherited",
-               f"plain: hart 0 confined table: entry {inherited_at} "
+               f"plain: hart {own} confined table: entry {inherited_at} "
                "metadata differs",
                lambda doc: confined(doc, "plain")[inherited_at].update(
                    config="0x00", address="not-compared", region="off"))
     table_case("reserved entry",
-               "smepmp: hart 0 confined table: entry 0 metadata differs",
+               f"smepmp: hart {own} confined table: entry 0 metadata differs",
                lambda doc: confined(doc, "smepmp")[0].update(config="0x19"))
     off = copy.deepcopy(table_document)
     next(row for row in confined(off, "plain")
          if row["config"] == "0x00")["address"] = "0x1"
     tables_check(off, identity, firmware, base, clean_fdt, extent_ranges,
-                 profiles, symbols)
+                 profiles, symbols, control)
+    if control == "boot":
+        check("step 1 with be_control", "OpenSBI domain names differ",
+              lambda text: text, render("step-2.dts", "confined"))
+        check("hart 0 in a narrow domain", "be_g0: harts differs",
+              lambda text: block(text, "be_g0", lambda body: body.replace(
+                  "possible-harts = <&{/cpus/cpu@1}>;",
+                  "possible-harts = <&{/cpus/cpu@0} &{/cpus/cpu@1}>;")))
+        table_case("hart 0 confined in step 1", "plain: state table counts",
+                   lambda doc: doc["modes"]["plain"].append(dict(
+                       hart=0, state="confined", entries=confined(doc,
+                                                                  "plain"))))
     shutil.rmtree(scratch)
-    return 16
+    return 16 + 3 * (control == "boot")
 
 
 def actual_check(args):
@@ -1329,18 +1361,21 @@ def actual_check(args):
     policy = read_json(args.authority_report)[0] if args.authority_report else None
     policy_check(policy, pages, domains)
     fdt = fdt_parse(pathlib.Path(args.dtb).read_bytes())
-    tree_check(fdt, descriptor, identity, profiles, domains, extent_ranges)
+    tree_check(fdt, descriptor, identity, profiles, domains, extent_ranges,
+               args.control_hart)
     tables, _ = read_json(args.tables, True)
     symbols = firmware_symbols(args.firmware_elf, args.nm, args.readelf)
     tables_check(tables, identity, args.firmware_elf, args.base_dts, fdt,
-                 extent_ranges, profiles, symbols)
+                 extent_ranges, profiles, symbols, args.control_hart)
     image_check(args.image_elf, args.nm, args.readelf, extent_ranges, layout)
     result = {"schema": "be-partition-check-v1",
               "image": descriptor["image"], "identity": identity,
               "profiles": [{"hart": hart, "entries":
                             len(combine(profile, extent_ranges))}
                            for hart, profile in sorted(profiles.items())],
-              "shared": len(descriptor["shared"]), "result": "pass"}
+              "shared": len(descriptor["shared"]), "result": "pass",
+              "control_hart": args.control_hart, "dtb_sha256": sha(args.dtb),
+              "tables_sha256": sha(args.tables)}
     data = canonical(result)
     if args.record:
         write_new(args.record, data)
@@ -1350,7 +1385,7 @@ def actual_check(args):
 
 
 def self_test(descriptor_path, scenario_path, layout_path, scratch,
-              mutations=False, dtc=None, backend=None):
+              mutations=False, dtc=None, backend=None, control="confined"):
     descriptor, data = read_json(descriptor_path, True)
     scenario, _ = read_json(scenario_path)
     layout = parse_layout(layout_path)
@@ -1414,7 +1449,8 @@ def self_test(descriptor_path, scenario_path, layout_path, scratch,
                          lambda: parse_layout(inactive))
         cases += 2
         cases += tree_mutations(descriptor_path, descriptor, identity, domains,
-                                extent_ranges, profiles, dtc, backend, scratch)
+                                extent_ranges, profiles, dtc, backend, scratch,
+                                control)
         refused("console read in plain image", "descriptor call lists differ",
                 lambda value: value["calls"][0]["allow"].insert(1, {
                     "extension": "0x4442434e", "function": "0x1",
@@ -1493,13 +1529,16 @@ def main(argv):
     parser.add_argument("--scratch")
     parser.add_argument("--dtc")
     parser.add_argument("--backend")
+    parser.add_argument("--control-hart", choices=("boot", "confined"),
+                        default="confined")
     args = parser.parse_args(argv)
     try:
         if args.self_test or args.mutation_test:
             require(args.descriptor and args.scenario and args.layout,
                     "self-tests require descriptor, scenario, and layout")
             self_test(args.descriptor, args.scenario, args.layout,
-                      args.scratch, args.mutation_test, args.dtc, args.backend)
+                      args.scratch, args.mutation_test, args.dtc, args.backend,
+                      args.control_hart)
         else:
             require(all((args.descriptor, args.partition_authority,
                          args.scenario, args.layout, args.dtb, args.base_dts,

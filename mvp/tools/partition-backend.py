@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 James Morris <jmorris@namei.org>
-"""Render an OpenSBI device tree and expected PMP tables from a descriptor."""
+"""Render an OpenSBI device tree and expected PMP tables from a descriptor.
+
+--control-hart boot (M11-7, step 1) renders no OpenSBI domain for hart 0,
+which stays in be_boot, and its tables say so; confined, the default, is
+M11-5's output byte for byte."""
 
 import argparse
 import dataclasses
@@ -525,7 +529,8 @@ def zero_table():
             for index in range(16)]
 
 
-def expected_tables(value, identity, roots, firmware_sha, base_sha):
+def expected_tables(value, identity, roots, firmware_sha, base_sha,
+                    control="confined"):
     extents = {row["name"]: row for row in value["extents"]}
     profiles = {row["hart"]: combine(row, extents)
                 for row in value["profiles"]}
@@ -536,6 +541,8 @@ def expected_tables(value, identity, roots, firmware_sha, base_sha):
     result = {"schema": TABLE_SCHEMA, "descriptor_identity": identity,
               "firmware_sha256": firmware_sha, "base_tree_sha256": base_sha,
               "modes": {}}
+    if control == "boot":
+        result["control_hart"] = "boot"
     for mode in ("plain", "smepmp"):
         boot = table(roots, mode)
         tables = []
@@ -549,7 +556,7 @@ def expected_tables(value, identity, roots, firmware_sha, base_sha):
                      "profile": next(row["name"] for row in value["profiles"]
                                      if row["hart"] == hart),
                      "entries": table(profiles[hart] + inherited, mode)},
-                ]
+                ][:1 if (hart, control) == (0, "boot") else 2]
         result["modes"][mode] = tables
     return result
 
@@ -563,12 +570,12 @@ def cells64(value):
     return f"<0x{value >> 32:x} 0x{value & 0xffffffff:x}>"
 
 
-def render_tree(value, identity, base_name):
+def render_tree(value, identity, base_name, control="confined"):
     extents = {row["name"]: row for row in value["extents"]}
     profiles = {row["hart"]: combine(row, extents)
                 for row in value["profiles"]}
-    unique = {(row.base, row.size): row
-              for rows in profiles.values() for row in rows}
+    unique = {(row.base, row.size): row for hart, rows in profiles.items()
+              if (hart, control) != (0, "boot") for row in rows}
     park = extents["park-entry"]
     unique[(int(park["base"], 16), int(park["size"], 16))] = Region(
         "park-entry", int(park["base"], 16), int(park["size"], 16), (),
@@ -635,9 +642,10 @@ def render_tree(value, identity, base_name):
 
     lines += instance("be_boot", [0, 1, 2], 0, 1, reset=True,
                       inherit="all")
-    lines += instance("be_control", [0], 0, 10, region_list(0),
-                      int(lifecycle[0]["resume"], 16), 0, calls["control"],
-                      True)
+    if control == "confined":
+        lines += instance("be_control", [0], 0, 10, region_list(0),
+                          int(lifecycle[0]["resume"], 16), 0,
+                          calls["control"], True)
     for index, hart in enumerate((1, 2)):
         private = extents[f"g{index}-private"]
         lines += instance(f"be_g{index}", [hart], hart, 11 + index,
@@ -665,14 +673,14 @@ def check_base_source(base, expected_warnings, dtc, scratch):
 
 
 def generate(descriptor_path, base, expected_warnings, firmware_elf, dtc,
-             nm, readelf, output):
+             nm, readelf, output, control):
     value, identity = strict_descriptor(descriptor_path)
     output = private_directory(output)
     fdt = check_base_source(base, expected_warnings, dtc,
                             output / "base-check")
     symbols = firmware_symbols(firmware_elf, nm, readelf)
     roots = platform(fdt, symbols)
-    source = render_tree(value, identity, pathlib.Path(base).name)
+    source = render_tree(value, identity, pathlib.Path(base).name, control)
     source_path = output / f"{value['image']}.dts"
     write_new(source_path, source.encode())
     dtb_path = output / f"{value['image']}.dtb"
@@ -684,24 +692,26 @@ def generate(descriptor_path, base, expected_warnings, firmware_elf, dtc,
             "joined dtc warning set differs from the base")
     parse_fdt(dtb_path.read_bytes())
     tables = expected_tables(value, identity, roots, sha(firmware_elf),
-                             sha(base))
+                             sha(base), control)
     write_new(output / f"{value['image']}-pmp.json", canonical(tables))
     print(f"BE_MVP_PARTITION_BACKEND: PASS image={value['image']} "
           f"identity={identity[:12]}")
 
 
-def render_only(descriptor_path, base_name, output):
+def render_only(descriptor_path, base_name, output, control):
     value, identity = strict_descriptor(descriptor_path)
-    write_new(output, render_tree(value, identity, base_name).encode())
+    write_new(output, render_tree(value, identity, base_name,
+                                  control).encode())
 
 
-def test_tables(descriptor_path, base_dtb, firmware, base_dts, output):
+def test_tables(descriptor_path, base_dtb, firmware, base_dts, output,
+                control):
     value, identity = strict_descriptor(descriptor_path)
     symbols = {"_fw_start": 0, "_fw_rw_start": 0x40000,
                "_fw_end": 0x48000, "_tlb_info_size": 32}
     roots = platform(parse_fdt(pathlib.Path(base_dtb).read_bytes()), symbols)
     write_new(output, canonical(expected_tables(
-        value, identity, roots, sha(firmware), sha(base_dts))))
+        value, identity, roots, sha(firmware), sha(base_dts), control)))
 
 
 def synthetic_base():
@@ -779,8 +789,19 @@ def self_test(descriptor, dtc, scratch):
     tree = render_tree(value, identity, "base.dts")
     require("ecall-allowlist;" in tree and "config-digest" in tree and
             "cold-boot-harts" in tree, "rendered tree lacks the interface")
+    step = expected_tables(value, identity, roots, "0" * 64, "1" * 64, "boot")
+    require(step["control_hart"] == "boot" and "control_hart" not in tables
+            and [sum(row["state"] == state for row in step["modes"][mode])
+                 for mode in step["modes"] for state in ("never-started",
+                                                         "boot", "confined")]
+            == [8, 3, 2] * 2 and not any(row["hart"] == 0 and row["state"] ==
+                                         "confined" for row in
+                                         step["modes"]["smepmp"]),
+            "step-1 tables")
+    require("be_control" in tree and "be_control" not in render_tree(
+        value, identity, "base.dts", "boot"), "step-1 tree")
     shutil.rmtree(scratch)
-    print("BE_MVP_PARTITION_BACKEND_SELF_TEST: PASS cases=7")
+    print("BE_MVP_PARTITION_BACKEND_SELF_TEST: PASS cases=9")
 
 
 def main(argv):
@@ -805,6 +826,8 @@ def main(argv):
     parser.add_argument("--out-warnings")
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--scratch")
+    parser.add_argument("--control-hart", choices=("boot", "confined"),
+                        default="confined")
     args = parser.parse_args(argv)
     try:
         if args.normalize_base:
@@ -820,13 +843,14 @@ def main(argv):
         elif args.render:
             require(args.descriptor and args.base_name and args.out_dts,
                     "render arguments are missing")
-            render_only(args.descriptor, args.base_name, args.out_dts)
+            render_only(args.descriptor, args.base_name, args.out_dts,
+                        args.control_hart)
         elif args.test_tables:
             require(args.descriptor and args.base_dtb and args.firmware_elf and
                     args.base_dts and args.out_tables,
                     "test-table arguments are missing")
             test_tables(args.descriptor, args.base_dtb, args.firmware_elf,
-                        args.base_dts, args.out_tables)
+                        args.base_dts, args.out_tables, args.control_hart)
         elif args.self_test:
             require(args.descriptor and args.scratch,
                     "self-test needs --descriptor and --scratch")
@@ -838,7 +862,7 @@ def main(argv):
                          args.out)), "backend generation arguments missing")
             generate(args.descriptor, args.base_dts, args.base_warnings,
                      args.firmware_elf, args.dtc, args.nm, args.readelf,
-                     args.out)
+                     args.out, args.control_hart)
         return 0
     except (Refused, OSError, ValueError, KeyError, TypeError,
             subprocess.SubprocessError) as error:

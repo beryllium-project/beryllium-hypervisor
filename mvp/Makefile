@@ -898,12 +898,21 @@ PARTITION_GEN := $(MVP_DIR)/tools/gen-partition.py
 PARTITION_BACKEND := $(MVP_DIR)/tools/partition-backend.py
 PARTITION_CHECK := $(MVP_DIR)/tests/check-partition.py
 PARTITION_SCENARIOS := two-guests te-poc anchor
-PARTITION_IMAGES_two-guests := two-guests payload exit-budget run-timeout \
-	ring-full hart-start init-exit rdcycle sbi-time hostile \
-	two-guests-shell
+# M11-7: a run image paired with another (scenarios/pairing.txt) has no
+# descriptor of its own; it runs under its pair's. The tree realizes step 1
+# (PARTITION_CONTROL_HART): hart 0 stays in be_boot, and no OpenSBI domain
+# names it; M11-8's step 2 is `confined`.
+PARTITION_PAIRING := $(MVP_DIR)/scenarios/pairing.txt
+PARTITION_PAIRED := $(shell sed -n 's/^\([a-z0-9-]*\) [a-z0-9-]*$$/\1/p' \
+	$(PARTITION_PAIRING))
+PARTITION_CONTROL_HART := boot
+PARTITION_IMAGES_two-guests := $(filter-out $(PARTITION_PAIRED),two-guests \
+	payload exit-budget run-timeout ring-full hart-start init-exit rdcycle \
+	sbi-time hostile two-guests-shell)
 PARTITION_IMAGES_te-poc := te-poc reader-write no-inject te-poc-shell
-PARTITION_IMAGES_anchor := anchor secret-shared response-writable \
-	wrong-measurement no-grant-check self-report-flip anchor-shell
+PARTITION_IMAGES_anchor := $(filter-out $(PARTITION_PAIRED),anchor \
+	secret-shared response-writable wrong-measurement no-grant-check \
+	self-report-flip anchor-shell)
 $(foreach s,$(PARTITION_SCENARIOS),$(eval \
 	PARTITION_DIR_$(s) := $(GEN)/partition/$(s)))
 $(foreach s,$(PARTITION_SCENARIOS),$(eval \
@@ -924,6 +933,8 @@ $$(PARTITION_OUTPUTS_$(1)) &: $(MVP_DIR)/scenarios/$(1)/scenario.json \
 		--out $$(PARTITION_DIR_$(1))
 endef
 $(foreach s,$(PARTITION_SCENARIOS),$(eval $(call partition_generate,$(s))))
+$(foreach s,$(PARTITION_SCENARIOS),$(PARTITION_OUTPUTS_$(s))): \
+	$(PARTITION_PAIRING)
 
 .PHONY: partition-descriptors
 partition-descriptors: $(foreach s,$(PARTITION_SCENARIOS),\
@@ -957,6 +968,7 @@ $(call partition_backend_pmp,$(1),$(2),$(3)) &: \
 		--dtc $$(MVP_TOOL_dtc_command) \
 		--nm $$(MVP_TOOL_cross_nm_command) \
 		--readelf $$(MVP_TOOL_cross_readelf_command) \
+		--control-hart $(PARTITION_CONTROL_HART) \
 		--out $(call partition_backend_dir,$(1),$(2),$(3))
 endef
 $(foreach s,$(PARTITION_SCENARIOS),$(foreach i,$(PARTITION_IMAGES_$(s)),\
@@ -969,9 +981,8 @@ PARTITION_BACKEND_OUTPUTS := $(foreach s,$(PARTITION_SCENARIOS),\
 .PHONY: partition-backend
 partition-backend: $(PARTITION_BACKEND_OUTPUTS)
 
-# The image whose role extents the independent checker reads. Payload uses
-# the scenario's monitor; self-report-flip uses its mutated monitor.
-partition_elf_two-guests = $(if $(filter two-guests payload,$(2)),\
+# The image whose role extents the independent checker reads.
+partition_elf_two-guests = $(if $(filter two-guests,$(2)),\
 	$(MVP_ELF_$(1)),$(if $(filter two-guests-shell,$(2)),\
 	$(call shell_dir,$(1),two-guests)/be-mvp.elf,\
 	$(BUILD)/variants/$(1)/$(2)/be-mvp.elf))
@@ -1050,6 +1061,7 @@ partition-descriptor-tools-check: partition-descriptors
 		--scenario $(MVP_DIR)/scenarios/$(s)/scenario.json \
 		--layout $(MVP_DIR)/src/mvp-layout.h \
 		--dtc $(MVP_TOOL_dtc_command) --backend $(PARTITION_BACKEND) \
+		--control-hart $(PARTITION_CONTROL_HART) \
 		--scratch $(BUILD)/partition-mutations-$(s) | \
 		tee $(RECORDS)/partition-tools/mutations-$(s).txt;)
 	@echo "BE_MVP_PARTITION_TOOLS: PASS"
@@ -1078,7 +1090,8 @@ $(call partition_record,$(3),$(4),$(1),$(2)): \
 		--firmware-elf $(FIRMWARE_ELF) \
 		--image-elf $(call partition_elf,$(1),$(4),$(2)) \
 		--nm $$(MVP_TOOL_cross_nm_command) \
-		--readelf $$(MVP_TOOL_cross_readelf_command) --record $$@
+		--readelf $$(MVP_TOOL_cross_readelf_command) \
+		--control-hart $(PARTITION_CONTROL_HART) --record $$@
 endef
 $(foreach s,$(PARTITION_SCENARIOS),$(foreach i,$(PARTITION_IMAGES_$(s)),\
 	$(foreach m,$(PARTITION_MODES),$(foreach t,gcc clang,\

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
+# The run images that boot another image's monitor (M11-7, step 1;
+# planning/mvp-m11-plan.md, D-3, "Pairing"), each with the image whose
+# descriptor, identity, and device tree it runs under: payload boots
+# two-guests' monitor, and self-report-flip is anchor's monitor with one
+# bit flipped after the link. Every other image pairs with itself. The
+# Makefile, tests/run-qemu.sh, and tests/check-image.py read this file,
+# and nothing else states a pairing.
+payload two-guests
+self-report-flip anchor
