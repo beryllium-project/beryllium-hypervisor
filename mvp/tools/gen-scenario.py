@@ -343,14 +343,22 @@ OFF_COPY_KEY = "off_copy_of"
 # firmware read; each BE_MVP:08 without its status; and the "boundary"
 # section that tests/check-capture.py and tests/check-boundary.py read:
 # the control hart's step, the image whose descriptor the run's tree is,
-# whether that tree holds a digest, and each of harts 0 to 2's state at the
-# run's end. Hart 1 of hart-start alone may be between its start and its
+# whether that tree holds a digest, each of harts 0 to 2's state at the
+# run's end, and for ring-full the VS domains whose state word the oracle
+# reads (A-2). Hart 1 of hart-start alone may be between its start and its
 # confinement when the run ends (A-1 of M11-7's go).
 BOUNDARY_FIRMWARE = ("BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 boundary=1 "
                      "status=1:{stopped},2:{stopped} started=none "
                      "identity=<Z>")
 BOUNDARY_STARTED = {"hart-start": {"0": "boot", "1": "started",
                                    "2": "never-started"}}
+# The markers hart 0 prints from the barrier on: BE_MVP:07, then the
+# starts, READY, and the entries. start_run() starts both VS-domain harts
+# before its READY wait and its control loop, so a declared failure after
+# one of them follows both starts (hart-start's, at a start, apart); every
+# other marker a failure may follow (BE_MVP:19's gate among them) comes
+# before the first start.
+RUN_MARKERS = ("BE_MVP:07", "BE_MVP:08", "BE_MVP:09", "BE_MVP:10")
 # A variant's one compile-time change, as the layout names its value.
 VARIANT_VALUES = {"exit_ceiling": "VARIANT_EXIT_CEILING",
                   "run_budget_ticks": "VARIANT_RUN_BUDGET",
@@ -967,14 +975,13 @@ def read_pairing(path):
 def boundary_harts(name, outcome):
     """Harts 0 to 2's states when a boundary-on run of image NAME ends: hart
     0 in the boot OpenSBI domain (step 1); harts 1 and 2 confined if the
-    declared outcome starts them (a pass, or a failure after BE_MVP:08),
-    never started if it fails before the first start; hart-start's
-    BOUNDARY_STARTED."""
+    declared outcome starts them (a pass, or a failure after one of
+    RUN_MARKERS), never started if it fails before the barrier;
+    hart-start's BOUNDARY_STARTED."""
     if name in BOUNDARY_STARTED:
         return dict(BOUNDARY_STARTED[name])
-    after = outcome.get("after", "none")
-    started = bool(outcome.get("pass")) or (after != "none" and
-                                            after >= "BE_MVP:08")
+    started = bool(outcome.get("pass")) or \
+        outcome.get("after") in RUN_MARKERS
     state = "confined" if started else "never-started"
     return {"0": "boot", "1": state, "2": state}
 
@@ -1001,6 +1008,15 @@ def boundary_form(image, name, pair):
     out["control_lines"] = entries
     out["boundary"] = {"control_hart": "boot", "pair": pair, "record": True,
                        "harts": boundary_harts(name, out["outcome"])}
+    if out["outcome"].pop("fallback", False):
+        # ring-full (Q-C2, A-2): a confined VS-domain hart prints nothing,
+        # so hart 0 reports the first FAIL it drains, of either VS domain,
+        # after its terminal :20 as in any post-launch failure; the oracle
+        # reads each VS domain's state word, FAILED with the class ring.
+        out["log"]["terminal"] = "before-fail"
+        out["boundary"]["phase"] = list(range(len(out["domains"])))
+        out["change"] += ("; under the physical boundary hart 0 reports "
+                          "the first FAIL it drains, of either VS domain")
     return out
 
 
@@ -1028,6 +1044,12 @@ def boundary_self_test(scenario, images):
     pairs = {"payload": "two-guests"}
     on = copy.deepcopy(images)
     apply_boundary(on, scenario, {"two-guests"}, pairs)
+    # Every image with a descriptor of its own on, as the build has it.
+    named = {"two-guests", "exit-budget", "run-timeout", "ring-full",
+             "hart-start", "init-exit", "rdcycle", "sbi-time", "hostile",
+             "two-guests-shell"}
+    every = copy.deepcopy(images)
+    apply_boundary(every, scenario, named, pairs)
 
     def matches(entry, text):
         return re.fullmatch(entry["regex"], text) is not None
@@ -1076,6 +1098,28 @@ def boundary_self_test(scenario, images):
         ("a failure after BE_MVP:10 confines both",
          boundary_harts("ring-full", images["ring-full"]["outcome"])["1"]
          == "confined"),
+        ("run-timeout's, after the barrier, confines both",
+         boundary_harts("run-timeout", images["run-timeout"]["outcome"])
+         == {"0": "boot", "1": "confined", "2": "confined"}),
+        ("a failure at BE_MVP:19's gate starts neither",
+         boundary_harts("x", {"fail": "measurement", "after": "BE_MVP:19"})
+         == {"0": "boot", "1": "never-started", "2": "never-started"}),
+        ("ring-full on: no fallback, its terminal :20 before the FAIL, "
+         "both state words read", "fallback" not in every["ring-full"][
+             "outcome"] and every["ring-full"]["log"]["terminal"] ==
+         "before-fail" and every["ring-full"]["boundary"]["phase"] ==
+         [0, 1] and "either VS domain" in every["ring-full"]["change"] and
+         images["ring-full"]["outcome"]["fallback"]),
+        ("ring-full-off is ring-full's, off, with its fallback",
+         "boundary" not in every["ring-full-off"] and
+         every["ring-full-off"]["outcome"] == images["ring-full"]["outcome"]
+         and every["ring-full-off"]["log"]["terminal"] == "none"),
+        ("the rows without the boundary stay off", all(
+            "boundary" not in every[name] for name in (
+                "no-sstc", "firmware-version", "shim-rule",
+                "two-guests-off"))),
+        ("every descriptor image on", all(
+            every[name]["boundary"]["pair"] == name for name in named)),
     ]
     refusals = []
 
@@ -3962,7 +4006,7 @@ PROFILE_RUNS = {
     "gate-fail": ("wrong-measurement",),
     "post-launch-failure": ("exit-budget", "run-timeout", "ring-full",
                             "hart-start", "init-exit", "rdcycle",
-                            "no-inject", "no-grant-check"),
+                            "no-inject", "no-grant-check", "ring-full-off"),
     SELF_REPORT_FLIP: (SELF_REPORT_FLIP,)}
 
 

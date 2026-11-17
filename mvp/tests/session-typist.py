@@ -37,15 +37,26 @@ session.
 A run whose boot hart is a domain hart (the checker's REFUSED, Plan
 revision M0-A.2) is made again, up to --attempts (8) in all.
 
+M11-7: a session whose expectation declares the physical boundary runs as
+tests/run-qemu.sh runs a boundary-on row: under its pair's step-1 tree in
+plain PMP (-dtb BUILD/partition/SCENARIO/PAIR/plain/PAIR.dtb), admitted
+only by the partition checker's record of that tree
+(tests/check-boundary.py gate; refused, no QEMU starts), the oracle
+reading the firmware's commit records (found through FW's ELF beside it,
+with the lock's nm) and the declared words, and each attempt judged by
+tests/check-boundary.py check as well (boundary.txt; an off session's is
+NOT-APPLICABLE). Its boot is on hart 0, so it has one attempt.
+
 Records, in DIR/attempt-N/: console.log (QEMU's log of the UART),
 stdout.log (the bytes the typist read), qemu.txt (the command line, then
 QEMU's messages), exit.txt (QEMU's status), typed.txt (every key with
 its time after QEMU's start, its UTC time, its step, and its byte),
 steps.txt (each wait's line and time), nonce.txt, session.txt (the
 session's file and SHA-256, the expectation's, and the ELF's), check.txt
-and result.json (the checker's), and oracle.json (a full read, or CHERI's
-fixed NOT-ATTACHED record); in DIR, attempts.tsv and result.txt, last its
-BE_MVP_SESSION[TOOLCHAIN/IMAGE]: line.
+and result.json (the checker's), oracle.json (a full read, or CHERI's
+fixed NOT-ATTACHED record), and boundary.txt; in DIR, attempts.tsv (with
+each attempt's boundary, PMP mode, tree, and control hart) and
+result.txt, last its BE_MVP_SESSION[TOOLCHAIN/IMAGE]: line.
 
 suite runs every console variant whose expectation the generator wrote
 (BUILD/gen/expect, BUILD/gen/te-poc/expect, BUILD/gen/anchor/expect: each
@@ -81,8 +92,10 @@ oracle attached and the fixed NOT-ATTACHED record.
 """
 
 import argparse
+import contextlib
 import datetime
 import hashlib
+import io
 import json
 import os
 import pathlib
@@ -144,7 +157,13 @@ MEASURED = ("guest/Image", "guest/mvp-guest-g1-anchor.dtb")
 REPORT = "authority-report.json"
 ATTEMPT_COLUMNS = ("toolchain", "run", "attempt", "boot_hart", "qemu_exit",
                    "verdict", "capture_sha256", "elf", "elf_sha256", "keys",
-                   "steps", "seconds")
+                   "steps", "seconds", "boundary", "pmp_mode", "dtb_sha256",
+                   "control_hart")
+# M11-7: the boundary's checker, the headers it reads, and the lock's nm.
+BOUNDARY_CHECKER = HERE / "check-boundary.py"
+LAYOUT_HEADER = HERE.parent / "src" / "mvp-layout.h"
+BOUNDARY_HEADER = HERE.parent / "src" / "mvp-boundary.h"
+NM_ROLE = "MVP_TOOL_cross_nm_command"
 NAME = re.compile(r"[a-z0-9][a-z0-9.-]{0,63}")
 
 
@@ -168,6 +187,41 @@ def firmware_pin(lock=LOCK):
         if name == FIRMWARE_PIN and re.fullmatch(r"[0-9a-f]{64}", value):
             return value
     raise SystemExit(f"{lock} pins no OpenSBI binary ({FIRMWARE_PIN})")
+
+
+def lock_command(name, lock=LOCK):
+    """The lock's absolute command for role NAME."""
+    for line in lock.read_text(encoding="utf-8").splitlines():
+        key, _, value = line.partition("=")
+        if key == name and value.startswith("/"):
+            return value
+    raise SystemExit(f"{lock} has no {name}")
+
+
+def boundary_inputs(build, expect, toolchain):
+    """A boundary-on expectation's pair's step-1 tree and tables, the
+    partition checker's record of them, and the partition authority, under
+    BUILD as tests/run-qemu.sh finds them; None for an off one."""
+    boundary = expect.get("boundary")
+    if not isinstance(boundary, dict):
+        return None
+    if not build:
+        raise SystemExit("a boundary-on session needs --build")
+    build, pair = pathlib.Path(build), boundary["pair"]
+    scenario = expect["scenario"]
+    tree = build / "partition" / scenario / pair / "plain"
+    return {"dtb": tree / f"{pair}.dtb", "tables": tree / f"{pair}-pmp.json",
+            "record": build / "records" / "partition" / "plain" / toolchain /
+            scenario / f"{pair}.json",
+            "authority": build / "gen" / "partition" / scenario / REPORT}
+
+
+def boundary_tool(*argv):
+    """tests/check-boundary.py ARGV: (its exit status, its output)."""
+    done = subprocess.run([sys.executable, "-I", "-B", str(BOUNDARY_CHECKER),
+                           *argv], capture_output=True, text=True,
+                          check=False)
+    return done.returncode, (done.stdout + done.stderr).strip()
 
 
 def cheri_firmware_pin(pins=CHERI_PINS):
@@ -359,24 +413,54 @@ def stop_process(process, grace=0.0):
         return "killed:none"
 
 
+def oracle_config(args, directory, lock, inputs):
+    """The oracle's machine facts for one attempt into DIRECTORY: the boot
+    ELF's first word; for a boundary-on session (INPUTS), the declared
+    words (check-boundary.py words) and the firmware's commit records."""
+    words, devices = [qemu_oracle.word_from_elf("boot-entry", args.elf)], ()
+    if inputs:
+        status, text = boundary_tool(
+            "words", "--expect", args.expect, "--layout", str(LAYOUT_HEADER),
+            "--boundary-header", str(BOUNDARY_HEADER), "--out",
+            str(directory / "words.json"))
+        if status:
+            raise qemu_oracle.OracleError(f"the words: {text}")
+        words += qemu_oracle.record_table_words(
+            lock_command(NM_ROLE, lock),
+            pathlib.Path(args.firmware).with_suffix(".elf"), 8)
+        extra, devices = qemu_oracle.words_from_file(directory / "words.json")
+        words += extra
+    config = qemu_oracle.OracleConfig(
+        8, "k3-like", bool(inputs), "readable", "readable", "absent",
+        0x80000000, 0x200000000, tuple(words), "plain" if inputs else "none",
+        devices)
+    config.validate()
+    return config
+
+
 def attempt(args, expect, directory, session_sha, elf_sha, monitor=MONITOR,
-            cheri_pins=CHERI_PINS, lock=LOCK):
+            cheri_pins=CHERI_PINS, lock=LOCK, inputs=None):
     """One QEMU boot through the session into DIRECTORY; (QEMU's exit,
     the error that ended it early or None, keys, seconds). FW first, by
-    its pin for MONITOR, before anything of the attempt is written."""
+    its pin for MONITOR, before anything of the attempt is written; a
+    boundary-on session (INPUTS, boundary_inputs()) under its tree."""
     pinned_firmware(args.firmware,
                     *expected_firmware(monitor, cheri_pins, lock))
     cpu = CPU + (f",{CHERI_CPU}" if CHERI_CPU else "")
-    config = None
-    if monitor != "cheri":
-        word = qemu_oracle.word_from_elf("boot-entry", args.elf)
-        config = qemu_oracle.OracleConfig(
-            8, "k3-like", False, "readable", "readable", "absent",
-            0x80000000, 0x200000000, (word,))
-        config.validate()
     if directory.exists():
         shutil.rmtree(directory)
     directory.mkdir(parents=True)
+    config = None
+    if monitor != "cheri":
+        try:
+            config = oracle_config(args, directory, lock, inputs)
+        except (qemu_oracle.OracleError, OSError,
+                subprocess.CalledProcessError) as error:
+            qemu_oracle.write_failure_record(directory / "oracle.json",
+                                             "the oracle's setup failed")
+            (directory / "exit.txt").write_text("killed:none\n",
+                                                encoding="ascii")
+            return "killed:none", f"oracle: setup failed: {error}", 0, 0.0
     nonce = os.urandom(NONCE_BYTES).hex()
     (directory / "nonce.txt").write_text(nonce + "\n", encoding="ascii")
     section = expect["console_input"]
@@ -392,6 +476,8 @@ def attempt(args, expect, directory, session_sha, elf_sha, monitor=MONITOR,
             "none", "-no-reboot", "-chardev",
             f"stdio,id=uart0,signal=off,logfile={directory / 'console.log'},"
             "logappend=off", "-serial", "chardev:uart0"]
+    if inputs:
+        argv += ["-dtb", str(inputs["dtb"])]
     if monitor == "cheri":
         argv += ["-monitor", "none"]
     error, status = None, "none"
@@ -520,6 +606,31 @@ def judge(args, directory, session):
             text.rstrip().splitlines()[-1] if text.strip() else "")
 
 
+def judge_boundary(args, directory, inputs):
+    """DIRECTORY's boundary.txt by tests/check-boundary.py: NOT-APPLICABLE
+    for an off session; else its check of the run (its last line in the
+    record whatever the verdict). The failure's line, or None."""
+    out = str(directory / "boundary.txt")
+    if not inputs:
+        status, text = boundary_tool("not-applicable", "--out", out)
+        return f"not-applicable: {text}" if status else None
+    boundary_tool(
+        "check", "--oracle", str(directory / "oracle.json"), "--console",
+        str(directory / "console.log"), "--expect", args.expect, "--tables",
+        str(inputs["tables"]), "--pmp-mode", "plain",
+        "--partition-authority", str(inputs["authority"]), "--firmware-elf",
+        str(pathlib.Path(args.firmware).with_suffix(".elf")), "--nm",
+        lock_command(NM_ROLE), "--layout", str(LAYOUT_HEADER),
+        "--boundary-header", str(BOUNDARY_HEADER), "--out", out)
+    try:
+        lines = pathlib.Path(out).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return "no boundary record"
+    last = lines[-1] if lines else ""
+    return None if last.startswith("BE_MVP_BOUNDARY: PASS ") else \
+        (last or "no boundary record")
+
+
 def run(args):
     """One session's run: attempts until one is not refused."""
     expect = json.loads(pathlib.Path(args.expect).read_text(encoding="utf-8"))
@@ -542,10 +653,30 @@ def run(args):
         (out / name).unlink(missing_ok=True)
     label = f"{args.toolchain}/{expect['image']}"
     rows, verdict, refused, check, total = [], "none", 0, "", 0.0
-    for number in range(1, args.attempts + 1):
+    # M11-7: a boundary-on session's tree, admitted by its partition
+    # record before any QEMU start; one attempt.
+    inputs = boundary_inputs(getattr(args, "build", None), expect,
+                             args.toolchain)
+    limit, columns = args.attempts, ("off", "-", "-", "-")
+    if inputs:
+        status, text = boundary_tool(
+            "gate", "--expect", args.expect, "--record",
+            str(inputs["record"]), "--dtb", str(inputs["dtb"]), "--tables",
+            str(inputs["tables"]))
+        if status:
+            line = (f"BE_MVP_SESSION[{label}]: FAIL attempts=0 refused=0 "
+                    f"steps={len(section['steps'])} keys=0 seconds=0.0 "
+                    f"({text.splitlines()[-1] if text else 'gate'})")
+            (out / "result.txt").write_text(line + "\n", encoding="utf-8")
+            print(line, flush=True)
+            return False, []
+        limit, columns = 1, ("on", "plain", sha256(
+            inputs["dtb"].read_bytes()), "boot")
+    for number in range(1, limit + 1):
         directory = out / f"attempt-{number}"
         status, error, keys, seconds = attempt(args, expect, directory,
-                                               session_sha, elf_sha)
+                                               session_sha, elf_sha,
+                                               inputs=inputs)
         verdict, hart, check = judge(args, directory, session)
         total += seconds
         if status != "0" and verdict == "PASS":
@@ -554,12 +685,15 @@ def run(args):
             verdict, check = "FAIL", error
         if error and verdict == "PASS":
             verdict, check = "FAIL", error
+        bounded = judge_boundary(args, directory, inputs)
+        if bounded and verdict != "REFUSED":
+            verdict, check = "FAIL", f"boundary: {bounded}; {check}"
         rows.append((args.toolchain, expect["image"], str(number), hart,
                      status, verdict,
                      sha256((directory / "console.log").read_bytes()),
                      getattr(args, "elf_label", None) or args.elf, elf_sha,
                      str(keys),
-                     str(len(section["steps"])), f"{seconds:.1f}"))
+                     str(len(section["steps"])), f"{seconds:.1f}") + columns)
         if verdict != "REFUSED":
             break
         refused += 1
@@ -679,6 +813,7 @@ def self_test():
             r"\+[0-9]+\.[0-9]{3} [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}\."
             r"[0-9]{3}Z step=3 key=0x(?:7e|0d)", row) for row in rows)
         firmware_cases = firmware_self_test(scratch)
+        firmware_cases += boundary_self_test(scratch)
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
     failed += not ok
@@ -763,6 +898,76 @@ def firmware_self_test(scratch):
              locked, *expected_firmware("riscv", pins, lock))) and
          cheri_launch(locked, "attempt-cheri-lock")),
     ]
+    return cases
+
+
+def boundary_self_test(scratch):
+    """M11-7's session inputs, in SCRATCH: [(case, ok)]. An off
+    expectation has none; a boundary-on one needs --build and names its
+    pair's tree, tables, record, and authority under it; a session whose
+    tree no partition record admits is refused (FAIL, no attempt) before
+    any QEMU start; an off attempt's boundary.txt is NOT-APPLICABLE."""
+    def refused(action):
+        try:
+            action()
+        except SystemExit:
+            return True
+        return False
+
+    on = {"image": "te-poc-shell", "scenario": "te-poc",
+          "boundary": {"control_hart": "boot", "pair": "te-poc-shell",
+                       "record": True, "harts": {
+                           "0": "boot", "1": "confined", "2": "confined"}}}
+    build = scratch / "build"
+    inputs = boundary_inputs(str(build), on, "clang")
+    tree = build / "partition" / "te-poc" / "te-poc-shell" / "plain"
+    cases = [
+        ("an off expectation has no boundary inputs",
+         boundary_inputs(None, {"image": "x"}, "gcc") is None),
+        ("a boundary-on expectation needs --build",
+         refused(lambda: boundary_inputs(None, on, "gcc"))),
+        ("a boundary-on session's tree, tables, record, and authority",
+         inputs == {"dtb": tree / "te-poc-shell.dtb",
+                    "tables": tree / "te-poc-shell-pmp.json",
+                    "record": build / "records" / "partition" / "plain" /
+                    "clang" / "te-poc" / "te-poc-shell.json",
+                    "authority": build / "gen" / "partition" / "te-poc" /
+                    REPORT})]
+    session = scratch / "shell.json"
+    session.write_text("{}\n", encoding="ascii")
+    expect = scratch / "te-poc-shell.json"
+    expect.write_text(json.dumps(dict(on, console_input={
+        "session": {"sha256": sha256(session.read_bytes()), "file": "s",
+                    "name": "s"}, "steps": [], "ready": []})),
+                      encoding="ascii")
+    tree.mkdir(parents=True)
+    for path in (inputs["dtb"], inputs["tables"]):
+        path.write_text("{}\n", encoding="ascii")
+    started = scratch / "qemu-started"
+    qemu = scratch / "qemu"
+    qemu.write_text(f"#!/bin/sh\n: >{shlex.quote(str(started))}\n",
+                    encoding="ascii")
+    qemu.chmod(0o755)
+    out = scratch / "session"
+    args = argparse.Namespace(
+        expect=str(expect), session=str(session), elf=str(session),
+        output=str(out), toolchain="clang", build=str(build),
+        attempts=8, qemu=str(qemu), firmware=str(session))
+    with contextlib.redirect_stdout(io.StringIO()):
+        ok, rows = run(args)
+    cases.append((
+        "a session whose tree no partition record admits: FAIL before QEMU",
+        not ok and rows == [] and not started.exists() and
+        not (out / "attempt-1").exists() and
+        "FAIL attempts=0" in (out / "result.txt").read_text(
+            encoding="utf-8")))
+    directory = scratch / "attempt-off"
+    directory.mkdir()
+    cases.append(("an off attempt's boundary record is NOT-APPLICABLE",
+                  judge_boundary(args, directory, None) is None and
+                  (directory / "boundary.txt").read_text(
+                      encoding="ascii").startswith(
+                          "BE_MVP_BOUNDARY: NOT-APPLICABLE")))
     return cases
 
 

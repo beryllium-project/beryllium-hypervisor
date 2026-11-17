@@ -501,13 +501,16 @@ MVP_ASM := mvp-trap.S mvp-hartentry.S
 # rebuilds it too.
 MVP_RUNTIME_C := mvp-runtime.c mvp-hartmain.c mvp-executor.c
 # M11-7 (planning/mvp-m11-plan.md, D-12): the physical boundary's build
-# option, internal to this file. The monitor of each image that
-# MVP_BOUNDARY_IMAGES names is built with it (mvp_monitor's identity
+# option, internal to this file. The monitor of each scenario image, each
+# variant with a monitor of its own, and each shell image, every image
+# with a partition descriptor of its own (MVP_BOUNDARY_IMAGES, the
+# partition images below), is built with it (mvp_monitor's identity
 # header, below), and so is the shim of each boot image that carries such
 # a monitor. The off copies, the probes, the discrimination builds, and
 # every CHERI-aware image are built without it.
 MVP_BOUNDARY := $(if $(filter cheri,$(MVP_MONITOR)),off,on)
-MVP_BOUNDARY_IMAGES := two-guests te-poc anchor
+MVP_BOUNDARY_IMAGES = $(foreach s,$(PARTITION_SCENARIOS),\
+	$(PARTITION_IMAGES_$(s)))
 # The tools that judge an image's build (tests/check-image.py) or write its
 # expectation (tools/gen-scenario.py) are told the same: each boundary-on
 # image, the pairing (a run image paired with another runs that image's
@@ -521,9 +524,11 @@ MVP_BOUNDARY_ARGS = --pairing $(PARTITION_PAIRING) \
 MVP_BOUNDARY_REPORTS = $(if $(MVP_BOUNDARY_ON),$(foreach \
 	s,$(PARTITION_SCENARIOS),--partition-report $(PARTITION_AUTHORITY_$(s))))
 # $(1) scenario, $(2) image: the image's identity header (the partition
-# descriptor's, tools/gen-partition.py's) when its boundary is on.
-boundary_identity = $(if $(and $(filter on,$(MVP_BOUNDARY)),$(filter \
-	$(2),$(MVP_BOUNDARY_IMAGES))),$(GEN)/partition/$(1)/$(2)-identity.h)
+# descriptor's, tools/gen-partition.py's) when the boundary is on. Each
+# caller is an image of MVP_BOUNDARY_IMAGES (defined later, so not read
+# here): one without a descriptor has no such header to build.
+boundary_identity = $(if $(filter on,$(MVP_BOUNDARY)),\
+	$(GEN)/partition/$(1)/$(2)-identity.h)
 boundary_shim = $(if $(call boundary_identity,$(1),$(2)),-DBE_MVP_BOUNDARY)
 MVP_RUNTIME_HEADERS := $(MVP_HEADERS) $(MVP_DIR)/src/mvp-platform.h \
 	$(MVP_DIR)/src/mvp-probe.h $(MVP_DIR)/src/mvp-executor.h \
@@ -956,18 +961,25 @@ MVP_SHELL_IMAGES = $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach \
 # scenario's monitor and boot image with no other change. Each is its
 # scenario's variant of the same name (scenario.json's off_copy_of), with
 # its own expectation and reference.
-MVP_OFF_COPIES := two-guests-off te-poc-off anchor-off
+# ring-full-off is ring-full's monitor so built (D-12's unconfined path of
+# ring-full: each VS-domain hart prints its own failure).
+MVP_OFF_COPIES := two-guests-off te-poc-off anchor-off ring-full-off
 OFF_FLAGS_two-guests-off :=
 OFF_FLAGS_te-poc-off := $(TE_POC_FLAGS)
 OFF_FLAGS_anchor-off := $(ANCHOR_FLAGS)
+OFF_FLAGS_ring-full-off := -D$(call variant_macro,ring-full)
 OFF_H_two-guests-off := $(MVP_SCENARIO_H)
 OFF_H_te-poc-off := $(TE_POC_SCENARIO_H)
 OFF_H_anchor-off := $(ANCHOR_SCENARIO_H)
+OFF_H_ring-full-off := $(MVP_SCENARIO_H)
 OFF_SCENARIO_two-guests-off := two-guests
 OFF_SCENARIO_te-poc-off := te-poc
 OFF_SCENARIO_anchor-off := anchor
+OFF_SCENARIO_ring-full-off := two-guests
 OFF_DTB0_two-guests-off := $(MVP_GUEST_DTB_G0)
 OFF_DTB1_two-guests-off := $(MVP_GUEST_DTB_G1)
+OFF_DTB0_ring-full-off := $(MVP_GUEST_DTB_G0)
+OFF_DTB1_ring-full-off := $(MVP_GUEST_DTB_G1)
 OFF_DTB0_te-poc-off := $(MVP_GUEST_DTB_G0_TE_POC)
 OFF_DTB1_te-poc-off := $(MVP_GUEST_DTB_G1_TE_POC)
 OFF_DTB0_anchor-off := $(ANCHOR_DTB0)
@@ -1203,10 +1215,11 @@ partition-check: partition-base-check partition-backend image variants \
 		$(call partition_record,$(m),gcc,$(s),$(i)) \
 		$(call partition_record,$(m),clang,$(s),$(i));)))
 	@echo "BE_MVP_PARTITION_CHECK: PASS scenarios=3 modes=2"
-# M11-7: tests/run-qemu.sh admits a boundary-on run's tree only by the
+# M11-7: tests/run-qemu.sh, tests/session-typist.py, and
+# tests/uboot-rehearsal.sh admit a boundary-on run's tree only by the
 # checker's record of it (tests/check-boundary.py gate); the board tools'
 # dry run boots k3-like's row with a stand-in QEMU.
-qemu-test run-tool-check: $(PARTITION_CHECK_RECORDS)
+qemu-test sessions uboot-rehearsal run-tool-check: $(PARTITION_CHECK_RECORDS)
 
 # The payload variant's kernel: magic2 "RSC\x05" becomes "RSC\0".
 $(BUILD)/variants/payload/Image: $(MVP_GUEST_IMAGE) $(MVP_DIR)/tools/gen-payload.py
@@ -1294,6 +1307,7 @@ variants: image $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_VARIANTS) \
 		--expect $(MVP_SCENARIO_EXPECT) --reference $(call image_spec,$(t)) \
 		$(foreach v,$(MVP_GUEST_DTB_VARIANTS),--variant-dtbs $(v):$(MVP_GUEST_DTB_G0_$(v)):$(MVP_GUEST_DTB_G1_$(v))) \
 		$(call off_spec,$(t),two-guests-off) $(call variant_specs,$(t)) \
+		$(call off_spec,$(t),ring-full-off) \
 		--variant two-guests-shell:$(call shell_spec,$(t),two-guests) &&) true; } \
 		2>&1 | tee $(RECORDS)/variants.txt
 	set -o pipefail; { $(foreach t,$(VARIANT_TOOLCHAINS),$(IMAGE_CHECK) \
@@ -1316,11 +1330,12 @@ variants: image $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_VARIANTS) \
 # and no-grant-check's (src/mvp.h, BE_MVP_RUN_TIME_BUDGET), which M7-4
 # does not make: each image keeps the accepted 2^32 ticks (178 s on the
 # board, about 7 minutes at QEMU's timebase). The images' paths and a
-# QEMU command line for each are printed.
+# QEMU command line for each are printed; since M11-7 each boots under its
+# step-1 tree in plain PMP (-dtb), which the partition checker passed.
 .PHONY: live
-live: variants firmware
+live: variants firmware $(PARTITION_CHECK_RECORDS)
 	@$(foreach t,$(VARIANT_TOOLCHAINS),$(foreach s,$(MVP_SHELL_SCENARIOS),echo \
-		"BE_MVP_LIVE: $(t)/$(s) image=$(call shell_dir,$(t),$(s))/be-mvp-boot.img qemu: $(QEMU) -machine virt,aia=aplic-imsic,aia-guests=7 -cpu rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true -smp 8 -m 8G -bios $(FIRMWARE_BIN) -kernel $(call shell_dir,$(t),$(s))/be-mvp-boot.elf -nographic -monitor none -no-reboot";))
+		"BE_MVP_LIVE: $(t)/$(s) image=$(call shell_dir,$(t),$(s))/be-mvp-boot.img qemu: $(QEMU) -machine virt,aia=aplic-imsic,aia-guests=7 -cpu rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true -smp 8 -m 8G -bios $(FIRMWARE_BIN) -kernel $(call shell_dir,$(t),$(s))/be-mvp-boot.elf$(if $(filter on,$(MVP_BOUNDARY)), -dtb $(call partition_backend_dtb,$(s),$(s)-shell,plain)) -nographic -monitor none -no-reboot";))
 	@echo "BE_MVP_LIVE: a demonstration, never evidence; run budget 0x100000000 ticks, not Q12's 2^35 (a monitor switch M7-4 does not make)"
 
 # ---------------------------------------------------------------- probes

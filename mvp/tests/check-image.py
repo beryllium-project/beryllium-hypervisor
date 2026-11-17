@@ -1077,9 +1077,13 @@ FLIP_VARIANT = "self-report-flip"
 # two-guests-off's, and is checked against it.
 OFF_COPIES = {"two-guests-off": "two-guests", "te-poc-off": "te-poc",
               "anchor-off": "anchor"}
+# A monitor variant built without the boundary (ring-full's, D-12): the
+# variant it copies, checked as that variant against its scenario's off
+# copy.
+OFF_VARIANTS = {"ring-full-off": "ring-full"}
 VARIANTS = ("payload",) + DTB_VARIANTS + MONITOR_VARIANTS + ("shim-rule",) + \
     TE_POC_VARIANTS + ANCHOR_VARIANTS + CONSOLE_VARIANTS + (FLIP_VARIANT,) + \
-    tuple(OFF_COPIES)
+    tuple(OFF_COPIES) + tuple(OFF_VARIANTS)
 # A v2 or v3 scenario's own DTB pair, named for it (tools/gen-dts.py):
 # te-poc's and anchor's; guest/pins.txt must pin te-poc's, and anchor's
 # once its scenario is checked.
@@ -4588,23 +4592,33 @@ def launch_span(elf):
             2 * DIGEST_BYTES)
 
 
+def own_spans(elf):
+    """The flat image's spans that an image's own inputs decide: its
+    expected launch registers (M9), and in a boundary-on image its
+    descriptor's identity (M11-7), which rule 5 checks against that
+    descriptor."""
+    spans = [launch_span(elf)]
+    if MVP_PARTITION_IDENTITY in elf.symbols:
+        spans.append((elf.symbols[MVP_PARTITION_IDENTITY] - BASE, 32))
+    return spans
+
+
 def check_console_grants(elf_data, flat, reference_flat, scenario):
     """A console variant's monitor: its flat image the reference's but for
-    its expected launch registers (M9) and bytes inside be_mvp_proposal,
-    the MVP core profile's domain requests, each a grant's word going from
-    0 to 1, one per shell guest (mvp-config.c's
-    BE_MVP_CORE_DOMAIN<d>_CONSOLE)."""
+    its own spans (own_spans()) and bytes inside be_mvp_proposal, the MVP
+    core profile's domain requests, each a grant's word going from 0 to 1,
+    one per shell guest (mvp-config.c's BE_MVP_CORE_DOMAIN<d>_CONSOLE)."""
     elf = Elf(elf_data)
     entries = elf.symbol_entries.get("be_mvp_proposal", [])
     require(len(entries) == 1, "be_mvp_proposal is not one symbol")
     start = elf.symbols["be_mvp_proposal"] - BASE
     size = struct.unpack_from("<Q", elf.data, entries[0] + 16)[0]
-    launch, launch_bytes = launch_span(elf)
+    spans = own_spans(elf)
     require(len(flat) == len(reference_flat),
             "the console variant's flat image is not the reference's size")
     changed = [index for index in range(len(flat))
                if flat[index] != reference_flat[index] and
-               not launch <= index < launch + launch_bytes]
+               not any(at <= index < at + length for at, length in spans)]
     require(all(start <= index < start + size for index in changed),
             f"the console variant's monitor differs from the scenario's "
             f"outside be_mvp_proposal, at 0x{BASE + changed[0]:x}"
@@ -4752,11 +4766,12 @@ def check_variant(name, boot_elf_data, data, reference, pins, kernel,
     """A negative variant: the boot rules with its change, and no other."""
     require(name in VARIANTS, f"unknown variant {name}")
     # A console variant is its own scenario's, SCENARIO-shell; an off copy
-    # its scenario's, SCENARIO-off.
+    # its scenario's, SCENARIO-off; an off variant its variant's.
+    copied = OFF_VARIANTS.get(name, name)
     require(name == f"{scenario.name}-shell" if name in CONSOLE_VARIANTS
             else OFF_COPIES[name] == scenario.name if name in OFF_COPIES
-            else (name in TE_POC_VARIANTS) == (scenario.name == "te-poc") and
-            (name in ANCHOR_VARIANTS + (FLIP_VARIANT,)) ==
+            else (copied in TE_POC_VARIANTS) == (scenario.name == "te-poc")
+            and (copied in ANCHOR_VARIANTS + (FLIP_VARIANT,)) ==
             (scenario.name == "anchor"),
             f"variant {name} is not a variant of scenario {scenario.name}")
     flat = data[MONITOR_OFFSET:MONITOR_OFFSET + SPAN]
@@ -4769,14 +4784,15 @@ def check_variant(name, boot_elf_data, data, reference, pins, kernel,
         allowed = [(KERNEL_OFFSET + KERNEL_MAGIC2_AT, 1)]
     elif name in DTB_VARIANTS:
         # Since M9 its own monitor, the reference's but for its expected
-        # launch registers, which its DTBs change.
+        # launch registers, which its DTBs change, and since M11-7 its
+        # own descriptor's identity (own_spans()).
         elf = variant_monitor(name, monitor, flat, reference, layout,
                               scenario, boot, data)
-        stray = outside(flat, reference["flat"], [launch_span(elf)])
+        stray = outside(flat, reference["flat"], own_spans(elf))
         require(stray is None,
                 f"variant {name}'s monitor differs from the reference's "
-                f"outside its launch registers, at 0x{BASE + stray:x}"
-                if stray is not None else "")
+                f"outside its launch registers and identity, at "
+                f"0x{BASE + stray:x}" if stray is not None else "")
         allowed = [(MONITOR_OFFSET, SPAN)] + [
             (boot[f"dtb{guest}_offset"], DTB_BYTES)
             for guest in DTB_VARIANT_GUESTS[name]]

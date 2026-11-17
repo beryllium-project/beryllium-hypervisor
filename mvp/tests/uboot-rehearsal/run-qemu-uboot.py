@@ -8,6 +8,7 @@
       (--expect EXPECT | --fallthrough) --machine MACHINE --cpu CPU
       --output DIR
       [--qemu QEMU] [--boot-timeout S] [--run-timeout S] [--exit-timeout S]
+      [--dtb TREE --record-table FW_ELF --nm NM --words FILE]
   run-qemu-uboot.py derive BOARD_IMG OUT
   run-qemu-uboot.py relation BOARD_IMG QEMU_IMG
   run-qemu-uboot.py self-test
@@ -65,6 +66,13 @@ failing image's first BE_MVP:FAIL is its declared class. For the
 fall-through: none of those boot lines, no marker, and exactly one
 FALLTHROUGH line after `boot`.
 
+M11-7: with --dtb, a session under the physical boundary (its tree, a
+partition tree, given to QEMU; plain PMP): the oracle also reads the
+firmware's commit records (found through FW_ELF's symbols with NM) and
+FILE's words (tests/check-boundary.py words), and a scenario's markers
+may end with M-mode's commit records after its last line, which
+tests/check-capture.py and tests/check-boundary.py judge.
+
 `derive` writes the QEMU-only image of a board image (M5 plan, "Tool
 changes (M5-2)"): the same bytes but header bytes 8 to 15, text_offset, set
 to BE_MVP_QEMU_TEXT_OFFSET (src/mvp-layout.h) little-endian, so that booti
@@ -110,6 +118,8 @@ LOAD = 0x140000000
 HEADER = struct.Struct("<IIQQQIIQ8s4sI")
 FILE_NAME = re.compile(r"[a-z0-9][a-z0-9.-]{0,46}\.img")
 FALLTHROUGH = "BE_UBOOT_REHEARSAL: FALLTHROUGH"
+# M11-7: M-mode's commit record lines (the firmware's, under the boundary).
+RECORD_TAG = "Domain commit hart"
 AUTOBOOT = re.compile(rb"Hit any key to stop autoboot")
 PROMPT = re.compile(rb"=> $")
 FALLEN = re.compile(rb"^" + FALLTHROUGH.encode() + rb"\r?\n", re.M)
@@ -332,6 +342,11 @@ def judge(data, lines, image, values, expect=None):
     facts["terminal"] = next((row for row in monitor if terminal.search(row)),
                              "none")
     outcome = expect["outcome"]
+    # M-mode's commit records follow the monitor's last line in a
+    # boundary-on run whose tree holds a digest.
+    while "boundary" in expect and markers and \
+            markers[-1].startswith(RECORD_TAG):
+        markers.pop()
     if rule in domain_harts(expect):
         if fails[:1] != ["BE_MVP:FAIL firmware"] or \
                 any(row.startswith("BE_MVP:14 ") for row in monitor):
@@ -454,7 +469,8 @@ def run_session(args, paths, lines, expect, status, config):
             f"file={args.disk},format=raw,if=none,id=d0", "-device",
             "virtio-blk-device,drive=d0", "-chardev",
             f"stdio,id=uart0,signal=off,logfile={paths['uart.log']},"
-            "logappend=off", "-serial", "chardev:uart0"]
+            "logappend=off", "-serial", "chardev:uart0"] + \
+        (["-dtb", args.dtb] if args.dtb else [])
     terminal = re.compile(expect["terminal_regex"].encode()) if expect \
         else None
     with open(paths["qemu.txt"], "wb") as qemu_out, \
@@ -548,9 +564,16 @@ def session(args):
     if expect:
         words.append(qemu_oracle.word_from_image(
             "boot-image-header", args.image, values["STAGING_HPA"]))
+    devices = ()
+    if args.dtb:
+        words += qemu_oracle.record_table_words(args.nm, args.record_table,
+                                                8)
+        extra, devices = qemu_oracle.words_from_file(args.words)
+        words += extra
     config = qemu_oracle.OracleConfig(
-        8, "k3-like", False, "readable", "readable", "absent",
-        0x80000000, 0x200000000, tuple(words))
+        8, "k3-like", bool(args.dtb), "readable", "readable", "absent",
+        0x80000000, 0x200000000, tuple(words),
+        "plain" if args.dtb else "none", devices)
     config.validate()
     out = pathlib.Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
@@ -712,6 +735,13 @@ def self_test():
         case(name, swap(old, new), "FAIL", wanted)
     case("no BE_MVP:14", synthetic(lines, image, values, tail=()), "FAIL",
          "BE_MVP:14")
+    records = synthetic(lines, image, values, tail=(
+        "BE_MVP:14 SHUTDOWN type=0 reason=0", "Domain commit hart0: "
+        "committed=0 pmp_faults=0 blocked_calls=0 failed_calls=0"))
+    case("M-mode's records after BE_MVP:14 under the boundary", records,
+         "PASS", test_expect=dict(expect, boundary={"record": True}))
+    case("M-mode's records after BE_MVP:14 without the boundary", records,
+         "FAIL", "not with BE_MVP:14 SHUTDOWN")
     case("a capture cut mid-line", good[:-2], "FAIL", "mid-line")
     case("OpenSBI's boot hart not the shim's", synthetic(
         lines, image, values, opensbi=4), "FAIL", "not the shim's")
@@ -781,6 +811,8 @@ def main(argv):
     kind.add_argument("--expect")
     kind.add_argument("--fallthrough", action="store_true")
     run.add_argument("--qemu", default="qemu-system-riscv64")
+    for option in ("--dtb", "--record-table", "--nm", "--words"):
+        run.add_argument(option)
     run.add_argument("--boot-timeout", type=float, default=60)
     run.add_argument("--run-timeout", type=float, default=300)
     run.add_argument("--exit-timeout", type=float, default=15)
@@ -798,8 +830,12 @@ def main(argv):
         if args.command == "self-test":
             return self_test()
         if args.command == "session":
+            boundary = (args.dtb, args.record_table, args.nm, args.words)
+            if any(boundary) and not all(boundary):
+                parser.error("--dtb, --record-table, --nm, and --words go "
+                             "together")
             for path in (args.firmware, args.uboot, args.uboot_elf, args.disk,
-                         args.image):
+                         args.image) + (boundary if args.dtb else ()):
                 if not os.access(path, os.R_OK):
                     parser.error(f"{path} is not readable")
             return session(args)

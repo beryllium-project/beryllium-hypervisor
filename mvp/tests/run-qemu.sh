@@ -28,6 +28,8 @@
 #            with Sstc, Svade without Svadu, Sv39 only, and Smstateen, as
 #            recorded for the COM260; the firmware base (SBI 3.0):
 #            two-guests
+#   k3-like-smepmp  k3-like with Smepmp, under the Smepmp tree; GCC only,
+#            as for te-poc and anchor (M11-7; D-12, Q10): two-guests
 # and, from the off copy (BUILD_DIR/variants/TOOLCHAIN/two-guests-off, the
 # image built without the physical boundary; M11-7), the rows whose machine
 # or firmware has none:
@@ -231,6 +233,8 @@ fi
 # its boundary field: off, or the PMP mode a boundary-on run of the row
 # uses (k3-like's, plain; M11-7).
 oracle_k3='k3-like readable readable absent plain'
+# M11-7 (D-12, Q10): each scenario once under its Smepmp tree, GCC only.
+oracle_smepmp='k3-like readable readable readable smepmp'
 oracle_rva23='rva23 absent readable absent off'
 oracle_plic='plic readable readable absent off'
 oracle_minimal='no-sstc readable readable absent off'
@@ -251,7 +255,8 @@ scenarios=(
 # The plain monitor's firmware-version negative alone boots the earlier
 # firmware. The CHERI-aware monitor has its own run matrix and no such row.
 [ "$monitor" != riscv ] ||
-	scenarios+=("firmware-version $k3_machine $k3_cpu $oracle_k3 earlier 2.0 firmware-version two-guests-off")
+	scenarios+=("firmware-version $k3_machine $k3_cpu $oracle_k3 earlier 2.0 firmware-version two-guests-off"
+		"k3-like-smepmp $k3_machine $k3_cpu,smepmp=true $oracle_smepmp base $firmware_sbi two-guests two-guests")
 # A row's boot ELF: the scenario's image, or an off copy's. $1 toolchain,
 # $2 scenario's directory under BUILD_DIR/TOOLCHAIN ('' for two-guests),
 # $3 image
@@ -263,9 +268,10 @@ row_elf() {
 }
 # The variants (planning/mvp-m0-plan.md, Negative images) and the probe
 # images (Platform record: probes), on k3-like with the base, each
-# against the expectation file of its own name.
+# against the expectation file of its own name; ring-full-off, ring-full's
+# monitor without the boundary (M11-7), under QEMU's own tree.
 variants=(payload exit-budget run-timeout ring-full hart-start init-exit
-	rdcycle sbi-time shim-rule hostile)
+	rdcycle sbi-time shim-rule hostile ring-full-off)
 probes=(probe-platform probe-vmid-distinct probe-vmid-shared probe-console-input)
 # te-poc's machines (its QEMU table's rows, rva23 and plic from its off
 # copy, the image's suffix last: . for none) and its two variants.
@@ -274,6 +280,8 @@ te_poc_machines=(
 	"rva23 virt,aia=aplic-imsic rva23s64 $oracle_rva23 -off"
 	"plic virt rv64,h=true $oracle_plic -off"
 )
+[ "$monitor" != riscv ] ||
+	te_poc_machines+=("k3-like-smepmp $k3_machine $k3_cpu,smepmp=true $oracle_smepmp .")
 te_poc_variants=(reader-write no-inject)
 # beryllium-cheri: and the CHERI-aware monitor's channel-cw (planning/
 # cheri-enforcement-plan.md, section 6, B2), and, where BUILD_DIR's CHERI
@@ -349,6 +357,7 @@ for toolchain in "${toolchains[@]}"; do
 	for entry in "${scenarios[@]}"; do
 		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
 			firmware_role sbi expect image <<<"$entry"
+		[ "$boundary" != smepmp ] || [ "$toolchain" = gcc ] || continue
 		wanted "$toolchain/$name" || continue
 		runs+=("$toolchain/$name $(row_elf "$toolchain" '' "$image") $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary $firmware_role $sbi $expect_dir/$expect.json - -")
 	done
@@ -369,6 +378,7 @@ for toolchain in "${toolchains[@]}"; do
 	for entry in "${te_poc_machines[@]}"; do
 		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
 			copy <<<"$entry"
+		[ "$boundary" != smepmp ] || [ "$toolchain" = gcc ] || continue
 		wanted "te-poc/$toolchain/$name" || continue
 		runs+=("$toolchain/te-poc-$name $(row_elf "$toolchain" te-poc "te-poc${copy#.}") $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $te_poc_dir/expect/te-poc${copy#.}.json $te_poc_dir/authority-report.json -")
 	done
@@ -387,6 +397,7 @@ for toolchain in "${toolchains[@]}"; do
 	for entry in "${te_poc_machines[@]}"; do
 		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
 			copy <<<"$entry"
+		[ "$boundary" != smepmp ] || [ "$toolchain" = gcc ] || continue
 		wanted "anchor/$toolchain/$name" || continue
 		runs+=("$toolchain/anchor-$name $(row_elf "$toolchain" anchor "anchor${copy#.}") $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $anchor_dir/expect/anchor${copy#.}.json $anchor_dir/authority-report.json $measured")
 	done

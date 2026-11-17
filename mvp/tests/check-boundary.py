@@ -50,6 +50,11 @@ file (with --extra's words and device registers added). A run that
 cannot be judged (an input missing, malformed, or refused) still has its
 record: the one line `BE_MVP_BOUNDARY: FAIL <reason>`.
 
+--fallthrough checks a run under the tree of the expectation's pair in
+which no monitor ran (the U-Boot rehearsal's fall-through): the
+expectation's declaration with harts 1 and 2 never started, the banner's
+digest and no printed record (the run ends with no reset).
+
 `gate` is the run harness's admission of a boundary-on run's device tree
 (D-3, D-10): the run starts only if the partition checker's record of the
 paired image (tests/check-partition.py --record) passed, names step 1's
@@ -123,7 +128,7 @@ def declaration(expect):
     if not isinstance(boundary, dict):
         raise Refused("the expectation declares no boundary")
     known = {"control_hart", "pair", "identity", "record", "firmware",
-             "harts", "counts", "phase", "negative"}
+             "harts", "counts", "phase", "negative", "fallthrough"}
     if set(boundary) - known or not {"control_hart", "pair", "record",
                                      "harts"} <= set(boundary):
         raise Refused("the boundary section is not of its form")
@@ -320,7 +325,8 @@ def judge(expect, record, text, tables, mode, authority, symbols,
     findings += found
     digests, shown_lines = printed(text)
     shown = {}
-    if boundary["record"]:
+    # A fall-through ends with no reset, so M-mode prints no record.
+    if boundary["record"] and not boundary.get("fallthrough"):
         if sorted(shown_lines) != list(range(HARTS)):
             findings.append(f"M-mode printed records for harts "
                             f"{sorted(shown_lines)}, not 0 to 7")
@@ -329,9 +335,13 @@ def judge(expect, record, text, tables, mode, authority, symbols,
             if shown[hart] is None:
                 findings.append(f"hart {hart}'s printed record is not of "
                                 f"its form")
-    elif shown_lines or digests:
-        findings.append("M-mode printed a commit record or digest, but the "
-                        "tree holds no digest")
+    elif shown_lines:
+        findings.append("M-mode printed a commit record, but the tree holds "
+                        "no digest" if not boundary["record"] else
+                        "M-mode printed a commit record in a fall-through")
+    elif digests and not boundary["record"]:
+        findings.append("M-mode printed a digest, but the tree holds no "
+                        "digest")
     states = {int(hart): state for hart, state in boundary["harts"].items()}
     states.update({hart: "never-started" for hart in range(3, HARTS)})
     committed = set()
@@ -495,8 +505,22 @@ def unjudged(path, line):
         print(f"BE_MVP_BOUNDARY: FAIL no record written to {path}: {error}")
 
 
+def fallthrough(expect):
+    """EXPECT's declaration for a run under its pair's tree in which no
+    monitor ran (the U-Boot rehearsal's fall-through, --fallthrough): the
+    VS-domain harts never started, no state word is read, and, as the run
+    ends with no reset, M-mode prints no record."""
+    boundary = dict(declaration(expect), fallthrough=True, harts=dict(
+        declaration(expect)["harts"], **{"1": "never-started",
+                                         "2": "never-started"}))
+    boundary.pop("phase", None)
+    return dict(expect, image="fallthrough", boundary=boundary)
+
+
 def check(args):
     expect = read_json(args.expect)
+    if args.fallthrough:
+        expect = fallthrough(expect)
     boundary = declaration(expect)
     tables = read_json(args.tables)
     symbols = qemu_oracle.symbol_addresses(
@@ -762,6 +786,22 @@ def self_test(scratch):
     run("another image's identity, as declared",
         lambda oracle, tables, expect, text: text.replace("a" * 64, "c" * 64),
         expect=expectation(identity="two-guests-shell"))
+    def records_cut(oracle, tables, expect, text):
+        return text.split("Domain commit hart0:")[0]
+    run("the fall-through: no VS-domain hart started, no record printed",
+        records_cut, states={0: "boot", 1: "never-started",
+                             2: "never-started"},
+        expect=fallthrough(expectation(phase=[0, 1])))
+    run("a printed digest alone where the tree holds none", records_cut,
+        expect=expectation(record=False),
+        want="printed a digest, but the tree holds no digest")
+    run("the fall-through with a printed record",
+        states={0: "boot", 1: "never-started", 2: "never-started"},
+        expect=fallthrough(expectation()),
+        want="a commit record in a fall-through")
+    run("the fall-through's read under the scenario's declaration",
+        states={0: "boot", 1: "never-started", 2: "never-started"},
+        want="committed harts [], declared [1, 2]")
     started = {0: "boot", 1: "started", 2: "never-started"}
     started_harts = {"0": "boot", "1": "started", "2": "never-started"}
     run("started: read committed, its confined table",
@@ -905,6 +945,7 @@ def main(argv):
     checked.add_argument("--pmp-mode", choices=("plain", "smepmp"),
                          required=True)
     checked.add_argument("--boundary-header")
+    checked.add_argument("--fallthrough", action="store_true")
     words = commands.add_parser("words")
     for name in ("expect", "layout", "out"):
         words.add_argument(f"--{name}", required=True)

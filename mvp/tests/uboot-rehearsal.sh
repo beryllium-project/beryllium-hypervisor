@@ -61,6 +61,20 @@
 # PASS by the driver and by the checker, with QEMU's exit 0 (the SRST
 # power-off); the fall-through passes on the driver's PASS; and no case
 # passes if an attempt changed its disk.
+# M11-7: a case whose expectation declares the physical boundary (each
+# default case; the fall-through runs under two-guests' GCC image's) runs
+# as tests/run-qemu.sh runs a boundary-on row: under its pair's step-1 tree
+# in plain PMP, given to QEMU (-dtb) and so to U-Boot and the monitor,
+# admitted only by the partition checker's record of that tree
+# (tests/check-boundary.py gate; refused, no QEMU starts), the oracle
+# reading the firmware's commit records and the declared words, each
+# attempt judged by tests/check-boundary.py as well (the fall-through's
+# with --fallthrough: no VS-domain hart started and no record printed), in
+# one attempt, its boot on hart 0. status.txt names the boundary, its PMP
+# mode, the tree and its SHA-256, and the control hart (boot code, step
+# 1), and each attempt's boundary verdict; CASE/words.json and
+# CASE/attempt-N/boundary.txt (NOT-APPLICABLE for an off case) join the
+# records.
 # The QEMU-only image (plan, "Tool changes (M5-2)"): the board image with
 # header bytes 8 to 15 set to BE_MVP_QEMU_TEXT_OFFSET. The Makefile's
 # qemu-images rule writes X/be-mvp-boot-qemu.img beside each board image
@@ -126,7 +140,10 @@ mvp=$(dirname -- "$here")
 repo=$(dirname -- "$mvp")
 driver=$here/uboot-rehearsal/run-qemu-uboot.py
 checker=$here/check-capture.py
+boundary_checker=$here/check-boundary.py
 lock=$mvp/tools/lock/tool-lock.conf
+firmware_elf=${firmware%.bin}.elf
+nm_tool=$(sed -n 's/^MVP_TOOL_cross_nm_command=\(\/[^ ]*\)$/\1/p' -- "$lock")
 uboot=${UBOOT_BIN:-$repo/build/k3-b3/u-boot-build/u-boot.bin}
 uboot_elf=${UBOOT_ELF:-${uboot%.bin}}
 qemu=${QEMU:-qemu-system-riscv64}
@@ -291,6 +308,8 @@ run_case() {
 	local refused=0 harts='' verdict=FAIL session=none check=- check_exit=-
 	local qemu_exit=none adir boot_hart line built path key note='' disk_sha
 	local disk=same oracle_status=none oracle_detail=
+	local declared=$expect pair=- scenario dtb=- tables record authority
+	local boundary=off boundary_args=() fallthrough=() bounded=- limit
 
 	dir=$output/$name
 	scratch=$scratch_root/$name
@@ -331,9 +350,44 @@ run_case() {
 		"$scratch/disk.img" 64M </dev/null >"$scratch/mke2fs.txt" 2>&1 ||
 		fail "$label: mke2fs: $(cat -- "$scratch/mke2fs.txt")"
 	disk_sha=$(sha "$scratch/disk.img")
+	# M11-7: the case's tree, by its expectation (the fall-through's,
+	# two-guests' GCC image's), admitted by its partition record.
+	if [ "$label" = fallthrough ]; then
+		declared=gen/expect/two-guests.json toolchain=gcc
+		fallthrough=(--fallthrough)
+	fi
+	limit=$max_attempts
+	[ "$declared" = - ] || pair=$("$python" -I -B -c 'import json, sys
+expect = json.load(open(sys.argv[1]))
+boundary = expect.get("boundary")
+print(boundary["pair"] + " " + expect["scenario"]
+      if isinstance(boundary, dict) else "-")' "$build/$declared")
+	if [ "$pair" != - ]; then
+		read -r pair scenario <<<"$pair"
+		dtb=partition/$scenario/$pair/plain/$pair.dtb
+		tables=$build/partition/$scenario/$pair/plain/$pair-pmp.json
+		record=$build/records/partition/plain/$toolchain/$scenario/$pair.json
+		authority=$build/gen/partition/$scenario/authority-report.json
+		"$python" -I -B "$boundary_checker" gate --expect "$build/$declared" \
+			--record "$record" --dtb "$build/$dtb" --tables "$tables" \
+			>"$dir/gate.txt" 2>&1 ||
+			fail "$label: $(tail -n 1 -- "$dir/gate.txt")"
+		"$python" -I -B "$boundary_checker" words --expect "$build/$declared" \
+			--layout "$mvp/src/mvp-layout.h" \
+			--boundary-header "$mvp/src/mvp-boundary.h" --out "$dir/words.json"
+		boundary=on limit=1
+		boundary_args=(--dtb "$build/$dtb" --record-table "$firmware_elf"
+			--nm "$nm_tool" --words "$dir/words.json")
+	fi
 	{
 		printf 'label=%s\nimage=%s\nimage_sha256=%s\n' "$label" "$image" \
 			"$(sha "$build/$image")"
+		if [ "$boundary" = on ]; then
+			printf 'boundary=on\npmp_mode=plain\ndtb=%s\ndtb_sha256=%s\ncontrol_hart=boot\n' \
+				"$dtb" "$(sha "$build/$dtb")"
+		else
+			printf 'boundary=off\npmp_mode=-\ndtb=-\ndtb_sha256=-\ncontrol_hart=-\n'
+		fi
 		printf '%s\n' "$facts"
 		printf 'disk_file=%s\nbe_image=%s\ndisk_sha256=%s\n' "$file" \
 			"$be_image" "$disk_sha"
@@ -353,7 +407,7 @@ run_case() {
 		done
 	} >"$dir/status.txt"
 
-	while [ "$attempt" -lt "$max_attempts" ]; do
+	while [ "$attempt" -lt "$limit" ]; do
 		attempt=$((attempt + 1))
 		adir=$dir/attempt-$attempt
 		pinned_firmware
@@ -362,7 +416,24 @@ run_case() {
 			--disk "$scratch/disk.img" --image "$qemu_image" \
 			--file "$be_image" "${kind_args[@]}" --machine "$machine" \
 			--cpu "$cpu" --qemu "$qemu" --run-timeout "$run_timeout" \
-			--output "$adir" >/dev/null || true
+			"${boundary_args[@]}" --output "$adir" >/dev/null || true
+		if [ "$boundary" = on ]; then
+			"$python" -I -B "$boundary_checker" check \
+				--oracle "$adir/oracle.json" --console "$adir/console.log" \
+				--expect "$build/$declared" "${fallthrough[@]}" \
+				--tables "$tables" --pmp-mode plain \
+				--partition-authority "$authority" \
+				--firmware-elf "$firmware_elf" --nm "$nm_tool" \
+				--layout "$mvp/src/mvp-layout.h" \
+				--boundary-header "$mvp/src/mvp-boundary.h" \
+				--out "$adir/boundary.txt" >/dev/null 2>&1 || true
+		else
+			"$python" -I -B "$boundary_checker" not-applicable \
+				--out "$adir/boundary.txt"
+		fi
+		bounded=$(sed -n 's/^BE_MVP_BOUNDARY: \([A-Z-]*\).*$/\1/p' \
+			"$adir/boundary.txt" 2>/dev/null | tail -n 1)
+		bounded=${bounded:-none}
 		session=$(sed -n 's/^BE_MVP_UBOOT_SESSION\[[^]]*\]: \([A-Z]*\) .*$/\1/p' \
 			"$adir/session.txt" 2>/dev/null || true)
 		session=${session:-none}
@@ -387,9 +458,9 @@ run_case() {
 		fi
 		# The disk is the attempts' input: nothing may write it.
 		[ "$(sha "$scratch/disk.img")" = "$disk_sha" ] || disk=changed
-		printf 'attempt=%s session=%s check=%s check_exit=%s boot_hart=%s qemu_exit=%s oracle=%s disk=%s console_sha256=%s\n' \
+		printf 'attempt=%s session=%s check=%s check_exit=%s boot_hart=%s qemu_exit=%s oracle=%s boundary=%s disk=%s console_sha256=%s\n' \
 			"$attempt" "$session" "$check" "$check_exit" "${boot_hart:-none}" \
-			"${qemu_exit:-none}" "$oracle_status" "$disk" \
+			"${qemu_exit:-none}" "$oracle_status" "$bounded" "$disk" \
 			"$(sha "$adir/console.log" 2>/dev/null || echo none)" >>"$dir/status.txt"
 		harts=${harts:+$harts,}${boot_hart:-none}
 		if [ "$session" = REFUSED ] &&
@@ -410,7 +481,11 @@ run_case() {
 	[ "$refused" != "$attempt" ] || note=' (every attempt refused)'
 	[ "$oracle_status" = PASS ] ||
 		note="$note (oracle: ${oracle_detail:-record unavailable})"
-	line="BE_MVP_UBOOT_REHEARSAL[$label]: $verdict attempts=$attempt refused=$refused boot_harts=$harts session=$session check=$check check_exit=$check_exit qemu_exit=${qemu_exit:-none} oracle=$oracle_status image=$(sha "$qemu_image" | cut -c1-12) crc32=$(sed -n 's/^qemu_image_crc32=//p' <<<"$facts")$note"
+	if [ "$boundary" = on ] && [ "$bounded" != PASS ]; then
+		verdict=FAIL
+		note="$note (boundary: $(tail -n 1 -- "$adir/boundary.txt" 2>/dev/null || echo 'no record'))"
+	fi
+	line="BE_MVP_UBOOT_REHEARSAL[$label]: $verdict attempts=$attempt refused=$refused boot_harts=$harts session=$session check=$check check_exit=$check_exit qemu_exit=${qemu_exit:-none} oracle=$oracle_status boundary=$bounded image=$(sha "$qemu_image" | cut -c1-12) crc32=$(sed -n 's/^qemu_image_crc32=//p' <<<"$facts")$note"
 	printf '%s\n' "$line" | tee -a -- "$dir/status.txt" "$summary"
 	total_attempts=$((total_attempts + attempt))
 	total_refused=$((total_refused + refused))

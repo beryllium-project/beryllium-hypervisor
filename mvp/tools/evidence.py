@@ -67,9 +67,10 @@ the last step of `check`) holds:
                     sessions.tsv, and each attempt's capture, checker
                     output, checker record, oracle record (a full read, or
                     CHERI's fixed NOT-ATTACHED record), keys (typed.txt),
-                    nonce, session record (session.txt), and
-                    waits (steps.txt), and its export (log.json) by the
-                    rule below, as
+                    nonce, session record (session.txt), waits
+                    (steps.txt), and boundary record (as qemu/'s, with the
+                    same four columns in sessions.tsv), and its export
+                    (log.json) by the rule below, as
                     TOOLCHAIN/IMAGE/attempt-N/
   references/       M9's post-link reference manifests, every one, with
                     their pins (BUILD/references/TOOLCHAIN/IMAGE.json and
@@ -295,8 +296,10 @@ BOUNDARY_ON = re.compile(r"BE_MVP_BOUNDARY: (?:PASS|FAIL) image=\S+ pair=\S+ "
 # M7-4's sessions (tests/session-typist.py suite), under BUILD/qemu: the
 # summary, the attempts table, and each attempt's records, in
 # TOOLCHAIN/IMAGE/attempt-N/.
-TYPED_COLUMNS = RUN_COLUMNS + ("keys", "steps", "seconds")
-TYPED_FILES = ("console.log", "check.txt", "result.json", "oracle.json",
+TYPED_COLUMNS = RUN_COLUMNS + ("keys", "steps", "seconds") + \
+    ATTEMPT_COLUMNS[len(RUN_COLUMNS):]
+TYPED_FILES = ("boundary.txt", "console.log", "check.txt", "result.json",
+               "oracle.json",
                "typed.txt", "nonce.txt", "session.txt", "steps.txt")
 TYPED_ELF = re.compile(r"^variants/(?:gcc|clang)/[a-z0-9][a-z0-9.-]{0,63}/"
                          r"be-mvp-boot\.elf$")
@@ -310,8 +313,8 @@ TYPED_ELF = re.compile(r"^variants/(?:gcc|clang)/[a-z0-9][a-z0-9.-]{0,63}/"
 # REHEARSAL_FILES under attempt-N/. The default cases, by their board
 # images: each toolchain's scenario images, and the fall-through.
 REHEARSALS = "uboot-rehearsal"
-REHEARSAL_FILES = ("console.log", "check.txt", "result.json", "oracle.json",
-                   "session.txt", "typed.txt")
+REHEARSAL_FILES = ("boundary.txt", "console.log", "check.txt",
+                   "result.json", "oracle.json", "session.txt", "typed.txt")
 REHEARSAL_CASES = {
     **{f"{name}-{toolchain}": f"{toolchain}/"
        f"{'' if name == 'two-guests' else name + '/'}be-mvp-boot.img"
@@ -678,10 +681,11 @@ def qemu_attempts(build):
     return suite, summary, attempts
 
 
-def boundary_row(attempt, row, record):
-    """M11-7: an attempt's boundary columns and record agree: on, with a
-    PMP mode, a device tree, control_hart=boot, and check-boundary's line
-    in that mode; or off, with none, and the NOT-APPLICABLE line."""
+def boundary_row(attempt, row, record, table="attempts.tsv"):
+    """M11-7: an attempt's boundary columns (in TABLE) and record agree:
+    on, with a PMP mode, a device tree, control_hart=boot, and
+    check-boundary's line in that mode; or off, with none, and the
+    NOT-APPLICABLE line."""
     text = record.read_text(encoding="utf-8")
     last = text.splitlines()[-1] if text.strip() else ""
     on = attempt["boundary"] == "on" and \
@@ -693,7 +697,7 @@ def boundary_row(attempt, row, record):
     match = BOUNDARY_ON.fullmatch(last)
     if not (on and match and match.group(1) == attempt["pmp_mode"]) and \
             not (off and text == NOT_APPLICABLE):
-        raise Refused(f"attempts.tsv row {row!r} and its boundary record "
+        raise Refused(f"{table} row {row!r} and its boundary record "
                       f"{last!r} do not agree")
 
 
@@ -752,6 +756,8 @@ def session_attempts(build):
         for name in TYPED_FILES:
             if not (root / stem / name).is_file():
                 raise Refused(f"session {stem}/{name} is missing")
+        boundary_row(attempt, row, root / stem / "boundary.txt",
+                     "sessions.tsv")
         attempt["stem"] = stem
         attempts.append(attempt)
     if not attempts:
@@ -768,11 +774,12 @@ def qemu_runs(attempts):
     return runs
 
 
-def rehearsal_cases(build):
+def rehearsal_cases(build, images):
     """Each U-Boot rehearsal case that ran: {case: (state, its status.txt,
     its fields)}, state current when it ran on the build's board image,
     else stale. The image path a status names is only hashed, and must have
-    a board image's form inside BUILD."""
+    a board image's form inside BUILD; a boundary-on case's tree is among
+    IMAGES' partition outputs."""
     cases = {}
     for status in sorted((build / REHEARSALS).glob("*/status.txt")):
         text = status.read_text(encoding="utf-8")
@@ -784,11 +791,22 @@ def rehearsal_cases(build):
         image = build / fields["image"]
         current = image.is_file() and file_sha(image) == fields.get(
             "image_sha256")
+        # M11-7: the case's boundary, its PMP mode, tree, and control hart,
+        # agree with each attempt's boundary record (boundary_row()).
+        declared = dict(re.findall(r"^(boundary|pmp_mode|dtb_sha256|"
+                                   r"control_hart)=(\S+)$", text, re.M))
+        if len(declared) != 4:
+            raise Refused(f"{status} does not name its boundary")
+        boundary_trees([dict(declared, stem=f"rehearsal "
+                             f"{status.parent.name}")], images)
         for number in re.findall(r"^attempt=(\d+) ", text, re.M):
-            oracle = status.parent / f"attempt-{number}" / "oracle.json"
-            if not oracle.is_file():
-                raise Refused(f"rehearsal {status.parent.name}/attempt-"
-                              f"{number}/oracle.json is missing")
+            for name in ("oracle.json", "boundary.txt"):
+                if not (status.parent / f"attempt-{number}" / name).is_file():
+                    raise Refused(f"rehearsal {status.parent.name}/attempt-"
+                                  f"{number}/{name} is missing")
+            boundary_row(declared, [status.parent.name, number],
+                         status.parent / f"attempt-{number}" /
+                         "boundary.txt", "status.txt")
         cases[status.parent.name] = ("current" if current else "stale", text,
                                      fields)
     return cases
@@ -924,7 +942,8 @@ def development(build, out, home):
     boundary_trees(attempts, images)
     runs = qemu_runs(attempts)
     sessions_root, sessions_summary, sessions = session_attempts(build)
-    made = rehearsal_cases(build)
+    boundary_trees(sessions, images)
+    made = rehearsal_cases(build, images)
     # M9's exports and references (this file's docstring), all checked
     # before the bundle is written.
     known = references(build)
@@ -1675,10 +1694,12 @@ def synthetic_build(root):
         for name in TYPED_FILES:
             (directory / name).write_text(f"{name} {attempt} {directory}\n",
                                           encoding="ascii")
+        (directory / "boundary.txt").write_text(NOT_APPLICABLE,
+                                                encoding="ascii")
         judged(build, directory / "result.json", "te-poc-shell", verdict)
         rows.append("\t".join(("gcc", "te-poc-shell", str(attempt), hart, "0",
                                verdict, "0" * 64, elf, file_sha(build / elf),
-                               "193", "22", "8.0")))
+                               "193", "22", "8.0", "off", "-", "-", "-")))
     (build / "qemu" / "sessions.tsv").write_text("\n".join(rows) + "\n",
                                                  encoding="ascii")
     (build / "qemu" / "sessions.txt").write_text(
@@ -1694,9 +1715,17 @@ def synthetic_build(root):
             ("te-poc-gcc", "gcc/te-poc", None, ("PASS PASS 5",)),
             ("anchor-gcc", "gcc/anchor", None, ("PASS PASS 4",))):
         directory = build / REHEARSALS / name
+        # te-poc's case under the boundary (the payload tree stands in for
+        # its own), the others off.
+        on = name == "te-poc-gcc"
         lines = [f"label={name.rsplit('-', 1)[0]}/{name.rsplit('-', 1)[1]}",
                  f"image={image}/be-mvp-boot.img", "image_sha256=" + (
-                     digest or file_sha(build / image / "be-mvp-boot.img"))]
+                     digest or file_sha(build / image / "be-mvp-boot.img")),
+                 "boundary=" + ("on" if on else "off"),
+                 "pmp_mode=" + ("plain" if on else "-"),
+                 "dtb_sha256=" + (file_sha(tree / "payload.dtb") if on
+                                  else "-"),
+                 "control_hart=" + ("boot" if on else "-")]
         for number, attempt in enumerate(harts, 1):
             session, check, hart = attempt.split()
             (directory / f"attempt-{number}").mkdir(parents=True)
@@ -1704,6 +1733,11 @@ def synthetic_build(root):
                 f"{name} {number}\n".encode("ascii"))
             (directory / f"attempt-{number}" / "oracle.json").write_text(
                 "{}\n", encoding="ascii")
+            (directory / f"attempt-{number}" / "boundary.txt").write_text(
+                "BE_MVP_BOUNDARY: PASS image=te-poc pair=te-poc "
+                "pmp_mode=plain control_hart=boot harts=0:boot,1:confined,"
+                "2:confined,3-7:never-started identity=0123456789ab\n"
+                if on else NOT_APPLICABLE, encoding="ascii")
             lines.append(f"attempt={number} session={session} check={check} "
                          f"check_exit=0 boot_hart={hart} qemu_exit=0 "
                          f"disk=same console_sha256={'0' * 64}")
@@ -1980,6 +2014,30 @@ def self_test(scratch):
          "do not agree" in
          (refused(development, build, scratch / "bundle-3", home) or ""))
     record.write_text(NOT_APPLICABLE, encoding="ascii")
+    status = build / REHEARSALS / "te-poc-gcc" / "status.txt"
+    original = status.read_text(encoding="ascii")
+    status.write_text(original.replace("control_hart=boot\n",
+                                       "control_hart=-\n"), encoding="ascii")
+    case("a boundary-on rehearsal case without control_hart=boot refuses "
+         "the bundle", "status.txt row" in
+         (refused(development, build, scratch / "bundle-3", home) or ""))
+    status.write_text(original.replace("boundary=on\n", ""),
+                      encoding="ascii")
+    case("a rehearsal case that names no boundary refuses the bundle",
+         "does not name its boundary" in
+         (refused(development, build, scratch / "bundle-3", home) or ""))
+    status.write_text(original, encoding="ascii")
+    table = build / "qemu" / "sessions.tsv"
+    original = table.read_text(encoding="ascii")
+    table.write_text(original.replace("\toff\t-\t-\t-\n",
+                                      "\ton\tplain\t" + file_sha(tree) +
+                                      "\tboot\n", 1), encoding="ascii")
+    case("a session's boundary-on row with a NOT-APPLICABLE record "
+         "refuses the bundle", "sessions.tsv row" in
+         (refused(development, build, scratch / "bundle-3", home) or "") and
+         "do not agree" in
+         (refused(development, build, scratch / "bundle-3", home) or ""))
+    table.write_text(original, encoding="ascii")
     record = build / "records" / "budgets.txt"
     record.unlink()
     case("a missing record refuses the bundle",
