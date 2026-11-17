@@ -40,15 +40,18 @@ checked by the `opensbi` target for the `firmware-version` negative alone.
 
 ## The patch series
 
-`patches/` holds nine patches in `git format-patch` form, applied in the
+`patches/` holds ten patches in `git format-patch` form, applied in the
 order of `patches/series`. They add, in OpenSBI's own terms: the
 allocation of the domain switch contexts at cold boot; a stop of a hart
 whose domain switch cannot program its PMP; a check of a hart's PMP
 entries against its domain's regions; a per-hart commit record; a filter
 of the SBI calls of a domain that has an allowlist; the `ecall-allowlist`
 and `config-digest` device-tree properties; the experimental domain commit
-extension (`0x08004246`); the report of the records at system reset; and
-their documentation. The series is licensed BSD-2-Clause, as OpenSBI is
+extension (`0x08004246`); the report of the records at system reset;
+their documentation; and (M11-7) the ordering of a record's committed
+flag after the rest of the record, read once by the report, so that a
+hart that commits while the report prints is printed whole. The series is
+licensed BSD-2-Clause, as OpenSBI is
 (`COPYING`); this directory's other files are GPL-3.0-only.
 `patches/.gitattributes` keeps Git's whitespace checks off the patch
 files, whose blank context lines are a single space; `build.sh` applies

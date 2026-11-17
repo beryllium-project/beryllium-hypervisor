@@ -154,14 +154,14 @@ PINS = {
     # firmware/config, built with the lock's tools on the host and inside
     # the evaluator. Every plain run except firmware-version boots it.
     "MVP_PIN_FIRMWARE_BIN_SHA256":
-        "53005931558a7f7dee18a6b13c3a6385d4cba4841273661d64ce9a500f0f2a35",
+        "fdab16e9c9ddbb06a3e92d6ca72ee32426bd34f78c84f28870e90292e982a09d",
     # M11-7 (D-10's negative 1): the M11 firmware without the boundary
     # extension: the same source, series, and tools, its configuration
     # firmware/config's with CONFIG_SBI_ECALL_DCOMMIT off (firmware/
     # build.sh, FIRMWARE_WITHOUT), built on the host and inside the
     # evaluator. Negative 1's rows alone boot it.
     "MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256":
-        "e3ff46f0a4e24fa20b70a6fbf59f631fd34ebf595b9148bd73df1c70c42e8ee3",
+        "f997165a0d38a76120b66a6f214b1639d1f195b9c7520f7d8a359e20d93c9e29",
     # The U-Boot rehearsal's U-Boot (planning/mvp-m5-plan.md, Q9): B3's
     # pinned upstream build, an external input never committed, which its
     # script builds from these and the rehearsal requires by SHA-256.

@@ -1,0 +1,94 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Mon, 16 Nov 2026 00:00:00 +0000
+Subject: [PATCH 10/10] lib: sbi: read a commit record's flag once when
+ printing it
+
+sbi_dcommit_report() runs on the HART that resets the system, while
+another HART may still be committing. It reads that HART's committed
+flag twice: once for the first line of the record and once to decide
+whether to print the rest. A commit between the two reads prints a
+record that says the HART is not committed, followed by the PMP entries
+of a committed HART. Nothing orders the flag after the readback either,
+so a report that sees the flag set may print a readback that is not yet
+complete.
+
+Read the flag once into a local, with a read barrier after it, and use
+the local for both. In sbi_dcommit_seal_hart(), put a write barrier
+before the flag is set, so that a report that sees the flag set also
+sees the readback, menvcfg and mseccfg of that HART. A record is then
+printed whole, as not committed or as committed.
+
+AI-assisted-by: Claude Opus 5.5 (Anthropic), in the GitHub Copilot CLI
+---
+ docs/domain_support.md |  5 ++++-
+ lib/sbi/sbi_dcommit.c  | 14 ++++++++++++--
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/docs/domain_support.md b/docs/domain_support.md
+index 01d16ce..112389a 100644
+--- a/docs/domain_support.md
++++ b/docs/domain_support.md
+@@ -157,7 +157,10 @@ back to it, how many SBI calls its allowlist refused, how many allowed
+ calls returned an error, and, once committed, its **menvcfg**, **mseccfg**
+ and first 16 PMP entries. When the device tree holds a configuration
+ digest, OpenSBI prints the digest at boot and every record just before a
+-system reset.
++system reset. A HART that commits while the records are printed has its
++record printed whole, as not committed or as committed: it sets its
++committed flag only after the rest of its record, and the report reads
++the flag once, before the rest.
+ 
+ The per-HART contexts of domain switches are allocated once at boot, for
+ every HART in every domain that lists it, so a switch never allocates.
+diff --git a/lib/sbi/sbi_dcommit.c b/lib/sbi/sbi_dcommit.c
+index 161993d..df4348b 100644
+--- a/lib/sbi/sbi_dcommit.c
++++ b/lib/sbi/sbi_dcommit.c
+@@ -5,6 +5,7 @@
+  */
+ 
+ #include <sbi/riscv_asm.h>
++#include <sbi/riscv_barrier.h>
+ #include <sbi/riscv_encoding.h>
+ #include <sbi/sbi_console.h>
+ #include <sbi/sbi_dcommit.h>
+@@ -103,6 +104,8 @@ int sbi_dcommit_seal_hart(struct sbi_scratch *scratch, struct sbi_domain *dom)
+ 	rec->menvcfg = has_menvcfg ? csr_read64(CSR_MENVCFG) : 0;
+ 	rec->mseccfg = sbi_hart_has_extension(scratch, SBI_HART_EXT_SMEPMP) ?
+ 		       csr_read64(CSR_MSECCFG) : 0;
++	/* The record before its flag, for sbi_dcommit_report() */
++	smp_wmb();
+ 	rec->committed = 1;
+ 
+ 	return 0;
+@@ -181,6 +184,7 @@ void sbi_dcommit_report(void)
+ {
+ 	const struct sbi_dcommit_hart *rec;
+ 	u32 i, j, hartid;
++	u64 committed;
+ 
+ 	if (!dcommit_digest_set)
+ 		return;
+@@ -188,13 +192,19 @@ void sbi_dcommit_report(void)
+ 	for (i = 0; i < sbi_hart_count(); i++) {
+ 		rec = &sbi_dcommit_harts[i];
+ 		hartid = sbi_hartindex_to_hartid(i);
++		/*
++		 * The HART may commit while this one prints: read its flag
++		 * once, and the rest of its record only after the flag.
++		 */
++		committed = rec->committed;
++		smp_rmb();
+ 		sbi_printf("Domain commit hart%u: committed=%llu pmp_faults=%llu "
+ 			   "blocked_calls=%llu failed_calls=%llu\n", hartid,
+-			   (unsigned long long)rec->committed,
++			   (unsigned long long)committed,
+ 			   (unsigned long long)rec->pmp_faults,
+ 			   (unsigned long long)rec->blocked_calls,
+ 			   (unsigned long long)rec->failed_calls);
+-		if (!rec->committed)
++		if (!committed)
+ 			continue;
+ 
+ 		sbi_printf("Domain commit hart%u: menvcfg=0x%016llx "
