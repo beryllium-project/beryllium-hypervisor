@@ -1060,6 +1060,15 @@ cp -- "$FIRMWARE_BIN" "$fw/base-pinned.bin"
 cp -- "$FIRMWARE_BIN" "$fw/base-changed.bin"
 cp -- "$OPENSBI_FW" "$fw/pinned.bin"
 cp -- "$OPENSBI_FW" "$fw/changed.bin"
+# M11-7: a boundary-on row (k3-like's) finds the base's commit records
+# through the ELF beside FIRMWARE_BIN (tests/run-qemu.sh), so each copy
+# that such a row boots has it beside it.
+firmware_elf=${FIRMWARE_BIN%.bin}.elf
+[ -f "$firmware_elf" ] && [ -r "$firmware_elf" ] ||
+	fail "firmware-pin: $firmware_elf, the base's ELF, is not readable"
+for copy in base-pinned base-changed base-suite; do
+	cp -- "$firmware_elf" "$fw/$copy.elf"
+done
 flip_byte() {
 	"$python" -I -B -c 'import sys
 with open(sys.argv[1], "r+b") as handle:

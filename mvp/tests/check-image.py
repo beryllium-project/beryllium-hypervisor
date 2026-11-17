@@ -269,6 +269,23 @@ the CHERI Linux guest (--guest-flavour cheri-linux), cheri-fault-hs (C3),
 whose monitor must pass it with its arm helper's hedeleg 0xb15d, without
 cause 28, and its mutation, the reference's under its name, refused for
 its hedeleg.
+M11-7 (planning/mvp-m11-plan.md, D-12, step 1): --boundary-image names
+each image whose monitor is built with the boundary (a run image named in
+--pairing's file runs its paired image's monitor), and the expectation
+must agree. A boundary-on monitor links the confine stub
+(be_mvp_confine_entry, in MVP boot text past the park page, which checks
+its block and sets sp as the hart entry does) with the one confine call
+site, named once by hart 0's start; the two executor functions, which call
+be_mvp_fw_call alone; the identity read from hart 0's firmware probe
+alone; no formed hart-entry address; no firmware call reachable from the
+domain harts' entry or the trap vector; and be_mvp_partition_identity,
+32 bytes of the MVP boot read-only extent, its descriptor's identity
+(--partition-report). Its shim makes no HSM call and holds the refused
+line. An off image links none of these. Each scenario's off copy
+(SCENARIO-off, the same monitor built without the boundary) passes the
+MVP profile itself; a variant whose boundary differs from its
+reference's is checked against the scenario's off copy (shim-rule's
+always).
 --mutation-test applies known defects in memory, to the images, their
 ELF headers and symbols, the link map, or the layout they are built from,
 and requires each to be rejected for its own reason.
@@ -590,6 +607,34 @@ MVP_INJECT = "be_mvp_arch_inject"
 # The executor's install and injection (planning/mvp-m6-plan.md, D-5).
 EXEC_INSTALL = "be_mvp_exec_install_hgatp"
 EXEC_INJECT = "be_mvp_exec_inject"
+# M11-7 (planning/mvp-m11-plan.md, D-3 "Pairing", D-6, D-8, D-12): a
+# boundary-on image's confining stub, the domain commit extension's two
+# executor functions, and the image's configuration identity, the
+# partition descriptor's; a boundary-off image holds none of them.
+MVP_CONFINE_ENTRY = "be_mvp_confine_entry"
+EXEC_CONFINE = "be_mvp_exec_confine"
+EXEC_IDENTITY = "be_mvp_exec_boundary_identity"
+MVP_PARTITION_IDENTITY = "be_mvp_partition_identity"
+BOUNDARY_SYMBOLS = (MVP_CONFINE_ENTRY, EXEC_CONFINE, EXEC_IDENTITY,
+                    MVP_PARTITION_IDENTITY)
+# What the code a confined VS-domain hart runs never reaches (D-8): any
+# firmware call, and the boundary's own boot-time calls.
+VS_UNREACHABLE = ("be_mvp_fw_call", "be_r3_arch_sbi_call",
+                  "be_mvp_exec_dbcn_write", "be_mvp_exec_system_reset",
+                  MVP_CONFINE_ENTRY, EXEC_CONFINE, EXEC_IDENTITY)
+VS_UNREACHABLE_PREFIX = "be_r3_platform_"
+# Hart 0's boot code that probes the firmware and starts the harts (each
+# inlined into be_mvp_runtime_main, or its own function).
+BOUNDARY_PROBE_OWNERS = ("be_mvp_runtime_main", "probe_firmware")
+BOUNDARY_START_OWNERS = ("be_mvp_runtime_main", "start_harts")
+# The images built with the boundary (--boundary-images, mvp/Makefile's
+# MVP_BOUNDARY_IMAGES), the run images paired with another's monitor
+# (--pairing, scenarios/pairing.txt), and each descriptor's identity
+# (--partition-report, tools/gen-partition.py's authority report), which
+# select_boundary() sets before any check.
+BOUNDARY_IMAGES = frozenset()
+PAIRING = {}
+PARTITION_IDENTITIES = {}
 MVP_LAYOUT_SYMBOL = "be_mvp_payload_layout"
 MVP_CHANNEL_SYMBOL = "be_mvp_channel"
 MVP_IDENTITY_SYMBOL = "be_mvp_config_identity"
@@ -1025,8 +1070,16 @@ SHELL_INIT = "/init-shell"
 # M9's self-report-flip (planning/mvp-m9-plan.md, D-4): anchor's image with
 # one bit of the inert canary flipped after the link.
 FLIP_VARIANT = "self-report-flip"
+# M11-7's off copies (planning/mvp-m11-plan.md, D-12): each scenario's
+# image built without the physical boundary, its monitor its own, which
+# must pass the MVP profile itself with no boundary symbol, and its boot
+# image the reference's but for the shim and the monitor; shim-rule is
+# two-guests-off's, and is checked against it.
+OFF_COPIES = {"two-guests-off": "two-guests", "te-poc-off": "te-poc",
+              "anchor-off": "anchor"}
 VARIANTS = ("payload",) + DTB_VARIANTS + MONITOR_VARIANTS + ("shim-rule",) + \
-    TE_POC_VARIANTS + ANCHOR_VARIANTS + CONSOLE_VARIANTS + (FLIP_VARIANT,)
+    TE_POC_VARIANTS + ANCHOR_VARIANTS + CONSOLE_VARIANTS + (FLIP_VARIANT,) + \
+    tuple(OFF_COPIES)
 # A v2 or v3 scenario's own DTB pair, named for it (tools/gen-dts.py):
 # te-poc's and anchor's; guest/pins.txt must pin te-poc's, and anchor's
 # once its scenario is checked.
@@ -2005,11 +2058,12 @@ def check_helpers(elf, flat, base, symbols, profile):
 
 
 def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
-                       inject_sites=0):
+                       inject_sites=0, boundary=False):
     """The ecall/sret/fence/CSR rules over the monitor's code: the accepted
     code extent and the MVP region's text, each [start, end); the injection
     helper with inject_sites call sites (1 in an image that accepts
-    denials, else 0)."""
+    denials, else 0); and in a boundary-on image (M11-7) its stub and
+    extension calls (check_boundary_code())."""
     install_extra, hgatp_extra, _ = PROFILES[profile]
     if profile == "mvp":
         require("be_mvp_send_ipi" not in symbols and
@@ -2044,7 +2098,7 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
                                       constant_ranges)
     check_sites(sites, writers, csr_writers)
     found = check_references(functions, decoded_all, symbols, install_extra,
-                             install_callers, inject_sites)
+                             install_callers, inject_sites, boundary)
     check_domain_reach(elf, functions, found, symbols, profile)
     check_role_reach(
         elf, functions, decoded_all, symbols, DOMAIN_ROOTS,
@@ -2054,6 +2108,10 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
         "VS-domain-hart")
     if profile == "mvp":
         check_control_reach(elf, functions, decoded_all, symbols)
+    # M11-7: after the role rules, so that each of their defects is still
+    # reported as theirs.
+    if boundary:
+        check_boundary_code(functions, decoded_all, found, symbols)
     check_canary(elf, flat, base, found, symbols)
     by_name = {owner: decoded for owner, decoded in decoded_all}
     # beryllium-cheri: the monitor variant's trap entry and resume tail.
@@ -2132,7 +2190,7 @@ def check_sites(sites, writers, csr_writers):
 
 
 def check_references(functions, decoded_all, symbols, install_extra,
-                     install_callers, inject_sites=0):
+                     install_callers, inject_sites=0, boundary=False):
     """Pool names, the ecall site's callers, R3 call sites, the injection
     helper's call sites, be_reset's targets, the executor's seam
     (planning/mvp-m6-plan.md, D-5), and the firmware console read's one
@@ -2184,7 +2242,8 @@ def check_references(functions, decoded_all, symbols, install_extra,
                 inject_found.append((owner, pc, link))
             if target in helpers and owner in region and \
                     not owner.startswith(EXECUTOR_PREFIX) and \
-                    owner != MVP_FW_CALL and owner not in MVP_ASSEMBLY:
+                    owner != MVP_FW_CALL and owner not in MVP_ASSEMBLY and \
+                    not (boundary and owner == MVP_CONFINE_ENTRY):
                 seam.append((owner, helpers[target], hex(pc)))
             if target == symbols[R3_ENTER] or \
                     target == symbols.get(R3_ARM, -1):
@@ -2228,8 +2287,10 @@ def check_references(functions, decoded_all, symbols, install_extra,
     return found
 
 
-def reachable_functions(functions, found, symbols, roots, label):
-    """The transitive function closure from named roots."""
+def reachable_functions(functions, found, symbols, roots, label,
+                        skip=None):
+    """The transitive function closure from named roots, but for the edges
+    SKIP(source owner, target) names."""
     extents = sorted((value, value + size,
                       names[0] if len(names) == 1 else "/".join(names))
                      for value, size, names in functions)
@@ -2248,6 +2309,8 @@ def reachable_functions(functions, found, symbols, roots, label):
     while work:
         source = work.pop()
         for _, target, _ in found[source]:
+            if skip is not None and skip(source, target):
+                continue
             owner = owner_at(target)
             if owner is not None and owner not in reached:
                 reached.add(owner)
@@ -2750,12 +2813,13 @@ def check_block_arithmetic(decoded, symbols, owner):
             value = materialized(words, index, register)
             if value is not None:
                 compared.append(value)
-    offset = 0 if owner == MVP_ENTRY else LAYOUT["BLOCK_SAVED_OFFSET"]
+    entry = owner in (MVP_ENTRY, MVP_CONFINE_ENTRY)
+    offset = 0 if entry else LAYOUT["BLOCK_SAVED_OFFSET"]
     wanted = tuple(block + offset for block in BLOCKS)
     require(all(compared.count(address) == 1 for address in wanted),
             f"{owner} does not require exactly the private blocks "
             f"{[hex(address) for address in wanted]}")
-    if owner == MVP_ENTRY:
+    if entry:
         stack_adds = []
         for index, word in enumerate(words):
             if word & 0xFE00707F == 0x33 and (word >> 7) & 0x1F == 2 and \
@@ -2767,15 +2831,17 @@ def check_block_arithmetic(decoded, symbols, owner):
                 f"+0x{LAYOUT['BLOCK_STACK_TOP_OFFSET']:x}")
 
 
-def check_hart_entry(decoded, symbols):
+def check_hart_entry(decoded, symbols, owner=MVP_ENTRY, call=MVP_HART_MAIN):
     """A started hart: sp at its block's stack top before any memory
-    access, then its C, or the park."""
+    access, then its C, or the park; in a boundary-on image the confining
+    stub (OWNER) too, whose C is the executor's confine (CALL)."""
+    label = "hart entry" if owner == MVP_ENTRY else owner
     require(all(size == 4 for _, size, _ in decoded),
-            "hart entry holds a compressed instruction")
+            f"{label} holds a compressed instruction")
     words = [word for _, _, word in decoded]
     require(not any(word & 0x7F in (0x03, 0x23, 0x2F) or
                     system_kind(word) is not None for word in words),
-            "hart entry accesses memory or a CSR")
+            f"{label} accesses memory or a CSR")
     stack = [index for index, word in enumerate(words)
              if word & 0xFE00707F == 0x33 and (word >> 7) & 0x1F == 2]
     require(len(stack) == 1 and (words[stack[0]] >> 15) & 0x1F == 11 and
@@ -2784,12 +2850,12 @@ def check_hart_entry(decoded, symbols):
             (words[stack[0]] >> 20) & 0x1F and
             words[stack[0] - 1] & 0xFFFFF000 ==
             LAYOUT["BLOCK_STACK_TOP_OFFSET"],
-            "hart entry does not set sp to a1 plus the block's stack top")
+            f"{label} does not set sp to a1 plus the block's stack top")
     targets = [(target, link) for _, target, link in references(decoded)
                if link is not None]
-    require(targets == [(symbols[MVP_HART_MAIN], 1), (symbols[MVP_PARK], 0)],
-            "hart entry does not call be_mvp_hart_main and else park")
-    check_block_arithmetic(decoded, symbols, MVP_ENTRY)
+    require(targets == [(symbols[call], 1), (symbols[MVP_PARK], 0)],
+            f"{label} does not call {call} and else park")
+    check_block_arithmetic(decoded, symbols, owner)
 
 
 def resume_checks(symbols, profile):
@@ -3933,6 +3999,13 @@ def check_monitor(toolchain, elf_data, flat, base, layout, map_text=None,
         ((PROBE_STUB,) if probe else ())
     for name in required + hgatp_extra + REGION_SYMBOLS:
         require(symbols.get(name) is not None, f"symbol {name} is missing")
+    # M11-7: the boundary's symbols exactly in a boundary-on image.
+    image = variant or scenario.name
+    boundary = not probe and boundary_image(image)
+    for name in BOUNDARY_SYMBOLS:
+        require((name in symbols) == boundary,
+                f"{name} is {'missing from' if boundary else 'linked in'} "
+                f"the boundary-{'on' if boundary else 'off'} image {image}")
     for name in symbols:
         require(not name.startswith("be_r4_"),
                 f"R4 mechanism symbol {name} is linked")
@@ -3981,7 +4054,9 @@ def check_monitor(toolchain, elf_data, flat, base, layout, map_text=None,
         elf, flat, base, ((code_start, code_end),
                           (symbols["__be_mvp_text_start"],
                            symbols["__be_mvp_text_end"])), symbols, profile,
-        1 if scenario.accepts_denial(variant) else 0)
+        1 if scenario.accepts_denial(variant) else 0, boundary)
+    if boundary:
+        check_partition_identity(elf, flat, base, symbols, image)
     check_guests(elf, flat, base, variant, expect)
     if pages:
         channel, pages = check_page_record(elf, flat, base, scenario)
@@ -4007,6 +4082,7 @@ def check_monitor(toolchain, elf_data, flat, base, layout, map_text=None,
         "instructions": words,
         "payload": None if probe else payload_constants(elf, flat, base),
         "elf": elf,
+        "boundary": boundary,
     }
 
 
@@ -4343,11 +4419,23 @@ SHIM_SIE_CLEAR = 0x10017073
 # The start rule's report line, beside B3's two.
 SHIM_TEMPLATE = b"BE_MVP_SHIM: boot_hart=0x" + b"?" * 16 + \
     b" starting hart 0\n"
+# M11-7: a boundary-on boot image's shim has no start rule (D-6, D-12): its
+# report line ends "refused", and its SBI calls are B3's DBCN write and
+# SRST alone.
+SHIM_TEMPLATE_ON = b"BE_MVP_SHIM: boot_hart=0x" + b"?" * 16 + b" refused\n"
+SHIM_CALLS_ON = sorted([(SBI_DBCN, 0), (SBI_SRST, 0)])
 
 
-def check_shim(data, rule):
+def shim_template(boundary):
+    """The start rule's report line, or a boundary-on shim's."""
+    return SHIM_TEMPLATE_ON if boundary else SHIM_TEMPLATE
+
+
+def check_shim(data, rule, boundary=False):
     """B3's instructions plus the start rule's ecall; hart_stop only in
-    the shim-rule variant."""
+    the shim-rule variant; no HSM call in a boundary-on image's."""
+    require(not (rule and boundary),
+            "the shim-rule variant is built with the boundary")
     b3 = load_b3()
     findings = []
     entry = b3.check_header(data, LAYOUT["UBOOT_TEXT_OFFSET"],
@@ -4375,9 +4463,10 @@ def check_shim(data, rule):
     calls = sorted((call[1:] for call in ecall_sites(decoded)),
                    key=lambda call: (call[0] is None, call[0] or 0,
                                      call[1] is None, call[1] or 0))
-    require(calls == SHIM_CALLS[rule],
+    wanted = SHIM_CALLS_ON if boundary else SHIM_CALLS[rule]
+    require(calls == wanted,
             f"the shim calls {[(hex(e or 0), f) for e, f in calls]}, "
-            f"expected {[(hex(e), f) for e, f in SHIM_CALLS[rule]]}")
+            f"expected {[(hex(e), f) for e, f in wanted]}")
 
 
 def check_descriptor(b3, data, findings):
@@ -4402,9 +4491,12 @@ def check_descriptor(b3, data, findings):
 
 def check_boot(data, text_offset, flat, pins, kernel_expect, variant=None,
                constants=LAYOUT, scenario=TWO_GUESTS, channel=None,
-               pages=None):
+               pages=None, boundary=None):
     """B3's header and descriptor, the ranges, and the placed payload, with
-    the scenario's DTBs."""
+    the scenario's DTBs; the shim of a boundary-on image (BOUNDARY, else
+    the image's own state by its name) without the start rule."""
+    if boundary is None:
+        boundary = boundary_image(variant or scenario.name)
     b3 = load_b3()
     files, kernel_pins = pins
     findings = []
@@ -4413,11 +4505,11 @@ def check_boot(data, text_offset, flat, pins, kernel_expect, variant=None,
     check_ranges(image_size, constants, channel, pages)
     require(not findings, "; ".join(findings))
     check_descriptor(b3, data, findings)
-    for template in b3.TEMPLATES + (SHIM_TEMPLATE,):
+    for template in b3.TEMPLATES + (shim_template(boundary),):
         if data[:b3.STUB_PAGE].count(template) != 1:
             findings.append("a shim report-line template is missing")
     require(not findings, "; ".join(findings))
-    check_shim(data, variant == "shim-rule")
+    check_shim(data, variant == "shim-rule", boundary)
     require(len(data) <= LAYOUT["BOOT_IMAGE_MAX"],
             f"boot image 0x{len(data):x} exceeds its budget")
     image_pin, image_bytes = files["Image"]
@@ -4582,7 +4674,8 @@ def check_image(toolchain, elf_data, flat, boot_img, pins, kernel, layout,
                            profile, None, expect, constants, scenario)
     boot = check_boot(boot_img, BOOT_TEXT_OFFSET, flat, pins, kernel,
                       constants=constants, scenario=scenario,
-                      channel=report["channel"], pages=report["pages"])
+                      channel=report["channel"], pages=report["pages"],
+                      boundary=report["boundary"])
     if report["payload"] is not None:
         check_payload_constants(report["payload"], boot)
         check_launch_registers(report["log"], boot_img, boot)
@@ -4658,8 +4751,10 @@ def check_variant(name, boot_elf_data, data, reference, pins, kernel,
                   scenario=TWO_GUESTS):
     """A negative variant: the boot rules with its change, and no other."""
     require(name in VARIANTS, f"unknown variant {name}")
-    # A console variant is its own scenario's, SCENARIO-shell.
+    # A console variant is its own scenario's, SCENARIO-shell; an off copy
+    # its scenario's, SCENARIO-off.
     require(name == f"{scenario.name}-shell" if name in CONSOLE_VARIANTS
+            else OFF_COPIES[name] == scenario.name if name in OFF_COPIES
             else (name in TE_POC_VARIANTS) == (scenario.name == "te-poc") and
             (name in ANCHOR_VARIANTS + (FLIP_VARIANT,)) ==
             (scenario.name == "anchor"),
@@ -4686,7 +4781,16 @@ def check_variant(name, boot_elf_data, data, reference, pins, kernel,
             (boot[f"dtb{guest}_offset"], DTB_BYTES)
             for guest in DTB_VARIANT_GUESTS[name]]
     elif name == "shim-rule":
+        require(not boundary_image(reference.get("name", scenario.name)),
+                "shim-rule's reference is a boundary-on image, not "
+                "two-guests-off")
         allowed = [(0, MONITOR_OFFSET)]
+    elif name in OFF_COPIES:
+        # Its own monitor, without the boundary; the payload the
+        # reference's.
+        variant_monitor(name, monitor, flat, reference, layout, scenario,
+                        boot, data)
+        allowed = [(0, MONITOR_OFFSET + SPAN)]
     elif name == FLIP_VARIANT:
         elf = variant_monitor(name, monitor, flat, reference, layout,
                               scenario, boot, data)
@@ -5620,11 +5724,13 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
     guest_id_at = dtb1_offset + dtb1.index(b"be.guest=1 ") + 9 \
         if scenario.dtb_variant else \
         dtb1_offset + dtb1.index(b"be.guest=1") + 9
-    start_rule = shim_ecall(boot_img, SBI_HSM)
-    start_fid = start_rule - 4 * next(
-        back for back in range(1, 8)
-        if struct.unpack_from("<I", boot_img, start_rule - 4 * back)[0] ==
-        LI_A6_0)
+    on = boundary_image(scenario.name)
+    if not on:
+        start_rule = shim_ecall(boot_img, SBI_HSM)
+        start_fid = start_rule - 4 * next(
+            back for back in range(1, 8)
+            if struct.unpack_from("<I", boot_img, start_rule - 4 * back)[0]
+            == LI_A6_0)
     boot = [
         ("payload byte flip", KERNEL_OFFSET + 0x1000,
          bytes([boot_img[KERNEL_OFFSET + 0x1000] ^ 0x40]),
@@ -5645,15 +5751,16 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
         ("monitor copy", MONITOR_OFFSET + 0x100,
          bytes([boot_img[MONITOR_OFFSET + 0x100] ^ 1]),
          "flat image at 0x1000 differs"),
+        ("the descriptor's length the core's", 0x50,
+         struct.pack("<Q", CORE_SPAN), "descriptor length"),
+    ] + ([
         ("an HSM hart_stop in the board shim", start_fid,
          struct.pack("<I", LI_A6_1), "the shim calls"),
         ("the start rule's ecall removed", start_rule,
          struct.pack("<I", NOP), "the shim calls"),
         ("a start-rule template missing", boot_img.index(SHIM_TEMPLATE),
          b"X", "template is missing"),
-        ("the descriptor's length the core's", 0x50,
-         struct.pack("<Q", CORE_SPAN), "descriptor length"),
-    ]
+    ] if not on else boundary_boot_mutations(boot_img))
     layouts = [
         ("a block offset moved in the layout",
          {"BLOCK_INBOUND_OFFSET": LAYOUT["BLOCK_INBOUND_OFFSET"] + 0x1000},
@@ -5897,6 +6004,9 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
          {"INPUT_RING_BYTES": 0x1800},
          "INPUT_RING_BYTES 0x1800 is not a power of two"),
     ]
+    if on:
+        monitor += boundary_mutations(elf, flat, symbols, dispatch_slot,
+                                      boot_slot)
     mutations = [(name, "monitor", address, value, expected)
                  for name, address, value, expected in monitor] + \
         [(name, "boot", address, value, expected)
@@ -5915,6 +6025,59 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
     return run_mutations(toolchain, elf_data, flat, boot_img, pins, kernel,
                          layout, mutations, map_text=map_text,
                          scenario=scenario)
+
+
+def boundary_mutations(elf, flat, symbols, dispatch_slot, boot_slot):
+    """M11-7's rules, each one's defect in a boundary-on monitor: the stub
+    without its block check, a second call site of the executor's confine,
+    an instruction forming the hart entry's address, the identity read
+    called from a domain hart (M11-3's role extents refuse it) or from
+    other boot code, a domain hart calling the firmware, and the linked
+    identity not the descriptor's."""
+    stub = function_words(elf, flat, MVP_CONFINE_ENTRY, BASE)
+    check = next(pc for pc, _, word in stub if word & 0x7F == 0x63)
+    identity = symbols[MVP_PARTITION_IDENTITY]
+    word = lambda value: struct.pack("<I", value)  # noqa: E731
+    return [
+        ("the stub without its block check", check, word(NOP),
+         "does not require exactly the private blocks"),
+        ("a second call site of the executor's confine", boot_slot,
+         call_pair(boot_slot, symbols[EXEC_CONFINE]),
+         f"{EXEC_CONFINE} call sites"),
+        ("an instruction forms the hart entry's address", boot_slot,
+         pool_reference(boot_slot, symbols[MVP_ENTRY], 15),
+         f"{MVP_ENTRY}'s address is formed"),
+        ("a domain hart reads the identity", dispatch_slot,
+         call_pair(dispatch_slot, symbols[EXEC_IDENTITY]),
+         "outside their executable role extents"),
+        ("other boot code reads the identity", boot_slot,
+         call_pair(boot_slot, symbols[EXEC_IDENTITY]),
+         f"{EXEC_IDENTITY} call sites"),
+        ("a domain hart calls the firmware", dispatch_slot,
+         call_pair(dispatch_slot, symbols[MVP_FW_CALL]),
+         f"reach {MVP_FW_CALL} in a boundary-on image"),
+        ("the linked identity not the descriptor's", identity + 31,
+         bytes([flat[identity + 31 - BASE] ^ 1]),
+         "is not the identity of"),
+    ]
+
+
+def boundary_boot_mutations(boot_img):
+    """A boundary-on shim's defects: its refused report line missing, and an
+    HSM hart_start, the start rule's call, in place of its DBCN write (its
+    EID's two instructions, lui and addiw into a7, rewritten)."""
+    dbcn = shim_ecall(boot_img, SBI_DBCN)
+    lui = next(dbcn - 4 * back for back in range(1, 16)
+               if struct.unpack_from("<I", boot_img, dbcn - 4 * back)[0] ==
+               (SBI_DBCN + 0x800 >> 12 << 12) | 17 << 7 | 0x37)
+    hsm = (SBI_HSM + 0x800 >> 12 << 12) | 17 << 7 | 0x37, \
+        (SBI_HSM & 0xFFF) << 20 | 17 << 15 | 17 << 7 | 0x1B
+    return [
+        ("the refused report line missing", boot_img.index(SHIM_TEMPLATE_ON),
+         b"X", "template is missing"),
+        ("an HSM hart_start in the boundary-on shim", lui,
+         struct.pack("<II", *hsm), "the shim calls"),
+    ]
 
 
 def inject_call_sites(elf, flat):
@@ -5995,6 +6158,123 @@ def read(path):
     return open(path, "rb").read()
 
 
+def select_boundary(images, pairing, reports):
+    """M11-7: the boundary-on IMAGES, the pairing file's pairs (each line
+    "RUN-IMAGE PAIRED-IMAGE"), and the identities of REPORTS' descriptors,
+    before any check."""
+    global BOUNDARY_IMAGES
+    BOUNDARY_IMAGES = frozenset(images)
+    if pairing:
+        for number_, text in enumerate(read(pairing).decode().splitlines(),
+                                       1):
+            text = text.strip()
+            if not text or text.startswith("#"):
+                continue
+            fields = text.split()
+            require(len(fields) == 2 and fields[0] != fields[1] and
+                    fields[0] not in PAIRING,
+                    f"{pairing}:{number_}: not one pair of two images")
+            PAIRING[fields[0]] = fields[1]
+    for path in reports:
+        report = json.loads(read(path))
+        for descriptor in report["descriptors"]:
+            image, identity = descriptor["image"], descriptor["identity"]
+            require(re.fullmatch(r"[0-9a-f]{64}", identity) and
+                    PARTITION_IDENTITIES.get(image, identity) == identity,
+                    f"{path}: descriptor {image} has no one identity")
+            PARTITION_IDENTITIES[image] = identity
+
+
+def boundary_image(name):
+    """Whether image NAME's monitor is built with the boundary: a run image
+    paired with another runs that image's monitor."""
+    return PAIRING.get(name, name) in BOUNDARY_IMAGES
+
+
+def check_partition_identity(elf, flat, base, symbols, image):
+    """Rule 5: be_mvp_partition_identity, 32 bytes of the MVP boot
+    read-only extent, is the identity of IMAGE's descriptor (its pair's)."""
+    pair = PAIRING.get(image, image)
+    require(pair in PARTITION_IDENTITIES,
+            f"no partition descriptor of {pair} (--partition-report)")
+    address = symbols[MVP_PARTITION_IDENTITY]
+    size = symbol_size(elf, MVP_PARTITION_IDENTITY)
+    low = LAYOUT["MVP_BOOT_RODATA_HPA"]
+    require(size == 32 and low <= address and
+            address + size <= low + LAYOUT["MVP_BOOT_RODATA_BYTES"],
+            f"{MVP_PARTITION_IDENTITY} is not 32 bytes of the MVP boot "
+            f"read-only extent")
+    linked = flat[address - base:address - base + size]
+    require(linked == bytes.fromhex(PARTITION_IDENTITIES[pair]),
+            f"{MVP_PARTITION_IDENTITY} {linked.hex()} is not the identity "
+            f"of {pair}'s descriptor, {PARTITION_IDENTITIES[pair]}")
+
+
+def check_boundary_code(functions, decoded_all, found, symbols):
+    """Rules 1 to 4 of a boundary-on image (planning/mvp-m11-plan.md, D-6
+    and D-8): the stub, in MVP boot text past the park page, checks its
+    block and sets sp as the hart entry does, then calls the executor's
+    confine, its one call site, or parks; confine and the identity read
+    each reach be_mvp_fw_call alone, the read from hart 0's firmware probe
+    alone; no instruction names the hart entry, and hart 0's start names
+    the stub, once; and no code a VS-domain hart runs, from the hart entry
+    or the trap vector, reaches a firmware call."""
+    by_name = dict(decoded_all)
+    stub = symbols[MVP_CONFINE_ENTRY]
+    boot = LAYOUT["MVP_BOOT_TEXT_HPA"]
+    require(boot + LAYOUT["PARK_BYTES"] <= stub <
+            boot + LAYOUT["MVP_BOOT_TEXT_BYTES"],
+            f"{MVP_CONFINE_ENTRY} at 0x{stub:x} is not in MVP boot text past "
+            f"the park page")
+    check_hart_entry(by_name[MVP_CONFINE_ENTRY], symbols, MVP_CONFINE_ENTRY,
+                     EXEC_CONFINE)
+    sites = {name: [] for name in (EXEC_CONFINE, EXEC_IDENTITY,
+                                   MVP_CONFINE_ENTRY, MVP_ENTRY)}
+    for owner, references_ in found.items():
+        for pc, target, link in references_:
+            for name in sites:
+                if target == symbols[name]:
+                    sites[name].append((owner, hex(pc), link))
+    require(len(sites[EXEC_CONFINE]) == 1 and
+            sites[EXEC_CONFINE][0][0] == MVP_CONFINE_ENTRY and
+            sites[EXEC_CONFINE][0][2] == 1,
+            f"{EXEC_CONFINE} call sites {sites[EXEC_CONFINE]}, expected one, "
+            f"the stub's call")
+    require(sites[EXEC_IDENTITY] and
+            all(owner in BOUNDARY_PROBE_OWNERS
+                for owner, _, _ in sites[EXEC_IDENTITY]),
+            f"{EXEC_IDENTITY} call sites {sites[EXEC_IDENTITY]}, expected "
+            f"hart 0's firmware probe's alone")
+    for name in (EXEC_CONFINE, EXEC_IDENTITY):
+        targets = {target for _, target, _ in found[name]}
+        require(targets == {symbols[MVP_FW_CALL]},
+                f"{name} reaches "
+                f"{sorted(hex(target) for target in targets)}, expected "
+                f"{MVP_FW_CALL} alone")
+    require(not sites[MVP_ENTRY],
+            f"{MVP_ENTRY}'s address is formed at {sites[MVP_ENTRY]} in a "
+            f"boundary-on image")
+    require(len(sites[MVP_CONFINE_ENTRY]) == 1 and
+            sites[MVP_CONFINE_ENTRY][0][0] in BOUNDARY_START_OWNERS and
+            sites[MVP_CONFINE_ENTRY][0][2] is None,
+            f"{MVP_CONFINE_ENTRY} is named at {sites[MVP_CONFINE_ENTRY]}, "
+            f"expected once, by hart 0's start")
+    _, reached, parent = reachable_functions(
+        functions, found, symbols, DOMAIN_ROOTS, "VS-domain-hart",
+        skip=lambda source, target: MVP_VECTOR in source.split("/") and
+        target == symbols[MVP_TERMINAL])
+    for owner in sorted(reached):
+        for name in owner.split("/"):
+            path = [owner]
+            while parent[path[-1]] is not None:
+                path.append(parent[path[-1]])
+            require(name not in VS_UNREACHABLE and
+                    not name.startswith(VS_UNREACHABLE_PREFIX),
+                    f"the VS-domain-hart roots reach {name} in a "
+                    f"boundary-on image, through "
+                    f"{' -> '.join(reversed(path))}")
+
+
 def select_variant(monitor, flavour):
     """beryllium-cheri: the rules of MONITOR and FLAVOUR, before any
     check."""
@@ -6042,6 +6322,10 @@ def main(argv):
                         default="riscv")
     parser.add_argument("--guest-flavour", choices=tuple(FLAVOUR_EXTENSIONS),
                         default="linux")
+    # M11-7: the boundary-on images, the pairing, and the descriptors.
+    parser.add_argument("--boundary-image", action="append", default=[])
+    parser.add_argument("--pairing")
+    parser.add_argument("--partition-report", action="append", default=[])
     args = parser.parse_args(argv[1:])
     select_variant(args.monitor, args.guest_flavour)
     if not (args.image or args.probe or args.variant or args.mutation_test
@@ -6053,6 +6337,8 @@ def main(argv):
         parser.error("each --qemu-image needs its --board-image")
     checked = []
     try:
+        select_boundary(args.boundary_image, args.pairing,
+                        args.partition_report)
         require(args.base == BASE, f"base 0x{args.base:x} is not 0x{BASE:x}")
         pins = read_pins(args.pins)
         kernel = read(args.kernel)
@@ -6066,6 +6352,12 @@ def main(argv):
                     sha256(read(args.report)) == expect["report"]["sha256"],
                     "the --report file is not the expectation's report")
         scenario = Scenario(expect, report)
+        # The expectation (tools/gen-scenario.py's) declares the boundary
+        # exactly where the build put it.
+        require(expect is None or ("boundary" in expect) ==
+                boundary_image(expect["image"]),
+                f"the expectation of {expect and expect['image']} and the "
+                f"build disagree on its boundary")
         dtbs = [read(args.dtb0), read(args.dtb1)]
         for guest, dtb in enumerate(dtbs):
             check_dt(dtb, guest, scenario.dtb_variant,
@@ -6162,6 +6454,7 @@ def main(argv):
                         f"the {name} G{guest} DTB differs from {pinned}")
             check_dt_pair(*pair)
             checked.append(f"dtb-{name}")
+        copies = {}
         for spec in args.variant:
             name, *paths = spec.split(":")
             require(len(paths) in (2, 4), f"malformed variant {spec}")
@@ -6171,9 +6464,24 @@ def main(argv):
                            read_map(paths[0]))
             boot_elf, boot_path = paths[-2:]
             data = read(boot_path)
+            # M11-7: a variant whose boundary is not the reference's is
+            # checked against the scenario's off copy (shim-rule's always
+            # is), checked first in the same run.
+            against = reference
+            if name not in OFF_COPIES and \
+                    boundary_image(name) != boundary_image(scenario.name):
+                off = f"{scenario.name}-off"
+                require(off in copies,
+                        f"variant {name} needs {off} checked before it")
+                against = copies[off]
             # beryllium-cheri: a CHERI variant's own arm helper values.
-            cheri_variant_check(name, read(boot_elf), data, reference, pins,
+            cheri_variant_check(name, read(boot_elf), data, against, pins,
                                 kernel, boot_path, monitor, layout, scenario)
+            if name in OFF_COPIES:
+                copies[name] = dict(reference, name=name,
+                                    flat=data[MONITOR_OFFSET:
+                                              MONITOR_OFFSET + SPAN],
+                                    boot=data)
             print(f"variant {name}: boot_sha256={sha256(data)}")
             checked.append(f"variant-{name}")
             if name in CHERI_TE_POC_VARIANTS:

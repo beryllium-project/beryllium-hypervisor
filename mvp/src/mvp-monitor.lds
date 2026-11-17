@@ -341,7 +341,12 @@ SECTIONS
 		__be_mvp_control_text_end = .;
 
 		__be_mvp_domain_text_start = .;
-		*mvp-hartentry.o(.text.mvp.domain)
+		/*
+		 * Kept: in a boundary-on image (M11-7) no instruction names the
+		 * hart entry, which the firmware enters from the device tree's
+		 * confined entry; in any other, hart 0's start names it.
+		 */
+		KEEP(*mvp-hartentry.o(.text.mvp.domain))
 		*mvp-trap.o(.text.mvp.domain)
 		*mvp-probe-arch.o(.text.mvp.probe)
 		*mvp-hartmain.o(.text .text.*)

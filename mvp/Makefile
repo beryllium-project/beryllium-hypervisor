@@ -187,7 +187,7 @@ MVP_C := mvp-sbi.c mvp-ring.c mvp-hart.c mvp-gstage.c mvp-payload.c \
 	mvp-sha256.c mvp-core.c mvp-input.c mvp-log.c
 MVP_HEADERS := $(addprefix $(MVP_DIR)/src/,mvp.h mvp-sbi.h mvp-ring.h \
 	mvp-hart.h mvp-gstage.h mvp-payload.h mvp-layout.h mvp-sha256.h \
-	mvp-core.h mvp-input.h mvp-log.h)
+	mvp-core.h mvp-input.h mvp-log.h mvp-boundary.h)
 MVP_PAYLOAD_LAYOUT := $(GEN)/mvp-payload-layout.h
 # The scenarios (Q9): each one's build header and expectation files. M0's
 # two-guests (v1), generated in $(GEN), is the scenario of M0's images, its
@@ -223,7 +223,7 @@ gen_scenario = $(PYTHON) -B $(MVP_DIR)/tools/gen-scenario.py \
 	--scenario $(MVP_DIR)/scenarios/$(1)/scenario.json \
 	--layout $(MVP_DIR)/src/mvp-layout.h \
 	--dts-tool $(MVP_DIR)/tools/gen-dts.py --policy-tool $(MVP_POLICY_CHECK) \
-	--guest $(GUEST_BUILD) $(MVP_VARIANT_ARGS)
+	--guest $(GUEST_BUILD) $(MVP_VARIANT_ARGS) $(MVP_BOUNDARY_ARGS)
 # Each scenario's header, MVP core profile (mvp-config.c, M6), and
 # expectations; the te-poc and anchor reports too.
 MVP_SCENARIO_H := $(MVP_SCENARIO_GEN_two-guests)/mvp-scenario.h
@@ -278,8 +278,8 @@ HOST_PREFIX_log := BE_MVP_LOG_CHECK
 HOST_PREFIX_probe := BE_MVP_PROBE_CHECK
 HOST_SCENARIOS_ring := 160
 HOST_ASSERTIONS_ring := 409415
-HOST_SCENARIOS_hart := 845
-HOST_ASSERTIONS_hart := 176916
+HOST_SCENARIOS_hart := 857
+HOST_ASSERTIONS_hart := 177645
 HOST_SCENARIOS_sbi := 141
 HOST_ASSERTIONS_sbi := 16350
 # beryllium-cheri: the CHERI-aware monitor's SBI test makes two more
@@ -404,7 +404,10 @@ payload-layout: $(MVP_PAYLOAD_LAYOUT)
 # and writes nothing unless it passes; a v3 scenario's (anchor's) also
 # follows its measured inputs. A console variant's expectation follows its
 # session file (M7-4; planning/mvp-m7-plan.md, Q8) and the guest's /bin
-# (guest/initramfs.list.in), which a session may count. $(1) scenario
+# (guest/initramfs.list.in), which a session may count, and since M11-7 the
+# boundary-on images (MVP_BOUNDARY_STAMP, below) and the pairing. $(1)
+# scenario
+MVP_BOUNDARY_STAMP := $(GEN)/boundary-images.txt
 define mvp_scenario
 $(MVP_SCENARIO_GEN_$(1))/mvp-scenario.h \
 		$(MVP_SCENARIO_GEN_$(1))/mvp-config.c \
@@ -416,11 +419,20 @@ $(MVP_SCENARIO_GEN_$(1))/mvp-scenario.h \
 		$(if $(MVP_SCENARIO_POLICY_$(1)),$(MVP_SCENARIO_POLICY_$(1)) $(MVP_POLICY_CHECK)) \
 		$(MVP_SCENARIO_INPUTS) \
 		$(wildcard $(MVP_DIR)/scenarios/$(1)/sessions/*.json) \
-		$(MVP_DIR)/guest/initramfs.list.in
+		$(MVP_DIR)/guest/initramfs.list.in $(MVP_BOUNDARY_STAMP) \
+		$(MVP_DIR)/scenarios/pairing.txt
 	$$(call gen_scenario,$(1)) --self-test
 	$$(call gen_scenario,$(1)) --out $(MVP_SCENARIO_GEN_$(1))
 endef
 $(foreach s,$(sort $(MVP_SCENARIOS) $(MVP_SCENARIO_NAME)),$(eval $(call mvp_scenario,$(s))))
+
+# M11-7: the boundary-on images as built (MVP_BOUNDARY_ON), a file whose
+# time changes only with its content.
+.PHONY: mvp-boundary-stamp
+$(MVP_BOUNDARY_STAMP): mvp-boundary-stamp
+	mkdir -p $(@D)
+	printf '%s\n' '$(strip $(MVP_BOUNDARY) $(MVP_BOUNDARY_ON))' >$@.new
+	if cmp -s -- $@.new $@; then rm -f -- $@.new; else mv -- $@.new $@; fi
 
 scenario: $(MVP_SCENARIO_GEN_$(MVP_SCENARIO_NAME))/mvp-scenario.h
 
@@ -495,7 +507,19 @@ MVP_RUNTIME_C := mvp-runtime.c mvp-hartmain.c mvp-executor.c
 # a monitor. The off copies, the probes, the discrimination builds, and
 # every CHERI-aware image are built without it.
 MVP_BOUNDARY := $(if $(filter cheri,$(MVP_MONITOR)),off,on)
-MVP_BOUNDARY_IMAGES :=
+MVP_BOUNDARY_IMAGES := two-guests te-poc anchor
+# The tools that judge an image's build (tests/check-image.py) or write its
+# expectation (tools/gen-scenario.py) are told the same: each boundary-on
+# image, the pairing (a run image paired with another runs that image's
+# monitor), and, for the identities, each scenario's partition authority
+# report. MVP_BOUNDARY_STAMP (with the scenarios, above) holds the list as
+# built, rewritten only when it changes, so that a change regenerates the
+# expectations.
+MVP_BOUNDARY_ON = $(if $(filter on,$(MVP_BOUNDARY)),$(MVP_BOUNDARY_IMAGES))
+MVP_BOUNDARY_ARGS = --pairing $(PARTITION_PAIRING) \
+	$(foreach i,$(MVP_BOUNDARY_ON),--boundary-image $(i))
+MVP_BOUNDARY_REPORTS = $(if $(MVP_BOUNDARY_ON),$(foreach \
+	s,$(PARTITION_SCENARIOS),--partition-report $(PARTITION_AUTHORITY_$(s))))
 # $(1) scenario, $(2) image: the image's identity header (the partition
 # descriptor's, tools/gen-partition.py's) when its boundary is on.
 boundary_identity = $(if $(and $(filter on,$(MVP_BOUNDARY)),$(filter \
@@ -523,7 +547,8 @@ LD_gcc :=
 LD_clang := --ld-path=/usr/bin/ld.lld
 OBJCOPY := $(CROSS_COMPILE)objcopy
 OBJDUMP := $(CROSS_COMPILE)objdump
-IMAGE_CHECK := $(PYTHON) -B $(MVP_DIR)/tests/check-image.py $(MVP_VARIANT_ARGS)
+IMAGE_CHECK = $(PYTHON) -B $(MVP_DIR)/tests/check-image.py $(MVP_VARIANT_ARGS) \
+	$(MVP_BOUNDARY_ARGS) $(MVP_BOUNDARY_REPORTS)
 
 # The boot image: the MVP shim (a counted copy of B3's) wrapping the
 # monitor flat image, then the guest payload, linked by src/mvp-boot.lds at
@@ -928,7 +953,9 @@ MVP_SHELL_IMAGES = $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach \
 # says (planning/mvp-m11-plan.md, D-12), for the rows that run without a
 # physical boundary (rva23, plic, no-sstc, firmware-version) and for
 # shim-rule's monitor: $(BUILD)/variants/TOOLCHAIN/SCENARIO-off, each the
-# scenario's monitor and boot image with no other change.
+# scenario's monitor and boot image with no other change. Each is its
+# scenario's variant of the same name (scenario.json's off_copy_of), with
+# its own expectation and reference.
 MVP_OFF_COPIES := two-guests-off te-poc-off anchor-off
 OFF_FLAGS_two-guests-off :=
 OFF_FLAGS_te-poc-off := $(TE_POC_FLAGS)
@@ -936,6 +963,9 @@ OFF_FLAGS_anchor-off := $(ANCHOR_FLAGS)
 OFF_H_two-guests-off := $(MVP_SCENARIO_H)
 OFF_H_te-poc-off := $(TE_POC_SCENARIO_H)
 OFF_H_anchor-off := $(ANCHOR_SCENARIO_H)
+OFF_SCENARIO_two-guests-off := two-guests
+OFF_SCENARIO_te-poc-off := te-poc
+OFF_SCENARIO_anchor-off := anchor
 OFF_DTB0_two-guests-off := $(MVP_GUEST_DTB_G0)
 OFF_DTB1_two-guests-off := $(MVP_GUEST_DTB_G1)
 OFF_DTB0_te-poc-off := $(MVP_GUEST_DTB_G0_TE_POC)
@@ -948,6 +978,11 @@ $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach o,$(MVP_OFF_COPIES),$(eval $(call mv
 MVP_OFF_IMAGES = $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach \
 	o,$(MVP_OFF_COPIES),$(call off_dir,$(t),$(o))/be-mvp-boot.elf \
 	$(call off_dir,$(t),$(o))/be-mvp-boot.img))
+# An off copy as tests/check-image.py's variant with its own monitor
+# (NAME:ELF:BIN:BOOT_ELF:BOOT_IMG). $(1) toolchain, $(2) off copy
+off_spec = --variant $(2):$(call off_dir,$(1),$(2))/be-mvp.elf:$(call \
+	off_dir,$(1),$(2))/be-mvp.bin:$(call off_dir,$(1),$(2))/be-mvp-boot.elf:$(call \
+	off_dir,$(1),$(2))/be-mvp-boot.img
 
 # ------------------------------------------------ partition descriptor
 # M11-5: one descriptor per boundary-on scenario image, generated only from
@@ -1168,6 +1203,10 @@ partition-check: partition-base-check partition-backend image variants \
 		$(call partition_record,$(m),gcc,$(s),$(i)) \
 		$(call partition_record,$(m),clang,$(s),$(i));)))
 	@echo "BE_MVP_PARTITION_CHECK: PASS scenarios=3 modes=2"
+# M11-7: tests/run-qemu.sh admits a boundary-on run's tree only by the
+# checker's record of it (tests/check-boundary.py gate); the board tools'
+# dry run boots k3-like's row with a stand-in QEMU.
+qemu-test run-tool-check: $(PARTITION_CHECK_RECORDS)
 
 # The payload variant's kernel: magic2 "RSC\x05" becomes "RSC\0".
 $(BUILD)/variants/payload/Image: $(MVP_GUEST_IMAGE) $(MVP_DIR)/tools/gen-payload.py
@@ -1254,19 +1293,19 @@ variants: image $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_VARIANTS) \
 		--base $(MVP_BASE) $(IMAGE_CHECK_ARGS) \
 		--expect $(MVP_SCENARIO_EXPECT) --reference $(call image_spec,$(t)) \
 		$(foreach v,$(MVP_GUEST_DTB_VARIANTS),--variant-dtbs $(v):$(MVP_GUEST_DTB_G0_$(v)):$(MVP_GUEST_DTB_G1_$(v))) \
-		$(call variant_specs,$(t)) \
+		$(call off_spec,$(t),two-guests-off) $(call variant_specs,$(t)) \
 		--variant two-guests-shell:$(call shell_spec,$(t),two-guests) &&) true; } \
 		2>&1 | tee $(RECORDS)/variants.txt
 	set -o pipefail; { $(foreach t,$(VARIANT_TOOLCHAINS),$(IMAGE_CHECK) \
 		--base $(MVP_BASE) $(TE_POC_CHECK_ARGS) \
 		--reference $(call te_poc_spec,$(t)) \
-		$(call te_poc_variant_specs,$(t)) \
+		$(call off_spec,$(t),te-poc-off) $(call te_poc_variant_specs,$(t)) \
 		--variant te-poc-shell:$(call shell_spec,$(t),te-poc) &&) true; } 2>&1 | \
 		tee -a $(RECORDS)/variants.txt
 	set -o pipefail; { $(foreach t,$(VARIANT_TOOLCHAINS),$(IMAGE_CHECK) \
 		--base $(MVP_BASE) $(ANCHOR_CHECK_ARGS) \
 		--reference $(call anchor_spec,$(t)) \
-		$(call anchor_variant_specs,$(t)) \
+		$(call off_spec,$(t),anchor-off) $(call anchor_variant_specs,$(t)) \
 		--variant anchor-shell:$(call shell_spec,$(t),anchor) &&) true; } 2>&1 | \
 		tee -a $(RECORDS)/variants.txt
 
@@ -1400,6 +1439,7 @@ reference_specs = \
 	$(foreach e,no-sstc firmware-version,$(call reference_spec,$(e),$(MVP_SCENARIO_GEN_two-guests)/expect/$(e).json,$(call off_dir,$(1),two-guests-off)/be-mvp.elf,$(call off_dir,$(1),two-guests-off)/be-mvp-boot.img,$(MVP_GUEST_DTB_G0),$(MVP_GUEST_DTB_G1))) \
 	$(foreach v,$(MVP_VARIANTS),$(v):$(MVP_SCENARIO_GEN_two-guests)/expect/$(v).json:$(call variant_elf,$(1),$(v)):$(MVP_VARIANT_BOOT_IMG_$(1)_$(v)):$(call variant_kernel,$(v)):$(call variant_dtb0,$(v)):$(call variant_dtb1,$(v))) \
 	$(foreach p,$(MVP_PROBES),$(call reference_spec,$(p),$(MVP_SCENARIO_GEN_two-guests)/expect/$(p).json,$(BUILD)/probes/$(1)/$(p)/be-mvp.elf,$(BUILD)/probes/$(1)/$(p)/be-mvp-boot.img,$(MVP_GUEST_DTB_G0),$(MVP_GUEST_DTB_G1))) \
+	$(foreach o,$(MVP_OFF_COPIES),$(call reference_spec,$(o),$(MVP_SCENARIO_GEN_$(OFF_SCENARIO_$(o)))/expect/$(o).json,$(call off_dir,$(1),$(o))/be-mvp.elf,$(call off_dir,$(1),$(o))/be-mvp-boot.img,$(OFF_DTB0_$(o)),$(OFF_DTB1_$(o)))) \
 	$(call reference_spec,te-poc,$(TE_POC_EXPECT_DIR)/te-poc.json,$(TE_POC_ELF_$(1)),$(TE_POC_BOOT_IMG_$(1)),$(MVP_GUEST_DTB_G0_TE_POC),$(MVP_GUEST_DTB_G1_TE_POC)) \
 	$(foreach v,$(TE_POC_VARIANTS),$(call reference_spec,$(v),$(TE_POC_EXPECT_DIR)/$(v).json,$(BUILD)/variants/$(1)/$(v)/be-mvp.elf,$(MVP_VARIANT_BOOT_IMG_$(1)_$(v)),$(call te_poc_dtb0,$(v)),$(MVP_GUEST_DTB_G1_TE_POC))) \
 	$(call reference_spec,anchor,$(ANCHOR_EXPECT_DIR)/anchor.json,$(ANCHOR_ELF_$(1)),$(ANCHOR_BOOT_IMG_$(1)),$(ANCHOR_DTB0),$(ANCHOR_DTB1)) \
@@ -1470,6 +1510,7 @@ budgets: image variants probes \
 		$(foreach t,$(IMAGE_TOOLCHAINS),--image $(t)/anchor:$(ANCHOR_ELF_$(t)):$(ANCHOR_BIN_$(t)):$(ANCHOR_BOOT_IMG_$(t))) \
 		$(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_OWN_MONITOR_VARIANTS) $(TE_POC_VARIANTS) $(ANCHOR_IMAGE_VARIANTS) $(MVP_FLIP_VARIANTS),--image $(t)/variant/$(v):$(BUILD)/variants/$(t)/$(v)/be-mvp.elf:$(BUILD)/variants/$(t)/$(v)/be-mvp.bin:$(MVP_VARIANT_BOOT_IMG_$(t)_$(v)))) \
 		$(foreach t,$(VARIANT_TOOLCHAINS),$(foreach s,$(MVP_SHELL_SCENARIOS),--image $(t)/variant/$(s)-shell:$(call shell_dir,$(t),$(s))/be-mvp.elf:$(call shell_dir,$(t),$(s))/be-mvp.bin:$(call shell_dir,$(t),$(s))/be-mvp-boot.img)) \
+		$(foreach t,$(VARIANT_TOOLCHAINS),$(foreach o,$(MVP_OFF_COPIES),--image $(t)/variant/$(o):$(call off_dir,$(t),$(o))/be-mvp.elf:$(call off_dir,$(t),$(o))/be-mvp.bin:$(call off_dir,$(t),$(o))/be-mvp-boot.img)) \
 		$(foreach t,$(PROBE_TOOLCHAINS),$(foreach p,$(MVP_PROBES),--image $(t)/$(p):$(BUILD)/probes/$(t)/$(p)/be-mvp.elf:$(BUILD)/probes/$(t)/$(p)/be-mvp.bin:$(BUILD)/probes/$(t)/$(p)/be-mvp-boot.img)) \
 		$(foreach t,$(MEASURE_TOOLCHAINS),--measure $(t):$(BUILD)/budgets/$(t)/be-mvp-measure.elf) \
 		2>&1 | tee $(RECORDS)/budgets.txt

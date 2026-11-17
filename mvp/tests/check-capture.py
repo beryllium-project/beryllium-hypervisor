@@ -13,7 +13,7 @@
                    [--typed TYPED --nonce NONCE --session SESSION]
                    [--reference REF] [--build-root BUILD] [--log-json OUT]
   check-capture.py --check-image TOOLCHAIN:IMG:BIN[:VARIANT] [--pins F]
-                   [--kernel IMAGE] [--expect FILE --report REPORT]
+                   [--kernel IMAGE] --expect FILE [--report REPORT]
   check-capture.py --self-test --expect-dir DIR ... [--pins F] --report R ...
                    --kernel IMAGE --dtb DTB
   check-capture.py --mutation-test (as --self-test)
@@ -343,9 +343,11 @@ expectation declares it.
 
 --check-image runs tests/check-image.py's boot-image rules (B3's header and
 descriptor, the shim, the ranges, the payload, the DTBs and kernel against
-their pins) on a board image before any loader sees it; a te-poc or anchor
-image (or a variant's) is checked against its scenario, given as its v2 or
-v3 expectation and authority report (--expect, --report). --self-test and
+their pins) on a board image before any loader sees it, by the image's
+expectation (--expect): its shim is a boundary-on one exactly when the
+expectation declares the boundary (M11-7), and a te-poc or anchor image
+(or a variant's) is checked against its scenario, given as its v2 or v3
+expectation and the authority report it names (--report). --self-test and
 --mutation-test run on the fixtures in tests/fixtures/ (real QEMU captures,
 CRs removed) and B7's recorded COM260 kexec handoff; every seeded and named
 mutation of a passing capture must be rejected for its own reason. Each
@@ -3628,6 +3630,11 @@ PRE_M6_SHA256 = \
 # but wrong-measurement's, and the refused one Clang's on rva23 from a
 # domain hart); and M7-5's probe-console-input (D-12), GCC's on k3-like
 # from hart 0, with nothing typed.
+# M11-7: the image a current refusal's stand-in is rendered for. Only an
+# image without the boundary can be refused (a boundary-on run boots on
+# hart 0), so it is two-guests' off copy (D-12), which the rows without a
+# physical boundary run.
+REFUSED_IMAGE = "two-guests-off"
 M7_FIXTURES = {
     "two-guests": "qemu-two-guests-gcc-m7",
     "payload": "qemu-payload-gcc-m7",
@@ -4224,12 +4231,12 @@ def write_fixtures(directory, expects, pins, reports=None, measured=None,
     each failing as declared; and with anchor's (its report, and MEASURED,
     its measured domain's kernel and DTB), anchor's passing capture and
     its two board variants', wrong-measurement and no-grant-check, each
-    failing as declared. M2's board capture of anchor (anchor-k3 before
-    M9) prints no log and is not one. Then the uboot fixtures, judged
-    against the two-guests expectation they were made with (PRE_M7's),
-    and, for each kind IMAGES ({kind: the board image's bytes}) names, its
-    board uboot form, a boot on hart 0 (but the refused kind's, which
-    fails), CRLF."""
+    failing as declared; the refused one is REFUSED_IMAGE's. M2's board
+    capture of anchor (anchor-k3 before M9) prints no log and is not one.
+    Then the uboot fixtures, judged against the two-guests expectation
+    they were made with (PRE_M7's), and, for each kind IMAGES ({kind: the
+    board image's bytes}) names, its board uboot form, a boot on hart 0
+    (but the refused kind's, which fails), CRLF."""
     reports, images = reports or {}, images or {}
     out = pathlib.Path(directory)
     out.mkdir(parents=True, exist_ok=True)
@@ -4238,7 +4245,7 @@ def write_fixtures(directory, expects, pins, reports=None, measured=None,
               rule_hart(fixture(M9_FIXTURES[name])),
               "REFUSED" if name == "refused" else "PASS")
              for name, image in (
-                 (name, "two-guests" if name == "refused" else name)
+                 (name, REFUSED_IMAGE if name == "refused" else name)
                  for name in M7_FIXTURES) if image in expects]
     unknown = sorted(set(images) - {kind[0] for kind in kinds})
     if unknown:
@@ -4768,7 +4775,7 @@ def current_m9_fixture_cases(expects, reports, root):
     base = {"sbi_version": "2.0", "toolchain": "gcc",
             "build_root": root}
     for kind, name in M9_FIXTURES.items():
-        image = "two-guests" if kind == "refused" else kind
+        image = REFUSED_IMAGE if kind == "refused" else kind
         text = current_log_standin(fixture(name), expects[image], root)
         cases.append((f"M11 stand-in {kind}", image, "direct", text,
                       dict(base, report=report_for(expects[image], reports)),
@@ -6447,10 +6454,12 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
     _, on, on_text, _ = boundary_cases(latest, root)[0]
     options = {"sbi_version": "2.0", "toolchain": "gcc", "build_root": root}
     base_verdict = evaluate(on_text, on, "direct", pins, **options)[0]
+    # The boundary-off form is two-guests' off copy's, its image without
+    # the boundary (D-12).
     off_text = current_log_standin(fixture(M9_FIXTURES["two-guests"]),
-                                   latest["two-guests"], root)
+                                   latest["two-guests-off"], root)
     for name, table, text, wanted in boundary_mutations(
-            on, on_text, latest["two-guests"], off_text):
+            on, on_text, latest["two-guests-off"], off_text):
         verdict, record = evaluate(text, table, "direct", pins, **options)
         named = [finding for finding in record["findings"]
                  if wanted in finding]
@@ -6887,13 +6896,16 @@ def load_check_image():
     return module
 
 
-def check_image(spec, pins_path, kernel_path, expect_path=None,
+def check_image(spec, pins_path, kernel_path, expect_path,
                 report_path=None):
     """--check-image TOOLCHAIN:IMG:BIN[:VARIANT]: a board image, before any
-    loader sees it, by tests/check-image.py's boot-image rules; with a v2
-    expectation (--expect, te-poc's or a variant's) and its authority
-    report (--report), against that scenario's DTBs and bootargs, the
-    expectation naming the image's variant (or its scenario)."""
+    loader sees it, by tests/check-image.py's boot-image rules and its
+    expectation (--expect), which names the image's variant (or its
+    scenario, or a probe image itself) and declares whether its shim is a
+    boundary-on one (M11-7);
+    a v2 or v3 expectation (te-poc's, anchor's, or a variant's) with the
+    authority report it names (--report), against that scenario's DTBs and
+    bootargs."""
     parts = spec.split(":")
     if len(parts) not in (3, 4) or parts[0] not in ("gcc", "clang"):
         print(f"--check-image {spec!r} is not TOOLCHAIN:IMG:BIN[:VARIANT]")
@@ -6907,23 +6919,30 @@ def check_image(spec, pins_path, kernel_path, expect_path=None,
     scenario_name = None
     try:
         scenario = images.TWO_GUESTS
-        if expect_path:
-            expect = json.loads(pathlib.Path(expect_path).read_text(
-                encoding="utf-8"))
-            report_data = pathlib.Path(report_path).read_bytes() \
-                if report_path else None
+        expect = json.loads(pathlib.Path(expect_path).read_text(
+            encoding="utf-8"))
+        # A probe image is named by its own expectation (no variant).
+        probe = bool((expect.get("outcome") or {}).get("probe"))
+        named = variant or (expect["image"] if probe else
+                            expect["scenario"])
+        if expect["image"] != named:
+            raise ValueError(f"the expectation is {expect['image']}'s, "
+                             f"not {named}'s")
+        report_data = pathlib.Path(report_path).read_bytes() \
+            if report_path else None
+        if "report" in expect:
             if report_data is None or hashlib.sha256(
                     report_data).hexdigest() != expect["report"]["sha256"]:
                 raise ValueError("the --report file is not the "
                                  "expectation's authority report")
-            if expect["image"] != (variant or expect["scenario"]):
-                raise ValueError(f"the expectation is {expect['image']}'s, "
-                                 f"not {variant or expect['scenario']}'s")
             scenario = images.Scenario(expect, json.loads(report_data))
             scenario_name = scenario.name
+        elif report_data is not None:
+            raise ValueError("the expectation names no authority report")
         boot = images.check_boot(data, images.BOOT_TEXT_OFFSET, flat,
                                  images.read_pins(pins_path), kernel,
-                                 variant=variant, scenario=scenario)
+                                 variant=variant, scenario=scenario,
+                                 boundary="boundary" in expect)
         result = "PASS"
     except (images.ImageError, KeyError, ValueError, TypeError) as error:
         boot, result = {}, f"FAIL {error}"
@@ -7014,6 +7033,8 @@ def main(argv):
     measured = (pathlib.Path(args.kernel).read_bytes(),
                 pathlib.Path(args.dtb).read_bytes()) if args.dtb else None
     if args.check_image:
+        if not args.expect:
+            parser.error("--check-image needs the image's --expect")
         return check_image(args.check_image, args.pins, args.kernel,
                            args.expect, (args.report or [None])[0])
     if many:

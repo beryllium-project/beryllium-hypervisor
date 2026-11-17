@@ -11,11 +11,13 @@
 # plays no part: kexec is not used (S3-A policy item 2).
 #
 #  1. Check the MVP board image (tests/check-capture.py --check-image, the
-#     image checker's boot-image rules against the guest pins, and for a v2
-#     or v3 expectation, te-poc's, anchor's, or a variant's, against the
-#     scenario and its authority report), and find it in the session's
-#     staging record (K3_RUN_ROOT/stage/staging.txt, tools/k3-stage.sh) as
-#     K3_BE_IMAGE: its staged SHA-256 must be the image's.
+#     image checker's boot-image rules against the guest pins and the
+#     image's expectation, whose boundary declaration decides the shim
+#     (M11-7), and for a v2 or v3 expectation, te-poc's, anchor's, or a
+#     variant's, against the scenario and its authority report), and find
+#     it in the session's staging record (K3_RUN_ROOT/stage/staging.txt,
+#     tools/k3-stage.sh) as K3_BE_IMAGE: its staged SHA-256 must be the
+#     image's.
 #  2. The launch. K3_LAUNCH=reset (the default): tools/k3-console.sh reset,
 #     the port-open rule, then the pinned k3ctl's reset (K3_RESET=k3ctl) or
 #     the human's; U-Boot's autoboot, which nothing stops, runs the saved
@@ -245,7 +247,7 @@ fi
 # Only a checked image, staged under its name in this session, is run.
 image_check=$("$python" -I -B "$checker" --check-image \
 	"$toolchain:$image:$flat${variant:+:$variant}" --pins "$pins" \
-	${kernel:+--kernel "$kernel"} ${report:+--expect "$expect" --report "$report"} |
+	${kernel:+--kernel "$kernel"} --expect "$expect" ${report:+--report "$report"} |
 	tail -n 1) ||
 	die "$image fails tests/check-capture.py --check-image"
 image_sha256=$(sha256sum -- "$image" | cut -d' ' -f1)

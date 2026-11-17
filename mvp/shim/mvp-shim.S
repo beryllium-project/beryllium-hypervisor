@@ -31,7 +31,16 @@
  *          as does a hart whose start fails. If the running image overlaps
  *          the destination, the stub reports the failure and requests SRST
  *          shutdown; it never jumps.
+ *
+ * A boundary-on boot image (BE_MVP_BOUNDARY; planning/mvp-m11-plan.md,
+ * D-6, D-12) has no start rule: its device tree restricts the cold boot to
+ * hart 0, so any other hart here reports one line, `refused` in place of
+ * `starting hart 0`, and parks, having made no HSM call. Its SBI calls are
+ * DBCN console write and SRST shutdown alone.
  */
+#if defined(BE_MVP_BOUNDARY) && defined(BE_MVP_SHIM_RULE)
+#error "the shim-rule variant is never built with the boundary"
+#endif
 
 	.option norvc
 	.option norelax
@@ -198,7 +207,8 @@ be_b3_entry:
 	 * The start rule (Q2): a hart other than 0 reports itself, starts
 	 * hart 0 at this entry with the same FDT through HSM hart_start, and
 	 * parks; a failed start parks too, which the run's timeout reports as
-	 * a hang. The hart's ID prints without leading zeros.
+	 * a hang. The hart's ID prints without leading zeros. A boundary-on
+	 * shim reports the hart as refused and parks without the start.
 	 */
 	.type be_mvp_shim_start_rule, @function
 be_mvp_shim_start_rule:
@@ -222,6 +232,7 @@ be_mvp_shim_start_rule:
 	mv	a0, s4
 	lla	a1, be_mvp_shim_line_end
 	jal	be_b3_print
+#if !defined(BE_MVP_BOUNDARY)
 	li	a0, 0
 	lla	a1, be_b3_entry
 	mv	a2, s3
@@ -237,6 +248,7 @@ be_mvp_shim_start_rule:
 	li	a6, SBI_HSM_HART_STOP
 	li	a7, SBI_EID_HSM
 	ecall
+#endif
 #endif
 	j	be_b3_park
 	.size be_mvp_shim_start_rule, . - be_mvp_shim_start_rule
@@ -351,7 +363,11 @@ be_mvp_shim_line:
 be_mvp_shim_boot_hart:
 	.ascii	"????????????????"
 be_mvp_shim_starting:
+#if defined(BE_MVP_BOUNDARY)
+	.ascii	" refused"
+#else
 	.ascii	" starting hart 0"
+#endif
 	.byte	ASCII_NEWLINE
 be_mvp_shim_line_end:
 #ifdef BE_MVP_SHIM_RULE

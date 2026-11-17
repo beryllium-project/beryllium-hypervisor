@@ -152,8 +152,13 @@ FLIP_FINDING = "self-report differs: mvp-rodata"
 LOG_TAGS = ("BE_MVP:19", "BE_MVP:20", "BE_MVP:06 LAUNCH")
 LOG_MARKERS = ("BE_MVP:19", "BE_MVP:20")
 # The expectations the profile's 3.2 assigns to the run class whose boot
-# image is their scenario's own (tests/run-qemu.sh runs both on it).
-SCENARIO_IMAGE_RUNS = ("no-sstc", "firmware-version", "sbi-3.0")
+# image is their scenario's own: the retained sbi-3.0 records'.
+SCENARIO_IMAGE_RUNS = ("sbi-3.0",)
+# M11-7: the runs of the scenario's monitor under another CPU or firmware,
+# which tests/run-qemu.sh makes without the physical boundary, on the
+# scenario's off copy (variants/TOOLCHAIN/SCENARIO-off/, the Makefile's
+# MVP_OFF_COPIES) whatever the scenario's own image is.
+OFF_COPY_RUNS = ("no-sstc", "firmware-version")
 # 5.1 and section 7's forms.
 DIGEST_FORM = re.compile(r"[0-9a-f]{64}")
 HEX64_FORM = re.compile(r"0x[0-9a-f]{16}")
@@ -1409,16 +1414,19 @@ def without_log(expect):
 def default_paths(root, toolchain, expect):
     """The reference and boot image of EXPECT's image as the build lays
     them out (mvp/Makefile): references/TOOLCHAIN/IMAGE.json, and the
-    boot image of the scenario (two-guests', no-sstc's, and the live
-    firmware-version negative's under TOOLCHAIN/; retained sbi-3.0 records
-    have the same shape; te-poc's and anchor's under TOOLCHAIN/SCENARIO/),
-    a variant (variants/TOOLCHAIN/VARIANT/), or a probe
+    boot image of the scenario (two-guests' under TOOLCHAIN/; retained
+    sbi-3.0 records have the same shape; te-poc's and anchor's under
+    TOOLCHAIN/SCENARIO/), of the scenario's off copy for no-sstc and the
+    live firmware-version negative (variants/TOOLCHAIN/SCENARIO-off/), a
+    variant (variants/TOOLCHAIN/VARIANT/), or a probe
     (probes/TOOLCHAIN/PROBE/); an explicit --reference or --image takes
     their place."""
     root, image = pathlib.Path(root), expect["image"]
     scenario = expect["scenario"]
     if (expect.get("outcome") or {}).get("probe"):
         boot = root / "probes" / toolchain / image
+    elif image in OFF_COPY_RUNS:
+        boot = root / "variants" / toolchain / f"{scenario}-off"
     elif image == scenario or image in SCENARIO_IMAGE_RUNS:
         boot = root / toolchain / ("" if scenario == "two-guests" else
                                    scenario)

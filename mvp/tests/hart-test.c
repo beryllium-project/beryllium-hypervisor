@@ -45,6 +45,7 @@
 #include <string.h>
 
 #include "mvp-hart.h"
+#include "mvp-boundary.h"
 
 static unsigned long assertions;
 static unsigned long scenarios;
@@ -2941,6 +2942,185 @@ static void test_simulation(void)
 	}
 }
 
+/*
+ * The boundary's identity words (planning/mvp-m11-plan.md, D-3
+ * "Pairing"): each word the descriptor's eight bytes, the first the most
+ * significant, as the firmware gives cells[2i] << 32 | cells[2i + 1];
+ * every byte in its place; both ends of the range; an index beyond the
+ * last and a null identity; and the inverse.
+ */
+static void test_boundary_word(void)
+{
+	be_u8 identity[BE_MVP_BOUNDARY_IDENTITY_BYTES];
+	be_u8 back[BE_MVP_BOUNDARY_IDENTITY_BYTES];
+	be_u64 words[BE_MVP_BOUNDARY_IDENTITY_WORDS];
+	be_u64 byte;
+	be_u64 index;
+
+	SCENARIO();
+	for (byte = 0U; byte < BE_MVP_BOUNDARY_IDENTITY_BYTES; ++byte) {
+		memset(identity, 0, sizeof(identity));
+		identity[byte] = 0xa5U;
+		for (index = 0U; index < BE_MVP_BOUNDARY_IDENTITY_WORDS;
+		     ++index)
+			CHECK(be_mvp_boundary_word(identity, index) ==
+			      (index == byte / WORD ?
+			       BE_U64_C(0xa5) << (8U * (WORD - 1U - byte % WORD)) :
+			       0U));
+	}
+	SCENARIO();
+	for (byte = 0U; byte < BE_MVP_BOUNDARY_IDENTITY_BYTES; ++byte)
+		identity[byte] = (be_u8)(0x11U * (byte % 15U) + byte);
+	CHECK(be_mvp_boundary_word(identity, 0U) ==
+	      ((be_u64)identity[0] << 56 | (be_u64)identity[1] << 48 |
+	       (be_u64)identity[2] << 40 | (be_u64)identity[3] << 32 |
+	       (be_u64)identity[4] << 24 | (be_u64)identity[5] << 16 |
+	       (be_u64)identity[6] << 8 | identity[7]));
+	CHECK(be_mvp_boundary_word(identity, 3U) ==
+	      ((be_u64)identity[24] << 56 | (be_u64)identity[25] << 48 |
+	       (be_u64)identity[26] << 40 | (be_u64)identity[27] << 32 |
+	       (be_u64)identity[28] << 24 | (be_u64)identity[29] << 16 |
+	       (be_u64)identity[30] << 8 | identity[31]));
+	for (index = 0U; index < BE_MVP_BOUNDARY_IDENTITY_WORDS; ++index)
+		words[index] = be_mvp_boundary_word(identity, index);
+	memset(back, 0, sizeof(back));
+	be_mvp_boundary_bytes(words, back);
+	CHECK(memcmp(back, identity, sizeof(identity)) == 0);
+	SCENARIO();
+	memset(identity, 0xff, sizeof(identity));
+	for (index = 0U; index < BE_MVP_BOUNDARY_IDENTITY_WORDS; ++index)
+		CHECK(be_mvp_boundary_word(identity, index) == ALL_ONES);
+	memset(identity, 0, sizeof(identity));
+	for (index = 0U; index < BE_MVP_BOUNDARY_IDENTITY_WORDS; ++index)
+		CHECK(be_mvp_boundary_word(identity, index) == 0U);
+	SCENARIO();
+	memset(identity, 0xff, sizeof(identity));
+	CHECK(be_mvp_boundary_word(identity, BE_MVP_BOUNDARY_IDENTITY_WORDS) ==
+	      0U);
+	CHECK(be_mvp_boundary_word(identity, ALL_ONES) == 0U);
+	CHECK(be_mvp_boundary_word((const be_u8 *)0, 0U) == 0U);
+	memset(back, 0x5a, sizeof(back));
+	be_mvp_boundary_bytes((const be_u64 *)0, back);
+	for (byte = 0U; byte < BE_MVP_BOUNDARY_IDENTITY_BYTES; ++byte)
+		CHECK(back[byte] == 0x5aU);
+	be_mvp_boundary_bytes(words, (be_u8 *)0);
+}
+
+/* One verdict of be_mvp_boundary_check() and the word it names. */
+static void expect_boundary(be_u64 probe, const long *errors,
+			    const be_u64 *words, const be_u8 *identity,
+			    enum be_mvp_class expected, be_u64 failed)
+{
+	be_u64 named = ALL_ONES;
+
+	CHECK(be_mvp_boundary_check(probe, errors, words, identity, &named) ==
+	      expected);
+	CHECK(named == failed);
+}
+
+/*
+ * Hart 0's verdict: the extension absent, a read error at each word (the
+ * firmware's -2 for a tree without a digest among them), every word that
+ * differs at each of its 256 bits, an error judged before an earlier word
+ * that differs, every word equal, and each null pointer.
+ */
+static void test_boundary_check(void)
+{
+	be_u8 identity[BE_MVP_BOUNDARY_IDENTITY_BYTES];
+	be_u64 words[BE_MVP_BOUNDARY_IDENTITY_WORDS];
+	long errors[BE_MVP_BOUNDARY_IDENTITY_WORDS];
+	be_u64 index;
+	be_u64 bit;
+
+	for (index = 0U; index < BE_MVP_BOUNDARY_IDENTITY_BYTES; ++index)
+		identity[index] = (be_u8)(0xc3U ^ (index * 29U));
+	for (index = 0U; index < BE_MVP_BOUNDARY_IDENTITY_WORDS; ++index) {
+		words[index] = be_mvp_boundary_word(identity, index);
+		errors[index] = BE_MVP_SBI_SUCCESS;
+	}
+	SCENARIO();
+	expect_boundary(1U, errors, words, identity, CLASS_NONE,
+			BE_MVP_BOUNDARY_IDENTITY_WORDS);
+	expect_boundary(ALL_ONES, errors, words, identity, CLASS_NONE,
+			BE_MVP_BOUNDARY_IDENTITY_WORDS);
+	SCENARIO();
+	expect_boundary(0U, errors, words, identity, BE_MVP_CLASS_BOUNDARY,
+			0U);
+	SCENARIO();
+	for (index = 0U; index < BE_MVP_BOUNDARY_IDENTITY_WORDS; ++index) {
+		errors[index] = -2L;
+		expect_boundary(1U, errors, words, identity,
+				BE_MVP_CLASS_BOUNDARY, index);
+		errors[index] = -1L;
+		expect_boundary(1U, errors, words, identity,
+				BE_MVP_CLASS_BOUNDARY, index);
+		errors[index] = BE_MVP_SBI_SUCCESS;
+	}
+	SCENARIO();
+	for (bit = 0U; bit < 8U * BE_MVP_BOUNDARY_IDENTITY_BYTES; ++bit) {
+		index = bit / 64U;
+		words[index] ^= BE_U64_C(1) << (bit % 64U);
+		expect_boundary(1U, errors, words, identity,
+				BE_MVP_CLASS_BOUNDARY, index);
+		words[index] ^= BE_U64_C(1) << (bit % 64U);
+	}
+	expect_boundary(1U, errors, words, identity, CLASS_NONE,
+			BE_MVP_BOUNDARY_IDENTITY_WORDS);
+	SCENARIO();
+	words[0] ^= 1U;
+	errors[2] = -2L;
+	expect_boundary(1U, errors, words, identity, BE_MVP_CLASS_BOUNDARY,
+			2U);
+	errors[2] = BE_MVP_SBI_SUCCESS;
+	expect_boundary(1U, errors, words, identity, BE_MVP_CLASS_BOUNDARY,
+			0U);
+	words[0] ^= 1U;
+	SCENARIO();
+	expect_boundary(1U, (const long *)0, words, identity,
+			BE_MVP_CLASS_BOUNDARY, 0U);
+	expect_boundary(1U, errors, (const be_u64 *)0, identity,
+			BE_MVP_CLASS_BOUNDARY, 0U);
+	expect_boundary(1U, errors, words, (const be_u8 *)0,
+			BE_MVP_CLASS_BOUNDARY, 0U);
+	CHECK(be_mvp_boundary_check(1U, errors, words, identity,
+				    (be_u64 *)0) == BE_MVP_CLASS_BOUNDARY);
+}
+
+/* One census over harts 1 and 2, the domains on HART0 and HART1. */
+static int boundary_census(be_u64 hart0, be_u64 hart1, long error1,
+			   be_u64 status1, long error2, be_u64 status2)
+{
+	struct be_mvp_hsm_census census;
+
+	be_mvp_hsm_census_init(&census, hart0, hart1);
+	(void)be_mvp_hsm_census_add(&census, 1U, error1, status1);
+	(void)be_mvp_hsm_census_add(&census, 2U, error2, status2);
+	return be_mvp_boundary_census(&census);
+}
+
+/*
+ * The census of a boundary-on image (D-8, D-9): harts 1 and 2 STOPPED,
+ * and no STARTED hart, a domain's or another's, since no start rule ran;
+ * hart-start's binding of hart 9 keeps the rule; an error refuses it.
+ */
+static void test_boundary_census(void)
+{
+	const be_u64 stopped = BE_MVP_HSM_STOPPED;
+	const be_u64 started = BE_MVP_HSM_STARTED;
+
+	SCENARIO();
+	CHECK(boundary_census(1U, 2U, 0L, stopped, 0L, stopped) == 1);
+	CHECK(boundary_census(1U, 9U, 0L, stopped, 0L, stopped) == 1);
+	SCENARIO();
+	CHECK(boundary_census(1U, 2U, 0L, started, 0L, stopped) == 0);
+	CHECK(boundary_census(1U, 2U, 0L, stopped, 0L, started) == 0);
+	CHECK(boundary_census(1U, 9U, 0L, stopped, 0L, started) == 0);
+	CHECK(boundary_census(1U, 2U, -3L, stopped, 0L, stopped) == 0);
+	CHECK(boundary_census(1U, 2U, 0L, stopped, 0L, 4U) == 0);
+	CHECK(be_mvp_boundary_census((const struct be_mvp_hsm_census *)0) ==
+	      0);
+}
+
 int main(void)
 {
 	test_constants();
@@ -2966,6 +3146,9 @@ int main(void)
 	test_drain_order();
 	test_overlap();
 	test_line_output();
+	test_boundary_word();
+	test_boundary_check();
+	test_boundary_census();
 	test_simulation();
 	printf("BE_MVP_HART_CHECK: PASS\n");
 	printf("BE_MVP_HART_CHECK: scenarios=%lu\n", scenarios);

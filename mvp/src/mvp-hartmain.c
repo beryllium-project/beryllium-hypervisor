@@ -50,11 +50,13 @@
 #include "mvp-probe.h"
 #endif
 
+#if !defined(BE_MVP_BOUNDARY)
 /* A domain hart's own console lines when hart 0 cannot print its FAIL. */
 #define BE_MVP_FALLBACK_ATTEMPTS	64U
 
 static const char hart_failure[] = "BE_MVP:FAIL ";
 static const char hart_newline[] = "\n";
+#endif
 
 static be_u64 symbol_address(const be_u8 *symbol)
 {
@@ -120,10 +122,12 @@ static be_u64 wait_tick_raw(be_u64 *answered, int *unexpected_ipi)
 }
 #endif
 
+#if !defined(BE_MVP_BOUNDARY)
 /*
  * One fallback line through DBCN from this hart's own stack, never the
  * diagnostic page hart 0 writes; each line is one call when the firmware
- * takes it whole.
+ * takes it whole. A boundary-on image has none: a confined VS-domain hart
+ * makes no firmware call (planning/mvp-m11-plan.md, D-8).
  */
 static void fallback_write(const struct be_mvp_line *line)
 {
@@ -144,6 +148,7 @@ static void fallback_write(const struct be_mvp_line *line)
 		offset += written;
 	}
 }
+#endif
 
 /*
  * The domain hart's terminal path (Q10, as Plan revision M1-B revises it):
@@ -155,6 +160,15 @@ static void fallback_write(const struct be_mvp_line *line)
  * window with neither an ACK nor a record taken, or a malformed tail, and
  * the hart prints its own FAIL and DETAIL lines and requests SRST, so a
  * wedged hart 0 cannot hide the failure.
+ *
+ * In a boundary-on image (M11-7; planning/mvp-m11-plan.md, D-8) the hart is
+ * confined, since only the firmware's resume after its confine enters
+ * be_mvp_hart_main(): it makes no firmware call, so in place of its own
+ * lines and the SRST request it parks, whether or not hart 0 acknowledged,
+ * and after a ring that could not carry the FAIL. A second entry, through
+ * an exception in HS mode after the first began, posts behind the first
+ * FAIL, which stays as published, and ends parked or trapping in HS mode
+ * the same way.
  */
 static void hart_fail(struct be_mvp_hart_page *page, enum be_mvp_class failure,
 		      const be_u64 *detail, be_u64 words)
@@ -165,7 +179,9 @@ static void hart_fail(struct be_mvp_hart_page *page, enum be_mvp_class failure,
 	struct be_mvp_state *state = &page->page.state;
 	struct be_mvp_ack_wait wait;
 	enum be_mvp_ack_step step;
+#if !defined(BE_MVP_BOUNDARY)
 	struct be_mvp_line line;
+#endif
 
 	failure = be_mvp_fail(state, failure);
 	(void)be_mvp_console_flush(state, &page->outbound,
@@ -196,6 +212,9 @@ static void hart_fail(struct be_mvp_hart_page *page, enum be_mvp_class failure,
 				be_mvp_exec_park();
 		} while (step == BE_MVP_ACK_WAIT);
 	}
+#if defined(BE_MVP_BOUNDARY)
+	be_mvp_exec_park();
+#else
 	be_mvp_line_reset(&line);
 	be_mvp_line_text(&line, hart_failure);
 	be_mvp_line_text(&line, be_mvp_class_name(failure));
@@ -206,6 +225,7 @@ static void hart_fail(struct be_mvp_hart_page *page, enum be_mvp_class failure,
 	fallback_write(&line);
 	(void)be_mvp_exec_system_reset();
 	be_mvp_exec_park();
+#endif
 }
 
 /* One register that did not read back as written. */

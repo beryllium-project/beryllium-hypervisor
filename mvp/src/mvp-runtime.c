@@ -120,6 +120,20 @@
 #define BE_MVP_RUN_PROBE_PLATFORM	1
 #endif
 #endif
+/*
+ * A boundary-on image (M11-7; planning/mvp-m11-plan.md, D-12): the
+ * extension's constants, and the image's own configuration identity, the
+ * descriptor's (mvp/Makefile copies its scenario's <image>-identity.h as
+ * mvp-partition-identity.h for this monitor alone). The probe images are
+ * never built with the boundary.
+ */
+#if defined(BE_MVP_BOUNDARY)
+#if defined(BE_MVP_PROBE_IMAGE)
+#error "a probe image is never built with the boundary"
+#endif
+#include "mvp-boundary.h"
+#include "mvp-partition-identity.h"
+#endif
 
 /*
  * The scenario's header (planning/mvp-m2-plan.md, Q12): a v3 header
@@ -500,8 +514,26 @@ static const char marker_scenario[] = "BE_MVP:01 SCENARIO name="
 	BE_MVP_SCENARIO_NAME " domains=%d harts=%d,%d,%d of=%d ring_bytes=%x "
 	"mvp_region=%x mvp_bytes=%x image_bytes=%x";
 #endif
+#if defined(BE_MVP_BOUNDARY)
+/*
+ * A boundary-on image's BE_MVP:02 (M11-7): the extension's probe, the
+ * statuses of harts 1 and 2, none STARTED, and the identity the firmware
+ * gave as 64 hex digits, or none; a boundary failure's DETAIL is the
+ * probe, the word, and the read's error, or the image's own identity
+ * when the firmware gave another.
+ */
+static const char marker_firmware[] =
+	"BE_MVP:02 FIRMWARE_PROBED hsm=%d ipi=%d boundary=%d status=";
+static const char marker_boundary_identity[] = " identity=";
+static const char marker_boundary_none[] = "none";
+static const char marker_boundary_word[] =
+	"BE_MVP:DETAIL boundary=%d word=%d error=%i";
+static const char marker_boundary_expected[] =
+	"BE_MVP:DETAIL boundary=1 expected=";
+#else
 static const char marker_firmware[] =
 	"BE_MVP:02 FIRMWARE_PROBED hsm=%d ipi=%d status=";
+#endif
 static const char marker_gstage[] = "BE_MVP:03 GSTAGE_BUILT_REWALKED "
 	"domain=%d hart=%d gpa=%x hpa=%x size=%x leaves=%d root=%x vmid=%d";
 static const char marker_cleared[] =
@@ -557,8 +589,14 @@ static const char marker_placed[] = "BE_MVP:06 PAYLOAD_PLACED domain=%d "
 #endif
 static const char marker_published[] = "BE_MVP:07 BLOCKS_PUBLISHED "
 	"region=%x bytes=%x generation=%d budget_ticks=%x";
+#if defined(BE_MVP_BOUNDARY)
+/* A boundary-on image asks no status after a start (M11-7; D-6 step 4). */
+static const char marker_started[] = "BE_MVP:08 HART_STARTED hart=%d "
+	"domain=%d result=%i ticks=%x";
+#else
 static const char marker_started[] = "BE_MVP:08 HART_STARTED hart=%d "
 	"domain=%d result=%i status=%i ticks=%x";
+#endif
 static const char marker_ready[] = "BE_MVP:09 HART_READY hart=%d domain=%d "
 	"hgatp=%x hstatus_controls=%x hedeleg=%x hideleg=%x hcounteren=%x "
 	"sie=%x henvcfg=%x vstimecmp=%x";
@@ -640,12 +678,19 @@ static const char marker_failure[] = "BE_MVP:FAIL ";
 /* Hart 0's own DETAIL lines; a domain's come from be_mvp_detail_line(). */
 static const char marker_status_first[] = "%d:%i";
 static const char marker_status_next[] = ",%d:%i";
+#if !defined(BE_MVP_BOUNDARY)
 static const char marker_started_hart[] = " started=%d";
+#endif
 static const char marker_started_none[] = " started=none";
 static const char marker_detail_henvcfg[] = "BE_MVP:DETAIL henvcfg=%x";
 static const char marker_detail_domain[] = "BE_MVP:DETAIL domain=%d hart=%d";
+#if defined(BE_MVP_BOUNDARY)
+static const char marker_detail_start[] = "BE_MVP:DETAIL domain=%d hart=%d "
+	"result=%i ticks=%x";
+#else
 static const char marker_detail_start[] = "BE_MVP:DETAIL domain=%d hart=%d "
 	"result=%i status=%i ticks=%x";
+#endif
 static const char marker_detail_waited[] =
 	"BE_MVP:DETAIL domain=%d hart=%d ticks=%x";
 static const char marker_detail_record[] =
@@ -1066,6 +1111,104 @@ static void scenario_line(void)
 	emit(marker_scenario, values);
 }
 
+#if defined(BE_MVP_BOUNDARY)
+static void line_hex(struct be_mvp_line *line, const be_u8 *bytes,
+		     be_u64 count);
+
+/*
+ * A boundary-on image's firmware probe (M11-7; planning/mvp-m11-plan.md,
+ * D-3 "Pairing", D-6 step 2, D-8): HSM, IPI, and the domain commit
+ * extension; the status of harts 1 and 2 alone, the layout's VS-domain
+ * harts, both STOPPED, since the firmware answers for no hart outside hart
+ * 0's OpenSBI domain; no hart STARTED, since the tree restricts the cold
+ * boot to hart 0 and the shim has no start rule; then, if the extension
+ * answered, the configuration identity the firmware read from its device
+ * tree, word by word, against the image's own. BE_MVP:02 shows the probe,
+ * both statuses, and the identity read, or none. A census failure is the
+ * firmware class, as in a boundary-off image; then a missing extension, a
+ * read error, or another identity is the boundary class, before any hart
+ * starts.
+ */
+static void probe_firmware(void)
+{
+	struct be_mvp_hsm_census census;
+	be_u64 values[3] = { 0U, 0U, 0U };
+	be_u64 words[BE_MVP_BOUNDARY_IDENTITY_WORDS] = { 0U, 0U, 0U, 0U };
+	long errors[BE_MVP_BOUNDARY_IDENTITY_WORDS] = {
+		BE_R0_SBI_ERR_FAILED, BE_R0_SBI_ERR_FAILED,
+		BE_R0_SBI_ERR_FAILED, BE_R0_SBI_ERR_FAILED,
+	};
+	be_u8 identity[BE_MVP_BOUNDARY_IDENTITY_BYTES];
+	be_u64 detail[3];
+	enum be_mvp_class verdict;
+	be_u64 failed;
+	be_u64 index;
+	be_u64 hart;
+	int ok;
+
+	ok = be_mvp_exec_sbi_probe(BE_MVP_FW_EID_HSM, &values[0]) ==
+		     BE_R0_SBI_SUCCESS &&
+	     be_mvp_exec_sbi_probe(BE_MVP_FW_EID_IPI, &values[1]) ==
+		     BE_R0_SBI_SUCCESS &&
+	     values[0] != 0U && values[1] != 0U;
+	if (be_mvp_exec_sbi_probe(BE_MVP_BOUNDARY_EID, &values[2]) !=
+	    BE_R0_SBI_SUCCESS)
+		values[2] = 0U;
+	be_mvp_hsm_census_init(&census, be_mvp_bindings[0].hart,
+			       be_mvp_bindings[1].hart);
+	line_start(marker_firmware, values);
+	for (hart = 1U; hart <= 2U; ++hart) {
+		be_u64 pair[2] = { hart, ~BE_U64_C(0) };
+		long error = be_mvp_exec_hart_status(hart, &pair[1]);
+
+		if (!be_mvp_hsm_census_add(&census, hart, error, pair[1]))
+			ok = 0;
+		if (error != BE_MVP_SBI_SUCCESS)
+			pair[1] = (be_u64)error;
+		be_mvp_line_format(&be_mvp_line, hart == 1U ?
+				   marker_status_first : marker_status_next,
+				   pair);
+	}
+	if (!be_mvp_boundary_census(&census))
+		ok = 0;
+	be_mvp_line_text(&be_mvp_line, marker_started_none);
+	/* The reads stop at the first error; index counts those that read. */
+	for (index = 0U; values[2] != 0U &&
+	     index < BE_MVP_BOUNDARY_IDENTITY_WORDS; ++index) {
+		errors[index] = be_mvp_exec_boundary_identity(index,
+							      &words[index]);
+		if (errors[index] != BE_MVP_SBI_SUCCESS)
+			break;
+	}
+	verdict = be_mvp_boundary_check(values[2], errors, words,
+					be_mvp_partition_identity, &failed);
+	be_mvp_line_text(&be_mvp_line, marker_boundary_identity);
+	if (index == BE_MVP_BOUNDARY_IDENTITY_WORDS) {
+		be_mvp_boundary_bytes(words, identity);
+		line_hex(&be_mvp_line, identity, sizeof(identity));
+	} else {
+		be_mvp_line_text(&be_mvp_line, marker_boundary_none);
+	}
+	emit_line();
+	if (!ok)
+		be_mvp_runtime_terminal(BE_MVP_CLASS_FIRMWARE);
+	if (verdict == BE_MVP_CLASS_NONE)
+		return;
+	if (index == BE_MVP_BOUNDARY_IDENTITY_WORDS) {
+		/* Read whole, but another image's: the image's own, in full. */
+		be_mvp_line_reset(&be_mvp_detail);
+		be_mvp_line_text(&be_mvp_detail, marker_boundary_expected);
+		line_hex(&be_mvp_detail, be_mvp_partition_identity,
+			 sizeof(be_mvp_partition_identity));
+		be_mvp_line_text(&be_mvp_detail, marker_newline);
+		be_mvp_runtime_terminal(BE_MVP_CLASS_BOUNDARY);
+	}
+	detail[0] = values[2];
+	detail[1] = failed;
+	detail[2] = values[2] != 0U ? (be_u64)errors[failed] : 0U;
+	fail_detail(BE_MVP_CLASS_BOUNDARY, marker_boundary_word, detail);
+}
+#else
 /*
  * The firmware's HSM and IPI through the accepted probe helper, and every
  * other hart's state (BE_MVP:02, each status or error as found, then the
@@ -1132,6 +1275,7 @@ static void probe_firmware(void)
 	if (!ok)
 		be_mvp_runtime_terminal(BE_MVP_CLASS_FIRMWARE);
 }
+#endif
 
 /*
  * henvcfg first: a CPU without Sstc fails closed before any domain hart is
@@ -1932,6 +2076,47 @@ static void publish_blocks(void)
 	emit(marker_published, values);
 }
 
+#if defined(BE_MVP_BOUNDARY)
+/*
+ * Each VS-domain hart, once (M11-7; planning/mvp-m11-plan.md, D-6 step 4):
+ * hart_start at the confining stub, be_mvp_confine_entry, with its block,
+ * and the start's result checked (BE_MVP:08, without a status). No status
+ * is asked after it: the hart leaves hart 0's OpenSBI domain at its
+ * confine, and the READY wait bounds the start, a hart that never confines
+ * or never reaches READY included. The stub's address is the only entry
+ * hart 0 hands the firmware; the hart entry is the confined entry, which
+ * the device tree gives the firmware.
+ */
+static void start_harts(void)
+{
+	be_u32 domain;
+
+	for (domain = 0U; domain < BE_MVP_RUN_DOMAINS; ++domain) {
+		be_u64 hart = be_mvp_bindings[domain].hart;
+		be_u64 begin = be_mvp_exec_read_time();
+		be_u64 values[4];
+		long result;
+
+		result = be_mvp_exec_hart_start(hart,
+						symbol_address(
+							be_mvp_confine_entry),
+						be_mvp_block_hpa(domain));
+		values[0] = hart;
+		values[1] = domain;
+		values[2] = (be_u64)result;
+		values[3] = be_mvp_exec_read_time() - begin;
+		if (result != BE_MVP_SBI_SUCCESS) {
+			values[0] = domain;
+			values[1] = hart;
+			fail_detail(BE_MVP_CLASS_HART_START,
+				    marker_detail_start, values);
+		}
+		emit(marker_started, values);
+		if (!be_mvp_control_started(&be_mvp_ctl, domain, hart))
+			be_mvp_runtime_terminal(BE_MVP_CLASS_EXCEPTION);
+	}
+}
+#else
 /*
  * Each domain hart, once: hart_start at the hart entry with its block, then
  * hart_get_status until STARTED, within the start wait (BE_MVP:08).
@@ -1977,6 +2162,7 @@ static void start_harts(void)
 			be_mvp_runtime_terminal(BE_MVP_CLASS_EXCEPTION);
 	}
 }
+#endif
 
 #if !defined(BE_MVP_PROBE_IMAGE)
 /* One record into a VS domain's inbound ring, found at its next tick. */

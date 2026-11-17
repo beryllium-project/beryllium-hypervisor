@@ -7,7 +7,9 @@
  *          one function per effect: each SBI call (the firmware's version
  *          and extensions, HSM hart_start and hart_get_status, the IPI,
  *          hart 0's console write and, since M7, its console read, a
- *          domain hart's own DBCN write, and the SRST shutdown), a hart's
+ *          domain hart's own DBCN write, the SRST shutdown, and since
+ *          M11-7, in a boundary-on image, the domain commit extension's
+ *          confine and identity read), a hart's
  *          accepted HS and VS reset, the hgatp
  *          install, each CSR write and read the C asks for (henvcfg's STCE,
  *          a domain hart's controls, hart 0's budget, the TIME deadline, a
@@ -71,6 +73,32 @@ long be_mvp_exec_hart_start(be_u64 hart, be_u64 entry, be_u64 opaque);
  * Return: the SBI error.
  */
 long be_mvp_exec_hart_status(be_u64 hart, be_u64 *status);
+
+#if defined(BE_MVP_BOUNDARY)
+/**
+ * be_mvp_exec_confine - the domain commit extension's function 0, confine
+ *
+ * Called only from be_mvp_confine_entry (mvp-hartentry.S), on a VS-domain
+ * hart in the boot OpenSBI domain (planning/mvp-m11-plan.md, D-6). On
+ * success the firmware enters the hart's narrow OpenSBI domain at its
+ * confined entry and the call does not return.
+ *
+ * Return: the SBI error of a refused or failed call.
+ */
+long be_mvp_exec_confine(void);
+
+/**
+ * be_mvp_exec_boundary_identity - the extension's function 1, one word of
+ *                                 the configuration identity
+ * @index: the word, 0 to 3, the most significant first
+ * @word: the call's value, the word on success
+ *
+ * Hart 0's, in its boot code (planning/mvp-m11-plan.md, D-3 "Pairing").
+ *
+ * Return: the SBI error.
+ */
+long be_mvp_exec_boundary_identity(be_u64 index, be_u64 *word);
+#endif
 
 /**
  * be_mvp_exec_send_ipi - IPI send_ipi

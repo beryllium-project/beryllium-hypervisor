@@ -15,6 +15,15 @@
  *          alone; anything else parks the hart without a stack. C then
  *          checks the published block before the hart touches anything else.
  * Scope:   the MVP line's domain harts. Hart 0 never comes here.
+ *
+ * In a boundary-on image (M11-7; planning/mvp-m11-plan.md, D-6 step 5)
+ * hart 0 starts each VS-domain hart at be_mvp_confine_entry instead, in the
+ * boot OpenSBI domain, with the same a1. It checks a1 and sets sp exactly
+ * as the hart entry does, then makes the domain commit extension's confine
+ * call, which on success enters the hart's narrow OpenSBI domain at its
+ * confined entry, be_mvp_hart_entry, with the same a0 and a1, and does not
+ * return. A refused or failed call, or a block that is not one of the two,
+ * parks the hart in HS mode, having entered no guest.
  */
 
 #include "mvp-layout.h"
@@ -63,3 +72,25 @@ be_mvp_park_entry:
 	wfi
 	j	1b
 	.size be_mvp_park_entry, . - be_mvp_park_entry
+
+#if defined(BE_MVP_BOUNDARY)
+	.section .text.mvp.confine, "ax"
+	.align 4
+	.globl be_mvp_confine_entry
+	.type be_mvp_confine_entry, @function
+be_mvp_confine_entry:
+	/* a1 must be exactly one of the two private-state extent bases. */
+	li	t0, BE_MVP_G0_BLOCK_HPA
+	beq	a1, t0, 2f
+	li	t0, BE_MVP_G1_BLOCK_HPA
+	bne	a1, t0, 1f
+2:
+	/* The block's trusted stack, as the hart entry sets it. */
+	li	t2, BE_MVP_BLOCK_STACK_TOP_OFFSET
+	add	sp, a1, t2
+	call	be_mvp_exec_confine
+1:
+	/* Refused, or no block: park in HS mode, having entered no guest. */
+	tail	be_mvp_arch_park
+	.size be_mvp_confine_entry, . - be_mvp_confine_entry
+#endif

@@ -71,6 +71,21 @@
 # no-grant-check ends in BE_MVP:FAIL run-timeout after its 2^27-tick budget
 # (13.4 s at QEMU's 10 MHz timebase), well inside the attempt's timeout.
 #
+# M11-7 (planning/mvp-m11-plan.md, D-10, D-12; step 1): a run whose
+# expectation declares the physical boundary (its "boundary" section,
+# tools/gen-scenario.py's) is boundary-on. It must be a k3-like row whose
+# PMP mode is plain or smepmp; QEMU boots it with -dtb, the backend's tree
+# of the image it is paired with for that mode (BUILD_DIR/partition/
+# SCENARIO/PAIR/MODE/PAIR.dtb), and only if tests/check-boundary.py's gate
+# admits that tree by the partition checker's record of it (BUILD_DIR/
+# records/partition/MODE/TOOLCHAIN/SCENARIO/PAIR.json); the oracle reads
+# the PMP of the mode and the firmware's commit records (its record table,
+# located in the base firmware's ELF beside FIRMWARE_BIN with the lock's
+# nm); the run takes one attempt (the tree restricts the cold boot to hart
+# 0); and tests/check-boundary.py judges its end state: it passes only when
+# the capture checker, the oracle, and check-boundary all pass. Each
+# boundary-off row on k3-like keeps its plain machine.
+#
 # QEMU's boot hart is a lottery (planning research 2). A boot hart that is
 # a domain hart of its run is refused, as Plan revision M0-A.2 declares:
 # the checker's REFUSED verdict, a precondition failing rather than an
@@ -155,6 +170,12 @@ checker=$here/check-capture.py
 oracle=$here/qemu_oracle.py
 boundary_checker=$here/check-boundary.py
 lock=$(dirname -- "$here")/tools/lock/tool-lock.conf
+# M11-7: the layout and the boundary's header (the state word's offset),
+# the base firmware's ELF (its commit records), and the lock's nm.
+layout_header=$(dirname -- "$here")/src/mvp-layout.h
+boundary_header=$(dirname -- "$here")/src/mvp-boundary.h
+firmware_elf=${firmware%.bin}.elf
+nm_tool=$(sed -n 's/^MVP_TOOL_cross_nm_command=\(\/[^ ]*\)$/\1/p' -- "$lock")
 expect_dir=$build/gen/expect
 te_poc_dir=$build/gen/te-poc
 anchor_dir=$build/gen/anchor
@@ -206,8 +227,10 @@ if [ -n "$cheri_cpu" ]; then
 		exit 2
 	fi
 fi
-# The oracle's declared register classes for each plain machine row.
-oracle_k3='k3-like readable readable absent off'
+# The oracle's declared register classes for each plain machine row, and
+# its boundary field: off, or the PMP mode a boundary-on run of the row
+# uses (k3-like's, plain; M11-7).
+oracle_k3='k3-like readable readable absent plain'
 oracle_rva23='rva23 absent readable absent off'
 oracle_plic='plic readable readable absent off'
 oracle_minimal='no-sstc readable readable absent off'
@@ -221,8 +244,8 @@ fi
 # the expectation file, and the image (the scenario's, or its off copy's).
 scenarios=(
 	"k3-like $k3_machine $k3_cpu $oracle_k3 base $firmware_sbi two-guests two-guests"
-	"rva23 virt,aia=aplic-imsic rva23s64 $oracle_rva23 base $firmware_sbi two-guests two-guests-off"
-	"plic virt rv64,h=true $oracle_plic base $firmware_sbi two-guests two-guests-off"
+	"rva23 virt,aia=aplic-imsic rva23s64 $oracle_rva23 base $firmware_sbi two-guests-off two-guests-off"
+	"plic virt rv64,h=true $oracle_plic base $firmware_sbi two-guests-off two-guests-off"
 	"no-sstc virt,aia=none $minimal $oracle_minimal base $firmware_sbi no-sstc two-guests-off"
 )
 # The plain monitor's firmware-version negative alone boots the earlier
@@ -347,7 +370,7 @@ for toolchain in "${toolchains[@]}"; do
 		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
 			copy <<<"$entry"
 		wanted "te-poc/$toolchain/$name" || continue
-		runs+=("$toolchain/te-poc-$name $(row_elf "$toolchain" te-poc "te-poc${copy#.}") $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $te_poc_dir/expect/te-poc.json $te_poc_dir/authority-report.json -")
+		runs+=("$toolchain/te-poc-$name $(row_elf "$toolchain" te-poc "te-poc${copy#.}") $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $te_poc_dir/expect/te-poc${copy#.}.json $te_poc_dir/authority-report.json -")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do
@@ -365,7 +388,7 @@ for toolchain in "${toolchains[@]}"; do
 		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
 			copy <<<"$entry"
 		wanted "anchor/$toolchain/$name" || continue
-		runs+=("$toolchain/anchor-$name $(row_elf "$toolchain" anchor "anchor${copy#.}") $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $anchor_dir/expect/anchor.json $anchor_dir/authority-report.json $measured")
+		runs+=("$toolchain/anchor-$name $(row_elf "$toolchain" anchor "anchor${copy#.}") $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $anchor_dir/expect/anchor${copy#.}.json $anchor_dir/authority-report.json $measured")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do
@@ -397,11 +420,28 @@ if [ "$needs_earlier" = 1 ]; then
 	pinned_firmware "$earlier_firmware" "$earlier_pin" \
 		"the lock's MVP_PIN_OPENSBI_BIN_SHA256" BE_MVP_EARLIER_FIRMWARE
 fi
+# M11-7: a run's paired image when its expectation declares the boundary,
+# else -; and one field of an expectation.
+boundary_pair() {
+	"$python" -I -B -c 'import json, sys
+boundary = json.load(open(sys.argv[1])).get("boundary")
+print(boundary["pair"] if isinstance(boundary, dict) else "-")' "$1"
+}
+expect_field() {
+	"$python" -I -B -c 'import json, sys
+print(json.load(open(sys.argv[1]))[sys.argv[2]])' "$1" "$2"
+}
 missing=()
 for entry in "${runs[@]}"; do
-	read -r _ elf _ _ _ _ _ _ _ _ _ expect report inputs <<<"$entry"
+	read -r label elf _ _ _ _ _ _ boundary _ _ expect report inputs <<<"$entry"
 	[ -r "$elf" ] || missing+=("$elf")
 	[ -r "$expect" ] || missing+=("$expect")
+	if [ -r "$expect" ] && [ "$(boundary_pair "$expect")" != - ]; then
+		[ "$boundary" != off ] ||
+			{ printf '%s declares the boundary, but its row %s has no PMP mode\n' "$expect" "$label" >&2; exit 2; }
+		[ -r "$firmware_elf" ] || missing+=("$firmware_elf")
+		[ -x "$nm_tool" ] || missing+=("the lock's nm ($lock)")
+	fi
 	[ "$report" = - ] || [ -r "$report" ] || missing+=("$report")
 	[ "$inputs" = - ] || [ -r "${inputs%%:*}" ] || missing+=("${inputs%%:*}")
 	[ "$inputs" = - ] || [ -r "${inputs#*:}" ] || missing+=("${inputs#*:}")
@@ -444,9 +484,9 @@ pinned_role() {
 # One QEMU boot into STEM.console.log; its exit status in STEM.exit.txt.
 boot() {
 	local stem=$1 elf=$2 machine=$3 cpu=$4 firmware_role=$5 machine_class=$6
-	local pmp=$7 menvcfg=$8 mseccfg=$9 boundary=${10}
+	local pmp=$7 menvcfg=$8 mseccfg=$9 boundary=${10} dtb=${11:--}
 	local console=$stem.console.log
-	local boundary_arg=()
+	local boundary_arg=() tree_arg=()
 	local qemu_pid deadline terminal_at status
 
 	pinned_role "$firmware_role"
@@ -488,9 +528,16 @@ boot() {
 		return
 	fi
 	case $boundary in
-	on) boundary_arg=(--boundary-on) ;;
+	plain | smepmp)
+		# M11-7: a boundary-on run, its tree, its PMP mode, the
+		# firmware's commit records, and its declared words.
+		boundary_arg=(--boundary-on --pmp-mode "$boundary"
+			--record-table "$firmware_elf" --nm "$nm_tool"
+			--words "$stem.words.json")
+		tree_arg=(-dtb "$dtb")
+		;;
 	off) ;;
-	*) printf 'oracle boundary declaration %s is not on or off\n' "$boundary" >&2; return 2 ;;
+	*) printf 'oracle boundary declaration %s is not off, plain, or smepmp\n' "$boundary" >&2; return 2 ;;
 	esac
 	"$python" -I -B "$oracle" run --record "$stem.oracle.json" \
 		--exit-file "$stem.exit.txt" --qemu-output "$stem.qemu.txt" \
@@ -501,8 +548,8 @@ boot() {
 		--ram-base 0x80000000 --ram-size 0x200000000 \
 		--elf-word "boot-entry=$elf" -- \
 		"$qemu" -machine "$machine" -cpu "$cpu" -smp 8 -m 8G \
-		-bios "$run_firmware" -kernel "$elf" -display none \
-		-serial "file:$console" -no-reboot || true
+		-bios "$run_firmware" -kernel "$elf" "${tree_arg[@]}" \
+		-display none -serial "file:$console" -no-reboot || true
 }
 
 # One run: attempts until one completes (PASS, or another verdict that
@@ -516,6 +563,9 @@ run() {
 	local attempt=0 refusals=0 harts='' verdict=none status stem
 	local hart sha check elf_sha reported=() addition=$cheri_cpu
 	local oracle_verdict oracle_detail oracle_failure=''
+	local pair mode=off dtb=- tables=- record=- authority=- dtb_sha=-
+	local scenario_name limit=$max_attempts boundary_verdict
+	local boundary_failure=''
 
 	[ "$report" = - ] || reported=(--report "$report")
 	[ "$inputs" = - ] ||
@@ -529,13 +579,39 @@ run() {
 			"$toolchain" "$name" | tee -a -- "$summary"
 	fi
 	elf_sha=$(sha256sum -- "$elf" | cut -d' ' -f1)
-	while [ "$attempt" -lt "$max_attempts" ]; do
+	# M11-7: a boundary-on run (its expectation declares the boundary) on
+	# the row's PMP mode, under its pair's tree, which the gate admits by
+	# the partition checker's record; one attempt.
+	pair=$(boundary_pair "$expect")
+	if [ "$pair" != - ]; then
+		mode=$boundary limit=1
+		scenario_name=$(expect_field "$expect" scenario)
+		dtb=$build/partition/$scenario_name/$pair/$mode/$pair.dtb
+		tables=$build/partition/$scenario_name/$pair/$mode/$pair-pmp.json
+		record=$build/records/partition/$mode/$toolchain/$scenario_name/$pair.json
+		authority=$build/gen/partition/$scenario_name/authority-report.json
+		if ! check=$("$python" -I -B "$boundary_checker" gate \
+			--expect "$expect" --record "$record" --dtb "$dtb" \
+			--tables "$tables" 2>&1); then
+			printf 'BE_MVP_QEMU[%s/%s]: FAIL attempts=0 refused=0 boot_harts= qemu_exit=- (%s)\n' \
+				"$toolchain" "$name" "$check" | tee -a -- "$summary"
+			run_attempts=0
+			run_refusals=0
+			return 1
+		fi
+		dtb_sha=$(sha256sum -- "$dtb" | cut -d' ' -f1)
+	fi
+	while [ "$attempt" -lt "$limit" ]; do
 		attempt=$((attempt + 1))
 		oracle_failure=
+		boundary_failure=
 		stem=$output/$toolchain-$name.$attempt
+		[ "$mode" = off ] || "$python" -I -B "$boundary_checker" words \
+			--expect "$expect" --layout "$layout_header" \
+			--boundary-header "$boundary_header" --out "$stem.words.json"
 		boot "$stem" "$elf" "$machine" "$cpu${addition:+,$addition}" \
 			"$firmware_role" \
-			"$machine_class" "$pmp" "$menvcfg" "$mseccfg" "$boundary"
+			"$machine_class" "$pmp" "$menvcfg" "$mseccfg" "$mode" "$dtb"
 		status=$(cat -- "$stem.exit.txt")
 		set +e
 		"$python" -B "$checker" "$stem.console.log" \
@@ -554,12 +630,32 @@ print(fields.get("boot_hart", "none"))' "$stem.result.json" 2>/dev/null || echo 
 			oracle_verdict=FAIL
 			oracle_detail='record unavailable'
 		fi
-		"$python" -I -B "$boundary_checker" not-applicable \
-			--out "$stem.boundary.txt"
+		if [ "$mode" = off ]; then
+			"$python" -I -B "$boundary_checker" not-applicable \
+				--out "$stem.boundary.txt"
+		else
+			"$python" -I -B "$boundary_checker" check \
+				--oracle "$stem.oracle.json" \
+				--console "$stem.console.log" --expect "$expect" \
+				--tables "$tables" --pmp-mode "$mode" \
+				--partition-authority "$authority" \
+				--firmware-elf "$firmware_elf" --nm "$nm_tool" \
+				--layout "$layout_header" \
+				--boundary-header "$boundary_header" \
+				--out "$stem.boundary.txt" >/dev/null 2>&1 || true
+			boundary_verdict=$(sed -n 's/^BE_MVP_BOUNDARY: \([A-Z-]*\).*$/\1/p' \
+				-- "$stem.boundary.txt" 2>/dev/null | tail -n 1)
+			[ "$boundary_verdict" = PASS ] ||
+				boundary_failure=$(tail -n 1 -- "$stem.boundary.txt" 2>/dev/null ||
+					echo 'no boundary record')
+		fi
 		sha=$(sha256sum -- "$stem.console.log" | cut -d' ' -f1)
-		printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\toff\t-\t-\t-\n' \
+		printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
 			"$toolchain" "$name" "$attempt" "$hart" "$status" \
 			"${verdict:-none}" "$sha" "${elf#"$build"/}" "$elf_sha" \
+			"$([ "$mode" = off ] && echo off || echo on)" \
+			"$([ "$mode" = off ] && echo - || echo "$mode")" "$dtb_sha" \
+			"$([ "$mode" = off ] && echo - || echo boot)" \
 			>>"$attempts_file"
 		harts=${harts:+$harts,}$hart
 		[ "$status" = 0 ] || verdict=FAIL
@@ -570,12 +666,15 @@ print(fields.get("boot_hart", "none"))' "$stem.result.json" 2>/dev/null || echo 
 			oracle_failure=$oracle_detail
 			verdict=FAIL
 		fi
+		[ -z "$boundary_failure" ] || verdict=FAIL
 		[ "$verdict" = REFUSED ] || break
 		refusals=$((refusals + 1))
 	done
 	check=$(tail -n 1 -- "$stem.check.txt")
 	[ -z "$oracle_failure" ] ||
 		check="oracle: $oracle_failure; checker: $check"
+	[ -z "$boundary_failure" ] ||
+		check="boundary: $boundary_failure; $check"
 	if [ "$verdict" = REFUSED ]; then
 		verdict=FAIL
 		check="every attempt refused"

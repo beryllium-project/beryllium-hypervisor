@@ -312,7 +312,8 @@ VARIANT_KEYS = {"name", "toolchains", "where", "change", "fail", "after",
                 "detail", "fallback", "domain", "hart", "cause", "pass",
                 "time_above_zero", "shim_line", "exit_ceiling",
                 "run_budget_ticks", "outbound_bytes", "drain_delay_ticks",
-                "rdinit", "console_input", "session", "mutate", "findings"}
+                "rdinit", "console_input", "session", "mutate", "findings",
+                "off_copy_of"}
 # A v2 variant may also name the leaf a refused channel check walked and
 # declared (reader-write), or each domain's first fault and the accepted
 # exits it builds with (no-inject).
@@ -329,7 +330,27 @@ VARIANT_KEYS_V3 = {"name", "toolchains", "where", "change", "fail", "after",
                    "detail", "page", "domain", "hart", "walked", "declared",
                    "run_budget_ticks", "terminated", "mgmt", "pass",
                    "rdinit", "console_input", "session",
-                   "mutate", "findings"}
+                   "mutate", "findings", "off_copy_of"}
+# M11-7 (planning/mvp-m11-plan.md, D-12): an off copy, an image of the
+# scenario (the scenario's own, or a variant's) built without the physical
+# boundary, for the rows D-12 keeps off; its expectation and log are that
+# image's, under its own name, toolchains, where, and change, and it is
+# never boundary-on. Its name is the image's with -off.
+OFF_COPY_KEY = "off_copy_of"
+# The boundary-on form of an expectation (M11-7, step 1: the VS-domain
+# harts confined, the control hart not): BE_MVP:02 with the extension's
+# probe, harts 1 and 2 STOPPED, none STARTED, and the identity the
+# firmware read; each BE_MVP:08 without its status; and the "boundary"
+# section that tests/check-capture.py and tests/check-boundary.py read:
+# the control hart's step, the image whose descriptor the run's tree is,
+# whether that tree holds a digest, and each of harts 0 to 2's state at the
+# run's end. Hart 1 of hart-start alone may be between its start and its
+# confinement when the run ends (A-1 of M11-7's go).
+BOUNDARY_FIRMWARE = ("BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 boundary=1 "
+                     "status=1:{stopped},2:{stopped} started=none "
+                     "identity=<Z>")
+BOUNDARY_STARTED = {"hart-start": {"0": "boot", "1": "started",
+                                   "2": "never-started"}}
 # A variant's one compile-time change, as the layout names its value.
 VARIANT_VALUES = {"exit_ceiling": "VARIANT_EXIT_CEILING",
                   "run_budget_ticks": "VARIANT_RUN_BUDGET",
@@ -861,6 +882,7 @@ def check(scenario, layout, dts):
                     variant.get("domain") == 1,
                     f"variant {variant['name']} does not name the layout's "
                     "absent hart for domain 1")
+    check_off_copies(scenario)
     # Q13: M0's platform record stands, so a v2 scenario has no probes.
     require(version == 1 or not scenario.get("probes"),
             "a v2 scenario declares no probe images (M1 plan, Q13)")
@@ -875,6 +897,231 @@ def check(scenario, layout, dts):
         require(all(line in PROBE_LINES for line in probe.get("lines", ())),
                 f"probe {probe['name']} names an unknown line")
     return binding
+
+
+def off_copies(scenario):
+    """The scenario's off copies (OFF_COPY_KEY), in order."""
+    return [variant for variant in scenario.get("variants", [])
+            if OFF_COPY_KEY in variant]
+
+
+def own_variants(scenario):
+    """The scenario's variants but its off copies, in order."""
+    return [variant for variant in scenario.get("variants", [])
+            if OFF_COPY_KEY not in variant]
+
+
+def check_off_copies(scenario):
+    """Each off copy names an image of the scenario that is not an off copy,
+    is named for it with -off, and declares that image's outcome."""
+    name = scenario["name"]
+    others = {variant["name"]: variant for variant in own_variants(scenario)}
+    plain = ("name", "toolchains", "where", "change", OFF_COPY_KEY)
+    for variant in off_copies(scenario):
+        source = variant[OFF_COPY_KEY]
+        require(source == name or source in others,
+                f"off copy {variant['name']} names no image of scenario "
+                f"{name}")
+        require(variant["name"] == f"{source}-off",
+                f"off copy {variant['name']} is not named {source}-off")
+        wanted = {"pass": True} if source == name else {
+            key: value for key, value in others[source].items()
+            if key not in plain}
+        got = {key: value for key, value in variant.items()
+               if key not in plain}
+        require(got == wanted, f"off copy {variant['name']} does not "
+                f"declare {source}'s outcome {wanted}")
+
+
+def off_copy_images(scenario, images):
+    """{name: expectation} of each off copy: its image's, under its name."""
+    return {variant["name"]: dict(
+        copy.deepcopy(images[variant[OFF_COPY_KEY]]), image=variant["name"],
+        toolchains=variant["toolchains"], where=variant["where"],
+        change=variant["change"]) for variant in off_copies(scenario)}
+
+
+def parse_pairing(text, label):
+    """The pairing's TEXT: {run image: the image it is paired with}."""
+    pairs = {}
+    for number_, entry in enumerate(text.splitlines(), 1):
+        entry = entry.strip()
+        if not entry or entry.startswith("#"):
+            continue
+        fields = entry.split()
+        require(len(fields) == 2 and fields[0] != fields[1] and
+                fields[0] not in pairs,
+                f"{label}:{number_}: not one pair of two images")
+        pairs[fields[0]] = fields[1]
+    return pairs
+
+
+def read_pairing(path):
+    """scenarios/pairing.txt, or no pairs without one."""
+    if path is None:
+        return {}
+    return parse_pairing(pathlib.Path(path).read_text(encoding="utf-8"),
+                         path)
+
+
+def boundary_harts(name, outcome):
+    """Harts 0 to 2's states when a boundary-on run of image NAME ends: hart
+    0 in the boot OpenSBI domain (step 1); harts 1 and 2 confined if the
+    declared outcome starts them (a pass, or a failure after BE_MVP:08),
+    never started if it fails before the first start; hart-start's
+    BOUNDARY_STARTED."""
+    if name in BOUNDARY_STARTED:
+        return dict(BOUNDARY_STARTED[name])
+    after = outcome.get("after", "none")
+    started = bool(outcome.get("pass")) or (after != "none" and
+                                            after >= "BE_MVP:08")
+    state = "confined" if started else "never-started"
+    return {"0": "boot", "1": state, "2": state}
+
+
+def boundary_form(image, name, pair):
+    """IMAGE, the expectation of image NAME, in its boundary-on form, run
+    under the descriptor and tree of image PAIR."""
+    out = copy.deepcopy(image)
+    entries = []
+    firmware = 0
+    for entry in out["control_lines"]:
+        text = entry["template"]
+        if text.startswith("BE_MVP:02 "):
+            firmware += 1
+            entries.append(line(BOUNDARY_FIRMWARE.format(
+                stopped=HSM_STOPPED)))
+        elif text.startswith("BE_MVP:08 HART_STARTED "):
+            require(text.count(" status=0 ") == 1,
+                    f"{name}'s BE_MVP:08 {text!r} has no one status")
+            entries.append(line(text.replace(" status=0 ", " ")))
+        else:
+            entries.append(entry)
+    require(firmware == 1, f"{name} has no one BE_MVP:02")
+    out["control_lines"] = entries
+    out["boundary"] = {"control_hart": "boot", "pair": pair, "record": True,
+                       "harts": boundary_harts(name, out["outcome"])}
+    return out
+
+
+def apply_boundary(images, scenario, boundary_images, pairing):
+    """Each image the build makes boundary-on (its own name, or the image it
+    is paired with, in BOUNDARY_IMAGES) in its boundary-on form; an off copy
+    or a probe never."""
+    copies = {variant["name"] for variant in off_copies(scenario)}
+    probes = {probe["name"] for probe in scenario.get("probes", [])}
+    for name in sorted(images):
+        pair = pairing.get(name, name)
+        if pair not in boundary_images:
+            continue
+        require(name not in copies and name not in probes,
+                f"{name}, an off copy or a probe, is named boundary-on")
+        images[name] = boundary_form(images[name], name, pair)
+
+
+def boundary_self_test(scenario, images):
+    """M11-7's forms on the v1 scenario's IMAGES: the boundary-on BE_MVP:02
+    and BE_MVP:08 lines and the boundary section, by outcome; the pairing;
+    the off copies; and each refusal. Returns (cases, failures)."""
+    failures = []
+    identity = "c2" * 32
+    pairs = {"payload": "two-guests"}
+    on = copy.deepcopy(images)
+    apply_boundary(on, scenario, {"two-guests"}, pairs)
+
+    def matches(entry, text):
+        return re.fullmatch(entry["regex"], text) is not None
+
+    def tagged(image, tag):
+        return [entry for entry in image["control_lines"]
+                if entry["template"].startswith(tag)]
+
+    firmware = tagged(on["two-guests"], "BE_MVP:02 ")
+    started = tagged(on["two-guests"], "BE_MVP:08 ")
+    checks = [
+        ("the scenario image's BE_MVP:02 in its on form", len(firmware) == 1
+         and matches(firmware[0], "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 "
+                     f"boundary=1 status=1:1,2:1 started=none "
+                     f"identity={identity}")),
+        ("no identity, no on-form BE_MVP:02", not matches(
+            firmware[0], "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 boundary=1 "
+            "status=1:1,2:1 started=none identity=none")),
+        ("an off-form BE_MVP:02 refused", not matches(
+            firmware[0], "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 "
+            "status=1:1,2:1,3:1,4:1,5:1,6:1,7:1 started=none")),
+        ("each BE_MVP:08 without its status", len(started) == 2 and all(
+            " status=" not in entry["template"] for entry in started) and
+         matches(started[0], "BE_MVP:08 HART_STARTED hart=1 domain=0 "
+                 "result=0 ticks=0x2c26") and not matches(
+             started[0], "BE_MVP:08 HART_STARTED hart=1 domain=0 result=0 "
+             "status=0 ticks=0x2c26")),
+        ("the scenario image's section", on["two-guests"]["boundary"] == {
+            "control_hart": "boot", "pair": "two-guests", "record": True,
+            "harts": {"0": "boot", "1": "confined", "2": "confined"}}),
+        ("payload paired, its harts never started",
+         on["payload"]["boundary"]["pair"] == "two-guests" and
+         on["payload"]["boundary"]["harts"] == {
+             "0": "boot", "1": "never-started", "2": "never-started"}),
+        ("an image not named stays off", "boundary" not in on["ring-full"]
+         and on["ring-full"] == images["ring-full"]),
+        ("the off copy is its image's, off", "boundary" not in on[
+            "two-guests-off"] and {key: value for key, value in on[
+                "two-guests-off"].items() if key not in (
+                    "image", "toolchains", "where", "change")} == {
+            key: value for key, value in images["two-guests"].items()
+            if key not in ("image", "toolchains", "where", "change")}),
+        ("hart-start's hart 1 started, hart 2 never",
+         boundary_harts("hart-start", images["hart-start"]["outcome"]) == {
+             "0": "boot", "1": "started", "2": "never-started"}),
+        ("a failure after BE_MVP:10 confines both",
+         boundary_harts("ring-full", images["ring-full"]["outcome"])["1"]
+         == "confined"),
+    ]
+    refusals = []
+
+    def refused(label, call, reason):
+        try:
+            call()
+        except ScenarioError as error:
+            refusals.append((label, reason in str(error)))
+            return
+        refusals.append((label, False))
+
+    refused("an off copy named on", lambda: apply_boundary(
+        copy.deepcopy(images), scenario, {"two-guests-off"}, {}),
+        "an off copy or a probe")
+    refused("a probe named on", lambda: apply_boundary(
+        copy.deepcopy(images), scenario, {"probe-platform"}, {}),
+        "an off copy or a probe")
+    for label, text, reason in (
+            ("a pairing line of three images", "payload two-guests x\n",
+             "not one pair"),
+            ("an image paired with itself", "payload payload\n",
+             "not one pair"),
+            ("an image paired twice", "payload two-guests\n"
+             "payload anchor\n", "not one pair")):
+        refused(label, lambda: parse_pairing(text, "pairing"), reason)
+    for label, edit, reason in (
+            ("an off copy of no image", {"off_copy_of": "nothing"},
+             "names no image"),
+            ("an off copy not named for its image",
+             {"name": "two-guests-copy"}, "is not named"),
+            ("an off copy with another outcome",
+             {"pass": None, "fail": "boot", "after": "none"},
+             "does not declare")):
+        mutated = copy.deepcopy(scenario)
+        entry = next(variant for variant in mutated["variants"]
+                     if OFF_COPY_KEY in variant)
+        for key, value in edit.items():
+            if value is None:
+                entry.pop(key)
+            else:
+                entry[key] = value
+        refused(label, lambda: check_off_copies(mutated), reason)
+    for label, ok in checks + refusals:
+        if not ok:
+            failures.append(f"boundary: {label}")
+    return len(checks) + len(refusals), failures
 
 
 def policy_input(scenario_path, scenario, policy, negative=None):
@@ -1288,7 +1535,7 @@ def check_v3(scenario, layout, dts, binding, report, policy):
     if LOG_R2:
         expected[SELF_REPORT_FLIP] = {"pass": True, "mutate": CANARY,
                                       "findings": [SELF_REPORT_FINDING]}
-    variants = [variant for variant in scenario.get("variants", [])
+    variants = [variant for variant in own_variants(scenario)
                 if variant not in console_variants(scenario)]
     require(sorted(variant["name"] for variant in variants) == sorted(
         expected), f"the variants are not the plan's {sorted(expected)}")
@@ -1988,7 +2235,7 @@ def expectations(scenario, binding, layout, digest, core_of):
                          control_lines=before,
                          domain_control_lines=per_domain,
                          final_lines=after)}
-    for variant in scenario.get("variants", []):
+    for variant in own_variants(scenario):
         if variant in console_variants(scenario):
             continue  # console_images()
         outcome = {key: variant[key] for key in variant
@@ -2160,7 +2407,7 @@ def expectations_v2(scenario, binding, layout, digest, sealed, report_sha):
                          control_lines=before,
                          domain_control_lines=per_domain,
                          final_lines=after)}
-    for variant in scenario.get("variants", []):
+    for variant in own_variants(scenario):
         if variant in console_variants(scenario):
             continue  # console_images()
         outcome = {key: variant[key] for key in variant
@@ -2344,7 +2591,7 @@ def expectations_v3(scenario, binding, layout, digest, sealed, report_sha):
                          control_lines=before,
                          domain_control_lines=per_domain,
                          final_lines=after)}
-    for variant in scenario.get("variants", []):
+    for variant in own_variants(scenario):
         if variant in console_variants(scenario):
             continue  # console_images()
         outcome = {key: variant[key] for key in variant
@@ -3528,7 +3775,7 @@ def log_header(scenario, logs, probes):
         out += [f"{keyword} defined(BE_MVP_PROBE_IMAGE)"] + branch(
             logs[probes[0]])
         keyword = "#elif"
-    for variant in scenario.get("variants", []):
+    for variant in own_variants(scenario):
         log = logs[variant["name"]]
         if log["launch_expected"] == base["launch_expected"]:
             continue
@@ -3558,7 +3805,7 @@ def scenario_logs(scenario, binding, layout, files, core_of, sealed, policy,
     own), and each probe's; and each image's binding."""
     version = version_of(scenario)
     logs, bindings = {}, {}
-    for variant in [None] + scenario.get("variants", []):
+    for variant in [None] + own_variants(scenario):
         changed = copy.deepcopy(binding)
         if variant and "hart" in variant and version == 1:
             changed[variant["domain"]]["hart"] = variant["hart"]
@@ -3572,11 +3819,16 @@ def scenario_logs(scenario, binding, layout, files, core_of, sealed, policy,
         logs[probe["name"]] = image_log(scenario, None, True, binding,
                                         layout, files, core_of(binding),
                                         sealed, policy, dts, digest)
+    for variant in off_copies(scenario):
+        source = variant[OFF_COPY_KEY]
+        logs[variant["name"]] = copy.deepcopy(logs[source])
+        bindings[variant["name"]] = bindings[source]
     return logs, bindings
 
 
 def generate(scenario_path, layout_path, dts_path, out, policy_path=None,
-             negative=None, guest=None, flavour="linux"):
+             negative=None, guest=None, flavour="linux", boundary_images=(),
+             pairing=None):
     data = pathlib.Path(scenario_path).read_bytes()
     digest = hashlib.sha256(data).hexdigest()
     scenario = monitor_variants(flavour_lines(json.loads(data), flavour),
@@ -3609,7 +3861,7 @@ def generate(scenario_path, layout_path, dts_path, out, policy_path=None,
 
     core = sealed["core"] if sealed else core_of(binding)
     variants = []
-    for variant in scenario.get("variants", []) if version == 1 else ():
+    for variant in own_variants(scenario) if version == 1 else ():
         if "hart" in variant:
             changed = copy.deepcopy(binding)
             changed[variant["domain"]]["hart"] = variant["hart"]
@@ -3646,6 +3898,8 @@ def generate(scenario_path, layout_path, dts_path, out, policy_path=None,
     # beryllium-cheri: the guest flavour's added lines, and cheri-fault-hs's
     # and cap-store's outcomes.
     cap_store_images(cheri_fault_images(flavour_images(images, flavour)))
+    # M11-7: each off copy, its image's expectation under its own name.
+    images.update(off_copy_images(scenario, images))
     # M9's log (mvp/docs/log-profile.md): each image's constants, records,
     # and lines; the header carries the constants.
     logs, bindings = scenario_logs(scenario, binding, layout, files, core_of,
@@ -3655,6 +3909,9 @@ def generate(scenario_path, layout_path, dts_path, out, policy_path=None,
         apply_log(image, logs[name], bindings[name])
     # beryllium-cheri: cap-store's control run, its image's, logged.
     cap_store_control(images)
+    # M11-7: the boundary-on images' forms (the build's MVP_BOUNDARY_IMAGES).
+    apply_boundary(images, scenario, set(boundary_images),
+                   read_pairing(pairing))
     (out / "mvp-scenario.h").write_text(
         header(scenario["name"], binding, digest, layout, sealed,
                log_header(scenario, logs, [probe["name"] for probe in
@@ -3696,7 +3953,9 @@ PROFILE_RUNS = {
     "complete": ("two-guests", "te-poc", "anchor", "sbi-time", "shim-rule",
                  "hostile", "two-guests-shell", "te-poc-shell",
                  "anchor-shell", "probe-platform", "probe-vmid-distinct",
-                 "probe-vmid-shared", "probe-console-input"),
+                 "probe-vmid-shared", "probe-console-input",
+                 # M11-7's off copies (OFF_COPY_KEY), each its image's.
+                 "two-guests-off", "te-poc-off", "anchor-off"),
     "pre-measurement": ("payload", "no-sstc", "firmware-version",
                         "reader-write", "secret-shared",
                         "response-writable"),
@@ -4100,8 +4359,12 @@ def self_test(scenario_path, layout_path, dts_path, policy_path=None,
                                  layout, dts, None,
                                  layout["RING_PEAK_BUDGET"],
                                  bin_count(layout_path)))
+    images.update(off_copy_images(scenario, images))
     logged, more = log_self_test(scenario, scenario_path, binding, None,
                                  layout, files, policy, dts, images)
+    failures += more
+    bounded, more = boundary_self_test(scenario, images)
+    logged += bounded
     failures += more
     for failure in failures:
         print(f"FAIL {failure}")
@@ -4345,6 +4608,7 @@ def self_test_v2(scenario_path, scenario, layout, dts, policy, bins, files):
     images.update(console_images(scenario, scenario_path, images, binding,
                                  layout, dts, sealed,
                                  layout["RING_PEAK_BUDGET"], bins))
+    images.update(off_copy_images(scenario, images))
     logged, failures = log_self_test(scenario, scenario_path, binding, sealed,
                                      layout, files, policy, dts, images)
     failed += failures
@@ -4683,6 +4947,7 @@ def self_test_v3(scenario_path, scenario, layout, dts, policy, files,
     images.update(console_images(scenario, scenario_path, images, binding,
                                  layout, dts, sealed,
                                  layout["RING_PEAK_BUDGET"], bins))
+    images.update(off_copy_images(scenario, images))
     logged, failures = log_self_test(scenario, scenario_path, binding, sealed,
                                      layout, files, policy, dts, images)
     failed += failures
@@ -4711,6 +4976,10 @@ def main(argv):
                         default="riscv")
     parser.add_argument("--guest-flavour", choices=tuple(FLAVOUR_LINES),
                         default="linux")
+    # M11-7: the boundary-on images (mvp/Makefile's MVP_BOUNDARY_IMAGES)
+    # and the pairing (scenarios/pairing.txt).
+    parser.add_argument("--boundary-image", action="append", default=[])
+    parser.add_argument("--pairing")
     args = parser.parse_args(argv[1:])
     global MONITOR
     MONITOR = args.monitor
@@ -4731,7 +5000,7 @@ def main(argv):
             parser.error("--out is required")
         generate(args.scenario, args.layout, args.dts_tool, args.out,
                  args.policy_tool, args.negative, args.guest,
-                 args.guest_flavour)
+                 args.guest_flavour, args.boundary_image, args.pairing)
     except (ScenarioError, OSError, ValueError, KeyError, TypeError,
             AttributeError, IndexError) as error:
         print(f"BE_MVP_SCENARIO: FAIL {error}")

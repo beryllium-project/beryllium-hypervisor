@@ -24,6 +24,8 @@
  */
 #include "mvp-hart.h"
 
+#include "mvp-boundary.h"
+
 #define WORD_BYTES		8U
 
 _Static_assert(BE_MVP_DOMAINS == 2U, "the control loop tracks two domains");
@@ -53,6 +55,24 @@ _Static_assert(BE_MVP_INBOUND_RING_BYTES >= BE_MVP_RING_MIN_BYTES &&
 	       BE_MVP_VARIANT_OUTBOUND_RING_BYTES >= BE_MVP_RING_MIN_BYTES &&
 	       BE_MVP_INPUT_RING_BYTES >= BE_MVP_RING_MIN_BYTES,
 	       "every layout ring passes the block check");
+/*
+ * The state word the harness reads (mvp-boundary.h; planning/mvp-m11-plan.md,
+ * D-10): phase at its offset in the state page, the failure class in the
+ * next 32 bits, and the two values a ring failure leaves there.
+ */
+_Static_assert(__builtin_offsetof(struct be_mvp_state_page, state) +
+	       __builtin_offsetof(struct be_mvp_state, phase) ==
+	       BE_MVP_BOUNDARY_PHASE_OFFSET &&
+	       __builtin_offsetof(struct be_mvp_state, failure) ==
+	       __builtin_offsetof(struct be_mvp_state, phase) + 4U &&
+	       sizeof(enum be_mvp_phase) == 4U &&
+	       sizeof(enum be_mvp_class) == 4U &&
+	       BE_MVP_PHASE_FAILED == BE_MVP_BOUNDARY_PHASE_FAILED &&
+	       BE_MVP_CLASS_RING == BE_MVP_BOUNDARY_CLASS_RING,
+	       "the boundary's state word is the phase, then the class");
+_Static_assert(BE_MVP_BOUNDARY_IDENTITY_BYTES ==
+	       BE_MVP_BOUNDARY_IDENTITY_WORDS * WORD_BYTES,
+	       "the identity's words hold its bytes");
 
 static be_u64 add_saturating(be_u64 value, be_u64 addend)
 {
@@ -983,4 +1003,63 @@ be_u64 be_mvp_line_output(const struct be_mvp_record *record, char *output,
 		output[length++] = (char)record->payload[index];
 	output[length++] = '\n';
 	return length;
+}
+
+be_u64 be_mvp_boundary_word(const be_u8 *identity, be_u64 index)
+{
+	be_u64 word = 0U;
+	be_u64 byte;
+
+	if (identity == (const be_u8 *)0 ||
+	    index >= BE_MVP_BOUNDARY_IDENTITY_WORDS)
+		return 0U;
+	for (byte = 0U; byte < WORD_BYTES; ++byte)
+		word = word << 8 | identity[index * WORD_BYTES + byte];
+	return word;
+}
+
+void be_mvp_boundary_bytes(const be_u64 *words, be_u8 *bytes)
+{
+	be_u64 index;
+
+	if (words == (const be_u64 *)0 || bytes == (be_u8 *)0)
+		return;
+	for (index = 0U; index < BE_MVP_BOUNDARY_IDENTITY_BYTES; ++index)
+		bytes[index] = (be_u8)(words[index / WORD_BYTES] >>
+				       (8U * (WORD_BYTES - 1U -
+					      index % WORD_BYTES)));
+}
+
+enum be_mvp_class be_mvp_boundary_check(be_u64 probe, const long *errors,
+					const be_u64 *words,
+					const be_u8 *identity, be_u64 *failed)
+{
+	be_u64 index;
+
+	if (failed == (be_u64 *)0)
+		return BE_MVP_CLASS_BOUNDARY;
+	*failed = 0U;
+	if (probe == 0U || errors == (const long *)0 ||
+	    words == (const be_u64 *)0 || identity == (const be_u8 *)0)
+		return BE_MVP_CLASS_BOUNDARY;
+	for (index = 0U; index < BE_MVP_BOUNDARY_IDENTITY_WORDS; ++index) {
+		if (errors[index] != BE_MVP_SBI_SUCCESS) {
+			*failed = index;
+			return BE_MVP_CLASS_BOUNDARY;
+		}
+	}
+	for (index = 0U; index < BE_MVP_BOUNDARY_IDENTITY_WORDS; ++index) {
+		if (words[index] != be_mvp_boundary_word(identity, index)) {
+			*failed = index;
+			return BE_MVP_CLASS_BOUNDARY;
+		}
+	}
+	*failed = BE_MVP_BOUNDARY_IDENTITY_WORDS;
+	return BE_MVP_CLASS_NONE;
+}
+
+int be_mvp_boundary_census(const struct be_mvp_hsm_census *census)
+{
+	return census != (const struct be_mvp_hsm_census *)0 &&
+	       census->refused == 0U && census->started == BE_MVP_HSM_NONE;
 }

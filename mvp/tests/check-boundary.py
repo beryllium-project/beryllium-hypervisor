@@ -11,6 +11,8 @@
   check-boundary.py words --expect IMAGE.json --layout mvp-layout.h
       [--boundary-header mvp-boundary.h] [--extra WORDS] --out WORDS
   check-boundary.py not-applicable --out STEM.boundary.txt
+  check-boundary.py gate --expect IMAGE.json --record RECORD --dtb DTB
+      --tables PAIR-pmp.json
   check-boundary.py --self-test --scratch DIR
 
 Purpose: D-10's four checks of a boundary-on run (planning/mvp-m11-plan.md,
@@ -47,6 +49,12 @@ and must be FAILED with the class ring. `words` writes that oracle words
 file (with --extra's words and device registers added). A run that
 cannot be judged (an input missing, malformed, or refused) still has its
 record: the one line `BE_MVP_BOUNDARY: FAIL <reason>`.
+
+`gate` is the run harness's admission of a boundary-on run's device tree
+(D-3, D-10): the run starts only if the partition checker's record of the
+paired image (tests/check-partition.py --record) passed, names step 1's
+control hart, and gives this tree's and these tables' SHA-256; it prints
+`BE_MVP_BOUNDARY_GATE: ADMIT` or `REFUSE <reason>` and exits 0 or 1.
 
 Every artifact names step 1: the tables document's and the declaration's
 control_hart is boot, and the result line says control_hart=boot. A
@@ -413,6 +421,22 @@ def judge(expect, record, text, tables, mode, authority, symbols,
                             f"(FAILED, ring)")
     facts["harts"] = ",".join(f"{hart}:{states[hart]}" for hart in range(3))
     return findings, facts
+
+
+def gate(expect, record, dtb, tables):
+    """The reasons a boundary-on run of EXPECT may not start under the tree
+    DTB with the tables TABLES (bytes), by the partition RECORD."""
+    boundary = declaration(expect)
+    reasons = []
+    for key, wanted in (("result", "pass"), ("control_hart", "boot"),
+                        ("image", boundary["pair"]),
+                        ("dtb_sha256", hashlib.sha256(dtb).hexdigest()),
+                        ("tables_sha256",
+                         hashlib.sha256(tables).hexdigest())):
+        if record.get(key) != wanted:
+            reasons.append(f"the partition record's {key} is "
+                           f"{record.get(key)!r}, not {wanted!r}")
+    return reasons
 
 
 def phase_word(domain, layout, header):
@@ -837,6 +861,26 @@ def self_test(scratch):
         ok, detail = unjudged_case(name.replace(" ", "-"), expect)
         cases.append((f"a run that cannot be judged ({name}) has its "
                       f"record", ok, detail))
+    dtb, tables = b"\xd0\x0d\xfe\xed tree", b'{"schema": "tables"}'
+    passed = {"result": "pass", "control_hart": "boot", "image": "two-guests",
+              "dtb_sha256": hashlib.sha256(dtb).hexdigest(),
+              "tables_sha256": hashlib.sha256(tables).hexdigest()}
+    for name, edit, want in (
+            ("the checker's passing record of this tree", {}, None),
+            ("a record that did not pass", {"result": "fail"}, "result"),
+            ("a record of step 2's tree", {"control_hart": "confined"},
+             "control_hart"),
+            ("another image's record", {"image": "two-guests-shell"},
+             "image"),
+            ("a record of another tree", {"dtb_sha256": "0" * 64},
+             "dtb_sha256"),
+            ("a record of other tables", {"tables_sha256": "0" * 64},
+             "tables_sha256")):
+        reasons = gate(expectation(), dict(passed, **edit), dtb, tables)
+        ok = not reasons if want is None else \
+            len(reasons) == 1 and f"record's {want} is" in reasons[0]
+        cases.append((f"the gate: {name}", ok, "; ".join(reasons) or
+                      "admitted"))
     failures = 0
     for name, ok, detail in cases:
         failures += not ok
@@ -868,6 +912,9 @@ def main(argv):
     words.add_argument("--extra")
     absent = commands.add_parser("not-applicable")
     absent.add_argument("--out", required=True)
+    admit = commands.add_parser("gate")
+    for name in ("expect", "record", "dtb", "tables"):
+        admit.add_argument(f"--{name}", required=True)
     args = parser.parse_args(argv[1:])
     try:
         if args.self_test:
@@ -886,6 +933,13 @@ def main(argv):
         if args.command == "not-applicable":
             write_new(args.out, NOT_APPLICABLE)
             return 0
+        if args.command == "gate":
+            reasons = gate(read_json(args.expect), read_json(args.record),
+                           pathlib.Path(args.dtb).read_bytes(),
+                           pathlib.Path(args.tables).read_bytes())
+            print("BE_MVP_BOUNDARY_GATE: " + (
+                f"REFUSE {'; '.join(reasons)}" if reasons else "ADMIT"))
+            return 1 if reasons else 0
         parser.error("check, words, not-applicable, or --self-test")
     except (Refused, qemu_oracle.OracleError, OSError, ValueError,
             KeyError, TypeError, IndexError) as error:

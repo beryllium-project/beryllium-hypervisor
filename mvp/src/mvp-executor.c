@@ -9,9 +9,10 @@
  *          platform helpers', moved here from hart 0's runtime unchanged.
  * Trust:   no decision: each function passes its arguments through and
  *          returns its helper's result. The injection's function is built
- *          only into an image that accepts denials, and the raw hgatp
- *          switch's only into the two VMID probe images, so each image
- *          links the helper calls it linked before.
+ *          only into an image that accepts denials, the raw hgatp
+ *          switch's only into the two VMID probe images, and the domain
+ *          commit extension's two only into a boundary-on image (M11-7),
+ *          so each image links the helper calls it linked before.
  * Scope:   the MVP line, built for each monitor with its scenario and
  *          variant, as hart 0's and the domain harts' runtimes are.
  */
@@ -21,6 +22,9 @@
 #include "r0-sbi.h"
 #if defined(BE_MVP_PROBE_IMAGE)
 #include "mvp-probe.h"
+#endif
+#if defined(BE_MVP_BOUNDARY)
+#include "mvp-boundary.h"
 #endif
 
 long be_mvp_fw_call(be_u64 eid, be_u64 fid, be_u64 argument0,
@@ -58,6 +62,23 @@ long be_mvp_exec_hart_status(be_u64 hart, be_u64 *status)
 			      BE_MVP_FW_HSM_HART_GET_STATUS, hart, 0U, 0U,
 			      status);
 }
+
+#if defined(BE_MVP_BOUNDARY)
+long be_mvp_exec_confine(void)
+{
+	be_u64 value;
+
+	return be_mvp_fw_call(BE_MVP_BOUNDARY_EID, BE_MVP_BOUNDARY_FID_CONFINE,
+			      0U, 0U, 0U, &value);
+}
+
+long be_mvp_exec_boundary_identity(be_u64 index, be_u64 *word)
+{
+	return be_mvp_fw_call(BE_MVP_BOUNDARY_EID,
+			      BE_MVP_BOUNDARY_FID_IDENTITY, index, 0U, 0U,
+			      word);
+}
+#endif
 
 #if defined(BE_MVP_PROBE_IMAGE)
 long be_mvp_exec_send_ipi(be_u64 mask, be_u64 base)
