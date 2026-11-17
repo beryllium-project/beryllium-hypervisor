@@ -31,7 +31,8 @@ repository's history, which this repository does not hold, and the commit
 IDs it names are that repository's. The files it cites under `.github/`,
 and the internal session handoff, are that repository's too and are not
 part of this one. Section 8 discloses the assistance in the release path's
-steps 2 and 3, which made this repository.
+steps 2 and 3, which made this repository, and section 9 the assistance
+in M11, the first milestone made after the release.
 
 ## 1. The responsible human
 
@@ -427,3 +428,50 @@ No AI system selected what migrated, classified a scan finding, accepted
 a review finding's category, approved a commit, added a `Signed-off-by`,
 or published anything (`LLM_POLICY_ALIGNMENT.md`, "Beryllium public
 GitHub release boundary").
+
+## 9. After the release: M11, the physical boundary
+
+This section covers M11 alone ([its plan](../../planning/mvp-m11-plan.md)).
+M11 was made after MVP 1.0, on this repository's own history, in two
+Copilot CLI sessions: `53108cb4-3892-4b32-8676-b84a1e373797`, on the
+development laptop, from the plan's acceptance on 2026-11-11 to
+2026-11-15; and `3c4fb211-3c09-44ad-aa0c-03005b177919`, on the
+workstation, from 2026-11-15. Every commit of M11 carries its session's
+`Copilot-Session` trailer beside the `Co-authored-by: Copilot` one, and
+the responsible human's `Signed-off-by`, which he alone adds (`git log
+--format='%(trailers:key=Copilot-Session,valueonly)'`). The commits that
+this section's sources name are this repository's.
+
+The practice is the one that sections 3 and 4 describe, as the plan's
+"Order" requires. An owner session plans, writes the documents and the
+claim's words, and reviews. Sub-agents write the code, the tests, and
+the tools. The owner session reads every change line by line before it
+lands, and runs the checks and the gates on the landed tree. The
+responsible human selected each session's model.
+
+- The second session's owner ran on `claude-fable-5.2`. Its coding
+  sub-agents and its reviewing sub-agents ran on Claude Opus 5.5
+  (`claude-opus-5.5`, `max` effort, `long_context` tier).
+- In the first session the coding sub-agent ran on an unlisted model,
+  but for the three pieces that the table names, and the reviewing
+  sub-agents ran on `claude-opus-5.5`.
+- In both sessions some mechanical work (searches and command runs) ran
+  on `gpt-5.6-luna`.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The M11 plan, the entries of its decision record, the proof-impact review, the evidence record, and the words of the README, the guide, the claim's page, and the ledger's rows | The owner session; reviewing sub-agents read the plan's drafts | Plan revision S3-D's acceptance, then the plan's |
+| The plan's acceptance, and each decision that a stop or an open question of the plan returned to him | The responsible human | His replies, which the plan's decision record quotes |
+| M11-2's tools (the list of runs near a time limit, the firmware base's fetch and build, the end-of-run oracle, the switch of every run to the firmware base, the proof arm's count of provers), M11-3 (the layout), M11-4 (signalling by timer ticks), and M11-5 (the descriptor's generator, backend, and checker) | A coding sub-agent on an unlisted model; each change read line by line by the owner session | The plan's acceptance |
+| M11-6, the firmware additions, with their configuration and their tests; and the tenth patch, in M11-7 | A coding sub-agent on `claude-opus-5.5`, afresh from the plan, with no access to the characterization's scratch; each patch names the tool in an `AI-assisted-by` line. The owner session's review went back to the writer as comments | The plan's D-2 and Q9 |
+| The litmus record's excerpts, found again in the compiled monitors at each re-proof point; and the verifier's time limits, doubled | Sub-agents on `claude-opus-5.5`; read by the owner session | The plan's D-11; the responsible human's reply of 2026-11-13 |
+| The tool lock's move to the workstation; M11-7 (step 1 of the boundary, the hostile-monitor images, the negatives); M11-8 (step 2); M11-9's tools (the ledger's second set, the record tool's kind); and the board tools' changes of those days | Coding sub-agents on `claude-opus-5.5`; each change read line by line by the owner session | The plan's acceptance; the responsible human's directions |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted the plan or a result, decided a stop, re-set a
+limit, added a `Signed-off-by`, or pushed. Nothing of M11 has been sent
+to another project by automation; whether to offer the firmware
+additions is the responsible human's decision (the plan's D-2).
+
+The M12 lane's commits, made in the same weeks, carry another session's
+trailer; that lane's own pages describe it.

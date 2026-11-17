@@ -527,6 +527,25 @@ plan, "Architecture" and "The triggers for Instance 3").
   M11-7, and since M11-8 twelve, the control hart's five among them
   (`boundary-control-absent`, `-no-list`, `-wrong-boot`, `-two-narrow`,
   and `-no-mailbox`).
+- **The boundary's claim (M11-9)** (the M11 plan's "Claim text").
+  MVP 1.0's claim, `docs/claim.md`, does not change. The M11
+  candidate's claim is a page of its own, `docs/claim-boundary.md`: one
+  clause and its required limit, in the plan's words. The claim ledger
+  holds its rows as a second set (the key `candidate` of
+  `docs/claim-ledger.json`, rendered as
+  `docs/claim-ledger-boundary.md`), kept apart from the release's rows:
+  each claim row is one part of the page's clause and the parts are the
+  whole clause, and each non-claim row is one sentence of the limit,
+  word for word. `tools/claim-ledger.py` checks the set with eight
+  checks of its own: its form; its methods, which are the plan's four
+  (host unit test, adversarial test, semantic checker, emulation);
+  its evidence, each artifact by its SHA-256; the candidate's tree,
+  which it names once the gates have passed at it and which a commit on
+  the line must then have; its OpenSBI commit, the one that the
+  firmware's pins hold; its rendering; its page; and three words
+  ("isolated", "sandboxed", "verified") that the plan never uses of the
+  boundary. No row of the set names a row of the release's, and the
+  release's checks do not read the set.
 - **Hart region** (port rule `hart-region`, `src/mvp-layout.h`). A NOLOAD
   region of two 64 KiB blocks at `0x1_0204_4000`, right after B7's pool,
   in the pool's segment (Q1). Each block holds the hart's 8 KiB trusted
@@ -1000,6 +1019,9 @@ plan, "Architecture" and "The triggers for Instance 3").
 | `scenarios/anchor/breach.json`, `tools/gen-breach.py` | The hostile-monitor attempts (D-10's column for a VS-domain hart, 112 for each hart) and their generator: the table that the hook runs, and the plan that a run must show, each attempt judged from the hooked hart's profile (new); the control role (`breach-control.json`, 132 attempts), each call judged from the role's call list, with the outcomes of a listed call that the firmware rejects and of a console write of no byte (M11-8) | M11-7, M11-8 |
 | `src/mvp-breach.{h,c}`, `src/mvp-breach-arch.S` | The test hook of the breach images: its record, its walk of the table, and the attempt helper with the hook's own trap vector; linked into the breach images and no other (new); the control role's hook, record, and page tables, in sections of their own (M11-8) | M11-7, M11-8 |
 | `tests/boundary-negatives.py` | The boundary negatives' device trees, each made from `two-guests`' tree by one named edit; the record of the independent checker's refusal of each; and every tree tried against every run through the gate (new); the control hart's five, from the step-2 tree, and `boundary-control-absent` from step 1's (M11-8) | M11-7, M11-8 |
+| `docs/claim-boundary.md`, `docs/claim-ledger-boundary.md` | The M11 candidate's claim on a page of its own, the clause and its required limit in the M11 plan's words; and the table of the ledger's second set, rendered from `docs/claim-ledger.json` (new). `docs/claim.md` and `docs/claim-ledger.md`, MVP 1.0's, do not change | M11-9 |
+| `tools/claim-ledger.py`, `docs/claim-ledger.json` | The ledger's tool and its source (M4-1; the release's rows and their ten checks, unchanged); the second set, the key `candidate`: seven claim rows that are the parts of the page's clause and eleven non-claim rows that are the sentences of its limit; its eight checks (form, methods, evidence, tree, OpenSBI commit, rendering, page, and the three words), each with seeded mutations of its own; `render` writes both tables (M11-9) | M4-1, M11-9 |
+| `tools/rc-record.py` | The record of the gates at a candidate (M4-4); `--kind candidate`, for a milestone's candidate that is no release candidate (M11-9) | M4-4, M11-9 |
 | `tests/run-qemu.sh` | The eight-hart QEMU driver (from B7's): provisional at M0-3, each attempt judged by the capture checker and a REFUSED attempt made again at M0-4; te-poc's runs and variants (M1-4); anchor's runs and four runtime negatives with the measured inputs (M2-5); the QEMU oracle at each attempt's end (`tests/qemu_oracle.py`, new), the firmware base for every run, and the earlier firmware, pinned and required, for `firmware-version` alone (M11-2); a boundary-on run under its pair's step-1 tree (`-dtb`), admitted only by the partition record, with the oracle's boundary-on read, `tests/check-boundary.py`'s check of each attempt, and four columns in `attempts.tsv`; the off copies for the rows without the boundary; the `k3-like` rows with Smepmp; the twelve breach runs; and the fourteen negative runs, `boundary-absent` under the firmware without the extension (M11-7); the control hart's ten negative runs and `breach-c`'s six, and the step in `attempts.tsv` (M11-8) | M0-3, M0-4, M1-4, M2-5, M11-2, M11-7, M11-8 |
 | `tests/check-capture.py`, `tests/fixtures/` | The capture checker, its self-test and mutations, and its fixtures (new); the regenerated fixtures and the board's stop-6 capture (M0-C.2); schema-v2 expectations, the denials, the channel, the report, and M1's fixtures (M1-4, M1-5, M1-B); schema-v3 expectations, the pages, the measurement, the requests' HMACs, the management log, the transitions and their order, M2's fixtures, and M1's judged against M1's pins (M2-5); M9's retained captures against the pinned era set `tests/fixtures/pre-m11/`, and the recomputation cases on synthetic stand-ins made from them (M11-2); the stand-ins' layout-derived lines from the current expectation (M11-3); the current images' rules beside the earlier images', chosen by the expectation: the tick and wake bounds, the tick probe's ordered times with its latency recorded and not judged, and the stand-ins' current signalling lines (M11-4); for an expectation that declares the boundary, the boundary-on forms of `BE_MVP:02`, `BE_MVP:08`, and DETAIL, the firmware's commit-digest line, and M-mode's commit records cut from the capture's end; `--check-image` by the image's expectation; and the refused stand-in on `two-guests-off` (M11-7); the boundary-on stand-in under both steps, `confine=<error>` in the boundary class's DETAIL, and stand-ins and mutations of the control hart's negatives (M11-8) | M0-4, M0-C, M1-4, M1-5, M1-B, M2-5, M11-2, M11-3, M11-4, M11-7, M11-8 |
 | `tests/kexec-rehearsal.sh`, `tests/kexec-rehearsal/init.c` | The eight-hart kexec rehearsal (from B7's); te-poc's image with its report (M1-4); anchor's with its report and measured inputs (M2-5) | M0-4, M1-4, M2-5 |
@@ -1707,10 +1729,10 @@ monitor budgets (see [Budgets (measured)](#budgets-measured)).
 ./mvp/mvp k3-probe              # the three probe groups alone, in a session
 ./mvp/mvp k3-characterize       # M5-6a: the board's U-Boot, attended, no saveenv
 ./mvp/mvp board-evidence        # a session's board record and platform record under mvp/results/
-./mvp/mvp claim-ledger check    # the claim ledger and the release surfaces under docs/ (M4-1)
-./mvp/mvp claim-ledger render   # write docs/claim-ledger.md from docs/claim-ledger.json
+./mvp/mvp claim-ledger check    # the claim ledger and the release surfaces under docs/ (M4-1), and the ledger's second set (M11-9)
+./mvp/mvp claim-ledger render   # write docs/claim-ledger.md and docs/claim-ledger-boundary.md from docs/claim-ledger.json
 ./mvp/mvp claim-ledger self-test # the checker's seeded mutations and variants
-./mvp/mvp rc-record ARGS...     # the release-candidate record under mvp/results/ (M4-4)
+./mvp/mvp rc-record ARGS...     # the release-candidate record under mvp/results/ (M4-4); --kind candidate for a milestone's candidate (M11-9)
 ./mvp/mvp help
 ```
 
@@ -1888,7 +1910,8 @@ Build outputs go under `build/mvp/`; compiler and tool scratch goes to
 `build/mvp/tmp` (`TMPDIR`), never the host's `/tmp`. Besides
 `tool-lock refresh` and `board-evidence`, the wrapper commands that write
 outside `build/` are `claim-ledger render`, which rewrites
-`docs/claim-ledger.md` from its JSON source (M4-1), and `rc-record`, which
+`docs/claim-ledger.md` from its JSON source (M4-1), and since M11-9 the
+second set's `docs/claim-ledger-boundary.md` beside it, and `rc-record`, which
 writes the new release-candidate record its `--out` names (M4-4); since
 M5-2 the board session's `k3-env` and `k3-preflight` also keep the full
 environment texts and the partition's UUID in the private store

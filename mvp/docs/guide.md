@@ -1806,6 +1806,193 @@ a fresh generation. The MVP distributes no binary of any of them.
   evidence of the release candidate itself; and the AI-assistance
   disclosure, [ai-assistance.md](ai-assistance.md).
 
+## 10. The physical boundary (M11)
+
+This section is about work after MVP 1.0. The release's images have no
+such boundary, and nothing here changes the [claim](claim.md) for the
+release. The boundary's own claim, with its limit, is on a page of its
+own, [claim-boundary.md](claim-boundary.md), and the
+[M11 plan](../../planning/mvp-m11-plan.md) is its design. Everything
+below is emulation: no run under the boundary has been made on a board.
+
+### What it is
+
+Through MVP 1.0 the monitor's three harts ran in HS mode with the
+firmware's whole view of memory. A VS domain was held to its window by
+the G-stage tables that the monitor's own code builds, and nothing held
+the monitor's code on one hart away from another hart's VS domain. M11
+puts a boundary under the monitor: before a hart takes its first input
+from a VS domain, M-mode confines it to a **physical access profile**,
+the memory that the hart's part of the monitor needs, with its own VS
+domain's where it runs one, enforced by the hart's PMP entries. The
+parts, in the order of the build:
+
+- **The partition descriptor** (`mvp/tools/gen-partition.py`, written
+  for each image from its scenario and the layout header alone, under
+  `build/mvp/gen/partition/`). It names every extent of the image; each
+  hart's role (hart 0 `control`, harts 1 and 2 `vs-domain` with their VS
+  domains, harts 3 to 7 `parked`); the profile of each of harts 0 to 2,
+  as the extents that it may read, write, or execute; each role's list
+  of firmware calls (the console write and the shutdown for the control
+  hart, with the console read where the scenario grants console input;
+  none for a VS-domain hart); and each hart's lifecycle: boot access
+  first, then its profile, with no way back but a system reset. Its
+  SHA-256 is the **partition identity**, which the image is built with
+  (`mvp-partition-identity.h`).
+- **The device tree and the expected tables**
+  (`mvp/tools/partition-backend.py`, under `build/mvp/partition/`). The
+  backend renders the descriptor as OpenSBI domains on QEMU's own device
+  tree for the machine: `be_boot`, in which harts 0 to 2 boot;
+  `be_control`, `be_g0`, and `be_g1`, one narrow OpenSBI domain for each
+  of those harts, with the hart's regions, its entry address, and its
+  call list (`ecall-allowlist`); and `be_park`, for the harts that stay
+  stopped. The tree carries the partition identity (`config-digest`) and
+  restricts the cold boot to hart 0. Beside the tree the backend writes
+  the PMP entries that each hart must hold in each state, in plain PMP
+  mode and in Smepmp mode (`<image>-pmp.json`).
+- **The independent check** (`mvp/tests/check-partition.py`). It derives
+  the same profiles again from the scenario, the layout, the linked
+  image, and the firmware, compares the descriptor, the tree, and the
+  tables with them, and writes a record that binds the tree and the
+  tables by SHA-256 (`build/mvp/records/partition/`). The run harness
+  boots a tree only if that record admits it.
+- **The firmware** (section 2 and below): OpenSBI at a pinned commit
+  with ten patches of the project's own. They add an experimental SBI
+  extension, `0x08004246`, with two functions. Function 0, which the
+  monitor calls `confine`, moves the calling hart from the boot OpenSBI
+  domain into its own narrow one and does not return; M-mode allows it
+  only when, the firmware's root OpenSBI domain aside, the hart runs in
+  the first OpenSBI domain that lists it, exactly one other lists it,
+  and that one names the hart as its boot hart and has a call list. The
+  move is one-way. Function 1 returns the partition identity, to a hart
+  that is still in the boot OpenSBI domain. The patches also add the
+  filter that refuses a call outside a hart's list, a check of each
+  confined hart's PMP entries against its regions, and a **commit
+  record** for each hart, written by that hart in M-mode's memory:
+  whether it is confined, its `menvcfg`, `mseccfg`, and PMP entries, and
+  three counts (access faults handed back to it, calls that its list
+  refused, and listed calls that returned an error). The firmware prints
+  the records just before a system reset.
+
+**A boot, in order** (the M11 plan's D-6): hart 0 boots in `be_boot`
+and reads the partition identity from M-mode, which must be the
+image's own. It does the monitor's boot work as before, and starts
+harts 1 and 2. Each of those begins at a stub that calls `confine`, and
+resumes, confined, at the monitor's hart entry. When both starts have
+returned, hart 0 calls `confine` itself, before it reads anything that
+a VS-domain hart writes, and resumes at its own confined entry, from
+which it prints the `BE_MVP:08` lines and runs the control loop. A
+confined VS-domain hart makes no firmware call at all; the harts signal
+each other through the rings alone, each read on its hart's own timer
+tick.
+
+### Build the firmware
+
+```sh
+./mvp/mvp firmware
+./mvp/mvp firmware FIRMWARE_GIT=/absolute/path/to/opensbi-mirror
+./mvp/mvp firmware-test
+```
+
+`firmware` fetches OpenSBI at the commit and tree that
+`mvp/firmware/pins.mk` names (from `FIRMWARE_GIT`, a local mirror, or
+from upstream), applies the series under `mvp/firmware/patches/`, builds
+the generic platform's `fw_dynamic.bin` in the reduced configuration of
+`mvp/firmware/config` with the tool lock's tools, and compares its
+SHA-256 with `MVP_PIN_FIRMWARE_BIN_SHA256` in the lock. The build is
+reproducible: the evaluator builds the same source again and compares
+the binary with the host's. `firmware-test` runs the firmware's own
+tests, which `check` runs too: the two pure decisions of the series (the
+guard of `confine` and the call filter) on the host, and a bare-metal
+payload under QEMU whose rows are judged from outside the machine.
+[`mvp/firmware/README.md`](../firmware/README.md) describes the series,
+the configuration, and the tests. One more binary is built for one
+negative: the same source and series with the extension configured out
+(`MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256`).
+
+The series is the project's M-mode code and is in the running trusted
+base of every profile. It is licensed as OpenSBI is, and each patch
+names the AI tool that assisted in writing it.
+
+### Read a run under the boundary
+
+`./mvp/mvp check` makes every run. For each attempt of a run under the
+boundary, `build/mvp/qemu/suite/` holds, beside the files of section 3:
+
+- `.oracle.json`: what the harness read through QEMU's own monitor
+  interface with the machine stopped at the guest's shutdown, for all
+  eight harts: the PMP registers, `menvcfg`, `mseccfg`, the program
+  counter, M-mode's commit records from the firmware's memory, and the
+  words of memory that the run's declaration names. Nothing inside the
+  machine runs during the read.
+- `.boundary.txt`: the judgement of `mvp/tests/check-boundary.py`, one
+  line when it passes. It passes only if four things hold (the M11
+  plan's D-10). Each confined hart holds exactly the expected table of
+  its profile, as the oracle read it and as M-mode printed it, and each
+  hart that the run left unconfined or never started holds what that
+  state gives. Harts 3 to 7 have every PMP entry off, are not confined,
+  and have their program counters inside the firmware. The partition
+  identity that M-mode printed is the image's. And M-mode's three counts
+  are those that the run declares: zero for every hart, except in the
+  hostile-monitor images and in two of the negatives below, which
+  declare theirs.
+
+In the console, a run under the boundary shows the partition identity
+in OpenSBI's banner (`Domain commit digest`), the same identity in
+`BE_MVP:02`, and each hart's commit record after the monitor's last
+line (section 3 describes each for a `te-poc` run). The `.boundary.txt`
+of a passing `two-guests` run is:
+
+```text
+BE_MVP_BOUNDARY: PASS image=two-guests pair=two-guests pmp_mode=plain control_hart=confined harts=0:confined,1:confined,2:confined,3-7:never-started identity=<12 hex>
+```
+
+### The hostile-monitor images and the negatives
+
+The boundary is meant to hold against the monitor's own HS-mode code on
+a hart, once that hart is confined. Two kinds of run test that
+(section 3 lists them among the negative variants):
+
+- **The hostile-monitor images** (`breach-g0`, `breach-g1`, and
+  `breach-c`, variants of `anchor`). A test hook compiled into one
+  hart's HS-mode code makes a declared list of attempts on memory,
+  device registers, and firmware calls outside that hart's profile and
+  list (`mvp/scenarios/anchor/breach.json` for a VS-domain hart, 112
+  attempts; `breach-control.json` for the control hart, 132). Each
+  attempt declares its outcome, and the run's `.breach.txt` has one line
+  for each (`row <name> <outcome> cause=… stval=… ok`) and a verdict.
+  The judge takes each row's trap from the hook's record, which the
+  oracle reads, the unchanged witness words from the oracle, and the
+  counts from M-mode's record: what the breached hart itself prints is
+  not evidence. Each image is also built without the boundary
+  (`breach-…-off`); there every attempt that has a witness must take
+  effect, which shows that the tests can tell the boundary's presence
+  from its absence.
+- **The boundary's own negatives** (twelve `boundary-…` runs of
+  `two-guests`): the image under a firmware without the extension, or
+  under a device tree changed in one place. Each must fail closed for
+  its declared reason. A changed tree is refused by the independent
+  check, and the harness admits it only for the one run that declares
+  that refusal.
+
+### What this does not show
+
+Read the [boundary's claim](claim-boundary.md) with its limit. In
+short: it is emulation evidence by adversarial tests and a semantic
+checker, and nothing is proved; PMP's behaviour is the emulator's; the
+firmware, the descriptor's generator, the boot chain, and the monitor's
+boot code before each hart's confinement are trusted; the attempts are
+a list made by a test hook, not every access and not an exploit; and a
+breached control hart keeps everything that the control hart's role
+has.
+
+The claim ledger holds this claim's rows as a second set, apart from
+the release's: [claim-ledger-boundary.md](claim-ledger-boundary.md), one
+row for each part of the clause with its methods and evidence, and one
+for each sentence of the limit. `./mvp/mvp claim-ledger check` checks
+both sets, and that the second set's rows are the page's words. The set
+names the candidate's tree once the gates have passed at it.
+
 This guide documents responsible-human accepted MVP 1.0 release
 candidate 4, exact commit `d70a8535` (`RC4`, accepted 2026-11-05), over
 candidate tree `X4`, exact commit `a6eaa885`.
