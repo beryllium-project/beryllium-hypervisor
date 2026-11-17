@@ -7,7 +7,7 @@ release-candidate evidence (M4-4)", Q4, pass criterion 4).
   rc-record.py --commit X --out DIR --host-bundle DIR --evaluator-record DIR
       --model-host DIR --model-evaluator DIR --model-evaluator-logs DIR
       --rehearsal DIR --kernel-repro DIR|FILE --gate NAME=LOG ...
-      [--home PATH]
+      [--home PATH] [--kind release-candidate|candidate]
   rc-record.py --verify DIR
   rc-record.py --self-test --scratch DIR
 
@@ -57,7 +57,9 @@ over 20 MiB, which rc.txt describes instead, and compare-images.txt),
 model/host/, model/evaluator/, model/evaluator-logs/, rehearsal/
 (summary.txt, and per default case CASE/status.txt and each attempt's
 evidence.REHEARSAL_FILES and its export, log.json), kernel-repro.txt,
-and MANIFEST.sha256. Every
+and MANIFEST.sha256. --kind sets rc.txt's kind= alone: release-candidate,
+the default, or candidate, for a milestone's candidate that is no release
+candidate (planning/mvp-m11-plan.md, M11-9); --verify reads either. Every
 file passes
 through evidence.py's rewriter (the checkout and --home, default HOME, to
 <repo> and <home>), and a "Linux version" banner's (user@host) becomes
@@ -70,9 +72,11 @@ input. Exit 0 pass, 1 refused, 2 usage.
 """
 
 import argparse
+import contextlib
 import datetime
 import functools
 import importlib.util
+import io
 import json
 import os
 import pathlib
@@ -103,6 +107,8 @@ MODEL_FILES = ("artifacts.sha256", "claim-status.txt", "differential.txt",
                "mvp-inputs.sha256", "source-state.txt", "source.sha256",
                "tool-versions.txt")
 UTC, BIG = "%Y-%m-%dT%H:%M:%SZ", 20 << 20
+# rc.txt's kind= values; the first is the default (M11-9).
+KINDS = ("release-candidate", "candidate")
 BANNER = re.compile(rb"(Linux version \S+ )\((?!be@beryllium\))"
                     rb"[a-z_][a-z0-9_-]*@[A-Za-z0-9][\w.-]*\)")
 
@@ -370,7 +376,7 @@ def write(args, out, plan, hosts, omitted, gates, facts, logs):
         out / "host" / "images.sha256", out / "evaluator" / "host-images.sha256")
     writer.text("evaluator/compare-images.txt", "\n".join(compared) + "\n")
     writer.text("rc.txt", "\n".join([
-        "schema=be-mvp-rc-record-v1", "kind=release-candidate",
+        "schema=be-mvp-rc-record-v1", f"kind={args.kind}",
         f"candidate_tree_commit={args.commit}", f"candidate_tree={facts['tree']}",
         f"generated_utc={time.strftime(UTC, time.gmtime())}",
         "host_os=" + platform.freedesktop_os_release().get("PRETTY_NAME", "?"),
@@ -576,6 +582,44 @@ def self_test(scratch):
          "HOME is <home>", "(<build-user>@<build-host>)" in console[0] and
          "(be@beryllium)" in console[1] and "\n<home>/base/bundle\n" in
          console[1])
+    # M11-9: --kind sets rc.txt's kind= and nothing else, the default being
+    # release-candidate; --verify reads either; another value is a usage
+    # error.
+    chosen_out = scratch / "candidate-out"
+    message = run([item.replace(str(out), str(chosen_out)) for item in argv]
+                  + ["--kind", "candidate"], (x, "clean"))
+
+    def record(root):
+        return {str(path.relative_to(root)): path.read_bytes()
+                for path in sorted(root.rglob("*")) if path.is_file()}
+
+    def kept(files):
+        return {name: data for name, data in files.items()
+                if name not in ("rc.txt", "MANIFEST.sha256")}
+
+    def rc_lines(files, timeless=False):
+        return [line for line in files.get("rc.txt", b"").decode().splitlines()
+                if not (timeless and line.startswith(("kind=",
+                                                      "generated_utc=")))]
+    default, chosen = record(out), record(chosen_out)
+    case(f"--kind candidate's record says kind=candidate: {message}",
+         message.startswith("BE_MVP_RC_RECORD: PASS") and
+         rc_lines(chosen)[1:2] == ["kind=candidate"] and
+         verify(chosen_out) == [] and verify(chosen_out / "host") == [])
+    case("the default record says kind=release-candidate, and the two "
+         "records differ in rc.txt's kind= alone (and its time)",
+         rc_lines(default)[1:2] == ["kind=release-candidate"] and
+         rc_lines(chosen, True) == rc_lines(default, True) and
+         kept(chosen) == kept(default))
+    usage = io.StringIO()
+    try:
+        with contextlib.redirect_stderr(usage):
+            parse(argv + ["--kind", "release"])
+        status = 0
+    except SystemExit as stop:
+        status = stop.code
+    case("an unknown --kind is a usage error",
+         status == 2 and "invalid choice" in usage.getvalue())
     ev = "record/20261029T000100Z"
     gcc, image = sha(b"gcc/be-mvp-boot.img"), sha(b"Image")
 
@@ -698,6 +742,7 @@ def parse(argv):
     parser.add_argument("--gate", action="append", default=[],
                         metavar="NAME=LOG")
     parser.add_argument("--home", default=os.environ.get("HOME", ""))
+    parser.add_argument("--kind", choices=KINDS, default=KINDS[0])
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
     gates = dict(item.partition("=")[::2] for item in args.gate)
