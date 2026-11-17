@@ -323,7 +323,7 @@ VARIANT_KEYS = {"name", "toolchains", "where", "change", "fail", "after",
 # tree holds a digest ("record"), and its VS-domain harts' states and
 # counts where the outcome does not decide them.
 NEGATIVE_KEYS = {"firmware", "refusal", "probe", "error", "identity",
-                 "record", "harts", "counts"}
+                 "record", "harts", "counts", "control_hart"}
 NEGATIVE_FIRMWARE = "no-boundary"
 COUNT_NAMES = ("pmp_faults", "blocked_calls", "failed_calls")
 # A v2 variant may also name the leaf a refused channel check walked and
@@ -996,7 +996,11 @@ def check_negatives(scenario):
     under either the firmware without the extension or a tree the checker
     refuses, never both; its probe 1 but under that firmware; another
     image's identity an image of the scenario; harts 1 and 2 alone, each a
-    state; counts for those harts alone."""
+    state; counts for harts 0 to 2 (M11-8: the control hart's own); the
+    tree's step where it is not the build's (M11-8); and a boundary failure
+    after the BE_MVP:08 lines (M11-8: the control hart's own confine
+    refused) under a refused tree with the confine's error and nothing of
+    the firmware probe's."""
     names = {scenario["name"]} | {variant["name"] for variant in
                                   scenario.get("variants", [])}
     for variant in scenario.get("variants", []):
@@ -1032,12 +1036,22 @@ def check_negatives(scenario):
                     for state in harts.values()),
                 f"{label}'s harts are not VS-domain harts' states")
         counts = negative.get("counts", {})
-        require(isinstance(counts, dict) and set(counts) <= {"1", "2"} and
+        require(isinstance(counts, dict) and
+                set(counts) <= {"0", "1", "2"} and
                 all(isinstance(row, dict) and set(row) <= set(COUNT_NAMES)
                     and all(isinstance(value, int) and value > 0
                             for value in row.values())
                     for row in counts.values()),
-                f"{label}'s counts are not VS-domain harts' counts")
+                f"{label}'s counts are not harts' counts (harts 0 to 2)")
+        require(negative.get("control_hart", "boot") in CONTROL_STEPS,
+                f"{label}'s tree's step is not one of "
+                f"{', '.join(CONTROL_STEPS)}")
+        if variant["fail"] == "boundary" and \
+                variant.get("after") == "BE_MVP:08":
+            require("refusal" in negative and "error" in negative and
+                    not {"probe", "identity", "record"} & set(negative),
+                    f"{label}, the control hart's refused confine, declares "
+                    f"its tree's refusal and the confine's error alone")
 
 
 def negative_form(out, name, negative):
@@ -1051,11 +1065,23 @@ def negative_form(out, name, negative):
     for key in ("firmware", "refusal", "identity", "record", "counts"):
         if key in negative:
             boundary[key] = copy.deepcopy(negative[key])
+    if "control_hart" in negative:
+        # M11-8: a tree of another step than the build's (the step-1
+        # render boundary-control-absent runs under).
+        boundary["control_hart"] = negative["control_hart"]
+        boundary["harts"] = boundary_harts(name, out["outcome"],
+                                           control=negative["control_hart"])
     if "harts" in negative:
         boundary["harts"] = boundary_harts(name, out["outcome"], {name: dict(
             boundary["harts"], **negative["harts"])},
             boundary["control_hart"])
     if out["outcome"]["fail"] != "boundary":
+        return
+    if out["outcome"].get("after") == "BE_MVP:08":
+        # M11-8: the control hart's own confine refused; the probe and the
+        # identity read as the scenario's.
+        out["outcome"]["detail_lines"] = [line(
+            f"BE_MVP:DETAIL boundary=1 confine={negative['error']}")]
         return
     probe = negative.get("probe", 1)
     read = probe == 1 and "error" not in negative
@@ -1323,7 +1349,7 @@ def boundary_self_test(scenario, images):
                 neg[name]["outcome"].get("detail_lines", [])]
     checks += [
         ("the negatives: each a run of two-guests' on image", len(
-            negatives) == 7 and all(
+            negatives) == 12 and all(
                 section(name)["pair"] == "two-guests" and
                 section(name)["negative"] == name and
                 "negative" not in neg[name] for name in negatives)),
@@ -1416,9 +1442,10 @@ def boundary_self_test(scenario, images):
                         control="confined") == {
                             "0": "boot", "1": "never-started",
                             "2": "never-started"}),
-        ("step 2: the negatives' trees name step 2", all(
-            neg2[name]["boundary"]["control_hart"] == "confined"
-            for name in negatives)),
+        ("step 2: the negatives' trees name step 2 but the step-1 render's",
+         all(neg2[name]["boundary"]["control_hart"] == (
+             "boot" if name == "boundary-control-absent" else "confined")
+             for name in negatives)),
         ("step 2: the probe negatives, hart 0 boot", all(
             states(neg2, name)["0"] == "boot" for name in (
                 "boundary-absent", "boundary-no-identity",
@@ -1430,6 +1457,28 @@ def boundary_self_test(scenario, images):
         ("step 2: boundary-no-window, all three confined",
          states(neg2, "boundary-no-window") == {
              "0": "confined", "1": "confined", "2": "confined"}),
+        ("step 2: the control hart's refused confines, hart 0 boot, the "
+         "VS-domain harts started, its error, the scenario's BE_MVP:02",
+         all(states(neg2, name) == {"0": "boot", "1": "started",
+                                    "2": "started"} and
+             [entry["template"] for entry in neg2[name]["outcome"][
+                 "detail_lines"]] == ["BE_MVP:DETAIL boundary=1 confine=-4"]
+             and tagged(neg2[name], "BE_MVP:02 ") == tagged(
+                 second["two-guests"], "BE_MVP:02 ") and
+             neg2[name]["control_lines"] == second["two-guests"][
+                 "control_lines"]
+             for name in ("boundary-control-absent",
+                          "boundary-control-no-list",
+                          "boundary-control-wrong-boot",
+                          "boundary-control-two-narrow"))),
+        ("step 2: boundary-control-no-mailbox, hart 0 confined with its one "
+         "PMP fault, no DETAIL",
+         states(neg2, "boundary-control-no-mailbox") == {
+             "0": "confined", "1": "started", "2": "started"} and
+         neg2["boundary-control-no-mailbox"]["boundary"]["counts"] == {
+             "0": {"pmp_faults": 1}} and
+         "detail_lines" not in neg2["boundary-control-no-mailbox"][
+             "outcome"]),
     ]
     refusals = []
 
@@ -1524,7 +1573,11 @@ def boundary_self_test(scenario, images):
             ("a count of zero", {"counts": {"1": {"pmp_faults": 0}}},
              "harts' counts"),
             ("an unknown count", {"counts": {"1": {"denied": 1}}},
-             "harts' counts")):
+             "harts' counts"),
+            ("a count of hart 3", {"counts": {"3": {"pmp_faults": 1}}},
+             "harts' counts"),
+            ("a tree's step that is neither", {"control_hart": "parked"},
+             "tree's step is not one of")):
         mutated = copy.deepcopy(scenario)
         entry = next(variant for variant in mutated["variants"]
                      if variant["name"] == "boundary-identity")
@@ -1541,6 +1594,25 @@ def boundary_self_test(scenario, images):
     entry["pass"] = True
     refused("a negative that passes", lambda: check_negatives(mutated),
             "is not a failing run")
+    # M11-8: the control hart's refused confine declares its error, and
+    # nothing of the firmware probe's.
+    for label, edit in (
+            ("the control hart's refused confine without its error",
+             {"error": None}),
+            ("the control hart's refused confine with an identity",
+             {"identity": "two-guests-shell"}),
+            ("the control hart's refused confine with the probe's field",
+             {"probe": 1})):
+        mutated = copy.deepcopy(scenario)
+        entry = next(variant for variant in mutated["variants"]
+                     if variant["name"] == "boundary-control-no-list")
+        for key, value in edit.items():
+            if value is None:
+                entry["negative"].pop(key)
+            else:
+                entry["negative"][key] = value
+        refused(label, lambda: check_negatives(mutated),
+                "declares its tree's refusal and the confine's error alone")
     for label, ok in checks + refusals:
         if not ok:
             failures.append(f"boundary: {label}")
@@ -4413,7 +4485,13 @@ PROFILE_RUNS = {
                             "no-inject", "no-grant-check", "ring-full-off",
                             # M11-7's boundary negatives after the start.
                             "boundary-two-narrow", "boundary-wrong-boot",
-                            "boundary-no-list", "boundary-no-window"),
+                            "boundary-no-list", "boundary-no-window",
+                            # M11-8's, the control hart's.
+                            "boundary-control-absent",
+                            "boundary-control-no-list",
+                            "boundary-control-wrong-boot",
+                            "boundary-control-two-narrow",
+                            "boundary-control-no-mailbox"),
     SELF_REPORT_FLIP: (SELF_REPORT_FLIP,)}
 
 

@@ -112,6 +112,7 @@
 # tree and tables (BUILD_DIR/partition/two-guests/negatives/NAME/), which
 # the gate admits only by that tree's own record (record.json there), for
 # the run that declares that negative and the checker's refusal of it.
+# M11-8 adds the control hart's five, each under its own tree likewise.
 #
 # QEMU's boot hart is a lottery (planning research 2). A boot hart that is
 # a domain hart of its run is refused, as Plan revision M0-A.2 declares:
@@ -329,13 +330,21 @@ cap_store_control=
 anchor_variants=(secret-shared response-writable wrong-measurement
 	no-grant-check self-report-flip)
 # M11-7: the boundary negatives' runs, each "run firmware-role" (the plain
-# monitor only, where the build made their expectations).
+# monitor only, where the build made their expectations); M11-8: the
+# control hart's, where the build made theirs (a step-2 build).
 negative_runs=()
 [ "$monitor" != riscv ] || [ ! -e "$expect_dir/boundary-absent.json" ] ||
 	negative_runs=("boundary-absent no-boundary" "boundary-no-identity base"
 		"boundary-identity base" "boundary-two-narrow base"
 		"boundary-wrong-boot base" "boundary-no-list base"
 		"boundary-no-window base")
+[ "$monitor" != riscv ] ||
+	[ ! -e "$expect_dir/boundary-control-absent.json" ] ||
+	negative_runs+=("boundary-control-absent base"
+		"boundary-control-no-list base"
+		"boundary-control-wrong-boot base"
+		"boundary-control-two-narrow base"
+		"boundary-control-no-mailbox base")
 no_boundary_firmware=${BE_MVP_NO_BOUNDARY_FIRMWARE:-}
 # M11-7: the breach rows, each "run image CPU oracle-fields" (the plain
 # monitor only): the boundary-on images in both PMP modes, and their -off

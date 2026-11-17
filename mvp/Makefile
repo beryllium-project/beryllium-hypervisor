@@ -1285,16 +1285,27 @@ qemu-test sessions uboot-rehearsal run-tool-check: $(PARTITION_CHECK_RECORDS)
 # --- the boundary's own negatives (M11-7; planning/mvp-m11-plan.md, D-10)
 # Each negative's tree (tests/boundary-negatives.py tree): two-guests'
 # plain tree, of PARTITION_CONTROL_HART's step, by one named edit,
-# compiled as the backend compiles; its tables, the pair's, but
-# boundary-no-window's, which the backend makes from that negative's
-# descriptor; and its record, the independent
+# compiled as the backend compiles, or (M11-8) boundary-control-absent's,
+# the backend's step-1 render of the pair as it is; its tables, the
+# pair's, but boundary-no-window's and boundary-control-no-mailbox's,
+# which the backend makes from that negative's descriptor, and
+# boundary-control-absent's, the step-1 render's; and its record, which
+# names the tree's step, the independent
 # checker's refusal of that tree with the checker's reason. The run
 # harness admits a refused tree only for the run that declares that
 # negative and that reason (tests/check-boundary.py gate, A-9). $(1)
 # negative
 BOUNDARY_NEGATIVES := $(if $(filter on,$(MVP_BOUNDARY)),boundary-no-identity \
 	boundary-identity boundary-two-narrow boundary-wrong-boot \
-	boundary-no-list boundary-no-window boundary-no-cold-boot)
+	boundary-no-list boundary-no-window boundary-no-cold-boot \
+	$(if $(filter confined,$(PARTITION_CONTROL_HART)),\
+	boundary-control-absent boundary-control-no-list \
+	boundary-control-wrong-boot boundary-control-two-narrow \
+	boundary-control-no-mailbox))
+# Their trees' own descriptors (the backend's tables from them), and the
+# one whose tree is the step-1 render.
+NEGATIVE_DESCRIPTORS := boundary-no-window boundary-control-no-mailbox
+NEGATIVE_STEP_ONE := boundary-control-absent
 # The negatives' runs (two-guests' variants of the same names, and
 # boundary-absent under the firmware without the extension); every
 # negative but boundary-no-cold-boot, which no run may boot.
@@ -1326,13 +1337,24 @@ $(call negative_record,$(1)) &: $(BOUNDARY_NEGATIVES_TOOL) \
 		$(MVP_DIR)/scenarios/two-guests/scenario.json \
 		$(MVP_DIR)/src/mvp-layout.h $(MVP_BOUNDARY_STAMP)
 	rm -rf -- $(call negative_dir,$(1))
+	$(if $(filter $(NEGATIVE_STEP_ONE),$(1)),$$(PYTHON) -I -B \
+		$(PARTITION_BACKEND) \
+		--descriptor $(call partition_descriptor,two-guests,two-guests) \
+		--base-dts $(PARTITION_BASE_plain) \
+		--base-warnings $(PARTITION_WARN_plain) \
+		--firmware-elf $(FIRMWARE_ELF) --dtc $$(MVP_TOOL_dtc_command) \
+		--nm $$(MVP_TOOL_cross_nm_command) \
+		--readelf $$(MVP_TOOL_cross_readelf_command) \
+		--control-hart boot --out $(call negative_dir,$(1))/step-1)
 	$$(PYTHON) -I -B $(BOUNDARY_NEGATIVES_TOOL) tree --name $(1) \
-		--dts $(call partition_backend_dts,two-guests,two-guests,plain) \
+		--dts $(if $(filter $(NEGATIVE_STEP_ONE),$(1)),$(call \
+		negative_dir,$(1))/step-1/two-guests.dts,$(call \
+		partition_backend_dts,two-guests,two-guests,plain)) \
 		--include $(PARTITION_BASE_DIR) --dtc $$(MVP_TOOL_dtc_command) \
 		--descriptor $(call partition_descriptor,two-guests,two-guests) \
 		--authority $(PARTITION_AUTHORITY_two-guests) \
 		--out $(call negative_dir,$(1))
-	$(if $(filter boundary-no-window,$(1)),$$(PYTHON) -I -B \
+	$(if $(filter $(NEGATIVE_DESCRIPTORS),$(1)),$$(PYTHON) -I -B \
 		$(PARTITION_BACKEND) \
 		--descriptor $(call negative_dir,$(1))/descriptor.json \
 		--base-dts $(PARTITION_BASE_plain) \
@@ -1343,10 +1365,13 @@ $(call negative_record,$(1)) &: $(BOUNDARY_NEGATIVES_TOOL) \
 		--control-hart $(PARTITION_CONTROL_HART) \
 		--out $(call negative_dir,$(1))/backend && cp -- \
 		$(call negative_dir,$(1))/backend/two-guests-pmp.json,cp -- \
-		$(call partition_backend_pmp,two-guests,two-guests,plain)) \
+		$(if $(filter $(NEGATIVE_STEP_ONE),$(1)),$(call \
+		negative_dir,$(1))/step-1/two-guests-pmp.json,$(call \
+		partition_backend_pmp,two-guests,two-guests,plain))) \
 		$(call negative_dir,$(1))/$(1)-pmp.json
 	$$(PYTHON) -I -B $(BOUNDARY_NEGATIVES_TOOL) record --name $(1) \
-		--image two-guests --control-hart $(PARTITION_CONTROL_HART) \
+		--image two-guests --control-hart $(if $(filter \
+		$(NEGATIVE_STEP_ONE),$(1)),boot,$(PARTITION_CONTROL_HART)) \
 		--dtb $(call negative_dir,$(1))/$(1).dtb \
 		--tables $(call negative_dir,$(1))/$(1)-pmp.json \
 		--out $(call negative_record,$(1)) -- \

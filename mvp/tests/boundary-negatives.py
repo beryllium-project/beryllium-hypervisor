@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 James Morris <jmorris@namei.org>
 """The physical boundary's own negatives (M11-7; planning/mvp-m11-plan.md,
-D-10's five), made from the backend's tree of two-guests, of the step the
-build names (step 2 since M11-8).
+D-10's five), and the control hart's (M11-8, D-6 step 6), made from the
+backend's tree of two-guests, of the step the build names (step 2 since
+M11-8).
 
   boundary-negatives.py tree --name NAME --dts PAIR.dts --include DIR
       --dtc DTC --descriptor PAIR.json --authority REPORT --out DIR
@@ -31,6 +32,19 @@ which the backend makes the tables that hart holds once confined.
                          ecall-allowlist (3)
   boundary-no-window     be_g0's regions without the g0-window region (4)
   boundary-no-cold-boot  cold-boot-harts removed (5)
+
+and the control hart's, each a step-2 tree but the first:
+
+  boundary-control-absent     the backend's step-1 render of the pair (no
+                              be_control), compiled as it is: no edit
+  boundary-control-no-list    be_control without ecall-allowlist
+  boundary-control-wrong-boot be_control's boot hart 1
+  boundary-control-two-narrow hart 0 also in be_g0's possible harts
+  boundary-control-no-mailbox be_control's regions without the hart
+                              mailboxes' region; also writes
+                              DIR/descriptor.json, the pair's descriptor
+                              without both hart mailboxes in hart 0's
+                              profile, as boundary-no-window does
 
 Negative 1, boundary-absent, is the pair's own tree under the firmware
 without the boundary extension, and has no tree here.
@@ -69,7 +83,16 @@ import sys
 SCHEMA = "be-boundary-negative-v1"
 NEGATIVES = ("boundary-no-identity", "boundary-identity",
              "boundary-two-narrow", "boundary-wrong-boot", "boundary-no-list",
-             "boundary-no-window", "boundary-no-cold-boot")
+             "boundary-no-window", "boundary-no-cold-boot",
+             # M11-8: the control hart's.
+             "boundary-control-absent", "boundary-control-no-list",
+             "boundary-control-wrong-boot", "boundary-control-two-narrow",
+             "boundary-control-no-mailbox")
+# The one negative whose tree is not an edit: the backend's step-1 render.
+CONTROL_ABSENT = "boundary-control-absent"
+# The extents of the hart-written mailboxes, which be_control reads as one
+# region (the pair is 128 KiB-aligned).
+HART_MAILBOXES = ("g0-hart-mailbox", "g1-hart-mailbox")
 IDENTITY_OF = "two-guests-shell"
 CHECKER_FAIL = re.compile(r"BE_MVP_PARTITION_CHECK: FAIL (.+)")
 
@@ -92,6 +115,8 @@ def once(text, old, new, what):
 
 def block(text, name, edit):
     """TEXT with OpenSBI domain NAME's node edited by EDIT."""
+    require(text.count(f"\t\t\t{name} {{") == 1,
+            f"the tree has no one OpenSBI domain {name}")
     start = text.index(f"\t\t\t{name} {{")
     end = text.index("\t\t\t};", start) + len("\t\t\t};")
     return text[:start] + edit(text[start:end]) + text[end:]
@@ -173,6 +198,44 @@ def edit(name, text, descriptor, identities):
     if name == "boundary-no-cold-boot":
         return once(text, "\n\t\t\tcold-boot-harts = <&{/cpus/cpu@0}>;", "",
                     name), None
+    if name == CONTROL_ABSENT:
+        require("\t\t\tbe_control {" not in text,
+                f"{name}'s source has a be_control: it is the backend's "
+                f"step-1 render, which has none")
+        return text, None
+    if name == "boundary-control-no-list":
+        def drop_list(body):
+            found = re.findall(r"\n\t\t\t\tecall-allowlist = <[^>]*>;", body)
+            require(len(found) == 1, f"{name}: {len(found)} matches, not one")
+            return body.replace(found[0], "", 1)
+        return block(text, "be_control", drop_list), None
+    if name == "boundary-control-wrong-boot":
+        return block(text, "be_control", lambda body: once(
+            body, f"boot-hart = {harts(0)};", f"boot-hart = {harts(1)};",
+            name)), None
+    if name == "boundary-control-two-narrow":
+        return block(text, "be_g0", lambda body: once(
+            body, f"possible-harts = {harts(1)};",
+            f"possible-harts = {harts(0, 1)};", name)), None
+    if name == "boundary-control-no-mailbox":
+        extents = {row["name"]: row for row in descriptor["extents"]}
+        first, second = (extents[extent] for extent in HART_MAILBOXES)
+        base, size = int(first["base"], 16), int(first["size"], 16)
+        require(int(second["base"], 16) == base + size and
+                int(second["size"], 16) == size,
+                "the hart mailboxes are not one pair")
+        label = window_region(text, {"name": "the hart mailboxes",
+                                     "base": hex(base), "size": hex(2 * size)})
+        text = block(text, "be_control", lambda body: drop_region(body, label,
+                                                                  name))
+        edited = json.loads(json.dumps(descriptor))
+        profile = next(row for row in edited["profiles"] if row["hart"] == 0)
+        kept = [row for row in profile["access"]
+                if row["extent"] not in HART_MAILBOXES]
+        require(len(kept) == len(profile["access"]) - 2,
+                "hart 0's profile has no two hart mailboxes")
+        profile["access"] = kept
+        return text, edited
     raise Refused(f"{name} is not a negative of {', '.join(NEGATIVES)}")
 
 
@@ -196,7 +259,8 @@ def make_tree(args):
     identities = {row["image"]: row["identity"] for row in json.loads(
         pathlib.Path(args.authority).read_bytes())["descriptors"]}
     source, edited = edit(args.name, text, descriptor, identities)
-    require(source != text, f"{args.name} changed nothing")
+    require(source != text or args.name == CONTROL_ABSENT,
+            f"{args.name} changed nothing")
     out = pathlib.Path(args.out)
     out.mkdir(mode=0o700, parents=True, exist_ok=True)
     write_new(out / f"{args.name}.dts", source.encode())
@@ -298,15 +362,42 @@ SYNTHETIC = """/include/ "k3-like-pmp.dts"
 """
 
 
+# M11-8: a step-2 tree's be_control, with the hart mailboxes' one region.
+SYNTHETIC_STEP_2 = SYNTHETIC.replace(
+    "\t\t\tbe_g0 {",
+    "\t\t\tbe_region_05: be_region_05 {\n"
+    "\t\t\t\tcompatible = \"opensbi,domain,memregion\";\n"
+    "\t\t\t\tbase = <0x1 0x2040000>;\n"
+    "\t\t\t\torder = <17>;\n"
+    "\t\t\t};\n"
+    "\t\t\tbe_control {\n"
+    "\t\t\t\tpossible-harts = <&{/cpus/cpu@0}>;\n"
+    "\t\t\t\tboot-hart = <&{/cpus/cpu@0}>;\n"
+    "\t\t\t\tregions = <&be_region_00 0x28>, <&be_region_05 0x8>;\n"
+    "\t\t\t\tecall-allowlist = <0x4442434e 0x0 0xffffffff 0x0>;\n"
+    "\t\t\t};\n"
+    "\t\t\tbe_g0 {", 1)
+
+
 def self_test(scratch):
     scratch = pathlib.Path(scratch)
     shutil.rmtree(scratch, ignore_errors=True)
     scratch.mkdir(parents=True)
     descriptor = {"extents": [{"name": "g0-window", "base": "0x110000000",
-                               "size": "0x4000000"}],
+                               "size": "0x4000000"},
+                              {"name": "g0-hart-mailbox",
+                               "base": "0x102040000", "size": "0x10000"},
+                              {"name": "g1-hart-mailbox",
+                               "base": "0x102050000", "size": "0x10000"}],
                   "profiles": [{"hart": 1, "access": [
                       {"extent": "g0-window", "rights": ["read"]},
-                      {"extent": "g0-private", "rights": ["read"]}]}]}
+                      {"extent": "g0-private", "rights": ["read"]}]},
+                      {"hart": 0, "access": [
+                          {"extent": "control-data",
+                           "rights": ["read", "write"]},
+                          {"extent": "g0-hart-mailbox", "rights": ["read"]},
+                          {"extent": "g1-hart-mailbox",
+                           "rights": ["read"]}]}]}
     identities = {IDENTITY_OF: "abcdef01" * 8}
     cases = []
 
@@ -321,13 +412,13 @@ def self_test(scratch):
                                               check(result)),
                       "made" if want is None else "made, not refused"))
 
-    def made(name, *changes, absent=()):
+    def made(name, *changes, absent=(), source=SYNTHETIC, label=""):
         def check(result):
             text = result[0]
             return all(change in text for change in changes) and \
-                not any(gone in text for gone in absent) and text != SYNTHETIC
-        case(f"{name}: one edit", lambda: edit(name, SYNTHETIC, descriptor,
-                                               identities), check)
+                not any(gone in text for gone in absent) and text != source
+        case(f"{name}: one edit{label}", lambda: edit(
+            name, source, descriptor, identities), check)
     made("boundary-no-identity", "compatible = \"opensbi,domain,config\";",
          absent=("config-digest",))
     made("boundary-identity", "config-digest = <0xabcdef01 0xabcdef01",
@@ -343,6 +434,45 @@ def self_test(scratch):
          "ecall-allowlist;\n\t\t\t};\n\t\t\tbe_g1", absent=(
              "<&be_region_09 0x38>",))
     made("boundary-no-cold-boot", absent=("cold-boot-harts",))
+    # M11-8: the control hart's, on a step-2 tree; M11-7's edits leave
+    # be_control whole.
+    made("boundary-no-list", "ecall-allowlist = <0x4442434e",
+         absent=("ecall-allowlist;",), source=SYNTHETIC_STEP_2,
+         label=" of a step-2 tree, be_control's list kept")
+    made("boundary-control-no-list", "\t\t\t\tecall-allowlist;\n\t\t\t};"
+         "\n\t\t\tbe_g1", absent=("ecall-allowlist = <",),
+         source=SYNTHETIC_STEP_2)
+    made("boundary-control-wrong-boot", "be_control {\n\t\t\t\t"
+         "possible-harts = <&{/cpus/cpu@0}>;\n\t\t\t\tboot-hart = "
+         "<&{/cpus/cpu@1}>;", source=SYNTHETIC_STEP_2)
+    made("boundary-control-two-narrow", "be_g0 {\n\t\t\t\tpossible-harts "
+         "= <&{/cpus/cpu@0} &{/cpus/cpu@1}>;", "be_g1 {\n\t\t\t\t"
+         "possible-harts = <&{/cpus/cpu@2}>;", source=SYNTHETIC_STEP_2)
+    made("boundary-control-no-mailbox", "be_control {\n\t\t\t\t"
+         "possible-harts = <&{/cpus/cpu@0}>;\n\t\t\t\tboot-hart = "
+         "<&{/cpus/cpu@0}>;\n\t\t\t\tregions = <&be_region_00 0x28>;",
+         absent=("<&be_region_05 0x8>",), source=SYNTHETIC_STEP_2)
+    case("boundary-control-no-mailbox: hart 0's profile without both hart "
+         "mailboxes", lambda: edit("boundary-control-no-mailbox",
+                                   SYNTHETIC_STEP_2, descriptor,
+                                   identities)[1],
+         lambda value: [row["extent"] for row in value["profiles"][1][
+             "access"]] == ["control-data"] and
+         value["profiles"][0] == descriptor["profiles"][0])
+    case("hart mailboxes that are not one pair are refused",
+         lambda: edit("boundary-control-no-mailbox", SYNTHETIC_STEP_2,
+                      json.loads(json.dumps(descriptor).replace(
+                          "0x102050000", "0x102060000")), identities),
+         want="the hart mailboxes are not one pair")
+    case("boundary-control-absent: the step-1 render as it is",
+         lambda: edit(CONTROL_ABSENT, SYNTHETIC, descriptor, identities),
+         lambda value: value == (SYNTHETIC, None))
+    case("boundary-control-absent: a step-2 source is refused",
+         lambda: edit(CONTROL_ABSENT, SYNTHETIC_STEP_2, descriptor,
+                      identities), want="has a be_control")
+    case("a step-1 tree has no be_control to edit",
+         lambda: edit("boundary-control-wrong-boot", SYNTHETIC, descriptor,
+                      identities), want="no one OpenSBI domain be_control")
     case("boundary-no-window: hart 1's profile without the window",
          lambda: edit("boundary-no-window", SYNTHETIC, descriptor,
                       identities)[1],

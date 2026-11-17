@@ -4829,6 +4829,49 @@ def boundary_cases(latest, root):
              second, current_log_standin(source, second, root), "PASS")]
 
 
+def control_negative_cases(latest, root):
+    """M11-8's control-hart negatives, where the build made their
+    expectations (a step-2 build): two-guests' M9 capture cut after its
+    BE_MVP:08 lines, then hart 0's terminal, its registers, FAIL, and
+    DETAIL: its own confine refused (boundary-control-no-list), or its
+    first read of a mailbox faulted (boundary-control-no-mailbox), each in
+    its negative's boundary-on form; [(name, image, text)]."""
+    parts = lines(fixture(M9_FIXTURES["two-guests"]).rstrip("\n"))
+    last = max(index for index, line in enumerate(parts)
+               if line.startswith("BE_MVP:08 "))
+    barrier = next(line for line in parts
+                   if line.startswith("BE_MVP:20 REGISTERS at=barrier "))
+    terminal = re.sub(r" ticks=0x[0-9a-f]+$", "",
+                      barrier.replace("at=barrier", "at=terminal"))
+    cases = []
+    for image, tail in (
+            ("boundary-control-no-list", [FAIL_PREFIX + "boundary",
+                                          DETAIL_PREFIX +
+                                          "boundary=1 confine=-4"]),
+            ("boundary-control-no-mailbox", [FAIL_PREFIX + "exception"])):
+        if image in latest:
+            text = text_of(parts[:last + 1] + [terminal] + tail) + "\n"
+            cases.append((f"M11-8 {image} stand-in", image,
+                          current_log_standin(text, latest[image], root)))
+    return cases
+
+
+def control_negative_mutations(text):
+    """M11-8: boundary-control-no-list's stand-in TEXT, each defect of hart
+    0's refused confine: [(name, text, wanted finding)]."""
+    return [
+        ("the confine's DETAIL without its error", replace_in(
+            text, DETAIL_PREFIX, "confine=-4", "confine="),
+         "is not a boundary DETAIL"),
+        ("hart 0's refusal without the second BE_MVP:08", text_of(
+            [line for line in lines(text)
+             if not line.startswith("BE_MVP:08 HART_STARTED hart=2 ")]),
+         "the failure precedes the end of BE_MVP:08"),
+        ("hart 0's refusal as a hart-start failure", replace_in(
+            text, FAIL_PREFIX, "boundary", "hart-start"),
+         "expected 'BE_MVP:FAIL boundary'")]
+
+
 def boundary_mutations(on, text, off, off_text):
     """M11-7's rules, each one's smallest edit of a passing boundary-on
     stand-in TEXT (expectation ON), or of the boundary-off OFF_TEXT
@@ -5163,6 +5206,10 @@ def self_test(expects, pins, reports, measured, current, prior, latest,
         "sbi_version": "2.0", "toolchain": "gcc", "build_root": root},
         wanted, pins, {"two-guests": table})
         for name, table, text, wanted in boundary_cases(latest, root)]
+    cases += [(name, image, "direct", text, {
+        "sbi_version": "2.0", "toolchain": "gcc", "build_root": root},
+        "PASS", pins, latest)
+        for name, image, text in control_negative_cases(latest, root)]
     classes = {}
     for name, image, mode, text, options, wanted, case_pins, table in cases:
         verdict, record = evaluate(text, table[image], mode, case_pins,
@@ -6481,6 +6528,20 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
             print(f"{'ok  ' if ok else 'FAIL'} [boundary] two{step}: "
                   f"{name}: {verdict} "
                   f"{named[:1] if ok else record['findings'][:3]}")
+    # M11-8: hart 0's refused confine, each defect.
+    for _, image, text in control_negative_cases(latest, root)[:1]:
+        base_verdict = evaluate(text, latest[image], "direct", pins,
+                                **options)[0]
+        for name, mutated, wanted in control_negative_mutations(text):
+            verdict, record = evaluate(mutated, latest[image], "direct", pins,
+                                       **options)
+            named = [finding for finding in record["findings"]
+                     if wanted in finding]
+            ok = base_verdict == "PASS" and verdict != "PASS" and bool(named)
+            count += 1
+            failed += not ok
+            print(f"{'ok  ' if ok else 'FAIL'} [boundary] {image}: {name}: "
+                  f"{verdict} {named[:1] if ok else record['findings'][:3]}")
     for base, name, text in seeded_mutations(
             current=lambda image, data: current_log_standin(
                 data, latest[image], root)):
