@@ -1662,6 +1662,14 @@ public push now.
   it printed, starting with M11-2 (the tool locks on the development
   host, the firmware base, the switch, the oracle, and the re-proof
   point).
+- `mvp-m11-board-addendum.md`: the board addendum that the M11 plan's
+  D-15 names (M11-B), proposed 2026-11-17: the candidate on one K3
+  COM260 board from a microSD card, under a firmware build of the
+  project's own, with the board's NOR untouched; the answer to the
+  choice that Plan revision S3-E left; the one M-mode addition that
+  the board needs; two sittings; and the words for a board result. It
+  is part of the M11 plan only once the responsible human has signed
+  its commit off.
 - `mvp-m12-plan.md`: the bounded plan of milestone M12, the
   supervisor-domain lane beside M11 (Plan revision S3-D's D27): the
   questions for the specification's authors, directed tests, the table

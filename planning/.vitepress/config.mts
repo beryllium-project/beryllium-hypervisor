@@ -588,6 +588,10 @@ export default defineConfig({
             link: '/mvp-m11-evidence'
           },
           {
+            text: 'MVP M11 board addendum (M11-B; proposed 2026-11-17)',
+            link: '/mvp-m11-board-addendum'
+          },
+          {
             text: 'MVP M12 plan: the supervisor-domain lane (accepted 2026-11-15)',
             link: '/mvp-m12-plan'
           },
@@ -1240,6 +1244,10 @@ export default defineConfig({
             link: '/mvp-m11-evidence'
           },
           {
+            text: 'MVP M11 board addendum (M11-B; proposed 2026-11-17)',
+            link: '/mvp-m11-board-addendum'
+          },
+          {
             text: 'MVP M12 plan: the supervisor-domain lane (accepted 2026-11-15)',
             link: '/mvp-m12-plan'
           },
@@ -1775,6 +1783,10 @@ export default defineConfig({
           {
             text: 'MVP M11 evidence record',
             link: '/mvp-m11-evidence'
+          },
+          {
+            text: 'MVP M11 board addendum (M11-B; proposed 2026-11-17)',
+            link: '/mvp-m11-board-addendum'
           },
           {
             text: 'MVP M12 plan: the supervisor-domain lane (accepted 2026-11-15)',

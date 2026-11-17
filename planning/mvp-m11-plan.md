@@ -1153,6 +1153,11 @@ The addendum has to settle at least:
 
 Until then stop (j) stands, and no M11 step touches the board.
 
+The addendum is [the board addendum](mvp-m11-board-addendum.md),
+proposed on 2026-11-17 at a commit of its own. It is part of this plan
+only once the responsible human has signed that commit off; until
+then this section stands as it is.
+
 ## Claim text (the subject pre-authorized by S3-D.7; the words fixed here)
 
 MVP 1.0's claim page, `mvp/docs/claim.md`, is not changed: its
@@ -1575,7 +1580,8 @@ mvp_m11_decisions_kept=D16;stop-condition-3;S3-C-stop-i;I16-and-P2;the-log's-pro
 mvp_m11_claim=a-page-of-its-own;one-clause-with-a-form-for-each-outcome;MVP-1.0's-claim-page-unchanged
 mvp_m11_stops=1..18
 mvp_m11_open_questions=Q1-Q22-defaults
-mvp_m11_board=not-authorized;needs-the-inventory-the-amendment-and-an-addendum
+mvp_m11_board=not-authorized-unless-the-board-addendum's-proposing-commit-is-on-the-public-main-with-the-responsible-human's-sign-off;then-as-that-addendum-authorizes
+mvp_m11_board_addendum=mvp-m11-board-addendum.md;proposed-2026-11-17;part-of-this-plan-only-if-its-proposing-commit-is-on-the-public-main-with-the-responsible-human's-sign-off
 ```
 
 ## Decision record
