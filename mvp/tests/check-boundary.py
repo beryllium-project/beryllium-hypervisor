@@ -11,7 +11,7 @@
   check-boundary.py words --expect IMAGE.json --layout mvp-layout.h
       [--boundary-header mvp-boundary.h] [--extra WORDS] --out WORDS
   check-boundary.py not-applicable --out STEM.boundary.txt
-  check-boundary.py --self-test
+  check-boundary.py --self-test --scratch DIR
 
 Purpose: D-10's four checks of a boundary-on run (planning/mvp-m11-plan.md,
 D-10; M11-7, step 1: the VS-domain harts confined, the control hart not),
@@ -44,7 +44,9 @@ Where a declaration names VS domains in "phase" (ring-full), each one's
 state word (phase, low half; failure class, high half) is read from its
 private-state extent by the oracle, at the offset mvp-boundary.h states,
 and must be FAILED with the class ring. `words` writes that oracle words
-file (with --extra's words and device registers added).
+file (with --extra's words and device registers added). A run that
+cannot be judged (an input missing, malformed, or refused) still has its
+record: the one line `BE_MVP_BOUNDARY: FAIL <reason>`.
 
 Every artifact names step 1: the tables document's and the declaration's
 control_hart is boot, and the result line says control_hart=boot. A
@@ -58,10 +60,13 @@ sbi_dcommit_hart), and the backend's tables (tools/partition-backend.py).
 """
 
 import argparse
+import contextlib
 import hashlib
+import io
 import json
 import pathlib
 import re
+import shutil
 import sys
 
 sys.dont_write_bytecode = True
@@ -77,7 +82,7 @@ STATES = ("confined", "boot", "never-started", "started")
 STARTED = {("hart-start", 1)}
 COUNTS = ("pmp_faults", "blocked_calls", "failed_calls")
 FIELDS = ("committed",) + COUNTS + ("menvcfg", "mseccfg")
-PMP_OFF = 0x18
+PMP_A_MASK = 0x18
 MSECCFG_MML = 0x1
 MENVCFG_CBIE = 0x30
 DIGEST = re.compile(r"Domain commit digest\s*:\s*([0-9a-f]{64})")
@@ -92,6 +97,7 @@ FIRMWARE_ON = re.compile(r"BE_MVP:02 FIRMWARE_PROBED .* "
 DEFINE = re.compile(r"^#define\s+BE_MVP_(\w+)\s+BE_MVP_C\((0x[0-9a-fA-F]+|"
                     r"[0-9]+)\)", re.M)
 NOT_APPLICABLE = "BE_MVP_BOUNDARY: NOT-APPLICABLE boundary=off\n"
+TABLE_SCHEMA = "be-pmp-tables-v1"
 
 
 class Refused(Exception):
@@ -212,7 +218,7 @@ def against_table(what, cfg, addr, entries):
         if cfg[index] != wanted:
             findings.append(f"{what}: pmp{index}cfg 0x{cfg[index]:02x}, "
                             f"expected 0x{wanted:02x}")
-        elif wanted & PMP_OFF:
+        elif wanted & PMP_A_MASK:
             if entry["address"] == "not-compared":
                 findings.append(f"{what}: entry {index} is active but the "
                                 f"table names no address")
@@ -228,7 +234,7 @@ def same_readback(what, cfg, addr, other_cfg, other_addr):
         if cfg[index] != other_cfg[index]:
             findings.append(f"{what}: pmp{index}cfg 0x{cfg[index]:02x} and "
                             f"0x{other_cfg[index]:02x}")
-        elif cfg[index] & PMP_OFF and addr[index] != other_addr[index]:
+        elif cfg[index] & PMP_A_MASK and addr[index] != other_addr[index]:
             findings.append(f"{what}: pmpaddr{index} 0x{addr[index]:x} and "
                             f"0x{other_addr[index]:x}")
     return findings
@@ -277,6 +283,8 @@ def judge(expect, record, text, tables, mode, authority, symbols,
           layout=None, header=None):
     """(findings, facts) of D-10's four checks for one run."""
     boundary = declaration(expect)
+    if tables.get("schema") != TABLE_SCHEMA:
+        raise Refused(f"the tables are not of schema {TABLE_SCHEMA}")
     image = expect["image"]
     findings, facts = [], {"image": image, "pair": boundary["pair"],
                            "pmp_mode": mode,
@@ -455,13 +463,22 @@ def read_json(path):
     return json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
 
 
+def unjudged(path, line):
+    """The record of a run that cannot be judged: LINE alone."""
+    try:
+        write_new(path, " ".join(line.split()) + "\n")
+    except OSError as error:
+        print(f"BE_MVP_BOUNDARY: FAIL no record written to {path}: {error}")
+
+
 def check(args):
     expect = read_json(args.expect)
+    boundary = declaration(expect)
     tables = read_json(args.tables)
     symbols = qemu_oracle.symbol_addresses(
         args.nm, args.firmware_elf,
         ("_fw_start", "_fw_end", qemu_oracle.RECORD_SYMBOL))
-    if declaration(expect).get("firmware", "base") == "base" and \
+    if boundary.get("firmware", "base") == "base" and \
             hashlib.sha256(pathlib.Path(args.firmware_elf).read_bytes()
                            ).hexdigest() != tables["firmware_sha256"]:
         raise Refused("the firmware's ELF is not the tables' firmware")
@@ -507,7 +524,7 @@ def synthetic_tables():
                              "profile": f"g{hart - 1}",
                              "entries": entries(confined[hart])})
         modes[mode] = rows
-    return {"schema": "be-partition-tables-v1", "control_hart": "boot",
+    return {"schema": TABLE_SCHEMA, "control_hart": "boot",
             "descriptor_identity": "a" * 64, "firmware_sha256": "f" * 64,
             "base_tree_sha256": "b" * 64, "modes": modes}
 
@@ -593,7 +610,9 @@ def synthetic_run(mode, states, record=True, counts=None):
     return oracle, text, tables
 
 
-def self_test():
+def self_test(scratch):
+    shutil.rmtree(scratch, ignore_errors=True)
+    scratch.mkdir(parents=True)
     authority = {"descriptors": [
         {"image": "two-guests", "identity": "a" * 64},
         {"image": "two-guests-shell", "identity": "c" * 64}]}
@@ -692,6 +711,9 @@ def self_test():
     run("the tables of another image", lambda oracle, tables, expect, text:
         tables.update(descriptor_identity="e" * 64),
         want="not the paired image")
+    run("tables of another schema", lambda oracle, tables, expect, text:
+        tables.update(schema="be-partition-tables-v1"),
+        want="refused: the tables are not of schema be-pmp-tables-v1")
     run("an incomplete read",
         lambda oracle, tables, expect, text: oracle["result"].update(
             verdict="FAIL"), want="refused: the oracle's read")
@@ -792,6 +814,29 @@ def self_test():
     except (Refused, KeyError) as error:
         ok, detail = False, str(error)
     cases.append(("the words file of a ring-full run", ok, detail))
+
+    def unjudged_case(name, expect):
+        out = scratch / f"{name}.boundary.txt"
+        (scratch / "expect.json").write_text(json.dumps(expect),
+                                             encoding="utf-8")
+        missing = str(scratch / "missing")
+        with contextlib.redirect_stdout(io.StringIO()):
+            status = main(["check-boundary.py", "check", "--oracle", missing,
+                           "--console", missing, "--expect",
+                           str(scratch / "expect.json"), "--tables", missing,
+                           "--partition-authority", missing,
+                           "--firmware-elf", missing, "--nm", missing,
+                           "--layout", missing, "--pmp-mode", "plain",
+                           "--out", str(out)])
+        text = out.read_text(encoding="utf-8") if out.is_file() else ""
+        return (status == 1 and text.startswith("BE_MVP_BOUNDARY: FAIL ")
+                and text.count("\n") == 1), text.strip() or "no record"
+    for name, expect in (
+            ("an input missing", expectation()),
+            ("a declaration refused", {"image": "two-guests"})):
+        ok, detail = unjudged_case(name.replace(" ", "-"), expect)
+        cases.append((f"a run that cannot be judged ({name}) has its "
+                      f"record", ok, detail))
     failures = 0
     for name, ok, detail in cases:
         failures += not ok
@@ -806,6 +851,7 @@ def main(argv):
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--scratch")
     commands = parser.add_subparsers(dest="command")
     checked = commands.add_parser("check")
     for name in ("oracle", "console", "expect", "tables",
@@ -825,7 +871,9 @@ def main(argv):
     args = parser.parse_args(argv[1:])
     try:
         if args.self_test:
-            return self_test()
+            if not args.scratch:
+                parser.error("--self-test requires --scratch")
+            return self_test(pathlib.Path(args.scratch))
         if args.command == "check":
             return check(args)
         if args.command == "words":
@@ -840,8 +888,11 @@ def main(argv):
             return 0
         parser.error("check, words, not-applicable, or --self-test")
     except (Refused, qemu_oracle.OracleError, OSError, ValueError,
-            KeyError) as error:
-        print(f"BE_MVP_BOUNDARY: FAIL {error}")
+            KeyError, TypeError, IndexError) as error:
+        line = f"BE_MVP_BOUNDARY: FAIL {error}"
+        print(line)
+        if args.command == "check":
+            unjudged(args.out, line)
         return 1
     return 1
 

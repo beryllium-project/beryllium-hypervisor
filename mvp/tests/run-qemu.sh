@@ -28,6 +28,9 @@
 #            with Sstc, Svade without Svadu, Sv39 only, and Smstateen, as
 #            recorded for the COM260; the firmware base (SBI 3.0):
 #            two-guests
+# and, from the off copy (BUILD_DIR/variants/TOOLCHAIN/two-guests-off, the
+# image built without the physical boundary; M11-7), the rows whose machine
+# or firmware has none:
 #   rva23    QEMU's RVA23S64 profile CPU with AIA/IMSIC; the firmware base:
 #            two-guests
 #   plic     QEMU's rv64,h=true CPU with the PLIC; the firmware base:
@@ -215,28 +218,38 @@ fi
 # Every scenario on each toolchain's boot ELF: the scenario, the QEMU
 # machine and CPU, the oracle's machine class and three register classes
 # and boundary state, the firmware role (base or earlier), its SBI version,
-# and the expectation file.
+# the expectation file, and the image (the scenario's, or its off copy's).
 scenarios=(
-	"k3-like $k3_machine $k3_cpu $oracle_k3 base $firmware_sbi two-guests"
-	"rva23 virt,aia=aplic-imsic rva23s64 $oracle_rva23 base $firmware_sbi two-guests"
-	"plic virt rv64,h=true $oracle_plic base $firmware_sbi two-guests"
-	"no-sstc virt,aia=none $minimal $oracle_minimal base $firmware_sbi no-sstc"
+	"k3-like $k3_machine $k3_cpu $oracle_k3 base $firmware_sbi two-guests two-guests"
+	"rva23 virt,aia=aplic-imsic rva23s64 $oracle_rva23 base $firmware_sbi two-guests two-guests-off"
+	"plic virt rv64,h=true $oracle_plic base $firmware_sbi two-guests two-guests-off"
+	"no-sstc virt,aia=none $minimal $oracle_minimal base $firmware_sbi no-sstc two-guests-off"
 )
 # The plain monitor's firmware-version negative alone boots the earlier
 # firmware. The CHERI-aware monitor has its own run matrix and no such row.
 [ "$monitor" != riscv ] ||
-	scenarios+=("firmware-version $k3_machine $k3_cpu $oracle_k3 earlier 2.0 firmware-version")
+	scenarios+=("firmware-version $k3_machine $k3_cpu $oracle_k3 earlier 2.0 firmware-version two-guests-off")
+# A row's boot ELF: the scenario's image, or an off copy's. $1 toolchain,
+# $2 scenario's directory under BUILD_DIR/TOOLCHAIN ('' for two-guests),
+# $3 image
+row_elf() {
+	case $3 in
+	*-off) printf '%s\n' "$build/variants/$1/$3/be-mvp-boot.elf" ;;
+	*) printf '%s\n' "$build/$1/${2:+$2/}be-mvp-boot.elf" ;;
+	esac
+}
 # The variants (planning/mvp-m0-plan.md, Negative images) and the probe
 # images (Platform record: probes), on k3-like with the base, each
 # against the expectation file of its own name.
 variants=(payload exit-budget run-timeout ring-full hart-start init-exit
 	rdcycle sbi-time shim-rule hostile)
 probes=(probe-platform probe-vmid-distinct probe-vmid-shared probe-console-input)
-# te-poc's machines (its QEMU table's rows) and its two variants.
+# te-poc's machines (its QEMU table's rows, rva23 and plic from its off
+# copy, the image's suffix last: . for none) and its two variants.
 te_poc_machines=(
-	"k3-like $k3_machine $k3_cpu $oracle_k3"
-	"rva23 virt,aia=aplic-imsic rva23s64 $oracle_rva23"
-	"plic virt rv64,h=true $oracle_plic"
+	"k3-like $k3_machine $k3_cpu $oracle_k3 ."
+	"rva23 virt,aia=aplic-imsic rva23s64 $oracle_rva23 -off"
+	"plic virt rv64,h=true $oracle_plic -off"
 )
 te_poc_variants=(reader-write no-inject)
 # beryllium-cheri: and the CHERI-aware monitor's channel-cw (planning/
@@ -312,9 +325,9 @@ runs=()
 for toolchain in "${toolchains[@]}"; do
 	for entry in "${scenarios[@]}"; do
 		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
-			firmware_role sbi expect <<<"$entry"
+			firmware_role sbi expect image <<<"$entry"
 		wanted "$toolchain/$name" || continue
-		runs+=("$toolchain/$name $build/$toolchain/be-mvp-boot.elf $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary $firmware_role $sbi $expect_dir/$expect.json - -")
+		runs+=("$toolchain/$name $(row_elf "$toolchain" '' "$image") $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary $firmware_role $sbi $expect_dir/$expect.json - -")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do
@@ -332,9 +345,9 @@ done
 for toolchain in "${toolchains[@]}"; do
 	for entry in "${te_poc_machines[@]}"; do
 		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
-			<<<"$entry"
+			copy <<<"$entry"
 		wanted "te-poc/$toolchain/$name" || continue
-		runs+=("$toolchain/te-poc-$name $build/$toolchain/te-poc/be-mvp-boot.elf $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $te_poc_dir/expect/te-poc.json $te_poc_dir/authority-report.json -")
+		runs+=("$toolchain/te-poc-$name $(row_elf "$toolchain" te-poc "te-poc${copy#.}") $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $te_poc_dir/expect/te-poc.json $te_poc_dir/authority-report.json -")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do
@@ -350,9 +363,9 @@ done
 for toolchain in "${toolchains[@]}"; do
 	for entry in "${te_poc_machines[@]}"; do
 		read -r name machine cpu machine_class pmp menvcfg mseccfg boundary \
-			<<<"$entry"
+			copy <<<"$entry"
 		wanted "anchor/$toolchain/$name" || continue
-		runs+=("$toolchain/anchor-$name $build/$toolchain/anchor/be-mvp-boot.elf $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $anchor_dir/expect/anchor.json $anchor_dir/authority-report.json $measured")
+		runs+=("$toolchain/anchor-$name $(row_elf "$toolchain" anchor "anchor${copy#.}") $machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $anchor_dir/expect/anchor.json $anchor_dir/authority-report.json $measured")
 	done
 done
 for toolchain in "${variant_toolchains[@]}"; do

@@ -269,7 +269,8 @@ qemu-oracle-check:
 # on synthetic records: each declared state's rules, the started hart's,
 # the identity, the counts, ring-full's state words, and each refusal.
 boundary-check:
-	$(PYTHON) -I -B $(MVP_DIR)/tests/check-boundary.py --self-test
+	$(PYTHON) -I -B $(MVP_DIR)/tests/check-boundary.py --self-test \
+		--scratch $(TMPDIR)/boundary-self-test
 
 # The M8 verifier's tools (planning/mvp-m8-plan.md, D-5, D-7, D-9, D-10,
 # Q7), each self-test on the host, with no podman and no network: the
