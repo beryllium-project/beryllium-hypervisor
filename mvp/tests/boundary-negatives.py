@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 James Morris <jmorris@namei.org>
 """The physical boundary's own negatives (M11-7; planning/mvp-m11-plan.md,
-D-10's five), made from the backend's step-1 tree of two-guests.
+D-10's five), made from the backend's tree of two-guests, of the step the
+build names (step 2 since M11-8).
 
   boundary-negatives.py tree --name NAME --dts PAIR.dts --include DIR
       --dtc DTC --descriptor PAIR.json --authority REPORT --out DIR
@@ -50,7 +51,7 @@ DIR/record.json) against each named run's expectation (DIR/RUN.json under
 other, so boundary-no-cold-boot's, which no run declares, for none.
 
 Trust: a test tool; it writes only under --out, and runs only dtc and the
-checker. Scope: the backend's step-1 trees (tools/partition-backend.py).
+checker. Scope: the backend's trees (tools/partition-backend.py).
 """
 
 import argparse

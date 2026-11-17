@@ -302,17 +302,27 @@ SECTIONS
 
 		__be_mvp_control_text_start = .;
 		__be_control_confined_entry_slot_start = .;
-		. += 0x1000;
+		/*
+		 * M11-8: the control hart's confined entry, alone in the slot,
+		 * at the device tree's next-addr for be_control; kept, as no
+		 * instruction names it. A boundary-off image has no such
+		 * section, and its slot stays empty.
+		 */
+		KEEP(*mvp-hartentry.o(.text.mvp.control.entry))
+		. = ABSOLUTE(0x102069000);
 		__be_control_confined_entry_slot_end = .;
 		*mvp-trap.o(.text.mvp.control)
 		/*
 		 * M11-8: by exact name, as the monitor's shared block says: the
 		 * functions of each object that the control role reaches, in its
-		 * source, from control_loop() and be_mvp_runtime_terminal().
+		 * source, from its confined entry, control_loop(), and
+		 * be_mvp_runtime_terminal().
 		 */
 		*mvp-runtime.o(
 			.text.answer .text.answer.*
 			.text.arm_control_tick .text.arm_control_tick.*
+			.text.be_mvp_control_confined
+			.text.be_mvp_control_confined.*
 			.text.be_mvp_runtime_terminal
 			.text.be_mvp_runtime_terminal.*
 			.text.control_loop .text.control_loop.*
@@ -324,6 +334,7 @@ SECTIONS
 			.text.emit_denial .text.emit_denial.*
 			.text.emit_line .text.emit_line.*
 			.text.emit_record .text.emit_record.*
+			.text.emit_started .text.emit_started.*
 			.text.emit_terminated .text.emit_terminated.*
 			.text.emit_text .text.emit_text.*
 			.text.fail_detail .text.fail_detail.*
@@ -344,6 +355,7 @@ SECTIONS
 			.text.terminal .text.terminal.*
 			.text.visit .text.visit.*
 			.text.wait_control_tick .text.wait_control_tick.*
+			.text.wait_ready .text.wait_ready.*
 			.text.wake_failed .text.wake_failed.*
 			.text.write_line .text.write_line.*
 			.text.write_text .text.write_text.*)
@@ -434,7 +446,8 @@ SECTIONS
 			.rodata.marker_mgmt .rodata.marker_mgmt_ticks
 			.rodata.marker_mgmt_values
 			.rodata.marker_ready .rodata.marker_shutdown
-			.rodata.marker_srst .rodata.marker_target_state
+			.rodata.marker_srst .rodata.marker_started
+			.rodata.marker_target_state
 			.rodata.marker_terminated_ticks .rodata.marker_tick
 			.rodata.mvp.control
 			.rodata.values_entered .rodata.values_paused
@@ -611,6 +624,10 @@ SECTIONS
 	       __be_mvp_region_end == 0x1020a4000, "MVP region moved")
 	ASSERT(be_mvp_park_entry == 0x102078000, "park entry moved")
 	ASSERT(be_mvp_hart_entry == 0x102070000, "VS-domain-hart entry moved")
+	/* Linked by a boundary-on image alone: GNU ld's ?: is lazy, its || not. */
+	ASSERT(DEFINED(be_mvp_control_entry) ?
+	       be_mvp_control_entry == 0x102068000 : 1,
+	       "control hart's confined entry moved")
 
 	/DISCARD/ :
 	{

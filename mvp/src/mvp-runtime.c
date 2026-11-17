@@ -500,6 +500,11 @@ static struct be_mvp_line be_mvp_detail MVP_CONTROL_BSS;
 static char be_mvp_console_out[BE_MVP_PRINT_LINE_BYTES] MVP_CONTROL_BSS;
 #endif
 static be_u32 be_mvp_terminal_entered MVP_CONTROL_BSS;
+#if defined(BE_MVP_BOUNDARY)
+/* Each VS-domain hart's start ticks, for the BE_MVP:08 lines that hart 0
+ * prints once confined (M11-8). */
+static be_u64 be_mvp_start_ticks[BE_MVP_DOMAINS] MVP_CONTROL_BSS;
+#endif
 
 /* The MVP's boot (planning/mvp-m6-plan.md, D-3, Q2): the accepted boot
  * check, then the sealed configuration, its identity's first eight bytes
@@ -699,6 +704,9 @@ static const char marker_detail_domain[] = "BE_MVP:DETAIL domain=%d hart=%d";
 #if defined(BE_MVP_BOUNDARY)
 static const char marker_detail_start[] = "BE_MVP:DETAIL domain=%d hart=%d "
 	"result=%i ticks=%x";
+/* Hart 0's own confine refused (M11-8): the call's SBI error. */
+static const char marker_detail_confine[] =
+	"BE_MVP:DETAIL boundary=1 confine=%i";
 #else
 static const char marker_detail_start[] = "BE_MVP:DETAIL domain=%d hart=%d "
 	"result=%i status=%i ticks=%x";
@@ -2139,43 +2147,76 @@ static void publish_blocks(void)
 
 #if defined(BE_MVP_BOUNDARY)
 /*
- * Each VS-domain hart, once (M11-7; planning/mvp-m11-plan.md, D-6 step 4):
- * hart_start at the confining stub, be_mvp_confine_entry, with its block,
- * and the start's result checked (BE_MVP:08, without a status). No status
- * is asked after it: the hart leaves hart 0's OpenSBI domain at its
- * confine, and the READY wait bounds the start, a hart that never confines
- * or never reaches READY included. The stub's address is the only entry
- * hart 0 hands the firmware; the hart entry is the confined entry, which
- * the device tree gives the firmware.
+ * BE_MVP:08 for the first COUNT starts, each of which succeeded (M11-8):
+ * printed after them, by hart 0 once confined, or by its boot code before
+ * a failure, in the order and form of step 1's lines.
  */
-static void start_harts(void)
+static void emit_started(be_u32 count)
 {
 	be_u32 domain;
+
+	for (domain = 0U; domain < count; ++domain) {
+		be_u64 values[4] = { be_mvp_bindings[domain].hart, domain, 0U,
+				     be_mvp_start_ticks[domain] };
+
+		emit(marker_started, values);
+	}
+}
+
+/*
+ * A start refused, in boot code: the earlier starts' BE_MVP:08 lines, then
+ * its DETAIL and FAIL, as in step 1. Out of line, so that nothing between
+ * the last start and hart 0's confine calls anything but the start loop's
+ * own helpers (the image checker's rule C7).
+ */
+static void start_failed(be_u32 domain, be_u64 hart, long result)
+	__attribute__((noreturn, noinline));
+static void start_failed(be_u32 domain, be_u64 hart, long result)
+{
+	be_u64 values[4] = { domain, hart, (be_u64)result,
+			     be_mvp_start_ticks[domain] };
+
+	emit_started(domain);
+	fail_detail(BE_MVP_CLASS_HART_START, marker_detail_start, values);
+}
+
+/*
+ * Both VS-domain harts, then hart 0 itself (M11-7, M11-8;
+ * planning/mvp-m11-plan.md, D-6 steps 4 and 6): each hart_start at the
+ * confining stub, be_mvp_confine_entry, with its block, its ticks kept and
+ * its start recorded, and no other firmware call until hart 0's own
+ * confine. No status is asked after a start: the hart leaves the boot
+ * OpenSBI domain at its confine, and the READY wait bounds the start.
+ * On success hart 0 resumes in be_control at its confined entry,
+ * be_mvp_control_entry, and this does not return. A refused start, or a
+ * confine that returns, ends the run here, in boot code: hart 0 never
+ * reads a ring unconfined.
+ */
+static void start_harts(void) __attribute__((noreturn, noinline));
+static void start_harts(void)
+{
+	be_u64 values[1];
+	be_u32 domain;
+	long result;
 
 	for (domain = 0U; domain < BE_MVP_RUN_DOMAINS; ++domain) {
 		be_u64 hart = be_mvp_bindings[domain].hart;
 		be_u64 begin = be_mvp_exec_read_time();
-		be_u64 values[4];
-		long result;
 
 		result = be_mvp_exec_hart_start(hart,
 						symbol_address(
 							be_mvp_confine_entry),
 						be_mvp_block_hpa(domain));
-		values[0] = hart;
-		values[1] = domain;
-		values[2] = (be_u64)result;
-		values[3] = be_mvp_exec_read_time() - begin;
-		if (result != BE_MVP_SBI_SUCCESS) {
-			values[0] = domain;
-			values[1] = hart;
-			fail_detail(BE_MVP_CLASS_HART_START,
-				    marker_detail_start, values);
-		}
-		emit(marker_started, values);
+		be_mvp_start_ticks[domain] = be_mvp_exec_read_time() - begin;
+		if (result != BE_MVP_SBI_SUCCESS)
+			start_failed(domain, hart, result);
 		if (!be_mvp_control_started(&be_mvp_ctl, domain, hart))
 			be_mvp_runtime_terminal(BE_MVP_CLASS_EXCEPTION);
 	}
+	result = be_mvp_exec_confine();
+	emit_started(BE_MVP_RUN_DOMAINS);
+	values[0] = (be_u64)result;
+	fail_detail(BE_MVP_CLASS_BOUNDARY, marker_detail_confine, values);
 }
 #else
 /*
@@ -2896,6 +2937,57 @@ static void control_loop(void)
 			poll_input();
 	}
 }
+
+#if defined(BE_MVP_BOUNDARY)
+/*
+ * mvp-hartentry.S's be_mvp_control_entry passes this class, 11, to the
+ * terminal if be_mvp_control_confined() returns, which it does not.
+ */
+_Static_assert(BE_MVP_CLASS_EXCEPTION == 11,
+	       "mvp-hartentry.S's control entry names class 11, exception");
+
+void be_mvp_control_confined(void) __attribute__((noreturn));
+
+/*
+ * Hart 0 confined (M11-8; planning/mvp-m11-plan.md, D-6 step 6): entered
+ * from be_mvp_control_entry, in be_control, on hart 0's own stack. Its
+ * registers across the move, from its boot reset to here (DESIGN 16.2):
+ *
+ *   stvec     the vector at confine; the entry after the move; the vector
+ *             again after this reset. Until then an HS exception would
+ *             enter the entry again.
+ *   sscratch  the control stack's top at confine (start_run's arm); 0
+ *             after the move and the reset; the top again after the arm.
+ *             From the reset to the arm an exception halts in the vector.
+ *   sie       SSIE and STIE at confine; 0 after the move and the reset;
+ *             set again by the arm, which checks its readback.
+ *   stimecmp  carried over by the move; rewritten by the arm from the
+ *             budget kept in be_mvp_ctl, so the run's deadline holds.
+ *   henvcfg   STCE from probe_sstc() at confine, kept by the move, 0 after
+ *             the reset and not set again: every field acts at V=1 only,
+ *             and hart 0 never runs at V=1 (its HS stimecmp needs
+ *             menvcfg.STCE, which the firmware keeps).
+ *   sip       SSIP 0 throughout: the move would erase one, and none can be
+ *             raised (no IPI send is linked; VS-domain harts reach the
+ *             firmware only through their stubs' confine).
+ *   sstatus, satp, scounteren, senvcfg, sepc, scause, stval, the H and VS
+ *             CSRs: the boot reset's values at confine, the move's zero
+ *             context or untouched, the same values again after this
+ *             reset.
+ *
+ * Then BE_MVP:08 for both starts, the READY wait, and the control loop.
+ */
+void be_mvp_control_confined(void)
+{
+	struct be_r3_hs_state hs;
+
+	be_mvp_exec_reset_hs_state(symbol_address(be_mvp_trap_vector), &hs);
+	arm_control_tick(be_mvp_exec_read_time());
+	emit_started(BE_MVP_RUN_DOMAINS);
+	wait_ready();
+	control_loop();
+}
+#endif
 #else
 /* The probe module's view of hart 0's runtime (mvp-probe.h). */
 void be_mvp_probe_emit(const char *format, const be_u64 *values)
@@ -2928,7 +3020,8 @@ void be_mvp_probe_shutdown(void)
  * After the barrier: hart 0's budget (stimecmp, SSIE and STIE; with
  * console input armed, the first poll's deadline, before the budget's
  * end), the control loop's clocks, both hart starts, the READY wait, and
- * the loop.
+ * the loop. In a boundary-on image (M11-8) the starts end in hart 0's own
+ * confine, and the READY wait and the loop run from its confined entry.
  */
 static void start_run(void) __attribute__((noreturn));
 static void start_run(void)
@@ -2971,11 +3064,13 @@ static void start_run(void)
 		be_mvp_runtime_terminal(BE_MVP_CLASS_EXCEPTION);
 #endif
 	start_harts();
+#if !defined(BE_MVP_BOUNDARY)
 	wait_ready();
 #if defined(BE_MVP_PROBE_IMAGE)
 	be_mvp_probe_run();
 #else
 	control_loop();
+#endif
 #endif
 }
 

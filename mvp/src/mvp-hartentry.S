@@ -24,6 +24,14 @@
  * confined entry, be_mvp_hart_entry, with the same a0 and a1, and does not
  * return. A refused or failed call, or a block that is not one of the two,
  * parks the hart in HS mode, having entered no guest.
+ *
+ * In step 2 (M11-8; D-6 step 6) hart 0 makes the same call itself, from
+ * its boot code, after both starts; on success the firmware enters hart 0
+ * in its own narrow OpenSBI domain, be_control, at be_mvp_control_entry,
+ * the first word of the MVP control text (the device tree's next-addr for
+ * be_control), which no instruction names. It reads no argument and no
+ * register: it sets sp to hart 0's own stack top, from the link, and calls
+ * the C side, which does not return.
  */
 
 #include "mvp-layout.h"
@@ -93,4 +101,20 @@ be_mvp_confine_entry:
 	/* Refused, or no block: park in HS mode, having entered no guest. */
 	tail	be_mvp_arch_park
 	.size be_mvp_confine_entry, . - be_mvp_confine_entry
+
+	/* enum be_mvp_class's exception; mvp-runtime.c asserts the value. */
+	.equ	MVP_CLASS_EXCEPTION, 11
+
+	.section .text.mvp.control.entry, "ax"
+	.align 4
+	.globl be_mvp_control_entry
+	.type be_mvp_control_entry, @function
+be_mvp_control_entry:
+	/* Hart 0's own stack, from the link: no register is trusted. */
+	la	sp, __be_control_stack_end
+	call	be_mvp_control_confined
+	/* It does not return. */
+	li	a0, MVP_CLASS_EXCEPTION
+	tail	be_mvp_runtime_terminal
+	.size be_mvp_control_entry, . - be_mvp_control_entry
 #endif

@@ -6459,24 +6459,28 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
         failed += not ok
         print(f"{'ok  ' if ok else 'FAIL'} [{claim}] {base}: {name}: "
               f"{verdict} {named[:1] if ok else record['findings'][:3]}")
-    # M11-7: the boundary-on form's rules, on two-guests' stand-in.
-    _, on, on_text, _ = boundary_cases(latest, root)[0]
+    # M11-7: the boundary-on form's rules, on two-guests' stand-in, under a
+    # step-1 tree and (M11-8) a step-2 tree.
+    cases = boundary_cases(latest, root)
     options = {"sbi_version": "2.0", "toolchain": "gcc", "build_root": root}
-    base_verdict = evaluate(on_text, on, "direct", pins, **options)[0]
     # The boundary-off form is two-guests' off copy's, its image without
     # the boundary (D-12).
     off_text = current_log_standin(fixture(M9_FIXTURES["two-guests"]),
                                    latest["two-guests-off"], root)
-    for name, table, text, wanted in boundary_mutations(
-            on, on_text, latest["two-guests-off"], off_text):
-        verdict, record = evaluate(text, table, "direct", pins, **options)
-        named = [finding for finding in record["findings"]
-                 if wanted in finding]
-        ok = base_verdict == "PASS" and verdict != "PASS" and bool(named)
-        count += 1
-        failed += not ok
-        print(f"{'ok  ' if ok else 'FAIL'} [boundary] two: {name}: "
-              f"{verdict} {named[:1] if ok else record['findings'][:3]}")
+    for step, (_, on, on_text, _) in (("", cases[0]), (" step 2", cases[2])):
+        base_verdict = evaluate(on_text, on, "direct", pins, **options)[0]
+        for name, table, text, wanted in boundary_mutations(
+                on, on_text, latest["two-guests-off"], off_text):
+            verdict, record = evaluate(text, table, "direct", pins,
+                                       **options)
+            named = [finding for finding in record["findings"]
+                     if wanted in finding]
+            ok = base_verdict == "PASS" and verdict != "PASS" and bool(named)
+            count += 1
+            failed += not ok
+            print(f"{'ok  ' if ok else 'FAIL'} [boundary] two{step}: "
+                  f"{name}: {verdict} "
+                  f"{named[:1] if ok else record['findings'][:3]}")
     for base, name, text in seeded_mutations(
             current=lambda image, data: current_log_standin(
                 data, latest[image], root)):

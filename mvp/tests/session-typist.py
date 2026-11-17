@@ -38,7 +38,7 @@ A run whose boot hart is a domain hart (the checker's REFUSED, Plan
 revision M0-A.2) is made again, up to --attempts (8) in all.
 
 M11-7: a session whose expectation declares the physical boundary runs as
-tests/run-qemu.sh runs a boundary-on row: under its pair's step-1 tree in
+tests/run-qemu.sh runs a boundary-on row: under its pair's tree in
 plain PMP (-dtb BUILD/partition/SCENARIO/PAIR/plain/PAIR.dtb), admitted
 only by the partition checker's record of that tree
 (tests/check-boundary.py gate; refused, no QEMU starts), the oracle

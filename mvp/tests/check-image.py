@@ -346,6 +346,23 @@ def layout_constants(path=LAYOUT_H):
 
 LAYOUT = layout_constants()
 BASE = LAYOUT["MONITOR_HPA"]
+MVP_H = MVP_DIR / "src" / "mvp.h"
+
+
+def class_number(name, path=MVP_H):
+    """An enum be_mvp_class member's value, from mvp.h: its place in the
+    enumeration, which begins at BE_MVP_CLASS_NONE = 0 and sets no other
+    value."""
+    text = pathlib.Path(path).read_text(encoding="utf-8")
+    body = re.search(r"enum be_mvp_class \{(.*?)\};", text, re.S)
+    members = re.findall(r"^\s*(BE_MVP_CLASS_\w+)(?:\s*=\s*(\d+))?,",
+                         body.group(1) if body else "", re.M)
+    require(members and members[0] == ("BE_MVP_CLASS_NONE", "0") and
+            all(not value for _, value in members[1:]),
+            f"{path}'s enum be_mvp_class is not a plain enumeration from 0")
+    names = [member for member, _ in members]
+    require(name in names, f"{path} has no class {name}")
+    return names.index(name)
 # The flat image (M11-3): the core's 0x20000 bytes
 # (planning/mvp-m6-plan.md, D-4), the NOLOAD pool and hart region as
 # zeros, and the MVP region, which ends it.
@@ -434,6 +451,9 @@ MVP_CONJUNCTS = (
     f"__be_mvp_region_end == 0x{REGION + REGION_BYTES:x}",
     f"be_mvp_park_entry == 0x{LAYOUT['PARK_ENTRY_HPA']:x}",
     f"be_mvp_hart_entry == 0x{LAYOUT['G0_CONFINED_ENTRY_HPA']:x}",
+    # M11-8: the control hart's confined entry, in a boundary-on image.
+    f"DEFINED(be_mvp_control_entry) ? be_mvp_control_entry == "
+    f"0x{LAYOUT['CONTROL_CONFINED_ENTRY_HPA']:x} : 1",
 )
 POOL_PHDR = ("mvp_pool", 6)
 HART_PHDR = ("mvp_hart", 6)
@@ -475,8 +495,9 @@ ROLE_EXTENTS = (
      {"mvp-runtime.o"}),
     ("MVP control", LAYOUT["MVP_CONTROL_TEXT_HPA"],
      LAYOUT["MVP_CONTROL_TEXT_HPA"] + LAYOUT["MVP_CONTROL_TEXT_BYTES"],
-     {"mvp-trap.o", "mvp-runtime.o", "mvp-hart.o", "mvp-input.o",
-      "mvp-executor.o", "mvp-sha256.o", "mvp-sbi.o", "mvp-probe.o"}),
+     {"mvp-hartentry.o", "mvp-trap.o", "mvp-runtime.o", "mvp-hart.o",
+      "mvp-input.o", "mvp-executor.o", "mvp-sha256.o", "mvp-sbi.o",
+      "mvp-probe.o"}),
     ("MVP VS-domain-hart", LAYOUT["MVP_DOMAIN_TEXT_HPA"],
      LAYOUT["MVP_DOMAIN_TEXT_HPA"] + LAYOUT["MVP_DOMAIN_TEXT_BYTES"],
      {"mvp-hartentry.o", "mvp-trap.o", "mvp-hartmain.o", "mvp-sbi.o",
@@ -632,8 +653,18 @@ MVP_CONFINE_ENTRY = "be_mvp_confine_entry"
 EXEC_CONFINE = "be_mvp_exec_confine"
 EXEC_IDENTITY = "be_mvp_exec_boundary_identity"
 MVP_PARTITION_IDENTITY = "be_mvp_partition_identity"
+# M11-8 (planning/mvp-m11-plan.md, D-6 step 6; step 2): the control hart's
+# confined entry, alone in its slot at the device tree's next-addr, and the
+# C it calls, which runs the READY wait and the control loop; the boot code
+# that starts both VS-domain harts and then confines hart 0.
+CONTROL_ENTRY = "be_mvp_control_entry"
+CONTROL_CONFINED = "be_mvp_control_confined"
+START_HARTS = "start_harts"
+START_FAILED = "start_failed"
+WAIT_READY = "wait_ready"
+EXEC_HART_START = "be_mvp_exec_hart_start"
 BOUNDARY_SYMBOLS = (MVP_CONFINE_ENTRY, EXEC_CONFINE, EXEC_IDENTITY,
-                    MVP_PARTITION_IDENTITY)
+                    MVP_PARTITION_IDENTITY, CONTROL_ENTRY, CONTROL_CONFINED)
 # What the code a confined VS-domain hart runs never reaches (D-8): any
 # firmware call, and the boundary's own boot-time calls.
 VS_UNREACHABLE = ("be_mvp_fw_call", "be_r3_arch_sbi_call",
@@ -759,6 +790,30 @@ HART0_ONLY = (MVP_LOG_SYMBOL, MVP_LOG_REGISTERS_SYMBOL, MVP_MGMT_STATE_SYMBOL,
 DOMAIN_ROOTS = (MVP_ENTRY, MVP_VECTOR)
 HART0_CODE = (MVP_MAIN, MVP_DECIDE, MVP_CONTROL_MGMT, EXEC_CONSOLE_READ) + \
     INPUT_ROUTING
+# M11-8, step 2 (planning/mvp-m11-plan.md, D-6 step 6 and D-8): what boot
+# code never reaches (C5); what start_harts may call between its last
+# start and hart 0's confine (C7); and the firmware calls the control roots
+# make, through the console write, the reset, and the console read alone
+# (C13), reaching none of the boot code's firmware helpers.
+CONTROL_ONLY = (CONTROL_ENTRY, CONTROL_CONFINED, WAIT_READY, CONTROL_LOOP)
+# C3: the entry's address is the MVP region's start, which hart 0's region
+# check (clear_mvp_bss(), inlined into be_mvp_runtime_main or not) forms.
+REGION_CHECK_OWNERS = (MVP_MAIN, "clear_mvp_bss")
+# C7: what start_harts may call on a path from a start to hart 0's
+# confine: hart_start again, these helpers, which return, and these
+# functions, which do not; each helper reaches no firmware call and no
+# ring (R2-2).
+START_TAIL_HELPERS = ("be_mvp_exec_read_time", "be_mvp_block_hpa",
+                      "be_mvp_control_started")
+START_TAIL_ENDS = (START_FAILED, MVP_TERMINAL)
+RING_PREFIX = "be_mvp_ring_"
+CONTROL_FIRMWARE = ("be_mvp_fw_call", "be_r3_arch_sbi_call")
+CONTROL_FIRMWARE_CALLERS = ("be_r3_platform_write", "be_r3_platform_reset",
+                            EXEC_CONSOLE_READ)
+CONTROL_UNREACHABLE = (EXEC_HART_START, "be_mvp_exec_hart_status",
+                       "be_mvp_exec_sbi_probe", "be_mvp_exec_sbi_version",
+                       EXEC_CONFINE, EXEC_IDENTITY, "be_mvp_exec_send_ipi",
+                       "be_mvp_exec_dbcn_write")
 DOMAIN_MGMT_CODE = (MVP_REQUEST, MVP_WAIT_SERVE)
 PAGE_SYMBOLS = (MVP_PAGES_SYMBOL, MVP_SECRET_SYMBOL)
 PROBE_HGATP = "be_mvp_probe_hgatp"
@@ -1266,7 +1321,14 @@ def tokenize(expression):
 
 
 def evaluate(conjunct, symbols):
-    """Evaluate one ASSERT conjunct: difference CMP difference."""
+    """Evaluate one ASSERT conjunct: difference CMP difference, or (M11-8)
+    DEFINED(symbol) ? difference CMP difference : 1, which holds where the
+    image does not define the symbol."""
+    guarded = re.fullmatch(r"DEFINED\((\w+)\) \? (.+) : 1", conjunct)
+    if guarded:
+        if guarded.group(1) not in symbols:
+            return True
+        conjunct = guarded.group(2)
     tokens = tokenize(conjunct)
     position = 0
 
@@ -2179,6 +2241,11 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
         decoded_all += scan_functions(elf, flat, base, code_start, code_end,
                                       extent, sites, writers, csr_writers,
                                       constant_ranges, kinds)
+    if boundary:
+        # M11-8: the control hart's confined entry's seven words first, so
+        # that a defect in them is reported as C2's or C14's, not as a rule
+        # that its changed call or stack would also break.
+        check_control_entry(dict(decoded_all)[CONTROL_ENTRY], symbols)
     if breach_map is not None:
         check_breach_kinds(kinds)
     check_sites(sites, writers, csr_writers, expected_sites)
@@ -2194,11 +2261,12 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
         "VS-domain-hart", nodes)
     if profile == "mvp":
         control = check_control_reach(elf, functions, decoded_all, symbols,
-                                      nodes)
+                                      nodes, boundary)
     # M11-7: after the role rules, so that each of their defects is still
     # reported as theirs.
     if boundary:
-        check_boundary_code(functions, decoded_all, found, symbols)
+        check_boundary_code(functions, decoded_all, found, symbols, nodes,
+                            control)
         # M11-8: the constants and placement rules, after the code's.
         check_role_constants(elf, flat, nodes, control, domain, symbols,
                              scenario_kind)
@@ -2492,12 +2560,17 @@ def check_role_reach(elf, functions, decoded_all, symbols, roots, allowed,
     require(None not in reached, f"a {label} root is not a function")
     parent = {index: None for index in reached}
     work = sorted(reached)
+    # The shared trap vector serves both roles: each role's reach skips
+    # exactly the vector's edges to the other role's side (the VS-domain
+    # harts' to hart 0's terminal; M11-8, hart 0's to the dispatch and the
+    # VS-domain hart's terminal, which its stack top never selects).
+    skipped = {"VS-domain-hart": (MVP_TERMINAL,),
+               "control": (MVP_DISPATCH, MVP_HART_TERMINAL)}.get(label, ())
+    skip = {symbols[name] for name in skipped if name in symbols}
     while work:
         source = work.pop()
         for _, target, _ in nodes[source][3]:
-            if label == "VS-domain-hart" and \
-                    nodes[source][0] == symbols[MVP_VECTOR] and \
-                    target == symbols[MVP_TERMINAL]:
+            if nodes[source][0] == symbols[MVP_VECTOR] and target in skip:
                 continue
             owner = owner_at(target)
             if owner is not None and owner not in reached:
@@ -2552,16 +2625,25 @@ def check_role_reach(elf, functions, decoded_all, symbols, roots, allowed,
     return nodes, reached
 
 
-def check_control_reach(elf, functions, decoded_all, symbols, nodes=None):
-    """The post-barrier control loop and synchronous-exception terminal;
+def check_control_reach(elf, functions, decoded_all, symbols, nodes=None,
+                        confined=False):
+    """The post-barrier control loop and synchronous-exception terminal,
+    and in a step-2 image (CONFINED; M11-8, rule C4) the control hart's
+    confined entry, whose reach must hold the shared trap vector whole;
     returns the control role's reached nodes."""
+    roots = (CONTROL_LOOP, MVP_TERMINAL) + ((CONTROL_ENTRY,) if confined
+                                            else ())
     nodes, reached = check_role_reach(
-        elf, functions, decoded_all, symbols, (CONTROL_LOOP, MVP_TERMINAL),
+        elf, functions, decoded_all, symbols, roots,
         CONTROL_CODE_EXTENTS, CONTROL_REFERENCE_EXTENTS, "control", nodes)
-    vector = next(node for node in nodes if node[0] == symbols[MVP_VECTOR])
+    vector = next(index for index, node in enumerate(nodes)
+                  if node[0] == symbols[MVP_VECTOR])
     require(any(target == symbols[MVP_TERMINAL]
-                for _, target, _ in vector[3]),
+                for _, target, _ in nodes[vector][3]),
             "the shared trap vector does not reach the control terminal")
+    require(not confined or vector in reached,
+            f"the control roots do not reach the shared trap vector {MVP_VECTOR}, "
+            f"which hart 0's confined entry installs (C4)")
     return reached
 
 
@@ -2619,6 +2701,28 @@ def handed_names(mgmt, pages):
     return set(HANDED_EVERY) | \
         ({MVP_GRANTS_SYMBOL, MVP_MGMT_STATE_SYMBOL} if mgmt else set()) | \
         (set() if pages else {"be_mvp_sealed_channel"})
+
+
+def boot_reach(nodes, owner_at, symbols):
+    """The nodes reached from be_reset, every edge followed but the
+    formation, as data, of the control hart's confined entry's address
+    (M11-8): the entry is the MVP region's first byte, whose start hart 0's
+    region check forms (rule C3). Returns them and the addresses they form
+    outside every function."""
+    entry = symbols.get(CONTROL_ENTRY)
+    start = owner_at(symbols["be_reset"])
+    reached = {start}
+    work = [start]
+    while work:
+        source = work.pop()
+        for _, target, link in nodes[source][3]:
+            if link is None and target == entry:
+                continue
+            owner = owner_at(target)
+            if owner is not None and owner not in reached:
+                reached.add(owner)
+                work.append(owner)
+    return reached, data_targets(nodes, owner_at, reached)
 
 
 def closure(nodes, owner_at, starts):
@@ -2756,8 +2860,7 @@ def check_role_constants(elf, flat, nodes, control, domain, symbols,
     handed_constants, handed_named = pointer_closure(flat, find, handed,
                                                      profile)
     control_constants.update(handed_constants)
-    boot, boot_data = closure(nodes, owner_at,
-                              [owner_at(symbols["be_reset"])])
+    boot, boot_data = boot_reach(nodes, owner_at, symbols)
     boot_constants, boot_named = pointer_closure(flat, find, boot_data)
     domain_constants, domain_named = pointer_closure(
         flat, find, data_targets(nodes, owner_at, domain))
@@ -4313,8 +4416,11 @@ def check_profiles(constants, scenario):
                 f"entries, not {expected[domain]}")
 
 
-def check_control_entry_slot(elf, symbols, constants):
-    """The reserved M11-8 control entry slot, wholly inside its role."""
+def check_control_entry_slot(elf, symbols, constants, boundary=False):
+    """The control confined-entry slot, wholly inside its role: in a
+    boundary-on image (M11-8, rule C1) the control hart's confined entry
+    alone (at the slot's first byte by the linker script's ASSERT); in any
+    other image, empty."""
     start = symbols["__be_control_confined_entry_slot_start"]
     end = symbols["__be_control_confined_entry_slot_end"]
     wanted = constants["CONTROL_CONFINED_ENTRY_HPA"]
@@ -4327,11 +4433,19 @@ def check_control_entry_slot(elf, symbols, constants):
     require(control[0] <= start < end <= control[1],
             "the control confined-entry slot leaves the control "
             "executable extent")
-    overlaps = [name for value, length, name in elf.functions
-                if value < end and start < value + length]
-    require(not overlaps,
-            f"functions overlap the reserved control entry slot: "
-            f"{sorted(overlaps)}")
+    overlaps = sorted((value, name) for value, length, name in elf.functions
+                      if value < end and start < value + length)
+    if not boundary:
+        require(not overlaps,
+                f"functions overlap the reserved control entry slot: "
+                f"{sorted(name for _, name in overlaps)}")
+        return
+    # The entry's address, the slot's first byte, is the linker script's
+    # ASSERT, which parse_asserts() requires and evaluate() re-evaluates.
+    require([name for _, name in overlaps] == [CONTROL_ENTRY],
+            f"the control entry slot holds "
+            f"{[name for _, name in overlaps]}, not {CONTROL_ENTRY} alone "
+            f"(C1)")
 
 
 def check_park_entry_page(elf, symbols, constants):
@@ -4398,7 +4512,7 @@ def check_monitor(toolchain, elf_data, flat, base, layout, map_text=None,
         require(name != PROBE_SWITCH or hgatp_extra,
                 f"{PROBE_SWITCH} is linked outside the VMID images")
     check_layout(elf, flat, base, layout)
-    check_control_entry_slot(elf, symbols, constants)
+    check_control_entry_slot(elf, symbols, constants, boundary)
     check_park_entry_page(elf, symbols, constants)
     # An image with pages links them, and the secret, exactly when its
     # scenario declares pages (planning/mvp-m2-plan.md).
@@ -6412,6 +6526,10 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
                                             dispatch_slot, control_slot)
         monitor += placed
         elfs += moved
+        placed, moved = step_two_mutations(elf, flat, symbols, boot_slot,
+                                           control_slot)
+        monitor += placed
+        elfs += moved
     mutations = [(name, "monitor", address, value, expected)
                  for name, address, value, expected in monitor] + \
         [(name, "boot", address, value, expected)
@@ -6494,6 +6612,118 @@ def placement_mutations(elf, flat, symbols, dispatch_slot, control_slot):
                            symbols["__be_control_stack_start"]),
              "grants in the MVP control constants"))
     return monitor, moved
+
+
+def formation_site(elf, flat, owner, target):
+    """The auipc of OWNER's adjacent auipc and addi pair that forms TARGET's
+    address."""
+    decoded = function_words(elf, flat, owner, BASE)
+    for pc, address, link in references(decoded, owner):
+        word = struct.unpack_from("<I", flat, pc - 4 - BASE)[0]
+        if address == target and link is None and word & 0x7F == 0x17:
+            return pc - 4
+    raise ImageError(f"{owner} forms 0x{target:x} with no adjacent auipc")
+
+
+def between_starts_site(elf, flat, symbols):
+    """The auipc of start_harts' first call pair to one of
+    START_TAIL_HELPERS that the walk from a start visits and that lies
+    before the last start's call by address (R2-1): a call that runs
+    between the starts, and that an address-order rule from the last
+    start would not see."""
+    node = function_node(elf, flat, START_HARTS)
+    calls, _ = start_tail_paths(node, symbols)
+    last = max(pc for pc, target, link in node[3]
+               if (target, link) == (symbols[EXEC_HART_START], 1))
+    helpers = {symbols[name] for name in START_TAIL_HELPERS
+               if name in symbols}
+    sites = sorted(pc - 4 for pc, target, link in calls
+                   if link == 1 and target in helpers and pc < last and
+                   struct.unpack_from("<I", flat, pc - 4 - BASE)[0] & 0xFFF ==
+                   1 << 7 | 0x17)
+    require(sites, f"{START_HARTS} has no call pair to a helper before its "
+            f"last start's call on a path from a start")
+    return sites[0]
+
+
+def step_two_mutations(elf, flat, symbols, boot_slot, control_slot):
+    """M11-8's step-2 rules, each one's defect in a boundary-on monitor:
+    the confined entry off its slot's first byte (the linker script's
+    ASSERT), or another function in the slot (C1); the entry's stack, call, or class changed (C2, C14);
+    its address formed by boot code (C3); the confined C calling boot code,
+    or installing no vector (C4); boot code reaching the control loop (C5);
+    a call after the last start before hart 0's confine, one between the
+    starts that lies before the last start's call, and a helper that calls
+    the firmware (C7); and the control loop calling the firmware itself
+    (C13). C6's defect, a further call of the executor's confine, is
+    M11-7's mutation of its one call."""
+    entry = symbols[CONTROL_ENTRY]
+    pcs = [pc for pc, _, _ in function_words(elf, flat, CONTROL_ENTRY, BASE)]
+    between_starts = between_starts_site(elf, flat, symbols)
+    helper_slot = word_slots(elf, flat, "be_mvp_control_started", BASE, 2)
+    stack, klass = (struct.unpack_from("<I", flat, pcs[index] - BASE)[0]
+                    for index in (1, 4))
+    monitor = [
+        ("the control entry's stack 16 bytes high", pcs[1],
+         struct.pack("<I", with_immediate(stack,
+                                          signed(stack >> 20, 12) + 16)),
+         f"{CONTROL_ENTRY} is not sp formed as __be_control_stack_end in "
+         f"its place (C2)"),
+        ("the control entry calls another function", pcs[2],
+         call_pair(pcs[2], symbols[CONTROL_LOOP]),
+         f"{CONTROL_ENTRY} is not the call of {CONTROL_CONFINED} in its "
+         f"place (C2)"),
+        ("the control entry passes another class", pcs[4],
+         struct.pack("<I", with_immediate(klass, 12)),
+         "to the terminal, not BE_MVP_CLASS_EXCEPTION"),
+        ("boot code forms the control entry's address", boot_slot,
+         pool_reference(boot_slot, entry, 15),
+         f"{CONTROL_ENTRY}'s address is formed"),
+        ("the confined control hart calls boot code",
+         call_site_in(elf, flat, CONTROL_CONFINED, WAIT_READY),
+         call_pair(call_site_in(elf, flat, CONTROL_CONFINED, WAIT_READY),
+                   symbols[MVP_MAIN]),
+         f"through {CONTROL_ENTRY} -> {CONTROL_CONFINED} -> {MVP_MAIN}"),
+        ("the confined control hart installs no vector",
+         formation_site(elf, flat, CONTROL_CONFINED, symbols[MVP_VECTOR]),
+         struct.pack("<II", NOP, NOP),
+         "the control roots do not reach the shared trap vector"),
+        ("boot code reaches the control loop",
+         call_site_in(elf, flat, START_HARTS, EXEC_CONFINE),
+         call_pair(call_site_in(elf, flat, START_HARTS, EXEC_CONFINE),
+                   symbols[CONTROL_LOOP]),
+         f"boot code reaches {CONTROL_LOOP}"),
+        ("a console write between the last start and the confine",
+         call_site_in(elf, flat, START_HARTS, "be_mvp_control_started"),
+         call_pair(call_site_in(elf, flat, START_HARTS,
+                                "be_mvp_control_started"),
+                   symbols["be_mvp_exec_console_write"]),
+         "on a path from a start to hart 0's confine"),
+        # R2-1: a call that runs between the starts and lies before the
+        # last start's call by address, which an address-order rule admits.
+        ("a console write between the starts, before the last start's call",
+         between_starts, call_pair(between_starts,
+                                   symbols["be_mvp_exec_console_write"]),
+         "on a path from a start to hart 0's confine"),
+        # R2-2: a helper start_harts may call there, calling the firmware.
+        ("a start helper calls the firmware", helper_slot,
+         call_pair(helper_slot, symbols[MVP_FW_CALL]),
+         f"be_mvp_control_started, which {START_HARTS} may call between "
+         f"the starts and hart 0's confine, reaches {MVP_FW_CALL}"),
+        ("the control loop calls the firmware itself", control_slot,
+         call_pair(control_slot, symbols[MVP_FW_CALL]),
+         f"the control roots reach {MVP_FW_CALL} through"),
+    ]
+    elfs = [
+        ("the control entry off its slot's first byte",
+         *symbol_value(elf, CONTROL_ENTRY, entry + 4),
+         f"ASSERT fails: DEFINED({CONTROL_ENTRY}) ? {CONTROL_ENTRY} == "
+         f"0x{entry:x} : 1"),
+        ("a second function in the control entry slot",
+         *symbol_value(elf, WAIT_READY, entry + 0x100),
+         "the control entry slot holds"),
+    ]
+    return monitor, elfs
 
 
 def boundary_mutations(elf, flat, symbols, dispatch_slot, boot_slot):
@@ -6679,15 +6909,184 @@ def check_partition_identity(elf, flat, base, symbols, image):
             f"of {pair}'s descriptor, {PARTITION_IDENTITIES[pair]}")
 
 
-def check_boundary_code(functions, decoded_all, found, symbols):
+def check_control_entry(decoded, symbols):
+    """Rules C2 and C14 (M11-8): the control hart's confined entry is
+    exactly sp formed as hart 0's stack top, the call of its C side, the
+    exception class in a0, and the tail of the terminal: seven words, no
+    load or store, no other instruction."""
+    words = [word for _, width, word in decoded]
+    require(len(decoded) == 7 and all(width == 4 for _, width, _ in decoded),
+            f"{CONTROL_ENTRY} is {len(decoded)} instructions, not seven "
+            f"words (C2)")
+    pcs = [pc for pc, _, _ in decoded]
+    found = {pc: (target, link)
+             for pc, target, link in references(decoded, CONTROL_ENTRY)}
+    shape = [
+        (words[0] & 0xFFF == (2 << 7 | 0x17), "auipc sp"),
+        (words[1] & 0xFFFFF == (2 << 15 | 2 << 7 | 0x13), "addi sp, sp"),
+        (found.get(pcs[1]) == (symbols["__be_control_stack_end"], None),
+         "sp formed as __be_control_stack_end"),
+        (words[2] & 0xFFF == (1 << 7 | 0x17), "auipc ra"),
+        (words[3] & 0xFFFFF == (1 << 15 | 1 << 7 | 0x67), "jalr ra, ra"),
+        (found.get(pcs[3]) == (symbols[CONTROL_CONFINED], 1),
+         f"the call of {CONTROL_CONFINED}"),
+        (words[4] & 0xFFFFF == (10 << 7 | 0x13), "addi a0, zero"),
+        (words[5] & 0xFFF == (6 << 7 | 0x17), "auipc t1"),
+        (words[6] & 0xFFFFF == (6 << 15 | 0x67), "jalr zero, t1"),
+        (found.get(pcs[6]) == (symbols[MVP_TERMINAL], 0),
+         f"the tail of {MVP_TERMINAL}")]
+    for ok, what in shape:
+        require(ok, f"{CONTROL_ENTRY} is not {what} in its place (C2)")
+    wanted = class_number("BE_MVP_CLASS_EXCEPTION")
+    require(signed(words[4] >> 20, 12) == wanted,
+            f"{CONTROL_ENTRY} passes class {signed(words[4] >> 20, 12)} to "
+            f"the terminal, not BE_MVP_CLASS_EXCEPTION, {wanted} (C14)")
+
+
+def function_node(elf, flat, name):
+    """Function NAME as role_nodes() gives each: (start, end, owner, its
+    references, its words by pc)."""
+    value, size = function_start(elf, name)
+    decoded = instructions(flat, value, value + size, BASE)
+    return (value, value + size, name, references(decoded, name),
+            {pc: (width, word) for pc, width, word in decoded})
+
+
+def start_tail_paths(node, symbols):
+    """C7's walk (M11-8, R2-1) over start_harts, NODE as role_nodes() gives
+    it: from the return of each call of the executor's hart_start, every
+    path, each ending at the call of the executor's confine or at a call,
+    or a tail call out of the function, to any other function, which the
+    rule judges. Returns ([(pc, target, link)], each call and tail call out
+    on those paths; the pcs the walk visits). A path that returns, runs
+    past the function's end, branches out of it, or takes a jump or call
+    that the walk cannot follow is refused."""
+    low, high, _, refs, words = node
+    pcs = sorted(words)
+    at = {pc: index for index, pc in enumerate(pcs)}
+    transfers = {pc: (target, link) for pc, target, link in refs
+                 if link is not None}
+    start, confine = symbols[EXEC_HART_START], symbols[EXEC_CONFINE]
+    ends = {symbols[name] for name in START_TAIL_ENDS if name in symbols}
+    starts = [at[pc] for pc in pcs if transfers.get(pc) == (start, 1)]
+    confines = [pc for pc in pcs if transfers.get(pc) == (confine, 1)]
+    require(starts and len(confines) == 1,
+            f"{START_HARTS} calls {EXEC_HART_START} at "
+            f"{[hex(pcs[index]) for index in starts]} and {EXEC_CONFINE} at "
+            f"{[hex(pc) for pc in confines]}, not the confine once after "
+            f"the starts (C7)")
+    calls, seen = [], set()
+    work = [index + 1 for index in starts]
+    while work:
+        index = work.pop()
+        if index in seen:
+            continue
+        require(index < len(pcs), f"{START_HARTS} runs past its end on a "
+                f"path from a start (C7)")
+        seen.add(index)
+        pc = pcs[index]
+        width, word = words[pc]
+        insn = decode(word, width, pc)
+        target, link = transfers.get(pc, (None, None))
+        if link == 1:
+            calls.append((pc, target, link))
+            if target != confine and target not in ends:
+                work.append(index + 1)
+            continue
+        if link == 0:
+            if low <= target < high:
+                require(target in at, f"{START_HARTS} jumps into an "
+                        f"instruction at 0x{target:x} (C7)")
+                work.append(at[target])
+            else:
+                calls.append((pc, target, link))
+            continue
+        require(not insn.get("unknown"), f"{START_HARTS} has an instruction "
+                f"at 0x{pc:x} that the walk cannot decode (C7)")
+        require(not (insn.get("indirect") and insn.get("stop") and
+                     insn.get("base") == 1),
+                f"{START_HARTS} returns at 0x{pc:x}, on a path from a start, "
+                f"before hart 0's confine (C7)")
+        require(not insn.get("call") and not insn.get("stop"),
+                f"{START_HARTS} has a jump or call at 0x{pc:x}, on a path "
+                f"from a start to hart 0's confine, that the walk cannot "
+                f"follow (C7)")
+        if insn.get("branch") is not None:
+            require(low <= insn["branch"] < high and insn["branch"] in at,
+                    f"{START_HARTS} branches out of itself at 0x{pc:x} (C7)")
+            work.append(at[insn["branch"]])
+        work.append(index + 1)
+    return calls, {pcs[index] for index in seen}
+
+
+def check_start_tail(nodes, symbols):
+    """Rule C7 (M11-8; D-6 step 6; R2-1, R2-2), by start_harts' control
+    flow: on every path from the return of a call of the executor's
+    hart_start to the call of its confine (start_tail_paths()), each call
+    is to hart_start again, to one of START_TAIL_HELPERS, which return, or
+    to one of START_TAIL_ENDS, which do not and so end the path, and each
+    tail call out of the function to one of START_TAIL_ENDS; and each of
+    START_TAIL_HELPERS reaches no firmware call (CONTROL_FIRMWARE) and no
+    ring function (RING_PREFIX, the only code that reads a mailbox). So
+    hart 0 makes no firmware call and reads no ring between the starts, and
+    none after the second start before its own confine."""
+    owner_at = node_owner(nodes)
+    index = owner_at(symbols[START_HARTS])
+    require(index is not None and nodes[index][0] == symbols[START_HARTS],
+            f"{START_HARTS} is not one function in the image (C7)")
+    calls, _ = start_tail_paths(nodes[index], symbols)
+    names = {symbols[name]: name for name in START_TAIL_HELPERS +
+             START_TAIL_ENDS + (EXEC_HART_START, EXEC_CONFINE)
+             if name in symbols}
+    ends = {symbols[name] for name in START_TAIL_ENDS if name in symbols}
+    for pc, target, link in calls:
+        label = names.get(target, f"0x{target:x}")
+        if link:
+            require(target in names,
+                    f"{START_HARTS} calls {label} at 0x{pc:x}, on a path from "
+                    f"a start to hart 0's confine, where only "
+                    f"{EXEC_HART_START} again, "
+                    f"{', '.join(START_TAIL_HELPERS)}, and "
+                    f"{', '.join(START_TAIL_ENDS)} may be called (C7)")
+        else:
+            require(target in ends,
+                    f"{START_HARTS} tail-calls {label} at 0x{pc:x}, on a "
+                    f"path from a start to hart 0's confine, where only "
+                    f"{', '.join(START_TAIL_ENDS)}, which do not return, may "
+                    f"end it (C7)")
+    for name in START_TAIL_HELPERS:
+        if name not in symbols:
+            continue
+        reached, _ = closure(nodes, owner_at, [owner_at(symbols[name])])
+        found = sorted({part for item in reached
+                        for part in nodes[item][2].split("/")
+                        if part in CONTROL_FIRMWARE or
+                        part.startswith(RING_PREFIX)})
+        require(not found,
+                f"{name}, which {START_HARTS} may call between the starts and "
+                f"hart 0's confine, reaches {', '.join(found)}: a firmware "
+                f"call or a ring (C7)")
+
+
+def check_boundary_code(functions, decoded_all, found, symbols, nodes=None,
+                        control=None):
     """Rules 1 to 4 of a boundary-on image (planning/mvp-m11-plan.md, D-6
     and D-8): the stub, in MVP boot text past the park page, checks its
     block and sets sp as the hart entry does, then calls the executor's
-    confine, its one call site, or parks; confine and the identity read
-    each reach be_mvp_fw_call alone, the read from hart 0's firmware probe
-    alone; no instruction names the hart entry, and hart 0's start names
-    the stub, once; and no code a VS-domain hart runs, from the hart entry
-    or the trap vector, reaches a firmware call."""
+    confine, or parks; confine and the identity read each reach
+    be_mvp_fw_call alone, the read from hart 0's firmware probe alone; no
+    instruction names the hart entry, and hart 0's start names the stub,
+    once; and no code a VS-domain hart runs, from the hart entry or the
+    trap vector, reaches a firmware call. And step 2's (M11-8, D-6 step
+    6): the control hart's confined entry (whose words, C2 and C14,
+    check_instructions() reads first), whose address no code forms but as
+    the MVP region's start in hart 0's region check (C3); boot code that
+    reaches none
+    of the control hart's confined code (C5); the executor's confine
+    called twice, by the stub and by start_harts (C6), with no firmware
+    call and no ring read on any path from a start to it (C7); and the
+    control roots' firmware calls through the console write, the reset, and
+    the console read alone (C13)."""
     by_name = dict(decoded_all)
     stub = symbols[MVP_CONFINE_ENTRY]
     boot = LAYOUT["MVP_BOOT_TEXT_HPA"]
@@ -6698,17 +7097,35 @@ def check_boundary_code(functions, decoded_all, found, symbols):
     check_hart_entry(by_name[MVP_CONFINE_ENTRY], symbols, MVP_CONFINE_ENTRY,
                      EXEC_CONFINE)
     sites = {name: [] for name in (EXEC_CONFINE, EXEC_IDENTITY,
-                                   MVP_CONFINE_ENTRY, MVP_ENTRY)}
+                                   MVP_CONFINE_ENTRY, MVP_ENTRY,
+                                   CONTROL_ENTRY)}
     for owner, references_ in found.items():
         for pc, target, link in references_:
             for name in sites:
                 if target == symbols[name]:
                     sites[name].append((owner, hex(pc), link))
-    require(len(sites[EXEC_CONFINE]) == 1 and
-            sites[EXEC_CONFINE][0][0] == MVP_CONFINE_ENTRY and
-            sites[EXEC_CONFINE][0][2] == 1,
-            f"{EXEC_CONFINE} call sites {sites[EXEC_CONFINE]}, expected one, "
-            f"the stub's call")
+    # The entry is the MVP region's first byte, which hart 0's region check
+    # forms as the region's start: that one formation, as data, and no
+    # call or jump.
+    require(len(sites[CONTROL_ENTRY]) <= 1 and
+            all(owner in REGION_CHECK_OWNERS and link is None
+                for owner, _, link in sites[CONTROL_ENTRY]),
+            f"{CONTROL_ENTRY}'s address is formed at {sites[CONTROL_ENTRY]}, "
+            f"not only as the MVP region's start by hart 0's region check; "
+            f"only the device tree names the entry (C3)")
+    if nodes is not None:
+        reached = {name for index in
+                   boot_reach(nodes, node_owner(nodes), symbols)[0]
+                   for name in nodes[index][2].split("/")}
+        for name in CONTROL_ONLY:
+            require(name not in reached,
+                    f"boot code reaches {name}, which only hart 0's "
+                    f"confined entry may reach (C5)")
+    require(sorted((owner, link) for owner, _, link in sites[EXEC_CONFINE])
+            == sorted([(MVP_CONFINE_ENTRY, 1), (START_HARTS, 1)]),
+            f"{EXEC_CONFINE} call sites {sites[EXEC_CONFINE]}, expected two, "
+            f"the stub's call and {START_HARTS}' (C6)")
+    check_start_tail(nodes, symbols)
     require(sites[EXEC_IDENTITY] and
             all(owner in BOUNDARY_PROBE_OWNERS
                 for owner, _, _ in sites[EXEC_IDENTITY]),
@@ -6742,6 +7159,51 @@ def check_boundary_code(functions, decoded_all, found, symbols):
                     f"the VS-domain-hart roots reach {name} in a "
                     f"boundary-on image, through "
                     f"{' -> '.join(reversed(path))}")
+    if nodes is not None and control is not None:
+        check_control_firmware(nodes, control, symbols)
+
+
+def check_control_firmware(nodes, control, symbols):
+    """Rule C13 (M11-8; D-8): the control roots reach the firmware
+    (be_mvp_fw_call, be_r3_arch_sbi_call) only through the console write,
+    the reset, and the console read: a reach from them that stops at those
+    three holds neither; and the control reach (CONTROL) holds none of the
+    boot code's firmware helpers (hart_start, hart_status, the probes,
+    confine, the identity read, an IPI send, the boundary-off console
+    write)."""
+    for index in sorted(control):
+        for name in nodes[index][2].split("/"):
+            require(name not in CONTROL_UNREACHABLE,
+                    f"the control roots reach {name}, a firmware helper of "
+                    f"boot code's (C13)")
+    owner_at = node_owner(nodes)
+    skip = {symbols[name] for name in (MVP_DISPATCH, MVP_HART_TERMINAL)
+            if name in symbols}
+    roots = [owner_at(symbols[name]) for name in
+             (CONTROL_LOOP, MVP_TERMINAL, CONTROL_ENTRY)]
+    parent = {index: None for index in roots}
+    work = list(roots)
+    while work:
+        source = work.pop()
+        names = nodes[source][2].split("/")
+        path = [source]
+        while parent[path[-1]] is not None:
+            path.append(parent[path[-1]])
+        firmware = [name for name in names if name in CONTROL_FIRMWARE]
+        require(not firmware,
+                f"the control roots reach {firmware[0] if firmware else ''} "
+                f"through "
+                f"{' -> '.join(nodes[item][2] for item in reversed(path))}, "
+                f"not through {', '.join(CONTROL_FIRMWARE_CALLERS)} (C13)")
+        if any(name in CONTROL_FIRMWARE_CALLERS for name in names):
+            continue
+        for _, target, _ in nodes[source][3]:
+            if nodes[source][0] == symbols[MVP_VECTOR] and target in skip:
+                continue
+            owner = owner_at(target)
+            if owner is not None and owner not in parent:
+                parent[owner] = source
+                work.append(owner)
 
 
 def check_breach_kinds(kinds):

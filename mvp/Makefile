@@ -753,17 +753,21 @@ endef
 # monitor rebuilds with $(3), $(7) the shared MVP assembly sources it
 # rebuilds with $(3), $(8) the image's identity header when its boundary
 # is on (M11-7): then the runtime objects compile with BE_MVP_BOUNDARY and
-# the header, copied as $(1)/boundary/mvp-partition-identity.h, and the
-# hart entry is rebuilt with BE_MVP_BOUNDARY; $(6) and the core profile
-# keep $(3). The scenario's MVP core profile, beside its header,
-# compiles with $(3) too: the hart-start variant names its hart.
+# the header, copied as $(1)/boundary/mvp-partition-identity.h; $(6) and
+# the core profile keep $(3). The scenario's MVP core profile, beside its
+# header, compiles with $(3) too: the hart-start variant names its hart.
+# Every monitor rebuilds the hart entry, with BE_MVP_BOUNDARY exactly where
+# its boundary is on (M11-8): a boundary-on hart entry holds the control
+# hart's confined entry, kept by the linker script and calling a function
+# only a boundary-on runtime defines, so no boundary-off monitor may link
+# it (the main two-guests monitor's object is the toolchain's shared one).
 define mvp_monitor
 $(foreach c,$(MVP_RUNTIME_C),$(eval $(call mvp_monitor_object,$(1),$(2),$(3) \
 	$(if $(8),-DBE_MVP_BOUNDARY -iquote $(1)/boundary),$(c),$(5) \
 	$(if $(8),$(1)/boundary/mvp-partition-identity.h))))
 $(foreach c,$(6),$(eval $(call \
 	mvp_monitor_object,$(1),$(2),$(3),$(c),$(5))))
-$(foreach a,$(7) $(if $(8),mvp-hartentry.S),$(eval $(call \
+$(foreach a,$(7) mvp-hartentry.S,$(eval $(call \
 	mvp_monitor_asm_object,$(1),$(2),$(3) $(if $(8),-DBE_MVP_BOUNDARY),$(a))))
 $(if $(8),$(eval $(call mvp_identity_copy,$(1),$(8))))
 $(1)/obj/mvp/mvp-config.o: $(dir $(5))mvp-config.c $(MVP_RUNTIME_HEADERS) \
@@ -771,12 +775,12 @@ $(1)/obj/mvp/mvp-config.o: $(dir $(5))mvp-config.c $(MVP_RUNTIME_HEADERS) \
 	mkdir -p $$(@D)
 	$$(CC_$(2)) $$(TARGET_FLAGS) $(3) -c $$< -o $$@
 
-$(1)/be-mvp.elf: $(call monitor_link,$(1),$(2),$(4),$(6),$(7) $(if \
-		$(8),mvp-hartentry.S)) $(PORT_STAMP) $(MVP_LDS)
+$(1)/be-mvp.elf: $(call monitor_link,$(1),$(2),$(4),$(6),$(7) \
+		mvp-hartentry.S) $(PORT_STAMP) $(MVP_LDS)
 	$$(CC_$(2)) $$(LD_$(2)) $$(TARGET_FLAGS) $$(LINK_FLAGS) \
 		-Wl,-Map,$(1)/be-mvp.map \
-		$(call monitor_link,$(1),$(2),$(4),$(6),$(7) $(if \
-		$(8),mvp-hartentry.S)) -o $$@
+		$(call monitor_link,$(1),$(2),$(4),$(6),$(7) \
+		mvp-hartentry.S) -o $$@
 	$$(OBJDUMP) -d -S $$@ > $(1)/be-mvp.dis
 	$$(CROSS_COMPILE)size -A -x $$@ > $(1)/be-mvp.size.txt
 
@@ -1059,13 +1063,15 @@ PARTITION_BACKEND := $(MVP_DIR)/tools/partition-backend.py
 PARTITION_CHECK := $(MVP_DIR)/tests/check-partition.py
 PARTITION_SCENARIOS := two-guests te-poc anchor
 # M11-7: a run image paired with another (scenarios/pairing.txt) has no
-# descriptor of its own; it runs under its pair's. The tree realizes step 1
-# (PARTITION_CONTROL_HART): hart 0 stays in be_boot, and no OpenSBI domain
-# names it; M11-8's step 2 is `confined`.
+# descriptor of its own; it runs under its pair's. The tree realizes step 2
+# (PARTITION_CONTROL_HART, M11-8): hart 0 confines itself into be_control
+# after both starts; step 1, `boot` (M11-7: hart 0 stays in be_boot, and no
+# OpenSBI domain names it), remains an option of the backend and the
+# checker, which the control hart's negative boundary-control-absent uses.
 PARTITION_PAIRING := $(MVP_DIR)/scenarios/pairing.txt
 PARTITION_PAIRED := $(shell sed -n 's/^\([a-z0-9-]*\) [a-z0-9-]*$$/\1/p' \
 	$(PARTITION_PAIRING))
-PARTITION_CONTROL_HART := boot
+PARTITION_CONTROL_HART := confined
 PARTITION_IMAGES_two-guests := $(filter-out $(PARTITION_PAIRED),two-guests \
 	payload exit-budget run-timeout ring-full hart-start init-exit rdcycle \
 	sbi-time hostile two-guests-shell)
@@ -1278,9 +1284,10 @@ qemu-test sessions uboot-rehearsal run-tool-check: $(PARTITION_CHECK_RECORDS)
 
 # --- the boundary's own negatives (M11-7; planning/mvp-m11-plan.md, D-10)
 # Each negative's tree (tests/boundary-negatives.py tree): two-guests'
-# plain step-1 tree by one named edit, compiled as the backend compiles;
-# its tables, the pair's, but boundary-no-window's, which the backend makes
-# from that negative's descriptor; and its record, the independent
+# plain tree, of PARTITION_CONTROL_HART's step, by one named edit,
+# compiled as the backend compiles; its tables, the pair's, but
+# boundary-no-window's, which the backend makes from that negative's
+# descriptor; and its record, the independent
 # checker's refusal of that tree with the checker's reason. The run
 # harness admits a refused tree only for the run that declares that
 # negative and that reason (tests/check-boundary.py gate, A-9). $(1)
@@ -1548,7 +1555,8 @@ variants: image $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_VARIANTS) \
 # does not make: each image keeps the accepted 2^32 ticks (178 s on the
 # board, about 7 minutes at QEMU's timebase). The images' paths and a
 # QEMU command line for each are printed; since M11-7 each boots under its
-# step-1 tree in plain PMP (-dtb), which the partition checker passed.
+# tree in plain PMP (-dtb), which the partition checker passed (step 2
+# since M11-8).
 .PHONY: live
 live: variants firmware $(PARTITION_CHECK_RECORDS)
 	@$(foreach t,$(VARIANT_TOOLCHAINS),$(foreach s,$(MVP_SHELL_SCENARIOS),echo \

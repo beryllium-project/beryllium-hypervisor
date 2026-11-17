@@ -73,7 +73,7 @@
 # no-grant-check ends in BE_MVP:FAIL run-timeout after its 2^27-tick budget
 # (13.4 s at QEMU's 10 MHz timebase), well inside the attempt's timeout.
 #
-# M11-7 (planning/mvp-m11-plan.md, D-10, D-12; step 1): a run whose
+# M11-7 (planning/mvp-m11-plan.md, D-10, D-12): a run whose
 # expectation declares the physical boundary (its "boundary" section,
 # tools/gen-scenario.py's) is boundary-on. It must be a k3-like row whose
 # PMP mode is plain or smepmp; QEMU boots it with -dtb, the backend's tree
