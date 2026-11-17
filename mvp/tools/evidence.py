@@ -291,6 +291,13 @@ ATTEMPT_FILES = ("console.log", "check.txt", "result.json", "oracle.json",
 # M11-7: a boundary-off attempt's boundary record, and the form of a
 # boundary-on one's last line (step 1: the control hart is boot code).
 NOT_APPLICABLE = "BE_MVP_BOUNDARY: NOT-APPLICABLE boundary=off\n"
+# M11-7: a breach image's plan beside its ELF (tools/gen-breach.py), and
+# each of its attempts' hook record (tests/check-boundary.py breach): its
+# verdict line, or the line of a run that could not be judged.
+BREACH_PLAN = "breach-plan.json"
+BREACH_LINE = re.compile(r"BE_MVP_BREACH: (?:PASS|FAIL) image=(\S+) "
+                         r"boundary=(on|off) hart=[12] rows=\d+ .*")
+BREACH_UNJUDGED = re.compile(r"BE_MVP_BREACH: FAIL .*")
 BOUNDARY_ON = re.compile(r"BE_MVP_BOUNDARY: (?:PASS|FAIL) image=\S+ pair=\S+ "
                          r"pmp_mode=(plain|smepmp) control_hart=boot .*")
 # M7-4's sessions (tests/session-typist.py suite), under BUILD/qemu: the
@@ -675,10 +682,31 @@ def qemu_attempts(build):
                 raise Refused(f"{stem}.{suffix} is missing")
         boundary_row(attempt, row, suite / f"{stem}.boundary.txt")
         attempt["stem"] = stem
+        attempt["breach"] = breach_row(build, attempt, row, suite)
         attempts.append(attempt)
     if not attempts:
         raise Refused("attempts.tsv has no attempt")
     return suite, summary, attempts
+
+
+def breach_row(build, attempt, row, suite):
+    """M11-7: an attempt of a breach image (its plan beside its ELF) has its
+    hook record, which names the image and the attempt's boundary, or says
+    the run could not be judged. Returns the plan, or None."""
+    plan = (build / attempt["elf"]).parent / BREACH_PLAN
+    if not plan.is_file():
+        return None
+    record = suite / f"{attempt['stem']}.breach.txt"
+    if not record.is_file():
+        raise Refused(f"{attempt['stem']}.breach.txt is missing")
+    text = record.read_text(encoding="utf-8")
+    last = text.splitlines()[-1] if text.strip() else ""
+    match = BREACH_LINE.fullmatch(last)
+    if match and match.groups() != (plan.parent.name, attempt["boundary"]) \
+            or not match and not BREACH_UNJUDGED.fullmatch(last):
+        raise Refused(f"attempts.tsv row {row!r} and its breach record "
+                      f"{record.name} do not agree")
+    return plan
 
 
 def boundary_row(attempt, row, record, table="attempts.tsv"):
@@ -980,10 +1008,19 @@ def development(build, out, home):
         writer.copy(f"records/policy/{record.name}", record)
     writer.copy("qemu/summary.txt", suite / "summary.txt")
     writer.copy("qemu/attempts.tsv", suite / "attempts.tsv")
+    plans = {}
     for attempt in attempts:
         for suffix in ATTEMPT_FILES:
             writer.copy(f"qemu/{attempt['stem']}.{suffix}",
                         suite / f"{attempt['stem']}.{suffix}")
+        if attempt["breach"]:
+            writer.copy(f"qemu/{attempt['stem']}.breach.txt",
+                        suite / f"{attempt['stem']}.breach.txt")
+            plans[f"qemu/breach/{attempt['toolchain']}-"
+                  f"{attempt['breach'].parent.name}.plan.json"] = \
+                attempt["breach"]
+    for target, plan in sorted(plans.items()):
+        writer.copy(target, plan)
     writer.copy("sessions/sessions.txt", sessions_root / "sessions.txt")
     writer.copy("sessions/sessions.tsv", sessions_root / "sessions.tsv")
     for attempt in sessions:
@@ -1671,6 +1708,16 @@ def synthetic_build(root):
                       "1:never-started,2:never-started,3-7:never-started "
                       "identity=0123456789ab\n")
         (suite / f"{stem}.boundary.txt").write_text(record, encoding="ascii")
+        if run_name == "payload":
+            # The payload stands in for a breach image (M11-7): a plan
+            # beside its ELF, and its attempt's hook record.
+            (build / directory / BREACH_PLAN).write_text("{}\n",
+                                                         encoding="ascii")
+            (suite / f"{stem}.breach.txt").write_text(
+                "row A1 denied cause=0x5 stval=0x117e00000 ok\n"
+                "BE_MVP_BREACH: PASS image=payload boundary=on hart=1 rows=1 "
+                "denied=1 illegal=0 refused=0 allowed=0 words=0 devices=0\n",
+                encoding="ascii")
         rows.append("\t".join((toolchain, run_name, str(attempt), hart, "0",
                                verdict, "0" * 64, elf,
                                file_sha(build / elf)) + columns))
@@ -2007,6 +2054,39 @@ def self_test(scratch):
          "refuses the bundle", "that no partition output has" in
          (refused(development, build, scratch / "bundle-3", home) or ""))
     table.write_text(original, encoding="ascii")
+    record = build / "qemu" / "suite" / "gcc-payload.1.breach.txt"
+    original = record.read_text(encoding="ascii")
+    case("a breach image's attempt has its hook record and its plan in the "
+         "bundle", (first / "qemu" / "gcc-payload.1.breach.txt").read_text(
+             encoding="ascii") == original and
+         (first / "qemu" / "breach" / "gcc-payload.plan.json").is_file() and
+         not (first / "qemu" / "gcc-k3-like.2.breach.txt").exists())
+    for name, text, reason in (
+            ("whose hook record names another boundary",
+             original.replace("boundary=on", "boundary=off"), "do not agree"),
+            ("whose hook record names another image",
+             original.replace("image=payload", "image=breach-g0"),
+             "do not agree"),
+            ("whose hook record has no verdict line",
+             original.splitlines()[0] + "\n", "do not agree")):
+        record.write_text(text, encoding="ascii")
+        case(f"a breach image's attempt {name} refuses the bundle",
+             reason in (refused(development, build, scratch / "bundle-3",
+                                home) or ""))
+    record.write_text("BE_MVP_BREACH: FAIL the oracle's read did not "
+                      "complete\n", encoding="ascii")
+    stdout, sys.stdout = sys.stdout, quiet
+    try:
+        unjudged = refused(development, build, scratch / "bundle-3", home)
+    finally:
+        sys.stdout = stdout
+    case("a breach image's attempt that could not be judged has its record",
+         unjudged is None)
+    record.unlink()
+    case("a breach image's attempt without its hook record refuses the "
+         "bundle", "gcc-payload.1.breach.txt is missing" in
+         (refused(development, build, scratch / "bundle-3", home) or ""))
+    record.write_text(original, encoding="ascii")
     record = build / "qemu" / "suite" / "gcc-k3-like.2.boundary.txt"
     record.write_text("BE_MVP_BOUNDARY: PASS image=two-guests\n",
                       encoding="ascii")

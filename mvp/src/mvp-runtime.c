@@ -352,8 +352,14 @@ _Static_assert(BE_MVP_SCENARIO_SECRET_PAGE < BE_MVP_SCENARIO_PAGES &&
  */
 static const struct be_mvp_gstage_page be_mvp_pages[BE_MVP_SCENARIO_PAGES] =
 	BE_MVP_SCENARIO_PAGE_INITIALIZER;
+#if defined(BE_MVP_BREACH)
+/* A breach image's hook names the secret's source (M11-7, finding F-4;
+ * mvp-breach.h declares it). */
+const be_u8 be_mvp_secret[BE_MVP_SECRET_BYTES] = BE_MVP_SCENARIO_SECRET;
+#else
 static const be_u8 be_mvp_secret[BE_MVP_SECRET_BYTES] =
 	BE_MVP_SCENARIO_SECRET;
+#endif
 #else
 static const struct be_mvp_gstage_channel be_mvp_channel =
 	BE_MVP_SCENARIO_CHANNEL_INITIALIZER;
@@ -2002,6 +2008,38 @@ static int ring_views(struct be_mvp_ring *writer, struct be_mvp_ring *reader,
  * indices, with the views of the three rings, hart 0's and the domain
  * hart's; then a fence w, w, and the generation words last.
  */
+#if defined(BE_MVP_BREACH)
+/*
+ * A breach image's words, before the barrier (M11-7): the hooked VS
+ * domain's record cleared, so that a second run of its hook shows; the
+ * block and words its control-mailbox rows change, each its fill; and the
+ * forged Sv39 VS-stage root its VS-stage rows name, one gigapage leaf at
+ * VA 0 to BE_MVP_BREACH_FORGED_GPA, in the control tail page, which
+ * nothing else uses.
+ */
+static void breach_fill(void)
+{
+	volatile be_u64 *record = (volatile be_u64 *)(void *)
+		((be_u64)(void *)hart_mailbox(BE_MVP_BREACH_DOMAIN) +
+		 BE_MVP_BREACH_RECORD_OFFSET);
+	be_u64 control = (be_u64)(void *)control_mailbox(BE_MVP_BREACH_DOMAIN);
+	volatile be_u64 *root = (volatile be_u64 *)(void *)
+		BE_MVP_BREACH_FORGED_VS_ROOT;
+	be_u64 index, offset;
+
+	for (index = 0U; index < BE_MVP_BREACH_HEADER_BYTES / 8U; ++index)
+		record[index] = 0U;
+	for (offset = BE_MVP_BREACH_FILL_BLOCK; offset <
+	     BE_MVP_BREACH_FILL_WORDS + 8U * BE_MVP_BREACH_FILL_COUNT;
+	     offset += 8U)
+		*(volatile be_u64 *)(void *)(control + offset) =
+			BE_MVP_BREACH_FILL | offset;
+	for (index = 0U; index < 512U; ++index)
+		root[index] = 0U;
+	root[0] = ((BE_MVP_BREACH_FORGED_GPA >> 12) << 10) | 0xcfU;
+}
+#endif
+
 static void publish_blocks(void)
 {
 	be_u64 values[4] = { BE_MVP_HART_REGION_HPA, BE_MVP_HART_REGION_BYTES,
@@ -2069,6 +2107,9 @@ static void publish_blocks(void)
 				BE_MVP_RECORDS_INPUT, domain))
 			boot_fail();
 	}
+#if defined(BE_MVP_BREACH)
+	breach_fill();
+#endif
 	be_mvp_exec_fence_w_w();
 	for (domain = 0U; domain < BE_MVP_DOMAINS; ++domain)
 		*(volatile be_u64 *)&published_page(domain)->desc.generation =

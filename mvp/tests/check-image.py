@@ -467,7 +467,8 @@ ROLE_EXTENTS = (
      LAYOUT["MVP_DOMAIN_TEXT_HPA"] + LAYOUT["MVP_DOMAIN_TEXT_BYTES"],
      {"mvp-hartentry.o", "mvp-trap.o", "mvp-hartmain.o", "mvp-sbi.o",
       "mvp-gstage.o", "mvp-input.o", "mvp-hart.o", "mvp-executor.o",
-      "mvp-probe.o", "mvp-probe-arch.o"}),
+      "mvp-probe.o", "mvp-probe-arch.o", "mvp-breach.o",
+      "mvp-breach-arch.o"}),
     ("MVP boot", LAYOUT["MVP_BOOT_TEXT_HPA"],
      LAYOUT["MVP_BOOT_TEXT_HPA"] + LAYOUT["MVP_BOOT_TEXT_BYTES"],
      set(MVP_C_OBJECTS) | {"mvp-trap.o", "mvp-hartentry.o",
@@ -635,6 +636,43 @@ BOUNDARY_START_OWNERS = ("be_mvp_runtime_main", "start_harts")
 BOUNDARY_IMAGES = frozenset()
 PAIRING = {}
 PARTITION_IDENTITIES = {}
+# M11-7 (planning/mvp-m11-plan.md, D-10): anchor's hostile-monitor images
+# (--breach NAME:DECLARATION:DOMAIN; mvp/Makefile's MVP_BREACH_VARIANTS and
+# their -off copies), {name: (declaration, VS domain)}, and their hook:
+# the hook, its executor functions, and its privileged helpers, which hold
+# the instruction sites and CSR writes BREACH_SITES and BREACH_WRITERS add
+# and every instruction of BREACH_KINDS; every other image links none.
+BREACH = {}
+BREACH_HOOK = "be_mvp_breach_hook"
+BREACH_ENTER = "be_mvp_breach_arch_enter"
+BREACH_TRANSLATE = "be_mvp_breach_arch_translate"
+BREACH_ATTEMPT = "be_mvp_breach_arch_attempt"
+BREACH_LEAVE = "be_mvp_breach_arch_leave"
+BREACH_VECTOR = "be_mvp_breach_arch_vector"
+BREACH_ARCH = (BREACH_ENTER, BREACH_TRANSLATE, BREACH_ATTEMPT, BREACH_LEAVE)
+BREACH_EXEC_PREFIX = "be_mvp_exec_breach_"
+BREACH_TABLE = "be_mvp_breach_attempts"
+BREACH_MODES_TABLE = "be_mvp_breach_modes"
+BREACH_PREFIXES = ("be_mvp_breach_", BREACH_EXEC_PREFIX)
+BREACH_OBJECTS = ("mvp-breach.o", "mvp-breach-arch.o")
+BREACH_SITES = {"ecall": {BREACH_ATTEMPT: 1}, "sret": {BREACH_VECTOR: 1},
+                "sfence.vma": {BREACH_TRANSLATE: 1},
+                "hfence.gvma": {BREACH_TRANSLATE: 1},
+                "hfence.vvma": {BREACH_TRANSLATE: 1},
+                "hlsv": {BREACH_ATTEMPT: 2}, "wfi": {BREACH_VECTOR: 1}}
+BREACH_WRITERS = {"stvec": {BREACH_ENTER, BREACH_LEAVE},
+                  "sscratch": {BREACH_ENTER, BREACH_LEAVE},
+                  "sepc": {BREACH_LEAVE, BREACH_VECTOR},
+                  "sstatus": {BREACH_LEAVE},
+                  "hstatus": {BREACH_ENTER, BREACH_LEAVE},
+                  "satp": {BREACH_TRANSLATE}, "hgatp": {BREACH_TRANSLATE},
+                  "vsatp": {BREACH_TRANSLATE}}
+BREACH_KINDS = {"amo": 1, "lr": 1, "sc": 1, "cbo.zero": 1, "cbo.inval": 1,
+                "jalr-link": 1}
+BREACH_TOOL = MVP_DIR / "tools" / "gen-breach.py"
+BREACH_HEADER = MVP_DIR / "src" / "mvp-breach.h"
+# The log page's bytes in use (src/mvp-log.h): its header and capacity.
+LOG_USED_BYTES = 128 + 41 * 96
 MVP_LAYOUT_SYMBOL = "be_mvp_payload_layout"
 MVP_CHANNEL_SYMBOL = "be_mvp_channel"
 MVP_IDENTITY_SYMBOL = "be_mvp_config_identity"
@@ -1057,6 +1095,11 @@ CHERI_DTB_VARIANT_INITS = {"cap-store": "init-cap-store"}
 # check refuses, and the perturbed expected measurement.
 ANCHOR_VARIANTS = ("secret-shared", "response-writable", "wrong-measurement",
                    "no-grant-check")
+# M11-7's hostile-monitor images (planning/mvp-m11-plan.md, D-10), anchor's
+# monitor with the hook, each its own variant; and their -off copies,
+# below, each checked as its variant against anchor-off.
+BREACH_VARIANTS = ("breach-g0", "breach-g1")
+ANCHOR_VARIANTS += BREACH_VARIANTS
 # M7-4's console variant of each scenario (planning/mvp-m7-plan.md, Q4),
 # SCENARIO-shell: its monitor the scenario's with console input granted to
 # each domain a shell runs in, its only change the MVP core profile's grant
@@ -1080,7 +1123,8 @@ OFF_COPIES = {"two-guests-off": "two-guests", "te-poc-off": "te-poc",
 # A monitor variant built without the boundary (ring-full's, D-12): the
 # variant it copies, checked as that variant against its scenario's off
 # copy.
-OFF_VARIANTS = {"ring-full-off": "ring-full"}
+OFF_VARIANTS = {"ring-full-off": "ring-full", "breach-g0-off": "breach-g0",
+                "breach-g1-off": "breach-g1"}
 VARIANTS = ("payload",) + DTB_VARIANTS + MONITOR_VARIANTS + ("shim-rule",) + \
     TE_POC_VARIANTS + ANCHOR_VARIANTS + CONSOLE_VARIANTS + (FLIP_VARIANT,) + \
     tuple(OFF_COPIES) + tuple(OFF_VARIANTS)
@@ -2062,12 +2106,14 @@ def check_helpers(elf, flat, base, symbols, profile):
 
 
 def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
-                       inject_sites=0, boundary=False):
+                       inject_sites=0, boundary=False, breach_map=None):
     """The ecall/sret/fence/CSR rules over the monitor's code: the accepted
     code extent and the MVP region's text, each [start, end); the injection
     helper with inject_sites call sites (1 in an image that accepts
-    denials, else 0); and in a boundary-on image (M11-7) its stub and
-    extension calls (check_boundary_code())."""
+    denials, else 0); in a boundary-on image (M11-7) its stub and
+    extension calls (check_boundary_code()); and in a breach image (M11-7,
+    BREACH_MAP its link map) its hook's sites, writers, instructions, and
+    calls (check_breach_code())."""
     install_extra, hgatp_extra, _ = PROFILES[profile]
     if profile == "mvp":
         require("be_mvp_send_ipi" not in symbols and
@@ -2079,8 +2125,16 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
         csr_writers["stimecmp"] = CSR_WRITERS["stimecmp"] | {
             MVP_TICK, MVP_PARK}
     install_callers = INSTALL_CALLERS + list(install_extra)
+    expected_sites = {kind: dict(owners)
+                      for kind, owners in INSTRUCTION_SITES.items()}
+    if breach_map is not None:
+        for kind, owners in BREACH_SITES.items():
+            expected_sites[kind].update(owners)
+        for name, owners in BREACH_WRITERS.items():
+            csr_writers[name] = csr_writers[name] | owners
     sites = {kind: {} for kind in INSTRUCTION_SITES}
     writers = {}
+    kinds = {}
     decoded_all = []
     constant_ranges = tuple(
         (symbols[start], symbols[end]) for start, end in (
@@ -2099,8 +2153,10 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
         functions += extent
         decoded_all += scan_functions(elf, flat, base, code_start, code_end,
                                       extent, sites, writers, csr_writers,
-                                      constant_ranges)
-    check_sites(sites, writers, csr_writers)
+                                      constant_ranges, kinds)
+    if breach_map is not None:
+        check_breach_kinds(kinds)
+    check_sites(sites, writers, csr_writers, expected_sites)
     found = check_references(functions, decoded_all, symbols, install_extra,
                              install_callers, inject_sites, boundary)
     check_domain_reach(elf, functions, found, symbols, profile)
@@ -2116,6 +2172,8 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
     # reported as theirs.
     if boundary:
         check_boundary_code(functions, decoded_all, found, symbols)
+    if breach_map is not None:
+        check_breach_code(functions, found, symbols, breach_map)
     check_canary(elf, flat, base, found, symbols)
     by_name = {owner: decoded for owner, decoded in decoded_all}
     # beryllium-cheri: the monitor variant's trap entry and resume tail.
@@ -2138,9 +2196,26 @@ def check_instructions(elf, flat, base, extents, symbols, profile="mvp",
     return len(functions), total
 
 
+def breach_kind(word, width):
+    """A breach image's hook's own instruction (BREACH_KINDS), or None: an
+    AMO, LR, or SC; a cache-block operation; or a jalr whose link is not
+    ra or zero."""
+    if width != 4:
+        return None
+    opcode = word & 0x7F
+    if opcode == 0x2F:
+        return {0x02: "lr", 0x03: "sc"}.get(word >> 27, "amo")
+    if opcode == 0x0F and (word >> 12) & 7 == 2:
+        return {0: "cbo.inval", 4: "cbo.zero"}.get(word >> 20, "cbo")
+    if opcode == 0x67 and (word >> 7) & 0x1F not in (0, 1):
+        return "jalr-link"
+    return None
+
+
 def scan_functions(elf, flat, base, code_start, code_end, functions, sites,
-                   writers, csr_writers, constants=()):
-    """One code extent's instruction words, sites, and CSR writers."""
+                   writers, csr_writers, constants=(), kinds=None):
+    """One code extent's instruction words, sites, and CSR writers; and,
+    into KINDS, each function's breach_kind() words."""
     cursor = code_start
     decoded_all = []
     for value, size, names in functions:
@@ -2149,6 +2224,10 @@ def scan_functions(elf, flat, base, code_start, code_end, functions, sites,
         decoded = instructions(flat, value, value + size, base)
         decoded_all.append((owner, decoded))
         for pc, width, word in decoded:
+            kind = breach_kind(word, width)
+            if kind is not None and kinds is not None:
+                counted = kinds.setdefault(owner, {})
+                counted[kind] = counted.get(kind, 0) + 1
             require(not floating_point(word, width),
                     f"F, D, or V instruction 0x{word:x} at 0x{pc:x} in "
                     f"{owner}")
@@ -2179,10 +2258,10 @@ def scan_functions(elf, flat, base, code_start, code_end, functions, sites,
     return decoded_all
 
 
-def check_sites(sites, writers, csr_writers):
+def check_sites(sites, writers, csr_writers, expected_sites=None):
     """The instruction-site table and the CSR writer table, over all
     code."""
-    for kind, expected in INSTRUCTION_SITES.items():
+    for kind, expected in (expected_sites or INSTRUCTION_SITES).items():
         require(sites[kind] == expected,
                 f"{kind} sites {sorted(sites[kind].items())} != "
                 f"{sorted(expected.items())}")
@@ -3202,7 +3281,8 @@ def check_placement(symbols, map_text, probe, extra_assembly):
             continue
         inside = (BASE <= address and address + size <= BASE + CORE_SPAN) or \
             (region[0] <= address and address + size <= region[1])
-        if name in ("mvp-trap.o", "mvp-hartentry.o", "mvp-probe-arch.o"):
+        if name in ("mvp-trap.o", "mvp-hartentry.o", "mvp-probe-arch.o") + \
+                BREACH_OBJECTS:
             require(inside, f"{name}'s {section} at 0x{address:x} lies "
                     "outside the executable role extents")
             continue
@@ -4010,6 +4090,13 @@ def check_monitor(toolchain, elf_data, flat, base, layout, map_text=None,
         require((name in symbols) == boundary,
                 f"{name} is {'missing from' if boundary else 'linked in'} "
                 f"the boundary-{'on' if boundary else 'off'} image {image}")
+    # M11-7: a breach image's hook (D-10); every other image links none.
+    breach = image in BREACH
+    if breach:
+        require(map_text is not None, f"the breach image {image} needs its "
+                f"link map")
+    else:
+        check_no_breach(symbols, map_text, image)
     for name in symbols:
         require(not name.startswith("be_r4_"),
                 f"R4 mechanism symbol {name} is linked")
@@ -4058,7 +4145,8 @@ def check_monitor(toolchain, elf_data, flat, base, layout, map_text=None,
         elf, flat, base, ((code_start, code_end),
                           (symbols["__be_mvp_text_start"],
                            symbols["__be_mvp_text_end"])), symbols, profile,
-        1 if scenario.accepts_denial(variant) else 0, boundary)
+        1 if scenario.accepts_denial(variant) else 0, boundary,
+        map_text if breach else None)
     if boundary:
         check_partition_identity(elf, flat, base, symbols, image)
     check_guests(elf, flat, base, variant, expect)
@@ -4823,9 +4911,12 @@ def check_variant(name, boot_elf_data, data, reference, pins, kernel,
             for guest in shell_guests(scenario)]
     else:
         # A monitor variant's one compile-time switch changes code, not a
-        # linked word: its monitor must pass the MVP profile itself.
-        variant_monitor(name, monitor, flat, reference, layout, scenario,
-                        boot, data)
+        # linked word: its monitor must pass the MVP profile itself; a
+        # breach image's table is the declaration's (M11-7).
+        elf = variant_monitor(name, monitor, flat, reference, layout,
+                              scenario, boot, data)
+        if name in BREACH:
+            check_breach_table(name, elf, flat, data, boot)
         allowed = [(MONITOR_OFFSET, SPAN)]
     stray = outside(data, reference["boot"], allowed)
     require(stray is None,
@@ -6291,6 +6382,253 @@ def check_boundary_code(functions, decoded_all, found, symbols):
                     f"{' -> '.join(reversed(path))}")
 
 
+def check_breach_kinds(kinds):
+    """A breach image's hook's own instructions (BREACH_KINDS): each once,
+    in its attempt helper, and none in any other function."""
+    require(kinds == {BREACH_ATTEMPT: BREACH_KINDS},
+            f"the hook's instructions are in {sorted(kinds.items())}, not "
+            f"{BREACH_KINDS} in {BREACH_ATTEMPT} alone, outside which none "
+            f"may be")
+
+
+def breach_executor(helper):
+    """The executor function of a hook helper."""
+    return BREACH_EXEC_PREFIX + helper[len("be_mvp_breach_arch_"):]
+
+
+def check_breach_code(functions, found, symbols, map_text):
+    """A breach image's hook (planning/mvp-m11-plan.md, D-10; M11-7): its
+    functions in MVP VS text; one call of the hook, from the dispatch; each
+    helper named by its executor function alone, and the vector by the
+    entry alone; and each executor function called from the hook's object
+    (mvp-breach.o) alone."""
+    low = LAYOUT["MVP_DOMAIN_TEXT_HPA"]
+    high = low + LAYOUT["MVP_DOMAIN_TEXT_BYTES"]
+    named = (BREACH_HOOK, BREACH_VECTOR) + BREACH_ARCH + tuple(
+        breach_executor(helper) for helper in BREACH_ARCH)
+    for name in named:
+        require(symbols.get(name) is not None,
+                f"{name} is missing from a breach image")
+    for value, size, names in functions:
+        if any(name.startswith(BREACH_PREFIXES) for name in names):
+            require(low <= value and value + size <= high,
+                    f"{'/'.join(names)} at 0x{value:x} is outside MVP VS "
+                    f"text")
+    hook_text = [(address, address + size) for address, size, name, section
+                 in map_entries(map_text) if name == "mvp-breach.o" and
+                 section.startswith(".text")]
+    require(hook_text, "the link map places no text of mvp-breach.o")
+    sites = {name: [] for name in named}
+    for owner, references_ in found.items():
+        for pc, target, link in references_:
+            for name in named:
+                if target == symbols[name]:
+                    sites[name].append((owner, pc, link))
+    require([(owner, link) for owner, _, link in sites[BREACH_HOOK]] ==
+            [(MVP_DISPATCH, 1)],
+            f"{BREACH_HOOK} is named at {sites[BREACH_HOOK]}, expected one "
+            f"call, from {MVP_DISPATCH}")
+    for helper in BREACH_ARCH:
+        require([owner for owner, _, link in sites[helper]
+                 if link is not None] == [breach_executor(helper)] and
+                len(sites[helper]) == 1,
+                f"{helper} is named at {sites[helper]}, expected one call, "
+                f"from {breach_executor(helper)}")
+    require([(owner, link) for owner, _, link in sites[BREACH_VECTOR]] ==
+            [(BREACH_ENTER, None)],
+            f"{BREACH_VECTOR} is named at {sites[BREACH_VECTOR]}, expected "
+            f"once, by {BREACH_ENTER}")
+    for helper in BREACH_ARCH:
+        callers = sites[breach_executor(helper)]
+        require(callers and all(
+            link is not None and any(start <= pc < end
+                                     for start, end in hook_text)
+            for _, pc, link in callers),
+                f"{breach_executor(helper)} is named at {callers}, expected "
+                f"calls from mvp-breach.o alone")
+
+
+def check_no_breach(symbols, map_text, image):
+    """An image that is not a breach image links no hook symbol and no
+    hook object."""
+    linked = sorted(name for name in symbols
+                    if name.startswith(BREACH_PREFIXES))
+    require(not linked, f"{image}, not a breach image, links {linked}")
+    require(map_text is None or not any(
+        name in BREACH_OBJECTS for _, _, name, _ in map_entries(map_text)),
+            f"{image}, not a breach image, places a hook object")
+
+
+def load_breach_tool():
+    spec = importlib.util.spec_from_file_location("mvp_gen_breach",
+                                                  BREACH_TOOL)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def breach_rows(name, elf):
+    """tools/gen-breach.py's rows and facts for breach image NAME,
+    resolved through ELF's symbols."""
+    declaration_path, domain = BREACH[name]
+    tool = load_breach_tool()
+    declaration = tool.load(declaration_path)
+    facts = tool.Facts(LAYOUT, tool.defines(BREACH_HEADER),
+                       declaration.get("devices", {}), domain)
+    symbols = {key: value for key, value in elf.symbols.items()
+               if value is not None}
+    try:
+        rows = tool.resolve(declaration, facts, name.endswith("-off"),
+                            symbols)
+    except tool.Refused as error:
+        raise ImageError(f"{name}'s declaration: {error}") from error
+    return tool, facts, rows
+
+
+def sized_symbols(elf):
+    """[(start, end, name)] of every symbol with a size."""
+    out = []
+    for name, entries in elf.symbol_entries.items():
+        for entry in entries:
+            value, size = struct.unpack_from("<QQ", elf.data, entry + 8)
+            if name and size:
+                out.append((value, value + size, name))
+    return out
+
+
+def check_breach_table(name, elf, flat, data, boot):
+    """A breach image's linked table and modes (BREACH_TABLE,
+    BREACH_MODES_TABLE), decoded, are tools/gen-breach.py's from the
+    declaration, through the image's symbols and the layout; each word a
+    row writes inside the image is zero padding that no object holds but
+    the log page's unused tail; and each window's DTB blocks (its header,
+    memory reservation map, structure, and strings; the rest of the page
+    is dtc -S's free space, inside the blob's totalsize, which no reader
+    walks) end below each word a row writes in its page."""
+    tool, facts, rows = breach_rows(name, elf)
+    table = elf.symbols.get(BREACH_TABLE)
+    modes = elf.symbols.get(BREACH_MODES_TABLE)
+    require(table is not None and modes is not None,
+            f"{name} links no {BREACH_TABLE} or {BREACH_MODES_TABLE}")
+    width = facts.header["BREACH_ROW_BYTES"]
+    require(symbol_size(elf, BREACH_TABLE) == width * len(rows),
+            f"{name}'s {BREACH_TABLE} holds "
+            f"{symbol_size(elf, BREACH_TABLE) // width} rows, the "
+            f"declaration {len(rows)}")
+    for index, row in enumerate(rows):
+        got = struct.unpack_from("<5Q", flat, table - BASE + width * index)
+        wanted = (row["kind"], row["access"], row["value"], row["extra"],
+                  row["call"])
+        require(got == wanted, f"{name}'s table row {row['row']} is "
+                f"{tuple(hex(value) for value in got)}, the declaration's "
+                f"{tuple(hex(value) for value in wanted)}")
+    count = facts.header["BREACH_MODES"]
+    require(symbol_size(elf, BREACH_MODES_TABLE) == 24 * count and
+            struct.unpack_from(f"<{3 * count}Q", flat, modes - BASE) ==
+            tuple(value for mode in facts.modes for value in mode),
+            f"{name}'s {BREACH_MODES_TABLE} is not the declaration's")
+    sized = sized_symbols(elf)
+    pages = [(guest, LAYOUT[f"G{guest}_HPA"] + LAYOUT["DTB_GPA"] -
+              LAYOUT["GUEST_GPA"]) for guest in (0, 1)]
+    for row in rows:
+        if row["op"] not in tool.WRITES or row["at"] is None:
+            continue
+        for low, high in tool.span(row):
+            if BASE <= low and high <= BASE + len(flat):
+                require(flat[low - BASE:high - BASE] == bytes(high - low),
+                        f"{name}'s row {row['row']} writes 0x{low:x}, which "
+                        f"is not zero in the image")
+                holders = [symbol for start, end, symbol in sized
+                           if start < high and low < end and not (
+                               symbol == MVP_LOG_SYMBOL and
+                               low >= start + LOG_USED_BYTES)]
+                require(not holders, f"{name}'s row {row['row']} writes "
+                        f"0x{low:x}, which {sorted(set(holders))} hold")
+            for guest, page in pages:
+                if page <= low < page + LAYOUT["DTB_BYTES"]:
+                    used = dtb_blocks_end(
+                        data[boot[f"dtb{guest}_offset"]:
+                             boot[f"dtb{guest}_offset"] +
+                             LAYOUT["DTB_BYTES"]])
+                    require(used <= low - page,
+                            f"{name}'s row {row['row']} writes inside G"
+                            f"{guest}'s DTB blocks, which end at {used} "
+                            f"bytes")
+    return len(rows)
+
+
+def dtb_blocks_end(blob):
+    """The end of a flattened device tree's last block: its 40-byte header,
+    its memory reservation map to the zero entry, its structure block, and
+    its strings block, each inside the blob's totalsize."""
+    magic, total, structure, strings, reserved = struct.unpack_from(
+        ">5I", blob, 0)
+    strings_size, structure_size = struct.unpack_from(">2I", blob, 32)
+    require(magic == 0xD00DFEED and total <= len(blob) and total >= 40,
+            f"a DTB with magic 0x{magic:x} and totalsize {total}")
+    entry = reserved
+    while True:
+        require(entry + 16 <= total, "a DTB's reservation map has no end")
+        if struct.unpack_from(">2Q", blob, entry) == (0, 0):
+            break
+        entry += 16
+    ends = (40, entry + 16, structure + structure_size,
+            strings + strings_size)
+    require(max(ends) <= total, f"a DTB's blocks end at {max(ends)}, past "
+            f"its totalsize {total}")
+    return max(ends)
+
+
+def breach_mutations(name, toolchain, monitor, layout, scenario, data,
+                     boot):
+    """A breach image's mutations, each refused for its own reason: a hook
+    instruction (an AMO) in the dispatch, outside the helpers; a table row
+    changed; both DTBs' strings blocks grown to their totalsize, so that a
+    row's word in a DTB page is inside its blocks; and the image under
+    anchor's name, which links the hook. Returns their number."""
+    elf_data, flat, map_text = monitor
+    elf = Elf(elf_data)
+    amo = matching_word(elf, flat, BREACH_ATTEMPT, BASE,
+                        lambda value: value & 0x7F == 0x2F and
+                        value >> 27 == 0)[1]
+    slot, _ = matching_word(elf, flat, MVP_DISPATCH, BASE,
+                            lambda value: value & 0x7F in (0x03, 0x23))
+    table = elf.symbols[BREACH_TABLE]
+    mutants = []
+    mutated_elf, mutated_flat = bytearray(elf_data), bytearray(flat)
+    patch(mutated_elf, mutated_flat, bytearray(len(data)), slot,
+          struct.pack("<I", amo), BASE)
+    mutants.append(("an AMO in the dispatch", lambda: check_monitor(
+        toolchain, bytes(mutated_elf), bytes(mutated_flat), BASE, layout,
+        map_text, "mvp", name, scenario=scenario),
+        "the hook's instructions are in"))
+    changed = bytearray(flat)
+    changed[table - BASE + 8] ^= 0x08
+    mutants.append(("a table row's address changed", lambda: check_breach_table(
+        name, elf, bytes(changed), data, boot), "table row"))
+    grown = bytearray(data)
+    for guest in (0, 1):
+        offset = boot[f"dtb{guest}_offset"]
+        total, _, strings = struct.unpack_from(">3I", grown, offset + 4)
+        struct.pack_into(">I", grown, offset + 32, total - strings)
+    mutants.append(("the DTBs' strings grown to their totalsize",
+                    lambda: check_breach_table(name, elf, flat, bytes(grown),
+                                               boot),
+                    "DTB blocks, which end at 4096 bytes"))
+    mutants.append(("the image under anchor's name", lambda: check_no_breach(
+        elf.symbols, map_text, scenario.name), "not a breach image, links"))
+    for label, call, expected in mutants:
+        try:
+            call()
+        except ImageError as error:
+            require(expected in str(error),
+                    f"{name}'s mutation {label!r} rejected for another "
+                    f"reason: {error}")
+            continue
+        raise ImageError(f"{name}'s mutation {label!r} was accepted")
+    return len(mutants)
+
+
 def select_variant(monitor, flavour):
     """beryllium-cheri: the rules of MONITOR and FLAVOUR, before any
     check."""
@@ -6342,6 +6680,8 @@ def main(argv):
     parser.add_argument("--boundary-image", action="append", default=[])
     parser.add_argument("--pairing")
     parser.add_argument("--partition-report", action="append", default=[])
+    # M11-7: each breach image, its declaration, and its hooked VS domain.
+    parser.add_argument("--breach", action="append", default=[])
     args = parser.parse_args(argv[1:])
     select_variant(args.monitor, args.guest_flavour)
     if not (args.image or args.probe or args.variant or args.mutation_test
@@ -6355,6 +6695,14 @@ def main(argv):
     try:
         select_boundary(args.boundary_image, args.pairing,
                         args.partition_report)
+        for spec in args.breach:
+            fields = spec.split(":")
+            require(len(fields) == 3 and fields[0] in VARIANTS and
+                    OFF_VARIANTS.get(fields[0], fields[0]) in
+                    BREACH_VARIANTS and fields[2] in ("0", "1"),
+                    f"--breach {spec} is not NAME:DECLARATION:DOMAIN of a "
+                    f"breach image")
+            BREACH[fields[0]] = (fields[1], int(fields[2]))
         require(args.base == BASE, f"base 0x{args.base:x} is not 0x{BASE:x}")
         pins = read_pins(args.pins)
         kernel = read(args.kernel)
@@ -6500,6 +6848,19 @@ def main(argv):
                                     boot=data)
             print(f"variant {name}: boot_sha256={sha256(data)}")
             checked.append(f"variant-{name}")
+            if name in BREACH and monitor is not None:
+                # M11-7: the hook's rules, each refusing its mutation.
+                elf = Elf(monitor[0])
+                flat = monitor[1]
+                boot = check_boot(data, BOOT_TEXT_OFFSET,
+                                  data[MONITOR_OFFSET:MONITOR_OFFSET + SPAN],
+                                  pins, kernel, name, scenario=scenario)
+                rows = check_breach_table(name, elf, flat, data, boot)
+                count = breach_mutations(name, against["toolchain"], monitor,
+                                         layout, scenario, data, boot)
+                print(f"variant {name}: breach rows={rows} mutations "
+                      f"rejected: {count}")
+                checked.append(f"variant-{name}-breach-mutations={count}")
             if name in CHERI_TE_POC_VARIANTS:
                 # beryllium-cheri: its mutations, each rejected.
                 count = cheri_variant_mutations(name, reference, pins,

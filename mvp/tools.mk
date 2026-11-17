@@ -173,7 +173,7 @@ K3_ENV = K3_KERNEL=$(MVP_GUEST_IMAGE) K3_PINS=$(MVP_GUEST_PINS) \
 
 .PHONY: tools-check capture-check platform-probe-check partition-tool-check \
 	evidence-check rc-record-check run-tool-check qemu-test evidence \
-	session-typist-check qemu-oracle-check boundary-check \
+	session-typist-check qemu-oracle-check boundary-check breach-check \
 	verify-tools-check platform-record-check sessions \
 	verifier-image verify print-k3-plan \
 	k3-preflight k3-stage k3-env-record k3-env-install k3-env-restore \
@@ -272,6 +272,14 @@ boundary-check:
 	$(PYTHON) -I -B $(MVP_DIR)/tests/check-boundary.py --self-test \
 		--scratch $(TMPDIR)/boundary-self-test
 
+# The hostile-monitor rows' generator (tools/gen-breach.py; M11-7, D-10) on
+# anchor's declaration and synthetic images: the table, each row judged by
+# a synthetic profile, the -off plans, the witnesses, the oracle's reading
+# of each words file, and each refusal.
+breach-check:
+	$(PYTHON) -I -B $(MVP_DIR)/tools/gen-breach.py --self-test \
+		--scratch $(TMPDIR)/breach-self-test
+
 # The M8 verifier's tools (planning/mvp-m8-plan.md, D-5, D-7, D-9, D-10,
 # Q7), each self-test on the host, with no podman and no network: the
 # seeded single-defect mutant generator (verify/tools/mutate.py) on a
@@ -325,7 +333,7 @@ verify-tools-check:
 tools-check: capture-check platform-probe-check partition-tool-check \
 		evidence-check rc-record-check run-tool-check \
 		session-typist-check qemu-oracle-check boundary-check \
-		verify-tools-check platform-record-check
+		breach-check verify-tools-check platform-record-check
 	@echo "BE_MVP_TOOLS_CHECK: PASS"
 
 # ------------------------------------------------------- the M8 verifier

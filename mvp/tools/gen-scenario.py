@@ -330,7 +330,13 @@ VARIANT_KEYS_V3 = {"name", "toolchains", "where", "change", "fail", "after",
                    "detail", "page", "domain", "hart", "walked", "declared",
                    "run_budget_ticks", "terminated", "mgmt", "pass",
                    "rdinit", "console_input", "session",
-                   "mutate", "findings", "off_copy_of"}
+                   "mutate", "findings", "off_copy_of", "breach"}
+# M11-7 (planning/mvp-m11-plan.md, D-10): a v3 scenario's hostile-monitor
+# images, each its own run with its hook on one VS domain's hart, whose
+# attempts tools/gen-breach.py makes from this file beside the scenario;
+# a boundary-on one declares that hart's commit-record counts.
+BREACH_FILE = "breach.json"
+BREACH_TOOL = pathlib.Path(__file__).resolve().with_name("gen-breach.py")
 # M11-7 (planning/mvp-m11-plan.md, D-12): an off copy, an image of the
 # scenario (the scenario's own, or a variant's) built without the physical
 # boundary, for the rows D-12 keeps off; its expectation and log are that
@@ -345,20 +351,25 @@ OFF_COPY_KEY = "off_copy_of"
 # the control hart's step, the image whose descriptor the run's tree is,
 # whether that tree holds a digest, each of harts 0 to 2's state at the
 # run's end, and for ring-full the VS domains whose state word the oracle
-# reads (A-2). Hart 1 of hart-start alone may be between its start and its
-# confinement when the run ends (A-1 of M11-7's go).
+# reads (A-2). A VS-domain hart is declared started where the outcome
+# fails after BE_MVP:07, :08, or :09 and before both READY lines: the
+# capture's own lines then decide its rules (A-1 and C-1 of M11-7).
 BOUNDARY_FIRMWARE = ("BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 boundary=1 "
                      "status=1:{stopped},2:{stopped} started=none "
                      "identity=<Z>")
-BOUNDARY_STARTED = {"hart-start": {"0": "boot", "1": "started",
-                                   "2": "never-started"}}
-# The markers hart 0 prints from the barrier on: BE_MVP:07, then the
-# starts, READY, and the entries. start_run() starts both VS-domain harts
-# before its READY wait and its control loop, so a declared failure after
-# one of them follows both starts (hart-start's, at a start, apart); every
-# other marker a failure may follow (BE_MVP:19's gate among them) comes
-# before the first start.
-RUN_MARKERS = ("BE_MVP:07", "BE_MVP:08", "BE_MVP:09", "BE_MVP:10")
+# An image whose harts the rule below does not decide: hart-start's hart 2
+# is the one whose start is refused.
+BOUNDARY_HARTS = {"hart-start": {"0": "boot", "1": "started",
+                                 "2": "never-started"}}
+# The markers hart 0 prints before the barrier, BE_MVP:19's log among them
+# (the log closes before BE_MVP:07, or no domain hart starts): a failure
+# after one of them starts no hart. A failure after BE_MVP:10 follows both
+# entries, so both READY lines; one after BE_MVP:07, :08, or :09, which
+# names a marker kind and not a hart's line, may end with either hart
+# between its start and its confinement. No other marker is decided.
+BEFORE_BARRIER = ("none", "BE_MVP:00", "BE_MVP:01", "BE_MVP:02", "BE_MVP:03",
+                  "BE_MVP:04", "BE_MVP:05", "BE_MVP:06", "BE_MVP:19")
+STARTING = ("BE_MVP:07", "BE_MVP:08", "BE_MVP:09")
 # A variant's one compile-time change, as the layout names its value.
 VARIANT_VALUES = {"exit_ceiling": "VARIANT_EXIT_CEILING",
                   "run_budget_ticks": "VARIANT_RUN_BUDGET",
@@ -942,11 +953,18 @@ def check_off_copies(scenario):
 
 
 def off_copy_images(scenario, images):
-    """{name: expectation} of each off copy: its image's, under its name."""
-    return {variant["name"]: dict(
-        copy.deepcopy(images[variant[OFF_COPY_KEY]]), image=variant["name"],
-        toolchains=variant["toolchains"], where=variant["where"],
-        change=variant["change"]) for variant in off_copies(scenario)}
+    """{name: expectation} of each off copy: its image's, under its name; a
+    breach image's (M11-7) without the boundary's counts, which an off run
+    has none of."""
+    copies = {}
+    for variant in off_copies(scenario):
+        out = dict(copy.deepcopy(images[variant[OFF_COPY_KEY]]),
+                   image=variant["name"], toolchains=variant["toolchains"],
+                   where=variant["where"], change=variant["change"])
+        if "breach" in out:
+            out["breach"].pop("counts", None)
+        copies[variant["name"]] = out
+    return copies
 
 
 def parse_pairing(text, label):
@@ -972,18 +990,27 @@ def read_pairing(path):
                          path)
 
 
-def boundary_harts(name, outcome):
+def boundary_harts(name, outcome, declared=None):
     """Harts 0 to 2's states when a boundary-on run of image NAME ends: hart
-    0 in the boot OpenSBI domain (step 1); harts 1 and 2 confined if the
-    declared outcome starts them (a pass, or a failure after one of
-    RUN_MARKERS), never started if it fails before the barrier;
-    hart-start's BOUNDARY_STARTED."""
-    if name in BOUNDARY_STARTED:
-        return dict(BOUNDARY_STARTED[name])
-    started = bool(outcome.get("pass")) or \
-        outcome.get("after") in RUN_MARKERS
-    state = "confined" if started else "never-started"
-    return {"0": "boot", "1": state, "2": state}
+    0 in the boot OpenSBI domain (step 1); harts 1 and 2 confined after a
+    pass or a failure after BE_MVP:10, started after a failure after one
+    of STARTING, never started after a failure before the barrier; or the
+    image's own declaration in DECLARED (BOUNDARY_HARTS), started only
+    where the rule allows it."""
+    after = None if outcome.get("pass") else outcome.get("after")
+    harts = (declared or BOUNDARY_HARTS).get(name)
+    if harts is None:
+        require(after is None or after == "BE_MVP:10" or
+                after in STARTING + BEFORE_BARRIER,
+                f"{name}'s failure after {after} is not one whose harts' "
+                f"states are decided")
+        state = "confined" if after in (None, "BE_MVP:10") else \
+            "started" if after in STARTING else "never-started"
+        harts = {"0": "boot", "1": state, "2": state}
+    require("started" not in harts.values() or after in STARTING,
+            f"{name} declares a started hart, but its outcome does not fail "
+            f"after {', '.join(STARTING)}")
+    return dict(harts)
 
 
 def boundary_form(image, name, pair):
@@ -1008,6 +1035,11 @@ def boundary_form(image, name, pair):
     out["control_lines"] = entries
     out["boundary"] = {"control_hart": "boot", "pair": pair, "record": True,
                        "harts": boundary_harts(name, out["outcome"])}
+    if "breach" in out:
+        # M11-7: the hooked hart's counts, each attempt refused as declared.
+        out["boundary"]["counts"] = {str(out["breach"]["hart"]): {
+            key: value for key, value in out["breach"].pop("counts").items()
+            if value}}
     if out["outcome"].pop("fallback", False):
         # ring-full (Q-C2, A-2): a confined VS-domain hart prints nothing,
         # so hart 0 reports the first FAIL it drains, of either VS domain,
@@ -1018,6 +1050,19 @@ def boundary_form(image, name, pair):
         out["change"] += ("; under the physical boundary hart 0 reports "
                           "the first FAIL it drains, of either VS domain")
     return out
+
+
+def breach_counts(scenario_path, images):
+    """Each breach image's commit-record counts (M11-7), from the
+    scenario's BREACH_FILE by tools/gen-breach.py."""
+    hooked = [image for image in images.values() if "breach" in image]
+    if not hooked:
+        return
+    tool = load_tool(BREACH_TOOL, "mvp_gen_breach")
+    path = pathlib.Path(scenario_path).parent / BREACH_FILE
+    for image in hooked:
+        image["breach"]["counts"] = tool.expected_counts(
+            path, image["breach"]["domain"])
 
 
 def apply_boundary(images, scenario, boundary_images, pairing):
@@ -1096,11 +1141,16 @@ def boundary_self_test(scenario, images):
          boundary_harts("hart-start", images["hart-start"]["outcome"]) == {
              "0": "boot", "1": "started", "2": "never-started"}),
         ("a failure after BE_MVP:10 confines both",
-         boundary_harts("ring-full", images["ring-full"]["outcome"])["1"]
-         == "confined"),
-        ("run-timeout's, after the barrier, confines both",
+         boundary_harts("ring-full", images["ring-full"]["outcome"]) == {
+             "0": "boot", "1": "confined", "2": "confined"}),
+        ("run-timeout's, after BE_MVP:07, starts both",
          boundary_harts("run-timeout", images["run-timeout"]["outcome"])
-         == {"0": "boot", "1": "confined", "2": "confined"}),
+         == {"0": "boot", "1": "started", "2": "started"} and every[
+             "run-timeout"]["boundary"]["harts"]["2"] == "started"),
+        ("a failure after BE_MVP:08 or :09 starts both", all(
+            boundary_harts("x", {"fail": "hart-ready", "after": after}) == {
+                "0": "boot", "1": "started", "2": "started"}
+            for after in ("BE_MVP:08", "BE_MVP:09"))),
         ("a failure at BE_MVP:19's gate starts neither",
          boundary_harts("x", {"fail": "measurement", "after": "BE_MVP:19"})
          == {"0": "boot", "1": "never-started", "2": "never-started"}),
@@ -1131,6 +1181,21 @@ def boundary_self_test(scenario, images):
             return
         refusals.append((label, False))
 
+    refused("a failure after a marker the rule does not decide",
+            lambda: boundary_harts("x", {"fail": "ring",
+                                         "after": "BE_MVP:11"}),
+            "is not one whose harts' states are decided")
+    for label, outcome in (
+            ("a passing outcome", {"pass": True}),
+            ("a failure after BE_MVP:10", {"fail": "ring",
+                                           "after": "BE_MVP:10"}),
+            ("a failure before the barrier", {"fail": "payload",
+                                              "after": "BE_MVP:03"})):
+        refused(f"a started hart declared for {label}",
+                lambda outcome=outcome: boundary_harts(
+                    "x", outcome, {"x": {"0": "boot", "1": "started",
+                                         "2": "confined"}}),
+                "declares a started hart")
     refused("an off copy named on", lambda: apply_boundary(
         copy.deepcopy(images), scenario, {"two-guests-off"}, {}),
         "an off copy or a probe")
@@ -1579,6 +1644,10 @@ def check_v3(scenario, layout, dts, binding, report, policy):
     if LOG_R2:
         expected[SELF_REPORT_FLIP] = {"pass": True, "mutate": CANARY,
                                       "findings": [SELF_REPORT_FINDING]}
+    # M11-7 (planning/mvp-m11-plan.md, D-10): the hostile-monitor images,
+    # anchor's own run with its hook on each VS domain's hart.
+    for domain in range(DOMAINS):
+        expected[f"breach-g{domain}"] = {"pass": True, "breach": domain}
     variants = [variant for variant in own_variants(scenario)
                 if variant not in console_variants(scenario)]
     require(sorted(variant["name"] for variant in variants) == sorted(
@@ -2643,11 +2712,16 @@ def expectations_v3(scenario, binding, layout, digest, sealed, report_sha):
                                   "mgmt")}
         if variant.get("pass"):
             # self-report-flip (M9, D-4): the scenario's own run; its log
-            # and its finding are apply_log()'s.
+            # and its finding are apply_log()'s. A breach image (M11-7) is
+            # the scenario's own run too, its hooked VS domain named.
+            breach = outcome.pop("breach", None)
             images[variant["name"]] = dict(
                 copy.deepcopy(images[name]), image=variant["name"],
                 outcome=outcome, toolchains=variant["toolchains"],
                 where=variant["where"], change=variant["change"])
+            if breach is not None:
+                images[variant["name"]]["breach"] = {
+                    "domain": breach, "hart": binding[breach]["hart"]}
             continue
         image = dict(common, image=variant["name"], outcome=outcome,
                      toolchains=variant["toolchains"],
@@ -3942,7 +4016,9 @@ def generate(scenario_path, layout_path, dts_path, out, policy_path=None,
     # beryllium-cheri: the guest flavour's added lines, and cheri-fault-hs's
     # and cap-store's outcomes.
     cap_store_images(cheri_fault_images(flavour_images(images, flavour)))
-    # M11-7: each off copy, its image's expectation under its own name.
+    # M11-7: each breach image's counts; each off copy, its image's
+    # expectation under its own name.
+    breach_counts(scenario_path, images)
     images.update(off_copy_images(scenario, images))
     # M9's log (mvp/docs/log-profile.md): each image's constants, records,
     # and lines; the header carries the constants.
@@ -3998,8 +4074,10 @@ PROFILE_RUNS = {
                  "hostile", "two-guests-shell", "te-poc-shell",
                  "anchor-shell", "probe-platform", "probe-vmid-distinct",
                  "probe-vmid-shared", "probe-console-input",
-                 # M11-7's off copies (OFF_COPY_KEY), each its image's.
-                 "two-guests-off", "te-poc-off", "anchor-off"),
+                 # M11-7's off copies (OFF_COPY_KEY), each its image's;
+                 # and its hostile-monitor images, anchor's own run.
+                 "two-guests-off", "te-poc-off", "anchor-off", "breach-g0",
+                 "breach-g1", "breach-g0-off", "breach-g1-off"),
     "pre-measurement": ("payload", "no-sstc", "firmware-version",
                         "reader-write", "secret-shared",
                         "response-writable"),
@@ -4840,7 +4918,31 @@ def self_test_v3(scenario_path, scenario, layout, dts, policy, files,
     digest = "cfa178e1a716ea360e7828e40d6d23fb0df925efc7d64693424ddfe8a0770251"
     detail = {name: images[name]["outcome"].get("detail_lines", [{}])[0].get(
         "template") for name in images if name != scenario["name"]}
+    hooked = copy.deepcopy({name: images[name] for name in
+                            ("breach-g0", "breach-g1")})
+    breach_counts(scenario_path, hooked)
+    hooked_on = {name: boundary_form(image, name, name)
+                 for name, image in hooked.items()}
+    hooked_off = off_copy_images({"variants": [
+        {"name": f"{name}-off", OFF_COPY_KEY: name, "toolchains": [],
+         "where": "", "change": ""} for name in hooked]}, hooked)
     checks = [
+        # M11-7: the hostile-monitor images, anchor's run, each with its
+        # hooked hart's counts in its boundary-on form.
+        ("the breach images", all(
+            images[f"breach-g{domain}"]["outcome"] == {"pass": True} and
+            images[f"breach-g{domain}"]["control_lines"] ==
+            mine["control_lines"] and
+            hooked[f"breach-g{domain}"]["breach"] == {
+                "domain": domain, "hart": domain + 1, "counts": {
+                    "pmp_faults": 76, "blocked_calls": 30,
+                    "failed_calls": 0}} and
+            hooked_on[f"breach-g{domain}"]["boundary"]["counts"] == {
+                str(domain + 1): {"pmp_faults": 76, "blocked_calls": 30}}
+            and hooked_on[f"breach-g{domain}"]["breach"] ==
+            hooked_off[f"breach-g{domain}-off"]["breach"] ==
+            {"domain": domain, "hart": domain + 1}
+            for domain in (0, 1))),
         ("the bootargs", [domain["bootargs"].split(" -- ")[1]
                           for domain in binding] == [
             "be.guest=0 be.role=host be.pages=0x84000000,0x84001000,"
@@ -4943,7 +5045,7 @@ def self_test_v3(scenario_path, scenario, layout, dts, policy, files,
             "response-writable": "BE_MVP:DETAIL page=1 domain=0 hart=1 "
             "walked=0x460004d7 declared=0x46000453",
             "wrong-measurement": None, "no-grant-check": None,
-            SELF_REPORT_FLIP: None}),
+            SELF_REPORT_FLIP: None, "breach-g0": None, "breach-g1": None}),
         ("the negatives' places", [[entry["template"].split(" ", 3)[2]
                                     for entry in images[name][
                                         "control_lines"] if entry[

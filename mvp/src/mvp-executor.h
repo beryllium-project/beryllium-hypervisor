@@ -287,4 +287,41 @@ void be_mvp_exec_resume(struct be_mvp_exit *record, be_u64 expected_hgatp,
 /** be_mvp_exec_halt - be_r3_arch_halt(): the accepted fail-closed halt. */
 void be_mvp_exec_halt(void) __attribute__((noreturn));
 
+#if defined(BE_MVP_BREACH)
+#include "mvp-breach.h"
+
+/*
+ * The hostile-monitor hook's effects (M11-7, a breach image alone;
+ * mvp-breach-arch.S): each its helper's, which no other code calls.
+ */
+
+/**
+ * be_mvp_exec_breach_enter - be_mvp_breach_arch_enter()
+ * @saved: where stvec, sscratch, sepc, sstatus, hstatus, satp, hgatp, and
+ *         vsatp go
+ * @frame: the record's frame, which the hook's vector reads
+ */
+void be_mvp_exec_breach_enter(struct be_mvp_breach_saved *saved,
+			      be_u64 frame);
+
+/**
+ * be_mvp_exec_breach_translate - be_mvp_breach_arch_translate(): satp,
+ * hgatp, and vsatp, then sfence.vma, hfence.gvma, and hfence.vvma
+ */
+void be_mvp_exec_breach_translate(be_u64 satp, be_u64 hgatp, be_u64 vsatp);
+
+/**
+ * be_mvp_exec_breach_attempt - be_mvp_breach_arch_attempt(): one row
+ * @row: the row
+ * @slot: its slot
+ * @frame: the record's frame
+ */
+void be_mvp_exec_breach_attempt(const struct be_mvp_breach_attempt *row,
+				struct be_mvp_breach_slot *slot, be_u64 frame);
+
+/** be_mvp_exec_breach_leave - be_mvp_breach_arch_leave(): enter's five
+ * other registers back */
+void be_mvp_exec_breach_leave(const struct be_mvp_breach_saved *saved);
+#endif
+
 #endif

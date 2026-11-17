@@ -254,6 +254,36 @@ ANCHOR_VARIANT_OBJECTS_secret-shared := mvp-gstage.c
 ANCHOR_VARIANT_OBJECTS_response-writable := mvp-gstage.c
 ANCHOR_VARIANT_OBJECTS_wrong-measurement :=
 ANCHOR_VARIANT_OBJECTS_no-grant-check :=
+# M11-7 (planning/mvp-m11-plan.md, D-10): anchor's hostile-monitor images,
+# the RISC-V monitor's alone. breach-g0 and breach-g1 are anchor's monitor
+# with the hook (src/mvp-breach.c, src/mvp-breach-arch.S) on VS domain 0's
+# hart or VS domain 1's, boundary-on, each with its own descriptor; their
+# -off copies (below) are built without the boundary and with only the
+# attempts that have a witness. Each one's table is generated before the
+# link from scenarios/anchor/breach.json (tools/gen-breach.py table), and
+# its plan after it (breach-plan.json, breach-words.json; plan), which the
+# run harness judges a run by (tests/check-boundary.py breach).
+MVP_BREACH_VARIANTS := $(if $(filter cheri,$(MVP_MONITOR)),,breach-g0 \
+	breach-g1)
+ANCHOR_VARIANTS += $(MVP_BREACH_VARIANTS)
+ANCHOR_VARIANT_OBJECTS_breach-g0 :=
+ANCHOR_VARIANT_OBJECTS_breach-g1 :=
+MVP_BREACH_OFF := $(addsuffix -off,$(MVP_BREACH_VARIANTS))
+BREACH_DECLARATION := $(MVP_DIR)/scenarios/anchor/breach.json
+BREACH_GEN := $(MVP_DIR)/tools/gen-breach.py
+BREACH_DOMAIN_breach-g0 := 0
+BREACH_DOMAIN_breach-g1 := 1
+BREACH_DOMAIN_breach-g0-off := 0
+BREACH_DOMAIN_breach-g1-off := 1
+# $(1) breach image: its compile-time hook, and where its table lies.
+breach_table_dir = $(GEN)/breach/$(1)
+breach_flags = -DBE_MVP_BREACH -DBE_MVP_BREACH_DOMAIN=$(BREACH_DOMAIN_$(1)) \
+	$(if $(filter %-off,$(1)),-DBE_MVP_BREACH_DISCRIMINATE) \
+	-iquote $(call breach_table_dir,$(1))
+# $(1) toolchain, $(2) image: a breach image's two hook objects, else none.
+breach_objects = $(if $(BREACH_DOMAIN_$(2)),\
+	$(BUILD)/variants/$(1)/$(2)/obj/mvp/mvp-breach.o \
+	$(BUILD)/variants/$(1)/$(2)/obj/mvp/mvp-breach-arch.o)
 
 PORT_STAMP := $(PORT)/PORT-MANIFEST.txt
 B2_PORT_STAMP := $(B2_PORT)/PORT-MANIFEST.txt
@@ -420,7 +450,9 @@ $(MVP_SCENARIO_GEN_$(1))/mvp-scenario.h \
 		$(MVP_SCENARIO_INPUTS) \
 		$(wildcard $(MVP_DIR)/scenarios/$(1)/sessions/*.json) \
 		$(MVP_DIR)/guest/initramfs.list.in $(MVP_BOUNDARY_STAMP) \
-		$(MVP_DIR)/scenarios/pairing.txt
+		$(MVP_DIR)/scenarios/pairing.txt \
+		$(wildcard $(MVP_DIR)/scenarios/$(1)/breach.json) \
+		$(MVP_DIR)/tools/gen-breach.py
 	$$(call gen_scenario,$(1)) --self-test
 	$$(call gen_scenario,$(1)) --out $(MVP_SCENARIO_GEN_$(1))
 endef
@@ -532,7 +564,7 @@ boundary_identity = $(if $(filter on,$(MVP_BOUNDARY)),\
 boundary_shim = $(if $(call boundary_identity,$(1),$(2)),-DBE_MVP_BOUNDARY)
 MVP_RUNTIME_HEADERS := $(MVP_HEADERS) $(MVP_DIR)/src/mvp-platform.h \
 	$(MVP_DIR)/src/mvp-probe.h $(MVP_DIR)/src/mvp-executor.h \
-	$(MVP_PAYLOAD_LAYOUT)
+	$(MVP_DIR)/src/mvp-breach.h $(MVP_PAYLOAD_LAYOUT)
 monitor_objects = $(addprefix $(BUILD)/$(1)/obj/,$(PORT_C:.c=.o) \
 	$(PORT_ASM:.S=.o)) $(addprefix $(BUILD)/$(1)/obj/mvp/,$(MVP_C:.c=.o) \
 	$(MVP_ASM:.S=.o)) $(BUILD)/$(1)/obj/b1/b1-handoff.o
@@ -875,7 +907,7 @@ $(foreach t,$(TOOLCHAINS),$(eval ANCHOR_BOOT_IMG_$(t) := $(ANCHOR_DIR_$(t))/be-m
 $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(ANCHOR_IMAGE_VARIANTS),$(eval MVP_VARIANT_BOOT_ELF_$(t)_$(v) := $(BUILD)/variants/$(t)/$(v)/be-mvp-boot.elf)))
 $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(ANCHOR_IMAGE_VARIANTS),$(eval MVP_VARIANT_BOOT_IMG_$(t)_$(v) := $(BUILD)/variants/$(t)/$(v)/be-mvp-boot.img)))
 $(foreach t,$(TOOLCHAINS),$(eval $(call mvp_monitor,$(ANCHOR_DIR_$(t)),$(t),$(ANCHOR_FLAGS),,$(ANCHOR_SCENARIO_H),,,$(call boundary_identity,anchor,anchor))))
-$(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(ANCHOR_IMAGE_VARIANTS),$(eval $(call mvp_monitor,$(BUILD)/variants/$(t)/$(v),$(t),$(ANCHOR_FLAGS) -D$(call variant_macro,$(v)),,$(ANCHOR_SCENARIO_H),$(ANCHOR_VARIANT_OBJECTS_$(v)),,$(call boundary_identity,anchor,$(v))))))
+$(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(ANCHOR_IMAGE_VARIANTS),$(eval $(call mvp_monitor,$(BUILD)/variants/$(t)/$(v),$(t),$(ANCHOR_FLAGS) -D$(call variant_macro,$(v))$(if $(BREACH_DOMAIN_$(v)), $(call breach_flags,$(v))),$(call breach_objects,$(t),$(v)),$(ANCHOR_SCENARIO_H),$(ANCHOR_VARIANT_OBJECTS_$(v)),,$(call boundary_identity,anchor,$(v))))))
 $(foreach t,$(TOOLCHAINS),$(eval $(call mvp_boot,$(ANCHOR_DIR_$(t)),$(t),$(BOOT_TEXT_OFFSET),$(ANCHOR_BIN_$(t)),$(MVP_GUEST_IMAGE),$(ANCHOR_DTB0),$(ANCHOR_DTB1),$(call boundary_shim,anchor,anchor))))
 $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(ANCHOR_IMAGE_VARIANTS),$(eval $(call mvp_boot,$(BUILD)/variants/$(t)/$(v),$(t),$(BOOT_TEXT_OFFSET),$(BUILD)/variants/$(t)/$(v)/be-mvp.bin,$(MVP_GUEST_IMAGE),$(ANCHOR_DTB0),$(ANCHOR_DTB1),$(call boundary_shim,anchor,$(v))))))
 ANCHOR_IMAGES = $(foreach t,$(IMAGE_TOOLCHAINS),$(ANCHOR_ELF_$(t)) \
@@ -963,7 +995,8 @@ MVP_SHELL_IMAGES = $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach \
 # its own expectation and reference.
 # ring-full-off is ring-full's monitor so built (D-12's unconfined path of
 # ring-full: each VS-domain hart prints its own failure).
-MVP_OFF_COPIES := two-guests-off te-poc-off anchor-off ring-full-off
+MVP_OFF_COPIES := two-guests-off te-poc-off anchor-off ring-full-off \
+	$(MVP_BREACH_OFF)
 OFF_FLAGS_two-guests-off :=
 OFF_FLAGS_te-poc-off := $(TE_POC_FLAGS)
 OFF_FLAGS_anchor-off := $(ANCHOR_FLAGS)
@@ -984,8 +1017,16 @@ OFF_DTB0_te-poc-off := $(MVP_GUEST_DTB_G0_TE_POC)
 OFF_DTB1_te-poc-off := $(MVP_GUEST_DTB_G1_TE_POC)
 OFF_DTB0_anchor-off := $(ANCHOR_DTB0)
 OFF_DTB1_anchor-off := $(ANCHOR_DTB1)
+# A breach image's discrimination build (D-10): its monitor without the
+# boundary, its hook running the attempts that have a witness alone.
+$(foreach o,$(MVP_BREACH_OFF),$(eval OFF_FLAGS_$(o) := $(ANCHOR_FLAGS) \
+	-D$(call variant_macro,$(o:-off=)) $(call breach_flags,$(o))) \
+	$(eval OFF_H_$(o) := $(ANCHOR_SCENARIO_H)) \
+	$(eval OFF_SCENARIO_$(o) := anchor) \
+	$(eval OFF_DTB0_$(o) := $(ANCHOR_DTB0)) \
+	$(eval OFF_DTB1_$(o) := $(ANCHOR_DTB1)))
 off_dir = $(BUILD)/variants/$(1)/$(2)
-$(foreach t,$(VARIANT_TOOLCHAINS),$(foreach o,$(MVP_OFF_COPIES),$(eval $(call mvp_monitor,$(call off_dir,$(t),$(o)),$(t),$(OFF_FLAGS_$(o)),,$(OFF_H_$(o)),))))
+$(foreach t,$(VARIANT_TOOLCHAINS),$(foreach o,$(MVP_OFF_COPIES),$(eval $(call mvp_monitor,$(call off_dir,$(t),$(o)),$(t),$(OFF_FLAGS_$(o)),$(call breach_objects,$(t),$(o)),$(OFF_H_$(o)),))))
 $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach o,$(MVP_OFF_COPIES),$(eval $(call mvp_boot,$(call off_dir,$(t),$(o)),$(t),$(BOOT_TEXT_OFFSET),$(call off_dir,$(t),$(o))/be-mvp.bin,$(MVP_GUEST_IMAGE),$(OFF_DTB0_$(o)),$(OFF_DTB1_$(o)),))))
 MVP_OFF_IMAGES = $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach \
 	o,$(MVP_OFF_COPIES),$(call off_dir,$(t),$(o))/be-mvp-boot.elf \
@@ -1018,7 +1059,7 @@ PARTITION_IMAGES_two-guests := $(filter-out $(PARTITION_PAIRED),two-guests \
 PARTITION_IMAGES_te-poc := te-poc reader-write no-inject te-poc-shell
 PARTITION_IMAGES_anchor := $(filter-out $(PARTITION_PAIRED),anchor \
 	secret-shared response-writable wrong-measurement no-grant-check \
-	self-report-flip anchor-shell)
+	self-report-flip anchor-shell $(MVP_BREACH_VARIANTS))
 $(foreach s,$(PARTITION_SCENARIOS),$(eval \
 	PARTITION_DIR_$(s) := $(GEN)/partition/$(s)))
 $(foreach s,$(PARTITION_SCENARIOS),$(eval \
@@ -1221,6 +1262,71 @@ partition-check: partition-base-check partition-backend image variants \
 # dry run boots k3-like's row with a stand-in QEMU.
 qemu-test sessions uboot-rehearsal run-tool-check: $(PARTITION_CHECK_RECORDS)
 
+# --- the hostile-monitor hook (M11-7)
+# Each breach image's table (tools/gen-breach.py table), its two hook
+# objects, built with its own flags beside its runtime objects, and, after
+# the link, its plan and the oracle's words (plan), which check a
+# boundary-on image's rows against its descriptor's profile first. $(1)
+# image
+define mvp_breach_table
+$(call breach_table_dir,$(1))/mvp-breach-table.h: $(BREACH_DECLARATION) \
+		$(BREACH_GEN) $(MVP_DIR)/src/mvp-layout.h \
+		$(MVP_DIR)/src/mvp-breach.h
+	mkdir -p $$(@D)
+	$$(PYTHON) -I -B $(BREACH_GEN) table \
+		--declaration $(BREACH_DECLARATION) \
+		--layout $(MVP_DIR)/src/mvp-layout.h \
+		--header $(MVP_DIR)/src/mvp-breach.h \
+		--domain $(BREACH_DOMAIN_$(1)) \
+		$(if $(filter %-off,$(1)),--discriminate) --out $$@
+endef
+# $(1) toolchain, $(2) image
+define mvp_breach_objects
+$(BUILD)/variants/$(1)/$(2)/obj/mvp/mvp-breach.o: $(MVP_DIR)/src/mvp-breach.c \
+		$(MVP_RUNTIME_HEADERS) $(ANCHOR_SCENARIO_H) \
+		$(call breach_table_dir,$(2))/mvp-breach-table.h $(PORT_STAMP)
+	mkdir -p $$(@D)
+	$$(CC_$(1)) $$(TARGET_FLAGS) $$(MVP_OPT) $(ANCHOR_FLAGS) \
+		$(call breach_flags,$(2)) -c $$< -o $$@
+$(BUILD)/variants/$(1)/$(2)/obj/mvp/mvp-breach-arch.o: \
+		$(MVP_DIR)/src/mvp-breach-arch.S $(MVP_DIR)/src/mvp-breach.h \
+		$(MVP_DIR)/src/mvp-layout.h $(PORT_STAMP)
+	mkdir -p $$(@D)
+	$$(CC_$(1)) $$(TARGET_FLAGS) $(call breach_flags,$(2)) -c $$< -o $$@
+$(BUILD)/variants/$(1)/$(2)/breach-plan.json \
+$(BUILD)/variants/$(1)/$(2)/breach-words.json &: \
+		$(BUILD)/variants/$(1)/$(2)/be-mvp.elf \
+		$(BUILD)/variants/$(1)/$(2)/be-mvp.bin \
+		$(BUILD)/variants/$(1)/$(2)/be-mvp-boot.img $(ANCHOR_DTB0) \
+		$(ANCHOR_DTB1) $(BREACH_DECLARATION) $(BREACH_GEN) \
+		$(MVP_DIR)/src/mvp-layout.h $(MVP_DIR)/src/mvp-breach.h \
+		$(if $(filter %-off,$(2)),,$(call partition_descriptor,anchor,$(2)))
+	$$(PYTHON) -I -B $(BREACH_GEN) plan \
+		--declaration $(BREACH_DECLARATION) \
+		--layout $(MVP_DIR)/src/mvp-layout.h \
+		--header $(MVP_DIR)/src/mvp-breach.h \
+		--domain $(BREACH_DOMAIN_$(2)) \
+		$(if $(filter %-off,$(2)),--discriminate,--descriptor \
+		$(call partition_descriptor,anchor,$(2))) --image $(2) \
+		--elf $(BUILD)/variants/$(1)/$(2)/be-mvp.elf \
+		--bin $(BUILD)/variants/$(1)/$(2)/be-mvp.bin \
+		--boot-img $(BUILD)/variants/$(1)/$(2)/be-mvp-boot.img \
+		--dtb0 $(ANCHOR_DTB0) --dtb1 $(ANCHOR_DTB1) \
+		--nm $$(MVP_TOOL_cross_nm_command) \
+		--out $(BUILD)/variants/$(1)/$(2)/breach-plan.json \
+		--words $(BUILD)/variants/$(1)/$(2)/breach-words.json
+endef
+$(foreach v,$(MVP_BREACH_VARIANTS) $(MVP_BREACH_OFF),$(eval $(call \
+	mvp_breach_table,$(v))))
+$(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_BREACH_VARIANTS) \
+	$(MVP_BREACH_OFF),$(eval $(call mvp_breach_objects,$(t),$(v)))))
+MVP_BREACH_PLANS := $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach \
+	v,$(MVP_BREACH_VARIANTS) $(MVP_BREACH_OFF),\
+	$(BUILD)/variants/$(t)/$(v)/breach-plan.json))
+.PHONY: breach-plans
+breach-plans: $(MVP_BREACH_PLANS)
+qemu-test: breach-plans
+
 # The payload variant's kernel: magic2 "RSC\x05" becomes "RSC\0".
 $(BUILD)/variants/payload/Image: $(MVP_GUEST_IMAGE) $(MVP_DIR)/tools/gen-payload.py
 	mkdir -p $(@D)
@@ -1300,7 +1406,8 @@ te_poc_variant_specs = $(foreach v,$(TE_POC_VARIANTS),--variant $(v):$(BUILD)/va
 variants: image $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_VARIANTS) \
 	$(TE_POC_VARIANTS) $(ANCHOR_IMAGE_VARIANTS) $(MVP_FLIP_VARIANTS),$(MVP_VARIANT_BOOT_ELF_$(t)_$(v)) \
 	$(MVP_VARIANT_BOOT_IMG_$(t)_$(v)))) $(MVP_SHELL_IMAGES) \
-	$(MVP_OFF_IMAGES) $(MVP_EXPECT) $(TE_POC_EXPECT) $(ANCHOR_EXPECT)
+	$(MVP_OFF_IMAGES) $(MVP_EXPECT) $(TE_POC_EXPECT) $(ANCHOR_EXPECT) \
+	$(if $(MVP_BREACH_VARIANTS),breach-plans)
 	mkdir -p $(RECORDS)
 	set -o pipefail; { $(foreach t,$(VARIANT_TOOLCHAINS),$(IMAGE_CHECK) \
 		--base $(MVP_BASE) $(IMAGE_CHECK_ARGS) \
@@ -1320,6 +1427,9 @@ variants: image $(foreach t,$(VARIANT_TOOLCHAINS),$(foreach v,$(MVP_VARIANTS) \
 		--base $(MVP_BASE) $(ANCHOR_CHECK_ARGS) \
 		--reference $(call anchor_spec,$(t)) \
 		$(call off_spec,$(t),anchor-off) $(call anchor_variant_specs,$(t)) \
+		$(foreach o,$(MVP_BREACH_OFF),$(call off_spec,$(t),$(o))) \
+		$(foreach v,$(MVP_BREACH_VARIANTS) $(MVP_BREACH_OFF),--breach \
+		$(v):$(BREACH_DECLARATION):$(BREACH_DOMAIN_$(v))) \
 		--variant anchor-shell:$(call shell_spec,$(t),anchor) &&) true; } 2>&1 | \
 		tee -a $(RECORDS)/variants.txt
 

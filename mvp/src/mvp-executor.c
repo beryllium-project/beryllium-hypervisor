@@ -10,9 +10,12 @@
  * Trust:   no decision: each function passes its arguments through and
  *          returns its helper's result. The injection's function is built
  *          only into an image that accepts denials, the raw hgatp
- *          switch's only into the two VMID probe images, and the domain
+ *          switch's only into the two VMID probe images, the domain
  *          commit extension's two only into a boundary-on image (M11-7),
- *          so each image links the helper calls it linked before.
+ *          and the hostile-monitor hook's four only into a breach image
+ *          (M11-7), each the one caller of its helper, whose prototype is
+ *          here alone; so each image links the helper calls it linked
+ *          before.
  * Scope:   the MVP line, built for each monitor with its scenario and
  *          variant, as hart 0's and the domain harts' runtimes are.
  */
@@ -25,6 +28,14 @@
 #endif
 #if defined(BE_MVP_BOUNDARY)
 #include "mvp-boundary.h"
+#endif
+#if defined(BE_MVP_BREACH)
+void be_mvp_breach_arch_enter(struct be_mvp_breach_saved *saved,
+			      be_u64 frame);
+void be_mvp_breach_arch_translate(be_u64 satp, be_u64 hgatp, be_u64 vsatp);
+void be_mvp_breach_arch_attempt(const struct be_mvp_breach_attempt *row,
+				struct be_mvp_breach_slot *slot, be_u64 frame);
+void be_mvp_breach_arch_leave(const struct be_mvp_breach_saved *saved);
 #endif
 
 long be_mvp_fw_call(be_u64 eid, be_u64 fid, be_u64 argument0,
@@ -224,3 +235,27 @@ void be_mvp_exec_halt(void)
 {
 	be_r3_arch_halt();
 }
+
+#if defined(BE_MVP_BREACH)
+void be_mvp_exec_breach_enter(struct be_mvp_breach_saved *saved,
+			      be_u64 frame)
+{
+	be_mvp_breach_arch_enter(saved, frame);
+}
+
+void be_mvp_exec_breach_translate(be_u64 satp, be_u64 hgatp, be_u64 vsatp)
+{
+	be_mvp_breach_arch_translate(satp, hgatp, vsatp);
+}
+
+void be_mvp_exec_breach_attempt(const struct be_mvp_breach_attempt *row,
+				struct be_mvp_breach_slot *slot, be_u64 frame)
+{
+	be_mvp_breach_arch_attempt(row, slot, frame);
+}
+
+void be_mvp_exec_breach_leave(const struct be_mvp_breach_saved *saved)
+{
+	be_mvp_breach_arch_leave(saved);
+}
+#endif

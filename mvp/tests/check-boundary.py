@@ -13,6 +13,8 @@
   check-boundary.py not-applicable --out STEM.boundary.txt
   check-boundary.py gate --expect IMAGE.json --record RECORD --dtb DTB
       --tables PAIR-pmp.json
+  check-boundary.py breach --plan PLAN --oracle STEM.oracle.json
+      --out STEM.breach.txt
   check-boundary.py --self-test --scratch DIR
 
 Purpose: D-10's four checks of a boundary-on run (planning/mvp-m11-plan.md,
@@ -27,12 +29,18 @@ stopped and what M-mode printed:
      and mseccfg equal to the record's with MML set under Smepmp, absent
      with the record's zero under plain PMP; boot, the backend's boot
      table and not committed; never-started, every entry off and not
-     committed; started (hart 1 of hart-start alone), the confined rules
-     when the read says committed and no comparison of the entries when it
-     does not, the printed record never committed where the read is not,
-     and both readbacks equal when both are. Configuration bytes are
-     compared for all sixteen entries, an address only where the entry is
-     not off. The committed harts are the declared ones.
+     committed; started (a VS-domain hart of an outcome that fails after
+     BE_MVP:07, :08, or :09, by rule), by the capture's lines for it: with
+     its BE_MVP:09 HART_READY, every rule of confined; with its BE_MVP:08
+     HART_STARTED alone, the confined rules when the read says committed
+     and no comparison of the entries when it does not, the printed record
+     never committed where the read is not, and both readbacks equal when
+     both are; with neither, never-started's. A hart declared confined has
+     its READY line in the capture, one declared never-started no start
+     line, and one declared boot its start line alone. Configuration bytes
+     are compared for all sixteen entries, an address only where the entry
+     is not off. The committed harts are the ones so judged confined, and
+     a started one only where the read says so.
   2. Harts 3 to 7: every entry off, not committed, and each one's program
      counter inside the firmware, [_fw_start, _fw_end) from RAM's base.
   3. Identity: the banner's configuration digest is the partition
@@ -54,6 +62,16 @@ record: the one line `BE_MVP_BOUNDARY: FAIL <reason>`.
 which no monitor ran (the U-Boot rehearsal's fall-through): the
 expectation's declaration with harts 1 and 2 never started, the banner's
 digest and no printed record (the run ends with no reset).
+
+`breach` judges a breach image's run (M11-7; D-10's hostile-monitor rows)
+by its plan (tools/gen-breach.py plan): the hook's record, which the
+oracle read from the hooked hart's mailbox, done once, every row run, and
+no unexpected trap; each row's slot, its trap's cause and stval, the
+value it kept, and the call's error, as the plan has them for a
+boundary-on or an -off run; each witness word and device register at its
+value; and writes STEM.breach.txt, one line per row and the verdict line
+`BE_MVP_BREACH: PASS` or `FAIL`, or the one line `BE_MVP_BREACH: FAIL
+<reason>` when the run cannot be judged.
 
 `gate` is the run harness's admission of a boundary-on run's device tree
 (D-3, D-10): the run starts only if the partition checker's record of the
@@ -90,9 +108,13 @@ import qemu_oracle  # noqa: E402 pylint: disable=wrong-import-position
 HARTS = 8
 VS_HARTS = (1, 2)
 STATES = ("confined", "boot", "never-started", "started")
-# A-1 (M11-7's `go`): the one hart that a declared outcome may leave
-# between its start and its confinement when the run ends.
-STARTED = {("hart-start", 1)}
+# A-1 and C-1 (M11-7's review): a VS-domain hart may be declared started,
+# between its start and its confinement when the run ends, only where the
+# outcome fails after the barrier and before both READY lines; the
+# capture's BE_MVP:08 and BE_MVP:09 lines for it then decide its rules.
+STARTING = ("BE_MVP:07", "BE_MVP:08", "BE_MVP:09")
+LIFE = re.compile(r"BE_MVP:(?:(08) HART_STARTED|(09) HART_READY) "
+                  r"hart=([0-9]+) ")
 COUNTS = ("pmp_faults", "blocked_calls", "failed_calls")
 FIELDS = ("committed",) + COUNTS + ("menvcfg", "mseccfg")
 PMP_A_MASK = 0x18
@@ -187,6 +209,49 @@ def printed(text):
             records.setdefault(int(match.group(1)), []).append(
                 match.group(2))
     return digests, records
+
+
+def lifecycle(text):
+    """Each hart's BE_MVP:08 and BE_MVP:09 lines in the capture, hart 0's
+    own at a line's start: {hart: {"08", "09"}}."""
+    seen = {}
+    for line in text.replace("\r", "").split("\n"):
+        match = LIFE.match(line)
+        if match:
+            seen.setdefault(int(match.group(3)), set()).add(
+                match.group(1) or match.group(2))
+    return seen
+
+
+def effective_states(expect, states, seen, findings):
+    """The state each hart is judged in: a started hart's by its lines in
+    the capture (its READY, confined; its start alone, started; neither,
+    never started); each other VS-domain hart's declared state checked
+    against them."""
+    outcome = expect.get("outcome") or {}
+    starting = "fail" in outcome and outcome.get("after") in STARTING
+    out = dict(states)
+    for hart in VS_HARTS:
+        lines, state = seen.get(hart, set()), states[hart]
+        what = f"hart {hart} ({state})"
+        if state == "started":
+            if not starting:
+                findings.append(f"{what}: started is declared only where "
+                                f"the outcome fails after BE_MVP:07, :08, "
+                                f"or :09")
+            out[hart] = "confined" if "09" in lines else \
+                "started" if "08" in lines else "never-started"
+        elif state == "confined" and "09" not in lines:
+            findings.append(f"{what}: the capture has no BE_MVP:09 "
+                            f"HART_READY for it")
+        elif state == "never-started" and "08" in lines:
+            findings.append(f"{what}: the capture has its BE_MVP:08 "
+                            f"HART_STARTED")
+        elif state == "boot" and lines != {"08"}:
+            findings.append(f"{what}: the capture's BE_MVP:08 and :09 "
+                            f"lines for it are {sorted(lines)}, not its "
+                            f"BE_MVP:08 alone")
+    return out
 
 
 def printed_record(lines):
@@ -342,17 +407,18 @@ def judge(expect, record, text, tables, mode, authority, symbols,
     elif digests and not boundary["record"]:
         findings.append("M-mode printed a digest, but the tree holds no "
                         "digest")
-    states = {int(hart): state for hart, state in boundary["harts"].items()}
-    states.update({hart: "never-started" for hart in range(3, HARTS)})
+    declared_states = {int(hart): state
+                       for hart, state in boundary["harts"].items()}
+    declared_states.update({hart: "never-started"
+                            for hart in range(3, HARTS)})
+    states = effective_states(expect, declared_states, lifecycle(text),
+                              findings)
     committed = set()
     for hart in range(HARTS):
         fields, cfg, addr = decode(words[hart])
         state, oracle_hart = states[hart], oracle_harts[hart]
         what = f"hart {hart} ({state})"
         mine = shown.get(hart)
-        if state == "started" and (image, hart) not in STARTED:
-            findings.append(f"{what}: only hart-start's hart 1 may be "
-                            f"declared started")
         if fields["committed"] not in (0, 1):
             findings.append(f"{what}: committed={fields['committed']}")
         if fields["committed"]:
@@ -429,8 +495,118 @@ def judge(expect, record, text, tables, mode, authority, symbols,
             findings.append(f"VS domain {domain}'s state word "
                             f"{item['value']}, expected 0x{value:016x} "
                             f"(FAILED, ring)")
-    facts["harts"] = ",".join(f"{hart}:{states[hart]}" for hart in range(3))
+    facts["harts"] = ",".join(
+        f"{hart}:{declared_states[hart]}" + (
+            f">{states[hart]}" if states[hart] != declared_states[hart]
+            else "") for hart in range(3))
     return findings, facts
+
+
+BREACH_PLAN = "be-mvp-breach-plan-v1"
+BREACH_FIELDS = ("cause", "stval", "value", "error")
+BREACH_SLOT_BYTES = 32
+BREACH_STATES = {0: "never ran", 1: "did not finish", 2: "done",
+                 3: "ran again"}
+
+
+def breach_name(*parts):
+    """A breach word's name, as tools/gen-breach.py's word_name() gives it
+    to the oracle: lower case, by tests/qemu_oracle.py's NAME."""
+    return "-".join(("breach",) + tuple(str(part) for part in parts)).lower()
+
+
+def judge_breach(plan, record):
+    """(findings, lines, facts) of a breach image's run against its PLAN:
+    the hook's record, each row's slot, each witness word, and each device
+    register, as the oracle read them."""
+    if plan.get("schema") != BREACH_PLAN:
+        raise Refused(f"the plan is not of schema {BREACH_PLAN}")
+    if record.get("result", {}).get("verdict") != "PASS":
+        raise Refused("the oracle's read did not complete")
+    words = {}
+    for item in record.get("words", []):
+        words[item["name"]] = int(item["value"], 16)
+
+    def word(name):
+        if name not in words:
+            raise Refused(f"the oracle read no {name}")
+        return words[name]
+
+    def wanted(text, row):
+        if isinstance(text, dict):
+            return word(breach_name(row, "end"))
+        return {"none": int(plan["no_trap"], 16),
+                "sentinel": int(plan["sentinel"], 16)}.get(text) \
+            if text in ("none", "sentinel") else int(text, 16)
+    findings, lines = [], []
+    header = [word(breach_name("header", index))
+              for index in range(plan["header_words"])]
+    magic, state, rows, domain, slot = header[:5]
+    resume, cause, sepc, stval = header[5:9]
+    last = int(plan["record"], 16) + 8 * plan["header_words"] + \
+        BREACH_SLOT_BYTES * (len(plan["rows"]) - 1)
+    if magic != int(plan["magic"], 16):
+        findings.append(f"the record's magic is 0x{magic:x}, not the "
+                        f"hook's")
+    if state != plan["done"]:
+        findings.append(f"the hook {BREACH_STATES.get(state, 'is in state')}"
+                        f" ({state})")
+    if rows != len(plan["rows"]):
+        findings.append(f"the hook ran {rows} rows, not "
+                        f"{len(plan['rows'])}")
+    if domain != plan["domain"]:
+        findings.append(f"the hook ran on VS domain {domain}, not "
+                        f"{plan['domain']}")
+    if resume or cause or sepc or stval:
+        findings.append(f"an unexpected trap: cause 0x{cause:x} at sepc "
+                        f"0x{sepc:x}, stval 0x{stval:x}, continuation "
+                        f"0x{resume:x}")
+    if slot != last:
+        findings.append(f"the frame's last slot is 0x{slot:x}, not the "
+                        f"last row's 0x{last:x}")
+    if any(header[9:]):
+        findings.append("the record's header holds words past its frame")
+    for row in plan["rows"]:
+        name = row["row"]
+        bad = []
+        for field in BREACH_FIELDS:
+            got, want = word(breach_name(name, field)), \
+                wanted(row[field], name)
+            if got != want:
+                bad.append(f"{field} 0x{got:x}, expected 0x{want:x}")
+        findings += [f"row {name}: {item}" for item in bad]
+        lines.append(f"row {name} {row['outcome']} cause={row['cause']} "
+                     f"stval={row['stval']} "
+                     f"{'FAIL' if bad else 'ok'}")
+    for item in plan["words"]:
+        got = word(breach_name("word", item["address"]))
+        if got != int(item["expected"], 16):
+            findings.append(f"row {item['row']}'s word {item['address']} "
+                            f"is 0x{got:x}, expected {item['expected']}")
+    for item in plan["devices"]:
+        got = word(breach_name("device", item["row"]))
+        if got != int(item["expected"], 16):
+            findings.append(f"row {item['row']}'s device register "
+                            f"{item['address']} is 0x{got:x}, expected "
+                            f"{item['expected']}")
+    outcomes = [row["outcome"] for row in plan["rows"]]
+    facts = {"image": plan["image"], "boundary": plan["boundary"],
+             "hart": plan["hart"], "rows": len(outcomes),
+             "outcomes": " ".join(f"{outcome}={outcomes.count(outcome)}"
+                                  for outcome in ("denied", "illegal",
+                                                  "refused", "allowed")),
+             "words": len(plan["words"]), "devices": len(plan["devices"])}
+    return findings, lines, facts
+
+
+def breach_text(findings, lines, facts):
+    verdict = "FAIL" if findings else "PASS"
+    return "".join(f"finding {item}\n" for item in findings) + \
+        "".join(f"{line}\n" for line in lines) + (
+            f"BE_MVP_BREACH: {verdict} image={facts['image']} "
+            f"boundary={facts['boundary']} hart={facts['hart']} "
+            f"rows={facts['rows']} {facts['outcomes']} "
+            f"words={facts['words']} devices={facts['devices']}\n")
 
 
 def gate(expect, record, dtb, tables):
@@ -480,6 +656,9 @@ def words_document(expect, layout, header, extra=None):
 
 
 def result_text(findings, facts):
+    """The record: each finding, then the verdict line, whose harts= gives
+    harts 0 to 2's declared states, DECLARED>JUDGED where the capture's
+    lines decided a started hart's rules (C-1)."""
     verdict = "FAIL" if findings else "PASS"
     return "".join(f"finding {item}\n" for item in findings) + (
         f"BE_MVP_BOUNDARY: {verdict} image={facts['image']} "
@@ -585,10 +764,12 @@ HEADER = {"BOUNDARY_PHASE_OFFSET": 0x130, "BOUNDARY_PHASE_FAILED": 2,
           "BOUNDARY_CLASS_RING": 22}
 
 
-def synthetic_run(mode, states, record=True, counts=None):
+def synthetic_run(mode, states, record=True, counts=None, seen=None):
     """A passing run's oracle record and console for STATES: each hart's
     registers its declared table's, its commit record what M-mode keeps,
-    and the console's banner, BE_MVP:02, and printed records."""
+    and the console's banner, BE_MVP:02, each VS-domain hart's BE_MVP:08
+    and BE_MVP:09 lines (SEEN's, or by its state: confined, both; boot or
+    started, its start alone), and the printed records."""
     tables = synthetic_tables()
     counts = counts or {}
     harts, words, lines = [], [], []
@@ -651,11 +832,166 @@ def synthetic_run(mode, states, record=True, counts=None):
               "status_after": None, "qemu_exit": "0x00000000"}
     text = (f"Domain commit digest        : {identity}\n" if record else "")
     text += ("BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 boundary=1 "
-             f"status=1:1,2:1 started=none identity={identity}\n"
-             "BE_MVP:14 SHUTDOWN type=0 reason=0\n")
+             f"status=1:1,2:1 started=none identity={identity}\n")
+    for hart in VS_HARTS:
+        state = states.get(hart, "never-started")
+        shown = (seen or {}).get(hart, {"confined": ("08", "09"),
+                                        "boot": ("08",),
+                                        "started": ("08",)}.get(state, ()))
+        if "08" in shown:
+            text += (f"BE_MVP:08 HART_STARTED hart={hart} domain={hart - 1} "
+                     f"result=0 ticks=0x1\n")
+        if "09" in shown:
+            text += (f"BE_MVP:09 HART_READY hart={hart} domain={hart - 1} "
+                     f"hgatp=0x0\n")
+    text += "BE_MVP:14 SHUTDOWN type=0 reason=0\n"
     if record:
         text += "\n".join(lines) + "\n"
     return oracle, text, tables
+
+
+def synthetic_breach():
+    """A small breach plan, as tools/gen-breach.py writes one, and the
+    oracle's read of a run that went as planned."""
+    record = 0x102048100
+    rows = [
+        {"row": "A1", "slot": 0, "outcome": "denied", "cause": "0x5",
+         "stval": "0x117e00000", "value": "sentinel", "error": "sentinel"},
+        {"row": "M1", "slot": 1, "outcome": "refused", "cause": "none",
+         "stval": "0x0", "value": "0x0", "error": "0xfffffffffffffffc"},
+        {"row": "D5", "slot": 2, "outcome": "allowed", "cause": "none",
+         "stval": "0x0", "value": {"end": "0x102084000"},
+         "error": "sentinel"},
+        {"row": "A2", "slot": 3, "outcome": "denied", "cause": "0x7",
+         "stval": "0x117e00008", "value": "sentinel", "error": "sentinel"}]
+    plan = {"schema": BREACH_PLAN, "image": "breach-g0", "domain": 0,
+            "hart": 1, "boundary": "on", "record": f"0x{record:x}",
+            "header_words": 16, "magic": "0x4843414552424542", "done": 2,
+            "no_trap": "0xffffffffffffffff",
+            "sentinel": "0x5eb55eb55eb55eb5", "rows": rows,
+            "words": [{"row": "A2", "address": "0x117e00008",
+                       "expected": "0x0"}],
+            "devices": [{"row": "I1", "address": "0x10000007", "width": 1,
+                         "expected": "0x0"}],
+            "counts": {"pmp_faults": 2, "blocked_calls": 1,
+                       "failed_calls": 0}}
+    header = [0x4843414552424542, 2, 4, 0, record + 128 + 32 * 3] + \
+        [0] * 11
+    values = {breach_name("header", index): value
+              for index, value in enumerate(header)}
+    sentinel, none = 0x5eb55eb55eb55eb5, (1 << 64) - 1
+    for name, slot in (("A1", (5, 0x117e00000, sentinel, sentinel)),
+                       ("M1", (none, 0, 0, 0xfffffffffffffffc)),
+                       ("D5", (none, 0, 0x1122334455667788, sentinel)),
+                       ("A2", (7, 0x117e00008, sentinel, sentinel))):
+        for field, value in zip(BREACH_FIELDS, slot):
+            values[breach_name(name, field)] = value
+    values["breach-d5-end"] = 0x1122334455667788
+    values["breach-word-0x117e00008"] = 0
+    values["breach-device-i1"] = 0
+    oracle = {"result": {"verdict": "PASS"},
+              "words": [{"name": name, "address": "0x0",
+                         "value": qemu_oracle.hex64(value),
+                         "expected": None}
+                        for name, value in values.items()]}
+    return plan, oracle
+
+
+def breach_cases(scratch, cases):
+    """The breach judge's cases, appended to CASES."""
+    def run(name, change=None, want=None):
+        plan, oracle = synthetic_breach()
+        if change:
+            change(plan, oracle)
+        try:
+            findings, _, _ = judge_breach(plan, oracle)
+        except Refused as error:
+            findings = [f"refused: {error}"]
+        ok = (not findings) if want is None else \
+            any(want in finding for finding in findings)
+        cases.append((f"breach: {name}", ok,
+                      findings[0] if findings else "passes"))
+
+    def word(name, value):
+        def change(plan, oracle):
+            item = next(item for item in oracle["words"]
+                        if item["name"] == name)
+            item["value"] = qemu_oracle.hex64(value)
+        return change
+
+    def unread(name):
+        def change(plan, oracle):
+            oracle["words"] = [item for item in oracle["words"]
+                               if item["name"] != name]
+        return change
+    run("a boundary-on run as planned")
+    run("a denied load that was not denied",
+        word("breach-a1-cause", (1 << 64) - 1),
+        want="row A1: cause 0xffffffffffffffff, expected 0x5")
+    run("a denial at another address", word("breach-a2-stval", 0x117e00000),
+        want="row A2: stval 0x117e00000, expected 0x117e00008")
+    run("a denied load that kept a value", word("breach-a1-value", 0),
+        want="row A1: value 0x0, expected 0x5eb55eb55eb55eb5")
+    run("a call that was not refused", word("breach-m1-error", 0),
+        want="row M1: error 0x0, expected 0xfffffffffffffffc")
+    run("an end read that differs from the word at the end",
+        word("breach-d5-end", 0x1122334455667789),
+        want="row D5: value 0x1122334455667788, expected "
+        "0x1122334455667789")
+    run("a witness word written", word("breach-word-0x117e00008", 0xb5ea),
+        want="row A2's word 0x117e00008 is 0xb5ea, expected 0x0")
+    run("a device register written", word("breach-device-i1", 0xa5),
+        want="row I1's device register 0x10000007 is 0xa5")
+    run("the hook ran again", word("breach-header-1", 3),
+        want="the hook ran again (3)")
+    run("the hook did not finish", word("breach-header-1", 1),
+        want="the hook did not finish (1)")
+    run("the record's magic", word("breach-header-0", 0),
+        want="the record's magic is 0x0")
+    run("fewer rows run", word("breach-header-2", 3),
+        want="the hook ran 3 rows, not 4")
+    run("the hook on the other VS domain", word("breach-header-3", 1),
+        want="the hook ran on VS domain 1, not 0")
+    run("an unexpected trap", word("breach-header-6", 0xd),
+        want="an unexpected trap: cause 0xd")
+    run("a continuation left set", word("breach-header-5", 0x102011000),
+        want="continuation 0x102011000")
+    run("the frame's last slot", word("breach-header-4", 0x102048180),
+        want="the frame's last slot is 0x102048180")
+    run("a header word past the frame", word("breach-header-12", 1),
+        want="the record's header holds words past its frame")
+    run("a slot word unread", unread("breach-a2-error"),
+        want="refused: the oracle read no breach-a2-error")
+    run("an end word unread", unread("breach-d5-end"),
+        want="refused: the oracle read no breach-d5-end")
+    run("the oracle's read not complete",
+        lambda plan, oracle: oracle["result"].update(verdict="FAIL"),
+        want="refused: the oracle's read did not complete")
+    run("another plan schema",
+        lambda plan, oracle: plan.update(schema="be-mvp-breach-plan-v0"),
+        want="refused: the plan is not of schema")
+    plan, oracle = synthetic_breach()
+    (scratch / "plan.json").write_text(json.dumps(plan), encoding="utf-8")
+    (scratch / "oracle.json").write_text(json.dumps(oracle),
+                                         encoding="utf-8")
+    for name, inputs, status, start in (
+            ("a run as planned", ("plan.json", "oracle.json"), 0,
+             "row A1 denied"),
+            ("a run that cannot be judged", ("plan.json", "missing"), 1,
+             "BE_MVP_BREACH: FAIL ")):
+        out = scratch / f"{name.replace(' ', '-')}.breach.txt"
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = main(["check-boundary.py", "breach", "--plan",
+                        str(scratch / inputs[0]), "--oracle",
+                        str(scratch / inputs[1]), "--out", str(out)])
+        text = out.read_text(encoding="utf-8") if out.is_file() else ""
+        ok = got == status and text.startswith(start) and (
+            status or text.splitlines()[-1].startswith(
+                "BE_MVP_BREACH: PASS image=breach-g0 boundary=on hart=1 "
+                "rows=4 denied=2 illegal=0 refused=1 allowed=1"))
+        cases.append((f"breach: the command, {name}", ok,
+                      text.strip().splitlines()[-1] if text else
+                      "no record"))
 
 
 def self_test(scratch):
@@ -667,16 +1003,17 @@ def self_test(scratch):
     base_states = {0: "boot", 1: "confined", 2: "confined"}
     cases = []
 
-    def expectation(image="two-guests", harts=None, **extra):
+    def expectation(image="two-guests", harts=None, outcome=None, **extra):
         harts = harts or {"0": "boot", "1": "confined", "2": "confined"}
-        return {"image": image, "boundary": dict(
-            {"control_hart": "boot", "pair": "two-guests", "record": True,
-             "harts": harts}, **extra)}
+        return {"image": image, "outcome": outcome or {"pass": True},
+                "boundary": dict(
+                    {"control_hart": "boot", "pair": "two-guests",
+                     "record": True, "harts": harts}, **extra)}
 
     def run(name, change=None, mode="plain", states=None, expect=None,
-            want=None, record=True, counts=None, header=HEADER):
+            want=None, record=True, counts=None, header=HEADER, seen=None):
         oracle, text, tables = synthetic_run(mode, states or base_states,
-                                             record, counts)
+                                             record, counts, seen)
         expect = expect or expectation()
         if change:
             text = change(oracle, tables, expect, text) or text
@@ -802,49 +1139,96 @@ def self_test(scratch):
     run("the fall-through's read under the scenario's declaration",
         states={0: "boot", 1: "never-started", 2: "never-started"},
         want="committed harts [], declared [1, 2]")
-    started = {0: "boot", 1: "started", 2: "never-started"}
+    # A-1 and C-1: a started hart's rules follow the capture's lines.
     started_harts = {"0": "boot", "1": "started", "2": "never-started"}
-    run("started: read committed, its confined table",
-        states={0: "boot", 1: "confined", 2: "never-started"},
-        expect=expectation("hart-start", started_harts))
-    run("started: read not committed, entries not compared",
-        lambda oracle, tables, expect, text: oracle["harts"][1].update(
-            pmpcfg0="0x000000000000001f"),
-        states={0: "boot", 1: "boot", 2: "never-started"},
-        expect=expectation("hart-start", started_harts))
-    run("started: read committed, printed not",
-        lambda oracle, tables, expect, text: text.replace(
-            "Domain commit hart1: committed=1 pmp_faults=0 blocked_calls=0 "
-            "failed_calls=0\n", "Domain commit hart1: committed=0 "
-            "pmp_faults=0 blocked_calls=0 failed_calls=0\n").replace(
-                "\n".join(line for line in text.split("\n")
-                          if line.startswith("Domain commit hart1: ") and
-                          "committed=" not in line) + "\n", ""),
-        states={0: "boot", 1: "confined", 2: "never-started"},
-        expect=expectation("hart-start", started_harts))
-    run("started: read committed with a wrong table",
+    at_start = {"fail": "hart-start", "after": "BE_MVP:07"}
+
+    def started(harts=None, outcome=None):
+        return expectation("hart-start", harts or started_harts,
+                           outcome or at_start)
+    alone, ready = {1: ("08",)}, {1: ("08", "09")}
+    committed_one = {0: "boot", 1: "confined", 2: "never-started"}
+
+    def printed_uncommitted(oracle, tables, expect, text):
+        lines = text.split("\n")
+        return "\n".join(
+            "Domain commit hart1: committed=0 pmp_faults=0 blocked_calls=0 "
+            "failed_calls=0" if line.startswith("Domain commit hart1: "
+                                                "committed=") else line
+            for line in lines if not (
+                line.startswith("Domain commit hart1: ") and
+                "committed=" not in line))
+    run("started, its start alone: read committed, its confined table",
+        states=committed_one, seen=alone, expect=started())
+    run("started, its start alone: read not committed, entries not "
+        "compared", lambda oracle, tables, expect, text: oracle["harts"][
+            1].update(pmpcfg0="0x000000000000001f"),
+        states={0: "boot", 1: "boot", 2: "never-started"}, seen=alone,
+        expect=started())
+    run("started, its start alone: read committed, printed not",
+        printed_uncommitted, states=committed_one, seen=alone,
+        expect=started())
+    run("started, its start alone: read committed with a wrong table",
         oracle_hart(1, "pmpaddr", ["0x0000000040801ffe"] + ["0x0"] * 15),
-        states={0: "boot", 1: "confined", 2: "never-started"},
-        expect=expectation("hart-start", started_harts),
+        states=committed_one, seen=alone, expect=started(),
         want="hart 1 as read: pmpaddr0")
-    run("started: printed committed, read not", word("t1-0", 0),
-        states={0: "boot", 1: "confined", 2: "never-started"},
-        expect=expectation("hart-start", started_harts),
-        want="printed committed but read not")
-    run("started: a nonzero count", counts={1: (0, 1, 0)},
-        states={0: "boot", 1: "confined", 2: "never-started"},
-        expect=expectation("hart-start", started_harts),
+    run("started, its start alone: printed committed, read not",
+        word("t1-0", 0), states=committed_one, seen=alone,
+        expect=started(), want="printed committed but read not")
+    run("started, its start alone: a nonzero count", counts={1: (0, 1, 0)},
+        states=committed_one, seen=alone, expect=started(),
         want="blocked_calls=1 as read, declared 0")
-    run("started declared in another run",
-        states={0: "boot", 1: "confined", 2: "never-started"},
-        expect=expectation("two-guests", started_harts),
-        want="only hart-start's hart 1 may be declared started")
-    run("started declared for hart 2 of hart-start",
-        states={0: "boot", 1: "never-started", 2: "confined"},
-        expect=expectation("hart-start", {"0": "boot", "1": "never-started",
-                                          "2": "started"}),
-        want="only hart-start's hart 1 may be declared started")
-    del started
+    run("started, its READY line: the rules of confined",
+        states=committed_one, seen=ready, expect=started())
+    run("started, its READY line: not committed",
+        states={0: "boot", 1: "boot", 2: "never-started"}, seen=ready,
+        expect=started(), want="committed harts [], declared [1]")
+    run("started, its READY line: a wrong table",
+        oracle_hart(1, "pmpaddr", ["0x0000000040801ffe"] + ["0x0"] * 15),
+        states=committed_one, seen=ready, expect=started(),
+        want="hart 1 as read: pmpaddr0")
+    run("started, its READY line: printed not committed",
+        printed_uncommitted, states=committed_one, seen=ready,
+        expect=started(), want="hart 1 (confined): printed not committed")
+    run("started, neither line: the rules of never-started",
+        states={0: "boot", 1: "never-started", 2: "never-started"},
+        seen={1: ()}, expect=started())
+    run("started, neither line: committed",
+        states=committed_one, seen={1: ()}, expect=started(),
+        want="hart 1 (never-started): committed")
+    run("run-timeout: both started, one ready, one at its start alone",
+        states={0: "boot", 1: "confined", 2: "boot"},
+        seen={1: ("08", "09"), 2: ("08",)},
+        expect=started({"0": "boot", "1": "started", "2": "started"},
+                       {"fail": "run-timeout", "after": "BE_MVP:07"}))
+    run("confined declared without its READY line", seen=alone,
+        want="hart 1 (confined): the capture has no BE_MVP:09 HART_READY")
+    run("never-started declared with its BE_MVP:08",
+        states=committed_one, seen={1: ("08", "09"), 2: ("08",)},
+        expect=started(), want="hart 2 (never-started): the capture has "
+        "its BE_MVP:08")
+    run("boot declared for a VS-domain hart: its start alone",
+        states={0: "boot", 1: "boot", 2: "boot"},
+        expect=expectation(harts={"0": "boot", "1": "boot", "2": "boot"},
+                           outcome={"fail": "hart-ready",
+                                    "after": "BE_MVP:08"}))
+    run("boot declared for a VS-domain hart with its READY line",
+        states={0: "boot", 1: "boot", 2: "boot"},
+        seen={1: ("08", "09"), 2: ("08",)},
+        expect=expectation(harts={"0": "boot", "1": "boot", "2": "boot"},
+                           outcome={"fail": "hart-ready",
+                                    "after": "BE_MVP:08"}),
+        want="hart 1 (boot): the capture's BE_MVP:08 and :09 lines for it "
+        "are ['08', '09']")
+    for label, outcome in (
+            ("a passing expectation", {"pass": True}),
+            ("a failure after BE_MVP:10", {"fail": "ring",
+                                           "after": "BE_MVP:10"}),
+            ("a failure before the barrier", {"fail": "payload",
+                                              "after": "BE_MVP:03"})):
+        run(f"started declared in {label}", states=committed_one,
+            seen=alone, expect=started(outcome=outcome),
+            want="started is declared only where the outcome fails after")
 
     def phase(value):
         def change(oracle, tables, expect, text):
@@ -921,6 +1305,7 @@ def self_test(scratch):
             len(reasons) == 1 and f"record's {want} is" in reasons[0]
         cases.append((f"the gate: {name}", ok, "; ".join(reasons) or
                       "admitted"))
+    breach_cases(scratch, cases)
     failures = 0
     for name, ok, detail in cases:
         failures += not ok
@@ -956,6 +1341,9 @@ def main(argv):
     admit = commands.add_parser("gate")
     for name in ("expect", "record", "dtb", "tables"):
         admit.add_argument(f"--{name}", required=True)
+    breach = commands.add_parser("breach")
+    for name in ("plan", "oracle", "out"):
+        breach.add_argument(f"--{name}", required=True)
     args = parser.parse_args(argv[1:])
     try:
         if args.self_test:
@@ -981,12 +1369,21 @@ def main(argv):
             print("BE_MVP_BOUNDARY_GATE: " + (
                 f"REFUSE {'; '.join(reasons)}" if reasons else "ADMIT"))
             return 1 if reasons else 0
-        parser.error("check, words, not-applicable, or --self-test")
+        if args.command == "breach":
+            findings, lines, facts = judge_breach(read_json(args.plan),
+                                                  read_json(args.oracle))
+            text = breach_text(findings, lines, facts)
+            write_new(args.out, text)
+            print(text.splitlines()[-1])
+            return 1 if findings else 0
+        parser.error("check, words, not-applicable, gate, breach, or "
+                     "--self-test")
     except (Refused, qemu_oracle.OracleError, OSError, ValueError,
             KeyError, TypeError, IndexError) as error:
-        line = f"BE_MVP_BOUNDARY: FAIL {error}"
+        line = f"BE_MVP_{'BREACH' if args.command == 'breach' else 'BOUNDARY'}" \
+            f": FAIL {error}"
         print(line)
-        if args.command == "check":
+        if args.command in ("check", "breach"):
             unjudged(args.out, line)
         return 1
     return 1

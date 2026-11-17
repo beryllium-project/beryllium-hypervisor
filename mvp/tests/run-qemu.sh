@@ -88,6 +88,19 @@
 # the capture checker, the oracle, and check-boundary all pass. Each
 # boundary-off row on k3-like keeps its plain machine.
 #
+# M11-7 (D-10's hostile-monitor rows): anchor's breach images, whose HS
+# code on one VS-domain hart attempts every row of
+# scenarios/anchor/breach.json at that VS domain's first exit, run
+# boundary-on on k3-like under their own trees in both PMP modes
+# (breach-gN, breach-gN-smepmp), and their -off copies, the discrimination
+# builds, boundary-off on k3-like under QEMU's own tree (breach-gN-off),
+# for each toolchain in BE_MVP_QEMU_VARIANT_TOOLCHAINS. Each run's oracle
+# also reads the image's breach words (breach-words.json beside its ELF),
+# and tests/check-boundary.py breach judges the hook's record, each
+# witness word, and each device register against the image's plan
+# (breach-plan.json beside its ELF): OUT_DIR/TOOLCHAIN-NAME.ATTEMPT.
+# breach.txt. Such a run passes only when that judge passes too.
+#
 # QEMU's boot hart is a lottery (planning research 2). A boot hart that is
 # a domain hart of its run is refused, as Plan revision M0-A.2 declares:
 # the checker's REFUSED verdict, a precondition failing rather than an
@@ -302,6 +315,17 @@ cap_store_control=
 # self-report-flip.
 anchor_variants=(secret-shared response-writable wrong-measurement
 	no-grant-check self-report-flip)
+# M11-7: the breach rows, each "run image CPU oracle-fields" (the plain
+# monitor only): the boundary-on images in both PMP modes, and their -off
+# copies under QEMU's own tree (their expectations declare no boundary).
+breach_runs=()
+[ "$monitor" != riscv ] || breach_runs=(
+	"breach-g0 breach-g0 $k3_cpu $oracle_k3"
+	"breach-g1 breach-g1 $k3_cpu $oracle_k3"
+	"breach-g0-smepmp breach-g0 $k3_cpu,smepmp=true $oracle_smepmp"
+	"breach-g1-smepmp breach-g1 $k3_cpu,smepmp=true $oracle_smepmp"
+	"breach-g0-off breach-g0-off $k3_cpu $oracle_k3"
+	"breach-g1-off breach-g1-off $k3_cpu $oracle_k3")
 # beryllium-cheri: the CHERI-aware monitor's firmware has its own pin, the
 # firmware line of guest/cheri-pins.txt in this script's tree (S-01).
 if [ "$monitor" = cheri ]; then
@@ -407,6 +431,12 @@ for toolchain in "${variant_toolchains[@]}"; do
 		wanted "anchor/$toolchain/$name" || continue
 		runs+=("$toolchain/$name $build/variants/$toolchain/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 base $firmware_sbi $anchor_dir/expect/$name.json $anchor_dir/authority-report.json $measured")
 	done
+	for entry in "${breach_runs[@]}"; do
+		read -r name image cpu machine_class pmp menvcfg mseccfg boundary \
+			<<<"$entry"
+		wanted "anchor/$toolchain/$name" || continue
+		runs+=("$toolchain/$name $build/variants/$toolchain/$image/be-mvp-boot.elf $k3_machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $anchor_dir/expect/$image.json $anchor_dir/authority-report.json $measured")
+	done
 done
 earlier_firmware=${BE_MVP_EARLIER_FIRMWARE:-}
 needs_earlier=0
@@ -442,6 +472,12 @@ expect_field() {
 	"$python" -I -B -c 'import json, sys
 print(json.load(open(sys.argv[1]))[sys.argv[2]])' "$1" "$2"
 }
+# M11-7: whether a run's expectation is a breach image's (its "breach"
+# section): yes or no.
+breach_image() {
+	"$python" -I -B -c 'import json, sys
+print("yes" if "breach" in json.load(open(sys.argv[1])) else "no")' "$1"
+}
 missing=()
 for entry in "${runs[@]}"; do
 	read -r label elf _ _ _ _ _ _ boundary _ _ expect report inputs <<<"$entry"
@@ -452,6 +488,12 @@ for entry in "${runs[@]}"; do
 			{ printf '%s declares the boundary, but its row %s has no PMP mode\n' "$expect" "$label" >&2; exit 2; }
 		[ -r "$firmware_elf" ] || missing+=("$firmware_elf")
 		[ -x "$nm_tool" ] || missing+=("the lock's nm ($lock)")
+	fi
+	if [ -r "$expect" ] && [ "$(breach_image "$expect")" = yes ]; then
+		[ -r "${elf%/*}/breach-plan.json" ] ||
+			missing+=("${elf%/*}/breach-plan.json")
+		[ -r "${elf%/*}/breach-words.json" ] ||
+			missing+=("${elf%/*}/breach-words.json")
 	fi
 	[ "$report" = - ] || [ -r "$report" ] || missing+=("$report")
 	[ "$inputs" = - ] || [ -r "${inputs%%:*}" ] || missing+=("${inputs%%:*}")
@@ -496,6 +538,7 @@ pinned_role() {
 boot() {
 	local stem=$1 elf=$2 machine=$3 cpu=$4 firmware_role=$5 machine_class=$6
 	local pmp=$7 menvcfg=$8 mseccfg=$9 boundary=${10} dtb=${11:--}
+	local words=${12:--}
 	local console=$stem.console.log
 	local boundary_arg=() tree_arg=()
 	local qemu_pid deadline terminal_at status
@@ -547,7 +590,10 @@ boot() {
 			--words "$stem.words.json")
 		tree_arg=(-dtb "$dtb")
 		;;
-	off) ;;
+	off)
+		# M11-7: a breach image's -off run reads its breach words.
+		[ "$words" = - ] || boundary_arg=(--words "$words")
+		;;
 	*) printf 'oracle boundary declaration %s is not off, plain, or smepmp\n' "$boundary" >&2; return 2 ;;
 	esac
 	"$python" -I -B "$oracle" run --record "$stem.oracle.json" \
@@ -576,7 +622,8 @@ run() {
 	local oracle_verdict oracle_detail oracle_failure=''
 	local pair mode=off dtb=- tables=- record=- authority=- dtb_sha=-
 	local scenario_name limit=$max_attempts boundary_verdict
-	local boundary_failure=''
+	local boundary_failure='' breach=no plan=- breach_words=- extra=()
+	local breach_verdict breach_failure=''
 
 	[ "$report" = - ] || reported=(--report "$report")
 	[ "$inputs" = - ] ||
@@ -612,17 +659,27 @@ run() {
 		fi
 		dtb_sha=$(sha256sum -- "$dtb" | cut -d' ' -f1)
 	fi
+	# M11-7: a breach image's plan and words, beside its ELF.
+	breach=$(breach_image "$expect")
+	if [ "$breach" = yes ]; then
+		plan=${elf%/*}/breach-plan.json
+		breach_words=${elf%/*}/breach-words.json
+		extra=(--extra "$breach_words")
+	fi
 	while [ "$attempt" -lt "$limit" ]; do
 		attempt=$((attempt + 1))
 		oracle_failure=
 		boundary_failure=
+		breach_failure=
 		stem=$output/$toolchain-$name.$attempt
 		[ "$mode" = off ] || "$python" -I -B "$boundary_checker" words \
 			--expect "$expect" --layout "$layout_header" \
-			--boundary-header "$boundary_header" --out "$stem.words.json"
+			--boundary-header "$boundary_header" "${extra[@]}" \
+			--out "$stem.words.json"
 		boot "$stem" "$elf" "$machine" "$cpu${addition:+,$addition}" \
 			"$firmware_role" \
-			"$machine_class" "$pmp" "$menvcfg" "$mseccfg" "$mode" "$dtb"
+			"$machine_class" "$pmp" "$menvcfg" "$mseccfg" "$mode" "$dtb" \
+			"$([ "$mode" = off ] && echo "$breach_words" || echo -)"
 		status=$(cat -- "$stem.exit.txt")
 		set +e
 		"$python" -B "$checker" "$stem.console.log" \
@@ -660,6 +717,17 @@ print(fields.get("boot_hart", "none"))' "$stem.result.json" 2>/dev/null || echo 
 				boundary_failure=$(tail -n 1 -- "$stem.boundary.txt" 2>/dev/null ||
 					echo 'no boundary record')
 		fi
+		if [ "$breach" = yes ]; then
+			"$python" -I -B "$boundary_checker" breach --plan "$plan" \
+				--oracle "$stem.oracle.json" \
+				--out "$stem.breach.txt" >/dev/null 2>&1 || true
+			breach_verdict=$(sed -n 's/^BE_MVP_BREACH: \([A-Z]*\).*$/\1/p' \
+				-- "$stem.breach.txt" 2>/dev/null | tail -n 1)
+			[ "$breach_verdict" = PASS ] ||
+				breach_failure=$(grep -m 1 '^finding ' -- "$stem.breach.txt" 2>/dev/null ||
+					tail -n 1 -- "$stem.breach.txt" 2>/dev/null ||
+					echo 'no breach record')
+		fi
 		sha=$(sha256sum -- "$stem.console.log" | cut -d' ' -f1)
 		printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
 			"$toolchain" "$name" "$attempt" "$hart" "$status" \
@@ -678,6 +746,10 @@ print(fields.get("boot_hart", "none"))' "$stem.result.json" 2>/dev/null || echo 
 			verdict=FAIL
 		fi
 		[ -z "$boundary_failure" ] || verdict=FAIL
+		# A refused attempt's hook never ran: its record is kept, and the
+		# run is made again.
+		[ -z "$breach_failure" ] || [ "$verdict" = REFUSED ] ||
+			verdict=FAIL
 		[ "$verdict" = REFUSED ] || break
 		refusals=$((refusals + 1))
 	done
@@ -686,6 +758,8 @@ print(fields.get("boot_hart", "none"))' "$stem.result.json" 2>/dev/null || echo 
 		check="oracle: $oracle_failure; checker: $check"
 	[ -z "$boundary_failure" ] ||
 		check="boundary: $boundary_failure; $check"
+	[ -z "$breach_failure" ] || [ "$verdict" = REFUSED ] ||
+		check="breach: $breach_failure; $check"
 	if [ "$verdict" = REFUSED ]; then
 		verdict=FAIL
 		check="every attempt refused"

@@ -132,12 +132,12 @@ SECTIONS
 			       *mvp-hart.o *mvp-ring.o *mvp-gstage.o
 			       *mvp-payload.o *mvp-probe.o *mvp-sha256.o
 			       *mvp-core.o *mvp-executor.o *mvp-input.o
-			       *mvp-log.o *mvp-config.o) .rodata
+			       *mvp-log.o *mvp-config.o *mvp-breach.o) .rodata
 		  EXCLUDE_FILE(*mvp-runtime.o *mvp-hartmain.o *mvp-sbi.o
 			       *mvp-hart.o *mvp-ring.o *mvp-gstage.o
 			       *mvp-payload.o *mvp-probe.o *mvp-sha256.o
 			       *mvp-core.o *mvp-executor.o *mvp-input.o
-			       *mvp-log.o *mvp-config.o) .rodata.*)
+			       *mvp-log.o *mvp-config.o *mvp-breach.o) .rodata.*)
 		. = ABSOLUTE(0x10200f000);
 		__be_monitor_rodata_end = .;
 	} :monitor_ro
@@ -367,13 +367,18 @@ SECTIONS
 			.text.be_mvp_exec_rearm_tick*
 			.text.be_mvp_exec_resume*
 			.text.be_mvp_exec_set_timer*
-			.text.be_mvp_exec_switch_hgatp*)
+			.text.be_mvp_exec_switch_hgatp*
+			.text.be_mvp_exec_breach*)
 		*mvp-probe.o(
 			.text.set_phase* .text.receipt* .text.ipi_hs*
 			.text.order_reader*
 			.text.probe_call* .text.be_mvp_probe_exit*)
+		/* M11-7: a breach image's hook, which no other image links. */
+		*mvp-breach.o(.text .text.*)
+		*mvp-breach-arch.o(.text.mvp.breach)
 		__be_mvp_domain_constants_start = .;
 		*mvp-hartmain.o(.rodata .rodata.*)
+		*mvp-breach.o(.rodata .rodata.*)
 		. = ALIGN(4);
 		__be_mvp_domain_constants_end = .;
 		. = ABSOLUTE(0x102078000);
