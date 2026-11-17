@@ -15,38 +15,38 @@ RISCV L5
    hart 0 flushes 8 more, which fit only in the bytes it frees.
    P0, the domain hart in be_mvp_dispatch's console_read:
      lbu x5,0(x10)   the INPUT's first byte, 97, be_mvp_ring_take, called
-                     by be_mvp_input_serve at 1020715e6 and 1020717f4,
-                     called at 10207048a and 10207019e
-                                                        102008bba 102008b02
+                     by be_mvp_input_serve at 10207146a and 10207166e,
+                     called at 1020703a8 and 10207019e
+                                                        102008abc 1020089e2
      fence r,w       be_mvp_arch_fence_r_w, through be_mvp_exec_fence_r_w,
-                     called at                          10207049e 1020701ae
-     sd x12,0(x11)   the tail, 24, be_mvp_ring_release  102008bfa 102008b7c
-   P1, hart 0 in be_mvp_input_flush, called by poll_input at 10206957e and
-   102069388:
-     ld x5,0(x10)    be_mvp_ring_room: the tail         102008944 1020088bc
-     sub x6,x13,x5   used = cursor - tail               102008958 1020088d0
+                     called at                          1020703bc 1020701ae
+     sd x12,0(x11)   the tail, 24, be_mvp_ring_release  102008afc 102008a5c
+   P1, hart 0 in be_mvp_input_flush, called by poll_input at 1020696ac and
+   102069d16:
+     ld x5,0(x10)    be_mvp_ring_room: the tail         102008846 10200879c
+     sub x6,x13,x5   used = cursor - tail               10200885a 1020087b0
      sub x7,x12,x6   free = capacity - used (GCC: tail - cursor + capacity,
-                     10200896e and 102008970)                     1020088e0
+                     102008870 and 102008872)                     1020087c0
      li x8,0         no room (GCC: the aligned tail's low bits, 0, by
-                     andi a0,a5,7)                      102008946 1020088ea
-     bge x9,x7,LC00  16 or fewer free: no room          102008974 1020088e6
-     addi x8,x7,-16  the payload room                   102008978 1020088f0
-     andi x8,x8,-8   rounded down to 8                  102008986 1020088fe
+                     andi a0,a5,7)                      102008848 1020087ca
+     bge x9,x7,LC00  16 or fewer free: no room          102008876 1020087c6
+     addi x8,x7,-16  the payload room                   10200887a 1020087d0
+     andi x8,x8,-8   rounded down to 8                  102008888 1020087de
      LC00:
      beq x8,x0,LC01  be_mvp_input_flush: no room, the batch dropped
-                                                        10206b4b8 10206b5dc
-     ld x14,0(x10)   be_mvp_ring_post: the tail again   102008852 1020087a6
-     sub x15,x13,x14 used                               10200886a 1020087c2
-     sub x16,x12,x15 free                               102008882 1020087d6
-     blt x16,x17,LC02 the room check, refused below 24  102008888 1020087da
-     sb x18,0(x11)   the batch's first byte, 98         102008928 10200888e
+                                                        10206a9ce 10206ac40
+     ld x14,0(x10)   be_mvp_ring_post: the tail again   102008754 102008686
+     sub x15,x13,x14 used                               10200876c 1020086a2
+     sub x16,x12,x15 free                               102008784 1020086b6
+     blt x16,x17,LC02 the room check, refused below 24  10200878a 1020086ba
+     sb x18,0(x11)   the batch's first byte, 98         10200882a 10200876e
      j LC02
      LC01:
-     sd x19,0(x20)   the drop count, hart 0's own word  10206b270 10206b64e
+     sd x19,0(x20)   the drop count, hart 0's own word  10206a786 10206acb2
      LC02:
-   be_mvp_ring_room's cap of 256 (a branch on the same value, 102008982 and
-   1020088f6) and be_mvp_input_flush's choice of the room or the pending
-   bytes (10206b4b2 and 10206b5d6) leave these values as they are, so the
+   be_mvp_ring_room's cap of 256 (a branch on the same value, 102008884 and
+   1020087d6) and be_mvp_input_flush's choice of the room or the pending
+   bytes (10206a9c8 and 10206ac3a) leave these values as they are, so the
    test leaves them out; L4 holds be_mvp_ring_post's other branches on the
    tail. The compiled branches are bgeu, beqz, and bltu: herd7 7.58
    implements no bltu, bgeu, or sltu for RISC-V ("RISCV operation bltu is
@@ -60,25 +60,25 @@ RISCV L5
    Forbidden: the domain hart's load of the INPUT's first byte reads the
    next batch's while hart 0's room read of the tail reads the release.
    Digests (mvp/verify/litmus/sequences.txt):
-   be_mvp_dispatch@gcc sha256=e23b64e84c5f1f2e1f272e43aba09e070cecf692ff77136e7a875db5ecfe08c5
-   be_mvp_dispatch@clang sha256=90221f4d9a4926e47c140d4a68d9cb7c5d0491cf13b4b1d738f1614145b5347d
-   be_mvp_input_serve@gcc sha256=bfd7b7d169e1269a9025b22b44fb30cd0bd365d3663b45523e858fcd6330431c
-   be_mvp_input_serve@clang sha256=2ed65f1ad4cb6092150e24e675350a218f0f53b19509acdb7c8466b22184d406
-   be_mvp_ring_take@gcc sha256=d0f94b546f43eeeb2baec78cb7f0b478eb8868306b149d9c3587fbf53a3ff11c
-   be_mvp_ring_take@clang sha256=f2c288c45d4ae420907dcc3fdcf2e8d6b32d57ac6d495e44e2b1c73864bc0c95
-   be_mvp_exec_fence_r_w@gcc sha256=474e4d5a697a0e3f4f1068e2a0489498d6ae509f161a5df319696b3f6ab83478
-   be_mvp_exec_fence_r_w@clang sha256=b075360f5073e1d04a754811ed6cc0f22f7847cd780615f54f2cedff41973a20
+   be_mvp_dispatch@gcc sha256=8d9377a4c10dd33195e935b6c428463db145c1861a98fe8a252c5b14b8fc80a5
+   be_mvp_dispatch@clang sha256=227a930e99a5e779a9aaa4476848d90fe45bff5a5eee96c9c2260fd75d6dc5e2
+   be_mvp_input_serve@gcc sha256=e46f69527a43887857c04fb06bfe40f02539bd2d599e3445a0ae591972b68646
+   be_mvp_input_serve@clang sha256=995de82c3d30ee7765e3c9bb7b309fdf800841918155bbc2d73ed7d9ec118a9b
+   be_mvp_ring_take@gcc sha256=912f80638ee73c6b8c2fbbd1ccc940adfe32a854e9823e9fff459f9d9b1d4c08
+   be_mvp_ring_take@clang sha256=4d6778717c4ab703fe54b7007bef4af62712c56c5609d51d6715252669263061
+   be_mvp_exec_fence_r_w@gcc sha256=83f556fa11cc4fae8a5b1581ed6ac85215f02d7193a5cdf504964df09b095f70
+   be_mvp_exec_fence_r_w@clang sha256=f585b80756c15c91b6694a02b8c5d0099bf06c62645bfda0d67f46a1c7f07d1b
    be_mvp_arch_fence_r_w@gcc sha256=83318464bfc0ed2e0a2c4703a9be95feb7f5abc1a3eacbc8809ce349b8199410
    be_mvp_arch_fence_r_w@clang sha256=83318464bfc0ed2e0a2c4703a9be95feb7f5abc1a3eacbc8809ce349b8199410
-   be_mvp_ring_release@gcc sha256=d974df60630c0167af53ae7413b1cbdaeae420ffd2a7d5b8f9c24292716b5e51
+   be_mvp_ring_release@gcc sha256=b400d320ace60cd7cd779b0b2fb863e7759b6ba10b3baabfe5804527b33bd11d
    be_mvp_ring_release@clang sha256=e2559f03ccf88e388f5eeab7cf336f8405b2f62b8737749d97b67ce88cb0dc02
-   poll_input@gcc sha256=e83436f653d3305ceabd69b8b4e026acbb702a53176b539713cd5a830f559549
-   poll_input@clang sha256=8153b9d695ad15c8a488ddf9ee465ff866194b9f6a2251005ab44118785d0b3f
-   be_mvp_input_flush@gcc sha256=cee720259759b9a089a6497937702f994a0b676849702282488ccee77685c338
-   be_mvp_input_flush@clang sha256=ec4ac1a94a938e9c8b2a23c5d8d37b56649edc4381123fd903da63b351f07adc
-   be_mvp_ring_room@gcc sha256=b28351a074d045cb01925be5f3aca16222974f3fd6ed289103dba128a8b5abd5
+   poll_input@gcc sha256=4195819307bbe1a6d61d38de786edc7485f2a3eceb8bdfef83e056416a0b2033
+   poll_input@clang sha256=4b48a69d12d28b2a27358e3241e324f8797203ebabf83c3d8d150845b1079bfc
+   be_mvp_input_flush@gcc sha256=01992bb4aa756b301cb8ed420250bc1b762bfab57f585db55e158a1391601613
+   be_mvp_input_flush@clang sha256=0e2785fa3444dc2f7db154a3a2c9e19051f6ad69f6ce95ec1f66f737fd1eda9a
+   be_mvp_ring_room@gcc sha256=f5c466c4b65503b256836a06165b2e4505c230497b22c2c58143cd013494874c
    be_mvp_ring_room@clang sha256=56c673a9a552158372d3d36fc204cedde017d148761e64e19fdb080d250e24d0
-   be_mvp_ring_post@gcc sha256=ee8afa602949d8d119a9d3e218852a01d9602a7536c0baed60145c21ef94fee0
+   be_mvp_ring_post@gcc sha256=d55076fbc5e8068cdc9d033f7e62dd0863af4e524990c6b7b92e259a33245e78
    be_mvp_ring_post@clang sha256=eee8be5c51bad1a916fa45b7650581b7da8f1aaf2e55a6870456548eef9fc6cf
    drop.part.0@gcc sha256=d63db8aaf39ce434ddea681efcfaae6ea7293b3bc1fc6ca9fb699ab1dd2110f4 *)
 {

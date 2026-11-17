@@ -3,4 +3,4 @@
 # be_mvp_ring_release (mvp-ring.c), clang: the lines the litmus tests mirror, as
 # objdump -d prints them (litmus.py --check-sequences). Specification SHA-256 ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d.
 # L3, L4, L5 P0: the tail, tail->value = cursor
-   102008b7c:	e188                	sd	a0,0(a1)
+   102008a5c:	e188                	sd	a0,0(a1)

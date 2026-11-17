@@ -3,5 +3,5 @@
 # be_mvp_block_fill (mvp-hart.c), clang: the lines the litmus tests mirror, as
 # objdump -d prints them (litmus.py --check-sequences). Specification SHA-256 ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d.
 # L1 P0: desc->hart, then desc->hgatp
-   1020790be:	00da3023          	sd	a3,0(s4)
-   1020790c6:	00ca3823          	sd	a2,16(s4)
+   10207927a:	00da3023          	sd	a3,0(s4)
+   102079282:	00ca3823          	sd	a2,16(s4)

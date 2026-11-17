@@ -20,18 +20,18 @@ RISCV L3
    ring, the case in which the store needs the release.
    P0, hart 0 in drain:
      lbu x5,0(x10)   READY's type byte, be_mvp_ring_take (by load_le,
-                     called at 102008b06; inline)       10200868e 102008a64
+                     called at 102008a08; inline)       10200868e 102008944
      fence r,w       be_mvp_arch_fence_r_w, through be_mvp_exec_fence_r_w,
-                     called at                          1020697ac 1020696e8
-     sd x12,0(x11)   the tail, 80, be_mvp_ring_release  102008bfa 102008b7c
+                     called at                          10206980a 102069584
+     sd x12,0(x11)   the tail, 80, be_mvp_ring_release  102008afc 102008a5c
    P1, the domain hart in be_mvp_ring_post:
-     ld x5,0(x10)    the tail                           102008852 1020087a6
-     sub x6,x13,x5   used = cursor - tail               10200886a 1020087c2
+     ld x5,0(x10)    the tail                           102008754 102008686
+     sub x6,x13,x5   used = cursor - tail               10200876c 1020086a2
      sub x7,x12,x6   free = capacity - used (GCC: tail - cursor + capacity,
-                     102008882 and 102008886)                     1020087d6
-     blt x7,x14,LC00 the room check, refused below 24   102008888 1020087da
+                     102008784 and 102008788)                     1020086b6
+     blt x7,x14,LC00 the room check, refused below 24   10200878a 1020086ba
      sb x15,0(x11)   the LINE's type byte, 3 (by store_le, called at
-                     10200889a; inline)                 102008672 1020087ea
+                     10200879c; inline)                 102008672 1020086ca
    This test's subject is the reader's fence r,w; the writer's control
    dependency, L4's, is here as compiled, its room check alone (L4 holds
    every branch on the tail). The compiled branch is bltu: herd7 7.58
@@ -46,18 +46,18 @@ RISCV L3
    Forbidden: hart 0's load of READY's type byte reads the LINE's while
    the domain hart's load of the tail reads the release.
    Digests (mvp/verify/litmus/sequences.txt):
-   drain@gcc sha256=06a0ee2a9456cde54434ffb8eb6098d865681706009abc981c2b4bc43c908194
-   drain@clang sha256=5d751e0590e3d7479d83e76643e0fe59ec15f74d14f94e6ad41849898452f211
-   be_mvp_ring_take@gcc sha256=d0f94b546f43eeeb2baec78cb7f0b478eb8868306b149d9c3587fbf53a3ff11c
-   be_mvp_ring_take@clang sha256=f2c288c45d4ae420907dcc3fdcf2e8d6b32d57ac6d495e44e2b1c73864bc0c95
+   drain@gcc sha256=59034060b440a6320ba0d205fe4b6acb86b16c1dab114f49af822f6c1714101c
+   drain@clang sha256=e4f73e6b3e9bfd541d151f7234781c017aca7931a161cd8f976e9dc9f5269203
+   be_mvp_ring_take@gcc sha256=912f80638ee73c6b8c2fbbd1ccc940adfe32a854e9823e9fff459f9d9b1d4c08
+   be_mvp_ring_take@clang sha256=4d6778717c4ab703fe54b7007bef4af62712c56c5609d51d6715252669263061
    load_le@gcc sha256=fa2e7528e095f314d97b9ddbcd0307a21e446b0bb01fe89831c5603840775c33
-   be_mvp_exec_fence_r_w@gcc sha256=474e4d5a697a0e3f4f1068e2a0489498d6ae509f161a5df319696b3f6ab83478
-   be_mvp_exec_fence_r_w@clang sha256=b075360f5073e1d04a754811ed6cc0f22f7847cd780615f54f2cedff41973a20
+   be_mvp_exec_fence_r_w@gcc sha256=83f556fa11cc4fae8a5b1581ed6ac85215f02d7193a5cdf504964df09b095f70
+   be_mvp_exec_fence_r_w@clang sha256=f585b80756c15c91b6694a02b8c5d0099bf06c62645bfda0d67f46a1c7f07d1b
    be_mvp_arch_fence_r_w@gcc sha256=83318464bfc0ed2e0a2c4703a9be95feb7f5abc1a3eacbc8809ce349b8199410
    be_mvp_arch_fence_r_w@clang sha256=83318464bfc0ed2e0a2c4703a9be95feb7f5abc1a3eacbc8809ce349b8199410
-   be_mvp_ring_release@gcc sha256=d974df60630c0167af53ae7413b1cbdaeae420ffd2a7d5b8f9c24292716b5e51
+   be_mvp_ring_release@gcc sha256=b400d320ace60cd7cd779b0b2fb863e7759b6ba10b3baabfe5804527b33bd11d
    be_mvp_ring_release@clang sha256=e2559f03ccf88e388f5eeab7cf336f8405b2f62b8737749d97b67ce88cb0dc02
-   be_mvp_ring_post@gcc sha256=ee8afa602949d8d119a9d3e218852a01d9602a7536c0baed60145c21ef94fee0
+   be_mvp_ring_post@gcc sha256=d55076fbc5e8068cdc9d033f7e62dd0863af4e524990c6b7b92e259a33245e78
    be_mvp_ring_post@clang sha256=eee8be5c51bad1a916fa45b7650581b7da8f1aaf2e55a6870456548eef9fc6cf
    store_le@gcc sha256=09c6c11d7a6aba36468fd816e04f7d964b6e9b437daaa8aea394e8197c14c5c1 *)
 {

@@ -8,7 +8,7 @@
 # them, and the pins. A proved result holds for these bytes only; a merge
 # that changes one of them without the re-proof rule run first is stop (i)
 # (D-2). Re-written only on the responsible human's direction.
-# Target commit: c63347085bdb11b09d2ce62f7c92186425f61ae9 (its mvp/src and mvp/Makefile equal this tree's)
+# Target commit: d6a1aa02d5a4ec14bdf6ea27ed3a6893cac6f1c5 (its mvp/src and mvp/Makefile equal this tree's)
 unit leaf=A file=mvp/src/mvp-sbi.c sha256=61989b4505c162818bb481cf2d9a4155cffcd9ccdd0287b5a6d77205e62b6aac
 unit leaf=B file=mvp/src/mvp-ring.c sha256=432dbc511397da4b051da37f3860b1f8d078ef87fa175ea47d7b3c7a1bc267ba
 header file=build/mvp/port/include/be/manifest.h sha256=f3aeb609348850d3c5051d6ffdcb2ef68f0c7a03ce5034fbf0aa655448d7b57d included_by=A,B port=rewrite

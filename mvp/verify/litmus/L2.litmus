@@ -14,16 +14,16 @@ RISCV L2
    reads.
    P0, the domain hart in be_mvp_hart_main, posting READY and ENTERED:
      sb x6,0(x10)    READY's type byte, 1, be_mvp_ring_post (by store_le,
-                     called at 10200889a; inline)  102008672 1020087ea
+                     called at 10200879c; inline)  102008672 1020086ca
      fence w,w       be_mvp_arch_fence_w_w, through be_mvp_exec_fence_w_w,
-                     called at                          10207079c 102070552
-     sd x7,0(x11)    the head, 120, be_mvp_ring_publish 102008a24 10200898c
+                     called at                          1020706ba 102070552
+     sd x7,0(x11)    the head, 120, be_mvp_ring_publish 102008926 10200886c
    P1, hart 0 in drain:
-     ld x5,0(x11)    the head, be_mvp_ring_acquire      102008a50 1020089aa
+     ld x5,0(x11)    the head, be_mvp_ring_acquire      102008952 10200888a
      fence r,r       be_mvp_arch_fence_r_r, through be_mvp_exec_fence_r_r,
-                     called at                          102069788 1020696cc
+                     called at                          1020697e6 102069568
      lbu x6,0(x10)   the type byte, be_mvp_ring_take (by load_le, called at
-                     102008b06; inline)                 10200868e 102008a64
+                     102008a08; inline)                 10200868e 102008944
    Every writer posts, calls the same fence, then publishes, and every
    reader acquires, calls the fence, then takes; the excerpts list each
    call. The writers, in both ELFs: poll_input (the input ring); ping's
@@ -43,38 +43,38 @@ RISCV L2
    Forbidden: hart 0 reads the head of READY and ENTERED (80 and 40
    bytes) with the type byte as it was before READY's.
    Digests (mvp/verify/litmus/sequences.txt):
-   be_mvp_ring_post@gcc sha256=ee8afa602949d8d119a9d3e218852a01d9602a7536c0baed60145c21ef94fee0
+   be_mvp_ring_post@gcc sha256=d55076fbc5e8068cdc9d033f7e62dd0863af4e524990c6b7b92e259a33245e78
    be_mvp_ring_post@clang sha256=eee8be5c51bad1a916fa45b7650581b7da8f1aaf2e55a6870456548eef9fc6cf
    store_le@gcc sha256=09c6c11d7a6aba36468fd816e04f7d964b6e9b437daaa8aea394e8197c14c5c1
-   be_mvp_hart_main@gcc sha256=6faa7daa6687112b8b76f28deb4048a09801fc8e682b36484dcf390d6da5d5a1
-   be_mvp_hart_main@clang sha256=7e5c2e9613f80b09a19ad3bafcbf1da8dada91820194ce55184b3184f092d690
-   be_mvp_exec_fence_w_w@gcc sha256=474e4d5a697a0e3f4f1068e2a0489498d6ae509f161a5df319696b3f6ab83478
-   be_mvp_exec_fence_w_w@clang sha256=b075360f5073e1d04a754811ed6cc0f22f7847cd780615f54f2cedff41973a20
+   be_mvp_hart_main@gcc sha256=0f307712624a04374ff15a6acb89746853d838adedcfdcd672a019603350e8b2
+   be_mvp_hart_main@clang sha256=d0cf2b0b7b39ea637737ebaa1a4a73ef9708b326e46c090239e1924fc4274d33
+   be_mvp_exec_fence_w_w@gcc sha256=83f556fa11cc4fae8a5b1581ed6ac85215f02d7193a5cdf504964df09b095f70
+   be_mvp_exec_fence_w_w@clang sha256=f585b80756c15c91b6694a02b8c5d0099bf06c62645bfda0d67f46a1c7f07d1b
    be_mvp_arch_fence_w_w@gcc sha256=4a9c49b5aeb97cd559e75906fa16144d0b05bd33affb259ae823429b7fb89d2b
    be_mvp_arch_fence_w_w@clang sha256=4a9c49b5aeb97cd559e75906fa16144d0b05bd33affb259ae823429b7fb89d2b
-   be_mvp_ring_publish@gcc sha256=d6bc6d9bd556d6d600e6a4781c2a44262bf09e30c7ce18fda5bf8a346b0a4499
+   be_mvp_ring_publish@gcc sha256=efe0535ed6c6fbec1ae9b4104ee245ae2cbd4a9ca3be87b3a8ec5c1729eaa569
    be_mvp_ring_publish@clang sha256=b711c6231b4fd53b0c441d9e3a992a064d56587e1764cd58a94d66a31d140f96
-   drain@gcc sha256=06a0ee2a9456cde54434ffb8eb6098d865681706009abc981c2b4bc43c908194
-   drain@clang sha256=5d751e0590e3d7479d83e76643e0fe59ec15f74d14f94e6ad41849898452f211
-   be_mvp_ring_acquire@gcc sha256=eef51e43a0c46bf53374713121bf4e0689155ee51f05ae9ca8163f27fa09b7fe
+   drain@gcc sha256=59034060b440a6320ba0d205fe4b6acb86b16c1dab114f49af822f6c1714101c
+   drain@clang sha256=e4f73e6b3e9bfd541d151f7234781c017aca7931a161cd8f976e9dc9f5269203
+   be_mvp_ring_acquire@gcc sha256=c29c6fb9ed03ee41d224653e746ff7b5d224469e19820cc0d27fca82973cf765
    be_mvp_ring_acquire@clang sha256=a994f23057b4f865722f8e59fef642e6480bef64d06abf711a618ae0dfd2a211
-   be_mvp_exec_fence_r_r@gcc sha256=474e4d5a697a0e3f4f1068e2a0489498d6ae509f161a5df319696b3f6ab83478
-   be_mvp_exec_fence_r_r@clang sha256=b075360f5073e1d04a754811ed6cc0f22f7847cd780615f54f2cedff41973a20
+   be_mvp_exec_fence_r_r@gcc sha256=83f556fa11cc4fae8a5b1581ed6ac85215f02d7193a5cdf504964df09b095f70
+   be_mvp_exec_fence_r_r@clang sha256=f585b80756c15c91b6694a02b8c5d0099bf06c62645bfda0d67f46a1c7f07d1b
    be_mvp_arch_fence_r_r@gcc sha256=a173287af103bb3df9e7a542c380e51560c7777708cf7ac49430094df5ce713b
    be_mvp_arch_fence_r_r@clang sha256=a173287af103bb3df9e7a542c380e51560c7777708cf7ac49430094df5ce713b
-   be_mvp_ring_take@gcc sha256=d0f94b546f43eeeb2baec78cb7f0b478eb8868306b149d9c3587fbf53a3ff11c
-   be_mvp_ring_take@clang sha256=f2c288c45d4ae420907dcc3fdcf2e8d6b32d57ac6d495e44e2b1c73864bc0c95
+   be_mvp_ring_take@gcc sha256=912f80638ee73c6b8c2fbbd1ccc940adfe32a854e9823e9fff459f9d9b1d4c08
+   be_mvp_ring_take@clang sha256=4d6778717c4ab703fe54b7007bef4af62712c56c5609d51d6715252669263061
    load_le@gcc sha256=fa2e7528e095f314d97b9ddbcd0307a21e446b0bb01fe89831c5603840775c33
-   poll_input@gcc sha256=e83436f653d3305ceabd69b8b4e026acbb702a53176b539713cd5a830f559549
-   poll_input@clang sha256=8153b9d695ad15c8a488ddf9ee465ff866194b9f6a2251005ab44118785d0b3f
-   domain_failed@clang sha256=062e423848132d785b3c2b6e1e7f6f3555d32b4702e362afb52ca78ce19475b6
-   hart_fail@gcc sha256=7f5bc1da8d3e1c03527a57331c49314ca2db41419f24c2f2d5d4a76e51b209fb
-   hart_fail@clang sha256=8c95236bb57aaf6c41a2c71b9e2cdbc1219dac4f181a5237101b090aa5b123a6
-   console@gcc sha256=abc0ce8591a191fad6860aa6f62624683eaab2c4168cc80c3a601876543a02da
-   console@clang sha256=a655587900e65fe1a07308a4f917d6871c5a40fca04057f782c6672496090d77
-   be_mvp_dispatch@gcc sha256=e23b64e84c5f1f2e1f272e43aba09e070cecf692ff77136e7a875db5ecfe08c5
-   be_mvp_dispatch@clang sha256=90221f4d9a4926e47c140d4a68d9cb7c5d0491cf13b4b1d738f1614145b5347d
-   stopped@clang sha256=9e766095b159ab1d775ad1a889ceb446add3d5e87e9ee2eeb1f5dda5da47167b *)
+   poll_input@gcc sha256=4195819307bbe1a6d61d38de786edc7485f2a3eceb8bdfef83e056416a0b2033
+   poll_input@clang sha256=4b48a69d12d28b2a27358e3241e324f8797203ebabf83c3d8d150845b1079bfc
+   domain_failed@clang sha256=686227bc0ea781dd2b88faa5872cf71cbe6131a596166152688a9b6c583032ae
+   hart_fail@gcc sha256=2a8b6e9ca1d093bc722c5d5f6f3574dd88487a729695671257e2e1a878da8e24
+   hart_fail@clang sha256=d60e8095ba953b65bc459d485f2afc4abe2b3576b6666c5e244be91482156524
+   console@gcc sha256=9460ad2134ac64deee50a5a7ef6466fb5b51b7e4d42cf59f53963b74d4e9ed91
+   console@clang sha256=a348a8aa61712f6e8b32872376f483b1fd3e394df226fcdfbeb0cdde0d9d7c8d
+   be_mvp_dispatch@gcc sha256=8d9377a4c10dd33195e935b6c428463db145c1861a98fe8a252c5b14b8fc80a5
+   be_mvp_dispatch@clang sha256=227a930e99a5e779a9aaa4476848d90fe45bff5a5eee96c9c2260fd75d6dc5e2
+   stopped@clang sha256=3661dd8ac74ac3bb52281b5aee125a6367c6e64d8e0cc65e46f0e096e93620ec *)
 {
 type_byte=0; head=0;
 0:x10=type_byte; 0:x11=head; 0:x6=1; 0:x7=120;
