@@ -22,8 +22,11 @@
 >   and the record that applies is
 >   `mvp/results/20261109-cheri-integration/`, for as long as `main`'s
 >   build inputs are that record's.
-> - Part 1 of `cheri-check.sh` runs 19 of `make check`'s steps here, not
->   20: the release removed `snapshot-check`.
+> - Part 1 of `cheri-check.sh` runs 24 of `make check`'s steps here: the
+>   release removed `snapshot-check`, and M11-9 added the five that M11
+>   brought to `make check` and that judge the CHERI variant's own build
+>   (`layout-source-check`, `qemu-oracle-check`, `boundary-check`,
+>   `breach-check`, and `partition-descriptor-tools-check`).
 > - The other planning pages are the release's, as they stood at the
 >   release's source commit.
 > - The CHERI research repository, beryllium-cheri, has joined this
@@ -401,10 +404,13 @@ come from `CHERI_DIR`, a beryllium-cheri checkout (by default the sibling
    requires:
    - the CHERI guests' build to match `mvp/guest/cheri-pins.txt`;
    - every check of `make check` that is not in the table below to pass
-     (20 make invocations, among them the image check and every host
+     (24 make invocations, among them the image check and every host
      test);
    - `tests/run-qemu.sh`'s 56 runs to pass: two-guests, te-poc, and
-     anchor, the ten monitor variants, the four probes, te-poc's five
+     anchor (since M11-9 in their `k3-like` rows, which the check runs
+     on the `plic` machine; the harness's `plic` rows boot the
+     scenarios' off copies since M11-7), the ten monitor variants, the
+     four probes, te-poc's five
      negatives (`reader-write`, `no-inject`, and the enforcement plan's
      `channel-cw`, `cheri-fault-hs`, and `cap-store`) and anchor's five,
      and `cap-store`'s control, for GCC and Clang;
@@ -416,7 +422,7 @@ come from `CHERI_DIR`, a beryllium-cheri checkout (by default the sibling
    `build/mvp` and rebuilds them with the defaults, `make -C mvp image
    variants probes qemu-images`. Every `be-mvp.bin`, `be-mvp-boot.img`,
    `be-mvp-boot-pic.img`, and `be-mvp-boot-qemu.img` under `gcc/`,
-   `clang/`, `variants/`, and `probes/`, 162 today, must equal the
+   `clang/`, `variants/`, and `probes/`, 222 at M11-9, must equal the
    reference's, byte for byte, with no image missing and none extra. The
    ELF files are not compared, since they carry debug data and the
    checkout's path.
@@ -516,13 +522,15 @@ checks, for each variant:
 | --- | --- | --- |
 | Byte identity with `main`'s boot images | Part 2 of `cheri-check.sh`, on every run | Not applicable |
 | `guest-pin-check` | Passes | Not run: its facts describe the Linux guests: an `rv64imac` attribute, their GCC, and M7's 3 MiB Image budget, which the CHERI kernel exceeds by 118,784 bytes |
-| `capture-check` | Passes | Not run: 96 of its 300 self-test cases fail, since their fixtures are captures from the Linux guests |
+| `opensbi`, `firmware`, `firmware-test` | Pass | Not run: they pin, build, and test the plain variant's firmware, which no CHERI run boots |
+| `partition-check` | Passes | Not run: it checks the boundary's device trees and tables for that firmware, and no CHERI-aware image is built with the boundary (M11) |
+| `capture-check` | Passes | Not run: its fixtures are captures of the plain monitor with the Linux guests. With part 1's inputs 114 of its 323 self-test cases fail at M11-9 (96 of 300 when the split was made) |
 | `run-tool-check` | Passes | Not run: the board tools' dry run starts from those fixtures |
 | `reference-boot`, `kernel-repro` | Pass | Not run: they boot and rebuild the Linux guests, with the tool lock's tools |
 | `qemu-test`, `sessions` | Pass | Refused by `mvp/tools.mk`: parts 1 and 3 of `cheri-check.sh` run the same harness with the CHERI emulator and firmware |
 | `evidence` | Passes | Not run: it bundles every check's records |
 | `claim-ledger-check` | Passes: the ledger's 11 pins of the seven files that the split changes are refreshed, each with its reason (the note above) | Not run: its claims and their evidence are the plain variant's |
-| The `k3-like`, `rva23`, and `no-sstc` machines | Run in `qemu-test` | QEMU 8.1 lacks the CPU properties they need, so `k3-like`'s variants and probes run on `plic` |
+| The `k3-like`, `rva23`, and `no-sstc` machines | Run in `qemu-test` | QEMU 8.1 lacks the CPU properties they need, so the `k3-like` rows that the check runs (the three scenarios', the variants', and the probes') run on `plic` |
 | `uboot-rehearsal` | Not run here: it needs B3's U-Boot build | Refused by `mvp/tools.mk` |
 | `live` | Prints the plain commands (see "Running it by hand") | Refused by `mvp/tools.mk`: `mvp/tools/cheri-live.sh` prints and runs the CHERI commands |
 | `./mvp/mvp evaluate`, `./mvp/mvp verify` | Pass, among the CHERI integration's gates (`mvp/results/20261109-cheri-integration/`, `mvp/results/20261109-verify-cheri-integration/`) | Not run |
