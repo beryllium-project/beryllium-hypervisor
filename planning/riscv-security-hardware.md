@@ -100,7 +100,7 @@ Disposition:
 Disposition:
 
 - MVP 1.0 does not use PMP. It depends on whatever the board's firmware programs, which was never recorded: the handoff observation planned for the pathfinder and for R8 H1 did not happen.
-- Planned use (Plan revision S3-D, milestone M11): a physical access profile for each hart, programmed by M-mode, which bounds the monitor's own HS code as well as its guests. HS-mode code cannot program PMP: M-mode does, from a description that it is given. What firmware that needs is decided in M11's plan.
+- Use under emulation (Plan revision S3-D, milestone M11, its candidate): a physical access profile for each of the monitor's three harts, programmed by M-mode, which bounds the monitor's own HS code as well as its guests. HS-mode code cannot program PMP: M-mode does, from the firmware's device tree, which is built offline from a partition descriptor. The firmware is a build of the project's own, OpenSBI at a pinned development commit with a patch series. It is tested in QEMU with plain PMP and with Smepmp; the claim and its required limit are `mvp/docs/claim-boundary.md`. On the board, nothing of it has run: that is M11's second result, which needs a board addendum to M11's plan.
 - The X100's entry count is documented. Its PMP grain, the entries that the board's firmware uses or locks, and Smepmp's state after handoff are not established.
 - IOMMU and IOPMP are not PoC requirements because the PoC has no DMA.
 - K3 bring-up must inventory firmware ownership, register access, SIDs, locked regions, and default-deny behavior.
