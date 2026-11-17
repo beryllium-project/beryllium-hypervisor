@@ -611,3 +611,370 @@ section. Leaf A's code is token-equal to the base's.
   failure path has no guard against a second entry; M11-7 changes that
   path for a confined hart, and its section says what a second entry
   does there.
+
+## M11-7: step 1, the VS-domain harts confined
+
+### Outcome first
+
+M11-7's required result (the plan's work-package table) holds at exact
+commit `e87e84de`, the last of its nine commits:
+
+- every scenario passes with the boundary on, with D-10's four checks:
+  `check` runs 95 QEMU runs, 63 of them under the boundary, each of
+  those judged by the capture checker, the oracle, and
+  `tests/check-boundary.py`; the six typed sessions and the U-Boot
+  rehearsal's seven cases run under it too;
+- every hostile-monitor image passes: on each VS-domain hart, HS-mode
+  code makes 112 attempts on what lies outside the hart's profile, and
+  each ends as it declares (76 denied with an access fault, 30 calls
+  refused, one instruction illegal, five controls allowed); M-mode's
+  counts for the hooked hart equal those sums (76 PMP faults, 30 blocked
+  calls) and are zero for every other hart; and the scenario runs to
+  `anchor`'s end with `anchor`'s lines and counts;
+- each image's run without the boundary shows the effect of every
+  attempt that has a witness (63 attempts for VS domain 0's hart, 62
+  for VS domain 1's): no failed discrimination;
+- the boundary's seven negatives each fail closed for their declared
+  reason, on both toolchains;
+- the firmware binary without the boundary extension, built for one
+  negative, is identical between the host's build and the evaluator's,
+  as the firmware's is (`evaluate`: 738 of 738 images identical);
+- `./be model-check` passes with no file under `model/` changed.
+
+It is emulation: nothing is proved, the attempts are a list and not
+every access, and nothing here ran on a board (D-10, "What this
+evidence is not"). The control hart is not confined in this step: it is
+left at boot, and M11-8 confines it.
+
+### The commits
+
+On the working branch `m11`, unsigned, over `789a67f9` (the planning
+site's entries for M12-1's page, itself over the signed `8f07d612`):
+
+| Commit | Content |
+| --- | --- |
+| `bddd343f` | The harness's forms for a run under the boundary: the oracle's PMP mode, M-mode's record table, named words, and two kinds of device register; `tests/check-boundary.py`, D-10's four checks; the capture checker's boundary-on lines. Every run still off |
+| `2eb0cdee` | Step 1's device trees and tables (`--control-hart boot`), and the pairing |
+| `0e998df1` | The build option, off in every image; the off copies |
+| `0183a338` | Step 1 for the three scenarios: the identity check, the confine stub, the confined failure path, the image checker's rules |
+| `f2794a71` | The boundary on for every variant, typed session, and rehearsal case; the Smepmp runs |
+| `88819537` | The hostile-monitor images, with two fixes that the first runs brought |
+| `c01eb733` | The boundary's negatives, with the second firmware binary |
+| `0e641b36` | The firmware's tenth patch: a commit record printed whole |
+| `e87e84de` | The README's and the guide's words |
+
+A tenth commit follows them in the same range and is not M11-7's:
+`7e5071b2`, the console tool's rule for the reset dongle's firmware
+1.1.1 ("The console tool", below).
+
+Each commit's content was written by the coding delegate, sub-step by
+sub-step, and reviewed line by line by the owner session before the
+next was taken; the claim ledger's notes, the README, and the guide are
+the owner session's. The firmware's patch was written by the tool that
+its `AI-assisted-by` line names, as D-2 requires.
+
+**Checked at each commit**, from a fresh clean clone on `l1`: the tool
+lock and `./mvp/mvp check`. The checks ran at the scratch commits that
+were then landed here; each landed commit's `mvp/` and `model/` trees
+equal its scratch commit's.
+
+| Commit | When (UTC) | QEMU runs (under the boundary) | Attempts, refused | The six sessions' attempts |
+| --- | --- | --- | --- | --- |
+| `bddd343f` | 2026-11-17, 00:11 to 00:27 (a second run; below) | 64 (0) | 81, 17 | 8 |
+| `2eb0cdee` | 2026-11-16, 22:13 to 22:33 | 64 (0) | 81, 17 | 7 |
+| `0e998df1` | 22:33 to 22:52 | 64 (0) | 89, 25 | 8 |
+| `0183a338` | 22:52 to 23:10 | 64 (10) | 75, 11 | 7 |
+| `f2794a71` | 23:10 to 23:28 | 69 (41) | 76, 7 | 6 |
+| `88819537` | 23:28 to 23:49 | 81 (49) | 97, 16 | 6 |
+| `c01eb733` | 23:49 to 00:10 | 95 (63) | 107, 12 | 6 |
+| `7e5071b2` | 2026-11-17, 00:27 to 00:48 | 95 (63) | 101, 6 | 6 |
+
+Every refused attempt is a run without the boundary that QEMU's
+firmware booted on a VS-domain hart, repeated as since M0; a run under
+the boundary cannot be refused, because its device tree fixes the boot
+hart. The eighth commit was not checked from a clone of its own: the
+coding delegate ran the firmware's own tests, `check`, and the loaded
+batch on its content ("The firmware's tenth patch", below), and the
+ninth differs from it in the README and the guide alone.
+
+At the ninth commit's content, from a fresh clean clone (2026-11-16,
+21:08 to 22:03): the tool lock; `check` (95 runs in 97 attempts, the two
+refused runs boundary-off; 6 sessions); `evaluate` (738 of 738 images
+identical; both firmware binaries among them); the U-Boot rehearsal (7
+cases, one attempt each); the kernel's second build (23 outputs
+identical); `./be model-check`; and the model's evaluator. The
+text-level checks pass on the range.
+
+### What a run under the boundary shows
+
+The `k3-like` run of `two-guests` (GCC), as an example of the 63:
+
+- OpenSBI's banner lists five OpenSBI domains (`root`, `be_boot`,
+  `be_g0`, `be_g1`, `be_park`) and the line `Domain commit digest`, the
+  partition identity from the device tree;
+- `BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 boundary=1 status=1:1,2:1
+  started=none identity=<that digest>`: hart 0 read the identity through
+  the boundary extension and compared it with the image's own;
+- each `BE_MVP:08 HART_STARTED` has no HSM status: hart 0 starts the
+  hart at the confine stub and asks nothing more of the firmware about
+  it;
+- after `BE_MVP:14 SHUTDOWN` the firmware prints each hart's commit
+  record: hart 0 `committed=0`; harts 1 and 2 `committed=1`, with
+  `menvcfg`, `mseccfg`, and sixteen PMP entries; harts 3 to 7
+  `committed=0`; every count zero;
+- the oracle's read of the stopped machine gives the same tables, and
+  `check-boundary.py` prints `BE_MVP_BOUNDARY: PASS … control_hart=boot
+  harts=0:boot,1:confined,2:confined,3-7:never-started`.
+
+Under Smepmp (seven runs: the three scenarios with GCC, and the four
+breach rows), `mseccfg` reads `0x5` on every hart that M-mode confined
+and 0 on the others.
+
+### The hostile-monitor images
+
+`anchor`'s `breach-g0` (hart 1, VS domain 0) and `breach-g1` (hart 2,
+VS domain 1). Twelve runs: each image under plain PMP and under Smepmp,
+with both toolchains, and each image's copy without the boundary.
+
+| Attempts | For each hart | Declared, and shown under the boundary |
+| --- | --- | --- |
+| Loads, stores, and jumps on forbidden memory and devices; accesses across an extent's edge and misaligned ones; accesses through an HS-mode page table, a forged `hgatp`, and tables in forbidden memory; an atomic operation, a load-reserved and store-conditional pair, and the cache-block zero | 76 | An access fault of the access's own kind, recorded by the hook with its address; every witness word unchanged; M-mode counts 76 PMP faults |
+| The cache-block invalidate on a block that the hart may only read | 1 | An illegal-instruction fault; no count |
+| Firmware calls: `confine` again, hart start, stop, and suspend of every hart, and a call of each family that the build keeps | 30 | The call's error, with nothing changed; M-mode counts 30 blocked calls |
+| Controls inside the profile: a load, a store, a hypervisor load through its own G-stage, a cache-block zero, and a load-reserved and store-conditional pair | 5 | Each succeeds |
+
+The oracle reads 48 words of memory and two device registers (the
+UART's scratch register and one source configuration of the supervisor
+APLIC) with the machine stopped: under the boundary the 38 witnesses of
+forbidden attempts are unchanged and both registers read 0.
+
+**Discrimination.** The copies without the boundary make only the
+attempts that have a witness, 63 for VS domain 0's hart and 62 for VS
+domain 1's, and every one takes effect: stop 15 is not reached. Not
+discriminated, by attempt, as D-10 foresees:
+
+| Attempts | Rows | Why |
+| --- | --- | --- |
+| The jumps | A3, B4, C5, C7, G5, H10, I8, J3; for VS domain 1 also B3 | No witness: a jump that was allowed would run what it reached |
+| The cache-block invalidate | H5 | No effect on memory to witness: QEMU has no cache |
+| Another hart's interrupt file; the power device | I5, I6; I7 | They leave nothing that a read can show, or end the run |
+| M-mode's memory, the timer, and the M-level interrupt controller | J1, J2, J4 to J8 | The firmware denies them in both builds |
+| The calls | M1 to M30 | Each kept call's own working is shown by every run |
+
+### The boundary's negatives
+
+Runs of `two-guests`' own image, built with the boundary, on both
+toolchains (D-10's table, in its order):
+
+| Negative | What the run shows |
+| --- | --- |
+| `boundary-absent`: a firmware without the boundary extension | The probe finds no extension; `FAIL boundary` before any hart starts |
+| `boundary-no-identity`, `boundary-identity`: a device tree with no identity, or with another image's | `FAIL boundary` at the identity check, before any hart starts |
+| `boundary-two-narrow`, `-wrong-boot`, `-no-list`: a hart in two narrow OpenSBI domains, another boot hart, no call list | The guard refuses `confine`; both VS-domain harts park in the stub, left at boot; `FAIL hart-ready`; no guest is entered |
+| `boundary-no-window`: a profile without its VS domain's window | The guest's first fetch faults; `FAIL access-fault`; M-mode counts one PMP fault, on that hart |
+| `boundary-no-cold-boot`: a device tree with no cold-boot restriction | The independent checker refuses the tree; no run boots it |
+
+`boundary-no-identity` is one more than D-10's table has. Each changed
+device tree is refused by the independent checker for the reason that
+its run declares, and is admitted for that run alone:
+`boundary-negatives-check` tries every tree against every run (7 trees,
+8 runs, 6 admitted).
+
+### The firmware's tenth patch
+
+A defect of the firmware additions (M11-6), found by M11-7's loaded
+runs and fixed by a tenth patch of the series (`0e641b36`).
+
+At a system reset the firmware prints each hart's commit record. The
+report read a hart's `committed` flag twice, once for the record's
+first line and once to decide whether to print the rest, with no
+ordering against that hart's own `confine`. A hart that confined itself
+between the two reads was printed as `committed=0` followed by the four
+lines of a committed record. Only the `hart-start` negative can end a
+run with a hart inside its `confine`: 1 run in 120 showed the torn
+record with four suites at once, and 1 in 80 with sixteen. Both
+checkers refuse that form, so such a run failed; no run passed with it.
+
+With the patch, the seal publishes the flag after the rest of the
+record, behind a write barrier, and the report reads the flag once,
+behind a read barrier, and uses that value for the line and for the
+test: a record is printed whole. It adds 12 lines to one file of the
+additions and removes 2; patches 0001 to 0009 are byte-identical. It
+was written afresh by the tool that its `AI-assisted-by` line names,
+and reviewed against D-2's six rules. Both firmware pins move to the
+binaries of the ten-patch series; the firmware's layout does not
+change, so no PMP table entry moves.
+
+The coding delegate's runs with the patch (2026-11-16, 20:41 to 21:05):
+the firmware's own tests (41 runs, both PMP modes); `check`; and the
+loaded batch three times over, 480 `hart-start` runs with sixteen
+suites at once, with no torn record.
+
+### The console tool
+
+The range's tenth commit, `7e5071b2`, is the responsible human's
+direction of 2026-11-16, `update console tool to accept latest dongle
+fw`, and is recorded in the plan's decision record. It is not part of
+M11-7 and authorizes no board step.
+
+The reset dongle's firmware 1.1.1 adds three fields to its status
+line, and the console tool's rule for a clean status admitted firmware
+1.0's line alone, so it refused every reset. The rule now admits three
+whole lines, matched by bytes: firmware 1.0's, as before, and firmware
+1.1.1's in two forms, by whether the dongle senses the board's power.
+Each field of the new forms is held to what the firmware's own source
+can print. No variable selects or widens a form. The pinned client is
+unchanged: it relays the line.
+
+Its tests: a matcher mutation matrix (38 mutants, each killed) and five
+mutants of the tool, by the coding delegate; and the board tools' dry
+run's new case `dongle-firmware` (seven resets that pass, 25 lines
+refused before the reset's pulse, and one after it), in `check` at the
+commit (the table above).
+
+### The proofs' records, and the CHERI variant
+
+M11-7 is not one of D-11's points: it changes no input of a proved
+leaf (`digests.py --check` passes, 13 files, with the specification's
+export). Two of the functions that stage 1's readings cite gain one
+call each, in the breach images alone (`be_mvp_dispatch`,
+`publish_blocks`); every other image's functions are unchanged, and
+`./be model-check` passes with no file under `model/` changed.
+
+The litmus record is stale from this commit to the candidate, as the
+plan's four points have it: `verify`'s first suite would stop at the
+first symbol whose address moved. Of the record's 55 symbols, GCC's 28
+are 18 with the same bytes, 8 that differ in addresses or PC-relative
+offsets only, and 2 that differ otherwise (`be_mvp_runtime_main`,
+`hart_fail`); Clang's 27 are 17, 9, and 1 (`hart_fail`). Each of the
+three still holds its excerpt's lines in the same order. The record is
+derived again at the candidate.
+
+Not run for M11-7: `./mvp/mvp verify`, for that reason; and the CHERI
+check, which D-11 asks for at the candidate (stop 10). M11-7 changes
+harness code that the CHERI variant shares, with the boundary off
+there.
+
+### The checkpoint: the soft limits
+
+By the plan's count from `77eabce5`, at the range's tip:
+
+| Lane | At M11-4's point | Since | Now | Limit |
+| --- | --- | --- | --- | --- |
+| The firmware additions | 708 | 12 | 720 | 800 |
+| The firmware's tests and build rules | 2,763 | 62 | 2,825 | 3,000 |
+| The monitor | 2,978 | 2,393 | 5,371 | 8,000 |
+| The descriptor's tools | 3,266 | 83 | 3,349 | 4,000 |
+| The harness | 4,357 | 5,951 | 10,308 | 15,000 |
+
+No limit is reached. Of the harness lane's lines since the point, 282
+are the console tool's.
+
+### Departures and readings for review
+
+Each was decided by the owner session's judgement, at the design's
+review or during the work; none is a stop of the plan.
+
+- **A second firmware binary.** D-10's first negative needs "a firmware
+  that reports the right SBI version and lacks the boundary extension".
+  It is built from the same pinned commit, patch series, and tools, with
+  the extension's one configuration line off, and pinned in the tool
+  lock beside the firmware. The base's pin, the series, and the
+  committed configuration do not change.
+- **Step 1 is a mode of the backend and of the checker**, not a field
+  of the descriptor: the descriptor's identity is the same in both
+  steps. Every artifact that depends on the step names it (the tables,
+  the partition record, each run's boundary record, and the attempts'
+  table), and from M11-8 an image of step 2 under a step-1 tree fails
+  closed.
+- **The hostile-monitor images are variants of `anchor` alone**, the one
+  scenario with every target class of D-10's column for a VS-domain
+  hart.
+- **A window's write witness** is the last word of the other guest's
+  device-tree page, which nothing else uses; D-10's example is "a page
+  that the variant's guest device tree reserves". The breach images'
+  measured inputs then stay `anchor`'s. The image checker requires the
+  word to lie past the end of the device tree's blocks.
+- **`ring-full` under the boundary.** D-8 has "the control hart reports
+  the failure", and D-12 "the control hart reports each failure". The
+  control hart ends the run at the first failure record that it drains,
+  as it always has, so the console shows one failure; the run must also
+  show, by the oracle's read of each hart's own state word, that both
+  VS-domain harts ended failed with the ring's class. The expectation
+  admits either VS domain as the one reported: the drain's order gives
+  domain 0 in every run seen (26 of 26), and the code admits domain 1.
+- **`hart-start`.** The run ends while hart 1 may be inside its
+  `confine`. Its declared state is "started", judged by the run's own
+  lines and by M-mode's record: confined, with the confined table
+  exactly, when the record says so; no comparison of its entries when
+  it does not; never a printed record that claims more than the read.
+- **A VS-domain hart's declared end state follows from the run's own
+  lines** (its `BE_MVP:08` and `BE_MVP:09`), not from timing:
+  `run-timeout`, whose budget can end before either hart reports ready,
+  showed the gap.
+- **Misaligned accesses (D-10's "which M-mode may emulate").** QEMU's
+  `k3-like` CPU performs a misaligned access itself, so no misaligned
+  trap reaches M-mode in these runs and M-mode's emulation path is not
+  exercised by them; M11-6's trap-path test is that path's evidence.
+  QEMU checks PMP over the whole access at its own address, and an
+  access that is not wholly inside one entry fails before any byte is
+  written: under the boundary neither part of a store across an
+  extent's edge was written, and without it both were. The privileged
+  specification allows this behaviour and the other, in which the
+  access is split; the plan's first rule had assumed the split. A board
+  may differ.
+- **Calls from a VS-domain hart.** Its call list is empty, so every
+  call is refused before any argument is read. D-10's rows for a listed
+  call with a bad buffer, a wrapping length, or a zero length therefore
+  belong to the control hart's list, and to M11-8.
+- **The failure path's second entry** (M11-4's litmus re-extraction
+  noted that the path has no guard against one). In an image built with
+  the boundary, a second entry ends with the hart parked in HS mode, or
+  repeating in HS mode while the fault recurs, with no firmware call, no
+  guest entry, and the first failure's published record unchanged. This
+  is read from the code, path by path, and the image checker's rule
+  closes it: no firmware call is reachable from a VS-domain hart's
+  entry or from the trap vector. No code changed for it.
+- **The firmware's tenth patch** is a change to M11-6's additions, made
+  under D-2's rules for every change to them. Until it, `check` could
+  fail on the torn record alone, about once in fifty to a hundred
+  checks, at the three commits before it.
+- **The first runs under emulation were made on the coding delegate's
+  tree**, between the night chain's two `verify` runs, and the fixes
+  that they brought are folded into the commits that they fix. The
+  checks recorded above were then made from clean clones of the
+  commits.
+- **The first commit's first check failed**, in a test that the commit
+  does not touch (2026-11-16, 22:03 to 22:13). The board tools' dry run
+  has a case, `port-open.during-saveenv`, that starts the console tool
+  typing a slow `saveenv` in the background, sleeps a fixed 0.8 s, and
+  then expects a reset to be refused. The machine was loaded by two
+  other jobs, the tool had not begun to type after 0.8 s, and the reset
+  found an idle prompt and went ahead, as the rule has it. It is read
+  as a race in the test, not a defect of the tool or of the commit: the
+  same check passed on a quiet machine (the table above), and the case
+  passed in the other eight checks of the range. The test's race is
+  fixed in a commit of its own, after this range.
+- **The checks' trees.** While the checks ran, the public line gained
+  commits that touch neither `mvp/` nor `model/` (M12-1's three, M11-4's
+  evidence section, and Plan revision S3-E), so each landed commit's
+  whole tree differs from its scratch commit's in the policy file's two
+  lines and in four planning pages. No check of `./mvp/mvp check` reads
+  those files; the claim ledger pins none of them.
+- **Boot-only code that a confined VS-domain hart can still execute**
+  (found while M11-8 was designed; a residual of M11-3's layout, in
+  force since this step). D-4's rule 1 puts boot-only code in extents
+  that no profile names, and D-5 gives a confined hart none of it. The
+  layout groups code by object file, and five small functions that only
+  boot code calls lie in the VS-domain harts' extents: the ring's
+  `be_mvp_ring_reset` and `be_mvp_ring_init` in the shared text, and
+  `be_mvp_entry_frame`, `be_mvp_hsm_census_init`, and
+  `be_mvp_hsm_census_add` in the VS-domain harts' text (with Clang, an
+  out-of-line copy of `be_mvp_hgatp` too). Each computes on memory that
+  its caller gives it and makes no firmware call, so a confined hart
+  that ran one would reach nothing outside its profile; the hostile
+  images' attempts on the boot-only extents are denied as declared.
+  D-4 says of each function's need that it "is reviewed, not checked".
+  M11-8 moves these functions to the boot-only text and makes the rule
+  a check of the image checker's, for every role; its first sub-step
+  confirms this list by the checker's own reach.
