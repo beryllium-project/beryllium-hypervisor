@@ -1190,13 +1190,14 @@ def candidate_cases(head_tree, claims):
         first["id"], second["id"] = second["id"], first["id"]
 
     def cites(number, tree):
-        """Row NUMBER cites the gates' record; the set names TREE, and the
-        page names it too."""
+        """Row NUMBER cites the gates' record, and the set names TREE, which
+        the page names too; with None, the set names no tree, whatever the
+        ledger named."""
         def edit(data, work):
             data["candidate"]["claims"][number]["evidence"].append(
                 dict(entry))
+            data["candidate"]["candidate_tree"] = tree
             if tree:
-                data["candidate"]["candidate_tree"] = tree
                 path = work / page
                 path.write_text(path.read_text("utf-8") + f"\nIts tree is "
                                 f"`{tree[:8]}`.\n", encoding="utf-8")
@@ -1218,6 +1219,18 @@ def candidate_cases(head_tree, claims):
                 field: words[cut + 1:]}))
             last[field] = words[:cut]
         return (candidate[key][-1]["id"], "ledger", edit)
+
+    def unnamed(data, work):
+        """The set names a tree that the page does not: its own where it
+        names one, so that the gates' records that its rows cite still
+        name it, else HEAD_TREE; and wherever the page named that tree,
+        in full or by its first eight hex digits in backticks, it names
+        flip()'s tree instead, in the same form."""
+        tree = data["candidate"]["candidate_tree"] or head_tree
+        data["candidate"]["candidate_tree"] = tree
+        other, path = flip(tree), work / page
+        path.write_text(path.read_text("utf-8").replace(tree, other).replace(
+            f"`{tree[:8]}`", f"`{other[:8]}`"), encoding="utf-8")
     return [
         ("an extra key in a candidate row", "candidate schema", row(
             rows[0], lambda part: part.update(extra=True))),
@@ -1261,8 +1274,7 @@ def candidate_cases(head_tree, claims):
         ("a part of the clause cut mid-phrase", "candidate page",
          split("claims", "claim", "C")),
         ("a named tree that the page does not name", "candidate page",
-         ("", "ledger", lambda data: data["candidate"].update(
-             candidate_tree=head_tree))),
+         ("", "both", unnamed)),
         ('"isolated" in a candidate note', "candidate words", note(
             notes[1], lambda row_: row_.update(note=row_["note"] +
                                                " The run is isolated."))),
