@@ -1896,7 +1896,7 @@
     "scope": "M11-E: the physical boundary under the monitor, under emulation, in the candidate's own images and firmware build. No row here is part of MVP 1.0's claim, and none is about a released image.",
     "page": "claim-boundary.md",
     "opensbi_commit": "ed70256dd22c09962d146e433834239825ef0616",
-    "candidate_tree": null,
+    "candidate_tree": "7a826991eb80d19c03caae883c19271a52f42963",
     "claims": [
       {
         "id": "M11-C01",
@@ -1925,6 +1925,11 @@
             "path": "mvp/tests/run-qemu.sh",
             "sha256": "ff6efee4aa0cf893f76127acdc756c89c7ad465a2458363b713a03355a8d9daa",
             "note": "The run harness: every emulated run boots that binary under the locked QEMU, and none uses QEMU's bundled firmware. Two negatives boot another binary, by their declarations: firmware-version the earlier OpenSBI v1.6, and boundary-absent the same build without the boundary extension, each pinned in the lock."
+          },
+          {
+            "path": "mvp/results/20261118-m11-candidate/MANIFEST.sha256",
+            "sha256": "3871aaa07b6875549e810178f95a53841759bf46a237fdc75222835d681042bc",
+            "note": "The record of seven of the candidate's nine gates, made by tools/rc-record.py from a clean clone at the candidate's tree, which its rc.txt names: the tool lock, check, evaluate, the U-Boot rehearsal, kernel-repro, model-check, and the model's evaluator, each with its result line. evaluate built every output again in the pinned evaluator image, and all 801 equal the host's (evaluator/compare-images.txt), the firmware binary and the binary without the boundary extension among them. The rehearsal's seven cases boot that firmware binary under the pinned U-Boot (rehearsal/summary.txt)."
           }
         ]
       },
@@ -1956,6 +1961,11 @@
             "path": "mvp/tests/boundary-negatives.py",
             "sha256": "759c98ea114c8c95edaf36c075c5cafb422c2de5df4433968a43f06f6337a675",
             "note": "The boundary's negatives: device trees made from two-guests' tree by one named edit each, which the independent checker must refuse, and which run only as the negative that declares the refusal. Under a tree that lists a VS-domain hart in two narrow OpenSBI domains, names another boot hart for its OpenSBI domain, or gives that OpenSBI domain no call list, the declared outcome is a failure at hart 0's wait for READY, with the VS-domain harts read in the boot state, not confined, and no guest entered."
+          },
+          {
+            "path": "mvp/results/20261118-m11-candidate/MANIFEST.sha256",
+            "sha256": "3871aaa07b6875549e810178f95a53841759bf46a237fdc75222835d681042bc",
+            "note": "In the gates' record, host/qemu/ holds every attempt of check's 111 runs under QEMU: its capture, the capture checker's verdict, the oracle's read of the stopped machine, and the boundary's judgement (.boundary.txt). 77 runs are under the boundary, 68 with plain PMP and 9 with Smepmp, and each is judged PASS. In 43 of them both VS-domain harts are judged by the rules of a confined hart: the 41 in which all three harts are declared confined, and run-timeout's two, in which the capture's READY lines decide. Each of the other 34 is a negative whose failure is declared before a VS-domain hart is ready, and its judgement names each hart's state."
           }
         ]
       },
@@ -1987,6 +1997,11 @@
             "path": "mvp/tests/boundary-negatives.py",
             "sha256": "759c98ea114c8c95edaf36c075c5cafb422c2de5df4433968a43f06f6337a675",
             "note": "The control hart's five negatives: without its OpenSBI domain, without its call list, with another boot hart, or listed with a second narrow OpenSBI domain, hart 0's confine is refused and the run fails in boot code; without its mailbox extent, the confined hart 0 faults, M-mode counts the fault, and the run is judged failed."
+          },
+          {
+            "path": "mvp/results/20261118-m11-candidate/MANIFEST.sha256",
+            "sha256": "3871aaa07b6875549e810178f95a53841759bf46a237fdc75222835d681042bc",
+            "note": "In the gates' record's 77 runs under the boundary, the control hart is judged confined in 51, and in the boot state in 26, each of which is declared to end in boot code. host/records/image-check.txt and variants.txt are the image checker's records of the scenarios' images and the variants', with its mutation counts."
           }
         ]
       },
@@ -2029,6 +2044,11 @@
             "path": "mvp/tests/check-boundary.py",
             "sha256": "e2270bb63f63587d4ce8ba7fa307e818d2a0d283ff2728f758dfae7b9e937526",
             "note": "On every run under the boundary: each confined hart's sixteen PMP entries equal the backend's table for its profile (the configuration bytes of all sixteen, and the address of each entry that is not off); and the configuration digest in the firmware's banner is the partition authority's identity of the image that the run declares, and equals the identity in the monitor's BE_MVP:02 line where the monitor printed one."
+          },
+          {
+            "path": "mvp/results/20261118-m11-candidate/MANIFEST.sha256",
+            "sha256": "3871aaa07b6875549e810178f95a53841759bf46a237fdc75222835d681042bc",
+            "note": "In the gates' record, evaluator/check.log has the firmware's own tests as the evaluator ran them (41 runs of its rows, in plain PMP and in Smepmp mode, and the host test's 14,455 checks) and the independent checker's verdicts: 92, one for each of 23 images' descriptor, tree, and tables in each PMP mode and against each toolchain's linked image. host/images.sha256 lists each descriptor, tree, table, and checker record among the 801 outputs that the evaluator built again and found equal."
           }
         ]
       },
@@ -2060,6 +2080,11 @@
             "path": "mvp/tests/boundary-negatives.py",
             "sha256": "759c98ea114c8c95edaf36c075c5cafb422c2de5df4433968a43f06f6337a675",
             "note": "The negative boundary-no-cold-boot: a device tree without the firmware's cold-boot restriction. The independent checker refuses it, and the run harness's gate admits it for no run."
+          },
+          {
+            "path": "mvp/results/20261118-m11-candidate/MANIFEST.sha256",
+            "sha256": "3871aaa07b6875549e810178f95a53841759bf46a237fdc75222835d681042bc",
+            "note": "In the gates' record, the judgement of each of the 77 runs under the boundary names harts 3 to 7 as never started; each run's .oracle.json has what was read of them."
           }
         ]
       },
@@ -2096,6 +2121,11 @@
             "path": "mvp/tests/check-boundary.py",
             "sha256": "e2270bb63f63587d4ce8ba7fa307e818d2a0d283ff2728f758dfae7b9e937526",
             "note": "The judge of a hostile-monitor run, by its plan: the hook's record done once, every row run, and no unexpected trap; each row's trap cause and address, the value that it kept, and the call's error; each witness word and device register at its value, as the oracle read them with the machine stopped. And D-10's fourth check: the hooked hart's PMP faults, blocked calls, and failed calls, as read from M-mode's commit record and as M-mode printed them, are the counts that the generator computes from the attempts."
+          },
+          {
+            "path": "mvp/results/20261118-m11-candidate/MANIFEST.sha256",
+            "sha256": "3871aaa07b6875549e810178f95a53841759bf46a237fdc75222835d681042bc",
+            "note": "In the gates' record, host/qemu/ holds the twelve hostile-monitor runs under the boundary: three images, both toolchains, plain PMP and Smepmp, each with its plan (breach/) and the judge's record (.breach.txt), one line for each attempt. Each is judged PASS: for a VS-domain hart, 112 rows (76 denied, 1 instruction illegal, 30 calls refused, 5 allowed); for the control hart, 132 (88 denied, 2 illegal, 28 refused, 7 rejected, 2 writes of no byte, 5 allowed)."
           }
         ]
       },
@@ -2122,6 +2152,11 @@
             "path": "mvp/tests/run-qemu.sh",
             "sha256": "ff6efee4aa0cf893f76127acdc756c89c7ad465a2458363b713a03355a8d9daa",
             "note": "Each boundary-off image runs under the same firmware binary with QEMU's own device tree, which declares no narrow OpenSBI domain."
+          },
+          {
+            "path": "mvp/results/20261118-m11-candidate/MANIFEST.sha256",
+            "sha256": "3871aaa07b6875549e810178f95a53841759bf46a237fdc75222835d681042bc",
+            "note": "In the gates' record, host/qemu/ holds the six runs of the hostile-monitor images built without the boundary: three images, both toolchains, each judged PASS with every row allowed (63, 62, and 73). The record also keeps the four attempts of those runs that the monitor refused at its boot check, because the firmware had booted on a VS-domain hart, and that were repeated: such an attempt's .breach.txt says FAIL, since the hook never ran."
           }
         ]
       }

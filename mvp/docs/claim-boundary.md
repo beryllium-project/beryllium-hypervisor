@@ -52,10 +52,26 @@ monitor's harts are confined.
 
 ## The candidate
 
-The candidate is one tree of this repository: the tree at which the
-gates pass. The ledger names it once they have passed, and this page
-then names it too. Until then, the ledger's rows cite the tools and
-tests of the tree that holds them, and no gates' record.
+The candidate is one tree of this repository:
+`7a826991eb80d19c03caae883c19271a52f42963`, the tree at which the nine
+gates passed on 2026-11-17 and 18. The ledger names it. It is named by
+its tree because the responsible human's sign-off gives a commit
+another name and keeps its tree: `git log --format='%H %T'` finds the
+commit of this line that has it.
+
+The gates' records are under `mvp/results/`:
+
+- [`20261118-m11-candidate/`](../results/20261118-m11-candidate/rc.txt):
+  the tool lock, `check`, `evaluate`, the U-Boot rehearsal,
+  `kernel-repro`, `model-check`, and the model's evaluator. Each claim
+  row of the ledger's second set cites it;
+- [`20261118-cheri-check-m11-candidate/`](../results/20261118-cheri-check-m11-candidate/README.md):
+  the CHERI check;
+- [`20261118-verify-m11-candidate/`](../results/20261118-verify-m11-candidate/README.md):
+  `verify`.
+
+The records name the candidate's commit as it was when the gates ran,
+before its sign-off, and the same tree.
 
 ## Where the evidence is
 

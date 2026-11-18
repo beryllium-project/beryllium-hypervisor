@@ -18,10 +18,19 @@
 >   `mvp/tools/cheri-check.sh` built its reference at the branch's
 >   merge base with `main`, and compared the plain variant's boot images
 >   with the release's record, `mvp/results/20261108-release/`. On
->   `main`, the reference is `main`'s own commit, built a second time,
->   and the record that applies is
+>   `main`, the reference is `main`'s own commit, built a second time.
+>   The record that applied was
 >   `mvp/results/20261109-cheri-integration/`, for as long as `main`'s
->   build inputs are that record's.
+>   build inputs were that record's: until M11's first changes. From
+>   the M11 candidate on it is the candidate's,
+>   `mvp/results/20261118-m11-candidate/`, for as long as the build
+>   inputs are its tree's: they were at the commit that added that
+>   record, and the commit after it changes the claim ledger's tool,
+>   which the guard counts among them. Each of the two records names
+>   its candidate by the commit as it was before its sign-off, so part
+>   2 compares a record only in a clone that still holds that commit,
+>   and in any other it compares the two builds alone (`mvp/README.md`,
+>   open item 134).
 > - Part 1 of `cheri-check.sh` runs 24 of `make check`'s steps here: the
 >   release removed `snapshot-check`, and M11-9 added the five that M11
 >   brought to `make check` and that judge the CHERI variant's own build

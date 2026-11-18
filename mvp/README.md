@@ -545,7 +545,12 @@ plan, "Architecture" and "The triggers for Instance 3").
   firmware's pins hold; its rendering; its page; and three words
   ("isolated", "sandboxed", "verified") that the plan never uses of the
   boundary. No row of the set names a row of the release's, and the
-  release's checks do not read the set.
+  release's checks do not read the set. Since the result commit the
+  set names the candidate's tree, `7a826991`, and each of its claim
+  rows cites the gates' record, `results/20261118-m11-candidate/`;
+  `results/20261118-verify-m11-candidate/` and
+  `results/20261118-cheri-check-m11-candidate/` are the other two
+  gates' records.
 - **Hart region** (port rule `hart-region`, `src/mvp-layout.h`). A NOLOAD
   region of two 64 KiB blocks at `0x1_0204_4000`, right after B7's pool,
   in the pool's segment (Q1). Each block holds the hart's 8 KiB trusted
@@ -12836,6 +12841,43 @@ M5's reset rule.
     one package from the directory, 480 from the sources). A fix is a
     source for the codec repository in the fetch, or a closure
     resolved without the package. Open.
+134. **The CHERI check's guard takes a record's candidate by its commit
+    (found at M11-9).** Part 2 of `tools/cheri-check.sh` compares the
+    plain variant's boot images with a gates' record for as long as
+    that record's candidate has the reference's build inputs. It takes
+    the candidate from the record's `candidate_tree_commit` line, and
+    skips a record whose commit the repository does not hold. A record
+    made before its commit's sign-off names a commit that this line
+    does not hold: the M11 candidate's
+    (`results/20261118-m11-candidate/`) names `2fb5c69d`, and the CHERI
+    integration's (`results/20261109-cheri-integration/`) names
+    `759f9d88`. So in a clone of this repository the guard skips both,
+    and part 2 compares the two builds alone (`records=none`). Where
+    the commit is present the guard takes the record: at the commit
+    that added the M11 candidate's records, in a clone that held the
+    candidate's commit, the check reported
+    `records=20261118-m11-candidate:222` (2026-11-18). The commit after
+    that one changes `tools/claim-ledger.py`, in its self-test alone,
+    and the guard counts every file outside the documentation and the
+    records as a build input: from there on it takes that record in no
+    clone. A record names its tree too (`candidate_tree`), and a
+    sign-off keeps a tree, so the guard could find the commit of the
+    line that has a record's tree, as the claim ledger's second set
+    does. That changes the check's script, which the candidate's gates
+    ran as it is. Open.
+135. **The ledger tool's self-test compares which checks fail, not
+    their findings (found at M11-9).** Each case of
+    `tools/claim-ledger.py --self-test` changes a copy of the ledger or
+    of a page and requires one named check to fail. Two things follow.
+    A check that raises an error is reported as failing, with the error
+    as its finding, so a case cannot tell its rule's finding from an
+    error in its check. And the second set's cases run on the set as
+    the tree holds it: two of them held only while the set named no
+    tree, and one failed once the set named the M11 candidate's. Both
+    hold in either state since the commit before the one that names
+    the candidate; no case runs in both states at one commit. The
+    tool's `check` fails on a finding and on an error alike, so neither
+    admits a ledger that a rule refuses. Open.
 
 
 ## Non-claims
