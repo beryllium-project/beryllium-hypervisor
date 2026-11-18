@@ -1765,3 +1765,64 @@ text above as it says; the text above is otherwise as accepted.
   case), and it touches no image, no monitor source, and no pin of
   the claim ledger. It gives the board tools their reset back. It
   authorizes no board step: D-15 stands.
+- **2026-11-18, `limits: ok; b7: a`** (the board addendum's stop B8,
+  a soft limit exceeded, put to the responsible human once for all of
+  M11-B's lanes; and one erratum of the addendum).
+  - **The soft limits of M11-B are re-set.** They are counted as the
+    addendum counts them, from M11-E's candidate:
+
+    | Lane | The addendum's | Re-set to |
+    | --- | --- | --- |
+    | The addition | Inside this plan's limit for the firmware additions (80 lines were left) | Unchanged. The addition is 48 lines |
+    | The addition's tests, and the board's build rules | 500 | 3,000 |
+    | The frame that M11-B's lanes share: the build fragments for the board, the frame of the board's gate, and the changes that admit them in the build's controls, the evidence bundle, and the licence manifest's tool. The addendum did not name this lane | None | 1,200 |
+    | The tree's recipe, the backend's second platform, the checker on the board's trees, and the hostile-monitor declarations with the generator's rules | 1,200 | 2,500 |
+    | The card's tools and the session's tools, with their dry runs | 3,000 | 10,000 |
+    | The checker's form for a boot from a card, the harness's end of a halting run, and the ledger tool's method | 1,200 | 3,500 |
+
+    The addendum's numbers rested on designs that counted the code and
+    too little of its tests. Each refusal of a tool has a test that
+    makes it happen, and each rule of a checker has a mutation that
+    fails by that rule alone. When the question was put, the lanes
+    stood as follows, each written and not yet landed:
+    - the frame at 962 lines;
+    - the addition's tests and the build's configuration for the board
+      at 585, with the rows under QEMU still to come;
+    - the tree's lane at 983, with the backend's second platform, the
+      checker's rules for the board, and the generator's rules still
+      to come;
+    - the card's tools at 3,097, with the writing, the read-back, and
+      the session's tools (about 4,400 by their design) still to come;
+    - the form for a boot from a card at 1,220, with the board's
+      boundary rules, the ledger tool's method, and the end of a
+      halting run still to come.
+
+    Nothing was cut to meet a limit. Nothing of these lanes was landed
+    before this entry.
+  - **An erratum to the addendum's B-7 and stop B6.** Both name a
+    test's own report of whether the cache-block instruction trapped.
+    The hostile-monitor image keeps its record of each attempt in
+    memory and prints nothing. Under emulation the harness reads that
+    record from the stopped machine; on the board nothing reads
+    memory. By the responsible human's choice (`b7: a`) the monitor is
+    not changed. So:
+    - on the board, M-mode's printed record shows each hart's sums of
+      access faults, refused calls, and rejected calls, and each
+      confined hart's control register with the invalidate control
+      clear. The trap of the cache-block instruction is in none of
+      those sums;
+    - that trap is shown under emulation, where the board's two
+      hostile-monitor images run first (B-10), and not on the board;
+    - the checker's form for a boot from a card (B-8) says of a
+      hostile-monitor image that its record was not read;
+    - stop B6's clause "or a test's report that the cache-block
+      instruction did not trap" has no source on the board and is not
+      judged there. Its other clauses stand, the confined hart's
+      record with the invalidate control set among them;
+    - the limit's addition for the board (B-11) gains, after
+      "M-mode's counts are sums for each hart, not one for each
+      attempt;", the words "the hostile-monitor images' own records
+      of their attempts were not read, so the trap of the cache-block
+      instruction, which those counts do not hold, is not shown on
+      the board;". Like the rest of B-11's words, they are used only
+      if M11-B's result is accepted.
