@@ -5,20 +5,39 @@
 
 > **This is `main`, the development line after MVP 1.0.** MVP 1.0 is
 > the tag `mvp-1.0`, which this README describes. Since then, `main`
-> has gained the project's CHERI platform work, from the research
+> has gained two lines of work. Neither is evidence for MVP 1.0's
+> claim.
+>
+> **M11, the physical boundary under the monitor**, is the first
+> milestone after the release
+> ([its plan](planning/mvp-m11-plan.md)). Its candidate is the monitor
+> with each of its three harts confined to a physical access profile,
+> under a firmware build of the project's own, under emulation. What
+> is claimed of it, with the limit that the claim is read with, is
+> [`mvp/docs/claim-boundary.md`](mvp/docs/claim-boundary.md); its
+> evidence record is
+> [`planning/mvp-m11-evidence.md`](planning/mvp-m11-evidence.md); and
+> the records of its gates are
+> [`mvp/results/20261118-m11-candidate/`](mvp/results/20261118-m11-candidate/rc.txt)
+> and, beside it, `20261118-verify-m11-candidate/` and
+> `20261118-cheri-check-m11-candidate/`. Nothing of it has run on a
+> board. From M11's first commits on, every image that `main` builds
+> differs from MVP 1.0's: the release's images are the tag's.
+>
+> **The project's CHERI platform work** came first, from the research
 > branch `cheri-platform`: a CHERI-aware variant of the monitor and
 > CHERI Linux guests, run on RISC-V CHERI v0.9.3 under emulation, as
 > [`planning/cheri-platform.md`](planning/cheri-platform.md) describes.
-> None of it is evidence for MVP 1.0's claim. On `main`:
+> When it joined `main`, before M11:
 >
-> - the plain variant's boot images are MVP 1.0's, byte for byte, and
->   `./mvp/mvp check` passes. The claim ledger pins by SHA-256 seven
->   files that the CHERI variant changes. Its 11 pins of them are
+> - the plain variant's boot images were MVP 1.0's, byte for byte, and
+>   `./mvp/mvp check` passed. The claim ledger pins by SHA-256 seven
+>   files that the CHERI variant changes. Its 11 pins of them were
 >   refreshed, each with its reason in the ledger, after checks that the
 >   plain variant's images, the checkers' judgements of the retained
->   captures, and the generators' outputs are unchanged;
+>   captures, and the generators' outputs were unchanged;
 > - the first verification plan's target digests,
->   `mvp/verify/target-digests.txt`, are re-written against the
+>   `mvp/verify/target-digests.txt`, were re-written against the
 >   research branch's commit `5980edff`, since the CHERI variant changes
 >   two of the files that they cover;
 > - release candidate 4's eight gates and the CHERI check passed on the
@@ -30,7 +49,7 @@
 > - the CHERI variant's check, `mvp/tools/cheri-check.sh`, needs a
 >   CHERI toolchain, a CHERI QEMU with two local changes, and CHERI
 >   firmware, which the tools in [`cheri/`](cheri/README.md) build from
->   the pins there.
+>   the pins there. It is one of the M11 candidate's gates.
 
 Beryllium is an open-source defensive security project for Linux-oriented
 systems: a small RISC-V monitor that runs in HS mode and keeps each domain
