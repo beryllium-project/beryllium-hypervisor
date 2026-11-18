@@ -1,0 +1,97 @@
+BE_MODEL_DIFFERENTIAL_SET schema=be-model-policy-mutations-v1 seed=73 count=91
+BE_MODEL_DIFFERENTIAL_ENTRY name=instance1 instance=instance1 defect=instance way=2 expected=none oracle=none model=none
+BE_MODEL_DIFFERENTIAL_ENTRY name=instance2 instance=instance2 defect=instance way=3 expected=none oracle=none model=none mvp=none
+BE_MODEL_DIFFERENTIAL_ENTRY name=instance3 instance=instance3 defect=instance way=3 expected=none oracle=none model=none mvp=none
+BE_MODEL_DIFFERENTIAL_ENTRY name=instance1_m02 instance=instance1_m02 defect=instance way=2 expected=none oracle=none model=none
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation0 instance=instance1 defect=drop-rule way=2 expected=A8 oracle=A8 model=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation1 instance=instance1 defect=add-permission way=2 expected=A4 oracle=A4 model=A4
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation2 instance=instance1 defect=remove-permission way=2 expected=A8 oracle=A8 model=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation3 instance=instance1 defect=swap-labels way=2 expected=A3,A8 oracle=A3,A8 model=A3,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation4 instance=instance1 defect=swap-labels way=2 expected=A2,A3,A8 oracle=A2,A3,A8 model=A2,A3,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation5 instance=instance1 defect=undeclared-type way=2 expected=A1 oracle=A1 model=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation6 instance=instance1 defect=unknown-permission way=2 expected=A1 oracle=A1 model=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation7 instance=instance1 defect=narrow-need way=2 expected=A4 oracle=A4 model=A4
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation8 instance=instance1 defect=channel-without-storage way=2 expected=A3,A6,A8 oracle=A3,A6,A8 model=A3,A6,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation9 instance=instance1 defect=storage-without-channel way=2 expected=A3,A6,A8 oracle=A3,A6,A8 model=A3,A6,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation10 instance=instance1 defect=secret-readable way=2 expected=A2,A3,A8 oracle=A2,A3,A8 model=A2,A3,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation11 instance=instance1 defect=grant-without-rule way=2 expected=A8 oracle=A8 model=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation12 instance=instance1 defect=empty-permissions way=2 expected=A1 oracle=A1 model=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation13 instance=instance1 defect=duplicate-type way=2 expected=A1 oracle=A1 model=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation14 instance=instance1 defect=doubly-labeled way=2 expected=A1 oracle=A1 model=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation15 instance=instance1 defect=unlabeled way=2 expected=A1 oracle=A1 model=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation16 instance=instance1 defect=monitor-memory way=2 expected=A3 oracle=A3 model=A3
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation17 instance=instance1 defect=no-need way=2 expected=A4 oracle=A4 model=A4
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation18 instance=instance1 defect=grant-beyond-rule way=2 expected=A8 oracle=A8 model=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation19 instance=instance1 defect=unreachable-rule way=2 expected=A2 oracle=A2 model=A2
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation20 instance=instance2 defect=drop-rule way=3 expected=A3,A6,A8 oracle=A3,A6,A8 model=A3,A6,A8 mvp=A3,A6,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation21 instance=instance2 defect=drop-rule way=3 expected=A3,A6,A8 oracle=A3,A6,A8 model=A3,A6,A8 mvp=A3,A6,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation22 instance=instance2 defect=add-permission way=3 expected=A4 oracle=A4 model=A4 mvp=A4
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation23 instance=instance2 defect=add-permission way=3 expected=A4,A5,A6 oracle=A4,A5,A6 model=A4,A5,A6 mvp=A4,A5,A6
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation24 instance=instance2 defect=remove-permission way=3 expected=A8 oracle=A8 model=A8 mvp=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation25 instance=instance2 defect=remove-permission way=3 expected=A8 oracle=A8 model=A8 mvp=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation26 instance=instance2 defect=swap-labels way=3 expected=A2,A3,A8 oracle=A2,A3,A8 model=A2,A3,A8 mvp=A2,A3,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation27 instance=instance2 defect=swap-labels way=3 expected=A3,A8 oracle=A3,A8 model=A3,A8 mvp=A3,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation28 instance=instance2 defect=undeclared-type way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation29 instance=instance2 defect=unknown-permission way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation30 instance=instance2 defect=narrow-need way=3 expected=A4 oracle=A4 model=A4 mvp=A4
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation31 instance=instance2 defect=channel-without-storage way=3 expected=A3,A6,A8 oracle=A3,A6,A8 model=A3,A6,A8 mvp=A3,A6,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation32 instance=instance2 defect=storage-without-channel way=3 expected=A3,A6,A8 oracle=A3,A6,A8 model=A3,A6,A8 mvp=A3,A6,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation33 instance=instance2 defect=secret-readable way=3 expected=A2,A3,A8 oracle=A2,A3,A8 model=A2,A3,A8 mvp=A2,A3,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation34 instance=instance2 defect=grant-without-rule way=3 expected=A8 oracle=A8 model=A8 mvp=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation35 instance=instance2 defect=empty-permissions way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation36 instance=instance2 defect=duplicate-type way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation37 instance=instance2 defect=duplicate-class way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation38 instance=instance2 defect=doubly-labeled way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation39 instance=instance2 defect=doubly-labeled-subject way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation40 instance=instance2 defect=unlabeled way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation41 instance=instance2 defect=label-undeclared-type way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation42 instance=instance2 defect=permission-of-another-class way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation43 instance=instance2 defect=undeclared-class way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation44 instance=instance2 defect=repeated-permission way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation45 instance=instance2 defect=delegating-permission way=3 expected=A7 oracle=A7 model=A7 mvp=A7
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation46 instance=instance2 defect=monitor-memory way=3 expected=A3 oracle=A3 model=A3 mvp=A3
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation47 instance=instance2 defect=foreign-private-map way=3 expected=A3 oracle=A3 model=A3 mvp=A3
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation48 instance=instance2 defect=unreachable-rule way=3 expected=A2 oracle=A2 model=A2 mvp=A2
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation49 instance=instance2 defect=no-need way=3 expected=A4 oracle=A4 model=A4 mvp=A4
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation50 instance=instance2 defect=duplicate-need way=3 expected=A4 oracle=A4 model=A4 mvp=A4
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation51 instance=instance2 defect=two-writers-declared way=3 expected=A5 oracle=A5 model=A5 mvp=A5
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation52 instance=instance2 defect=second-writer way=3 expected=A5,A6 oracle=A5,A6 model=A5,A6 mvp=A5,A6
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation53 instance=instance2 defect=page-grant-beyond-rule way=3 expected=A8 oracle=A8 model=A8 mvp=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation54 instance=instance3 defect=drop-rule way=3 expected=A8 oracle=A8 model=A8 mvp=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation55 instance=instance3 defect=drop-rule way=3 expected=A8 oracle=A8 model=A8 mvp=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation56 instance=instance3 defect=add-permission way=3 expected=A4,A7 oracle=A4,A7 model=A4,A7 mvp=A4,A7
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation57 instance=instance3 defect=add-permission way=3 expected=A4 oracle=A4 model=A4 mvp=A4
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation58 instance=instance3 defect=remove-permission way=3 expected=A8 oracle=A8 model=A8 mvp=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation59 instance=instance3 defect=remove-permission way=3 expected=A6,A8 oracle=A6,A8 model=A6,A8 mvp=A6,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation60 instance=instance3 defect=swap-labels way=3 expected=A3,A8 oracle=A3,A8 model=A3,A8 mvp=A3,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation61 instance=instance3 defect=swap-labels way=3 expected=A3,A8 oracle=A3,A8 model=A3,A8 mvp=A3,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation62 instance=instance3 defect=undeclared-type way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation63 instance=instance3 defect=unknown-permission way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation64 instance=instance3 defect=narrow-need way=3 expected=A4 oracle=A4 model=A4 mvp=A4
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation65 instance=instance3 defect=channel-without-storage way=3 expected=A3,A6,A8 oracle=A3,A6,A8 model=A3,A6,A8 mvp=A3,A6,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation66 instance=instance3 defect=storage-without-channel way=3 expected=A3,A6,A8 oracle=A3,A6,A8 model=A3,A6,A8 mvp=A3,A6,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation67 instance=instance3 defect=secret-readable way=3 expected=A2,A3,A8 oracle=A2,A3,A8 model=A2,A3,A8 mvp=A2,A3,A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation68 instance=instance3 defect=grant-without-rule way=3 expected=A8 oracle=A8 model=A8 mvp=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation69 instance=instance3 defect=delegating-permission way=3 expected=A7 oracle=A7 model=A7 mvp=A7
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation70 instance=instance3 defect=foreign-private-map way=3 expected=A3 oracle=A3 model=A3 mvp=A3
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation71 instance=instance3 defect=secret-rule way=3 expected=A3 oracle=A3 model=A3 mvp=A3
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation72 instance=instance3 defect=secret-grant way=3 expected=A8 oracle=A8 model=A8 mvp=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation73 instance=instance3 defect=management-grant-without-rule way=3 expected=A8 oracle=A8 model=A8 mvp=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation74 instance=instance3 defect=domain-rule-own-type way=3 expected=A3 oracle=A3 model=A3 mvp=A3
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation75 instance=instance3 defect=domain-rule-non-domain way=3 expected=A2,A3 oracle=A2,A3 model=A2,A3 mvp=A2,A3
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation76 instance=instance3 defect=second-writer-declared way=3 expected=A5 oracle=A5 model=A5 mvp=A5
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation77 instance=instance3 defect=empty-permissions way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation78 instance=instance3 defect=duplicate-type way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation79 instance=instance3 defect=duplicate-class way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation80 instance=instance3 defect=doubly-labeled way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation81 instance=instance3 defect=doubly-labeled-channel way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation82 instance=instance3 defect=unlabeled way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation83 instance=instance3 defect=unlabeled-subject way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation84 instance=instance3 defect=label-undeclared-type way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation85 instance=instance3 defect=permission-of-another-class way=3 expected=A1 oracle=A1 model=A1 mvp=A1
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation86 instance=instance3 defect=monitor-memory way=3 expected=A3 oracle=A3 model=A3 mvp=A3
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation87 instance=instance3 defect=no-need way=3 expected=A4 oracle=A4 model=A4 mvp=A4
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation88 instance=instance3 defect=empty-need way=3 expected=A4 oracle=A4 model=A4 mvp=A4
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation89 instance=instance3 defect=page-grant-beyond-rule way=3 expected=A8 oracle=A8 model=A8 mvp=A8
+BE_MODEL_DIFFERENTIAL_ENTRY name=mutation90 instance=instance3 defect=unreachable-rule way=3 expected=A2 oracle=A2 model=A2 mvp=A2
+BE_MODEL_DIFFERENTIAL: PASS instances=4 mutations=91 three_way=73 two_way=22 comparisons=241

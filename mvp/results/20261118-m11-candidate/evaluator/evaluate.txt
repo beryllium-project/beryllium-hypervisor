@@ -1,0 +1,17 @@
+BE_MVP_EVALUATE: host PASS roles=33 host_only_skipped=0 closure=259 lock_sha256=7fba0ae202de
+BE_MVP_EVALUATE: record=<repo>/build/mvp-evaluator/record/20261117T223929Z
+BE_MVP_EVALUATE: earlier_firmware sha256=78f14d30c95181704b6163b4c114f88483cd6c2c89e642812cd3856d01c6a42b (the lock's MVP_PIN_OPENSBI_BIN_SHA256)
+BE_MVP_EVALUATE: firmware_source commit=ed70256dd22c09962d146e433834239825ef0616 tree=f36850991d64f41366e89cd40f1c494f06b8561b
+BE_MVP_EVALUATE: host source=2fb5c69d34efb492fd66aa7d30bc4168c4e37948 tree=clean images=801
+BE_MVP_EVALUATE: fetch PASS cache=<repo>/build/mvp-evaluator/rpms rpms=259 bytes=385710845 sources=MVP_RPM_CACHE:216,updates:43
+BE_MVP_EVALUATE: image=localhost/beryllium-mvp-evaluator:87263109e660-009c2eba5655 base=registry.fedoraproject.org/fedora@sha256:daf897befd7a78a52f11db5ca2229a4923991bb30709932770cb493f7a000cf0 closure_sha256=87263109e66099d238da9b90e59fe5ca8d8e3bcbaaed0f09c2c9201f8c862866 containerfile_sha256=009c2eba5655d75193e1e8fc95ea1ae2362d3f583955781a8457aa03423c78ee closure_packages=259
+BE_MVP_EVALUATE: image_id=82b072ff025ecabd1304e8d546f61b7d0b2d4d9d44119a7ecded1e0190826288 rpms=293 rpms_sha256=0437d76d2fbeff74ecbd1c03e6026516d55af84beb25811bb4c424f7b38b8d6a
+BE_MVP_EVALUATE: swap removed systemd-standalone-sysusers-259.7-1.fc44.x86_64 removed glibc-minimal-langpack-2.43-7.fc44.x86_64 removed rpm-build-libs-6.0.1-2.fc44.x86_64 removed rpm-sign-libs-6.0.1-2.fc44.x86_64 removed dnf5-plugins-5.4.2.1-1.fc44.x86_64 installed systemd-sysusers-259.10-1.fc44.x86_64
+BE_MVP_EVALUATE: userland busybox 1.36.1 busybox-1.36.1.tar.bz2 musl 1.2.6 musl-1.2.6.tar.gz
+BE_MVP_LOCK: PASS roles=27 host_only_skipped=6 closure=259 lock_sha256=7fba0ae202de
+BE_MVP_TOOLS_CHECK: PASS
+BE_MVP_QEMU: PASS runs=111 attempts=126 refused=15
+BE_MVP_EVIDENCE: PASS development <repo>/build/mvp/evidence/check files=1120 images=801 qemu_attempts=126 session_attempts=6 rehearsals=0 log_exports=99 references=102
+BE_MVP_CHECK: PASS
+BE_MVP_EVALUATE: BE_MVP_IMAGE_IDENTITY: PASS images=801 same=801 differing=0
+BE_MVP_EVALUATE: PASS image=localhost/beryllium-mvp-evaluator:87263109e660-009c2eba5655

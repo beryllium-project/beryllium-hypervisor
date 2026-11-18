@@ -1,0 +1,73 @@
+ok   the ledger and the surfaces as they are: passed
+ok   a wrong hash (C-58 evidence 5): failed evidence
+ok   a missing path (C-55 evidence 3): failed evidence
+ok   a record cited by its directory (C-47 evidence 6): failed evidence
+ok   an unknown method (C-38): failed methods
+ok   hardware validation as a method (C-44): failed methods
+ok   not run beside evidence (C-14): failed methods
+skip a tree named as a commit (release from 9d06b024)
+ok   a stale rendered table: failed rendering
+ok   a forbidden literal, "full isolation": failed phrasing
+ok   a conditional phrase without its condition: failed phrasing
+ok   a hyphen and space variant: failed phrasing
+ok   a case variant: failed phrasing
+ok   a home path: failed privacy
+ok   an IPv4 address: failed privacy
+ok   an ssh user and host: failed privacy
+ok   a guide command the wrapper lacks: failed guide commands
+ok   a surface describing another candidate: failed release surfaces
+ok   a release-candidate commit no surface names: failed release surfaces
+ok   a release named without its candidate's number: failed schema
+ok   an extra key (C-03): failed schema
+ok   review items unlike claim.md's: failed schema
+ok   a surface without its header: failed headers
+ok   reproduction and certified-free (word boundaries): passed
+ok   a conditional phrase with its condition: passed
+ok   an image digest and a package version (not an ssh target or an address): passed
+ok   an ssh target with a path: failed privacy
+ok   an address after a space: failed privacy
+ok   a MAC address: failed privacy
+ok   a serial# value: failed privacy
+ok   a time, a MAC's code name, and serial#'s (not a MAC or a serial number): passed
+ok   a guide of wrapper commands and kernel-repro: passed
+ok   an extra key in a candidate row (M11-C05): failed candidate schema
+ok   two candidate rows' IDs swapped (M11-C03 and M11-C01): failed candidate schema
+ok   a candidate note naming a release row (M11-N07): failed candidate schema
+ok   a board run as a candidate method (M11-C06): failed candidate methods
+ok   a proof as a candidate method (M11-C02): failed candidate methods
+ok   not run as a candidate method (M11-C07): failed candidate methods
+ok   a candidate row without evidence (M11-C07): failed candidate methods
+ok   a wrong hash in a candidate row (M11-C05 evidence 2): failed candidate evidence
+ok   a missing path in a candidate row (M11-C02 evidence 1): failed candidate evidence
+ok   a cited record whose rc.txt names another tree (M11-C03 evidence 5): failed candidate evidence
+ok   a cited record while the set names no tree (M11-C05 evidence 5): failed candidate evidence
+ok   an OpenSBI commit that is not the build's: failed candidate firmware
+ok   a stale candidate table: failed candidate rendering
+ok   a word added to the page's clause: failed candidate page
+ok   a word added to the page's limit: failed candidate page
+ok   a third blockquote on the page: failed candidate page
+ok   a sentence of the limit cut over two rows (M11-N11): failed candidate page
+ok   a part of the clause cut mid-phrase (M11-C07): failed candidate page
+ok   a named tree that the page does not name: failed candidate page
+ok   "isolated" in a candidate note (M11-N01): failed candidate words
+ok   "Sandboxed" on the page: failed candidate words
+ok   "verified" in a candidate evidence note (M11-C07 evidence 1): failed candidate words
+ok   the three words in a release surface: passed
+ok   "unverified", "isolation", and "verify" on the page: passed
+ok   a well-formed marker (skipped): skipped snapshot of bbbbbbbb: the cited commits are the source repository's (SNAPSHOT.txt)
+ok   a marker without its schema: FAIL SNAPSHOT.txt: schema is not be-snapshot-v1
+ok   a marker with a short source commit: FAIL SNAPSHOT.txt: source_commit is not a full commit
+ok   a marker naming a commit of the repository itself: FAIL SNAPSHOT.txt: source_commit 003c8182 is a commit of this repository, which is then no snapshot of it
+ok   a marker in a subdirectory, not the root (no marker): FAIL 2fb5c69d34efb492fd66aa7d30bc4168c4e37948 is not a commit in the repository
+ok   a well-formed release marker (skipped): skipped release from bbbbbbbb: the cited commits are the private internal repository's (RELEASE.txt)
+ok   a release marker without its schema: FAIL RELEASE.txt: schema is not be-release-v1
+ok   a release marker with a short source commit: FAIL RELEASE.txt: source_commit is not a full commit
+ok   a release marker naming a commit of the repository itself: FAIL RELEASE.txt: source_commit 003c8182 is a commit of this repository, which is then no fresh-history release of it
+ok   a release marker in a subdirectory, not the root (no marker): FAIL 2fb5c69d34efb492fd66aa7d30bc4168c4e37948 is not a commit in the repository
+ok   a release marker beside a snapshot marker: FAIL SNAPSHOT.txt and RELEASE.txt are both at the root, and a repository carries one marker
+ok   a commit named where a tree is wanted: FAIL candidate_tree 343e5ccc is not a tree in the repository
+ok   a tree that only a side branch's commit has: FAIL candidate_tree 6c2738d0 is the tree of no commit on this line (HEAD and its ancestors)
+ok   the tree of an ancestor of HEAD: PASS tree=2b5f92a4 commit=31a86465
+ok   the first commit's tree in a shallow clone of the line: skipped (a shallow clone: the commit that has the candidate's tree may be absent (fetch the history to check it))
+ok   a cited record whose rc.txt names the set's tree (the evidence check alone): PASS artifacts=1 records=1
+claim ledger self-test: PASS mutations=34 variants=8 candidate_mutations=24 candidate_variants=5

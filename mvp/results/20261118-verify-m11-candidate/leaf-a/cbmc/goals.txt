@@ -1,0 +1,59 @@
+# planning/mvp-m8-plan.md D-7, M8-6; specification planning/mvp-m8-specifications.md Revision 1, sections 4 and 6, SHA-256 aeb75682f4c300b44f98c3ba3710e6f7142ed686a597bec3bf8a484c69693b8b, accepted at 93a8d136
+# CBMC on Leaf A: each named assertion and each kind of CBMC check, holding when a solver reports SUCCESS and none FAILURE (a bounded model check, not proof)
+assertion AF_cause status=holds
+assertion AF_other status=holds
+assertion D_E1 status=holds
+assertion D_E2 status=holds
+assertion D_E3 status=holds
+assertion D_E4 status=holds
+assertion D_E5 status=holds
+assertion D_E6 status=holds
+assertion D_E7 status=holds
+assertion D_cause status=holds
+assertion D_complete status=holds
+assertion D_frame status=holds
+assertion D_gpa status=holds
+assertion D_htinst status=holds
+assertion D_htval status=holds
+assertion D_inject_vscause status=holds
+assertion D_inject_vsepc status=holds
+assertion D_inject_vsstatus_rest status=holds
+assertion D_inject_vsstatus_sie status=holds
+assertion D_inject_vsstatus_spie status=holds
+assertion D_inject_vsstatus_spp status=holds
+assertion D_inject_vstval status=holds
+assertion D_kind_read_only status=holds
+assertion D_kind_unmapped status=holds
+assertion D_result status=holds
+assertion D_resume_pc status=holds
+assertion D_sepc status=holds
+assertion D_stval status=holds
+assertion D_time status=holds
+assertion D_vsstatus status=holds
+assertion D_vstvec status=holds
+assertion D_zero_cause status=holds
+assertion D_zero_gpa status=holds
+assertion D_zero_htinst status=holds
+assertion D_zero_htval status=holds
+assertion D_zero_inject_vscause status=holds
+assertion D_zero_inject_vsepc status=holds
+assertion D_zero_inject_vsstatus status=holds
+assertion D_zero_inject_vstval status=holds
+assertion D_zero_kind status=holds
+assertion D_zero_resume_pc status=holds
+assertion D_zero_sepc status=holds
+assertion D_zero_stval status=holds
+assertion D_zero_time status=holds
+assertion D_zero_vsstatus status=holds
+assertion D_zero_vstvec status=holds
+assertion HI_bool status=holds
+assertion HI_iff status=holds
+assertion IN_bool status=holds
+assertion IN_iff status=holds
+assertion LA_none status=holds
+assertion LA_page status=holds
+checks array_bounds properties=1 holding=1
+checks overflow properties=5 holding=5
+checks pointer_dereference properties=276 holding=276
+checks precondition properties=2 holding=2
+properties=336 failed=0 failing=none

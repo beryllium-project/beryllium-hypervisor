@@ -1,0 +1,12 @@
+# MVP M8 ordering premises under herd7 (planning/mvp-m8-plan.md, D-3, D-9; M8-4)
+specification_sha256=ade32fa639d255ec2ba08040bbe8dbba2d7d8bf3fc4401947f4c542ecc9dc53d
+sequences_sha256=69c4751fab556a45485b1e0297a70d3aa88e16164a5162b4703e2ed83e0544e7
+started=2026-11-17T23:48:45Z seconds=0
+goal_seconds=120
+probe version_herd7=7.58, Rev: exported
+premise=L1 file=mvp/verify/litmus/L1.litmus expected=Never observed=Never ok=yes states=2 positive=0 negative=2 seconds=0.0 test_sha256=b1cd582066491893721f28d9a192302bf59fc07a5d95658a5f2670b45e27a93d
+premise=L2 file=mvp/verify/litmus/L2.litmus expected=Never observed=Never ok=yes states=3 positive=0 negative=3 seconds=0.0 test_sha256=54676aae955c79afcccbcb78cba7cb6560b7505802f3cec3c1cccc547f34ca7a
+premise=L3 file=mvp/verify/litmus/L3.litmus expected=Never observed=Never ok=yes states=2 positive=0 negative=2 seconds=0.0 test_sha256=5a0d73d66ce6b77e9666a459347a5637b09efc1d4319808ad2b30505aaef9194
+premise=L4 file=mvp/verify/litmus/L4.litmus expected=Never observed=Never ok=yes states=2 positive=0 negative=2 seconds=0.0 test_sha256=e800d0ba0a33a94b3e4e0d6fd0142d952fa2c219232c83fe96e0f34ed1141a5d
+premise=L5 file=mvp/verify/litmus/L5.litmus expected=Never observed=Never ok=yes states=2 positive=0 negative=2 seconds=0.0 test_sha256=611c133edfb2b5de8857d0d2044c80531c0d282ba05654bf36cb4c848ed93889
+BE_MVP_LITMUS: PASS premises=5 never=5 sometimes=0 not_run=0

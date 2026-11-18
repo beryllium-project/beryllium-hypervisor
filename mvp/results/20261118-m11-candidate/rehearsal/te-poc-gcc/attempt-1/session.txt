@@ -1,0 +1,22 @@
+label=te-poc/gcc
+kind=scenario
+file=te-poc-gcc.img
+stage=done
+error=-
+qemu_exit=0
+oracle_verdict=PASS
+oracle=guest shutdown; read complete
+seconds=10.2
+sbi_version=3.0
+boot_hart=0
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2748416
+crc32=c58f8f4b
+fdt=0xff736890
+fdt_end=0xff73edd6
+rule_hart=0
+shim_fdt=0xff736890
+terminal=BE_MVP:14 SHUTDOWN type=0 reason=0
+console_bytes=32086
+console_sha256=f42b1bf2014f2cbfd7c80d26da234ece49649b7b383e705f15b19712292f526c
+BE_MVP_UBOOT_SESSION[te-poc/gcc]: PASS boot_hart=0 qemu_exit=0 oracle=PASS fdt=0xff736890 crc32=c58f8f4b seconds=10.2

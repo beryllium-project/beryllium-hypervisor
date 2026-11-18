@@ -1,0 +1,22 @@
+label=anchor/clang
+kind=scenario
+file=anchor-clang.img
+stage=done
+error=-
+qemu_exit=0
+oracle_verdict=PASS
+oracle=guest shutdown; read complete
+seconds=13.2
+sbi_version=3.0
+boot_hart=0
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2748416
+crc32=99f48bc0
+fdt=0xff736790
+fdt_end=0xff73edd6
+rule_hart=0
+shim_fdt=0xff736790
+terminal=BE_MVP:14 SHUTDOWN type=0 reason=0
+console_bytes=36554
+console_sha256=c539062a24726e31eded48708e2463d0907cb549f3661fe99ce45fcfb9a38ccd
+BE_MVP_UBOOT_SESSION[anchor/clang]: PASS boot_hart=0 qemu_exit=0 oracle=PASS fdt=0xff736790 crc32=99f48bc0 seconds=13.2

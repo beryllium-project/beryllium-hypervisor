@@ -1,0 +1,1 @@
+BE_MVP_BOUNDARY: PASS image=boundary-control-no-list pair=two-guests pmp_mode=plain control_hart=confined harts=0:boot,1:started,2:started,3-7:never-started identity=c2548f715d2a

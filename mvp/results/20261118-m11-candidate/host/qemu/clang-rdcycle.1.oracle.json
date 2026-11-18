@@ -1,0 +1,1405 @@
+{
+  "schema": "be-mvp-qemu-oracle-v1",
+  "result": {
+    "verdict": "PASS",
+    "detail": "guest shutdown; read complete"
+  },
+  "end": {
+    "kind": "guest-shutdown",
+    "reason": "guest-shutdown"
+  },
+  "register_classes": {
+    "pmp": "readable",
+    "menvcfg": "readable",
+    "mseccfg": "absent"
+  },
+  "status_before": {
+    "running": false,
+    "status": "shutdown",
+    "singlestep": null
+  },
+  "harts": [
+    {
+      "cpu_index": "0x0000000000000000",
+      "mhartid": "0x0000000000000000",
+      "pc": "0x00000000800077de",
+      "pmpcfg0": "0x18191b1b1d1d1818",
+      "pmpcfg2": "0x00000019181d1b18",
+      "pmpaddr": [
+        "0x0000000020007fff",
+        "0x0000000020017fff",
+        "0x00000000408013ff",
+        "0x00000000408023ff",
+        "0x000000004080b7ff",
+        "0x000000004080f7ff",
+        "0x00000000408217ff",
+        "0x0000000003000fff",
+        "0x0000000009000fff",
+        "0x0000000040804fff",
+        "0x000000004081afff",
+        "0x0000000000801fff",
+        "0x0000000040813fff",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000"
+      ],
+      "menvcfg": "0x80000000000000c0",
+      "mseccfg": "absent"
+    },
+    {
+      "cpu_index": "0x0000000000000001",
+      "mhartid": "0x0000000000000001",
+      "pc": "0x0000000102008474",
+      "pmpcfg0": "0x181d18181b1d1818",
+      "pmpcfg2": "0x00000000001f1b19",
+      "pmpaddr": [
+        "0x0000000020007fff",
+        "0x0000000020017fff",
+        "0x00000000408027ff",
+        "0x00000000408187ff",
+        "0x0000000003000fff",
+        "0x0000000009000fff",
+        "0x000000004081cfff",
+        "0x0000000000801fff",
+        "0x0000000040809fff",
+        "0x0000000040811fff",
+        "0x00000000447fffff",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000"
+      ],
+      "menvcfg": "0x80000000000000c0",
+      "mseccfg": "absent"
+    },
+    {
+      "cpu_index": "0x0000000000000002",
+      "mhartid": "0x0000000000000002",
+      "pc": "0xffffffff800da8fc",
+      "pmpcfg0": "0x181d18181b1d1818",
+      "pmpcfg2": "0x00000000001f1b19",
+      "pmpaddr": [
+        "0x0000000020007fff",
+        "0x0000000020017fff",
+        "0x00000000408027ff",
+        "0x00000000408197ff",
+        "0x0000000003000fff",
+        "0x0000000009000fff",
+        "0x000000004081cfff",
+        "0x0000000000801fff",
+        "0x000000004080dfff",
+        "0x0000000040815fff",
+        "0x00000000457fffff",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000"
+      ],
+      "menvcfg": "0x80000000000000c0",
+      "mseccfg": "absent"
+    },
+    {
+      "cpu_index": "0x0000000000000003",
+      "mhartid": "0x0000000000000003",
+      "pc": "0x00000000800186a4",
+      "pmpcfg0": "0x0000000000000000",
+      "pmpcfg2": "0x0000000000000000",
+      "pmpaddr": [
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000"
+      ],
+      "menvcfg": "0x0000000000000000",
+      "mseccfg": "absent"
+    },
+    {
+      "cpu_index": "0x0000000000000004",
+      "mhartid": "0x0000000000000004",
+      "pc": "0x00000000800186a4",
+      "pmpcfg0": "0x0000000000000000",
+      "pmpcfg2": "0x0000000000000000",
+      "pmpaddr": [
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000"
+      ],
+      "menvcfg": "0x0000000000000000",
+      "mseccfg": "absent"
+    },
+    {
+      "cpu_index": "0x0000000000000005",
+      "mhartid": "0x0000000000000005",
+      "pc": "0x00000000800186a4",
+      "pmpcfg0": "0x0000000000000000",
+      "pmpcfg2": "0x0000000000000000",
+      "pmpaddr": [
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000"
+      ],
+      "menvcfg": "0x0000000000000000",
+      "mseccfg": "absent"
+    },
+    {
+      "cpu_index": "0x0000000000000006",
+      "mhartid": "0x0000000000000006",
+      "pc": "0x00000000800186a4",
+      "pmpcfg0": "0x0000000000000000",
+      "pmpcfg2": "0x0000000000000000",
+      "pmpaddr": [
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000"
+      ],
+      "menvcfg": "0x0000000000000000",
+      "mseccfg": "absent"
+    },
+    {
+      "cpu_index": "0x0000000000000007",
+      "mhartid": "0x0000000000000007",
+      "pc": "0x00000000800186a4",
+      "pmpcfg0": "0x0000000000000000",
+      "pmpcfg2": "0x0000000000000000",
+      "pmpaddr": [
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000",
+        "0x0000000000000000"
+      ],
+      "menvcfg": "0x0000000000000000",
+      "mseccfg": "absent"
+    }
+  ],
+  "words": [
+    {
+      "name": "boot-entry",
+      "address": "0x0000000108000000",
+      "value": "0x000000000600006f",
+      "expected": "0x000000000600006f"
+    },
+    {
+      "name": "t0-0",
+      "address": "0x0000000080044708",
+      "value": "0x0000000000000001",
+      "expected": null
+    },
+    {
+      "name": "t0-1",
+      "address": "0x0000000080044710",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t0-2",
+      "address": "0x0000000080044718",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t0-3",
+      "address": "0x0000000080044720",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t0-4",
+      "address": "0x0000000080044728",
+      "value": "0x80000000000000c0",
+      "expected": null
+    },
+    {
+      "name": "t0-5",
+      "address": "0x0000000080044730",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t0-6",
+      "address": "0x0000000080044738",
+      "value": "0x18191b1b1d1d1818",
+      "expected": null
+    },
+    {
+      "name": "t0-7",
+      "address": "0x0000000080044740",
+      "value": "0x00000019181d1b18",
+      "expected": null
+    },
+    {
+      "name": "t0-8",
+      "address": "0x0000000080044748",
+      "value": "0x0000000020007fff",
+      "expected": null
+    },
+    {
+      "name": "t0-9",
+      "address": "0x0000000080044750",
+      "value": "0x0000000020017fff",
+      "expected": null
+    },
+    {
+      "name": "t0-10",
+      "address": "0x0000000080044758",
+      "value": "0x00000000408013ff",
+      "expected": null
+    },
+    {
+      "name": "t0-11",
+      "address": "0x0000000080044760",
+      "value": "0x00000000408023ff",
+      "expected": null
+    },
+    {
+      "name": "t0-12",
+      "address": "0x0000000080044768",
+      "value": "0x000000004080b7ff",
+      "expected": null
+    },
+    {
+      "name": "t0-13",
+      "address": "0x0000000080044770",
+      "value": "0x000000004080f7ff",
+      "expected": null
+    },
+    {
+      "name": "t0-14",
+      "address": "0x0000000080044778",
+      "value": "0x00000000408217ff",
+      "expected": null
+    },
+    {
+      "name": "t0-15",
+      "address": "0x0000000080044780",
+      "value": "0x0000000003000fff",
+      "expected": null
+    },
+    {
+      "name": "t0-16",
+      "address": "0x0000000080044788",
+      "value": "0x0000000009000fff",
+      "expected": null
+    },
+    {
+      "name": "t0-17",
+      "address": "0x0000000080044790",
+      "value": "0x0000000040804fff",
+      "expected": null
+    },
+    {
+      "name": "t0-18",
+      "address": "0x0000000080044798",
+      "value": "0x000000004081afff",
+      "expected": null
+    },
+    {
+      "name": "t0-19",
+      "address": "0x00000000800447a0",
+      "value": "0x0000000000801fff",
+      "expected": null
+    },
+    {
+      "name": "t0-20",
+      "address": "0x00000000800447a8",
+      "value": "0x0000000040813fff",
+      "expected": null
+    },
+    {
+      "name": "t0-21",
+      "address": "0x00000000800447b0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t0-22",
+      "address": "0x00000000800447b8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t0-23",
+      "address": "0x00000000800447c0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t1-0",
+      "address": "0x00000000800447c8",
+      "value": "0x0000000000000001",
+      "expected": null
+    },
+    {
+      "name": "t1-1",
+      "address": "0x00000000800447d0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t1-2",
+      "address": "0x00000000800447d8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t1-3",
+      "address": "0x00000000800447e0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t1-4",
+      "address": "0x00000000800447e8",
+      "value": "0x80000000000000c0",
+      "expected": null
+    },
+    {
+      "name": "t1-5",
+      "address": "0x00000000800447f0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t1-6",
+      "address": "0x00000000800447f8",
+      "value": "0x181d18181b1d1818",
+      "expected": null
+    },
+    {
+      "name": "t1-7",
+      "address": "0x0000000080044800",
+      "value": "0x00000000001f1b19",
+      "expected": null
+    },
+    {
+      "name": "t1-8",
+      "address": "0x0000000080044808",
+      "value": "0x0000000020007fff",
+      "expected": null
+    },
+    {
+      "name": "t1-9",
+      "address": "0x0000000080044810",
+      "value": "0x0000000020017fff",
+      "expected": null
+    },
+    {
+      "name": "t1-10",
+      "address": "0x0000000080044818",
+      "value": "0x00000000408027ff",
+      "expected": null
+    },
+    {
+      "name": "t1-11",
+      "address": "0x0000000080044820",
+      "value": "0x00000000408187ff",
+      "expected": null
+    },
+    {
+      "name": "t1-12",
+      "address": "0x0000000080044828",
+      "value": "0x0000000003000fff",
+      "expected": null
+    },
+    {
+      "name": "t1-13",
+      "address": "0x0000000080044830",
+      "value": "0x0000000009000fff",
+      "expected": null
+    },
+    {
+      "name": "t1-14",
+      "address": "0x0000000080044838",
+      "value": "0x000000004081cfff",
+      "expected": null
+    },
+    {
+      "name": "t1-15",
+      "address": "0x0000000080044840",
+      "value": "0x0000000000801fff",
+      "expected": null
+    },
+    {
+      "name": "t1-16",
+      "address": "0x0000000080044848",
+      "value": "0x0000000040809fff",
+      "expected": null
+    },
+    {
+      "name": "t1-17",
+      "address": "0x0000000080044850",
+      "value": "0x0000000040811fff",
+      "expected": null
+    },
+    {
+      "name": "t1-18",
+      "address": "0x0000000080044858",
+      "value": "0x00000000447fffff",
+      "expected": null
+    },
+    {
+      "name": "t1-19",
+      "address": "0x0000000080044860",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t1-20",
+      "address": "0x0000000080044868",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t1-21",
+      "address": "0x0000000080044870",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t1-22",
+      "address": "0x0000000080044878",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t1-23",
+      "address": "0x0000000080044880",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t2-0",
+      "address": "0x0000000080044888",
+      "value": "0x0000000000000001",
+      "expected": null
+    },
+    {
+      "name": "t2-1",
+      "address": "0x0000000080044890",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t2-2",
+      "address": "0x0000000080044898",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t2-3",
+      "address": "0x00000000800448a0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t2-4",
+      "address": "0x00000000800448a8",
+      "value": "0x80000000000000c0",
+      "expected": null
+    },
+    {
+      "name": "t2-5",
+      "address": "0x00000000800448b0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t2-6",
+      "address": "0x00000000800448b8",
+      "value": "0x181d18181b1d1818",
+      "expected": null
+    },
+    {
+      "name": "t2-7",
+      "address": "0x00000000800448c0",
+      "value": "0x00000000001f1b19",
+      "expected": null
+    },
+    {
+      "name": "t2-8",
+      "address": "0x00000000800448c8",
+      "value": "0x0000000020007fff",
+      "expected": null
+    },
+    {
+      "name": "t2-9",
+      "address": "0x00000000800448d0",
+      "value": "0x0000000020017fff",
+      "expected": null
+    },
+    {
+      "name": "t2-10",
+      "address": "0x00000000800448d8",
+      "value": "0x00000000408027ff",
+      "expected": null
+    },
+    {
+      "name": "t2-11",
+      "address": "0x00000000800448e0",
+      "value": "0x00000000408197ff",
+      "expected": null
+    },
+    {
+      "name": "t2-12",
+      "address": "0x00000000800448e8",
+      "value": "0x0000000003000fff",
+      "expected": null
+    },
+    {
+      "name": "t2-13",
+      "address": "0x00000000800448f0",
+      "value": "0x0000000009000fff",
+      "expected": null
+    },
+    {
+      "name": "t2-14",
+      "address": "0x00000000800448f8",
+      "value": "0x000000004081cfff",
+      "expected": null
+    },
+    {
+      "name": "t2-15",
+      "address": "0x0000000080044900",
+      "value": "0x0000000000801fff",
+      "expected": null
+    },
+    {
+      "name": "t2-16",
+      "address": "0x0000000080044908",
+      "value": "0x000000004080dfff",
+      "expected": null
+    },
+    {
+      "name": "t2-17",
+      "address": "0x0000000080044910",
+      "value": "0x0000000040815fff",
+      "expected": null
+    },
+    {
+      "name": "t2-18",
+      "address": "0x0000000080044918",
+      "value": "0x00000000457fffff",
+      "expected": null
+    },
+    {
+      "name": "t2-19",
+      "address": "0x0000000080044920",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t2-20",
+      "address": "0x0000000080044928",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t2-21",
+      "address": "0x0000000080044930",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t2-22",
+      "address": "0x0000000080044938",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t2-23",
+      "address": "0x0000000080044940",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-0",
+      "address": "0x0000000080044948",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-1",
+      "address": "0x0000000080044950",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-2",
+      "address": "0x0000000080044958",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-3",
+      "address": "0x0000000080044960",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-4",
+      "address": "0x0000000080044968",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-5",
+      "address": "0x0000000080044970",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-6",
+      "address": "0x0000000080044978",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-7",
+      "address": "0x0000000080044980",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-8",
+      "address": "0x0000000080044988",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-9",
+      "address": "0x0000000080044990",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-10",
+      "address": "0x0000000080044998",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-11",
+      "address": "0x00000000800449a0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-12",
+      "address": "0x00000000800449a8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-13",
+      "address": "0x00000000800449b0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-14",
+      "address": "0x00000000800449b8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-15",
+      "address": "0x00000000800449c0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-16",
+      "address": "0x00000000800449c8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-17",
+      "address": "0x00000000800449d0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-18",
+      "address": "0x00000000800449d8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-19",
+      "address": "0x00000000800449e0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-20",
+      "address": "0x00000000800449e8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-21",
+      "address": "0x00000000800449f0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-22",
+      "address": "0x00000000800449f8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t3-23",
+      "address": "0x0000000080044a00",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-0",
+      "address": "0x0000000080044a08",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-1",
+      "address": "0x0000000080044a10",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-2",
+      "address": "0x0000000080044a18",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-3",
+      "address": "0x0000000080044a20",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-4",
+      "address": "0x0000000080044a28",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-5",
+      "address": "0x0000000080044a30",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-6",
+      "address": "0x0000000080044a38",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-7",
+      "address": "0x0000000080044a40",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-8",
+      "address": "0x0000000080044a48",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-9",
+      "address": "0x0000000080044a50",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-10",
+      "address": "0x0000000080044a58",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-11",
+      "address": "0x0000000080044a60",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-12",
+      "address": "0x0000000080044a68",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-13",
+      "address": "0x0000000080044a70",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-14",
+      "address": "0x0000000080044a78",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-15",
+      "address": "0x0000000080044a80",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-16",
+      "address": "0x0000000080044a88",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-17",
+      "address": "0x0000000080044a90",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-18",
+      "address": "0x0000000080044a98",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-19",
+      "address": "0x0000000080044aa0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-20",
+      "address": "0x0000000080044aa8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-21",
+      "address": "0x0000000080044ab0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-22",
+      "address": "0x0000000080044ab8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t4-23",
+      "address": "0x0000000080044ac0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-0",
+      "address": "0x0000000080044ac8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-1",
+      "address": "0x0000000080044ad0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-2",
+      "address": "0x0000000080044ad8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-3",
+      "address": "0x0000000080044ae0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-4",
+      "address": "0x0000000080044ae8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-5",
+      "address": "0x0000000080044af0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-6",
+      "address": "0x0000000080044af8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-7",
+      "address": "0x0000000080044b00",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-8",
+      "address": "0x0000000080044b08",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-9",
+      "address": "0x0000000080044b10",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-10",
+      "address": "0x0000000080044b18",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-11",
+      "address": "0x0000000080044b20",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-12",
+      "address": "0x0000000080044b28",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-13",
+      "address": "0x0000000080044b30",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-14",
+      "address": "0x0000000080044b38",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-15",
+      "address": "0x0000000080044b40",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-16",
+      "address": "0x0000000080044b48",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-17",
+      "address": "0x0000000080044b50",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-18",
+      "address": "0x0000000080044b58",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-19",
+      "address": "0x0000000080044b60",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-20",
+      "address": "0x0000000080044b68",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-21",
+      "address": "0x0000000080044b70",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-22",
+      "address": "0x0000000080044b78",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t5-23",
+      "address": "0x0000000080044b80",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-0",
+      "address": "0x0000000080044b88",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-1",
+      "address": "0x0000000080044b90",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-2",
+      "address": "0x0000000080044b98",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-3",
+      "address": "0x0000000080044ba0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-4",
+      "address": "0x0000000080044ba8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-5",
+      "address": "0x0000000080044bb0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-6",
+      "address": "0x0000000080044bb8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-7",
+      "address": "0x0000000080044bc0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-8",
+      "address": "0x0000000080044bc8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-9",
+      "address": "0x0000000080044bd0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-10",
+      "address": "0x0000000080044bd8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-11",
+      "address": "0x0000000080044be0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-12",
+      "address": "0x0000000080044be8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-13",
+      "address": "0x0000000080044bf0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-14",
+      "address": "0x0000000080044bf8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-15",
+      "address": "0x0000000080044c00",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-16",
+      "address": "0x0000000080044c08",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-17",
+      "address": "0x0000000080044c10",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-18",
+      "address": "0x0000000080044c18",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-19",
+      "address": "0x0000000080044c20",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-20",
+      "address": "0x0000000080044c28",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-21",
+      "address": "0x0000000080044c30",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-22",
+      "address": "0x0000000080044c38",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t6-23",
+      "address": "0x0000000080044c40",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-0",
+      "address": "0x0000000080044c48",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-1",
+      "address": "0x0000000080044c50",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-2",
+      "address": "0x0000000080044c58",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-3",
+      "address": "0x0000000080044c60",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-4",
+      "address": "0x0000000080044c68",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-5",
+      "address": "0x0000000080044c70",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-6",
+      "address": "0x0000000080044c78",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-7",
+      "address": "0x0000000080044c80",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-8",
+      "address": "0x0000000080044c88",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-9",
+      "address": "0x0000000080044c90",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-10",
+      "address": "0x0000000080044c98",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-11",
+      "address": "0x0000000080044ca0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-12",
+      "address": "0x0000000080044ca8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-13",
+      "address": "0x0000000080044cb0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-14",
+      "address": "0x0000000080044cb8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-15",
+      "address": "0x0000000080044cc0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-16",
+      "address": "0x0000000080044cc8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-17",
+      "address": "0x0000000080044cd0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-18",
+      "address": "0x0000000080044cd8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-19",
+      "address": "0x0000000080044ce0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-20",
+      "address": "0x0000000080044ce8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-21",
+      "address": "0x0000000080044cf0",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-22",
+      "address": "0x0000000080044cf8",
+      "value": "0x0000000000000000",
+      "expected": null
+    },
+    {
+      "name": "t7-23",
+      "address": "0x0000000080044d00",
+      "value": "0x0000000000000000",
+      "expected": null
+    }
+  ],
+  "status_after": {
+    "running": false,
+    "status": "shutdown",
+    "singlestep": null
+  },
+  "qemu_exit": "0x00000000"
+}

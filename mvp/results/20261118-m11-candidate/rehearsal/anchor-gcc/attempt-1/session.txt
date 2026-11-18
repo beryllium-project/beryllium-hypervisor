@@ -1,0 +1,22 @@
+label=anchor/gcc
+kind=scenario
+file=anchor-gcc.img
+stage=done
+error=-
+qemu_exit=0
+oracle_verdict=PASS
+oracle=guest shutdown; read complete
+seconds=13.2
+sbi_version=3.0
+boot_hart=0
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2748416
+crc32=a1fb9c6f
+fdt=0xff736790
+fdt_end=0xff73edd6
+rule_hart=0
+shim_fdt=0xff736790
+terminal=BE_MVP:14 SHUTDOWN type=0 reason=0
+console_bytes=36552
+console_sha256=60687de018fdb056fa2b110ee3e37f564de656c3cd4bcdfe83e78eed65ac6da3
+BE_MVP_UBOOT_SESSION[anchor/gcc]: PASS boot_hart=0 qemu_exit=0 oracle=PASS fdt=0xff736790 crc32=a1fb9c6f seconds=13.2

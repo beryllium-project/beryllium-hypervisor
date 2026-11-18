@@ -1,0 +1,29 @@
++0.317 2026-11-17T22:38:17.400Z ready line=209 {"monitor": "BE_MVP:15 INPUT_ARMED grants=g0 prefix=0x7e"}
++0.317 2026-11-17T22:38:17.400Z ready line=210 {"monitor": "BE_MVP:16 FOCUS none"}
++0.506 2026-11-17T22:38:17.589Z ready line=329 {"contains": "MVPINIT 11 SHELL tty=/dev/hvc0", "domain": 0}
++0.506 2026-11-17T22:38:17.589Z step=0 focus "g0" keys=2
++0.531 2026-11-17T22:38:17.614Z step=0 line=334 {"monitor": "BE_MVP:16 FOCUS g0"}
++1.031 2026-11-17T22:38:18.114Z step=1 send "echo NONCE" keys=22
++1.298 2026-11-17T22:38:18.381Z step=1 line=336 {"domain": 0, "line": "# echo NONCE"}
++1.298 2026-11-17T22:38:18.381Z step=2 line=337 {"contains": "NONCE", "domain": 0}
++1.798 2026-11-17T22:38:18.881Z step=3 send "be-anchor request 7" keys=20
++2.035 2026-11-17T22:38:19.118Z step=3 line=338 {"domain": 0, "line": "# be-anchor request 7"}
++2.062 2026-11-17T22:38:19.144Z step=4 line=339 {"contains": "MVPINIT 09 REQUEST n=7", "domain": 0}
++2.562 2026-11-17T22:38:19.645Z step=5 send "be-deny store-shared" keys=21
++2.826 2026-11-17T22:38:19.909Z step=5 line=341 {"domain": 0, "line": "# be-deny store-shared"}
++2.827 2026-11-17T22:38:19.910Z step=6 line=343 {"contains": "MVPINIT 08 DENIED n=1 kind=store gpa=0x84001ff8", "domain": 0}
++3.327 2026-11-17T22:38:20.410Z step=7 send "be-deny load-unmapped" keys=22
++3.593 2026-11-17T22:38:20.675Z step=7 line=344 {"domain": 0, "line": "# be-deny load-unmapped"}
++3.593 2026-11-17T22:38:20.676Z step=8 line=346 {"contains": "MVPINIT 08 DENIED n=2 kind=load gpa=0x84002000", "domain": 0}
++4.093 2026-11-17T22:38:21.176Z step=9 negative "no-grant" keys=2
++4.119 2026-11-17T22:38:21.202Z step=9 line=347 {"monitor": "BE_MVP:17 INPUT_DROP no-grant"}
++4.619 2026-11-17T22:38:21.702Z step=10 send "be-anchor pause" keys=16
++4.857 2026-11-17T22:38:21.939Z step=10 line=348 {"domain": 0, "line": "# be-anchor pause"}
++4.909 2026-11-17T22:38:21.992Z step=11 line=352 {"contains": "MVPINIT 10 MGMT fid=pause target=1 result=0", "domain": 0}
++5.409 2026-11-17T22:38:22.492Z step=12 send "be-anchor terminate" keys=20
++5.727 2026-11-17T22:38:22.810Z step=12 line=353 {"domain": 0, "line": "# be-anchor terminate"}
++5.780 2026-11-17T22:38:22.863Z step=13 line=356 {"contains": "MVPINIT 10 MGMT fid=terminate target=1 result=0", "domain": 0}
++6.280 2026-11-17T22:38:23.363Z step=14 send "exit" keys=5
++6.361 2026-11-17T22:38:23.443Z step=14 line=357 {"domain": 0, "line": "# exit"}
++6.361 2026-11-17T22:38:23.443Z step=15 line=358 {"contains": "MVPINIT 11 SHELL exit=0", "domain": 0}
++6.361 2026-11-17T22:38:23.443Z session typed

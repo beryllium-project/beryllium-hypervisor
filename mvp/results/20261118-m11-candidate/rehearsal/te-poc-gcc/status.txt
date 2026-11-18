@@ -1,0 +1,25 @@
+label=te-poc/gcc
+image=gcc/te-poc/be-mvp-boot.img
+image_sha256=a1234442af2894d616213b640710245e2b813a88ddcba8117af3d53b9103b412
+boundary=on
+pmp_mode=plain
+dtb=partition/te-poc/te-poc/plain/te-poc.dtb
+dtb_sha256=76516fbf69312af46d4b48e49cf8626eb14944ae43dffdafdbc6992e2e9fd6d6
+control_hart=confined
+qemu_image_bytes=2748416
+qemu_image_sha256=7a3d791543729458c4cd271b176af28f97c62dacd317b61a49791a856ccffb31
+qemu_image_crc32=c58f8f4b
+qemu_text_offset=0x88000000
+qemu_image_source=built
+qemu_image=gcc/te-poc/be-mvp-boot-qemu.img
+disk_file=te-poc-gcc.img
+be_image=te-poc-gcc.img
+disk_sha256=590da43398e56485311a4c90082a7c2f44aee8829982d4e887b734252dc9f9b9
+expect=gen/te-poc/expect/te-poc.json
+expect_sha256=9784aefa5683e149b6cdc138332d2571e9b515db9c8840587bc411148eafe1fb
+report=gen/te-poc/authority-report.json
+report_sha256=564a26593faa56bf30100e47b88c5869f387a77c629cf760a05a5ece220f9b67
+measured_kernel=-
+measured_dtb=-
+attempt=1 session=PASS check=PASS check_exit=0 boot_hart=0 qemu_exit=0 oracle=PASS boundary=PASS disk=same console_sha256=f42b1bf2014f2cbfd7c80d26da234ece49649b7b383e705f15b19712292f526c
+BE_MVP_UBOOT_REHEARSAL[te-poc/gcc]: PASS attempts=1 refused=0 boot_harts=0 session=PASS check=PASS check_exit=0 qemu_exit=0 oracle=PASS boundary=PASS image=7a3d79154372 crc32=c58f8f4b

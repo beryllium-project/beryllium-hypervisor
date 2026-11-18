@@ -1,0 +1,280 @@
+finding the record's magic is 0x0, not the hook's
+finding the hook never ran (0)
+finding the hook ran 0 rows, not 63
+finding the frame's last slot is 0x0, not the last row's 0x102048940
+finding row A1: cause 0x0, expected 0xffffffffffffffff
+finding row A1: value 0x0, expected 0x100000edfe0dd0
+finding row A1: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row A2: cause 0x0, expected 0xffffffffffffffff
+finding row A2: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row A2: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row B1: cause 0x0, expected 0xffffffffffffffff
+finding row B1: value 0x0, expected 0x4d2d50564d2d4542
+finding row B1: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row B2: cause 0x0, expected 0xffffffffffffffff
+finding row B2: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row B2: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row B3: cause 0x0, expected 0xffffffffffffffff
+finding row B3: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row B3: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row C1: cause 0x0, expected 0xffffffffffffffff
+finding row C1: value 0x0, expected 0x4d2d50564d2d4542
+finding row C1: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row C2: cause 0x0, expected 0xffffffffffffffff
+finding row C2: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row C2: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row C3: cause 0x0, expected 0xffffffffffffffff
+finding row C3: value 0x0, expected 0xf022f4067179c129
+finding row C3: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row C4: cause 0x0, expected 0xffffffffffffffff
+finding row C4: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row C4: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row C6: cause 0x0, expected 0xffffffffffffffff
+finding row C6: value 0x0, expected 0x500080e700002097
+finding row C6: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row C8: cause 0x0, expected 0xffffffffffffffff
+finding row C8: value 0x0, expected 0x10200018a
+finding row C8: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row C9: cause 0x0, expected 0xffffffffffffffff
+finding row C9: value 0x0, expected 0x600006f
+finding row C9: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row C10: cause 0x0, expected 0xffffffffffffffff
+finding row C10: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row C10: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row D1: cause 0x0, expected 0xffffffffffffffff
+finding row D1: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row D1: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row D2: cause 0x0, expected 0xffffffffffffffff
+finding row D2: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row D2: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row D3: cause 0x0, expected 0xffffffffffffffff
+finding row D3: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row D3: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row D4: cause 0x0, expected 0xffffffffffffffff
+finding row D4: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row D4: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row D5: cause 0x0, expected 0xffffffffffffffff
+finding row D5: value 0x0, expected 0x100000001
+finding row D5: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row D6: cause 0x0, expected 0xffffffffffffffff
+finding row D6: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row D6: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row D7: cause 0x0, expected 0xffffffffffffffff
+finding row D7: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row E1: cause 0x0, expected 0xffffffffffffffff
+finding row E1: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row E1: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row E2: cause 0x0, expected 0xffffffffffffffff
+finding row E2: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row E3: cause 0x0, expected 0xffffffffffffffff
+finding row E3: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row E3: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row F1: cause 0x0, expected 0xffffffffffffffff
+finding row F1: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row F1: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row F2: cause 0x0, expected 0xffffffffffffffff
+finding row F2: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row F3: cause 0x0, expected 0xffffffffffffffff
+finding row F3: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row F3: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row G1: cause 0x0, expected 0xffffffffffffffff
+finding row G1: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row G2: cause 0x0, expected 0xffffffffffffffff
+finding row G2: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row G2: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row G3: cause 0x0, expected 0xffffffffffffffff
+finding row G3: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row G4: cause 0x0, expected 0xffffffffffffffff
+finding row G4: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row G4: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row H1: cause 0x0, expected 0xffffffffffffffff
+finding row H1: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row H1: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row H2: cause 0x0, expected 0xffffffffffffffff
+finding row H2: value 0x0, expected 0xb5eaf11100003fc8
+finding row H2: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row H3: cause 0x0, expected 0xffffffffffffffff
+finding row H3: value 0x0, expected 0xb5eaf11100003fd0
+finding row H4: cause 0x0, expected 0xffffffffffffffff
+finding row H4: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row H4: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row H6: cause 0x0, expected 0xffffffffffffffff
+finding row H6: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row H7: cause 0x0, expected 0xffffffffffffffff
+finding row H7: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row H7: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row H8: cause 0x0, expected 0xffffffffffffffff
+finding row H8: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row H9: cause 0x0, expected 0xffffffffffffffff
+finding row H9: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row H9: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row I1: cause 0x0, expected 0xffffffffffffffff
+finding row I1: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row I1: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row I2: cause 0x0, expected 0xffffffffffffffff
+finding row I2: value 0x0, expected 0xa5
+finding row I2: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row I3: cause 0x0, expected 0xffffffffffffffff
+finding row I3: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row I3: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row I4: cause 0x0, expected 0xffffffffffffffff
+finding row I4: value 0x0, expected 0x1
+finding row I4: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row J9: cause 0x0, expected 0xffffffffffffffff
+finding row J9: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row J10: cause 0x0, expected 0xffffffffffffffff
+finding row J10: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row J10: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row J11: cause 0x0, expected 0xffffffffffffffff
+finding row J11: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row J12: cause 0x0, expected 0xffffffffffffffff
+finding row J12: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row J12: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row K1: cause 0x0, expected 0xffffffffffffffff
+finding row K1: value 0x0, expected 0x4d2d454200000000
+finding row K1: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row K2: cause 0x0, expected 0xffffffffffffffff
+finding row K2: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row K2: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row K3: cause 0x0, expected 0xffffffffffffffff
+finding row K3: value 0x0, expected 0x324d2d50564d2d45
+finding row K3: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row K4: cause 0x0, expected 0xffffffffffffffff
+finding row K4: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row K4: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row L1: cause 0x0, expected 0xffffffffffffffff
+finding row L1: value 0x0, expected 0x4d2d50564d2d4542
+finding row L1: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row L2: cause 0x0, expected 0xffffffffffffffff
+finding row L2: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row L2: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row L3: cause 0x0, expected 0xffffffffffffffff
+finding row L3: value 0x0, expected 0x532d545345542d32
+finding row L3: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row L4: cause 0x0, expected 0xffffffffffffffff
+finding row L4: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row L4: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row L5: cause 0x0, expected 0xffffffffffffffff
+finding row L5: value 0x0, expected 0x100000edfe0dd0
+finding row L5: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row L6: cause 0x0, expected 0xffffffffffffffff
+finding row L6: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row L6: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row L7: cause 0x0, expected 0xffffffffffffffff
+finding row L7: value 0x0, expected 0x30302d5445524345
+finding row L7: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row L8: cause 0x0, expected 0xffffffffffffffff
+finding row L8: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row L8: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row P1: cause 0x0, expected 0xffffffffffffffff
+finding row P1: value 0x0, expected 0x100000edfe0dd0
+finding row P1: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row P2: cause 0x0, expected 0xffffffffffffffff
+finding row P2: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row P2: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row P3: cause 0x0, expected 0xffffffffffffffff
+finding row P3: value 0x0, expected 0x100000edfe0dd0
+finding row P3: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row P4: cause 0x0, expected 0xffffffffffffffff
+finding row P4: value 0x0, expected 0x5eb55eb55eb55eb5
+finding row P4: error 0x0, expected 0x5eb55eb55eb55eb5
+finding row P5: cause 0x0, expected 0xffffffffffffffff
+finding row P5: value 0x0, expected 0xb5eaf11100008fc0
+finding row D3's word 0x102009ff8 is 0x0, expected 0xb5ea0014b5ea0014
+finding row D1's word 0x10200bff8 is 0x0, expected 0xb5ea0012b5ea0012
+finding row G4's word 0x102013ff8 is 0x0, expected 0xb5ea0022b5ea0022
+finding row E1's word 0x102027ff8 is 0x0, expected 0xb5ea0019b5ea0019
+finding row F1's word 0x102028ff8 is 0x0, expected 0xb5ea001cb5ea001c
+finding row H1's word 0x10202ffc0 is 0x0, expected 0xb5ea0024b5ea0024
+finding row H2's word 0x10202ffc8 is 0x0, expected 0x6bd4f136b5ea3fed
+finding row H3's word 0x10202ffd0 is 0x0, expected 0xb5ea0026b5ea0026
+finding row E3's word 0x102037ff8 is 0x0, expected 0xb5ea001bb5ea001b
+finding row K4's word 0x102038f00 is 0x0, expected 0xb5ea00450000
+finding row L4's word 0x102038fe0 is 0x0, expected 0xb5ea0049b5ea0049
+finding row F3's word 0x102038ff8 is 0x0, expected 0xb5ea001eb5ea001e
+finding row H7's word 0x10203fff0 is 0x0, expected 0xb5ea002ab5ea002a
+finding row P5's word 0x102048fc0 is 0x0, expected 0xb5ea0070b5ea0070
+finding row P2's word 0x102048fc8 is 0x0, expected 0xb5ea006db5ea006d
+finding row H9's word 0x10205ff08 is 0x0, expected 0xb5ea002cb5ea002c
+finding row K2's word 0x10205fff8 is 0x0, expected 0xb5ea004300000000
+finding row G2's word 0x102067fe8 is 0x0, expected 0xb5ea0020b5ea0020
+finding row D2's word 0x102077ff8 is 0x0, expected 0xb5ea0013b5ea0013
+finding row C4's word 0x10207fff8 is 0x0, expected 0xb5ea000bb5ea000b
+finding row C2's word 0x102080008 is 0x0, expected 0xb5ea0009b5ea0009
+finding row D4's word 0x102085ff8 is 0x0, expected 0xb5ea0015b5ea0015
+finding row D6's word 0x102086ff8 is 0x0, expected 0xb5ea0017b5ea0017
+finding row J10's word 0x102088ff8 is 0x0, expected 0xb5ea003fb5ea003f
+finding row C10's word 0x1085ffff8 is 0x0, expected 0xb5ea0011b5ea0011
+finding row L2's word 0x117e00fe0 is 0x0, expected 0xb5ea0047b5ea0047
+finding row L6's word 0x117e00ff0 is 0x0, expected 0xb5ea004bb5ea004b
+finding row A2's word 0x117e00ff8 is 0x0, expected 0xb5ea0002b5ea0002
+finding row B3's word 0x118001ff0 is 0x0, expected 0xb5ea0006b5ea0006
+finding row L8's word 0x118002fe0 is 0x0, expected 0xb5ea004db5ea004d
+finding row B2's word 0x118002ff8 is 0x0, expected 0xb5ea0005b5ea0005
+finding row J12's word 0x200000008 is 0x0, expected 0xb5ea0041b5ea0041
+finding row I1's device register 0x10000007 is 0x0, expected 0xa5
+finding row I3's device register 0xd000024 is 0x0, expected 0x1
+row A1 allowed cause=none stval=0x0 FAIL
+row A2 allowed cause=none stval=0x0 FAIL
+row B1 allowed cause=none stval=0x0 FAIL
+row B2 allowed cause=none stval=0x0 FAIL
+row B3 allowed cause=none stval=0x0 FAIL
+row C1 allowed cause=none stval=0x0 FAIL
+row C2 allowed cause=none stval=0x0 FAIL
+row C3 allowed cause=none stval=0x0 FAIL
+row C4 allowed cause=none stval=0x0 FAIL
+row C6 allowed cause=none stval=0x0 FAIL
+row C8 allowed cause=none stval=0x0 FAIL
+row C9 allowed cause=none stval=0x0 FAIL
+row C10 allowed cause=none stval=0x0 FAIL
+row D1 allowed cause=none stval=0x0 FAIL
+row D2 allowed cause=none stval=0x0 FAIL
+row D3 allowed cause=none stval=0x0 FAIL
+row D4 allowed cause=none stval=0x0 FAIL
+row D5 allowed cause=none stval=0x0 FAIL
+row D6 allowed cause=none stval=0x0 FAIL
+row D7 allowed cause=none stval=0x0 FAIL
+row E1 allowed cause=none stval=0x0 FAIL
+row E2 allowed cause=none stval=0x0 FAIL
+row E3 allowed cause=none stval=0x0 FAIL
+row F1 allowed cause=none stval=0x0 FAIL
+row F2 allowed cause=none stval=0x0 FAIL
+row F3 allowed cause=none stval=0x0 FAIL
+row G1 allowed cause=none stval=0x0 FAIL
+row G2 allowed cause=none stval=0x0 FAIL
+row G3 allowed cause=none stval=0x0 FAIL
+row G4 allowed cause=none stval=0x0 FAIL
+row H1 allowed cause=none stval=0x0 FAIL
+row H2 allowed cause=none stval=0x0 FAIL
+row H3 allowed cause=none stval=0x0 FAIL
+row H4 allowed cause=none stval=0x0 FAIL
+row H6 allowed cause=none stval=0x0 FAIL
+row H7 allowed cause=none stval=0x0 FAIL
+row H8 allowed cause=none stval=0x0 FAIL
+row H9 allowed cause=none stval=0x0 FAIL
+row I1 allowed cause=none stval=0x0 FAIL
+row I2 allowed cause=none stval=0x0 FAIL
+row I3 allowed cause=none stval=0x0 FAIL
+row I4 allowed cause=none stval=0x0 FAIL
+row J9 allowed cause=none stval=0x0 FAIL
+row J10 allowed cause=none stval=0x0 FAIL
+row J11 allowed cause=none stval=0x0 FAIL
+row J12 allowed cause=none stval=0x0 FAIL
+row K1 allowed cause=none stval=0x0 FAIL
+row K2 allowed cause=none stval=0x0 FAIL
+row K3 allowed cause=none stval=0x0 FAIL
+row K4 allowed cause=none stval=0x0 FAIL
+row L1 allowed cause=none stval=0x0 FAIL
+row L2 allowed cause=none stval=0x0 FAIL
+row L3 allowed cause=none stval=0x0 FAIL
+row L4 allowed cause=none stval=0x0 FAIL
+row L5 allowed cause=none stval=0x0 FAIL
+row L6 allowed cause=none stval=0x0 FAIL
+row L7 allowed cause=none stval=0x0 FAIL
+row L8 allowed cause=none stval=0x0 FAIL
+row P1 allowed cause=none stval=0x0 FAIL
+row P2 allowed cause=none stval=0x0 FAIL
+row P3 allowed cause=none stval=0x0 FAIL
+row P4 allowed cause=none stval=0x0 FAIL
+row P5 allowed cause=none stval=0x0 FAIL
+BE_MVP_BREACH: FAIL image=breach-g0-off boundary=off hart=1 rows=63 denied=0 illegal=0 refused=0 allowed=63 words=48 devices=2

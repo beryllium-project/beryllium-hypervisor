@@ -1,0 +1,212 @@
+{
+ "boot_marker": "PASS",
+ "capture": {
+  "bytes": 15888,
+  "sha256": "c8991a835eaf240544ce0edab4e357a30e78e3785c17c0b02eff89b2e5fa5f05"
+ },
+ "costs": {},
+ "expect": {
+  "image": "hart-start",
+  "scenario_sha256": "4bda6abe6411e7414b2e0435f73cd90438ae6bbb0956aa44b00509d7a33157f5"
+ },
+ "fields": {
+  "base": "0x0000000108000000",
+  "boot_hart": "0",
+  "boundary": "on",
+  "bytes": "0x00000000000a4000",
+  "dest": "0x0000000102000000",
+  "fdt": "0x000000027fe00000",
+  "firmware_boundary": "1",
+  "hart": "0x0000000000000000",
+  "identity": "67637cdc9098fe90a4c668722b76d76478845fa8f42abcda6ee8ceb3c65a317b",
+  "image": "hart-start",
+  "mode": "direct",
+  "sbi_version": "3.0",
+  "started": "none"
+ },
+ "findings": [],
+ "lines": {
+  "g0": 0,
+  "g1": 0
+ },
+ "log": {
+  "boot_image": "nominal",
+  "contract": {
+   "run": "post-launch-failure",
+   "sequence": "v1"
+  },
+  "count": 13,
+  "export_sha256": "2f56ac92cd77eafae41fac9da8ee44d315ebc003d873b62ea013ca5899118fd8",
+  "launch": {
+   "0": "1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7",
+   "1": "f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b"
+  },
+  "lines": 16,
+  "r2": "kept",
+  "records": [
+   {
+    "fields": "equal",
+    "object": "monitor-text",
+    "recnum": 0,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "monitor-rodata",
+    "recnum": 1,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "monitor-input",
+    "recnum": 2,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "mvp-text",
+    "recnum": 3,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "mvp-rodata",
+    "recnum": 4,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "core-identity",
+    "recnum": 5,
+    "recomputed": "equal",
+    "stream": 1
+   },
+   {
+    "fields": "equal",
+    "object": "console-grants",
+    "recnum": 6,
+    "recomputed": "equal",
+    "stream": 1
+   },
+   {
+    "fields": "equal",
+    "object": "policy-absent",
+    "recnum": 7,
+    "stream": 1
+   },
+   {
+    "fields": "equal",
+    "object": "kernel-image",
+    "recnum": 8,
+    "recomputed": "equal",
+    "stream": 2
+   },
+   {
+    "fields": "equal",
+    "object": "device-tree",
+    "recnum": 9,
+    "recomputed": "equal",
+    "stream": 2
+   },
+   {
+    "fields": "equal",
+    "object": "kernel-image",
+    "recnum": 10,
+    "recomputed": "equal",
+    "stream": 3
+   },
+   {
+    "fields": "equal",
+    "object": "device-tree",
+    "recnum": 11,
+    "recomputed": "equal",
+    "stream": 3
+   },
+   {
+    "fields": "equal",
+    "object": "close",
+    "recnum": 12,
+    "stream": 255
+   }
+  ],
+  "reference": "a5d2aaefe2b779db53654ad3ad5887107691d291e57818a98104048ccbee3e1b",
+  "registers": {
+   "barrier": [
+    "e5d9582d4a991a18d412d4d47ad1890689abb57265f980ab1ce8c17dc8f79de7",
+    "51d180b88b6d02320816a0353e7369a697ed9ecd6d22282e149a4013359a5333",
+    "1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7",
+    "f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b"
+   ],
+   "replayed": [
+    "e5d9582d4a991a18d412d4d47ad1890689abb57265f980ab1ce8c17dc8f79de7",
+    "51d180b88b6d02320816a0353e7369a697ed9ecd6d22282e149a4013359a5333",
+    "1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7",
+    "f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b"
+   ],
+   "replayed_label": "unprotected",
+   "terminal": [
+    "e5d9582d4a991a18d412d4d47ad1890689abb57265f980ab1ce8c17dc8f79de7",
+    "51d180b88b6d02320816a0353e7369a697ed9ecd6d22282e149a4013359a5333",
+    "1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7",
+    "f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b"
+   ]
+  },
+  "self_report": [],
+  "state": "closed",
+  "ticks": {
+   "barrier": "0x56c8d3",
+   "launch": {
+    "0": "0x2976e3",
+    "1": "0x2968c0"
+   }
+  },
+  "volume_bytes": 4273
+ },
+ "log_declared": [],
+ "markers": [
+  "BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x000000027fe00000 dest=0x0000000102000000 bytes=0x00000000000a4000",
+  "BE_MVP:00 BOOT_VALIDATED",
+  "BE_MVP:00 CONFIG_SEALED inventory=18 authorities=2 roots=2 harts=0,1,9 identity=4dcf5c5afb1b3b55",
+  "BE_MVP:01 SCENARIO name=two-guests domains=2 harts=0,1,9 of=8 ring_bytes=0x8000 mvp_region=0x102068000 mvp_bytes=0x3c000 image_bytes=0xa4000",
+  "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 boundary=1 status=1:1,2:1 started=none identity=67637cdc9098fe90a4c668722b76d76478845fa8f42abcda6ee8ceb3c65a317b",
+  "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 hart=1 gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 root=0x102020000 vmid=1",
+  "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 hart=9 gpa=0x80000000 hpa=0x114000000 size=0x4000000 leaves=32 root=0x102030000 vmid=2",
+  "BE_MVP:04 PAYLOAD_CHECKED kernel_bytes=0x1f7cc4 image_size=0x22bfb0",
+  "BE_MVP:05 DOMAIN_RAM_CLEARED domain=0 gpa=0x80000000 size=0x4000000 ticks=0x33da20",
+  "BE_MVP:05 DOMAIN_RAM_CLEARED domain=1 gpa=0x80000000 size=0x4000000 ticks=0x62fbb9",
+  "BE_MVP:06 PAYLOAD_PLACED domain=0 kernel=0x80200000 kernel_bytes=0x1f7cc4 image_size=0x22bfb0 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x12dc4",
+  "BE_MVP:06 PAYLOAD_PLACED domain=1 kernel=0x80200000 kernel_bytes=0x1f7cc4 image_size=0x22bfb0 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x1198d",
+  "BE_MVP:06 LAUNCH domain=0 hart=1 register=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 expected=match ticks=0x2976e3",
+  "BE_MVP:06 LAUNCH domain=1 hart=9 register=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b expected=match ticks=0x2968c0",
+  "BE_MVP:19 LOG header magic=BEMVPLOG version=1 hlen=128 rlen=96 capacity=41 count=13 state=closed alg=0x000b scenario=4bda6abe6411e7414b2e0435f73cd90438ae6bbb0956aa44b00509d7a33157f5 config=0000000000000000000000000000000000000000000000000000000000000000",
+  "BE_MVP:19 LOG record seq=0 producer=0 type=measured stream=0 object=monitor-text repr=as-placed outcome=recorded base=0x0000000102000000 length=0x000000000000c000 dlen=32 srec=0 expected=0 digest=6ade3c003ac7a5ed0bc0b08740e231fcb3aebcf97edf7003c8d0a9c0f020ce56",
+  "BE_MVP:19 LOG record seq=1 producer=0 type=measured stream=0 object=monitor-rodata repr=as-placed outcome=recorded base=0x000000010200c000 length=0x0000000000003000 dlen=32 srec=1 expected=0 digest=7fb859a45d2fa2c7bbcca662b2fe99958fee9edf217b1a7bd7469eb3b4cc47fa",
+  "BE_MVP:19 LOG record seq=2 producer=0 type=measured stream=0 object=monitor-input repr=as-placed outcome=recorded base=0x000000010200f000 length=0x0000000000001000 dlen=32 srec=2 expected=0 digest=597f41e7398ac3139d8c3b832f03f89d10f769c699619068508573db2ab5c58b",
+  "BE_MVP:19 LOG record seq=3 producer=0 type=measured stream=0 object=mvp-text repr=as-placed outcome=recorded base=0x0000000102068000 length=0x0000000000018000 dlen=32 srec=3 expected=0 digest=2d55b2ca08d1cbd41b32e281703c222f371caa10d9829635a4f822810ed5678b",
+  "BE_MVP:19 LOG record seq=4 producer=0 type=measured stream=0 object=mvp-rodata repr=as-placed outcome=recorded base=0x0000000102080000 length=0x0000000000002000 dlen=32 srec=4 expected=0 digest=ade5927b4a10bbadcf819a691c09570a65bfe0526f3ebc50d68fba9541494ee2",
+  "BE_MVP:19 LOG record seq=5 producer=0 type=measured stream=1 object=core-identity repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=0 digest=4dcf5c5afb1b3b55a7db101a244d32e4c8ced12f261b0ee5736c9dbfba09161c",
+  "BE_MVP:19 LOG record seq=6 producer=0 type=measured stream=1 object=console-grants repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=1 expected=0 digest=96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+  "BE_MVP:19 LOG record seq=7 producer=0 type=informational stream=1 object=policy-absent repr=build-recorded outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=2 expected=0 digest=0000000000000000000000000000000000000000000000000000000000000000",
+  "BE_MVP:19 LOG record seq=8 producer=0 type=measured stream=2 object=kernel-image repr=as-placed outcome=recorded base=0x0000000110200000 length=0x00000000001f7cc4 dlen=32 srec=0 expected=0 digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+  "BE_MVP:19 LOG record seq=9 producer=0 type=measured stream=2 object=device-tree repr=as-placed outcome=gated-pass base=0x0000000113e00000 length=0x0000000000001000 dlen=32 srec=1 expected=0 digest=f51be0c7c1cf25f11eeb721dc4dcf19d34902794cf3f15cd43df0255523e0783",
+  "BE_MVP:19 LOG record seq=10 producer=0 type=measured stream=3 object=kernel-image repr=as-placed outcome=recorded base=0x0000000114200000 length=0x00000000001f7cc4 dlen=32 srec=0 expected=0 digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+  "BE_MVP:19 LOG record seq=11 producer=0 type=measured stream=3 object=device-tree repr=as-placed outcome=gated-pass base=0x0000000117e00000 length=0x0000000000001000 dlen=32 srec=1 expected=0 digest=ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea",
+  "BE_MVP:19 LOG record seq=12 producer=0 type=close stream=255 object=close repr=none outcome=none base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=13 digest=0000000000000000000000000000000000000000000000000000000000000000",
+  "BE_MVP:20 REGISTERS at=barrier r0=e5d9582d4a991a18d412d4d47ad1890689abb57265f980ab1ce8c17dc8f79de7 r1=51d180b88b6d02320816a0353e7369a697ed9ecd6d22282e149a4013359a5333 r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b ticks=0x56c8d3",
+  "BE_MVP:07 BLOCKS_PUBLISHED region=0x102040000 bytes=0x28000 generation=1 budget_ticks=0x100000000",
+  "BE_MVP:08 HART_STARTED hart=1 domain=0 result=0 ticks=0x4660",
+  "BE_MVP:20 REGISTERS at=terminal r0=e5d9582d4a991a18d412d4d47ad1890689abb57265f980ab1ce8c17dc8f79de7 r1=51d180b88b6d02320816a0353e7369a697ed9ecd6d22282e149a4013359a5333 r2=1819c2afaa5cacd63e8034802ff4f8cbce4a6458ebbe8c436b00d7dba434fec7 r3=f73d6a4020b5b71757f7491af1dc91b01c438916ec5d070a3e9748161f2c353b",
+  "BE_MVP:FAIL hart-start",
+  "BE_MVP:DETAIL domain=1 hart=9 result=-3 ticks=0x461"
+ ],
+ "probe_values": {},
+ "result": "PASS",
+ "stops": [],
+ "terminal": "fail-marker",
+ "toolchain": "gcc"
+}

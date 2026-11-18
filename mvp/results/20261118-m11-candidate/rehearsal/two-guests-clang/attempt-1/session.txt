@@ -1,0 +1,22 @@
+label=two-guests/clang
+kind=scenario
+file=two-guests-clang.img
+stage=done
+error=-
+qemu_exit=0
+oracle_verdict=PASS
+oracle=guest shutdown; read complete
+seconds=10.3
+sbi_version=3.0
+boot_hart=0
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2748416
+crc32=2d084219
+fdt=0xff736910
+fdt_end=0xff73edd2
+rule_hart=0
+shim_fdt=0xff736910
+terminal=BE_MVP:14 SHUTDOWN type=0 reason=0
+console_bytes=29916
+console_sha256=0e84bc4fb86f661fc35147a9867046e44f641a9d50bf1df00a0a418f93383234
+BE_MVP_UBOOT_SESSION[two-guests/clang]: PASS boot_hart=0 qemu_exit=0 oracle=PASS fdt=0xff736910 crc32=2d084219 seconds=10.3

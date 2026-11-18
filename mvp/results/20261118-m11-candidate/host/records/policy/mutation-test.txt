@@ -1,0 +1,15 @@
+ok te-poc A1: a rule naming an undeclared type: rejected by A1
+ok te-poc A1: an object left unlabeled (hart_region): rejected by A1
+ok te-poc A2: a rule whose target labels no object: rejected by A2
+ok te-poc A3 alone: allow writer_t reader_mem_t : memory { map };, need included: rejected by A3
+ok te-poc A4 alone: the writer's channel rule widened to { send receive }: rejected by A4
+ok te-poc A5 and A6: a reader write rule on shared_wr_t, need included: rejected by A5,A6
+ok te-poc A8 alone: the manifest granting G0 execute on shared_page: rejected by A8
+ok anchor A3 alone: a domain rule on its own type, need included: rejected by A3
+ok anchor A2 and A3: a domain rule on a type that labels no domain: rejected by A2,A3
+ok anchor A8 alone: a management grant without a rule (G1 pauses G0): rejected by A8
+ok anchor A3 alone: the secret readable by the host, need included: rejected by A3
+ok anchor A3, A6, and A8: a channel rule without memory (prot_t on req_t): rejected by A3,A6,A8
+ok anchor A5 alone: a second writer on the response page, need included: rejected by A5
+ok anchor A7 alone: a domain permission beyond pause and terminate: rejected by A7
+BE_MVP_POLICY_MUTATIONS: PASS mutations=14 rejected=14

@@ -1,0 +1,25 @@
+schema=be-mvp-evidence-v1
+kind=development
+source_commit=2fb5c69d34efb492fd66aa7d30bc4168c4e37948
+source_tree=clean
+lock_sha256=7fba0ae202de3a9d5f34dad3ab3cbfe4faa2b68d68dd2b59af93dfb65c3fd391
+lock_check_status=0
+closure_sha256=87263109e66099d238da9b90e59fe5ca8d8e3bcbaaed0f09c2c9201f8c862866
+scenario=two-guests scenario_sha256=4bda6abe6411e7414b2e0435f73cd90438ae6bbb0956aa44b00509d7a33157f5
+scenario=te-poc scenario_sha256=d63a495a198e514ac43a3d17e825d290a009fe0f9101dad28acf91360119c658 authority-report.json=564a26593faa56bf30100e47b88c5869f387a77c629cf760a05a5ece220f9b67 policy.te=4a1fac2bdea04cbcf4f3248c21cb41cf2823625b46d284c45d9c69b6a25b8b2d
+scenario=anchor scenario_sha256=b02741278f680b1f5dfeab16fd1cc060fc06795f94c88043bf1445e9571c0d03 authority-report.json=12cf40668239e36106ec94df67c40054cd2514500b37b331bda87e5bd35e8a1e policy.te=bfecfa923eaa64782cca2f662091de1329eba2c969408a59f04a8c0234fc79aa
+images=801
+references=102
+log_exports=99
+records=image-check,variants,probes,budgets,platform-probe,partition-tool,run-tool-check
+capture_self-test=BE_MVP_CAPTURE_SELF_TEST: PASS cases=325 failed=0
+capture_mutation-test=BE_MVP_CAPTURE_MUTATIONS: PASS mutations=494 rejected=494 seed=0x4d30
+policy_check=BE_MVP_POLICY: PASS scenario=te-poc grants=6 flows=1 checks=8 config=964804f1e41bfb1f158e5b68334a97bbb798a20daa3b01d9173df024ab211f31
+policy_check_anchor=BE_MVP_POLICY: PASS scenario=anchor grants=12 flows=2 checks=8 config=adde5952b9f4486bfba9e2952eac02b714c76ce52fe1206395d9bed86d6102b4
+policy_self_test=BE_MVP_POLICY_SELF_TEST: PASS cases=49
+policy_mutations=BE_MVP_POLICY_MUTATIONS: PASS mutations=14 rejected=14
+BE_MVP_QEMU_TOOLCHAIN[gcc]: runs=57 attempts=65 refused=8
+BE_MVP_QEMU_TOOLCHAIN[clang]: runs=54 attempts=60 refused=6
+BE_MVP_QEMU: PASS runs=111 attempts=125 refused=14
+sessions=BE_MVP_SESSIONS: PASS sessions=6 attempts=6 refused=0
+rehearsal=absent

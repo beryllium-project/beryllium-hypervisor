@@ -1,0 +1,33 @@
++0.860 2026-11-17T22:37:48.766Z ready line=196 {"monitor": "BE_MVP:15 INPUT_ARMED grants=g0,g1 prefix=0x7e"}
++0.860 2026-11-17T22:37:48.766Z ready line=197 {"monitor": "BE_MVP:16 FOCUS none"}
++1.048 2026-11-17T22:37:48.954Z ready line=310 {"contains": "MVPINIT 11 SHELL tty=/dev/hvc0", "domain": 0}
++1.048 2026-11-17T22:37:48.954Z ready line=313 {"contains": "MVPINIT 11 SHELL tty=/dev/hvc0", "domain": 1}
++1.048 2026-11-17T22:37:48.954Z step=0 focus "g0" keys=2
++1.074 2026-11-17T22:37:48.981Z step=0 line=314 {"monitor": "BE_MVP:16 FOCUS g0"}
++1.575 2026-11-17T22:37:49.481Z step=1 send "echo NONCE" keys=22
++1.864 2026-11-17T22:37:49.770Z step=1 line=315 {"domain": 0, "line": "# echo NONCE"}
++1.864 2026-11-17T22:37:49.770Z step=2 line=316 {"contains": "NONCE", "domain": 0}
++2.365 2026-11-17T22:37:50.271Z step=3 send "ls /bin | wc -l" keys=16
++2.549 2026-11-17T22:37:50.455Z step=3 line=317 {"domain": 0, "line": "# ls /bin | wc -l"}
++2.575 2026-11-17T22:37:50.481Z step=4 line=318 {"contains": "18", "domain": 0}
++2.575 2026-11-17T22:37:50.481Z step=5 focus "g1" keys=2
++2.602 2026-11-17T22:37:50.508Z step=5 line=319 {"monitor": "BE_MVP:16 FOCUS g1"}
++3.102 2026-11-17T22:37:51.008Z step=6 send "echo NONCE" keys=22
++3.418 2026-11-17T22:37:51.324Z step=6 line=320 {"domain": 1, "line": "# echo NONCE"}
++3.418 2026-11-17T22:37:51.324Z step=7 line=321 {"contains": "NONCE", "domain": 1}
++3.918 2026-11-17T22:37:51.824Z step=8 negative "bad-sequence" keys=2
++3.971 2026-11-17T22:37:51.877Z step=8 line=322 {"monitor": "BE_MVP:17 INPUT_DROP bad-sequence"}
++4.472 2026-11-17T22:37:52.378Z step=9 negative "literal" keys=20
++4.739 2026-11-17T22:37:52.645Z step=9 line=323 {"domain": 1, "line": "# ~/bin/echo literal"}
++4.739 2026-11-17T22:37:52.645Z step=9 line=324 {"domain": 1, "line": "literal"}
++4.739 2026-11-17T22:37:52.645Z step=10 focus "g0" keys=2
++4.765 2026-11-17T22:37:52.671Z step=10 line=325 {"monitor": "BE_MVP:16 FOCUS g0"}
++5.265 2026-11-17T22:37:53.171Z step=11 send "exit" keys=5
++5.372 2026-11-17T22:37:53.278Z step=11 line=326 {"domain": 0, "line": "# exit"}
++5.372 2026-11-17T22:37:53.278Z step=12 line=327 {"contains": "MVPINIT 11 SHELL exit=0", "domain": 0}
++5.372 2026-11-17T22:37:53.278Z step=13 focus "g1" keys=2
++5.398 2026-11-17T22:37:53.304Z step=13 line=332 {"monitor": "BE_MVP:16 FOCUS g1"}
++5.898 2026-11-17T22:37:53.804Z step=14 send "exit" keys=5
++5.979 2026-11-17T22:37:53.885Z step=14 line=333 {"domain": 1, "line": "# exit"}
++5.979 2026-11-17T22:37:53.885Z step=15 line=334 {"contains": "MVPINIT 11 SHELL exit=0", "domain": 1}
++5.979 2026-11-17T22:37:53.885Z session typed

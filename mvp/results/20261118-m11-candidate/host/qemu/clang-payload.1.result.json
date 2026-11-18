@@ -1,0 +1,78 @@
+{
+ "boot_marker": "PASS",
+ "capture": {
+  "bytes": 10587,
+  "sha256": "2bca99c9033280e48edf0f68239300cd58b5530c3dea10629112d9f2c47d337d"
+ },
+ "costs": {},
+ "expect": {
+  "image": "payload",
+  "scenario_sha256": "4bda6abe6411e7414b2e0435f73cd90438ae6bbb0956aa44b00509d7a33157f5"
+ },
+ "fields": {
+  "base": "0x0000000108000000",
+  "boot_hart": "0",
+  "boundary": "on",
+  "bytes": "0x00000000000a4000",
+  "dest": "0x0000000102000000",
+  "fdt": "0x000000027fe00000",
+  "firmware_boundary": "1",
+  "hart": "0x0000000000000000",
+  "identity": "c2548f715d2a2c3e0b3f7e959b15a029c379f2ea604e03804f409e5b72cfa81c",
+  "image": "payload",
+  "mode": "direct",
+  "sbi_version": "3.0",
+  "started": "none"
+ },
+ "findings": [],
+ "lines": {
+  "g0": 0,
+  "g1": 0
+ },
+ "log": {
+  "boot_image": "nominal",
+  "contract": {
+   "run": "pre-measurement",
+   "sequence": "v1"
+  },
+  "count": null,
+  "export_sha256": null,
+  "launch": {},
+  "lines": 0,
+  "r2": "kept",
+  "reference": "41d67dd2af90f93010e244f5781f3885de93b072703345a8bb4aa532408c1d19",
+  "registers": {
+   "barrier": null,
+   "replayed": [
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000"
+   ],
+   "replayed_label": "unprotected",
+   "terminal": null
+  },
+  "state": null,
+  "ticks": {
+   "barrier": null,
+   "launch": {}
+  },
+  "volume_bytes": 0
+ },
+ "log_declared": [],
+ "markers": [
+  "BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x000000027fe00000 dest=0x0000000102000000 bytes=0x00000000000a4000",
+  "BE_MVP:00 BOOT_VALIDATED",
+  "BE_MVP:00 CONFIG_SEALED inventory=18 authorities=2 roots=2 harts=0,1,2 identity=d6ffd49a9cb70182",
+  "BE_MVP:01 SCENARIO name=two-guests domains=2 harts=0,1,2 of=8 ring_bytes=0x8000 mvp_region=0x102068000 mvp_bytes=0x3c000 image_bytes=0xa4000",
+  "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 boundary=1 status=1:1,2:1 started=none identity=c2548f715d2a2c3e0b3f7e959b15a029c379f2ea604e03804f409e5b72cfa81c",
+  "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 hart=1 gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 root=0x102020000 vmid=1",
+  "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 hart=2 gpa=0x80000000 hpa=0x114000000 size=0x4000000 leaves=32 root=0x102030000 vmid=2",
+  "BE_MVP:FAIL payload"
+ ],
+ "probe_values": {},
+ "result": "PASS",
+ "stops": [],
+ "terminal": "fail-marker",
+ "toolchain": "clang"
+}

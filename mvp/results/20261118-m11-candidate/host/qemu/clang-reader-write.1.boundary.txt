@@ -1,0 +1,1 @@
+BE_MVP_BOUNDARY: PASS image=reader-write pair=reader-write pmp_mode=plain control_hart=confined harts=0:boot,1:never-started,2:never-started,3-7:never-started identity=55b7a10fb35e

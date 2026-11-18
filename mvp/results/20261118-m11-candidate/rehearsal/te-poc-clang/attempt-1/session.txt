@@ -1,0 +1,22 @@
+label=te-poc/clang
+kind=scenario
+file=te-poc-clang.img
+stage=done
+error=-
+qemu_exit=0
+oracle_verdict=PASS
+oracle=guest shutdown; read complete
+seconds=10.2
+sbi_version=3.0
+boot_hart=0
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+bytes_read=2748416
+crc32=2cab4444
+fdt=0xff736890
+fdt_end=0xff73edd6
+rule_hart=0
+shim_fdt=0xff736890
+terminal=BE_MVP:14 SHUTDOWN type=0 reason=0
+console_bytes=32092
+console_sha256=46d613b7a241cb93d0e261870d0f2d2ede055489ad0c5603dd9d2011a33d3d06
+BE_MVP_UBOOT_SESSION[te-poc/clang]: PASS boot_hart=0 qemu_exit=0 oracle=PASS fdt=0xff736890 crc32=2cab4444 seconds=10.2

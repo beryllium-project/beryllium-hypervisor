@@ -1,0 +1,3 @@
+session=sessions/shell.json name=shell sha256=c17bdb54ed9e90bdd51451fc6a66113ef165276f6e06ff80703942c546322726 steps=16
+expect=anchor-shell.json image=anchor-shell sha256=6034010f1e02b157c2c3e7b28d40be484f24f556cdfd873e2932640e122fbe8f
+elf=<repo>/build/mvp/variants/gcc/anchor-shell/be-mvp-boot.elf sha256=15ceaf79cded78acfaa2a21a37fd27795d16a8815040f970d10649e1f1038d37

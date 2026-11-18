@@ -1,0 +1,1 @@
+BE_MVP_BOUNDARY: PASS image=breach-g0 pair=breach-g0 pmp_mode=smepmp control_hart=confined harts=0:confined,1:confined,2:confined,3-7:never-started identity=f0c2712ee824

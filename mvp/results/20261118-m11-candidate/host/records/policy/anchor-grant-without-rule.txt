@@ -1,0 +1,3 @@
+BE_MVP_POLICY: FAIL A8: G0 G1 domain { pause terminate }: pause terminate allowed by no rule
+BE_MVP_POLICY: FAIL grant G0 G1 domain { pause terminate }: source none
+BE_MVP_POLICY_NEGATIVE: PASS name=grant-without-rule fails=A8 source_none=1 undeclared=0

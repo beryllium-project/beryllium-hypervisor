@@ -1,0 +1,6 @@
+removed systemd-standalone-sysusers-259.7-1.fc44.x86_64
+removed glibc-minimal-langpack-2.43-7.fc44.x86_64
+removed rpm-build-libs-6.0.1-2.fc44.x86_64
+removed rpm-sign-libs-6.0.1-2.fc44.x86_64
+removed dnf5-plugins-5.4.2.1-1.fc44.x86_64
+installed systemd-sysusers-259.10-1.fc44.x86_64

@@ -1,0 +1,19 @@
+claim ledger schema: PASS
+claim ledger methods: PASS
+claim ledger evidence: PASS artifacts=159 records=11
+claim ledger commits: skipped (release from 9d06b024: the cited commits are the private internal repository's (RELEASE.txt))
+claim ledger rendering: PASS
+claim ledger release surfaces: PASS candidate=4 commit=d70a8535
+claim ledger guide commands: PASS commands=45
+claim ledger phrasing: PASS surfaces=8 literals=35 conditionals=3 review_items=3
+claim ledger privacy: PASS files=553
+claim ledger headers: PASS surfaces=8
+claim ledger candidate schema: PASS candidate=M11 claims=7 non_claims=11
+claim ledger candidate methods: PASS
+claim ledger candidate evidence: PASS artifacts=30 records=0
+claim ledger candidate tree: PASS tree=none (not named yet)
+claim ledger candidate firmware: PASS commit=ed70256d
+claim ledger candidate rendering: PASS claim-ledger-boundary.md
+claim ledger candidate page: PASS page=claim-boundary.md parts=7 sentences=11
+claim ledger candidate words: PASS words=3
+BE_MVP_CLAIM_LEDGER: PASS checks=17 claims=58 boundary=18 candidate=M11 candidate_claims=7 candidate_non_claims=11

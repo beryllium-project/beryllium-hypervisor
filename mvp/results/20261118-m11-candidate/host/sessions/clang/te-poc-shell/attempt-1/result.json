@@ -1,0 +1,271 @@
+{
+ "boot_marker": "PASS",
+ "capture": {
+  "bytes": 30483,
+  "sha256": "36add2289a966b651877ea15aa0f3608be79e4952f9305de8bf253aec08ff26f"
+ },
+ "costs": {
+  "g0_denial1_service_ticks": 2032,
+  "g0_ping_to_receipt_ticks": 237688,
+  "g0_receipt_to_pong_ticks": 0,
+  "g0_run_ticks": 76097230,
+  "g0_run_ticks_per_exit": 222506,
+  "g1_denial1_service_ticks": 383,
+  "g1_denial2_service_ticks": 56,
+  "g1_ping_to_receipt_ticks": 230280,
+  "g1_receipt_to_pong_ticks": 0,
+  "g1_run_ticks": 69883278,
+  "g1_run_ticks_per_exit": 209231,
+  "hart0_idle_permille": 993,
+  "hart0_idle_ticks": 75805489,
+  "hart0_records": 143,
+  "hart0_run_ticks": 76322127,
+  "hart0_wakes": 289
+ },
+ "expect": {
+  "image": "te-poc-shell",
+  "scenario_sha256": "d63a495a198e514ac43a3d17e825d290a009fe0f9101dad28acf91360119c658"
+ },
+ "fields": {
+  "alternations": "108",
+  "base": "0x0000000108000000",
+  "boot_hart": "0",
+  "boundary": "on",
+  "bytes": "0x00000000000a4000",
+  "denials_g0": "1",
+  "denials_g1": "2",
+  "dest": "0x0000000102000000",
+  "exits_g0": "342",
+  "exits_g1": "334",
+  "fdt": "0x000000027fe00000",
+  "firmware_boundary": "1",
+  "hart": "0x0000000000000000",
+  "identity": "6a74c51979347c4bcdb20128c739bee83f1bcb025c393d911b2533b8cdc6d8c2",
+  "image": "te-poc-shell",
+  "input_delivered": "g0=86,g1=83",
+  "input_dropped": "no-focus:18",
+  "input_read": "193",
+  "mode": "direct",
+  "overlap_ticks": "0x42a5580",
+  "records": "143",
+  "sbi_version": "3.0",
+  "shorter_ticks": "0x42a558e",
+  "started": "none",
+  "wakes": "289"
+ },
+ "findings": [],
+ "lines": {
+  "g0": 65,
+  "g1": 67
+ },
+ "log": {
+  "boot_image": "nominal",
+  "contract": {
+   "run": "complete",
+   "sequence": "v2"
+  },
+  "count": 14,
+  "export_sha256": "0c50afbb73681714db135b558606abaf3526adc743a1d764fb8e0159342e5fb9",
+  "launch": {
+   "0": "f65d7f918ab2bb372fc4dfac621b370d81f6976ade41a03369f7dd92f748373a",
+   "1": "e78f4f83b77d2c9d4d9606e823382f4d1a76fcf0b5fe3ff6613d7d4114cb599f"
+  },
+  "lines": 17,
+  "r2": "kept",
+  "records": [
+   {
+    "fields": "equal",
+    "object": "monitor-text",
+    "recnum": 0,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "monitor-rodata",
+    "recnum": 1,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "monitor-input",
+    "recnum": 2,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "mvp-text",
+    "recnum": 3,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "mvp-rodata",
+    "recnum": 4,
+    "recomputed": "equal",
+    "stream": 0
+   },
+   {
+    "fields": "equal",
+    "object": "core-identity",
+    "recnum": 5,
+    "recomputed": "equal",
+    "stream": 1
+   },
+   {
+    "fields": "equal",
+    "object": "console-grants",
+    "recnum": 6,
+    "recomputed": "equal",
+    "stream": 1
+   },
+   {
+    "fields": "equal",
+    "object": "configuration-identity",
+    "recnum": 7,
+    "recomputed": "equal",
+    "stream": 1
+   },
+   {
+    "fields": "equal",
+    "object": "policy-identity",
+    "recnum": 8,
+    "recomputed": "equal",
+    "stream": 1
+   },
+   {
+    "fields": "equal",
+    "object": "kernel-image",
+    "recnum": 9,
+    "recomputed": "equal",
+    "stream": 2
+   },
+   {
+    "fields": "equal",
+    "object": "device-tree",
+    "recnum": 10,
+    "recomputed": "equal",
+    "stream": 2
+   },
+   {
+    "fields": "equal",
+    "object": "kernel-image",
+    "recnum": 11,
+    "recomputed": "equal",
+    "stream": 3
+   },
+   {
+    "fields": "equal",
+    "object": "device-tree",
+    "recnum": 12,
+    "recomputed": "equal",
+    "stream": 3
+   },
+   {
+    "fields": "equal",
+    "object": "close",
+    "recnum": 13,
+    "stream": 255
+   }
+  ],
+  "reference": "a601f33925282422922a86019cb9721b64c4f4534ee195008f698bb6792eda3a",
+  "registers": {
+   "barrier": [
+    "01f0c1bc44072ba257b5e8a3cdd2232ee669333d07b83ca08a9b85514e3efd7f",
+    "b87497c35b48a2ed717cd735b4a0f1b0827a221ba16c427558b6664c7b7b06ef",
+    "f65d7f918ab2bb372fc4dfac621b370d81f6976ade41a03369f7dd92f748373a",
+    "e78f4f83b77d2c9d4d9606e823382f4d1a76fcf0b5fe3ff6613d7d4114cb599f"
+   ],
+   "replayed": [
+    "01f0c1bc44072ba257b5e8a3cdd2232ee669333d07b83ca08a9b85514e3efd7f",
+    "b87497c35b48a2ed717cd735b4a0f1b0827a221ba16c427558b6664c7b7b06ef",
+    "f65d7f918ab2bb372fc4dfac621b370d81f6976ade41a03369f7dd92f748373a",
+    "e78f4f83b77d2c9d4d9606e823382f4d1a76fcf0b5fe3ff6613d7d4114cb599f"
+   ],
+   "replayed_label": "unprotected",
+   "terminal": [
+    "01f0c1bc44072ba257b5e8a3cdd2232ee669333d07b83ca08a9b85514e3efd7f",
+    "b87497c35b48a2ed717cd735b4a0f1b0827a221ba16c427558b6664c7b7b06ef",
+    "f65d7f918ab2bb372fc4dfac621b370d81f6976ade41a03369f7dd92f748373a",
+    "e78f4f83b77d2c9d4d9606e823382f4d1a76fcf0b5fe3ff6613d7d4114cb599f"
+   ]
+  },
+  "self_report": [],
+  "state": "closed",
+  "ticks": {
+   "barrier": "0xe8057",
+   "launch": {
+    "0": "0x6f12a",
+    "1": "0x6ee78"
+   }
+  },
+  "volume_bytes": 4556
+ },
+ "log_declared": [],
+ "markers": [
+  "BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x000000027fe00000 dest=0x0000000102000000 bytes=0x00000000000a4000",
+  "BE_MVP:00 BOOT_VALIDATED",
+  "BE_MVP:00 CONFIG_SEALED inventory=19 authorities=4 roots=2 harts=0,1,2 identity=c797afb6a5795a93",
+  "BE_MVP:01 SCENARIO name=te-poc domains=2 harts=0,1,2 of=8 ring_bytes=0x8000 mvp_region=0x102068000 mvp_bytes=0x3c000 image_bytes=0xa4000",
+  "BE_MVP:02 FIRMWARE_PROBED hsm=1 ipi=1 boundary=1 status=1:1,2:1 started=none identity=6a74c51979347c4bcdb20128c739bee83f1bcb025c393d911b2533b8cdc6d8c2",
+  "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=0 hart=1 gpa=0x80000000 hpa=0x110000000 size=0x4000000 leaves=32 root=0x102020000 vmid=1",
+  "BE_MVP:03 GSTAGE_BUILT_REWALKED domain=1 hart=2 gpa=0x80000000 hpa=0x114000000 size=0x4000000 leaves=32 root=0x102030000 vmid=2",
+  "BE_MVP:03 CHANNEL_CHECKED channel=0 writer=0 reader=1 gpa=0x84000000 hpa=0x118000000 bytes=0x1000 level0=0x102025000,0x102035000 writer_pte=0x460000d7 reader_pte=0x46000053 config=964804f1e41bfb1f158e5b68334a97bbb798a20daa3b01d9173df024ab211f31",
+  "BE_MVP:04 PAYLOAD_CHECKED kernel_bytes=0x1f7cc4 image_size=0x22bfb0",
+  "BE_MVP:05 DOMAIN_RAM_CLEARED domain=0 gpa=0x80000000 size=0x4000000 ticks=0x30650",
+  "BE_MVP:05 DOMAIN_RAM_CLEARED domain=1 gpa=0x80000000 size=0x4000000 ticks=0x300c7",
+  "BE_MVP:05 CHANNEL_CLEARED channel=0 hpa=0x118000000 bytes=0x1000 ticks=0x529",
+  "BE_MVP:06 PAYLOAD_PLACED domain=0 kernel=0x80200000 kernel_bytes=0x1f7cc4 image_size=0x22bfb0 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x234c",
+  "BE_MVP:06 PAYLOAD_PLACED domain=1 kernel=0x80200000 kernel_bytes=0x1f7cc4 image_size=0x22bfb0 dtb=0x83e00000 dtb_bytes=0x1000 ticks=0x1c83",
+  "BE_MVP:06 LAUNCH domain=0 hart=1 register=f65d7f918ab2bb372fc4dfac621b370d81f6976ade41a03369f7dd92f748373a expected=match ticks=0x6f12a",
+  "BE_MVP:06 LAUNCH domain=1 hart=2 register=e78f4f83b77d2c9d4d9606e823382f4d1a76fcf0b5fe3ff6613d7d4114cb599f expected=match ticks=0x6ee78",
+  "BE_MVP:19 LOG header magic=BEMVPLOG version=1 hlen=128 rlen=96 capacity=41 count=14 state=closed alg=0x000b scenario=d63a495a198e514ac43a3d17e825d290a009fe0f9101dad28acf91360119c658 config=964804f1e41bfb1f158e5b68334a97bbb798a20daa3b01d9173df024ab211f31",
+  "BE_MVP:19 LOG record seq=0 producer=0 type=measured stream=0 object=monitor-text repr=as-placed outcome=recorded base=0x0000000102000000 length=0x000000000000c000 dlen=32 srec=0 expected=0 digest=79b856191c81b803b3f9f176f34e2433e992321de2788ac28d43947d97d0c575",
+  "BE_MVP:19 LOG record seq=1 producer=0 type=measured stream=0 object=monitor-rodata repr=as-placed outcome=recorded base=0x000000010200c000 length=0x0000000000003000 dlen=32 srec=1 expected=0 digest=b9795316c4ac30c0c4cacd6922c485242bcbb86c0695748dd17b4223f375c1d1",
+  "BE_MVP:19 LOG record seq=2 producer=0 type=measured stream=0 object=monitor-input repr=as-placed outcome=recorded base=0x000000010200f000 length=0x0000000000001000 dlen=32 srec=2 expected=0 digest=b1a283b0faaad6e1319a44482f984d80aed491df7f021c39fc616fea364ea176",
+  "BE_MVP:19 LOG record seq=3 producer=0 type=measured stream=0 object=mvp-text repr=as-placed outcome=recorded base=0x0000000102068000 length=0x0000000000018000 dlen=32 srec=3 expected=0 digest=be672e6f6f686119e5efdf1454df58e31d46d1b70e887a42323a186649d0a70c",
+  "BE_MVP:19 LOG record seq=4 producer=0 type=measured stream=0 object=mvp-rodata repr=as-placed outcome=recorded base=0x0000000102080000 length=0x0000000000002000 dlen=32 srec=4 expected=0 digest=bfe1df0121d3d0f92e4a159222167e01ad608effc8cfc8049829b3f5e34edcb3",
+  "BE_MVP:19 LOG record seq=5 producer=0 type=measured stream=1 object=core-identity repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=0 digest=c797afb6a5795a9311165040bce83a525645527a546a4d68c9692e9ee560cd66",
+  "BE_MVP:19 LOG record seq=6 producer=0 type=measured stream=1 object=console-grants repr=as-computed outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=1 expected=0 digest=9dcf97a184f32623d11a73124ceb99a5709b083721e878a16d78f596718ba7b2",
+  "BE_MVP:19 LOG record seq=7 producer=0 type=informational stream=1 object=configuration-identity repr=build-recorded outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=2 expected=0 digest=964804f1e41bfb1f158e5b68334a97bbb798a20daa3b01d9173df024ab211f31",
+  "BE_MVP:19 LOG record seq=8 producer=0 type=informational stream=1 object=policy-identity repr=build-recorded outcome=recorded base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=3 expected=0 digest=4a1fac2bdea04cbcf4f3248c21cb41cf2823625b46d284c45d9c69b6a25b8b2d",
+  "BE_MVP:19 LOG record seq=9 producer=0 type=measured stream=2 object=kernel-image repr=as-placed outcome=recorded base=0x0000000110200000 length=0x00000000001f7cc4 dlen=32 srec=0 expected=0 digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+  "BE_MVP:19 LOG record seq=10 producer=0 type=measured stream=2 object=device-tree repr=as-placed outcome=gated-pass base=0x0000000113e00000 length=0x0000000000001000 dlen=32 srec=1 expected=0 digest=777d225af04ad8336811a76ce944d6cdb0e6c298b6d2a10ed7d1adf867e987df",
+  "BE_MVP:19 LOG record seq=11 producer=0 type=measured stream=3 object=kernel-image repr=as-placed outcome=recorded base=0x0000000114200000 length=0x00000000001f7cc4 dlen=32 srec=0 expected=0 digest=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6",
+  "BE_MVP:19 LOG record seq=12 producer=0 type=measured stream=3 object=device-tree repr=as-placed outcome=gated-pass base=0x0000000117e00000 length=0x0000000000001000 dlen=32 srec=1 expected=0 digest=b408340c0babce04416957d053b1c23166b416c4b42ecde243f68b3959e817b6",
+  "BE_MVP:19 LOG record seq=13 producer=0 type=close stream=255 object=close repr=none outcome=none base=0x0000000000000000 length=0x0000000000000000 dlen=32 srec=0 expected=14 digest=0000000000000000000000000000000000000000000000000000000000000000",
+  "BE_MVP:20 REGISTERS at=barrier r0=01f0c1bc44072ba257b5e8a3cdd2232ee669333d07b83ca08a9b85514e3efd7f r1=b87497c35b48a2ed717cd735b4a0f1b0827a221ba16c427558b6664c7b7b06ef r2=f65d7f918ab2bb372fc4dfac621b370d81f6976ade41a03369f7dd92f748373a r3=e78f4f83b77d2c9d4d9606e823382f4d1a76fcf0b5fe3ff6613d7d4114cb599f ticks=0xe8057",
+  "BE_MVP:07 BLOCKS_PUBLISHED region=0x102040000 bytes=0x28000 generation=1 budget_ticks=0x100000000",
+  "BE_MVP:15 INPUT_ARMED grants=g0,g1 prefix=0x7e",
+  "BE_MVP:16 FOCUS none",
+  "BE_MVP:08 HART_STARTED hart=1 domain=0 result=0 ticks=0xaa5",
+  "BE_MVP:08 HART_STARTED hart=2 domain=1 result=0 ticks=0x6b",
+  "BE_MVP:09 HART_READY hart=1 domain=0 hgatp=0x8000100000102020 hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x22 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff",
+  "BE_MVP:09 HART_READY hart=2 domain=1 hgatp=0x8000200000102030 hstatus_controls=0x180 hedeleg=0xb15d hideleg=0x40 hcounteren=0x2 sie=0x22 henvcfg=0x8000000000000000 vstimecmp=0xffffffffffffffff",
+  "BE_MVP:10 DOMAIN_ENTERED hart=1 domain=0 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x7d27",
+  "BE_MVP:10 DOMAIN_ENTERED hart=2 domain=1 pc=0x80200000 a0=0x0 a1=0x83e00000 ticks=0x7d19",
+  "BE_MVP:11 TICK_PROBE hart=1 domain=0 sent=0x4e720 received=0x88798 answered=0x88798 spv=1",
+  "BE_MVP:11 TICK_PROBE hart=2 domain=1 sent=0x50006 received=0x8838e answered=0x8838e spv=1",
+  "BE_MVP:17 INPUT_DROP no-focus",
+  "BE_MVP:16 FOCUS g0",
+  "BE_MVP:DENY hart=1 domain=0 seq=1 kind=unmapped cause=0x15 injected=0x5 gpa=0x84001000 htval=0x21000400 htinst=0x3303 stval=0x3fb7b4c000 sepc=0x127ec vsstatus=0x200000022 vstvec=0xffffffff800da8fc ticks=0x20396c1 service=0x7f0",
+  "BE_MVP:16 FOCUS g1",
+  "BE_MVP:DENY hart=2 domain=1 seq=1 kind=read-only cause=0x17 injected=0x7 gpa=0x84000ff8 htval=0x210003fe htinst=0x3023 stval=0x3f80d0aff8 sepc=0x127f8 vsstatus=0x200000022 vstvec=0xffffffff800da8fc ticks=0x35d9eb9 service=0x17f",
+  "BE_MVP:DENY hart=2 domain=1 seq=2 kind=unmapped cause=0x15 injected=0x5 gpa=0x90000000 htval=0x24000000 htinst=0x3303 stval=0x3f8bbed000 sepc=0x127ec vsstatus=0x200000022 vstvec=0xffffffff800da8fc ticks=0x3d2d168 service=0x38",
+  "BE_MVP:12 DOMAIN_SHUTDOWN hart=2 domain=1 exits=334 sbi=332 ipi=0 tick=264 base=14 time=0 dbcn_write=180 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=67 ring_peak=0xb50 entered=0x7d19 ticks=0x42ad2a7",
+  "BE_MVP:16 FOCUS g0",
+  "BE_MVP:12 DOMAIN_SHUTDOWN hart=1 domain=0 exits=342 sbi=341 ipi=0 tick=288 base=14 time=0 dbcn_write=180 dbcn_read=0 dbcn_byte=0 srst=1 refused=0 lines=65 ring_peak=0xba8 entered=0x7d27 ticks=0x489a3f5",
+  "BE_MVP:18 INPUT read=193 g0=86:a22fecfe47f20d69 g1=83:1c2d5089a53f025c dropped=no-focus:18",
+  "BE_MVP:13 RUN_COMPLETE domains=2 records=143 wakes=289 idle_ticks=0x484b331 overlap_ticks=0x42a5580 ticks=0x48c954f",
+  "BE_MVP:20 REGISTERS at=terminal r0=01f0c1bc44072ba257b5e8a3cdd2232ee669333d07b83ca08a9b85514e3efd7f r1=b87497c35b48a2ed717cd735b4a0f1b0827a221ba16c427558b6664c7b7b06ef r2=f65d7f918ab2bb372fc4dfac621b370d81f6976ade41a03369f7dd92f748373a r3=e78f4f83b77d2c9d4d9606e823382f4d1a76fcf0b5fe3ff6613d7d4114cb599f",
+  "BE_MVP:14 SHUTDOWN type=0 reason=0"
+ ],
+ "probe_values": {},
+ "result": "PASS",
+ "stops": [],
+ "terminal": "shutdown-requested",
+ "toolchain": "clang"
+}

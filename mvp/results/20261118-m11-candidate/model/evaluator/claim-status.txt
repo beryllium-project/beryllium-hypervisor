@@ -1,0 +1,12 @@
+model=architecture-model-0.2
+scope=abstract-single-hart-two-domain
+host_checker=policy-neutral-proposal-canonical-derivation-tested-with-gcc-and-clang
+proof=rocq-9.3-23-bounded-obligations
+proposal_source_independence=yes-bounded-abstract-model
+canonical_identity=deterministic-reporting-only
+c_refinement=no
+binary_correspondence=no
+hardware_validation=NOT-RUN
+full_noninterference=no
+runtime_authorized=no
+differential=rocq-oracle-c-checker-mvp-checker-agree-instances-4-mutations-91-three-way-73-two-way-22-comparisons-241-not-a-refinement

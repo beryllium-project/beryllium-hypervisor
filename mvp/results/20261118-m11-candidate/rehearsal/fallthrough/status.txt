@@ -1,0 +1,23 @@
+label=fallthrough
+image=gcc/be-mvp-boot.img
+image_sha256=4c7f2d12488f6973a39478628d537cc794ba4582f9062517ac72808f6f023ee8
+boundary=on
+pmp_mode=plain
+dtb=partition/two-guests/two-guests/plain/two-guests.dtb
+dtb_sha256=6028ec9377c4bea6eb0ed89a45cccf019e7de693a5907b15bd2b1890a3c066b0
+control_hart=confined
+qemu_image_bytes=2748416
+qemu_image_sha256=29f9994057e8c4f64e8ac937a0ecff612edc8ccd7209d793e8e5d7a1c07ecfe6
+qemu_image_crc32=9e2737f0
+qemu_text_offset=0x88000000
+qemu_image_source=built
+qemu_image=gcc/be-mvp-boot-qemu.img
+disk_file=two-guests-gcc.img
+be_image=missing.img
+disk_sha256=708a7731471b3b1538779851761bf2a5a727f9a9624095ef79b06c5ac07421a8
+expect=-
+report=-
+measured_kernel=-
+measured_dtb=-
+attempt=1 session=PASS check=- check_exit=- boot_hart=0 qemu_exit=0 oracle=PASS boundary=PASS disk=same console_sha256=635072fff5f16410364c95ce39cb4983c4ffee8258da5c55dff97cde85641f5d
+BE_MVP_UBOOT_REHEARSAL[fallthrough]: PASS attempts=1 refused=0 boot_harts=0 session=PASS check=- check_exit=- qemu_exit=0 oracle=PASS boundary=PASS image=29f9994057e8 crc32=9e2737f0 (FALLTHROUGH, no Starting kernel)

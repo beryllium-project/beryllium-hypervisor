@@ -1,0 +1,15 @@
+label=fallthrough
+kind=fallthrough
+file=missing.img
+stage=done
+error=-
+qemu_exit=0
+oracle_verdict=PASS
+oracle=stopped by the harness: fallthrough complete; read complete
+seconds=7.8
+sbi_version=3.0
+boot_hart=0
+uboot=U-Boot 2022.10 (Oct 03 2022 - 19:25:32 +0000)
+console_bytes=10214
+console_sha256=635072fff5f16410364c95ce39cb4983c4ffee8258da5c55dff97cde85641f5d
+BE_MVP_UBOOT_SESSION[fallthrough]: PASS boot_hart=0 qemu_exit=0 oracle=PASS fallthrough=yes seconds=7.8

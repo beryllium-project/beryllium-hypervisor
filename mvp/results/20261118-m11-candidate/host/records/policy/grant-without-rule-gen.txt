@@ -1,0 +1,1 @@
+BE_MVP_SCENARIO: FAIL the policy check fails, so no header: A8: G1 shared_page memory { map read write }: write allowed by no rule; grant G1 shared_page memory { map read write }: source none; flow G1 -> G0 via shared_page: declared no

@@ -1,0 +1,24 @@
+label=two-guests/clang
+image=clang/be-mvp-boot.img
+image_sha256=91482566244a7e975d46daf7046c644e790cf17e977a42319923c879a110308b
+boundary=on
+pmp_mode=plain
+dtb=partition/two-guests/two-guests/plain/two-guests.dtb
+dtb_sha256=6028ec9377c4bea6eb0ed89a45cccf019e7de693a5907b15bd2b1890a3c066b0
+control_hart=confined
+qemu_image_bytes=2748416
+qemu_image_sha256=f0f6fd882d9b782910cb182be0d03e932b3035e0012decd3259702a0824f16e7
+qemu_image_crc32=2d084219
+qemu_text_offset=0x88000000
+qemu_image_source=built
+qemu_image=clang/be-mvp-boot-qemu.img
+disk_file=two-guests-clang.img
+be_image=two-guests-clang.img
+disk_sha256=7732967a423ff74f413fc89629afe08b6f304157c8c6d9b0500703d09ca31286
+expect=gen/expect/two-guests.json
+expect_sha256=806bb882e3e3e190f83a33026c5953dba334bf2289a85fbfeac4d4ccbd8fe837
+report=-
+measured_kernel=-
+measured_dtb=-
+attempt=1 session=PASS check=PASS check_exit=0 boot_hart=0 qemu_exit=0 oracle=PASS boundary=PASS disk=same console_sha256=0e84bc4fb86f661fc35147a9867046e44f641a9d50bf1df00a0a418f93383234
+BE_MVP_UBOOT_REHEARSAL[two-guests/clang]: PASS attempts=1 refused=0 boot_harts=0 session=PASS check=PASS check_exit=0 qemu_exit=0 oracle=PASS boundary=PASS image=f0f6fd882d9b crc32=2d084219
