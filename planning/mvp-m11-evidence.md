@@ -1424,3 +1424,666 @@ review or during the work; none is a stop of the plan.
   not change. The second, from a fresh clean clone, passed, and the
   range's last commit removes the cause ("The ring arm's self-test",
   above). The failed check stopped there, before its runs under QEMU.
+
+## M11-9: the words and the gates
+
+### Outcome first
+
+M11-9's required result (the plan's work-package table: "The gates pass
+at one exact candidate commit. M11-E's result is presented") holds.
+
+**The candidate is one tree, `7a826991eb80d19c03caae883c19271a52f42963`.**
+It is the tree of exact commit `2fb5c69d` of the working branch, as
+that commit was when the gates ran, before any sign-off. The nine gates
+that the plan lists passed at it, each from a clean clone on `l1`, from
+22:18Z on 2026-11-17 to 05:03Z on 2026-11-18:
+
+- the tool lock: 33 roles, 259 packages;
+- `./mvp/mvp check`: 111 QEMU runs, 77 of them under the boundary (68
+  with plain PMP, 9 with Smepmp), each of those judged by the capture
+  checker, the oracle, and `tests/check-boundary.py`; the firmware's
+  own tests, in both PMP modes; the twelve hostile-monitor runs under
+  the boundary and their six copies without it; the boundary's twelve
+  negatives; and the six typed sessions;
+- `./mvp/mvp evaluate`: 801 of 801 outputs identical between the
+  host's build and the evaluator's, the firmware binary and the binary
+  without the boundary extension among them;
+- the U-Boot rehearsal, under the boundary: 7 cases;
+- `kernel-repro`: 23 outputs identical;
+- `./be model-check`, with no file under `model/` changed since M11-4
+  (stage 1: 26 theorems, 100 citations read);
+- the model's evaluator;
+- the CHERI check, whole: its three parts pass (stop 10);
+- `./mvp/mvp verify`, on `l1`: every suite gives the verdict and
+  counts of M11-4's point. Three prover runs that are recorded as
+  timeouts there ended otherwise here, and no verdict follows from
+  them ("`verify` at the candidate", below).
+
+**After the gates, one tool's self-test was changed.** The first
+`check` of the result's content, with the ledger naming the candidate,
+failed in the claim ledger's tool, in one case of its self-test, and
+nowhere else: the case had been written for a ledger that names no
+tree yet. `6c3baa4b` changes that case and one more, in the self-test
+alone, before the commit that names the candidate. The candidate and
+its records are unchanged. The first eight gates were then run again
+at the tree of `64fa2288`, the last commit before this section's, and
+pass; `verify` was not, since it reads nothing that changed ("A
+self-test changed after the candidate", below).
+
+**The claim.** `mvp/docs/claim-boundary.md` holds the plan's clause for
+a candidate in which all three of the monitor's harts are confined, and
+its limit, word for word. Since `e0a98f8b` the page and the
+claim ledger's second set name the candidate's tree, and each of the
+set's seven claim rows cites the gates' record. The ledger's check
+passes with 17 checks: nine of the release's ten, whose rows are
+unchanged, and the set's eight. The tenth, the release's check of its
+commits, is skipped on this line, as it has been since the release.
+
+**The words** that the work package names are written: the guide's
+section 10, the AI-assistance disclosure's section 9, the glossary's
+three rows, and the hardware roadmap's bullet.
+
+M11-E's result is presented with this section: the result commit is
+the one that adds it, the last of the range. On this line the
+responsible human's sign-off of that commit is his decision on it.
+
+It is emulation: nothing is proved, the attempts are a list and not
+every access, and nothing here ran on a board (D-10, "What this
+evidence is not"). MVP 1.0's images, its claim, and its tag are not
+changed.
+
+### The commits
+
+**The first part**, six commits, signed off by the responsible human
+and on `main` since 2026-11-17, with M11-7's and M11-8's ranges:
+
+| Commit | Content |
+| --- | --- |
+| `1ffc5e20` | The record tool can name a candidate's record: `tools/rc-record.py --kind candidate` |
+| `cdf73bdc` | The claim's page, the ledger's second set, and the ledger tool's eight checks of it |
+| `4500691e` | The guide's section 10, the disclosure's section 9, and the README's bullet and rows |
+| `b20c5e6a` | The glossary's three rows and the hardware roadmap's bullet |
+| `a176be83` | The CHERI variant's checks follow M11's changes ("The CHERI variant's checks", below); the README's open items 131 and 132 |
+| `d6a1aa02` | The CHERI platform page follows the check |
+
+The three ranges, 28 commits, were signed together, on the `main` on
+which that sign-off had first been tried on a copy. Each signed commit
+holds its reviewed commit's change and message, compared pair by
+pair, and gains only his line.
+
+**The candidate's range**, unsigned, on the working branch `m11` over
+`d6a1aa02`:
+
+| Commit | Content |
+| --- | --- |
+| `a566d5a9` | The README's open item 133: `verify` cannot start from an empty cache ("The verifier's closure", below) |
+| `96ea7452` | Not M11's: the planning site's entries for two pages of M12, which that lane's pages were waiting for |
+| `2fb5c69d` | The proofs' records at the candidate: the target digests and the litmus record. **The candidate** |
+| `fd7b0cf2` | The three records of the gates, under `mvp/results/`, with a page beside two of them |
+| `6c3baa4b` | The ledger tool's self-test: two of the second set's cases hold once the set names its tree ("A self-test changed after the candidate", below) |
+| `e0a98f8b` | The candidate named: the ledger's set and the claim's page name its tree, each claim row cites the gates' record, and the CHERI platform page names that record; the README's open items 134 and 135 |
+| `64fa2288` | The root README's note on `main` names M11 |
+| This section's commit | This section |
+
+The record tool's option and the ledger's tool were written by a
+coding delegate (Claude Opus 5.5 in the GitHub Copilot CLI), the
+change to the ledger tool's self-test by another, and the CHERI
+variant's checks by two more of the same tool; each was read line by
+line by the owner session. The litmus excerpts were found
+again by a sub-agent of the same tool and read line by line. The
+claim's page, the ledger's rows and notes, the guide's and the
+disclosure's sections, the glossary's and the roadmap's rows, the
+README's words, and this record are the owner session's. The records
+under `mvp/results/` are the tools' output, with a page beside two of
+them.
+
+**Checked at each commit of the first part**, on `l1`, at the scratch
+commits that were then landed (each landed commit's `mvp/` and `model/`
+trees are its scratch commit's):
+
+| Commit | When (UTC, 2026-11-17) | Checked |
+| --- | --- | --- |
+| `1ffc5e20` | 07:10 to 07:31 | The tool lock and `check`, from a fresh clean clone: 111 QEMU runs (77 under the boundary) in 117 attempts; the six sessions in six |
+| `cdf73bdc` | 07:32 to 07:53 | The same: 111 (77) in 121 attempts; the six sessions in six; the ledger's 17 checks, and its self-test's 34 and 24 mutations |
+| `4500691e` | 13:05 to 13:06 | The ledger's check, lint, the tool lock, the release's scan, and the text check of the added lines |
+| `b20c5e6a`, `d6a1aa02` | 13:02 to 13:07 | The documentation's checks, the ledger's check, lint, the release's scan, and the text check of the added lines |
+| `a176be83` | 13:00 to 13:22, then 13:22 to 13:46 | The tool lock and `check`, from a fresh clean clone: 111 (77) in 120 attempts; the six sessions in six. Then the CHERI check, whole, from another |
+
+Every refused attempt is a run without the boundary that QEMU's
+firmware booted on a VS-domain hart, repeated as since M0.
+
+**Checked on the candidate's range:** the release's scan, the text
+check of the added lines, lint, the tool lock, the ledger's check, and
+the publication gate's audit, on `d6a1aa02..96ea7452` and on
+`96ea7452..2fb5c69d`; the documentation's checks at `96ea7452`; and
+the nine gates at `2fb5c69d` ("The gates at the candidate", below).
+
+**Checked on the result's commits:** the same text-level checks on
+`2fb5c69d..fd7b0cf2`, on `fd7b0cf2..6c3baa4b`, and on `6c3baa4b..64fa2288`,
+the last with the documentation's checks. On the records' commit the
+text check judged the two pages and the message: the records' files
+hold tools' output, and were left to the scan, which reads every blob.
+Then the CHERI check at `fd7b0cf2` ("The CHERI check at the
+candidate", below); the tool lock and `check` at `6c3baa4b`, and the
+first eight gates at `64fa2288`, each from a clean clone ("A self-test
+changed after the candidate", below); and the documentation's checks
+at this section's commit.
+
+### The claim's page and the ledger's second set
+
+The plan puts the boundary's claim on a page of its own and its rows
+in the ledger as a second set, apart from the release's ("Claim
+text").
+
+- **The page**, `mvp/docs/claim-boundary.md`: two blockquotes, the
+  clause and the limit, each equal to the plan's by a script's
+  comparison when it was written, and held to the ledger's rows by the
+  tool since.
+- **The set**, the key `candidate` of `mvp/docs/claim-ledger.json`,
+  rendered as `mvp/docs/claim-ledger-boundary.md`: seven claim rows,
+  which are the clause cut into its parts, and eleven non-claim rows,
+  which are the limit's sentences. Each claim row has the plan's
+  methods and no other (host unit test, adversarial test, semantic
+  checker, emulation), and its evidence: 30 entries on 18 files of the
+  tree, each by its SHA-256 and each with a note, and since `e0a98f8b`
+  one more entry in each row, the gates' record.
+- **The tool**, `mvp/tools/claim-ledger.py`: eight checks of the set
+  after the release's ten, which keep their rules and their order. The
+  set names a tree and no commit, because a sign-off gives a commit
+  another name and keeps its tree; the tool requires that tree to be
+  the tree of a commit on the line, and a cited gates' record to name
+  the same tree. Its self-test holds 24 seeded mutations of the set,
+  each failing its own check alone, and 5 variants that pass. Two of
+  the cases were written for a set that names no tree, and were
+  changed in `6c3baa4b` ("A self-test changed after the candidate",
+  below).
+
+Each note on a gates' record says what the record holds for that part
+of the clause, with its counts. Each count was computed from the
+record by a script before the note was written, and the script stops
+if one differs.
+
+The release's rows are not changed by the result's commits. In the
+first part and at the candidate, seven of their pins, on six changed
+files, were refreshed by the plan's rule, each with a note: the image
+checker's two (C-41, C-52) and the litmus files' five (C-54, C-56
+twice, C-57, C-58). No row's claim, method, or non-claim changed.
+
+### The words
+
+- **The guide's section 10**, "The physical boundary (M11)": what the
+  boundary is, part by part in the order of the build; a boot in
+  order; how to build the firmware and run its tests; how to read a
+  run under the boundary; the hostile-monitor images and the
+  negatives; and what none of it shows. The owner session read each
+  sentence against the code before it landed, and corrected five.
+- **The disclosure's section 9**, "After the release: M11, the
+  physical boundary": the two sessions, by their trailers; who wrote
+  what; which model each part ran on, where it can be named; and what
+  no AI system did.
+- **The glossary** ("OpenSBI domain", "physical access profile", "PMP /
+  Smepmp / ePMP") and **the hardware roadmap** ("Physical and I/O
+  protection"): what the candidate does under emulation, and that
+  nothing of it has run on the board.
+
+### The CHERI variant's checks
+
+The plan let the CHERI check fail on the working branch between
+M11-2 and the candidate (D-11). Its first run on the working branch,
+on the first part's content before the fifth commit (2026-11-17,
+07:09Z to 07:10Z), failed at its first step. Taken step by step to
+the end of its third part, it had three causes and one loss of
+coverage:
+
+- **The CHERI-aware monitor's trap vector.** M11-3 made the vector,
+  which both monitors share, compare its trusted stack top with each
+  private block's stack top exactly. In the CHERI-aware vector the top
+  reaches the compared register by a plain move, so the image
+  checker's tracker reports both comparisons, and its rule for CHERI
+  images still required the `hstatus.SPV` check alone. The rule now
+  requires all three, in order, with the branches' targets, and has
+  fourteen mutations.
+- **The off copies.** Every CHERI-aware image is built without the
+  boundary, so a scenario's off copy is the same build as its image,
+  and the rule that a variant differs from its reference refused it.
+  Where the reference is not built with the boundary, an off copy must
+  now equal it byte for byte; one mutation.
+- **A pinned count.** The CHERI-aware monitor's pin of the SBI host
+  test's assertions followed M11-4's change: 16,294 to 16,352.
+- **The loss of coverage.** Since M11-7 the harness's `plic` rows boot
+  each scenario's off copy, whose captures the CHERI rules' mutations
+  do not judge: the mutations judged in the check's first part had
+  fallen from 94 to 48. The check now runs the three scenarios in
+  their `k3-like` rows on the same `plic` machine, and judges 94.
+
+The check's first part also gained the five checks that M11 brought
+to `make check` and that judge the CHERI variant's own build. No rule
+for the RISC-V monitor's images changed: in a plain build made before
+and after, the image checker's four records and all 222 flat and boot
+images' digests are equal.
+
+Two things were found on the way and left as they are, each an open
+item of the README. The image checker requires less of the RISC-V
+monitor's vector than of the CHERI-aware one's: the two stack tops as
+branch operands, but not the compared register, the branches' senses,
+their order, or their targets (item 131). And the CHERI check does not
+run `ring-full-off` (item 132). No defect of the monitor is known from
+either.
+
+### The verifier's closure
+
+A first start of `verify` in a clone with an empty package cache
+stopped at the fetch (2026-11-17, 13:52Z). One of the closure's 481
+packages, `openh264-2.6.0-3.fc44.x86_64`, is pinned by the bytes that
+Fedora's codec repository serves; the fetch's sources do not hold
+those bytes, and it refuses koji's copy by its SHA-256. The closure is
+the release's, unchanged since M8, so MVP 1.0's `verify` stops the
+same way from an empty cache. A directory that holds the package,
+named as `MVP_RPM_CACHE`, is the remedy, and was tried the same day:
+one package from the directory, 480 from the sources.
+
+Every `verify` whose record this repository holds ran with a cache
+that held the package, which the fetch admits by the same SHA-256, so
+no result depends on it. The candidate's `verify`, and the early one
+below, ran with the clone's two caches copied from the host's earlier
+ones. The README's open item 133 has the finding and the remedy; the
+fix is left for after M11.
+
+### The candidate's proof records (D-11's fourth point)
+
+M11-7 and M11-8 change none of the thirteen files that the two
+leaves pin, but they change both monitors, so the litmus record's
+cited sequences moved. The candidate is D-11's fourth point, and both
+records were written again in `2fb5c69d`:
+
+- **They name a signed commit.** Both are written at `d6a1aa02`, the
+  signed tip of the first part, whose `mvp/src`, `mvp/Makefile`, and
+  the other inputs that the litmus record binds equal the candidate's.
+  The records that they replace named `c6334708`, the commit of
+  M11-4's point as it was before its sign-off, which this repository
+  does not hold.
+- `mvp/verify/target-digests.txt`: the target commit alone. The
+  thirteen digests, the flags, and the pins are unchanged.
+- **The litmus record.** The 55 excerpts were found again by role in
+  the candidate's monitors, which are built with the boundary. Of
+  their 206 lines, 100 keep their encoding (13 of them at the same
+  address), and 106 are the same instruction to the same function or
+  fence with a new PC-relative offset; none has a new register or
+  offset, and none was lost. Of the 55 symbols' digests, 40 changed.
+  The five tests' initial states, programs, and conditions are
+  byte-identical; only the addresses and digests in their comments
+  changed.
+- **What changed around the cited sequences** is what M11-7 and M11-8
+  designed: the hart starts moved out of GCC's `be_mvp_runtime_main`,
+  and one comparison (a load pair and a branch) came between the
+  block's fill and the fence in `publish_blocks`. No store, call, or
+  fence was added there. The calls of the ring's functions, the
+  fences, and the posts were listed for each calling function, for the
+  three scenarios and both toolchains, at the base and at the
+  candidate: no difference.
+- The claim ledger's five pins on the litmus files, each with a note.
+
+Two readings of the re-extraction are recorded in that commit's
+message and not acted on. Since M11-7 and M11-8, hart 0 reads the
+rings only after its own confinement, and a VS-domain hart enters its
+main function only when confined; neither changes a cited sequence.
+And L4's pattern is reached in the monitor, but its full inbound ring
+is not, before these changes or after them: the test's wording is as
+it has been since M8.
+
+### The gates at the candidate
+
+Each gate ran from a clean clone of `2fb5c69d` on `l1`, one at a
+time, with nothing else heavy on the host. The first seven and
+`verify` shared one clone, and the CHERI check had its own.
+
+| Gate | When (UTC) | Result |
+| --- | --- | --- |
+| The tool lock | 2026-11-17, 22:18 | 33 roles, 259 packages |
+| `./mvp/mvp check` | 22:18 to 22:39 | 111 QEMU runs in 125 attempts; the six sessions in six; the ledger's 17 checks |
+| `./mvp/mvp evaluate` | 22:39 to 22:59 | 801 of 801 outputs identical; evaluator image `87263109e660-009c2eba5655` |
+| The U-Boot rehearsal | 22:59 to 23:03 | 7 cases in 7 attempts, each under its scenario's step-2 device tree |
+| `kernel-repro` | 23:03 | 23 outputs identical |
+| `./be model-check` | 23:03 to 23:06 | Stage 1: 26 theorems, 100 citations; the differential check: 4 instances, 91 mutations |
+| The model's evaluator | 23:06 to 23:08 | Passes |
+| The CHERI check | 23:08 to 23:32 | Passes: its three parts ("The CHERI check at the candidate", below) |
+| `./mvp/mvp verify` | 23:32 to 05:03 on 2026-11-18 | Every suite's verdict and counts as at M11-4's point; 19,847 s |
+
+**`check` at the candidate**, in more detail:
+
+- 111 QEMU runs in 125 attempts. The 14 refused attempts are runs
+  without the boundary that QEMU's firmware booted on a VS-domain
+  hart, repeated. No run under the boundary was refused: such an image
+  boots on hart 0 alone, and its device tree says so.
+- 77 runs under the boundary, each judged PASS by the boundary's
+  judge. In 41 of them all three harts are judged confined (32 with
+  plain PMP, 9 with Smepmp). The other 36 are negatives whose declared
+  failure comes before that, or may: each is judged with every hart in
+  the state that its declaration and its capture give, and in 16 of
+  them boot code fails closed before any hart starts. In all 77, harts
+  3 to 7 are read as never started.
+- The hostile-monitor images: twelve runs under the boundary (three
+  images, both toolchains, plain PMP and Smepmp), each with M11-7's
+  and M11-8's rows and counts (112 attempts for a VS-domain hart, 132
+  for the control hart; M-mode's counts 76, 30, 0 and 88, 28, 7), and
+  six runs without it (63, 62, and 73 rows, each allowed).
+- The boundary's negatives: `trees=12 runs=13 admitted=11`.
+- The firmware's own tests: 41 runs of their rows, in both PMP modes,
+  and the host test of the series' two decisions (14,455 checks).
+- The image checker's mutations: 159, 163, and 174. The capture
+  checker: 325 self-test cases and 494 mutations.
+- Its evidence bundle: 1,115 files; 801 outputs by digest.
+
+### `verify` at the candidate
+
+`verify` ran on `l1` from 23:32Z on 2026-11-17 to 05:03Z on
+2026-11-18 (19,847 s). Every suite's line gives the verdict and counts
+of M11-4's point, D-11's third: the WP arm 130 of 134 goals in one
+round, with 18 of the 24 mutants killed; CN 5 of 55; Leaf A's bounded
+check successful, 336 properties; the ring's bounded check 13,547 of
+14,931 properties; the five litmus tests Never; and the token gate on
+the same 686 tokens. Against that point's record, 27 of the 32 record
+files are equal once run metadata is set aside (12 byte for byte). The
+other five, read run by run:
+
+- the litmus record's digest and the five tests' digests, written
+  again at the candidate (above). Each test's result and its states
+  are that point's;
+- three runs of the WP arm's prover, each recorded as a timeout at
+  that point, at the 120 s limit, and otherwise here:
+  - one goal of the qualification's `wrong-implementation` case is
+    recorded as a failure of the prover. The case must be unproved,
+    and is, either way;
+  - mutant m16, killed in both runs by the same goals: for one of
+    them the prover's run is recorded as a failure;
+  - mutant m17, killed in both runs: by two goals at the limit there,
+    and by one here. The other is proved here, in 24 s, as it was at
+    the base on `l1`;
+- the near-limit list, by the two mutants' runs: of 4,419 runs, none
+  near its limit and 263 over it (265 at that point).
+
+No verdict changed, and no suite's count. The proof attempt's own
+rounds hold the same timeouts as at that point, and no failure. Three
+runs that had ended at their time limit ended otherwise, and the
+near-limit list's count follows two of them. By the plan's rule for
+D-11's points, a count that changes only because a run crossed its
+limit is recorded as that and goes to the responsible human under stop
+9 with that reading: it is put to him with this section, as M11-4's
+was. The two failures are read with it: the record says that the
+prover failed where it had run out of time, on goals that are
+unproved either way.
+
+Both leaves' code is that point's: the thirteen files that the target
+digests name are unchanged. The early run on the content before its
+sign-off ("The early runs", below) gave that point's record in all of
+these: the same three runs were timeouts there.
+
+### The CHERI check at the candidate
+
+The check ran in a clean clone of its own, with the CHERI stack of the
+CHERI research repository, by path (1,454 s):
+
+1. **The CHERI-aware monitor with the CHERI Linux guests:** the 24
+   checks of `make check` that the variant runs; the guests' build
+   against its pins, and the firmware's pin; 56 QEMU runs in 63
+   attempts; the CHERI rules' 94 capture mutations, each rejected; and
+   six sessions in six attempts. The image checker's mutations for
+   these images: 178, 182, and 192.
+2. **The plain variant:** its 222 boot images equal, byte for byte, a
+   second build of the same commit in another directory, which is the
+   check's reference on the development line.
+3. **The CHERI-aware monitor with the Linux guests:** the image check;
+   50 QEMU runs in 60 attempts; ten capture mutations; and six
+   sessions in seven attempts.
+
+**The guard's record** (the plan's table of changed decisions: "The
+candidate's plain images are new. The guard's record is derived again
+at the candidate"). The record is the gates' record at the candidate,
+`mvp/results/20261118-m11-candidate/`: its `host/images.sha256` holds
+the digests of the 222 images among its 801 outputs, from the build
+that `check` made in another clone, and they equal the 222 digests of
+the CHERI check's own build. The guard takes the record where the
+candidate's commit is present: the CHERI check ran again, whole, at
+`fd7b0cf2`, from a clean clone that held that commit (2026-11-18,
+05:10Z to 05:35Z). It passed its three parts, and its second part
+reported `records=20261118-m11-candidate:222`. A clone of this
+repository will not hold the candidate's commit after the sign-off,
+and there the guard compares no record (the README's open item 134).
+Nor does it from `6c3baa4b` on, in any clone: that commit changes the
+ledger's tool, and the guard counts every file outside the
+documentation and the records as a build input.
+
+### A self-test changed after the candidate
+
+The result's commits were first made without `6c3baa4b`: the records,
+then the candidate named, then the README's note. `check` on that
+content, from a clean clone (2026-11-18, 05:36Z to 05:57Z), failed at
+its last step, the claim ledger's. Its 111 runs under QEMU and its
+six sessions had passed. The ledger tool's self-test, which that step
+runs first, failed in one case of its 71; the ledger's own 17 checks,
+which follow it, had passed on the same content in the text-level
+checks.
+
+- **The case**, "a named tree that the page does not name", put
+  another tree in a copy of the ledger and required the page's check
+  alone to fail. With each claim row citing the gates' record, the
+  evidence check failed as well: the record names the candidate's
+  tree, and not the other. The case was written in the first part,
+  for a set that names no tree and cites no record, and the self-test
+  runs its cases on the set as the tree holds it. So the candidate's
+  gates ran it on such a set, where it passes, and it first met a
+  named tree in the result's own content.
+- **A second case**, "a cited record while the set names no tree",
+  left the set's tree as it found it. Once the set named a tree, the
+  case failed the evidence check as before, but because the cited
+  record names another tree, and no longer by the rule in its name.
+- **The change**, `6c3baa4b`. The first case keeps a tree that the set
+  names, gives a set that names none the tree of the commit that is
+  checked out, and changes its copy of the page wherever the page
+  names the set's tree. The second sets the tree to none. It is 17
+  lines added and 5 removed, in the function that lists the second
+  set's cases. No check's rule changed, and no other case; the
+  self-test's counts are the same. A coding delegate wrote it to the
+  owner session's design, and the owner session read each line. The
+  delegate showed, and the owner session ran again, that the
+  self-test passes on the set without a tree and on the set with one;
+  and that on the set with a tree, with either rule switched off in a
+  scratch copy of the tool, the self-test fails on that rule's case
+  alone. The delegate also showed the same on the set without a tree;
+  the self-test passing in a copy of each without a repository; and
+  each of the two cases failing by the finding in its name.
+- **Its place in the range**: after the records' commit and before
+  the one that names the candidate, so that `check` passes at each
+  commit. At `6c3baa4b`'s tree, where the set names no tree, the tool
+  lock and `check` pass from a clean clone (06:49Z to 07:10Z): 111
+  runs under QEMU in 121 attempts, 77 of them under the boundary, and
+  the six sessions in six.
+- **The first eight gates again**, at `64fa2288`'s tree, where the set
+  names the candidate: each passes, from clean clones (07:10Z to 08:27Z;
+  the table below). The ninth, `verify`, was not run again. Between
+  the candidate and `64fa2288` these files differ: the ledger's tool;
+  the three records; the ledger, its second table, and the claim's
+  page under `mvp/docs/`; the two READMEs; and the CHERI platform
+  page. `verify` reads none of them, and the thirteen files that the
+  target digests name are the candidate's.
+- **What it leaves.** The candidate is the tree at which the nine
+  gates passed, and the tool at the result differs from the
+  candidate's in those lines of its self-test. The self-test still
+  compares which checks fail and not their findings, and runs on one
+  state of the set at each commit (the README's open item 135).
+- **How it was missed.** While the candidate's `verify` ran, the owner
+  session tried the result's commits on the earlier driver run's
+  record (the departures, below). That trial ran the ledger's check,
+  and not `check` whole, which runs the self-test first.
+
+The clean clones for these runs were of scratch commits that differ
+from `6c3baa4b` and `64fa2288` in the commits' messages alone: each has
+its commit's tree.
+
+| Gate, at `64fa2288`'s tree | When (UTC, 2026-11-18) | Result |
+| --- | --- | --- |
+| The tool lock | 07:10 | 33 roles, 259 packages |
+| `./mvp/mvp check` | 07:10 to 07:32 | 111 QEMU runs in 115 attempts, 77 of them under the boundary; the six sessions in six; the ledger tool's self-test and the ledger's 17 checks |
+| `./mvp/mvp evaluate` | 07:32 to 07:53 | 801 of 801 outputs identical; the candidate's evaluator image |
+| The U-Boot rehearsal | 07:53 to 07:57 | 7 cases in 7 attempts |
+| `kernel-repro` | 07:57 | 23 outputs identical |
+| `./be model-check` | 07:57 to 08:00 | Stage 1: 26 theorems, 100 citations; the differential check: 4 instances, 91 mutations |
+| The model's evaluator | 08:00 to 08:02 | Passes |
+| The CHERI check | 08:02 to 08:27 | Its three parts pass (1,499 s): 56 QEMU runs in 65 attempts and 50 in 56; the 94 and the 10 capture mutations rejected; the 222 plain boot images equal to a second build's, and no record compared (`records=none`) |
+
+Of the 801 outputs of `check`'s build at that tree, made in another
+directory, 566 have the digests of the candidate's record: every flat
+image, boot image, device tree, descriptor, firmware binary, and
+guest binary. The other 235 are the 70 ELF files of the monitors,
+whose debug information names the build directory, and the 165
+tables and records that bind an ELF file's digest or a table's.
+
+### The early runs, on the content before its sign-off
+
+Two runs were made before the candidate existed: `verify` had not run
+since M11-4's point, and the driver that runs the nine gates in order
+and makes their records was new. Neither is evidence for the
+candidate.
+
+- **An early `verify`** (2026-11-17, 13:59Z to 19:31Z), on the first
+  part's content before its sign-off, with the records derived in
+  place: every suite gave M11-4's point's verdict and counts. It took
+  the place of a first run at the candidate that might have stopped.
+- **The gates' driver, whole** (19:36Z to 21:52Z), on the same
+  content: the first eight gates passed, and the records were made
+  from them with the early `verify`'s. It showed the size of the
+  gates' record, below.
+
+### The records
+
+All three are under `mvp/results/`, added by `fd7b0cf2`:
+
+- **`20261118-m11-candidate/`**: the record of the first seven gates,
+  made by `tools/rc-record.py --kind candidate` from the gates' clone,
+  and checked by its own `--verify`: 1,209 files,
+  16.1 MB. Its `rc.txt` names the candidate's commit as it was,
+  `2fb5c69d`, its tree, and each gate's result line. It holds the
+  evidence bundle of `check` (each attempt's capture, checker verdict,
+  oracle record, and boundary judgement; the references; the
+  deterministic records), the evaluator's record with its comparison
+  of the 801 outputs, the rehearsal's seven cases, `kernel-repro`'s
+  line, and the model's two evidence sets.
+- **`20261118-verify-m11-candidate/`**: `verify`'s record, 32 files
+  and a page that reads them.
+- **`20261118-cheri-check-m11-candidate/`**: the CHERI check's
+  summary, with the stack root's path written `<stack-root>`, and a
+  page.
+
+No file of the three holds a home path, an IP address, an ssh target,
+or a serial number.
+
+### The checkpoint: the soft limits
+
+By the plan's count from `77eabce5`, at `64fa2288`. A Make line is
+counted in the lane of what it builds, as since M11-7.
+
+| Lane | At M11-8's tip | Since | Now | Limit |
+| --- | --- | --- | --- | --- |
+| The firmware additions | 720 | 0 | 720 | 800 |
+| The firmware's tests and build rules | 2,825 | 0 | 2,825 | 3,000 |
+| The monitor | 6,906 | 234 | 7,140 | 8,000 |
+| The descriptor's tools | 3,373 | 0 | 3,373 | 4,000 |
+| The harness | 11,560 | 805 | 12,365 | 15,000 |
+
+No limit is reached. The monitor lane's lines are the image checker's
+rules for the CHERI-aware vector and the off copies. The harness
+lane's are the ledger tool's second set (725), the record tool's
+option (48), and the CHERI check's script (29), with three more. Of
+the ledger tool's lines, 12 came after the candidate: `6c3baa4b` adds 17
+and removes 5 of the set's own. Nothing else after the first part
+adds a counted line: the other commits change Markdown, JSON, and
+records, which the rule sets apart.
+
+### Departures and readings for review
+
+Each was decided by the owner session's judgement. None is a stop of
+the plan but the first, which stop 9 sends to the responsible human
+with its reading.
+
+- **Three prover runs of `verify` ended otherwise than at M11-4's
+  point** ("`verify` at the candidate", above): one goal of a mutant
+  is proved where its run had ended at the time limit, and two runs
+  are recorded as failures of the prover where they had ended at the
+  limit, on goals that are unproved either way. They are read as
+  effects of the limits and of the host's load, and not of the code:
+  no verdict and no suite's count changes, and both leaves' inputs
+  are that point's. The responsible human's sign-off of the commit
+  that adds this section accepts that reading.
+- **A tool's self-test was changed after the candidate, and eight of
+  the nine gates were run again at the result** ("A self-test changed
+  after the candidate", above). The plan's result is that the gates
+  pass at one exact candidate commit, and they did. The result's own
+  content then failed `check`, in a self-test case that the
+  candidate's gates could run only on a ledger without a named tree.
+  The owner session judged a change of 17 lines to a self-test, read
+  line by line and followed by the first eight gates at the result,
+  to be in proportion. It judged a second candidate with all nine
+  gates not to be needed, since the ninth, `verify`, reads nothing
+  that changed. The responsible human may ask for that second
+  candidate instead.
+- **The gates' records name a commit that this line will not hold.**
+  The gates ran at `2fb5c69d`, before the sign-off that gives the
+  commit its name on `main`. The records say `2fb5c69d`, and its tree.
+  The ledger and the claim's page name the tree alone, and the
+  ledger's tool finds the commit of the line that has it. The tree
+  survives a sign-off only if the range is signed on the `main` that
+  it was built on, so the result's range must be signed before any
+  other push to `main`; if `main` moves first, the range is rebased
+  and the nine gates run again. The CHERI integration's records name
+  their commit in the same way.
+- **The CHERI check's guard reads a record's commit, not its tree.**
+  Part 2 compares a gates' record only where the record's commit is
+  present in the clone. So on `main`, after the sign-off, it compares
+  the two builds alone, for this record as for the CHERI
+  integration's. The README's open item 134 has it; the script is left
+  as the gates ran it. From `6c3baa4b` on, the guard compares no record
+  in any clone, since the ledger's tool is among the files that it
+  counts.
+- **The first part was signed before the candidate was cut.** The
+  fifth commit changes one line of `mvp/Makefile`, which the litmus
+  record binds, and the proofs' records were to name a signed commit.
+  So the claim's page and the set's rows were on `main` before the
+  gates' record existed: the page said so, and the set named no tree
+  and cited no record until now.
+- **The early runs** ("The early runs", above) were made on unsigned
+  content, in scratch clones. The candidate's gates were then run
+  whole, from clean clones of the candidate.
+- **The gates' clones took their fetched inputs from the host**: the
+  evaluator's and the verifier's package caches, the verifier's four
+  source archives, the firmware base's source and the pinned Linux
+  from the host's mirrors, the two userland archives with their
+  signatures, and the two earlier builds that the lock pins by SHA-256
+  (the earlier firmware and the rehearsal's U-Boot). Each is admitted
+  by a commit or a digest that the tree holds.
+- **The gates' record is larger than the earlier ones**:
+  16.1 MB in 1,209 files, where the last before it, the
+  CHERI integration's, has 6.0 MB in 663. It keeps every attempt's
+  capture, oracle record, and judgement, and M11 has more runs and two
+  more records for each.
+- **A refused attempt keeps its records.** Four attempts of the
+  hostile-monitor images without the boundary were refused at the
+  monitor's boot check and repeated. Each one's record of the judge
+  says FAIL, since the hook never ran; the attempt's verdict is
+  REFUSED, and the run's is its repeat's.
+- **`verify`'s summary says that the two monitors' ELF files differ
+  from the litmus record's.** The record was written from another
+  clone's build, and an ELF file holds its build directory's name.
+  The check compares the cited sections' bytes, and passes.
+- **Light work ran beside the candidate's `verify`**: the owner
+  session read the gates' logs, drafted these words and the ledger's
+  notes, and tried the text-level checks of the result's commits on
+  the earlier driver run's record, held to four of the host's
+  efficiency cores at the lowest priority. Nothing that starts QEMU or
+  a container ran, and the M12 lane's heavy work was held.
+- **The root README's note on `main`** said that the plain variant's
+  boot images are MVP 1.0's. That stopped being true at M11-2.
+  `64fa2288` makes the note name M11 and date the CHERI integration's
+  statements.
+- **One commit of the range is not M11's**: the planning site's
+  entries for two pages of M12, which that lane's signed pages were
+  waiting for.
