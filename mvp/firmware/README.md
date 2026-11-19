@@ -40,8 +40,8 @@ checked by the `opensbi` target for the `firmware-version` negative alone.
 
 ## The patch series
 
-`patches/` holds ten patches in `git format-patch` form, applied in the
-order of `patches/series`. They add, in OpenSBI's own terms: the
+`patches/` holds eleven patches in `git format-patch` form, applied in
+the order of `patches/series`. They add, in OpenSBI's own terms: the
 allocation of the domain switch contexts at cold boot; a stop of a hart
 whose domain switch cannot program its PMP; a check of a hart's PMP
 entries against its domain's regions; a per-hart commit record; a filter
@@ -50,8 +50,14 @@ and `config-digest` device-tree properties; the experimental domain commit
 extension (`0x08004246`); the report of the records at system reset;
 their documentation; and (M11-7) the ordering of a record's committed
 flag after the rest of the record, read once by the report, so that a
-hart that commits while the report prints is printed whole. The series is
-licensed BSD-2-Clause, as OpenSBI is
+hart that commits while the report prints is printed whole; and (M11-B)
+a system reset device that only halts, built only when the option
+`CONFIG_SBI_SYSTEM_RESET_HALT` is set: it supports the shutdown type
+alone, at the lowest priority, so that any other device that supports a
+shutdown is chosen first, and stops the calling hart in
+`sbi_hart_hang()`. A build without the option, the candidate's among
+them, is unchanged by it. The series is licensed BSD-2-Clause, as
+OpenSBI is
 (`COPYING`); this directory's other files are GPL-3.0-only.
 `patches/.gitattributes` keeps Git's whitespace checks off the patch
 files, whose blank context lines are a single space; `build.sh` applies
@@ -76,6 +82,43 @@ checked.
 - **Error output** is unchanged: every console driver and every message
   stays.
 
+## The board's configuration
+
+M11-B's board configuration (planning/mvp-m11-board-addendum.md, B-1 to
+B-3) is the candidate's with one line more. `build.sh` makes it when
+`FIRMWARE_WITH=CONFIG_SBI_SYSTEM_RESET_HALT` is set:
+
+- **The configuration.** `config`'s settings, then `CONFIG_X=y` for the
+  option named, which no line of `config` may name; written to
+  `OUT/config`. After the build, the configuration as Kconfig resolved
+  it must hold that line once, and must equal the committed
+  configuration's resolution, which is the candidate's, but for it: an
+  option that the setting would select, or make visible, stops the build.
+- **A tree built in.** `FIRMWARE_FDT=/absolute/tree.dtb`, with
+  `FIRMWARE_WITH` alone: a regular file of at most 128 KiB whose header
+  has the FDT magic and its own size. Its copy, `OUT/fdt/board.dtb`, is
+  OpenSBI's `FW_FDT_PATH`, and after the build its bytes must be the
+  binary's at `fw_fdt_bin` (found with the lock's `nm`,
+  `MVP_FIRMWARE_TOOL_NM`). Without `FIRMWARE_FDT`, the binary must carry
+  no tree. A tree enlarges the read-only part, which can move
+  `_fw_rw_start` to the next power of two, so the firmware's regions are
+  read from that build's ELF.
+- **Where.** `OUT` is a directory `firmware/NAME` of an M11-B work tree,
+  `build/mvp/k3/work/` or `build/mvp/k3/gate/work/`, with no character
+  that a C string on OpenSBI's make line could not carry.
+  `FIRMWARE-BUILD.txt` gains `with=`, `config=config`, `fdt_sha256=` (the
+  tree's SHA-256, or `none`), and with a tree `fdt=fdt/board.dtb`.
+- **Reproducible.** The same `fw_dynamic.bin` is made in any directory, in
+  both forms. The ELF names its build directory in its debug information,
+  as the candidate's does.
+
+`mvp/tests/test-k3-firmware-build.sh OUT` runs `build.sh` on a fixture
+(a small Git repository in OpenSBI's place, and the script itself as
+make and nm, so no compiler runs): each refusal with its own message,
+before anything is written where the input is wrong; each check after
+the build; and the forms, the candidate's and `FIRMWARE_WITHOUT`'s
+among them, passing.
+
 ## Allocation after cold boot
 
 The series moves the domain switch contexts, the one allocation a hart's
@@ -96,9 +139,11 @@ timeout. Nothing allocates on the resume from a non-retentive suspend.
 `tests/` holds the firmware's own tests, which `./mvp/mvp check` runs
 after the firmware's build:
 
-- `host-decisions.c`: the series' two pure decisions, the commit guard
-  and the SBI call filter, compiled with the host GCC from the patched
-  header of the firmware build;
+- `host-decisions.c`: the series' three pure decisions, the commit
+  guard, the SBI call filter, and the halt-only device's check, compiled
+  with the host GCC from the patched headers of the firmware build, with
+  the device's option set before them, as the board's configuration
+  sets it;
 - `fwtest.S`, `fwtest.c`, `fwtest.ld`, and `fwtest.h`: one bare-metal
   S-mode payload, an interpreter of a list of steps for each hart, which
   can run its accesses in HS-mode, VS-mode, or VU-mode;

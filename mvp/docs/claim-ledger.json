@@ -1913,8 +1913,8 @@
           },
           {
             "path": "mvp/firmware/patches/series",
-            "sha256": "3fab0b70a617f682a50639cdcd539a4c50a9659cbe7d4921886ed4bbd86d356b",
-            "note": "The project's M-mode additions: ten patches, which firmware/build.sh applies over the base in this order."
+            "sha256": "0b89924c9a7b4e6bfdc3c5cb00e1130b5a8c6b1337f7b3af6e7f29fe6f532f77",
+            "note": "The project's M-mode additions: eleven patches, which firmware/build.sh applies over the base in this order. The eleventh (M11-B) is a system reset device that only halts, built only into the board's configuration (CONFIG_SBI_SYSTEM_RESET_HALT); the candidate's binary is the same bytes with the patch applied."
           },
           {
             "path": "mvp/tools/lock/tool-lock.conf",
@@ -2037,8 +2037,8 @@
           },
           {
             "path": "mvp/firmware/tests/host-decisions.c",
-            "sha256": "cb180b109f49ca871496b2bfda99a3b501df187167f625ddc478c1529629ebf1",
-            "note": "The host tests of the patch series' two pure decisions, compiled from the patched OpenSBI header of the firmware build: the commit guard against its four conditions, and the SBI call filter."
+            "sha256": "33a46f387ae6fe7b4e17ad3a78acc0211a319384204341ca9e2c6e0a132aca6e",
+            "note": "The host tests of the patch series' three pure decisions, compiled from the patched OpenSBI headers of the firmware build: the commit guard against its four conditions, the SBI call filter, and (M11-B) the halt-only reset device's check."
           },
           {
             "path": "mvp/tests/check-boundary.py",

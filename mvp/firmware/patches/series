@@ -13,3 +13,4 @@
 0008-lib-sbi-print-the-domain-commit-records-at-system-re.patch
 0009-docs-document-SBI-call-allowlists-and-the-domain-com.patch
 0010-lib-sbi-read-a-commit-record-s-flag-once-when-printi.patch
+0011-lib-sbi-add-a-system-reset-device-that-only-halts.patch

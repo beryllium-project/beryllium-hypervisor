@@ -1,21 +1,28 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Copyright (C) 2026 James Morris <jmorris@namei.org> */
 /*
- * Purpose: host tests of the patch series' two pure decisions, compiled
- *          from the patched OpenSBI header include/sbi/sbi_dcommit.h of
- *          the firmware build: the commit guard, sbi_dcommit_target(),
- *          against its four conditions written out here, over every
- *          combination of up to three views; and the SBI call filter,
- *          sbi_dcommit_call_allowed(), on matches, mismatches, each
- *          argument index, the no-check marker, 64-bit register values,
- *          an empty list, and the entry limit.
- * Trust:   test-only. It includes the very header the firmware compiles,
+ * Purpose: host tests of the patch series' three pure decisions,
+ *          compiled from the patched OpenSBI headers include/sbi/
+ *          sbi_dcommit.h and sbi_system.h of the firmware build: the commit
+ *          guard, sbi_dcommit_target(), against its four conditions written
+ *          out here, over every combination of up to three views; the SBI
+ *          call filter, sbi_dcommit_call_allowed(), on matches, mismatches,
+ *          each argument index, the no-check marker, 64-bit register values,
+ *          an empty list, and the entry limit; and the check of the
+ *          halt-only reset device, sbi_system_reset_halt_check(), on every
+ *          pairing of five reset types and four reasons.
+ * Trust:   test-only. It includes the very headers the firmware compiles,
  *          with -D__riscv_xlen=64 and -std=gnu11 as the firmware has them,
  *          and no system header, since sbi_types.h defines its own types.
+ *          The firmware build compiles the candidate's configuration, in
+ *          which the halt-only device is off; its option is set here, as
+ *          the board configuration's autoconf.h sets it, before any header.
  * Scope:   the decisions alone; the firmware tests (fwtest.py) run them
  *          inside the firmware.
  */
+#define CONFIG_SBI_SYSTEM_RESET_HALT 1
 #include <sbi/sbi_dcommit.h>
+#include <sbi/sbi_system.h>
 
 int printf(const char *format, ...);
 
@@ -173,10 +180,32 @@ static void filter(void)
 	      "an entry past the limit", 0);
 }
 
+/*
+ * The halt-only device supports a shutdown, for any reason, at priority 1,
+ * the lowest that selects a device, and nothing else: no reboot, no
+ * reserved type.
+ */
+static void halt_check(void)
+{
+	static const u32 types[] = { SBI_SRST_RESET_TYPE_SHUTDOWN,
+		SBI_SRST_RESET_TYPE_COLD_REBOOT, SBI_SRST_RESET_TYPE_WARM_REBOOT,
+		SBI_SRST_RESET_TYPE_LAST + 1, 0xffffffffU };
+	static const u32 reasons[] = { SBI_SRST_RESET_REASON_NONE,
+		SBI_SRST_RESET_REASON_SYSFAIL, 2, 0xffffffffU };
+	u32 t, r;
+
+	for (t = 0; t < array_size(types); t++)
+		for (r = 0; r < array_size(reasons); r++)
+			check(sbi_system_reset_halt_check(types[t], reasons[r]) ==
+			      (types[t] == SBI_SRST_RESET_TYPE_SHUTDOWN),
+			      "halt device's check", t * 4 + r);
+}
+
 int main(void)
 {
 	guard();
 	filter();
+	halt_check();
 	printf("BE_MVP_FIRMWARE_HOST: %s checks=%lu failures=%lu\n",
 	       failures ? "FAIL" : "PASS", checks, failures);
 	return failures ? 1 : 0;

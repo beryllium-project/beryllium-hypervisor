@@ -1,0 +1,129 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Wed, 18 Nov 2026 00:00:00 +0000
+Subject: [PATCH 11/11] lib: sbi: add a system reset device that only halts
+
+When OpenSBI finds no device that can reset or power off the platform,
+it registers no system reset device and does not offer the System Reset
+extension, so an S-mode payload cannot end its run with a shutdown, even
+where stopping its HARTs is all that it needs, because the platform is
+reset or powered off by other means.
+
+Add a system reset device for such builds, selected by the new option
+CONFIG_SBI_SYSTEM_RESET_HALT, which needs no device tree node and no
+platform code. It supports the shutdown type alone, for either reason,
+at the lowest priority, so that any other device that supports a
+shutdown is chosen before it, and it leaves reboots to the other
+devices: with none, a reboot is refused with SBI_ERR_NOT_SUPPORTED.
+When it is chosen, sbi_system_reset() has already sent the halt IPI to
+the other HARTs of the caller's domain and marked the caller as
+stopping; the device then stops the caller in sbi_hart_hang(). It
+writes no register and sends nothing.
+
+The device is on the list of reset devices from the start: the list is
+defined through a macro of sbi_system.h, which gives it the device as
+its member when the option is on, and leaves it empty, as before, when
+the option is off. No existing function gains a statement, and a build
+without the option is unchanged.
+
+AI-assisted-by: Claude Opus 5.5 (Anthropic), in the GitHub Copilot CLI
+---
+ include/sbi/sbi_system.h | 27 +++++++++++++++++++++++++++
+ lib/sbi/Kconfig          | 10 ++++++++++
+ lib/sbi/sbi_system.c     | 22 +++++++++++++++++++++-
+ 3 files changed, 58 insertions(+), 1 deletion(-)
+
+diff --git a/include/sbi/sbi_system.h b/include/sbi/sbi_system.h
+index f48a019..0e45a5a 100644
+--- a/include/sbi/sbi_system.h
++++ b/include/sbi/sbi_system.h
+@@ -84,4 +84,31 @@ bool sbi_system_is_suspended(void);
+ bool sbi_system_suspend_supported(u32 sleep_type);
+ int sbi_system_suspend(u32 sleep_type, ulong resume_addr, ulong opaque);
+ 
++#ifdef CONFIG_SBI_SYSTEM_RESET_HALT
++#include <sbi/sbi_ecall_interface.h>
++
++/**
++ * Check of the halt-only system reset device: the shutdown type, for
++ * either reason, at the lowest priority, so that any other device that
++ * supports a shutdown is chosen before it. It supports no reboot.
++ */
++static inline int sbi_system_reset_halt_check(u32 reset_type,
++					      u32 reset_reason)
++{
++	(void)reset_reason;
++	return reset_type == SBI_SRST_RESET_TYPE_SHUTDOWN ? 1 : 0;
++}
++
++/** The halt-only system reset device */
++extern struct sbi_system_reset_device sbi_system_reset_halt_device;
++
++/* The list of reset devices, with the halt-only device as its member */
++#define SBI_SYSTEM_RESET_DEVICES(__lname)				\
++	struct sbi_dlist __lname =					\
++		SBI_LIST_HEAD_INIT(sbi_system_reset_halt_device.node)
++#else
++/* The list of reset devices, empty until a device is added */
++#define SBI_SYSTEM_RESET_DEVICES(__lname)	SBI_LIST_HEAD(__lname)
++#endif
++
+ #endif
+diff --git a/lib/sbi/Kconfig b/lib/sbi/Kconfig
+index fb60a0b..f38863a 100644
+--- a/lib/sbi/Kconfig
++++ b/lib/sbi/Kconfig
+@@ -52,6 +52,16 @@ config SBI_ECALL_SRST
+ 	bool "System Reset extension"
+ 	default y
+ 
++config SBI_SYSTEM_RESET_HALT
++	bool "Halt-only system reset device"
++	depends on SBI_ECALL_SRST
++	default n
++	help
++	  Add a system reset device that needs no device tree node and
++	  supports the shutdown type alone: it stops the calling HART in
++	  M-mode and drives no hardware. Any other device that supports a
++	  shutdown is chosen before it.
++
+ config SBI_ECALL_SUSP
+ 	bool "System Suspend extension"
+ 	default y
+diff --git a/lib/sbi/sbi_system.c b/lib/sbi/sbi_system.c
+index ac99675..139e2f7 100644
+--- a/lib/sbi/sbi_system.c
++++ b/lib/sbi/sbi_system.c
+@@ -20,7 +20,7 @@
+ #include <sbi/sbi_init.h>
+ #include <sbi/sbi_timer.h>
+ 
+-static SBI_LIST_HEAD(reset_devices_list);
++static SBI_SYSTEM_RESET_DEVICES(reset_devices_list);
+ 
+ const struct sbi_system_reset_device *sbi_system_reset_get_device(
+ 					u32 reset_type, u32 reset_reason)
+@@ -222,3 +222,23 @@ int sbi_system_suspend(u32 sleep_type, ulong resume_addr, ulong opaque)
+ 
+ 	__builtin_unreachable();
+ }
++
++#ifdef CONFIG_SBI_SYSTEM_RESET_HALT
++static void __noreturn sbi_system_reset_halt(u32 reset_type,
++					    u32 reset_reason)
++{
++	/*
++	 * No device to drive: sbi_system_reset() has sent the halt IPI to the
++	 * other HARTs of this domain and marked this HART as stopping, so
++	 * this HART stops here, in M-mode, until the platform is reset.
++	 */
++	sbi_hart_hang();
++}
++
++struct sbi_system_reset_device sbi_system_reset_halt_device = {
++	.name = "halt",
++	.system_reset_check = sbi_system_reset_halt_check,
++	.system_reset = sbi_system_reset_halt,
++	.node = SBI_LIST_HEAD_INIT(reset_devices_list),
++};
++#endif
