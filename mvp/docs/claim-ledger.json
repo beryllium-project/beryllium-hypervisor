@@ -2109,8 +2109,8 @@
           },
           {
             "path": "mvp/tools/gen-breach.py",
-            "sha256": "e9ab8e5199d0773ce2e7b7eda9b98248c2d821452be3625892bf891d0fdddaff",
-            "note": "The attempts' generator: the table that the hook runs, and the plan that a run must show, each memory attempt judged from the hooked hart's profile and each call from its role's call list."
+            "sha256": "2cddf040fddbbe490a7b8ddae4e084588cde7c89def767a7d019fd87d6dc0d30",
+            "note": "The attempts' generator: the table that the hook runs, and the plan that a run must show, each memory attempt judged from the hooked hart's profile and each call from its role's call list. For the board's two declarations (M11-B, k3/breach/) it also checks its rules on the board's description and device list: B-10's five devices, a row on any other device refused (one that holds persistent state named first), and each write, jump, or call on a device or M-mode's memory with its effect named. QEMU's tables and plans are the same bytes."
           },
           {
             "path": "mvp/src/mvp-breach.c",
@@ -2140,8 +2140,8 @@
         "evidence": [
           {
             "path": "mvp/tools/gen-breach.py",
-            "sha256": "e9ab8e5199d0773ce2e7b7eda9b98248c2d821452be3625892bf891d0fdddaff",
-            "note": "The boundary-off table of each hostile-monitor image holds only the attempts that can be discriminated: 63 and 62 for the two VS-domain harts and 73 for the control hart. Its plan requires each to succeed, with the write's witness word changed or the read's value equal to the target's known content."
+            "sha256": "2cddf040fddbbe490a7b8ddae4e084588cde7c89def767a7d019fd87d6dc0d30",
+            "note": "The boundary-off table of each hostile-monitor image holds only the attempts that can be discriminated: 63 and 62 for the two VS-domain harts and 73 for the control hart. Its plan requires each to succeed, with the write's witness word changed or the read's value equal to the target's known content. The board's two declarations (M11-B) have no boundary-off copy."
           },
           {
             "path": "mvp/tests/check-boundary.py",

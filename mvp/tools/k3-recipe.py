@@ -28,7 +28,7 @@ the boundary off, step 3 itself. room checks that each tree, put after
 U-Boot's image, leaves the firmware's fixups 8 KiB.
 
 It shares tools/partition-backend.py's FDT reader and file helpers, loaded
-as a module; tools/check-partition.py shares no code with either. Exit 0
+as a module; tests/check-partition.py shares no code with either. Exit 0
 pass, 1 fail or refused, 2 usage.
 """
 

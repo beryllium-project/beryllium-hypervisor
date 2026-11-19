@@ -4,12 +4,16 @@
 """The hostile-monitor attempts of the breach images (M11-7, M11-8).
 
   gen-breach.py table --declaration FILE --layout H --header H --domain N
-                [--discriminate] --out mvp-breach-table.h
+                [--discriminate] [--platform-file F] --out mvp-breach-table.h
   gen-breach.py plan --declaration FILE --layout H --header H --domain N
-                [--discriminate] --image NAME --elf ELF --bin BIN
-                --boot-img IMG --dtb0 DTB --dtb1 DTB --nm NM
+                [--discriminate] [--platform-file F] --image NAME --elf ELF
+                --bin BIN --boot-img IMG --dtb0 DTB --dtb1 DTB --nm NM
                 [--descriptor JSON] --out PLAN --words WORDS
   gen-breach.py counts --declaration FILE --domain N
+  gen-breach.py board-check --declaration FILE --layout H --header H
+                --domain N --platform-file F [--devices F] [--mutations]
+  gen-breach.py expect --declaration FILE --domain N --candidate F
+                --image NAME --out F
   gen-breach.py --self-test --scratch DIR
 
   N is the hooked VS domain, 0 or 1, or control, the control hart (M11-8).
@@ -33,6 +37,10 @@ its translation's walk), allowed every right it needs, refused a call the
 list does not hold, rejected a listed console write whose buffer or upper
 address word the firmware refuses (with that error), and zero a listed
 console write of no byte. counts gives the expected commit-record counts.
+M11-B (planning/mvp-m11-board-addendum.md, B-10): board-check, and table
+and plan with --platform-file, check a board declaration (k3/breach/) on
+the board's description (k3/platform.json) and its list or --devices;
+--mutations makes B9's. expect writes a board image's expectation.
 Trust: a generator and a checker of its own declaration. It refuses a
 row of unknown form, a target its mode cannot reach, a cache-block row
 (cbo.zero, cbo.inval) whose address is not its block's first byte, a row
@@ -43,7 +51,14 @@ row in the hook's own record or roots, a listed call that would succeed
 with an effect (a console write of bytes, a shutdown) or that it does not
 model, a declaration of the other role, and a declaration that does not
 fit the record. The record's layout is read from src/mvp-breach.h.
-Scope: anchor's breach-g0, breach-g1, and breach-c and their -off copies.
+For a board declaration (stop B9) it requires B-10's five devices held by
+their facts' nodes alone, enabled, its devices the description's, no
+device witness, each row's bytes and named call arguments wholly in one of
+the five, the firmware's place, or memory outside low_reserved, meeting no
+other device, and an effects entry for each write, jump, or call on a
+device or the firmware's memory, and none for a row that only reads.
+Scope: anchor's breach-g0, breach-g1, and breach-c and their -off copies;
+M11-B's k3-breach-g1 and k3-breach-c.
 """
 
 import argparse
@@ -88,6 +103,23 @@ CALL_KEYS = {"eid", "fid", "a0", "a1", "a2"}
 DEVICE_KEYS = {"uart", "aplic-m", "aplic-s", "aplic-source", "imsic-m",
                "imsic-m-stride", "imsic-s", "imsic-s-stride", "test", "mtime",
                "mtimecmp", "m-memory", "unnamed-ram"}
+# M11-B: a board declaration's devices (B-10).
+BOARD_DEVICE_KEYS = {"console", "console-scratch", "console-scratch-width",
+                     "aplic-m", "imsic-m", "imsic-s", "imsic-s-stride",
+                     "mtime", "mtimecmp", "timer-width", "m-memory",
+                     "unnamed-ram"}
+WIDTH_KEYS = ("aplic-source", "console-scratch-width", "timer-width")
+PLATFORM_SCHEMA = "be-mvp-k3-platform-v1"
+DEVICES_SCHEMA = "be-mvp-k3-devices-v1"
+# B-10's five devices by kind, each with its root device (None: the breach
+# facts'), the kinds that hold persistent state, and the rows that change
+# something.
+FIVE = {"console": "console", "interrupt-controller-m": "aplic-m",
+        "interrupt-file-m": "imsic-m", "timer": "clint",
+        "interrupt-file-s": None}
+PERSISTENT = ("spi-flash-controller", "efuse", "i2c", "power-management",
+              "storage")
+CHANGES = WRITES + ("cbo.inval", "jump", "ecall")
 AT = re.compile(r"(?P<name>[a-z][a-z0-9.-]*?)(?:\+(?P<offset>0x[0-9a-f]+))?")
 HEX = re.compile(r"0x[0-9a-f]+")
 NM_LINE = re.compile(r"([0-9a-f]+)(?: ([0-9a-f]+))? ([A-Za-z]) (\S+)")
@@ -149,13 +181,15 @@ class Facts:
                 f"the control hart")
         self.layout, self.header, self.domain = layout, header, domain
         self.control = domain == CONTROL
-        require(set(devices) == DEVICE_KEYS,
+        # M11-B: a board declaration's devices, chosen by its keys.
+        self.board = set(devices) == BOARD_DEVICE_KEYS
+        require(self.board or set(devices) == DEVICE_KEYS,
                 f"the devices are {sorted(devices)}, not "
-                f"{sorted(DEVICE_KEYS)}")
-        device = {key: (value if key == "aplic-source" else
+                f"{sorted(DEVICE_KEYS)}, or the board's")
+        device = {key: (value if key in WIDTH_KEYS else
                         number(value, f"device {key}"))
                   for key, value in devices.items()}
-        require(isinstance(device["aplic-source"], int) and
+        require(self.board or isinstance(device["aplic-source"], int) and
                 1 <= device["aplic-source"] <= 96,
                 "the APLIC source is not 1 to 96")
         dtb = layout["DTB_GPA"] - layout["GUEST_GPA"]
@@ -186,18 +220,30 @@ class Facts:
             "staging": layout["STAGING_HPA"],
             "control.padding": layout["DIAGNOSTIC_HPA"] +
             layout["DIAGNOSTIC_BYTES"],
-            "uart": device["uart"],
             "aplic-m": device["aplic-m"],
-            "aplic-s": device["aplic-s"],
-            "aplic-s.source": device["aplic-s"] + 4 * device["aplic-source"],
             "imsic-m.hart0": device["imsic-m"],
             "imsic-s.hart0": device["imsic-s"],
-            "test": device["test"],
             "mtime": device["mtime"],
             "mtimecmp.hart0": device["mtimecmp"],
             "m-memory": device["m-memory"],
             "unnamed-ram": device["unnamed-ram"],
         }
+        if self.board:
+            scratch = device["console"] + device["console-scratch"]
+            names.update({"console": device["console"],
+                          "console.scratch": scratch})
+            # The registers whose width the board's register forms fix.
+            self.devices = {scratch: device["console-scratch-width"],
+                            device["mtime"]: device["timer-width"],
+                            device["mtimecmp"]: device["timer-width"]}
+        else:
+            names.update({"uart": device["uart"],
+                          "aplic-s": device["aplic-s"],
+                          "aplic-s.source": device["aplic-s"] +
+                          4 * device["aplic-source"],
+                          "test": device["test"]})
+            self.devices = {device["uart"] + 7: 1,
+                            names["aplic-s.source"]: 4}
         if self.control:
             self.hart = layout["CONTROL_HART"]
             sides = (("g0", 0), ("g1", 1))
@@ -220,8 +266,6 @@ class Facts:
                 f"{side}.block": layout[f"G{index}_BLOCK_HPA"],
             })
         self.names = names
-        self.devices = {device["uart"] + 7: 1,
-                        names["aplic-s.source"]: 4}
         self.windows = {layout[f"G{index}_HPA"]: index for index in (0, 1)}
         self.window_bytes = layout["GUEST_BYTES"]
         self.gigapage = header["BREACH_GIGAPAGE"]
@@ -381,24 +425,28 @@ class Facts:
         return 0
 
 
-def load(path):
+def load(path, schema=SCHEMA, what="declaration"):
     try:
         value = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         raise Refused(f"{path}: {error}") from error
-    require(isinstance(value, dict) and value.get("schema") == SCHEMA,
-            f"{path} is not a {SCHEMA} declaration")
+    require(isinstance(value, dict) and value.get("schema") == schema,
+            f"{path} is not a {schema} {what}")
     return value
 
 
 def declared_rows(declaration, domain):
     """The declaration's rows for the hooked role DOMAIN: VS domain 1's own
     in place; a control declaration (its role CONTROL) the control hart's
-    alone, and a VS-domain one never the control hart's."""
+    alone, and a VS-domain one never the control hart's; one that names
+    its VS domain (M11-B) that domain's alone."""
     role = declaration.get("role", "vs-domain")
     want = CONTROL if domain == CONTROL else "vs-domain"
     require(role == want, f"the declaration is the {role} role's, not "
             f"the {want} role's")
+    named = declaration.get("domain", domain)
+    require(named == domain, f"the declaration names VS domain {named!r}, "
+            f"not the hooked role {domain!r}")
     rows = declaration.get("rows")
     require(isinstance(rows, list) and rows, "the declaration has no rows")
     replacements = declaration.get("g1", {})
@@ -1026,12 +1074,277 @@ def write_new(path, text):
         handle.write(text)
 
 
+# ------------------------------------------------------------------ board
+def board_devices(platform):
+    """A board declaration's devices but unnamed-ram: the facts of the
+    board's description PLATFORM (k3/platform.json)."""
+    roots, breach = platform["root_devices"], platform["breach"]
+    scratch, imsic = breach["console_scratch"], breach["imsic_s"]
+    return {"console": roots["console"]["base"],
+            "aplic-m": roots["aplic-m"]["base"],
+            "imsic-m": roots["imsic-m"]["base"],
+            "console-scratch": scratch["offset"],
+            "console-scratch-width": scratch["width"],
+            "imsic-s": imsic["base"], "imsic-s-stride": imsic["stride"],
+            "mtime": breach["mtime"], "mtimecmp": breach["mtimecmp"],
+            "timer-width": breach["timer_width"],
+            "m-memory": platform["firmware"]["load"]}
+
+
+def meets(ranges, low, high):
+    """Whether [LOW, HIGH) meets RANGES; a range of size 0 meets nothing."""
+    return any(start < min(end, high) and low < end for start, end in ranges)
+
+
+def ranges(device):
+    """A listed device's reg (the description's list, or the recipe's
+    devices.json) as ranges, [(low, high)]."""
+    return [(number(base, "a reg"), number(base, "a reg") +
+             number(size, "a reg")) for base, size in device["reg"]]
+
+
+def targets(item, row, facts):
+    """The bytes that a board row names: an access's, a jump's four, a
+    cache block, a byte for each call argument written as an address name
+    (a number is none), and for the secret's source the monitor's image."""
+    if item["op"] == "ecall":
+        values = zip(("a0", "a1", "a2"),
+                     (item["access"], item["value"], item["extra"]))
+        return [(value, value + 1) for key, value in values
+                if not HEX.fullmatch(str(row["call"].get(key, "0x0")))]
+    low = item["at"]
+    if low is None:
+        low = facts.layout["MONITOR_HPA"]
+        return [(low, low + facts.layout["IMAGE_BYTES"])]
+    size = {"jump": 4, "cbo.zero": CACHE_BLOCK, "cbo.inval": CACHE_BLOCK}
+    return [(low, low + size.get(item["op"], item["width"]))]
+
+
+def admit(low, high, place, label):
+    """The board's target rule (B-10, stop B9), an allowlist: the class of
+    [LOW, HIGH), or a refusal, its most specific reason first."""
+    where = f"{label}: its bytes 0x{low:x} to 0x{high:x}"
+    met = [device for device in place["devices"]
+           if meets(ranges(device), low, high)]
+    held = [f"{device['kind']} {device['path']}" for device in met
+            if device["kind"] in PERSISTENT]
+    require(not held, f"{where} meet a device that holds persistent "
+            f"state: {', '.join(held)}")
+    other = [device["path"] for device in met if device["kind"] not in FIVE]
+    require(not other, f"{where} meet {', '.join(other[:1])}, a device "
+            f"that B-10 does not list")
+    if met:
+        require(len(met) == 1 and any(start <= low and high <= end for
+                                      start, end in ranges(met[0])),
+                f"{where} are not wholly inside one range of one of B-10's "
+                f"devices: {', '.join(device['path'] for device in met)}")
+        return "device"
+    (begin, end), (base, top) = place["firmware"], place["low_reserved"]
+    if begin <= low and high <= end:
+        return "firmware"
+    require(not meets(((base, begin), (end, top)), low, high),
+            f"{where} are in the real-time cores' memory")
+    first, last = place["memory"]
+    require(first <= low and high <= last and
+            not meets(((base, top),), low, high), f"{where} lie in no "
+            f"listed device, nor wholly in the firmware's place or in "
+            f"memory outside low_reserved")
+    return "memory"
+
+
+def board_rules(declaration, facts, platform, listed):
+    """A board declaration's rules (M11-B; B-10, stop B9) on the board's
+    description PLATFORM and its device list LISTED: the number of the
+    rows' targets in each class, or a refusal."""
+    named = declaration.get("platform")
+    require(named == platform.get("platform") and facts.board,
+            f"the declaration's platform {named!r} or devices are not the "
+            f"description's")
+    require(facts.control or "domain" in declaration,
+            "the board's declaration of a VS domain names no domain")
+    breach, roots = platform["breach"], platform["root_devices"]
+    clint = number(roots["clint"]["base"], "the CLINT's base")
+    require(platform["harts"]["cache_block"] == CACHE_BLOCK and (number(
+        breach["mtime"], "mtime"), number(breach["mtimecmp"], "mtimecmp"))
+            == (clint + 0xbff8, clint + 0x4000), f"the description's cache "
+            f"block is not {CACHE_BLOCK} bytes, or its mtime and hart 0's "
+            f"mtimecmp not its CLINT's (base + 0xbff8, base + 0x4000)")
+    for kind, fact in FIVE.items():
+        path = (breach["imsic_s"] if fact is None else roots[fact])["path"]
+        held = [(d["path"], d["status"]) for d in listed if d["kind"] == kind]
+        require(held == [(path, "okay")], f"the kind {kind} is held by "
+                f"{held}, not by {path} alone, enabled")
+    wrong = sorted(key for key, value in board_devices(platform).items()
+                   if declaration["devices"][key] != value)
+    require(not wrong, f"the declaration's devices {wrong} are not the "
+            f"description's")
+    rows = {row["row"]: row for row in declared_rows(declaration,
+                                                      facts.domain)}
+    place = {"devices": listed, "firmware": tuple(number(
+        platform["firmware"][key], key) for key in ("load", "end_max"))}
+    for key in ("memory", "low_reserved"):
+        base = number(platform[key]["base"], key)
+        place[key] = (base, base + number(platform[key]["size"], key))
+    found = {}
+    for item in resolve(declaration, facts):
+        witness = item["witness"] or {}
+        require("device" not in witness and witness.get("copy") != "device",
+                f"row {item['row']}: a device witness, which no board row "
+                f"has")
+        found[item["row"]] = item["op"], [
+            admit(low, high, place, f"row {item['row']}")
+            for low, high in targets(item, rows[item["row"]], facts)]
+    effects = declaration.get("effects")
+    require(isinstance(effects, dict), "the board's declaration has no "
+            "effects, {row: text} (T-4)")
+    for name, (op, classes) in found.items():
+        require(op not in CHANGES or name in effects or not {
+            "device", "firmware"} & set(classes), f"row {name}: a {op} on "
+            f"a device or the firmware's memory, which effects does not name")
+    for name in effects:
+        require(found.get(name, ("",))[0] in CHANGES, f"effects names "
+                f"{name!r}, no row that writes, jumps, or calls")
+    classes = [kind for _, row in found.values() for kind in row]
+    return {kind: classes.count(kind) for kind in ("device", "firmware",
+                                                   "memory")} | {
+        "effects": len(effects), "listed": len(listed)}
+
+
+def board_mutations(declaration, facts, platform, listed):
+    """B9's mutations (the design's 6.3): each one change at a path in a
+    copy of the declaration (0), the description (1), or the list (2), its
+    address taken from the list, refused by its own reason alone:
+    [(name, ok, detail)]."""
+    base = number(platform["memory"]["base"], "memory")
+    memory = ((base, base + number(platform["memory"]["size"], "memory")),)
+
+    def kinds(at):
+        return {device["kind"] for device in listed
+                if meets(ranges(device), at, at + 4)}
+
+    def start(device):
+        return next((low for low, high in ranges(device)[:1]
+                     if low < high), None)
+    free = [at for at in sorted({0, memory[0][1]} | {
+        high for device in listed for _, high in ranges(device)})
+            if not kinds(at) and not meets(memory, at, at + 4)]
+    edge = [high for kind in FIVE for device in listed if device["kind"]
+            == kind for low, high in ranges(device)
+            if low + 4 <= high and high in free]
+    r, e, spare, specs = (0, "rows", "I1"), (0, "effects"), None, []
+    for kind in PERSISTENT + ("other",):
+        device = next((d for d in listed if d["kind"] == kind and start(d)
+                       is not None and (kind != "other" or kinds(start(d)) ==
+                                        {"other"})), None)
+        spare = device["path"] if device and kind == "other" else spare
+        want = device and (f"meet {device['path']}," if kind == "other"
+                           else f"{kind} {device['path']}")
+        specs.append((f"a row on the first {kind}", r, device and {
+            "at": hex(start(device))}, want))
+    imsic = (2, platform["breach"]["imsic_s"]["path"])
+    specs += [
+        ("the real-time cores' memory", r,
+         {"at": platform["firmware"]["end_max"]}, "real-time cores'"),
+        ("an address that nothing holds", r, free and {"at": hex(free[0])},
+         "in no listed device"),
+        ("off the end of one of the five", r, edge and {
+            "at": hex(edge[0] - 4), "width": 8}, "not wholly inside"),
+        ("a device witness", r, {"witness": {"device": True}}, "a device "
+         "witness"),
+        ("an 8-byte timer access", (0, "rows", "J4"), {"width": 8},
+         "4 bytes wide"),
+        ("the S-level files disabled", imsic, {"status": "x"}, "s is held"),
+        ("a device not the description's", (0, "devices"),
+         {"mtime": "0x0"}, "devices ['mtime']"),
+        ("another cache block", (1, "harts"), {"cache_block": 32},
+         "cache block"),
+        ("mtime not the CLINT's", (1, "breach"), {"mtime": "0x0"},
+         "cache block"),
+        ("another platform", (0,), {"platform": "x"}, "platform 'x'"),
+        ("no effects", (0,), {"effects": None}, "no effects"),
+        ("a device store with no effect", e, {"I1": None}, "I1: a store"),
+        ("an effect of a load", e, {"I2": "a"}, "names 'I2'"),
+        ("an effect of no row", e, {"Z9": "a"}, "names 'Z9'")]
+    specs += [(f"a name the board lacks: {name}", r, {"at": name},
+               f"named '{name}'") for name in ("test", "aplic-s")]
+    specs += [(f"a sixth device of the kind {kind}", (2, spare),
+               {"kind": kind}, f"the kind {kind} is held") for kind in FIVE]
+    specs += [] if facts.control else [
+        ("a VS domain's declaration without it", (0,), {"domain": None},
+         "names no domain")]
+    out = []
+    for name, path, changes, want in specs:
+        if not changes or None in path:
+            out.append((name, False, "the list holds no address for it"))
+            continue
+        copies = target = json.loads(json.dumps([declaration, platform,
+                                                 listed]))
+        for key in path:
+            target = target[key] if isinstance(key, int) or isinstance(
+                target, dict) else next(item for item in target if key in (
+                    item.get("row"), item.get("path")))
+        for key, value in changes.items():
+            target.pop(key) if value is None else target.update({key: value})
+        try:
+            board_rules(copies[0], Facts(facts.layout, facts.header, copies[
+                0]["devices"], facts.domain), *copies[1:])
+            out.append((name, False, "accepted"))
+        except Refused as error:
+            out.append((name, want in str(error), str(error)))
+    return out
+
+
+def board_input(declaration, facts, platform_file, devices_file=None,
+                discriminate=False):
+    """A board declaration's description, list, and rules' counts (M11-B),
+    from --platform-file and --devices; None for QEMU's, which takes none.
+    A board declaration has no -off copy."""
+    board = "platform" in declaration
+    require(board == (platform_file is not None) and not (
+        board and discriminate), "a board declaration, and only one, takes "
+            "--platform-file, and it has no -off copy")
+    if not board:
+        return None
+    platform = load(platform_file, PLATFORM_SCHEMA, "description")
+    listed = load(devices_file, DEVICES_SCHEMA, "list")["list"] if \
+        devices_file else platform["devices"]["list"]
+    return platform, listed, board_rules(declaration, facts, platform,
+                                         listed)
+
+
+def board_expectation(path, domain, candidate, image):
+    """The expectation of the board's image IMAGE (M11-B; the design's
+    6.6): CANDIDATE, its candidate's, with image, where, toolchains,
+    change, and the boundary's counts replaced, the counts PATH's."""
+    name = "breach-c" if domain == CONTROL else f"breach-g{domain}"
+    require("platform" in load(path) and image == f"k3-{name}" and
+            candidate.get("image") == name == candidate.get(
+                "boundary", {}).get("pair"), f"{image} is not the board's "
+            f"image of {name}, {path} a board declaration, or the "
+            f"candidate's expectation {name}'s with the boundary on")
+    out = json.loads(json.dumps(candidate))
+    out.update(image=image, where=["qemu", "board"], toolchains=["gcc"],
+               change=f"{name}'s image with the attempts of "
+               f"{pathlib.Path(path).resolve().relative_to(HERE.parent)} "
+               f"(planning/mvp-m11-board-addendum.md, B-10), the board's "
+               f"devices in place of QEMU's, under {name}'s descriptor and "
+               f"identity. {name}: {candidate['change']}")
+    out["boundary"]["counts"] = {str(candidate["breach"]["hart"]): {
+        key: value for key, value in expected_counts(path, domain).items()
+        if value}}
+    return out
+
+
 # -------------------------------------------------------------- self-test
 HERE = pathlib.Path(__file__).resolve().parent
 SOURCES = HERE.parent / "src"
 DECLARATION = HERE.parent / "scenarios" / "anchor" / "breach.json"
 CONTROL_DECLARATION = HERE.parent / "scenarios" / "anchor" / \
     "breach-control.json"
+# M11-B: the board's two declarations, and its fragments' directory.
+K3 = HERE.parent / "k3"
+BOARD_DECLARATIONS = {1: K3 / "breach" / "breach-g1.json",
+                      CONTROL: K3 / "breach" / "breach-c.json"}
 # anchor's control profile in step 2 (M11-8) and its two VS-domain
 # profiles as its descriptor states them (tools/gen-partition.py):
 # (extent base, size, rights) per hart.
@@ -1294,6 +1607,95 @@ def control_cases(case, cases, layout, header, symbols, inputs, scratch):
          "the declaration is the vs-domain role's, not the control role's")
 
 
+def board_cases(case, cases, layout, header, symbols, inputs):
+    """The board's rules (M11-B) on the partition backend's stand-in
+    description (every value made up), with the timer's registers and a
+    power-management block over its eFuse block: each board declaration
+    with the stand-in's devices, its targets, table, plan, and mutations;
+    the refusals of the interface, the domain rule, and expect."""
+    platform = load(K3 / "fixtures" / "partition" / "platform.json",
+                    PLATFORM_SCHEMA, "description")
+    clint = number(platform["root_devices"]["clint"]["base"], "the CLINT")
+    platform["breach"].update(mtime=hex(clint + 0xbff8),
+                              mtimecmp=hex(clint + 0x4000))
+    listed = platform["devices"]["list"]
+    listed.append(dict(next(device for device in listed if device["kind"]
+                            == "efuse"), path="/soc/pmu",
+                       kind="power-management"))
+    for role, want in ((1, [10, 3, 73, 33, 0]), (CONTROL, [10, 4, 85, 31, 7])):
+        declaration = dict(load(BOARD_DECLARATIONS[role]),
+                           platform=platform["platform"])
+        declaration["devices"].update(board_devices(platform))
+        facts = Facts(layout, header, declaration["devices"], role)
+        made = case(f"board {role}: its rules, table, and plan", lambda: (
+            board_rules(declaration, facts, platform, listed),
+            table_text(declaration, facts, False),
+            make_plan(declaration, facts, False, "k3", symbols, inputs,
+                      synthetic_descriptor())))
+        rows = f"_ROWS {len(declared_rows(declaration, role))}U"
+        cases.append((f"board {role}: targets on devices and in the "
+                      f"firmware's place, its table's rows, M-mode's counts",
+                      bool(made) and [made[0]["device"], made[0][
+                          "firmware"]] + list(made[2]["counts"].values()) ==
+                      want and rows in made[1], str(made and made[0])))
+        cases += [(f"board {role} refused: {name}", ok, detail) for
+                  name, ok, detail in board_mutations(declaration, facts,
+                                                      platform, listed)]
+        # T4-1: a jump's 4 bytes and a cache block's 64 across an end (the
+        # firmware's place made to end 32 bytes into a block), each refused
+        # where its first byte alone would be admitted.
+        end = ranges(next(d for d in listed if d["kind"] == "console"))[0][1]
+        top = number(platform["firmware"]["end_max"], "end_max")
+        shifted = dict(platform, firmware=dict(platform["firmware"],
+                                               end_max=hex(top + 32)))
+        for name, at, want in (("I8", end - 2, "not wholly inside"),
+                               ("H4", top, "real-time cores'"),
+                               ("H5", top, "real-time cores'")):
+            copied = json.loads(json.dumps(declaration))
+            copied["effects"].setdefault(name, "a stand-in")
+            next(row for row in copied["rows"] if row["row"] == name)[
+                "at"] = hex(at)
+            case(f"board {role} refused: {name}'s last bytes past an end",
+                 lambda: board_rules(copied, facts, shifted, listed), want)
+    real, qemu, path = load(BOARD_DECLARATIONS[1]), load(DECLARATION), \
+        K3 / "platform.json"
+    facts = Facts(layout, header, real["devices"], 1)
+    candidate = {"image": "breach-g1", "change": "C.", "kept": 1,
+                 "breach": {"domain": 1, "hart": 2},
+                 "boundary": {"pair": "breach-g1", "record": True}}
+
+    def expect(board="k3-breach-g1", file=BOARD_DECLARATIONS[1], **changes):
+        return board_expectation(file, 1, dict(candidate, **changes), board)
+    made = case("expect: the candidate's, five keys replaced", expect)
+    board = dict(candidate, image="k3-breach-g1", where=["qemu", "board"],
+                 toolchains=["gcc"], boundary={"pair": "breach-g1", "record":
+                                               True, "counts": {"2": {
+                                                   "pmp_faults": 73,
+                                                   "blocked_calls": 33}}})
+    cases.append(("expect: every other key the candidate's", bool(made) and
+                  made == dict(board, change=made["change"]) and
+                  "k3/breach/breach-g1.json" in made["change"], str(made)))
+    for name, call, want in (
+            ("expect: an image not named after the candidate's",
+             lambda: expect("k3-breach-g0"), "is not the board's"),
+            ("expect: QEMU's declaration", lambda: expect(file=DECLARATION),
+             "is not the board's"),
+            ("VS domain 1's declaration for VS domain 0", lambda:
+             expected_counts(BOARD_DECLARATIONS[1], 0), "names VS domain 1"),
+            ("devices of neither form", lambda: Facts(layout, header, dict(
+                real["devices"], uart="0x0"), 1), "the devices are"),
+            ("no --platform-file", lambda: board_input(real, facts, None),
+             "takes --platform-file"),
+            ("QEMU's declaration with one", lambda: board_input(qemu, Facts(
+                layout, header, qemu["devices"], 1), path),
+             "takes --platform-file"),
+            ("an -off copy", lambda: board_input(real, facts, path, None,
+                                                 True), "no -off copy"),
+            ("a device list of another schema", lambda: board_input(
+                real, facts, path, path), DEVICES_SCHEMA)):
+        case(f"board refused: {name}", call, want)
+
+
 def self_test(scratch):
     scratch = pathlib.Path(scratch)
     scratch.mkdir(parents=True, exist_ok=True)
@@ -1554,6 +1956,7 @@ def self_test(scratch):
          lambda: make_plan(declaration, facts[0], False, "breach-g0",
                            symbols, inputs), "needs its descriptor")
     control_cases(case, cases, layout, header, symbols, inputs, scratch)
+    board_cases(case, cases, layout, header, symbols, inputs)
     failed = [item for item in cases if not item[1]]
     for name, ok, detail in cases:
         print(f"{'ok  ' if ok else 'FAIL'} {name}: {detail}")
@@ -1578,14 +1981,23 @@ def main(argv):
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--scratch")
     commands = parser.add_subparsers(dest="command")
-    for name in ("table", "plan", "counts"):
+    for name in ("table", "plan", "counts", "board-check", "expect"):
         command = commands.add_parser(name)
         command.add_argument("--declaration", required=True)
         command.add_argument("--domain", type=hooked_role, required=True)
-        if name == "counts":
+        if name == "expect":
+            for option in ("--candidate", "--image", "--out"):
+                command.add_argument(option, required=True)
+        if name in ("counts", "expect"):
             continue
         command.add_argument("--layout", required=True)
         command.add_argument("--header", required=True)
+        command.add_argument("--platform-file",
+                             required=name == "board-check")
+        if name == "board-check":
+            command.add_argument("--devices")
+            command.add_argument("--mutations", action="store_true")
+            continue
         command.add_argument("--discriminate", action="store_true")
         command.add_argument("--out", required=True)
         if name == "plan":
@@ -1600,14 +2012,39 @@ def main(argv):
                 parser.error("--self-test requires --scratch and no command")
             return self_test(args.scratch)
         if args.command is None:
-            parser.error("table, plan, counts, or --self-test")
+            parser.error("a command, or --self-test")
         if args.command == "counts":
             print(json.dumps(expected_counts(args.declaration, args.domain),
                              sort_keys=True))
             return 0
+        if args.command == "expect":
+            out = board_expectation(args.declaration, args.domain, load(
+                args.candidate, "be-mvp-expect-v3", "expectation"),
+                args.image)
+            write_new(args.out, json.dumps(out, indent=1, sort_keys=True) +
+                      "\n")
+            print(f"BE_MVP_BREACH_EXPECT: PASS image={args.image} "
+                  f"counts={json.dumps(out['boundary']['counts'])}")
+            return 0
         declaration = load(args.declaration)
         facts = Facts(defines(args.layout), defines(args.header),
                       declaration.get("devices", {}), args.domain)
+        board = board_input(declaration, facts, args.platform_file,
+                            getattr(args, "devices", None),
+                            getattr(args, "discriminate", False))
+        if args.command == "board-check":
+            platform, listed, counts = board
+            results = board_mutations(declaration, facts, platform,
+                                      listed) if args.mutations else []
+            for name, ok, detail in results:
+                print(f"{'ok  ' if ok else 'FAIL'} {name}: {detail}")
+            failed = sum(not ok for _, ok, _ in results)
+            print(f"BE_MVP_BREACH_BOARD: {'FAIL' if failed else 'PASS'} "
+                  f"domain={args.domain} " + " ".join(
+                      f"{key}={value}" for key, value in counts.items()) +
+                  f" list={'devices' if args.devices else 'platform'} "
+                  f"mutations={len(results)}")
+            return 1 if failed else 0
         if args.command == "table":
             write_new(args.out, table_text(declaration, facts,
                                            args.discriminate))
