@@ -15,6 +15,9 @@ card.
                    --pins FILE --sitting-pins FILE --gate-sums FILE
                    --board FILE --sfdisk SFDISK --sfdisk-sha256 HEX
                    --build DIR
+  k3-card.py gate --gate DIR --published DIR --pins FILE --templates FILE
+                  --dtc DTC --be-part N --build DIR --out FILE
+                  --image IMAGE=STAGED [--image IMAGE=STAGED...]
   k3-card.py --self-test --scratch DIR --dtc DTC --sfdisk SFDISK
              --sfdisk-sha256 HEX [--outputs DIR]
 
@@ -67,13 +70,29 @@ SHA256SUMS are written beside it. A refusal after the image is written
 removes what this run wrote. The image is the same bytes for the same
 inputs and N, its disk GUID included.
 
+gate is the board gate's step k3-gate-card (mvp/k3/card.mk). For each
+IMAGE, with its staged name, it makes the FIT and the environment as fit
+and env do, from the gate's DIR/images/IMAGE/fw_dynamic.bin and
+board.json and the published env.bin, as card-firmware.itb and
+card-environment.bin beside them: the gate's images.sha256 lists them,
+evaluate compares them host against evaluator, and image requires a
+card's to be these. It requires each FIT to have the structure of the
+published fw_dynamic.itb, by its pin, as the lock's dtc prints both
+back; the default's removed variables, each with its rules, and the
+report's counts, the kept in each group among them, to be those declared
+below, so that a change in the rules or in the pinned default fails the
+gate; and the environments to differ in be_image alone. Its record, a
+new file, holds digests, names, counts, and the announcements, and ends
+`BE_MVP_K3_GATE[k3-gate-card]: PASS ...`, or FAIL with the reason.
+
 --self-test runs every rule on inputs that it writes itself (no file of
-the vendor's), each refusal with a case that fails by it alone; with
---outputs it leaves its deterministic outputs there.
+the vendor's), each refusal with a case that fails by it alone, the
+gate's on a stand-in gate; with --outputs it leaves its deterministic
+outputs there.
 
 Trust: reads its inputs, never a device; writes only its outputs, each
-created exclusively, and its scratch (WORK, --scratch); runs only DTC
-and SFDISK.
+created exclusively, and its scratch (WORK, the gate's DIR/work/card,
+--scratch); runs only DTC and SFDISK.
 Scope: M11-B's card. Exit 0 pass, 1 refused, 2 usage.
 """
 
@@ -1134,6 +1153,155 @@ def make_card(args):
                     size))
 
 
+# ------------------------------------------------------- the board gate
+GATE_TAG = "BE_MVP_K3_GATE[k3-gate-card]"
+# What the gate requires of the published env.bin, by its pin, as the
+# design's section 2.4 read it: each variable that the rules remove, with
+# its rules, and the report's counts. A change in the rules, or in the
+# pinned default, fails the gate until they are read again. data_bytes,
+# which the staged name's length moves, is recorded and not compared.
+GATE_REMOVED = {
+    **dict.fromkeys(("flash_from_mmc", "flash_from_net", "flash_from_usb"),
+                    "N1,M"),
+    "nfs_boot": "N1", "ubifs_list": "N1", "autoboot": "N1,N5",
+    "nand_boot": "N4,N5", "ubifs_boot": "N4",
+    **dict.fromkeys(("boot_default", "flash_default", "bootmenu_delay",
+                     *(f"bootmenu_{index}" for index in range(11))), "M"),
+    **dict.fromkeys(("splashimage", "splashfile", "splashpos"), "S")}
+GATE_COUNTS = {"entries": 122, "names": 119, "removed": 25, "changed": 1,
+               "added": 5, "kept": 93, "kept_spl": 5, "kept_boot": 9,
+               "kept_flow": 31, "kept_data": 48, "variables": 99}
+
+
+def differences(found, declared):
+    """Each name whose value FOUND and DECLARED give differently."""
+    return [f"{name} {found.get(name, 'none')}, declared "
+            f"{declared.get(name, 'none')}" for name in sorted(
+                {*found, *declared}) if found.get(name) != declared.get(name)]
+
+
+def beside_staged(environments):
+    """The first image whose environment differs from the first one's in
+    a variable other than be_image, or None."""
+    values = [({name: value for name, value in environment.items()
+                if name != "be_image"}, image)
+              for image, environment in environments.items()]
+    return next((image for found, image in values if found != values[0][0]),
+                None)
+
+
+def make_gate(args, removed, counts):
+    """k3-gate-card's record, as its lines, for ARGS' images; REMOVED and
+    COUNTS are what the published default must give."""
+    images = [image.partition("=")[::2] for image in args.image]
+    if not images or not all(IMAGE.fullmatch(image) and staged for image,
+                             staged in images) or len(dict(images)) != len(
+                                 images) or len(set(dict(
+                                     images).values())) != len(images):
+        raise Refused("the images are not distinct IMAGE=STAGED, each "
+                      "staged name its own")
+    work = args.gate / "work" / "card"
+    vendor = read_regular(args.published / "fw_dynamic.itb", follow=True)
+    if pin(args.pins, "published", "fw_dynamic.itb") != (sha(vendor),
+                                                          len(vendor)):
+        raise Refused(f"{args.published / 'fw_dynamic.itb'} is not the "
+                      "pinned fw_dynamic.itb")
+    write_new(work / "fw_dynamic.itb", vendor)
+    template = structure(dtc_run(args.dtc, "-I", "dtb", "-O", "dts", work /
+                                 "fw_dynamic.itb").decode("ascii", "replace"))
+    default = pin(args.pins, "published", "env.bin")
+    lines = ["schema=be-mvp-k3-gate-card-v1",
+             f"published env.bin sha256={default[0]} bytes={default[1]}",
+             f"published fw_dynamic.itb sha256={sha(vendor)} "
+             f"bytes={len(vendor)}",
+             f"templates sha256={sha(read_regular(args.templates))}",
+             f"be_part={args.be_part}"]
+    made, environments = [], {}
+    for image, staged in images:
+        directory, own = args.gate / "images" / image, work / image
+        try:
+            os.mkdir(own, 0o700)
+        except OSError as error:
+            raise Refused(f"{own}: {error.strerror}") from error
+        printed = io.StringIO()
+        with contextlib.redirect_stdout(printed):
+            make_fit(argparse.Namespace(
+                image=image, firmware=directory / FIRMWARE,
+                board=directory / "board.json", dtc=args.dtc,
+                build=args.build, work=own / "fit",
+                out=directory / "card-firmware.itb", sitting_pins=None,
+                gate_sums=None))
+            make_environment(argparse.Namespace(
+                image=image, default=args.published / "env.bin",
+                pins=args.pins, board=directory / "board.json",
+                staged=staged, be_part=args.be_part,
+                templates=args.templates, build=args.build,
+                out=directory / "card-environment.bin",
+                report=own / "environment.txt"))
+        fit = read_regular(directory / "card-firmware.itb")
+        if structure(dtc_run(args.dtc, "-I", "dtb", "-O", "dts", directory /
+                             "card-firmware.itb").decode(
+                                 "ascii", "replace")) != template:
+            raise Refused(f"{image}'s FIT is not of the published "
+                          "fw_dynamic.itb's structure")
+        report = (own / "environment.txt").read_text(
+            encoding="ascii").splitlines()
+        found = {line.split()[1]: line.split()[2].removeprefix("rules=")
+                 for line in report if line.startswith("removed ")}
+        summary = {name: int(value) for name, value in (
+            field.split("=") for field in next(
+                line for line in report if line.startswith(
+                    "counts ")).split()[1:])}
+        data_bytes = summary.pop("data_bytes")
+        for what, problems in (("removed set", differences(found, removed)),
+                               ("counts", differences(summary, counts))):
+            if problems:
+                raise Refused(f"the published env.bin's {what}, for "
+                              f"{image}, is not the declared one: " +
+                              "; ".join(problems))
+        environment = read_regular(directory / "card-environment.bin")
+        environments[image] = parse_environment(environment, image)[1]
+        made += [f"image {image} staged={staged} firmware_sha256="
+                 f"{sha(read_regular(directory / FIRMWARE))} "
+                 f"fit_sha256={sha(fit)} environment_sha256="
+                 f"{sha(environment)} data_bytes={data_bytes} "
+                 "fit_structure=equal"] + [
+            line for line in printed.getvalue().splitlines()
+            if line.startswith("BE_MVP_K3_")]
+    other = beside_staged(environments)
+    if other:
+        raise Refused(f"{other}'s environment differs from "
+                      f"{images[0][0]}'s in more than be_image")
+    kept = " ".join(f"kept_{group}={counts['kept_' + group]}"
+                    for group in GROUPS)
+    return lines + [f"removed {name} rules={rules}" for name, rules in
+                    sorted(found.items())] + [
+        "counts " + " ".join(f"{name}={value}" for name, value in
+                             counts.items()), *made,
+        f"environments: the {len(images)} differ in be_image alone",
+        f"{GATE_TAG}: PASS images={len(images)} removed={counts['removed']} "
+        f"kept={counts['kept']} {kept} fit_structure=equal"]
+
+
+def gate(args, removed=GATE_REMOVED, counts=GATE_COUNTS):
+    """k3-gate-card: its record, a new file, ending PASS or FAIL; 0 or 1."""
+    if os.path.lexists(args.out):
+        print(f"{GATE_TAG}: FAIL refused: {args.out} exists; the step "
+              "removes its outputs first")
+        return 1
+    try:
+        lines, status = make_gate(args, removed, counts), 0
+    except (Refused, OSError) as error:
+        lines, status = [f"{GATE_TAG}: FAIL refused: {error}"], 1
+    text = "".join(f"{line}\n" for line in lines)
+    try:
+        write_new(args.out, text.encode("ascii", "replace"))
+    except Refused as error:
+        text, status = f"{GATE_TAG}: FAIL refused: {error}\n", 1
+    print(text, end="")
+    return status
+
+
 # ------------------------------------------------------------- self-test
 def self_test(scratch, dtc, sfdisk, sfdisk_sha256, outputs=None):
     """Each rule's seeded case fails by that rule alone; the good inputs
@@ -1417,11 +1585,13 @@ def self_test(scratch, dtc, sfdisk, sfdisk_sha256, outputs=None):
         case(f"structure: {label}: differs", source != other_values and
              compiled(source) != ours)
 
-    good_environment = environment_tests(scratch, run, put, case, board,
-                                         outputs, numbers)
+    good_environment, default, seeded = environment_tests(
+        scratch, run, put, case, board, outputs, numbers)
     card_tests(scratch, run, put, case, (board, made_up, numbers), outputs,
                (sfdisk, sfdisk_sha256), (good_fit, good_environment,
                                          firmware))
+    gate_tests(scratch, run, case, (board, made_up, numbers), dtc, (
+        good_fit, good_environment, firmware, default, seeded))
     shutil.rmtree(scratch, ignore_errors=True)
     failed = results.count(False)
     print(f"BE_MVP_K3_CARD_SELF_TEST: {'FAIL' if failed else 'PASS'} "
@@ -1626,7 +1796,8 @@ def environment_tests(scratch, run, put, case, board, outputs, numbers):
         case(f"env: {label}: refused", status == 1 and expected in output
              and made == [changes.get("existing") == "environment.bin",
                           changes.get("existing") == "environment.txt"])
-    return made_environment
+    return made_environment, good, {
+        name: ",".join(rules) for name, (_, rules) in seeded.items()}
 
 
 def card_tests(scratch, run, put, case, makers, outputs, tools, inputs):
@@ -1938,6 +2109,163 @@ def card_tests(scratch, run, put, case, makers, outputs, tools, inputs):
                  keywords.get("existing")))
 
 
+def gate_tests(scratch, run, case, makers, dtc, inputs):
+    """The gate step's cases, on a stand-in gate of two images, with
+    environment_tests' default as the published env.bin and a FIT that
+    DTC makes of the template with other values as fw_dynamic.itb."""
+    board, made_up, numbers = makers
+    good_fit, good_environment, firmware, default, seeded = inputs
+    templates_path = pathlib.Path(__file__).resolve().with_name("k3-env.sh")
+    # environment_tests' default: 45 entries, 41 names, its 18 seeded
+    # removals, and 22 kept, in the groups that it counts.
+    counts = {"entries": 45, "names": 41, "removed": 18, "changed": 1,
+              "added": 5, "kept": 22, "kept_spl": 5, "kept_boot": 6,
+              "kept_flow": 4, "kept_data": 7, "variables": 28}
+    images = {"anchor": ("second", "be-mvp-anchor-gcc.img", firmware),
+              "two-guests-off": ("first", "be-mvp-two-guests-off-gcc.img",
+                                 made_up(2048, "two-guests-off"))}
+
+    def vendor(old="", new=""):
+        work = scratch / "gate" / f"vendor-{next(numbers)}"
+        work.parent.mkdir(exist_ok=True)
+        return compile_fit(dtc, work, FIT_SOURCE.replace("@IMAGE@", "x")
+                           .replace("@CRC@", "0x1").replace(old, new),
+                           made_up(999, "vendor"))
+
+    published_fit = vendor()
+
+    def step(fit=published_fit, pinned=None, given=None, plant=(),
+             drop=(), declared=(seeded, counts), command_line=False):
+        root = scratch / "gate" / str(next(numbers))
+        gate_directory = root / "build" / "k3" / "gate"
+        for image, (sitting, staged, data) in images.items():
+            directory = gate_directory / "images" / image
+            directory.mkdir(parents=True)
+            (directory / FIRMWARE).write_bytes(data)
+            shutil.copyfile(board(data, image=image, sitting=sitting,
+                                  staged_name=staged),
+                            directory / "board.json")
+        for name in ("work/card", "record/steps"):
+            (gate_directory / name).mkdir(parents=True)
+        (root / "published").mkdir()
+        for name, data in (("env.bin", default), ("fw_dynamic.itb", fit)):
+            (root / "published" / name).write_bytes(data)
+        (root / "pins.txt").write_text("".join(
+            f"published {name} sha256={sha(data)} bytes={len(data)}\n"
+            for name, data in (pinned or {"env.bin": default,
+                                          "fw_dynamic.itb": fit}).items()))
+        for name in plant:
+            (gate_directory / name).write_text("")
+        for name in drop:
+            path = gate_directory / name
+            path.rmdir() if path.is_dir() else path.unlink()
+        out = gate_directory / "record" / "steps" / "k3-gate-card.txt"
+        args = argparse.Namespace(
+            gate=gate_directory, published=root / "published",
+            pins=root / "pins.txt", templates=templates_path, dtc=dtc,
+            be_part="6", build=root / "build", out=out, image=given or [
+                f"{image}={staged}" for image, (_, staged, _) in
+                images.items()])
+        if command_line:
+            status, output = run("gate", *(f"--{name.replace('_', '-')}="
+                                           f"{value}" for name, value in
+                                           vars(args).items()
+                                           if name != "image"),
+                                 *(f"--image={image}" for image in args.image))
+        else:
+            printed = io.StringIO()
+            with contextlib.redirect_stdout(printed):
+                status = gate(args, *declared)
+            output = printed.getvalue()
+        record = out.read_text() if out.exists() else ""
+        return status, output, record, gate_directory
+
+    status, output, record, directory = step()
+    last = (f"{GATE_TAG}: PASS images=2 removed=18 kept=22 kept_spl=5 "
+            "kept_boot=6 kept_flow=4 kept_data=7 fit_structure=equal")
+    case("gate: the stand-in passes, its record printed whole", status == 0
+         and output == record and record.splitlines()[-1:] == [last])
+    made = {(image, name): directory / "images" / image / name
+            for image in images for name in ("card-firmware.itb",
+                                             "card-environment.bin")}
+    case("gate: each image's FIT and environment beside its board.json, "
+         "each announced in the record", all(path.exists() and (
+             f"BE_MVP_K3_{'FIT' if name.endswith('.itb') else 'ENVIRONMENT'}"
+             f": PASS image={image} sitting={images[image][0]} "
+             f"file=k3/gate/images/{image}/{name} sha256="
+             f"{sha(path.read_bytes())} bytes={path.stat().st_size}\n")
+             in record for (image, name), path in made.items()))
+    case("gate: anchor's FIT and environment are fit's and env's of the "
+         "same inputs", status == 0 and [made["anchor", name].read_bytes()
+                                         for name in ("card-firmware.itb",
+                                                      "card-environment.bin")]
+         == [good_fit.read_bytes(), good_environment.read_bytes()])
+    case("gate: the record names each removal with its rules, and the "
+         "counts, and holds no value", status == 0 and all(
+             f"\nremoved {name} rules={rules}\n" in record
+             for name, rules in seeded.items()) and "\ncounts entries=45 "
+         "names=41 removed=18 changed=1 added=5 kept=22 kept_spl=5 "
+         "kept_boot=6 kept_flow=4 kept_data=7 variables=28\n" in record and
+         not any(value in record for value in (
+             "no-value-in-the-report", "nor0=x.spi", "mtdparts=")))
+    pins_of = {"fw_dynamic.itb": published_fit}
+    anchor, other = "anchor=be-mvp-anchor-gcc.img", "two-guests-off="
+    refusals = [
+        ("a declared removal that the default does not make", {
+            "declared": ({**seeded, "t_load": "N1"}, counts)},
+         "removed set, for anchor, is not the declared one: t_load none, "
+         "declared N1"),
+        ("a removal of other rules than the declared", {"declared": (
+            {**seeded, "t_exact": "N2"}, counts)}, "t_exact N1, declared N2"),
+        ("a removal not declared", {"declared": ({
+            name: rules for name, rules in seeded.items()
+            if name != "splashimage"}, counts)},
+         "splashimage S, declared none"),
+        ("a count unlike the declared", {"declared": (seeded, {
+            **counts, "kept_data": 8})}, "counts, for anchor, is not the "
+         "declared one: kept_data 7, declared 8"),
+        ("a published FIT of another structure", {"fit": vendor(
+            "algo =", "algorithm =")}, "anchor's FIT is not of the "
+         "published fw_dynamic.itb's structure"),
+        ("a published FIT unlike its pin", {"pinned": {
+            "env.bin": default, "fw_dynamic.itb": b"other"}},
+         "is not the pinned fw_dynamic.itb"),
+        ("a published env.bin unlike its pin", {"pinned": {
+            **pins_of, "env.bin": default[:-1] + b"\x01"}},
+         "is not the pinned env.bin"),
+        ("a board.json missing", {"drop": [
+            "images/two-guests-off/board.json"]},
+         "board.json: No such file"),
+        ("a staged name unlike board.json's", {"given": [
+            anchor, other + "be-mvp-two-gcc.img"]}, "staged name"),
+        ("an image twice", {"given": [anchor, "anchor=be-mvp-x-gcc.img"]},
+         "not distinct"),
+        ("two images of one staged name", {"given": [
+            anchor, other + "be-mvp-anchor-gcc.img"]}, "not distinct"),
+        ("an output there already", {"plant": [
+            "images/anchor/card-firmware.itb"]}, "card-firmware.itb exists"),
+        ("no work directory", {"drop": ["work/card"]}, "No such file"),
+        ("the command line's declarations, the published default's", {
+            "command_line": True}, "removed set, for anchor, is not the "
+         "declared one")]
+    for label, changes, expected in refusals:
+        status, output, record, _ = step(**changes)
+        case(f"gate: {label}: refused, its record FAIL", status == 1 and
+             expected in output and output == record and (
+                 record.splitlines() or [""])[-1].startswith(
+                     f"{GATE_TAG}: FAIL refused:"))
+    status, output, record, _ = step(plant=["record/steps/k3-gate-card.txt"])
+    case("gate: its record there already: refused, the record unchanged",
+         status == 1 and "exists; the step removes its outputs first" in
+         output and record == "")
+    case("gate: environments that differ in be_image alone pass, in another "
+         "variable not", beside_staged({
+             "a": {"be_image": "x", "t": "1"}, "b": {"be_image": "y",
+                                                     "t": "1"}}) is None and
+         beside_staged({"a": {"be_image": "x", "t": "1"}, "b": {
+             "be_image": "x", "t": "2"}}) == "b")
+
+
 def main(argv):
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -1966,18 +2294,26 @@ def main(argv):
         command.add_argument(option, type=pathlib.Path, required=True)
     for option in ("--image", "--bytes", "--sfdisk-sha256"):
         command.add_argument(option, required=True)
+    command = commands_.add_parser("gate")
+    for option in ("--gate", "--published", "--pins", "--templates",
+                   "--dtc", "--build", "--out"):
+        command.add_argument(option, type=pathlib.Path, required=True)
+    command.add_argument("--be-part", required=True)
+    command.add_argument("--image", action="append", required=True)
     args = parser.parse_args(argv[1:])
     if args.self_test == bool(args.command) or (args.self_test and not (
             args.scratch and args.dtc and args.sfdisk and
             args.sfdisk_sha256)):
-        parser.error("give fit, env, image, or --self-test --scratch DIR "
-                     "--dtc DTC --sfdisk SFDISK --sfdisk-sha256 HEX")
+        parser.error("give fit, env, image, gate, or --self-test --scratch "
+                     "DIR --dtc DTC --sfdisk SFDISK --sfdisk-sha256 HEX")
     if args.command == "fit" and (args.sitting_pins is None) != (
             args.gate_sums is None):
         parser.error("give both --sitting-pins and --gate-sums, or neither")
     if args.self_test:
         return self_test(args.scratch.resolve(), args.dtc, args.sfdisk,
                          args.sfdisk_sha256, args.outputs)
+    if args.command == "gate":
+        return gate(args)
     kind, make = {"fit": ("FIT", make_fit),
                   "env": ("ENVIRONMENT", make_environment),
                   "image": ("CARD", make_card)}[args.command]

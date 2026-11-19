@@ -84,6 +84,20 @@
 #                                      M11-B's board firmware configuration
 #                                      built without a tree and checked
 #                                      against k3/firmware-pins.txt
+#   ./mvp k3-card K3_CARD_IMAGE=IMAGE K3_CARD_BYTES=N K3_PUBLISHED=DIR
+#                                      M11-B's card image of N bytes for
+#                                      IMAGE, from the board gate's FIT and
+#                                      environment and the published files
+#                                      in DIR (k3/card.mk), never in check
+#   ./mvp k3-card-write K3_CARD_IMAGE=IMAGE K3_CARD_DEVICE=BYID \
+#       K3_RUN_ROOT=DIR [K3_CARD_CONFIRM=HEX]
+#                                      the USB card reader BYID's dry run,
+#                                      or, with the dry run's HEX, the
+#                                      write of the whole card (human)
+#   ./mvp k3-card-readback K3_CARD_IMAGE=IMAGE K3_CARD_DEVICE=BYID \
+#       K3_RUN_ROOT=DIR
+#                                      the whole card read back through
+#                                      BYID, each region compared (human)
 #   ./mvp claim-ledger check|render|self-test
 #                                      the claim ledger and the release
 #                                      surfaces under docs/ (M4-1)
@@ -316,6 +330,18 @@ k3-board-gate)
 	;;
 k3-firmware)
 	later k3-firmware M11-B1 "$@"
+	;;
+k3-card)
+	extra=(K3_CARD_IMAGE K3_CARD_BYTES K3_PUBLISHED)
+	later k3-card M11-B1 "$@"
+	;;
+k3-card-write)
+	extra=(K3_CARD_IMAGE K3_CARD_DEVICE K3_CARD_CONFIRM)
+	later k3-card-write M11-B1 "$@"
+	;;
+k3-card-readback)
+	extra=(K3_CARD_IMAGE K3_CARD_DEVICE)
+	later k3-card-readback M11-B1 "$@"
 	;;
 claim-ledger)
 	[ "$#" -eq 1 ] || { usage; exit 2; }

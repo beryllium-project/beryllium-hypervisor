@@ -45,7 +45,11 @@ Rules, each failing closed:
     CHERI_SDK, CHERI_LINUX_SRC, CHERI_BUSYBOX_SRC, CHERI_MUSL_SRC, and
     CHERI_LLVM_SRC (paths), and CHERI_LINUX_COMMIT, CHERI_BUSYBOX_COMMIT,
     CHERI_MUSL_COMMIT, and CHERI_LLVM_COMMIT (40 hexadecimal digits); and
-    M11-B's board gate's K3_PUBLISHED (an absolute path);
+    M11-B's board gate's K3_PUBLISHED (an absolute path), and its card's
+    K3_CARD_IMAGE (an image's name), K3_CARD_BYTES (a card's size in
+    bytes), K3_CARD_DEVICE (a USB card reader's link under
+    /dev/disk/by-id/), and K3_CARD_CONFIRM (12 lower-case hexadecimal
+    digits);
   - the environment may not set MAKEFILES, a variable any MVP makefile, a
     fragment that mvp/tools.mk names, or the tool lock assigns, or a
     variable that changes the compilers, the loader, the shell, or Python;
@@ -107,6 +111,14 @@ CALLER = {
     # M11-B: the board vendor's published release directory, which only
     # the board gate reads (mvp/k3/frame.mk).
     "K3_PUBLISHED": PATH_FORM,
+    # M11-B's card (mvp/k3/card.mk): the image, the card's size in bytes,
+    # the USB reader's stable link (the characters that udev keeps in a
+    # link's name), and the write's confirmation, which the dry run gives.
+    "K3_CARD_IMAGE": re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$"),
+    "K3_CARD_BYTES": re.compile(r"^[1-9][0-9]{6,10}$"),
+    "K3_CARD_DEVICE": re.compile(
+        r"^/dev/disk/by-id/usb-[0-9A-Za-z#+.:=@_-]{1,200}$"),
+    "K3_CARD_CONFIRM": re.compile(r"^[0-9a-f]{12}$"),
 }
 # Environment names that change Make, the shell, the compilers, the loader,
 # Python, or the guest kernel build, beyond the makefiles' own variables.
@@ -527,6 +539,11 @@ def self_test():
     expect("jobserver nested", ["check"],
            {"MAKELEVEL": "1", "MAKEFLAGS": "-j8 --jobserver-auth=fifo:/x"})
     expect("board gate", ["k3-board-gate", "K3_PUBLISHED=/srv/k3/release"])
+    expect("card", ["k3-card-write", "K3_CARD_IMAGE=anchor",
+                    "K3_CARD_BYTES=31914983424",
+                    "K3_CARD_DEVICE=/dev/disk/by-id/usb-Example_Reader_"
+                    "0#1+2=x@y.z-0:0", "K3_CARD_CONFIRM=0123456789ab",
+                    "K3_RUN_ROOT=/home/x/s"])
     refusals = [
         ("caller CC", ["check", "CC=cc"], None, "variable assignment CC"),
         ("caller SHELL", ["check", "SHELL=/bin/sh"], None,
@@ -545,6 +562,16 @@ def self_test():
          "not of its form"),
         ("relative published directory", ["k3-board-gate",
                                           "K3_PUBLISHED=release"], None,
+         "not of its form"),
+        ("card image path", ["k3-card", "K3_CARD_IMAGE=../anchor"], None,
+         "not of its form"),
+        ("card size in units", ["k3-card", "K3_CARD_BYTES=32G"], None,
+         "not of its form"),
+        ("card reader by its node", ["k3-card-write",
+                                     "K3_CARD_DEVICE=/dev/sdb"], None,
+         "not of its form"),
+        ("card confirmation form", ["k3-card-write",
+                                    "K3_CARD_CONFIRM=0123456789AB"], None,
          "not of its form"),
         ("jobs zero", ["check", "JOBS=0"], None, "not of its form"),
         ("scenario path", ["scenario", "MVP_SCENARIO_NAME=../te-poc"], None,
