@@ -127,9 +127,11 @@
 # boot the firmware role board, the board's configuration without a tree
 # (BUILD_DIR/k3/check/firmware/board/fw_dynamic.bin, its SHA-256 the
 # firmware board line of k3/firmware-pins.txt, checked before the suite
-# and before each run), or base. A run whose expectation check made under
-# BUILD_DIR/k3/check/ is judged against its reference there, under
-# BUILD_DIR/k3/check/references/.
+# and before each run), or base. The sittings' forms, k3-first and
+# k3-second, boot the roles first and second, the board's configuration
+# with a tree built in (pinned likewise), under QEMU's own tree. A run whose
+# expectation check made under BUILD_DIR/k3/check/ is judged against its
+# reference there, under BUILD_DIR/k3/check/references/.
 #
 # QEMU's boot hart is a lottery (planning research 2). A boot hart that is
 # a domain hart of its run is refused, as Plan revision M0-A.2 declares:
@@ -244,6 +246,10 @@ terminal_regex='BE_MVP:14 SHUTDOWN|BE_MVP:FAIL|BE_K3_B3: FAIL'
 # monitor's SRST_RETURNED.
 halt_line='^Domain commit hart7: (committed=0 pmp_faults=[0-9]+ blocked_calls=[0-9]+ failed_calls=[0-9]+|pmpaddr8=(0x[0-9a-f]{16},){7}0x[0-9a-f]{16})\r?\n'
 returned_line='^BE_MVP:SRST_RETURNED\r?\n'
+# A boundary-off run whose firmware halts (the expectation's halt mark):
+# the monitor's last line, its shutdown line, or the FAIL line of a boot
+# refused at BE_MVP:02, which has no DETAIL line.
+monitor_line='^BE_MVP:(14 SHUTDOWN type=0 reason=0|FAIL firmware)\r?\n'
 halt_settle=2
 # The plan's k3-like machine and CPU (B6's).
 k3_machine='virt,aia=aplic-imsic,aia-guests=7'
@@ -511,7 +517,8 @@ k3_firmware=$build/k3/check/firmware
 k3_runs=()
 [ "$monitor" != riscv ] || [ ! -e "$k3_firmware/rows/expect/k3-halt.json" ] ||
 	k3_runs=("k3-halt two-guests board" "k3-reset-absent two-guests base"
-		"k3-halt-fallback two-guests-off board")
+		"k3-halt-fallback two-guests-off board"
+		"k3-first two-guests-off first" "k3-second two-guests second")
 for entry in "${k3_runs[@]}"; do
 	read -r name image role <<<"$entry"
 	wanted "variant/gcc/$name" || continue
@@ -520,14 +527,14 @@ done
 earlier_firmware=${BE_MVP_EARLIER_FIRMWARE:-}
 needs_earlier=0
 needs_no_boundary=0
-needs_board=0
+declare -A board_roles=() board_pin=()
 for entry in "${runs[@]}"; do
 	read -r _ _ _ _ _ _ _ _ _ firmware_role _ _ _ _ <<<"$entry"
 	case $firmware_role in
 	base) ;;
 	earlier) needs_earlier=1 ;;
 	no-boundary) needs_no_boundary=1 ;;
-	board) needs_board=1 ;;
+	board | first | second) board_roles[$firmware_role]=1 ;;
 	*) printf 'unknown firmware role %s\n' "$firmware_role" >&2; exit 2 ;;
 	esac
 done
@@ -543,18 +550,17 @@ if [ "$needs_no_boundary" = 1 ]; then
 		"the lock's MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256" \
 		BE_MVP_NO_BOUNDARY_FIRMWARE
 fi
-board_firmware=$build/k3/check/firmware/board/fw_dynamic.bin
 board_pins=$(dirname -- "$here")/k3/firmware-pins.txt
-if [ "$needs_board" = 1 ]; then
-	[ -r "$board_firmware" ] ||
-		{ printf 'the board firmware %s is not readable\n' "$board_firmware" >&2; exit 2; }
-	board_pin=$(sed -n 's/^firmware board sha256=\([0-9a-f]\{64\}\) bytes=[1-9][0-9]*$/\1/p' \
+for role in "${!board_roles[@]}"; do
+	[ -r "$k3_firmware/$role/fw_dynamic.bin" ] ||
+		{ printf 'the board firmware %s is not readable\n' "$k3_firmware/$role/fw_dynamic.bin" >&2; exit 2; }
+	board_pin[$role]=$(sed -n "s/^firmware $role sha256=\\([0-9a-f]\\{64\\}\\) bytes=[1-9][0-9]*\$/\\1/p" \
 		-- "$board_pins")
-	[[ $board_pin =~ ^[0-9a-f]{64}$ ]] ||
-		{ printf '%s pins no board firmware (one firmware board line)\n' "$board_pins" >&2; exit 2; }
-	pinned_firmware "$board_firmware" "$board_pin" \
-		"k3/firmware-pins.txt's firmware board pin" BOARD_FIRMWARE
-fi
+	[[ ${board_pin[$role]} =~ ^[0-9a-f]{64}$ ]] ||
+		{ printf '%s pins no %s firmware (one firmware %s line)\n' "$board_pins" "$role" "$role" >&2; exit 2; }
+	pinned_firmware "$k3_firmware/$role/fw_dynamic.bin" "${board_pin[$role]}" \
+		"k3/firmware-pins.txt's firmware $role pin" BOARD_FIRMWARE
+done
 if [ "$needs_earlier" = 1 ]; then
 	[ "$monitor" = riscv ] ||
 		{ printf 'the CHERI-aware monitor has no firmware-version run\n' >&2; exit 2; }
@@ -591,6 +597,12 @@ breach_image() {
 	"$python" -I -B -c 'import json, sys
 print("yes" if "breach" in json.load(open(sys.argv[1])) else "no")' "$1"
 }
+# M11-B: whether a run's expectation has the halt mark of a boundary-off run
+# whose firmware halts: yes or no.
+halt_mark() {
+	"$python" -I -B -c 'import json, sys
+print("yes" if "halt" in json.load(open(sys.argv[1])) else "no")' "$1"
+}
 missing=()
 for entry in "${runs[@]}"; do
 	read -r label elf _ _ _ _ _ _ boundary _ _ expect report inputs <<<"$entry"
@@ -610,8 +622,10 @@ for entry in "${runs[@]}"; do
 	[[ $entry != *" no-boundary "* ]] ||
 		[ -r "${no_boundary_firmware%.bin}.elf" ] ||
 		missing+=("${no_boundary_firmware%.bin}.elf")
-	[[ $entry != *" board "* ]] || [ -r "${board_firmware%.bin}.elf" ] ||
-		missing+=("${board_firmware%.bin}.elf")
+	read -r _ _ _ _ _ _ _ _ _ role _ <<<"$entry"
+	[ -z "${board_roles[$role]:-}" ] ||
+		[ -r "$k3_firmware/$role/fw_dynamic.elf" ] ||
+		missing+=("$k3_firmware/$role/fw_dynamic.elf")
 	case $expect in
 	"$build"/k3/check/*)
 		[ -r "$build/k3/check/references/${label%%/*}/${label#*/}.json" ] ||
@@ -665,11 +679,11 @@ pinned_role() {
 		run_firmware=$no_boundary_firmware
 		run_firmware_elf=${no_boundary_firmware%.bin}.elf
 		;;
-	board)
-		pinned_firmware "$board_firmware" "$board_pin" \
-			"k3/firmware-pins.txt's firmware board pin" BOARD_FIRMWARE
-		run_firmware=$board_firmware
-		run_firmware_elf=${board_firmware%.bin}.elf
+	board | first | second)
+		pinned_firmware "$k3_firmware/$1/fw_dynamic.bin" "${board_pin[$1]}" \
+			"k3/firmware-pins.txt's firmware $1 pin" BOARD_FIRMWARE
+		run_firmware=$k3_firmware/$1/fw_dynamic.bin
+		run_firmware_elf=$k3_firmware/$1/fw_dynamic.elf
 		;;
 	*)
 		printf 'unknown firmware role %s\n' "$1" >&2
@@ -732,7 +746,7 @@ boot() {
 		boundary_arg=(--boundary-on --pmp-mode "$boundary"
 			--record-table "$run_firmware_elf" --nm "$nm_tool"
 			--words "$stem.words.json")
-		tree_arg=(-dtb "$dtb")
+		[ "$dtb" = - ] || tree_arg=(-dtb "$dtb")
 		;;
 	off)
 		# M11-7: a breach image's -off run reads its breach words.
@@ -744,7 +758,8 @@ boot() {
 	-) ;;
 	halt) halt_arg=(--halt-line "$halt_line" --halt-settle "$halt_settle") ;;
 	absent) halt_arg=(--halt-line "$returned_line" --halt-settle "$halt_settle") ;;
-	*) printf 'boundary.reset %s is not halt or absent\n' "$halt" >&2; return 2 ;;
+	monitor) halt_arg=(--halt-line "$monitor_line" --halt-settle "$halt_settle") ;;
+	*) printf 'the halt %s is not halt, absent, or monitor\n' "$halt" >&2; return 2 ;;
 	esac
 	"$python" -I -B "$oracle" run --record "$stem.oracle.json" \
 		--exit-file "$stem.exit.txt" --qemu-output "$stem.qemu.txt" \
@@ -775,7 +790,8 @@ run() {
 	local negative control=- halt=-
 	local scenario_name limit=$max_attempts boundary_verdict
 	local boundary_failure='' breach=no plan=- breach_words=- extra=()
-	local breach_verdict breach_failure=''
+	local breach_verdict breach_failure='' boot_dtb=- halt_verdict
+	local halt_failure=''
 
 	[ "$report" = - ] || reported=(--report "$report")
 	[ "$inputs" = - ] ||
@@ -835,6 +851,11 @@ run() {
 			return 1
 		fi
 		dtb_sha=$(sha256sum -- "$dtb" | cut -d' ' -f1)
+		# M11-B: a firmware with its tree built in replaces QEMU's own.
+		boot_dtb=$dtb
+		[ "$(boundary_field "$expect" tree)" != built-in ] || boot_dtb=-
+	elif [ "$(halt_mark "$expect")" = yes ]; then
+		halt=monitor
 	fi
 	# M11-7: a breach image's plan and words, beside its ELF.
 	breach=$(breach_image "$expect")
@@ -848,6 +869,7 @@ run() {
 		oracle_failure=
 		boundary_failure=
 		breach_failure=
+		halt_failure=
 		stem=$output/$toolchain-$name.$attempt
 		[ "$mode" = off ] || "$python" -I -B "$boundary_checker" words \
 			--expect "$expect" --layout "$layout_header" \
@@ -855,7 +877,7 @@ run() {
 			--out "$stem.words.json"
 		boot "$stem" "$elf" "$machine" "$cpu${addition:+,$addition}" \
 			"$firmware_role" \
-			"$machine_class" "$pmp" "$menvcfg" "$mseccfg" "$mode" "$dtb" \
+			"$machine_class" "$pmp" "$menvcfg" "$mseccfg" "$mode" "$boot_dtb" \
 			"$([ "$mode" = off ] && echo "$breach_words" || echo -)" \
 			"$halt"
 		status=$(cat -- "$stem.exit.txt")
@@ -879,6 +901,20 @@ print(fields.get("boot_hart", "none"))' "$stem.result.json" 2>/dev/null || echo 
 		if [ "$mode" = off ]; then
 			"$python" -I -B "$boundary_checker" not-applicable \
 				--out "$stem.boundary.txt"
+			# M11-B: a boundary-off run whose firmware halts is judged
+			# in a record of its own; its boundary record stays as it is.
+			if [ "$halt" = monitor ]; then
+				"$python" -I -B "$boundary_checker" halt \
+					--oracle "$stem.oracle.json" \
+					--console "$stem.console.log" --expect "$expect" \
+					--firmware-elf "$run_firmware_elf" --nm "$nm_tool" \
+					--out "$stem.halt.txt" >/dev/null 2>&1 || true
+				halt_verdict=$(sed -n 's/^BE_MVP_HALT: \([A-Z]*\).*$/\1/p' \
+					-- "$stem.halt.txt" 2>/dev/null | tail -n 1)
+				[ "$halt_verdict" = PASS ] ||
+					halt_failure=$(tail -n 1 -- "$stem.halt.txt" 2>/dev/null ||
+						echo 'no halt record')
+			fi
 		else
 			"$python" -I -B "$boundary_checker" check \
 				--oracle "$stem.oracle.json" \
@@ -923,6 +959,8 @@ print(fields.get("boot_hart", "none"))' "$stem.result.json" 2>/dev/null || echo 
 			verdict=FAIL
 		fi
 		[ -z "$boundary_failure" ] || verdict=FAIL
+		# A refused attempt halted from another boot: made again.
+		[ -z "$halt_failure" ] || [ "$verdict" = REFUSED ] || verdict=FAIL
 		# A refused attempt's hook never ran: its record is kept, and the
 		# run is made again.
 		[ -z "$breach_failure" ] || [ "$verdict" = REFUSED ] ||
@@ -935,6 +973,8 @@ print(fields.get("boot_hart", "none"))' "$stem.result.json" 2>/dev/null || echo 
 		check="oracle: $oracle_failure; checker: $check"
 	[ -z "$boundary_failure" ] ||
 		check="boundary: $boundary_failure; $check"
+	[ -z "$halt_failure" ] || [ "$verdict" = REFUSED ] ||
+		check="halt: $halt_failure; $check"
 	[ -z "$breach_failure" ] || [ "$verdict" = REFUSED ] ||
 		check="breach: $breach_failure; $check"
 	if [ "$verdict" = REFUSED ]; then

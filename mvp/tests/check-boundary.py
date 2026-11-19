@@ -15,6 +15,8 @@
       --tables PAIR-pmp.json
   check-boundary.py breach --plan PLAN --oracle STEM.oracle.json
       --out STEM.breach.txt
+  check-boundary.py halt --oracle STEM.oracle.json --console CAPTURE
+      --expect IMAGE.json --firmware-elf FW_ELF --nm NM --out STEM.halt.txt
   check-boundary.py --self-test --scratch DIR
 
 Purpose: D-10's four checks of a boundary-on run (planning/mvp-m11-plan.md,
@@ -79,7 +81,14 @@ sbi_hart_hang, by its place and size in the run's firmware ELF (the
 lock's nm -S; an ELF with the symbol absent, twice, or without a size is
 refused). `absent`, for the base firmware on a tree that holds a digest:
 the banner shows neither device, and M-mode prints no record, having no
-reset device to report at.
+reset device to report at. "tree": "built-in" (the board's firmware
+alone) marks a firmware that carries the run's tree.
+
+`halt` judges a boundary-off run whose firmware halts (the expectation's
+top-level halt mark; its boundary record stays not applicable): the run
+ended at its halt line; the banner's one reboot device none and one
+shutdown device halt; no digest, no record; hart 0 inside sbi_hart_hang
+and every other hart inside sbi_hsm_init, the base's HSM wait.
 
 `breach` judges a breach image's run (M11-7; D-10's hostile-monitor rows)
 by its plan (tools/gen-breach.py plan): the hook's record, which the
@@ -172,6 +181,8 @@ FIRMWARES = ("base", "no-boundary", "board")
 RESETS = ("halt", "absent")
 DEVICE_LINE = re.compile(r"Platform (Reboot|Shutdown) Device\s*: (\S+)")
 HANG = "sbi_hart_hang"
+HSM_WAIT = "sbi_hsm_init"
+HALT_MARK = {"firmware": "board", "tree": "built-in"}
 NM_SIZED = re.compile(r"([0-9a-f]+) ([0-9a-f]+) [A-Za-z] (\S+)")
 
 
@@ -208,7 +219,7 @@ def declaration(expect):
         raise Refused("the expectation declares no boundary")
     known = {"control_hart", "pair", "identity", "record", "firmware",
              "harts", "counts", "phase", "negative", "refusal",
-             "fallthrough", "reset"}
+             "fallthrough", "reset", "tree"}
     if set(boundary) - known or not {"control_hart", "pair", "record",
                                      "harts"} <= set(boundary):
         raise Refused("the boundary section is not of its form")
@@ -231,6 +242,11 @@ def declaration(expect):
     if firmware not in FIRMWARES or reset not in RESETS + (None,):
         raise Refused(f"the boundary section's firmware {firmware!r} or "
                       f"reset {reset!r} is not of its form")
+    if boundary.get("tree", "built-in") != "built-in" or \
+            ("tree" in boundary and firmware != "board"):
+        raise Refused(f"the boundary section's tree "
+                      f"{boundary['tree']!r} is not the board firmware's "
+                      f"built-in one")
     if (reset == "halt" and firmware != "board") or \
             (reset == "absent" and (firmware != "base" or
                                     not boundary["record"])):
@@ -861,6 +877,62 @@ def fallthrough(expect):
                                          "2": "never-started"}))
     boundary.pop("phase", None)
     return dict(expect, image="fallthrough", boundary=boundary)
+
+
+def halt_judge(expect, record, text, hang, wait):
+    """A boundary-off run whose firmware halts: (findings, image)."""
+    # "board" names the firmware's configuration, not the harness's role.
+    if "boundary" in expect or expect.get("halt") != HALT_MARK:
+        raise Refused("the expectation's halt mark is not of its form")
+    if record.get("result", {}).get("verdict") != "PASS":
+        raise Refused("the oracle's read did not complete")
+    if record.get("end") != {"kind": "stopped-by-harness",
+                             "reason": qemu_oracle.HALT_LINE}:
+        raise Refused("the run did not end at its halt line")
+    findings = []
+    devices = [match.groups() for match in map(
+        DEVICE_LINE.fullmatch, text.replace("\r", "").split("\n")) if match]
+    for kind, wanted in (("Reboot", "---"), ("Shutdown", "halt")):
+        found = [name for line, name in devices if line == kind]
+        if found != [wanted]:
+            findings.append(f"the banner's {kind.lower()} devices are "
+                            f"{found}, not [{wanted!r}]")
+    digests, shown = printed(text)
+    if digests or shown:
+        findings.append("M-mode printed a digest or a commit record, but "
+                        "the tree holds no digest")
+    harts = record.get("harts")
+    if not isinstance(harts, list) or len(harts) != HARTS:
+        raise Refused(f"the oracle's read holds no {HARTS} harts")
+    for hart, entry in enumerate(harts):
+        (place, size), name = (hang, HANG) if hart == 0 else (wait, HSM_WAIT)
+        pc, start = int(entry["pc"], 16), qemu_oracle.FIRMWARE_BASE + place
+        if not start <= pc < start + size:
+            findings.append(f"hart {hart}: pc 0x{pc:x} outside {name} "
+                            f"0x{start:x}+0x{size:x}")
+    return findings, expect["image"]
+
+
+def halt_text(findings, image):
+    return "".join(f"finding {item}\n" for item in findings) + (
+        f"BE_MVP_HALT: {'FAIL' if findings else 'PASS'} image={image} "
+        f"boundary=off harts=0:{HANG},1-7:{HSM_WAIT}\n")
+
+
+def halt_check(args):
+    listed = subprocess.run([args.nm, "-S", args.firmware_elf],
+                            capture_output=True, text=True, check=False)
+    if listed.returncode:
+        raise Refused("nm -S failed on the firmware's ELF")
+    findings, image = halt_judge(
+        read_json(args.expect), read_json(args.oracle),
+        pathlib.Path(args.console).read_bytes().decode("utf-8", "replace"),
+        sized_symbol(listed.stdout, HANG),
+        sized_symbol(listed.stdout, HSM_WAIT))
+    output = halt_text(findings, image)
+    write_new(args.out, output)
+    print(output.splitlines()[-1])
+    return 1 if findings else 0
 
 
 def check(args):
@@ -1636,9 +1708,17 @@ def self_test(scratch):
             ("an unknown reset", {"reset": "reboot"},
              "reset 'reboot' is not of its form"),
             ("an unknown firmware", {"firmware": "vendor"},
-             "firmware 'vendor' or reset None is not of its form")):
+             "firmware 'vendor' or reset None is not of its form"),
+            ("a tree built in for the base firmware", {"tree": "built-in"},
+             "is not the board firmware's built-in one"),
+            ("a tree of another kind", {"firmware": "board", "reset": "halt",
+                                        "tree": "vendor"},
+             "is not the board firmware's built-in one")):
         run(f"declaration: {name}", states=step2, control_hart="confined",
             expect=second(**extra), want=want)
+    run("halt: a tree built in", halted(), states=step2,
+        expect=second(firmware="board", reset="halt", tree="built-in"),
+        control_hart="confined", hang=HANG_PLACE)
     listing = ("0000000000000000 T _fw_start\n"
                "00000000000077d2 0000000000000012 t sbi_hart_hang\n")
     for name, text, want in (
@@ -1656,6 +1736,50 @@ def self_test(scratch):
         cases.append((f"nm -S: {HANG} {name}", place == HANG_PLACE
                       if want is None else want in (detail or ""),
                       detail or f"0x{place[0]:x}+0x{place[1]:x}"))
+    # halt: a boundary-off run whose firmware halts (k3-first).
+    first = {"image": "k3-first", "halt": dict(HALT_MARK)}
+    record_line = ("Domain commit hart7: committed=0 pmp_faults=0 "
+                   "blocked_calls=0 failed_calls=0\n")
+    for name, change, want in (
+            ("hart 0 halted, the others waiting", {}, None),
+            ("a hart outside the HSM wait", {"pcs": {3: 0x80000000}},
+             "hart 3: pc 0x80000000 outside sbi_hsm_init"),
+            ("hart 0 outside sbi_hart_hang", {"pcs": {0: 0x800185c0}},
+             "hart 0: pc 0x800185c0 outside sbi_hart_hang"),
+            ("a printed record", {"text": devices.format("halt") +
+                                  record_line}, "printed a digest or"),
+            ("a printed digest", {"text": devices.format("halt") +
+                                  "Domain commit digest        : " + "ab" * 32
+                                  + "\n"}, "printed a digest or"),
+            ("a shutdown device other than halt",
+             {"text": devices.format("syscon-poweroff")},
+             "the banner's shutdown devices are ['syscon-poweroff']"),
+            ("an end by the grace", {"end": "grace period after terminal "
+                                     "marker"}, "did not end at its halt"),
+            ("an incomplete read", {"verdict": "FAIL"}, "did not complete"),
+            ("a mark naming the role", {"expect": dict(first, halt={
+                "firmware": "first", "tree": "built-in"})},
+             "halt mark is not of its form"),
+            ("a boundary section too", {"expect": dict(first, boundary={})},
+             "halt mark is not of its form")):
+        pcs = {hart: 0x800185c0 for hart in range(HARTS)}
+        pcs[0] = 0x800077d4
+        pcs.update(change.get("pcs", {}))
+        record = {"result": {"verdict": change.get("verdict", "PASS")},
+                  "end": {"kind": "stopped-by-harness",
+                          "reason": change.get("end", qemu_oracle.HALT_LINE)},
+                  "harts": [{"pc": qemu_oracle.hex64(pcs[hart])}
+                            for hart in range(HARTS)]}
+        try:
+            findings, _ = halt_judge(change.get("expect", first), record,
+                                     change.get("text", devices.format(
+                                         "halt")), HANG_PLACE, (0x185b6, 0xea))
+            ok = not findings if want is None else \
+                any(want in item for item in findings)
+            detail = "; ".join(findings) or "accepted"
+        except Refused as error:
+            ok, detail = want is not None and want in str(error), str(error)
+        cases.append((f"halt mode: {name}", ok, detail))
     def words_case():
         expect = expectation(phase=[0, 1])
         document = words_document(expect, LAYOUT, HEADER, {
@@ -1791,6 +1915,10 @@ def main(argv):
     breach = commands.add_parser("breach")
     for name in ("plan", "oracle", "out"):
         breach.add_argument(f"--{name}", required=True)
+    halted = commands.add_parser("halt")
+    for name in ("oracle", "console", "expect", "firmware-elf", "nm",
+                 "out"):
+        halted.add_argument(f"--{name}", required=True)
     args = parser.parse_args(argv[1:])
     try:
         if args.self_test:
@@ -1823,14 +1951,16 @@ def main(argv):
             write_new(args.out, text)
             print(text.splitlines()[-1])
             return 1 if findings else 0
-        parser.error("check, words, not-applicable, gate, breach, or "
+        if args.command == "halt":
+            return halt_check(args)
+        parser.error("check, words, not-applicable, gate, breach, halt, or "
                      "--self-test")
     except (Refused, qemu_oracle.OracleError, OSError, ValueError,
             KeyError, TypeError, IndexError) as error:
-        line = f"BE_MVP_{'BREACH' if args.command == 'breach' else 'BOUNDARY'}" \
-            f": FAIL {error}"
+        line = "BE_MVP_" + {"breach": "BREACH", "halt": "HALT"}.get(
+            args.command, "BOUNDARY") + f": FAIL {error}"
         print(line)
-        if args.command in ("check", "breach"):
+        if args.command in ("check", "breach", "halt"):
             unjudged(args.out, line)
         return 1
     return 1

@@ -135,8 +135,14 @@ ends with the commit records and the halt; `k3-reset-absent`, under the
 candidate's pinned binary, which has no such device, fails the monitor's
 first check. A third row, `k3-halt-fallback`, boots `two-guests-off` under
 that build and QEMU's own tree, whose syscon devices the base prefers,
-and ends with QEMU's shutdown. `k3-firmware-check` runs the test above
-and `tools/k3-firmware-rows.py`'s self-test and tree check.
+and ends with QEMU's shutdown. The sittings' two forms are builds of the
+board's configuration with a tree built in, `first` (the tree without
+reset devices alone) and `second` (`k3-halt`'s tree), each pinned beside
+`board` and refused if its tree moves the firmware's regions; their rows,
+`k3-first` (`two-guests-off`) and `k3-second` (`two-guests`), start QEMU
+with its own tree, which the firmware replaces with the one it carries.
+`k3-firmware-check` runs the test above and `tools/k3-firmware-rows.py`'s
+self-test and tree check.
 
 ## Allocation after cold boot
 

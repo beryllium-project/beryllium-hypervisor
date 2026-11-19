@@ -4,7 +4,8 @@
 """M11-B's firmware rows: the board's firmware build as QEMU's rows boot
 it, the rows' expectations, and the tree without reset devices.
 
-  k3-firmware-rows.py board --pins FILE --build DIR --out DIR
+  k3-firmware-rows.py board --pins FILE [--name NAME] --build DIR
+                            --out DIR [--like ELF --nm NM]
   k3-firmware-rows.py expect --source DIR --out DIR
   k3-firmware-rows.py tree-check --base FILE --no-reset FILE --dtc DTC
                                  --scratch DIR
@@ -16,17 +17,24 @@ rows of tests/run-qemu.sh (mvp/k3/firmware.mk).
 
 board requires the build's fw_dynamic.bin (DIR/platform/generic/
 firmware/) to have the SHA-256 and the size of the pins file's one
-`firmware board` line, and copies it, its ELF, and DIR's
-FIRMWARE-BUILD.txt into OUT, a new directory.
+`firmware NAME` line (NAME board by default), and copies it, its ELF,
+DIR's FIRMWARE-BUILD.txt, and the tree built in (DIR/fdt/board.dtb, as
+board.dtb), if any, into OUT, a new directory. With --like, the build's
+_fw_start, _fw_rw_start, and _fw_end (nm's) must be ELF's: a tree built
+in that moved the firmware's regions is refused.
 
 expect derives the rows' expectations from the generated ones under
 --source (tools/gen-scenario.py's, which it never changes): k3-halt
 from two-guests, under the board's firmware, whose one reset device
 halts; k3-reset-absent from two-guests, with firmware-version's failure
 at the monitor's first check, under a firmware with no reset device;
-and k3-halt-fallback from two-guests-off, under the board's firmware
-where QEMU's own reset devices are present. Each is for GCC and QEMU
-alone. Sources of another form are refused. OUT, a new directory,
+k3-halt-fallback from two-guests-off, under the board's firmware where
+QEMU's own reset devices are present; and the sittings' two forms, each
+under a build with its tree built in and QEMU's own tree handed over:
+k3-first from two-guests-off, with a top-level halt mark (its firmware
+halts with the boundary off), and k3-second from k3-halt, its boundary's
+tree built in. Each is for GCC and QEMU alone. Sources of another form
+are refused. OUT, a new directory,
 gets expect/NAME.json and, beside expect/, the scenario header that
 tools/gen-reference.py reads there.
 
@@ -54,7 +62,10 @@ PIN = re.compile(r"firmware ([\w.-]+) sha256=([0-9a-f]{64}) "
                  r"bytes=([1-9][0-9]*)")
 FIRMWARE = pathlib.PurePosixPath("platform/generic/firmware")
 SOURCES = ("two-guests", "firmware-version", "two-guests-off")
-ROWS = ("k3-halt", "k3-reset-absent", "k3-halt-fallback")
+ROWS = ("k3-halt", "k3-reset-absent", "k3-halt-fallback", "k3-first",
+        "k3-second")
+LAYOUT = ("_fw_start", "_fw_rw_start", "_fw_end")
+NM_LINE = re.compile(r"([0-9a-f]+) [A-Za-z] (\S+)")
 REMOVED = ("poweroff", "reboot")
 CONFINED = {"0": "confined", "1": "confined", "2": "confined"}
 CHANGES = {
@@ -72,6 +83,15 @@ CHANGES = {
     "two-guests-off under QEMU's own tree, whose syscon reset devices "
     "the base prefers to the halt device: the run ends with QEMU's "
     "shutdown (B-2)",
+    "k3-first": "the first sitting's form: the board's firmware "
+    "configuration with the tree without reset devices built in, no "
+    "descriptor, and two-guests-off, under QEMU's own tree, which the "
+    "firmware replaces with its own: the run ends in M-mode's halt after "
+    "the monitor's last line (B-1 to B-3)",
+    "k3-second": "the second sitting's form: the board's firmware "
+    "configuration with k3-halt's tree built in, and two-guests, under "
+    "QEMU's own tree, which the firmware replaces with its own: k3-halt's "
+    "end, against that build's tables (B-1 to B-3)",
 }
 
 
@@ -114,21 +134,56 @@ def pin(pins, name):
     return found[0]
 
 
+def layout(listing):
+    """_fw_start, _fw_rw_start, and _fw_end, each defined once in nm's
+    LISTING."""
+    found = {}
+    for line in listing.splitlines():
+        match = NM_LINE.fullmatch(line.strip())
+        if match and match.group(2) in LAYOUT:
+            require(match.group(2) not in found,
+                    f"{match.group(2)} is defined twice")
+            found[match.group(2)] = int(match.group(1), 16)
+    require(set(found) == set(LAYOUT), "the ELF does not define " +
+            ", ".join(sorted(set(LAYOUT) - set(found))))
+    return found
+
+
+def same_layout(mine, like):
+    """MINE's firmware regions, from nm's listing, are LIKE's."""
+    mine, like = layout(mine), layout(like)
+    require(mine == like, "the tree built in moves the firmware's regions: " +
+            ", ".join(f"{name} 0x{mine[name]:x}, not 0x{like[name]:x}"
+                      for name in LAYOUT if mine[name] != like[name]))
+
+
+def listed(nm, elf):
+    done = subprocess.run([nm, "--", str(elf)], stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, check=False)
+    require(done.returncode == 0, f"nm failed on {elf}")
+    return done.stdout.decode("ascii", "replace")
+
+
 def board(args):
-    digest, size = pin(args.pins, "board")
+    digest, size = pin(args.pins, args.name)
     build = pathlib.Path(args.build)
     binary = build / FIRMWARE / "fw_dynamic.bin"
     files = [regular(path) for path in (binary, binary.with_suffix(".elf"),
                                         build / "FIRMWARE-BUILD.txt")]
+    tree = build / "fdt" / "board.dtb"
+    if tree.exists() or tree.is_symlink():
+        files.append(regular(tree))
     data = binary.read_bytes()
     actual = hashlib.sha256(data).hexdigest()
     require(actual == digest and len(data) == size,
             f"{binary} has SHA-256 {actual} and {len(data)} bytes, not "
             f"the pin's {digest} and {size}")
+    if args.like:
+        same_layout(listed(args.nm, files[1]), listed(args.nm, args.like))
     out = new_directory(args.out)
     for path in files:
         shutil.copyfile(path, out / path.name)
-    print(f"{TAG}: PASS board sha256={digest} bytes={size}")
+    print(f"{TAG}: PASS {args.name} sha256={digest} bytes={size}")
 
 
 def load(path):
@@ -159,15 +214,17 @@ def rows(pair, earlier, off):
             "two-guests's harts are not all confined")
     require(boundary.get("record") is True,
             "two-guests's boundary has no commit record")
-    require(not {"firmware", "reset"} & set(boundary),
-            "two-guests's boundary already names its firmware or reset")
+    require(not {"firmware", "reset", "tree"} & set(boundary),
+            "two-guests's boundary already names its firmware, reset, or "
+            "tree")
     require(pair.get("outcome") == {"pass": True}, "two-guests does not pass")
     log = earlier.get("log")
     require(earlier.get("outcome") == {"fail": "boot", "after": "none"} and
             isinstance(log, dict) and log.get("run") == "pre-measurement"
             and log.get("terminal") == "none",
             "firmware-version is not the failure at the first check")
-    require("boundary" not in off and off.get("outcome") == {"pass": True},
+    require("boundary" not in off and "halt" not in off and
+            off.get("outcome") == {"pass": True},
             "two-guests-off is not a passing run without the boundary")
     halt = derived(pair, "k3-halt")
     halt["boundary"].update(firmware="board", reset="halt")
@@ -176,7 +233,12 @@ def rows(pair, earlier, off):
         "0": "boot", "1": "never-started", "2": "never-started"})
     absent["outcome"] = dict(earlier["outcome"])
     absent["log"].update(run=log["run"], terminal=log["terminal"])
-    return halt, absent, derived(off, "k3-halt-fallback")
+    first = derived(off, "k3-first")
+    first["halt"] = {"firmware": "board", "tree": "built-in"}
+    second = derived(pair, "k3-second")
+    second["boundary"].update(firmware="board", reset="halt",
+                              tree="built-in")
+    return halt, absent, derived(off, "k3-halt-fallback"), first, second
 
 
 def expect(args):
@@ -287,7 +349,7 @@ def self_test(args):
     good = f"firmware board sha256={digest} bytes=11"
     runs = iter(range(1000))
 
-    def board_case(lines, out=None, remove=None):
+    def board_case(lines, out=None, remove=None, name="board"):
         pins = scratch / f"pins-{next(runs)}.txt"
         pins.write_text("# header\n" + "".join(f"{line}\n" for line in lines),
                         encoding="ascii")
@@ -295,7 +357,8 @@ def self_test(args):
             remove.rename(remove.with_name(remove.name + ".away"))
         target = out or scratch / f"out-{next(runs)}"
         try:
-            board(argparse.Namespace(pins=pins, build=build, out=target))
+            board(argparse.Namespace(pins=pins, name=name, build=build,
+                                     out=target, like=None, nm=None))
         finally:
             if remove:
                 remove.with_name(remove.name + ".away").rename(remove)
@@ -320,6 +383,34 @@ def self_test(args):
     (scratch / "taken").mkdir()
     case("board: OUT exists", lambda: board_case(
         [good], out=scratch / "taken"), "taken exists")
+    case("board: the pin of another name", lambda: board_case(
+        [good, other.replace(digest, "0" * 64)], name="other"),
+         "not the pin's")
+
+    def with_tree():
+        (build / "fdt").mkdir()
+        (build / "fdt" / "board.dtb").write_bytes(b"a tree\n")
+        try:
+            board_case([good], out=scratch / "tree-out")
+        finally:
+            shutil.rmtree(build / "fdt")
+        require((scratch / "tree-out" / "board.dtb").read_bytes() ==
+                b"a tree\n", "the tree built in is not copied")
+
+    case("board: the tree built in, copied", with_tree)
+    listing = ("0000000000000000 T _fw_start\n"
+               "0000000000040000 A _fw_rw_start\n"
+               "0000000000047000 A _fw_end\n")
+    for name, mine, wanted in (
+            ("the regions unmoved", listing, None),
+            ("_fw_rw_start moved", listing.replace("40000 A", "80000 A"),
+             "_fw_rw_start 0x80000, not 0x40000"),
+            ("_fw_end missing", listing.replace(" _fw_end", " _fw_tail"),
+             "does not define _fw_end"),
+            ("_fw_end twice", listing + "0000000000047000 A _fw_end\n",
+             "_fw_end is defined twice")):
+        case(f"board --like: {name}", lambda mine=mine: same_layout(
+            mine, listing), wanted)
 
     # expect: stand-ins of the three generated expectations.
     pair = {"image": "two-guests", "toolchains": ["gcc", "clang"],
@@ -335,7 +426,7 @@ def self_test(args):
            "log": {"run": "complete", "terminal": "before-shutdown"}}
 
     def made():
-        halt, absent, fallback = rows(pair, earlier, off)
+        halt, absent, fallback, first, second = rows(pair, earlier, off)
         require(halt["boundary"] == dict(pair["boundary"], firmware="board",
                                          reset="halt"), "k3-halt's boundary")
         require(absent["boundary"]["harts"] == {
@@ -346,14 +437,21 @@ def self_test(args):
                 absent["log"] == earlier["log"], "k3-reset-absent's failure")
         require("boundary" not in fallback and fallback["outcome"] ==
                 {"pass": True}, "k3-halt-fallback's form")
-        for value, name in zip((halt, absent, fallback), ROWS):
+        require("boundary" not in first and first["halt"] == {
+            "firmware": "board", "tree": "built-in"} and
+            first["outcome"] == {"pass": True}, "k3-first's form")
+        require(second["boundary"] == dict(halt["boundary"],
+                                           tree="built-in"),
+                "k3-second's boundary")
+        for value, name in zip((halt, absent, fallback, first, second),
+                               ROWS):
             require(value["image"] == name and value["toolchains"] == ["gcc"]
                     and value["where"] == ["qemu"] and
                     value["change"] == CHANGES[name], f"{name}'s fields")
         require(pair["image"] == "two-guests" and "reset" not in
                 pair["boundary"], "a source was changed")
 
-    case("expect: the three rows", made)
+    case("expect: the five rows", made)
 
     def spoilt(source, change):
         def run():
@@ -382,6 +480,9 @@ def self_test(args):
             ("a reset already named", "pair",
              lambda v: v["boundary"].update(reset="halt"),
              "already names"),
+            ("a tree already named", "pair",
+             lambda v: v["boundary"].update(tree="built-in"),
+             "already names"),
             ("two-guests failing", "pair",
              lambda v: v.update(outcome={"fail": "boot", "after": "none"}),
              "two-guests does not pass"),
@@ -393,6 +494,9 @@ def self_test(args):
              "not the failure at the first check"),
             ("an off copy with a boundary", "off",
              lambda v: v.update(boundary={"pair": "two-guests"}),
+             "not a passing run without the boundary"),
+            ("an off copy with a halt mark", "off",
+             lambda v: v.update(halt={"firmware": "board"}),
              "not a passing run without the boundary")):
         case(f"expect: {name}", spoilt(source, change), wanted)
 
@@ -467,8 +571,11 @@ def main(argv):
     commands = parser.add_subparsers(dest="command")
     command = commands.add_parser("board")
     command.add_argument("--pins", required=True)
+    command.add_argument("--name", default="board")
     command.add_argument("--build", required=True)
     command.add_argument("--out", required=True)
+    command.add_argument("--like")
+    command.add_argument("--nm")
     command = commands.add_parser("expect")
     command.add_argument("--source", required=True)
     command.add_argument("--out", required=True)
@@ -485,6 +592,9 @@ def main(argv):
             return self_test(args)
         if args.command is None:
             parser.error("a command, or --self-test")
+        if args.command == "board" and (args.like is None) != (args.nm is
+                                                                None):
+            parser.error("board: --like and --nm go together")
         {"board": board, "expect": expect,
          "tree-check": tree_command}[args.command](args)
         return 0

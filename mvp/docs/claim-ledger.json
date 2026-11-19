@@ -1923,8 +1923,8 @@
           },
           {
             "path": "mvp/tests/run-qemu.sh",
-            "sha256": "02984e5d2c9da6cec5e67752e84edfeb08f1f16898a60c19b274bc678a2fd23a",
-            "note": "The run harness: every emulated run of the candidate's images boots that binary under the locked QEMU, and none uses QEMU's bundled firmware. Two negatives boot another binary, by their declarations: firmware-version the earlier OpenSBI v1.6, and boundary-absent the same build without the boundary extension, each pinned in the lock. Since M11-B, rows of the board addendum on the k3-like machine (k3-halt, k3-reset-absent, k3-halt-fallback) boot the board's configuration of the same commit and series, built apart and pinned in k3/firmware-pins.txt, or the candidate's binary on a tree without reset devices; the harness can end a run whose machine halts, at a declared last line. No run of the candidate's changes."
+            "sha256": "0f868c07d2593fca7d8e253a84734023b5ca06e09bf1cb07ab0536c0d736c726",
+            "note": "The run harness: every emulated run of the candidate's images boots that binary under the locked QEMU, and none uses QEMU's bundled firmware. Two negatives boot another binary, by their declarations: firmware-version the earlier OpenSBI v1.6, and boundary-absent the same build without the boundary extension, each pinned in the lock. Since M11-B, rows of the board addendum on the k3-like machine (k3-halt, k3-reset-absent, k3-halt-fallback, k3-first, k3-second) boot the board's configuration of the same commit and series, in three builds made apart and pinned in k3/firmware-pins.txt, or the candidate's binary on a tree without reset devices; the harness can end a run whose machine halts, at a declared last line. No run of the candidate's changes."
           },
           {
             "path": "mvp/results/20261118-m11-candidate/MANIFEST.sha256",
@@ -1954,8 +1954,8 @@
           },
           {
             "path": "mvp/tests/check-boundary.py",
-            "sha256": "fe83111593413cb068ae8631610d66675946e290ecb07dcf7d750ae82861b48b",
-            "note": "The first of D-10's four checks, on every run under the boundary, from what the QEMU oracle read with the machine stopped: each VS-domain hart that printed its READY line holds the backend's confined table for its profile and the run's PMP mode, equal to M-mode's readback in its commit record, as read and as printed. A hart between its start and its confinement is admitted only in a run whose declared outcome fails after the barrier and before both READY lines. Since M11-B the same file also judges a run whose firmware halts or has no reset device (the banner's reset devices, and hart 0 inside the firmware's hang); this check is unchanged."
+            "sha256": "2ef123796df839a3c0d19543f1fdb5eee51847b6d8d993183c21b80dc0d8343b",
+            "note": "The first of D-10's four checks, on every run under the boundary, from what the QEMU oracle read with the machine stopped: each VS-domain hart that printed its READY line holds the backend's confined table for its profile and the run's PMP mode, equal to M-mode's readback in its commit record, as read and as printed. A hart between its start and its confinement is admitted only in a run whose declared outcome fails after the barrier and before both READY lines. Since M11-B the same file also judges a run whose firmware halts or has no reset device, with the boundary on or off (the banner's reset devices, and the halted harts' places in the firmware); this check is unchanged."
           },
           {
             "path": "mvp/tests/boundary-negatives.py",
@@ -1990,8 +1990,8 @@
           },
           {
             "path": "mvp/tests/check-boundary.py",
-            "sha256": "fe83111593413cb068ae8631610d66675946e290ecb07dcf7d750ae82861b48b",
-            "note": "Under a step-2 tree, a run may declare the control hart in the boot state only where it failed in boot code, and confined only where its capture holds both VS-domain harts' start lines and no failure of boot code's classes. A confined hart 0 is judged by the backend's confined table for the control profile, equal to M-mode's readback. Since M11-B the same file also judges a run whose firmware halts or has no reset device (the banner's reset devices, and hart 0 inside the firmware's hang); this check is unchanged."
+            "sha256": "2ef123796df839a3c0d19543f1fdb5eee51847b6d8d993183c21b80dc0d8343b",
+            "note": "Under a step-2 tree, a run may declare the control hart in the boot state only where it failed in boot code, and confined only where its capture holds both VS-domain harts' start lines and no failure of boot code's classes. A confined hart 0 is judged by the backend's confined table for the control profile, equal to M-mode's readback. Since M11-B the same file also judges a run whose firmware halts or has no reset device, with the boundary on or off (the banner's reset devices, and the halted harts' places in the firmware); this check is unchanged."
           },
           {
             "path": "mvp/tests/boundary-negatives.py",
@@ -2042,8 +2042,8 @@
           },
           {
             "path": "mvp/tests/check-boundary.py",
-            "sha256": "fe83111593413cb068ae8631610d66675946e290ecb07dcf7d750ae82861b48b",
-            "note": "On every run under the boundary: each confined hart's sixteen PMP entries equal the backend's table for its profile (the configuration bytes of all sixteen, and the address of each entry that is not off); and the configuration digest in the firmware's banner is the partition authority's identity of the image that the run declares, and equals the identity in the monitor's BE_MVP:02 line where the monitor printed one. Since M11-B the same file also judges a run whose firmware halts or has no reset device (the banner's reset devices, and hart 0 inside the firmware's hang); this check is unchanged."
+            "sha256": "2ef123796df839a3c0d19543f1fdb5eee51847b6d8d993183c21b80dc0d8343b",
+            "note": "On every run under the boundary: each confined hart's sixteen PMP entries equal the backend's table for its profile (the configuration bytes of all sixteen, and the address of each entry that is not off); and the configuration digest in the firmware's banner is the partition authority's identity of the image that the run declares, and equals the identity in the monitor's BE_MVP:02 line where the monitor printed one. Since M11-B the same file also judges a run whose firmware halts or has no reset device, with the boundary on or off (the banner's reset devices, and the halted harts' places in the firmware); this check is unchanged."
           },
           {
             "path": "mvp/results/20261118-m11-candidate/MANIFEST.sha256",
@@ -2063,8 +2063,8 @@
         "evidence": [
           {
             "path": "mvp/tests/check-boundary.py",
-            "sha256": "fe83111593413cb068ae8631610d66675946e290ecb07dcf7d750ae82861b48b",
-            "note": "The second of D-10's four checks, on every run under the boundary, read with the machine stopped: each of harts 3 to 7 has every PMP entry off, is not committed, and has its program counter inside the firmware. Since M11-B the same file also judges a run whose firmware halts or has no reset device (the banner's reset devices, and hart 0 inside the firmware's hang); this check is unchanged."
+            "sha256": "2ef123796df839a3c0d19543f1fdb5eee51847b6d8d993183c21b80dc0d8343b",
+            "note": "The second of D-10's four checks, on every run under the boundary, read with the machine stopped: each of harts 3 to 7 has every PMP entry off, is not committed, and has its program counter inside the firmware. Since M11-B the same file also judges a run whose firmware halts or has no reset device, with the boundary on or off (the banner's reset devices, and the halted harts' places in the firmware); this check is unchanged."
           },
           {
             "path": "mvp/scenarios/anchor/breach.json",
@@ -2119,8 +2119,8 @@
           },
           {
             "path": "mvp/tests/check-boundary.py",
-            "sha256": "fe83111593413cb068ae8631610d66675946e290ecb07dcf7d750ae82861b48b",
-            "note": "The judge of a hostile-monitor run, by its plan: the hook's record done once, every row run, and no unexpected trap; each row's trap cause and address, the value that it kept, and the call's error; each witness word and device register at its value, as the oracle read them with the machine stopped. And D-10's fourth check: the hooked hart's PMP faults, blocked calls, and failed calls, as read from M-mode's commit record and as M-mode printed them, are the counts that the generator computes from the attempts. Since M11-B the same file also judges a run whose firmware halts or has no reset device (the banner's reset devices, and hart 0 inside the firmware's hang); this check is unchanged."
+            "sha256": "2ef123796df839a3c0d19543f1fdb5eee51847b6d8d993183c21b80dc0d8343b",
+            "note": "The judge of a hostile-monitor run, by its plan: the hook's record done once, every row run, and no unexpected trap; each row's trap cause and address, the value that it kept, and the call's error; each witness word and device register at its value, as the oracle read them with the machine stopped. And D-10's fourth check: the hooked hart's PMP faults, blocked calls, and failed calls, as read from M-mode's commit record and as M-mode printed them, are the counts that the generator computes from the attempts. Since M11-B the same file also judges a run whose firmware halts or has no reset device, with the boundary on or off (the banner's reset devices, and the halted harts' places in the firmware); this check is unchanged."
           },
           {
             "path": "mvp/results/20261118-m11-candidate/MANIFEST.sha256",
@@ -2145,13 +2145,13 @@
           },
           {
             "path": "mvp/tests/check-boundary.py",
-            "sha256": "fe83111593413cb068ae8631610d66675946e290ecb07dcf7d750ae82861b48b",
-            "note": "The same judge, for a boundary-off run: every row of the plan allowed, each witness word and device register at the value that the attempt leaves. Since M11-B the same file also judges a run whose firmware halts or has no reset device (the banner's reset devices, and hart 0 inside the firmware's hang); this check is unchanged."
+            "sha256": "2ef123796df839a3c0d19543f1fdb5eee51847b6d8d993183c21b80dc0d8343b",
+            "note": "The same judge, for a boundary-off run: every row of the plan allowed, each witness word and device register at the value that the attempt leaves. Since M11-B the same file also judges a run whose firmware halts or has no reset device, with the boundary on or off (the banner's reset devices, and the halted harts' places in the firmware); this check is unchanged."
           },
           {
             "path": "mvp/tests/run-qemu.sh",
-            "sha256": "02984e5d2c9da6cec5e67752e84edfeb08f1f16898a60c19b274bc678a2fd23a",
-            "note": "Each boundary-off image of the candidate's runs under the same firmware binary with QEMU's own device tree, which declares no narrow OpenSBI domain. Since M11-B one more boundary-off row, k3-halt-fallback, boots the board's firmware configuration; it is not a hostile-monitor image."
+            "sha256": "0f868c07d2593fca7d8e253a84734023b5ca06e09bf1cb07ab0536c0d736c726",
+            "note": "Each boundary-off image of the candidate's runs under the same firmware binary with QEMU's own device tree, which declares no narrow OpenSBI domain. Since M11-B two more boundary-off rows, k3-halt-fallback and k3-first, boot the board's firmware configuration; neither is a hostile-monitor image."
           },
           {
             "path": "mvp/results/20261118-m11-candidate/MANIFEST.sha256",
