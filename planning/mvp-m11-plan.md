@@ -1842,3 +1842,25 @@ text above as it says; the text above is otherwise as accepted.
     That made about 10,050 lines, between 9,550 and 10,550.
   - Nothing was cut to meet a limit, and nothing of the lane was
     landed before this entry.
+- **2026-11-19, the first sitting's firmware build** (the board
+  addendum's B-1: a build's SHA-256 is recorded here before its card
+  image is made; M11-B3's exit names it). M11-B3's gates built the
+  firmware for the first sitting's image, `two-guests-off` (the
+  boundary off), at the tree
+  `1917147b98fd882f8465cf1c4e06627ad8f5111b`, on the host and again
+  inside the evaluator, from the same inputs, and the two are equal
+  byte for byte:
+  - `fw_dynamic.bin`, 540,600 bytes, SHA-256
+    `d2f1b1e4d8e864673ec24617abc9ca3c5a16664f38d9aa93c09ad7236478eb5e`.
+  - Its inputs are the pinned firmware base with the series and B-2's
+    one addition, and the device tree that the recipe makes for this
+    image from the vendor's published U-Boot image (the tree's
+    SHA-256:
+    `8291e2baf91e879fcd32c77573894f3570a8a57daf88e4abea39959e343f0959`).
+  - The same commit adds the line `firmware two-guests-off` with this
+    SHA-256 to `mvp/k3/sitting-pins.txt`: the card image's maker
+    refuses a firmware with another.
+
+  The gates also built the second sitting's three (`anchor`,
+  `k3-breach-g1`, `k3-breach-c`). They are not recorded here: B-1 has
+  them made again at M11-B4, with the first sitting's facts.
