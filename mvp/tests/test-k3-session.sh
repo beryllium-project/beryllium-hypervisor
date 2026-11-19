@@ -14,9 +14,12 @@
 #          the boot ROM's USB IDs, which the bus rule names, and the board
 #          steps of the bases reach the fakes alone.
 # Scope:   cases 3 (the declarations), 19 (the order: begin, preflight, and
-#          stage, one stopped and taken up, one stopped twice), and 31 (the
-#          refusals that act on nothing, in one table). The last line is
-#          BE_MVP_K3_SESSION: PASS self_test=N cases=M.
+#          stage, one stopped and taken up, one stopped twice), 31 (the
+#          refusals that act on nothing, in one table), 4 to 7 (the console
+#          tool's rule for a card recorded in, and what a sitting's run
+#          root types), 13 (a boot from a card with none recorded in), and
+#          32 (k3-uboot.py medium's and wait-end's outcomes). The last line
+#          is BE_MVP_K3_SESSION: PASS self_test=N cases=M.
 # shellcheck shell=bash disable=SC2154
 
 unset K3_SITTING K3_SITTING_STEP K3_WORD K3_HUMAN_SAID K3_REHEARSAL \
@@ -615,8 +618,354 @@ case_refusals() {
 	pass sitting-refusals "$rows rows: each its exit status and reason, no fake contacted; S-6's recipe inputs through the wrapper"
 }
 
+# ------------------------------------------------------ the console's rule
+# The reading's eight lines (S3-E item 9), as this dry run's own list.
+reading_lines=('sf probe' 'sf read 0x140000000 0x0 0x800000'
+	'md5sum 0x140000000 0x10000' 'md5sum 0x140010000 0xa000'
+	'md5sum 0x14001a000 0x86000' 'md5sum 0x1400a0000 0x10000'
+	'md5sum 0x1400b0000 0x750000' 'md5sum 0x140000000 0x800000')
+shell_session=$mvp_dir/scenarios/two-guests/sessions/shell.json
+
+# console_sitting NAME in|out: a fresh board, and K3_RUN_ROOT a sitting's
+# run root (a stand-in sitting/plan.txt) with its console session, the
+# card recorded in or out.
+console_sitting() {
+	board "$1"
+	mkdir -m 700 -- "$K3_RUN_ROOT" "$K3_RUN_ROOT/sitting"
+	printf 'schema=be-mvp-k3-sitting-plan-v1\nsitting=first\n' \
+		>"$K3_RUN_ROOT/sitting/plan.txt"
+	printf 'card=out step=begin recorded=%s log_offset=0\n' "$now" \
+		>"$K3_RUN_ROOT/card-slot.txt"
+	[ "$2" = out ] || card_slot in
+	expect "$1.start" 0 "$console" start
+}
+
+# card_slot in|out: the card so recorded in K3_RUN_ROOT's ledger.
+card_slot() {
+	printf 'card=%s session=1 image=two-guests-off step=card-%s-1 said=%s recorded=%s log_offset=0\n' \
+		"$1" "$1" "$now" "$now" >>"$K3_RUN_ROOT/card-slot.txt"
+}
+
+# wait_state STATE: the fake U-Boot's state, waited for.
+wait_state() {
+	local _
+	for _ in $(seq 200); do
+		[ "$(uboot_state 2>/dev/null)" != "$1" ] || return 0
+		sleep 0.05
+	done
+	fail "the fake board did not reach $1 (it is $(uboot_state))"
+}
+
+# halted: Fedora shut down on the fake board, which halts until a reset.
+halted() {
+	ssh "$fake_host" sudo -n systemctl reboot
+	wait_state halted
+}
+
+# lines PATTERN FILE: FILE's lines that hold PATTERN, 0 without FILE.
+lines() {
+	if [ -f "$2" ]; then grep -c -- "$1" "$2" || true; else echo 0; fi
+}
+
+# sends: the fake tmux's send-keys commands so far.
+sends() {
+	lines '"send-keys"' "$FAKE_UBOOT/tmux.log"
+}
+
+refused_count() {
+	lines '	refused	' "$K3_RUN_ROOT/keys.log"
+}
+
+# -------------------------------------------- 4: nothing typed, card in
+case_card_typing() {
+	local name
+	console_sitting card-typing in
+	expect card-typing.type 5 env K3_NOR_READ=human-authorized "$console" type 'sf probe'
+	expect card-typing.diag 5 env K3_DIAGNOSTICS=human-authorized "$console" diag version
+	expect card-typing.stop-autoboot 5 "$console" stop-autoboot
+	expect card-typing.guest-type 5 env K3_GUEST_TYPING=human-authorized \
+		"$console" guest-type "$shell_session" 0123456789abcdef "$out/card-typing-guest"
+	expect card-typing.probe-type 5 env K3_GUEST_TYPING=human-authorized \
+		"$console" probe-type "$out/card-typing-probe"
+	for name in type diag stop-autoboot guest-type probe-type; do
+		grep -qF "REFUSED $name: a card is recorded in (planning/mvp-m11-board-addendum.md, B-4); nothing was typed" \
+			"$out/card-typing.$name.txt" || fail "card-typing: $name was not refused"
+	done
+	[ "$(sends)" = 0 ] && [ "$(refused_count)" = 5 ] ||
+		fail "card-typing: a key was sent, or the keystroke log lacks a refusal"
+	halted
+	expect card-typing.reset 0 "$console" reset
+	has "$out/card-typing.reset.txt" outcome=reset
+	expect_dongle card-typing 'ping status ping reset ping status'
+	card_slot out
+	expect card-typing.stop 0 "$console" stop-autoboot
+	expect card-typing.typed 0 env K3_NOR_READ=human-authorized "$console" type 'sf probe'
+	grep -q '"line": "sf probe"' "$FAKE_UBOOT/received.log" ||
+		fail "card-typing: the reading's line was not typed with the card out"
+	pass sitting-card-typing "the card recorded in: type, diag, stop-autoboot, guest-type, probe-type each refused (exit 5), no send-keys, five refusals in the keystroke log; the reset pulses; the card out: s, then the reading's line typed"
+}
+
+# ---------------------------------------- 5: the rule, built to misbehave
+# mutant NAME SED...: a copy of the console tool, each sed expression
+# applied, beside the tree's k3-uboot.py.
+mutant() {
+	local directory=$out/mutants/$1
+	shift
+	mkdir -p -- "$directory"
+	sed "$@" -- "$console" >"$directory/k3-console.sh"
+	chmod +x -- "$directory/k3-console.sh"
+	ln -sf -- "$tools/k3-uboot.py" "$directory/k3-uboot.py"
+	cmp -s -- "$directory/k3-console.sh" "$console" &&
+		fail "card-mutants: the copy $directory is the tool"
+	printf '%s\n' "$directory/k3-console.sh"
+}
+
+# one_send FILE: whether FILE runs tmux send-keys at one place alone.
+one_send() {
+	[ "$(grep -v '^[[:space:]]*#' -- "$1" | grep -c 'tmux send-keys')" = 1 ]
+}
+
+case_card_mutants() {
+	local name tool before entry='/^\tcard_refuse /d' press='s/^\tcard_out ||$/\ttrue ||/'
+	console_sitting card-mutants out
+	for name in entry press both; do
+		case $name in
+		entry) tool=$(mutant entry -e "$entry") ;;
+		press) tool=$(mutant press -e "$press") ;;
+		both) tool=$(mutant both -e "$entry" -e "$press") ;;
+		esac
+		# The board at its prompt, the card recorded out; then in.
+		[ "$(uboot_state)" != fedora ] || halted
+		expect "card-mutants.$name.reset" 0 "$console" reset
+		expect "card-mutants.$name.stop" 0 "$console" stop-autoboot
+		card_slot in
+		before=$(sends)
+		case $name in
+		entry)
+			expect card-mutants.entry.type 1 env K3_NOR_READ=human-authorized "$tool" type 'sf probe'
+			grep -qF 'STOP stop=5 a card is recorded in (planning/mvp-m11-board-addendum.md, B-4); nothing more is sent' \
+				"$out/card-mutants.entry.type.txt" || fail "card-mutants: press did not stop type"
+			;;
+		press)
+			expect card-mutants.press.type 5 env K3_NOR_READ=human-authorized "$tool" type 'sf probe'
+			grep -qF 'REFUSED type: a card is recorded in' "$out/card-mutants.press.type.txt" ||
+				fail "card-mutants: the entry check did not refuse type"
+			;;
+		both)
+			expect card-mutants.both.type 0 env K3_NOR_READ=human-authorized "$tool" type 'sf probe'
+			if [ "$(sends)" = "$before" ] ||
+				! grep -q '"line": "sf probe"' "$FAKE_UBOOT/received.log"; then
+				fail "card-mutants: without both checks no key reached the fake, so the case could not fail"
+			fi
+			card_slot out
+			continue
+			;;
+		esac
+		[ "$(sends)" = "$before" ] || fail "card-mutants: $name sent a key"
+		expect "card-mutants.$name.reset-2" 0 "$console" reset
+		expect "card-mutants.$name.stop-autoboot" "$([ "$name" = entry ] && echo 1 || echo 5)" \
+			"$tool" stop-autoboot
+		grep -qF "$([ "$name" = entry ] && echo 'STOP stop=5 a card is recorded in' ||
+			echo 'REFUSED stop-autoboot: a card is recorded in')" \
+			"$out/card-mutants.$name.stop-autoboot.txt" ||
+			fail "card-mutants: stop-autoboot under $name"
+		[ "$(sends)" = "$before" ] || fail "card-mutants: $name's stop-autoboot sent a key"
+		wait_state fedora
+		card_slot out
+	done
+	one_send "$console" || fail "card-mutants: tmux send-keys is not at one place in the tool"
+	# shellcheck disable=SC2016 # the line as the copy holds it
+	sed 's/^\t\t\tpress Enter$/\t\t\ttmux send-keys -t "$pane_id" Enter/' -- "$console" \
+		>"$out/mutants/second-send.sh"
+	! one_send "$out/mutants/second-send.sh" ||
+		fail "card-mutants: the rule of one send-keys passes a copy with a second"
+	pass sitting-card-mutants "the entry checks deleted: press stops type and stop-autoboot (stop 5), nothing sent; press's check deleted: the entry checks refuse each (exit 5); both deleted: a key reaches the fake; tmux send-keys at one place, and a copy with a second fails that rule"
+}
+
+# ------------------------------------------- 6: the ledger fails closed
+case_card_state() {
+	local name slot
+	console_sitting card-state out
+	slot=$K3_RUN_ROOT/card-slot.txt
+	cp -- "$slot" "$out/card-state.slot"
+	for name in absent link unreadable maybe cut space; do
+		rm -f -- "$slot" "$slot.target"
+		cp -- "$out/card-state.slot" "$slot"
+		case $name in
+		absent) rm -- "$slot" ;;
+		link) mv -- "$slot" "$slot.target" && ln -s -- "$slot.target" "$slot" ;;
+		unreadable)
+			chmod 000 -- "$slot"
+			if [ -r "$slot" ]; then
+				printf 'BE_MVP_RUN_TOOL[sitting-card-state]: NOTE an unreadable ledger not tried: this account reads a file of mode 0000\n'
+				chmod 600 -- "$slot"
+				continue
+			fi
+			;;
+		maybe) printf 'card=maybe\n' >>"$slot" ;;
+		cut) printf 'card=out step=\n' >>"$slot" ;;
+		space) printf 'card=out step=card-out-1 \n' >>"$slot" ;;
+		esac
+		expect "card-state.$name" 5 env K3_NOR_READ=human-authorized "$console" type 'sf probe'
+		grep -qF 'REFUSED type: a card is recorded in' "$out/card-state.$name.txt" ||
+			fail "card-state: a ledger $name did not refuse"
+		[ ! -e "$slot" ] || [ -L "$slot" ] || chmod 600 -- "$slot"
+	done
+	rm -f -- "$slot" "$slot.target"
+	cp -- "$out/card-state.slot" "$slot"
+	[ "$(sends)" = 0 ] || fail "card-state: a key was sent"
+	# A run root that is not a sitting's: no rule, MVP 1.0's template typed.
+	rm -- "$K3_RUN_ROOT/sitting/plan.txt"
+	card_slot in
+	halted
+	expect card-state.reset 0 "$console" reset
+	expect card-state.stop 0 "$console" stop-autoboot
+	expect card-state.version 0 "$console" type version
+	grep -q '"line": "version"' "$FAKE_UBOOT/received.log" ||
+		fail "card-state: MVP 1.0's template was not typed outside a sitting"
+	pass sitting-card-state "absent, a symbolic link, unreadable, ending card=maybe, cut, or with a trailing space: each the card in, refused; outside a sitting's run root, MVP 1.0's template typed"
+}
+
+# ------------------------------------- 7: what a sitting's run root types
+case_templates() {
+	local line refusals
+	console_sitting templates out
+	for line in saveenv printenv 'setenv be_image be-mvp-two-guests-off-gcc.img' 'run be_go' 'nvme scan'; do
+		expect templates.mvp 5 env K3_NOR_READ=human-authorized "$console" type "$line"
+		grep -qF "REFUSED a line in a sitting's run root that is not one of the reading's lines" \
+			"$out/templates.mvp.txt" || fail "templates: $line"
+	done
+	for line in "${reading_lines[@]}"; do
+		expect templates.unauthorized 5 "$console" type "$line"
+		grep -qF "REFUSED a line in a sitting's run root" "$out/templates.unauthorized.txt" ||
+			fail "templates: $line without K3_NOR_READ"
+	done
+	for line in 'md5sum 0x140000004 0x10000' 'md5sum 0x140000000 0x10001' \
+		'sf read 0x140000000 0x0 0x400000' 'sf read 0x140000000 0x0 0x800000 0' \
+		'sf write 0x140000000 0x0 0x800000' 'sf erase 0x0 0x800000' \
+		'sf update 0x140000000 0x0 0x800000' 'sf probe 0:0' 'sf probe; saveenv' \
+		'SF PROBE' 'md5sum 0x140000000 0x10000 0x150000000'; do
+		expect templates.near 5 env K3_NOR_READ=human-authorized "$console" type "$line"
+		grep -qF "REFUSED a line in a sitting's run root" "$out/templates.near.txt" ||
+			fail "templates: $line"
+	done
+	expect templates.diag 5 env K3_DIAGNOSTICS=human-authorized "$console" diag version
+	expect templates.guest-type 5 env K3_GUEST_TYPING=human-authorized \
+		"$console" guest-type "$shell_session" 0123456789abcdef "$out/templates-guest"
+	expect templates.probe-type 5 env K3_GUEST_TYPING=human-authorized \
+		"$console" probe-type "$out/templates-probe"
+	for line in diag guest-type probe-type; do
+		grep -qF "REFUSED $line in a sitting's run root" "$out/templates.$line.txt" ||
+			fail "templates: $line in a sitting"
+	done
+	rm -- "$K3_RUN_ROOT/sitting/plan.txt"
+	for line in "${reading_lines[@]}"; do
+		expect templates.outside 5 env K3_NOR_READ=human-authorized "$console" type "$line"
+		grep -qF 'REFUSED a line outside the templates' "$out/templates.outside.txt" ||
+			fail "templates: $line outside a sitting"
+	done
+	refusals=$(refused_count)
+	[ ! -e "$FAKE_UBOOT/keys.in" ] && [ "$refusals" = 35 ] ||
+		fail "templates: a key was sent, or $refusals refusals, not 35"
+	pass sitting-templates "in a sitting's run root: 5 of MVP 1.0's templates, the 8 reading lines without K3_NOR_READ, 11 near ones with it, diag, guest-type, probe-type: each refused; outside one, the 8 reading lines refused with K3_NOR_READ; nothing typed"
+}
+
+# ------------------------------------------ 13: a card boot, none in
+# card_capture FILE ROM: a stand-in boot from a card, its boot ROM's lines
+# ROM (made up), then the SPL and U-Boot banners and `Autoboot in 0`.
+card_capture() {
+	printf '%b' "$2" >"$1"
+	printf 'U-Boot SPL 2022.10 (stand-in)\r\n\r\nU-Boot 2022.10 (stand-in), Build: stand-in\r\n\r\nLoading Environment from MMC... OK\r\nAutoboot in 0 seconds\r\n' \
+		>>"$1"
+}
+
+case_card_boot() {
+	local name rom text
+	for name in card none; do
+		rom='ROM: stand-in boot from a card\r\nrom m:0x1 d:0x2\r\n\r\n'
+		text="came from a card, and no card is recorded in (S3-E's stop (q)); nothing was typed"
+		if [ "$name" = none ]; then
+			rom='' text="its medium cannot be told (medium=none rom_lines=0), and no card is recorded in"
+		fi
+		console_sitting "card-boot-$name" out
+		card_capture "$out/card-boot-$name.capture" "$rom"
+		printf '{"image": "two-guests-off", "capture": "%s"}\n' \
+			"$out/card-boot-$name.capture" >"$FAKE_K3_BOARD/card.json"
+		halted
+		expect "card-boot-$name.reset" 0 "$console" reset
+		expect "card-boot-$name" 1 "$console" stop-autoboot
+		if ! grep -qF "STOP stop=B3 the boot of reset 1" "$out/card-boot-$name.txt" ||
+			! grep -qF "$text" "$out/card-boot-$name.txt"; then
+			fail "card-boot-$name: not its stop: $(tail -n 1 "$out/card-boot-$name.txt")"
+		fi
+		if [ "$(sends)" != 0 ] || grep -q '"t": "literal"' "$FAKE_UBOOT/received.log" 2>/dev/null; then
+			fail "card-boot-$name: a key was sent"
+		fi
+	done
+	pass sitting-card-boot "the card recorded out and a boot from a card: stop B3, no s; a boot whose medium cannot be told: stop B3, no s"
+}
+
+# ---------------------------------- 32: the readers of a boot from reset
+# Each outcome of k3-uboot.py medium and wait-end on a log of its own, in
+# the forms they read: the boot ROM's lines (the NOR's as the fake board
+# prints them), the banners, the monitor's last line, and the firmware's
+# commit records (lane K's RECORD_FORMS), the values made up.
+case_readers() {
+	local dir=$out/readers row name how want args status hart
+	local nor='ERROR:   CMD8\r\nbm:4\r\nnor m:0xc8 d:0x6017\r\n\r\n'
+	local card='ROM: stand-in boot from a card\r\n\r\n'
+	local banners='U-Boot SPL 2022.10 (stand-in)\r\nU-Boot 2022.10 (stand-in)\r\nAutoboot in 0 seconds\r\n'
+	local last='BE_MVP:14 SHUTDOWN type=0 reason=0\r\n'
+	local zero="committed=0 pmp_faults=0 blocked_calls=0 failed_calls=0"
+	local addresses
+	addresses=$(printf '0x%016x,' 1 2 3 4 5 6 7)0x0000000000000008
+	record() {
+		local hart=$1 cut=${2:-5} lines
+		lines=("committed=1 pmp_faults=1 blocked_calls=2 failed_calls=3"
+			"menvcfg=0x0000000000000000 mseccfg=0x0000000000000000"
+			"pmpcfg=$(printf '%032d' 0)" "pmpaddr0=$addresses" "pmpaddr8=$addresses")
+		printf "Domain commit hart$hart: %s\\\\r\\\\n" "${lines[@]:0:cut}"
+	}
+	mkdir -p -- "$dir"
+	for row in "medium-nor|medium|0 medium=nor rom_lines=3|$nor$banners" \
+		"medium-card|medium|1 medium=card rom_lines=1|$card$banners" \
+		"medium-none|medium|1 medium=none rom_lines=0|$banners" \
+		"end-0|wait 1|end|$card$banners${last}$(record 0)Domain commit hart1: $zero\\r\\n" \
+		"end-1|wait 1|end|$card$banners${last}$(record 0)$(record 1)" \
+		"terminal|wait 1|terminal|$card$banners${last}$(record 0)$(record 1 3)" \
+		"end-no-digest|wait|end|$card$banners$last" \
+		"boot|wait|boot|$card${banners}U-Boot SPL 2022.10 (stand-in)\\r\\n" \
+		"nor|wait|nor|$nor$banners" \
+		"prompt|wait|prompt|$card$banners=> " \
+		"fedora|wait|fedora|$card${banners}[    1.234567] Linux version 7.3 (stand-in)\\r\\n" \
+		"timeout|wait|timeout|$card$banners"; do
+		IFS='|' read -r name how want text <<<"$row"
+		printf '%b' "$text" >"$dir/$name.log"
+		if [ "$how" = medium ]; then
+			args=(medium "$dir/$name.log" 0 "$(stat -c %s -- "$dir/$name.log")")
+			status=${want%% *} want=${want#* }
+		else
+			hart=${how#wait} hart=${hart# }
+			args=(wait-end "$dir/$name.log" 0 1 0.2
+				'BE_MVP:14 SHUTDOWN|BE_MVP:FAIL|BE_K3_B3: FAIL' ${hart:+"$hart"})
+			status=0 want="$want $(stat -c %s -- "$dir/$name.log")"
+		fi
+		expect "readers.$name" "$status" "$python" -I -B "$tools/k3-uboot.py" "${args[@]}"
+		[ "$(cat -- "$out/readers.$name.txt")" = "$want" ] ||
+			fail "readers: $name: $(cat -- "$out/readers.$name.txt"), not $want"
+	done
+	unset -f record
+	pass sitting-readers "medium: nor, card, none; wait-end: the end with the last hart's record committed=0 and committed=1, a record cut short (terminal), the end with no digest, a second SPL banner (boot), a boot from the NOR, U-Boot's prompt, Fedora, and the time limit"
+}
+
 case_declarations
 case_order
 case_refusals
-cases=3
+case_card_typing
+case_card_mutants
+case_card_state
+case_templates
+case_card_boot
+case_readers
+cases=9
 printf 'BE_MVP_K3_SESSION: PASS self_test=%s cases=%s\n' "$self_test" "$cases"

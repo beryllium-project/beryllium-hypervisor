@@ -16,6 +16,8 @@ k3-run.sh read in the operator's serial log, a picocom log that only grows.
   k3-uboot.py fresh LOG FROM
   k3-uboot.py audit LOG START RESETS
   k3-uboot.py follow LOG OFFSET SECONDS TAIL [TYPED]
+  k3-uboot.py medium LOG START END
+  k3-uboot.py wait-end LOG OFFSET SECONDS TAIL TERMINAL [LAST_HART]
   k3-uboot.py attribution CAPTURE BYTES DIGEST
   k3-uboot.py normalize RAW OUT
   k3-uboot.py compare KIND [ARGS...]
@@ -88,6 +90,27 @@ optional stamp.
                the offset before a typed `run be_go`, after that), or a
                Fedora line (the image did not boot); or the end of SECONDS;
                prints the outcome and the capture's end offset
+  medium       the medium that the boot between START (its reset's offset)
+               and END came from, by its boot ROM's lines before the SPL
+               banner: lane K's rule (tests/check-capture.py's
+               rom_lines() and boot_medium()), imported, not written
+               again; prints medium=nor|card|none rom_lines=N, never a
+               line's text; 0 for nor, 1 otherwise (M11-B's sittings: a
+               reading types its `s` only at a boot from the NOR)
+  wait-end     a boot from a card from its reset's OFFSET (M11-B's
+               sittings): end, the end line and then TAIL seconds with no
+               output; the end line is, with LAST_HART (the tree holds a
+               digest), the last line of that hart's commit record in the
+               firmware's form (lane K's RECORD_LINE and RECORD_FORMS): its
+               counts line when it says committed=0, its pmpaddr8= line
+               when committed=1; without, a line matching TERMINAL, the
+               expectation's terminal_regex; terminal, with LAST_HART, a
+               TERMINAL line and TAIL seconds quiet with no end line; boot,
+               a second SPL banner (a boot no reset made); nor, once the
+               U-Boot banner is in, a boot from the NOR (medium's rule);
+               prompt, U-Boot's prompt after its banner; fedora, a line of
+               Fedora's; or timeout, SECONDS from OFFSET; each of the four
+               before end at once; prints the outcome and the log's size
   attribution  a run's capture, or `run be_ld`'s output: at most one
                `Autoboot in` line (one boot per run; none in a typed
                load; before it this BSP's U-Boot loads env_k3.txt, with a
@@ -412,6 +435,63 @@ def follow(path, offset, seconds, tail, typed_at=None):
     outcome = poll(seconds, probe) or "timeout"
     if outcome == "terminal-marker":
         time.sleep(tail)
+    print(outcome, size(path))
+    return 0
+
+
+def checker():
+    """Lane K's form, tests/check-capture.py, for its rules on a boot from
+    reset (rom_lines(), boot_medium(), RECORD_LINE, RECORD_FORMS)."""
+    path = pathlib.Path(__file__).resolve().parent.parent / "tests" / \
+        "check-capture.py"
+    spec = importlib.util.spec_from_file_location("check_capture", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def medium(path, start, end):
+    text = read(path, start)[:max(0, end - start)]
+    form = checker()
+    found = form.boot_medium(text)
+    print(f"medium={found} rom_lines={len(form.rom_lines(text))}")
+    return 0 if found == "nor" else 1
+
+
+def wait_end(path, offset, seconds, tail, terminal, last=None):
+    form, terminal = checker(), re.compile(terminal)
+
+    def ended(lines):
+        if last is None:
+            return any(map(terminal.search, lines))
+        for line in lines:
+            match = form.RECORD_LINE.fullmatch(line)
+            if not match or int(match.group(1)) != last:
+                continue
+            counts = form.RECORD_FORMS[0].fullmatch(match.group(2))
+            if counts and counts.group(1) == "0" or \
+                    form.RECORD_FORMS[4].fullmatch(match.group(2)):
+                return True
+        return False
+
+    def probe():
+        raw = read(path, offset)
+        text = clean(raw)
+        lines = text.split("\n")
+        banner = UBOOT.search(text)
+        if len(SPL.findall(text)) > 1:
+            return "boot"
+        if banner and form.boot_medium(raw) == "nor":
+            return "nor"
+        if ended(lines):
+            return "end" if quiet(path, tail) else None
+        if last is not None and any(map(terminal.search, lines)):
+            return "terminal" if quiet(path, tail) else None
+        if banner and re.search(r"^=> ", text[banner.end():], re.M):
+            return "prompt"
+        # Linux's six-decimal stamps, which clean() removes as U-Boot's.
+        return "fedora" if FEDORA.search(raw.replace("\r", "")) else None
+    outcome = poll(seconds, probe) or "timeout"
     print(outcome, size(path))
     return 0
 
@@ -835,6 +915,11 @@ def main(argv):
         if command == "follow" and len(args) in (4, 5):
             return follow(args[0], int(args[1]), float(args[2]),
                           float(args[3]), *map(int, args[4:]))
+        if command == "medium" and len(args) == 3:
+            return medium(args[0], int(args[1]), int(args[2]))
+        if command == "wait-end" and len(args) in (5, 6):
+            return wait_end(args[0], int(args[1]), float(args[2]),
+                            float(args[3]), args[4], *map(int, args[5:]))
         if command == "attribution" and len(args) == 3:
             return attribution(*args)
         if command == "normalize" and len(args) == 2:

@@ -34,7 +34,13 @@ Purpose: let the dry run drive tools/k3-console.sh, k3-env.sh, k3-run.sh,
          with silent_crc32, nothing, as this BSP's does (the
          characterization of 2026-10-30). A poweroff the fake board
          receives over ssh (FAKE_K3_BOARD/poweroff) prints Linux's last
-         lines and halts it.
+         lines and halts it. A card in the slot (FAKE_K3_BOARD/card.json,
+         {"image": IMAGE, "capture": PATH}, which the sittings' dry run
+         writes as the human puts a card in and removes as he takes it
+         out): at a reset, serve plays the capture at PATH verbatim, a
+         whole boot from a card from its boot ROM's lines on, and then
+         writes nothing more, a halt; keys that reach it then are dropped
+         and recorded with "card": true.
          tmux answers has-session and list-panes -s for the session, by
          its name or its session:window form (a window of its panes), and
          display and send-keys for the console's pane by its pane ID
@@ -310,7 +316,16 @@ class Board:
 
     def boot(self):
         """From reset: the ROM, SPL, and U-Boot, then the autoboot wait;
-        DIR/faults.json, when there, over the configuration's faults."""
+        DIR/faults.json, when there, over the configuration's faults; or
+        the card in the slot's capture."""
+        card = load(self.board / "card.json")
+        if card:
+            self.counts["boots"] += 1
+            self.boot_time, self.window = time.time(), None
+            self.fedora(False)
+            self.log.write(pathlib.Path(card["capture"]).read_bytes())
+            self.state = "card"
+            return
         self.faults = dict(self.config.get("faults", {}),
                            **load(self.root / "faults.json", {}))
         self.boot_time, self.env = time.time(), dict(self.saved)
@@ -407,7 +422,9 @@ class Board:
         kind, value = event["t"], event["v"]
         record = {"state": self.state, "t": kind, "v": value}
         self.after_window(kind, value)
-        if self.state == "mvp" and (kind == "literal" or value == "Enter"):
+        if self.state == "card":
+            record.update(card=True, dropped=True)
+        elif self.state == "mvp" and (kind == "literal" or value == "Enter"):
             self.typed += value if kind == "literal" else "\r"
             record["mvp"] = True
         elif self.state == "autoboot" and (kind, value) == ("literal", "s"):

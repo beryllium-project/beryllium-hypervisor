@@ -187,6 +187,30 @@
 # line and log offset, each repetition's offsets), and, for guest-type,
 # nonce.txt and session.txt (the file's SHA-256).
 #
+# A sitting's run root (planning/mvp-m11-board-addendum.md, M11-B1; the
+# sittings' driver, tools/k3-sitting.py) is one that holds sitting/plan.txt.
+# Its card-slot.txt is the ledger of the card's slot: the card is recorded
+# out only when the file is a regular file, no link, readable, and its last
+# non-empty line is whole, `card=out` and its KEY=VALUE fields; anything
+# else is the card recorded in. While it is, nothing is typed (B-4): type,
+# diag, stop-autoboot, guest-type, and probe-type are refused at their
+# entry (exit 5), and press, the one place a key leaves this tool (tmux
+# send-keys), stops (stop 5) before any key; reset, check, start,
+# can-reset, and audit send none. Whatever the card's state, a sitting's
+# run root admits no diag, guest-type, or probe-type, and of the lines
+# typed only the reading's eight (S3-E item 9), each with
+# K3_NOR_READ=human-authorized, refused without it and in any other run
+# root:
+#   sf probe   sf read 0x140000000 0x0 0x800000
+#   md5sum 0x140000000 0x10000   md5sum 0x140010000 0xa000
+#   md5sum 0x14001a000 0x86000   md5sum 0x1400a0000 0x10000
+#   md5sum 0x1400b0000 0x750000   md5sum 0x140000000 0x800000
+# An md5sum's output is a private digest: its keystroke line holds
+# output_sha256=withheld. Before its `s`, stop-autoboot reads the boot's
+# medium from the boot ROM's lines since the last reset (tools/k3-uboot.py
+# medium, lane K's rule): anything but the NOR is stop B3 (S3-E's stop
+# (q)), and nothing is typed.
+#
 # Exit status: 0 done; 1 a stop (the last line names the plan's stop
 # condition); 2 a usage error; 3 stop-autoboot missed `s` (the boot command
 # runs: an unplanned boot, which the caller records); 5 a line refused
@@ -334,6 +358,66 @@ need_session() {
 # state_value NAME: the console state's NAME (the last reset's offsets).
 state_value() {
 	[ ! -f "$state" ] || sed -n "s/^$1=//p" -- "$state" | tail -n 1
+}
+
+# sitting: whether the run root is a sitting's (the header's).
+sitting() {
+	[ -n "$run_root" ] && { [ -e "$run_root/sitting/plan.txt" ] ||
+		[ -L "$run_root/sitting/plan.txt" ]; }
+}
+
+# card_out: whether the card is recorded out: outside a sitting always
+# (there is no slot, and no fork, so that MVP 1.0's typing keeps its
+# pace), in a sitting only when card-slot.txt ends in a whole card=out
+# line.
+card_out() {
+	local slot=$run_root/card-slot.txt last
+
+	sitting || return 0
+	[ -f "$slot" ] && [ ! -L "$slot" ] && [ -r "$slot" ] || return 1
+	last=$(grep -a . -- "$slot" | tail -n 1) || return 1
+	[[ $last =~ ^card=out(\ [a-z_]+=[^\ ]+)+$ ]]
+}
+
+# card_refuse WHAT: WHAT refused at its entry while a card is recorded in.
+card_refuse() {
+	! card_out || return 0
+	keys refused "$1: a card is recorded in"
+	printf '%s: REFUSED %s: a card is recorded in (planning/mvp-m11-board-addendum.md, B-4); nothing was typed\n' \
+		"$tag" "$1" >&2
+	exit 5
+}
+
+# sitting_refuse WHAT: WHAT refused in a sitting's run root (R5).
+sitting_refuse() {
+	sitting || return 0
+	keys refused "$1 in a sitting's run root"
+	printf '%s: REFUSED %s in a sitting'\''s run root, which types only the reading'\''s lines with K3_NOR_READ=human-authorized; nothing was typed\n' \
+		"$tag" "$1" >&2
+	exit 5
+}
+
+# press ARGS: the one place a key leaves this tool, to picocom's pane; a
+# stop, nothing sent, while a card is recorded in.
+press() {
+	card_out ||
+		stop 5 "a card is recorded in (planning/mvp-m11-board-addendum.md, B-4); nothing more is sent"
+	tmux send-keys -t "$pane_id" "$@"
+}
+
+# reading LINE: the name of one of the reading's eight lines, or failure.
+reading() {
+	case $1 in
+	"sf probe") echo sf-probe ;;
+	"sf read 0x140000000 0x0 0x800000") echo sf-read ;;
+	"md5sum 0x140000000 0x10000") echo md5-bootinfo ;;
+	"md5sum 0x140010000 0xa000") echo md5-record ;;
+	"md5sum 0x14001a000 0x86000") echo md5-fsbl ;;
+	"md5sum 0x1400a0000 0x10000") echo md5-env ;;
+	"md5sum 0x1400b0000 0x750000") echo md5-images ;;
+	"md5sum 0x140000000 0x800000") echo md5-whole ;;
+	*) return 1 ;;
+	esac
 }
 
 # The session's start offset, or the last reset's: the port-open rule's
@@ -570,9 +654,10 @@ reset() {
 }
 
 stop_autoboot() {
-	local banner after status environment cleared
+	local banner after status environment cleared medium
 
 	need_session
+	card_refuse stop-autoboot
 	banner=$(state_value uboot_offset)
 	[ -n "$banner" ] || stop 1 "no reset of this session has reached U-Boot"
 	typing_pane
@@ -580,8 +665,19 @@ stop_autoboot() {
 		"$autoboot_seconds") ||
 		stop 1 "no Autoboot in within ${autoboot_seconds} s of the U-Boot banner"
 	read -r after environment <<<"$after"
+	if sitting; then
+		status=0
+		medium=$("${uboot[@]}" medium "$serial_log" \
+			"$(state_value reset_offset)" "$after") || status=$?
+		keys medium "$medium"
+		if [ "$status" != 0 ]; then
+			[ "${medium%% *}" != medium=card ] ||
+				stop B3 "the boot of reset $(tail -n 1 -- "$resets" | cut -f1) came from a card, and no card is recorded in (S3-E's stop (q)); nothing was typed"
+			stop B3 "the boot of reset $(tail -n 1 -- "$resets" | cut -f1): its medium cannot be told ($medium), and no card is recorded in (S3-E's stop (q)); nothing was typed"
+		fi
+	fi
 	pane_ready
-	tmux send-keys -t "$pane_id" -l -- s
+	press -l -- s
 	keys key "s offset=$after"
 	# The campaign of 2026-10-30 lost two `s` in a row with the same timing
 	# as the ones that stopped the autoboot (select-04, stop 12); a second
@@ -594,7 +690,7 @@ stop_autoboot() {
 	status=$?
 	set -e
 	if [ "$status" = 3 ]; then
-		tmux send-keys -t "$pane_id" -l -- s
+		press -l -- s
 		keys key "s retry offset=$after"
 		set +e
 		"${uboot[@]}" after-stop "$serial_log" "$after" "$echo_seconds" \
@@ -612,7 +708,7 @@ stop_autoboot() {
 			printf '%s: LATE-PROMPT the second s was echoed at a prompt that reached the log after %s s; Ctrl-C clears it\n' \
 				"$tag" "$stop_retry_seconds" >&2
 			cleared=$(log_size)
-			tmux send-keys -t "$pane_id" C-c
+			press C-c
 			keys key "C-c late-prompt"
 			"${uboot[@]}" wait-prompt "$serial_log" "$cleared" \
 				"$prompt_seconds" >/dev/null || waited "$?" "Ctrl-C at a late prompt"
@@ -652,7 +748,7 @@ pane_ready() {
 
 	mode=$(tmux display -p -t "$pane_id" '#{pane_in_mode}' 2>/dev/null || echo 0)
 	if [ "$mode" = 1 ]; then
-		tmux send-keys -t "$pane_id" -X cancel
+		press -X cancel
 		keys tmux "cancel-mode (the pane was in a mode)"
 	fi
 }
@@ -666,7 +762,7 @@ send() {
 	while [ "$index" -lt "${#text}" ]; do
 		piece=${text:index:60}
 		index=$((index + 60))
-		tmux send-keys -t "$pane_id" -l -- "$piece"
+		press -l -- "$piece"
 		sent=$sent$piece
 		keys send "piece=$((index / 60))/$count offset=$first text=$piece"
 		status=0
@@ -759,7 +855,17 @@ type_line() {
 	local line=$1 out=${2:-} name attempt offsets start end text kind=${3:-type}
 
 	need_session
-	if [ "$kind" = diag ]; then
+	card_refuse "$kind"
+	if sitting; then
+		[ "$kind" = type ] || sitting_refuse diag
+		if [ "${K3_NOR_READ:-}" != human-authorized ] ||
+			! name=$(reading "$line"); then
+			keys refused "not one of the reading's lines with K3_NOR_READ=human-authorized"
+			printf '%s: REFUSED a line in a sitting'\''s run root that is not one of the reading'\''s lines with K3_NOR_READ=human-authorized (stop condition 5)\n' \
+				"$tag" >&2
+			exit 5
+		fi
+	elif [ "$kind" = diag ]; then
 		if ! name=$(diagnostic "$line"); then
 			keys refused "diagnostic not read-only or not authorized"
 			printf '%s: REFUSED a diagnostic that is not a read-only command, or K3_DIAGNOSTICS is not human-authorized\n' \
@@ -787,7 +893,7 @@ type_line() {
 	for attempt in first retry; do
 		keys line "$attempt template=$name"
 		if send "$line"; then
-			tmux send-keys -t "$pane_id" Enter
+			press Enter
 			keys key "Enter template=$name"
 			# booti does not come back to the prompt: the image runs.
 			[ "$name" != run-be_go ] || return 0
@@ -798,6 +904,8 @@ type_line() {
 				(umask 077 && slice "$start" "$end" >"$out")
 			fi
 			text=$(slice "$start" "$end" | sha256sum | cut -d' ' -f1)
+			# A reading's digest is private (the header's).
+			[ "${name#md5-}" = "$name" ] || text=withheld
 			keys prompt "template=$name output_bytes=$((end - start)) output_sha256=$text"
 			if [ "$name" = saveenv ]; then
 				text=$(slice "$start" "$end" |
@@ -810,7 +918,7 @@ type_line() {
 			return 0
 		fi
 		start=$(log_size)
-		tmux send-keys -t "$pane_id" C-c
+		press C-c
 		keys key "C-c"
 		"${uboot[@]}" wait-prompt "$serial_log" "$start" \
 			"$prompt_seconds" >/dev/null || waited "$?" Ctrl-C
@@ -823,6 +931,8 @@ type_line() {
 # key record; refused (exit 5) without K3_GUEST_TYPING=human-authorized.
 guest_start() {
 	need_session
+	card_refuse "$2"
+	sitting_refuse "$2"
 	if [ "${K3_GUEST_TYPING:-}" != human-authorized ]; then
 		keys refused "$2: K3_GUEST_TYPING is not human-authorized"
 		printf '%s: REFUSED %s: typing into the MVP needs K3_GUEST_TYPING=human-authorized; nothing was typed\n' \
@@ -866,10 +976,10 @@ guest_key() {
 	local char
 
 	if [ "$2" = 0d ]; then
-		tmux send-keys -t "$pane_id" Enter
+		press Enter
 	else
 		printf -v char '%b' "\\x$2"
-		tmux send-keys -t "$pane_id" -l -- "$char"
+		press -l -- "$char"
 	fi
 	guest_stamp
 	printf '%s step=%s key=0x%s\n' "$guest_when" "$1" "$2" \
