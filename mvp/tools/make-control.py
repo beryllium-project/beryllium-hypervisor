@@ -5,6 +5,7 @@
 
   make-control.py                    run by the MVP makefiles' $(shell ...)
   make-control.py --self-test        the rules on synthetic invocations
+  make-control.py --fragments        the fragments mvp/tools.mk names
 
 Purpose: the build graph is part of the evidence boundary (S1 H33;
 planning/mvp-m0-plan.md, "Scenarios and the harness", Build): the MVP
@@ -43,11 +44,17 @@ Rules, each failing closed:
     MVP_GUEST_FLAVOUR (linux or cheri-linux), and its CHERI guest inputs,
     CHERI_SDK, CHERI_LINUX_SRC, CHERI_BUSYBOX_SRC, CHERI_MUSL_SRC, and
     CHERI_LLVM_SRC (paths), and CHERI_LINUX_COMMIT, CHERI_BUSYBOX_COMMIT,
-    CHERI_MUSL_COMMIT, and CHERI_LLVM_COMMIT (40 hexadecimal digits);
-  - the environment may not set MAKEFILES, a variable any MVP makefile or the
-    tool lock assigns, or a variable that changes the compilers, the loader,
-    the shell, or Python; an allowlisted variable in the environment must
-    have its own form too.
+    CHERI_MUSL_COMMIT, and CHERI_LLVM_COMMIT (40 hexadecimal digits); and
+    M11-B's board gate's K3_PUBLISHED (an absolute path);
+  - the environment may not set MAKEFILES, a variable any MVP makefile, a
+    fragment that mvp/tools.mk names, or the tool lock assigns, or a
+    variable that changes the compilers, the loader, the shell, or Python;
+    an allowlisted variable in the environment must have its own form too.
+
+--fragments prints, one per line, the files under mvp/k3/ that
+mvp/tools.mk's one include directive names (M11-B), for mvp/mvp's commands
+and for the owned names above; it refuses any other include directive
+there (exit 2).
 """
 
 import os
@@ -97,6 +104,9 @@ CALLER = {
     "CHERI_MUSL_COMMIT": re.compile(r"^[0-9a-f]{40}$"),
     "CHERI_LLVM_SRC": PATH_FORM,
     "CHERI_LLVM_COMMIT": re.compile(r"^[0-9a-f]{40}$"),
+    # M11-B: the board vendor's published release directory, which only
+    # the board gate reads (mvp/k3/frame.mk).
+    "K3_PUBLISHED": PATH_FORM,
 }
 # Environment names that change Make, the shell, the compilers, the loader,
 # Python, or the guest kernel build, beyond the makefiles' own variables.
@@ -137,6 +147,10 @@ ASSIGNMENT = re.compile(
     r"(?::{1,3}=|\?=|\+=|!=|=)")
 DEFINE = re.compile(r"^\s*(?:(?:override|export)\s+)*define\s+"
                     r"([A-Za-z_][A-Za-z0-9_.-]*)")
+# M11-B: mvp/tools.mk's one include directive, which names each fragment.
+DIRECTIVE = re.compile(r" *(?:-include|sinclude|include)(?:[ \t]|$)")
+FRAGMENTS = re.compile(r"include \$\(addprefix \$\(MVP_DIR\)/k3/,"
+                       r"(common\.mk(?: [a-z][a-z0-9-]*\.mk)*)\)")
 
 
 class Refused(Exception):
@@ -432,8 +446,29 @@ def make_invocation(pid):
     return args, environment, cwd
 
 
+def parse_fragments(text):
+    """The fragments that TEXT, mvp/tools.mk, names: none if it has no
+    include directive; refused unless its one directive is the frame's,
+    common.mk first and each name once."""
+    lines = [line for line in text.splitlines() if DIRECTIVE.match(line)]
+    match = FRAGMENTS.fullmatch(lines[0]) if len(lines) == 1 else None
+    names = match.group(1).split() if match else []
+    if lines and (not names or len(set(names)) != len(names)):
+        raise Refused("mvp/tools.mk must hold one include directive, "
+                      "include $(addprefix $(MVP_DIR)/k3/,common.mk ...), "
+                      "each fragment named once")
+    return names
+
+
+def fragments(mvp_dir=MVP_DIR):
+    path = mvp_dir / "tools.mk"
+    return parse_fragments(path.read_text(encoding="utf-8")
+                           if path.is_file() else "")
+
+
 def owned_names():
-    paths = [MVP_DIR / name for name in MAKEFILES] + [LOCK]
+    paths = [MVP_DIR / name for name in MAKEFILES] + [LOCK] + [
+        MVP_DIR / "k3" / name for name in fragments()]
     return assigned_names(paths) - set(CALLER) - RESET
 
 
@@ -491,6 +526,7 @@ def self_test():
     expect("makeflags safe", ["check"], {"MAKEFLAGS": "s -- TOOLCHAIN=gcc"})
     expect("jobserver nested", ["check"],
            {"MAKELEVEL": "1", "MAKEFLAGS": "-j8 --jobserver-auth=fifo:/x"})
+    expect("board gate", ["k3-board-gate", "K3_PUBLISHED=/srv/k3/release"])
     refusals = [
         ("caller CC", ["check", "CC=cc"], None, "variable assignment CC"),
         ("caller SHELL", ["check", "SHELL=/bin/sh"], None,
@@ -506,6 +542,9 @@ def self_test():
         ("relative path", ["check", "K3_RUN_ROOT=runs"], None,
          "not of its form"),
         ("relative source cache", ["verify", "MVP_SRC_CACHE=sources"], None,
+         "not of its form"),
+        ("relative published directory", ["k3-board-gate",
+                                          "K3_PUBLISHED=release"], None,
          "not of its form"),
         ("jobs zero", ["check", "JOBS=0"], None, "not of its form"),
         ("scenario path", ["scenario", "MVP_SCENARIO_NAME=../te-poc"], None,
@@ -569,15 +608,37 @@ def self_test():
         expect(name, args, environment,
                cwd=root if name == "foreign directory" else MVP_DIR,
                refused=text)
-    # The scan reads the lock and every MVP makefile there is.
+    # The scan reads the lock, every MVP makefile there is, and the
+    # fragments that tools.mk names.
     names = owned_names()
     required = {"PYTHON", "MVP_TOOL_LOCK_SCHEMA", "MVP_PIN_LINUX_COMMIT"}
     if (MVP_DIR / "guest.mk").is_file():
         required.add("LINUX_COMMIT")
+    if (MVP_DIR / "k3" / "common.mk").is_file():
+        required.add("K3B_BUILD")
     cases += 1
     if not required <= names or names & (set(CALLER) | RESET):
         failures.append("the owned names lack the makefiles' or the lock's, "
                         "or hold a caller or reset name")
+    frame = "include $(addprefix $(MVP_DIR)/k3/,common.mk frame.mk)"
+    for name, text, expected in (
+            ("no include directive", "# include\nX := 1\n", []),
+            ("the frame's include", f"X := 1\n{frame}\n",
+             ["common.mk", "frame.mk"]),
+            ("a wildcard include", "include $(wildcard $(MVP_DIR)/k3/*.mk)",
+             None),
+            ("a second include", f"{frame}\n-include x.mk\n", None),
+            ("common.mk not first", frame.replace(
+                "common.mk frame.mk", "frame.mk common.mk"), None),
+            ("a fragment named twice", frame.replace(
+                "frame.mk", "frame.mk frame.mk"), None)):
+        cases += 1
+        try:
+            found = parse_fragments(text)
+        except Refused:
+            found = None
+        if found != expected:
+            failures.append(f"fragments, {name}: {found!r}")
     for failure in failures:
         print(f"BE_MVP_MAKE_CONTROL_SELF_TEST: FAIL {failure}")
     status = "FAIL" if failures else "PASS"
@@ -589,6 +650,9 @@ def main(argv):
     if argv[1:] == ["--self-test"]:
         return self_test()
     try:
+        if argv[1:] == ["--fragments"]:
+            print("".join(f"{name}\n" for name in fragments()), end="")
+            return 0
         if len(argv) > 1:
             raise Refused("make-control arguments")
         pid = pinned_make()

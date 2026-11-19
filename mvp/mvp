@@ -74,6 +74,12 @@
 #                                      characterization, then a shell
 #                                      session (M7-5; human, present)
 #   ./mvp board-evidence               session K3_RUN_ROOT's board record
+#   ./mvp k3-board-gate K3_PUBLISHED=DIR
+#                                      M11-B's board gate, never in check:
+#                                      the board vendor's published files
+#                                      in DIR, each by its pinned size and
+#                                      SHA-256 (k3/published-pins.txt),
+#                                      then each step of mvp/k3/
 #   ./mvp claim-ledger check|render|self-test
 #                                      the claim ledger and the release
 #                                      surfaces under docs/ (M4-1)
@@ -186,11 +192,23 @@ assignments() {
 	done
 }
 
-# A target exists once its work package adds it to the Makefile or tools.mk.
+# A target exists once its work package adds it to the Makefile, tools.mk,
+# or a fragment under k3/ that tools.mk names (tools/make-control.py
+# --fragments, read where k3/ exists; it refuses any other include
+# directive there: exit 2).
 has_target() {
-	local file
+	local file list=
+	local -a files=("$here/Makefile" "$here/tools.mk")
 
-	for file in "$here/Makefile" "$here/tools.mk"; do
+	if [ -d "$here/k3" ] && ! list=$(/usr/bin/env -i PATH=/usr/bin LC_ALL=C \
+		LANG=C "$python" -I -B "$here/tools/make-control.py" --fragments); then
+		printf '%s\n' "$list" >&2
+		exit 2
+	fi
+	while read -r file; do
+		[ -z "$file" ] || files+=("$here/k3/$file")
+	done <<<"$list"
+	for file in "${files[@]}"; do
 		[ -f "$file" ] && grep -q "^$1:" -- "$file" && return 0
 	done
 	return 1
@@ -286,6 +304,10 @@ k3-env)
 	command="k3-env $step"
 	extra=("${board[@]}")
 	later "k3-env-$step" M5-2 "$@"
+	;;
+k3-board-gate)
+	extra=(K3_PUBLISHED)
+	later k3-board-gate M11-B1 "$@"
 	;;
 claim-ledger)
 	[ "$#" -eq 1 ] || { usage; exit 2; }

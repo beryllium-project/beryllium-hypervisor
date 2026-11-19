@@ -586,3 +586,9 @@ uboot-build:
 	fi
 	test "$$(sha256sum < $(UBOOT_BIN) | cut -d' ' -f1)" = \
 		"$(MVP_PIN_UBOOT_BIN_SHA256)"
+
+# M11-B (planning/mvp-m11-board-addendum.md): the board's fragments under
+# k3/, each named once, common.mk first. This is the one include directive
+# here: tools/make-control.py --fragments reads it for mvp/mvp and the Make
+# controls, and tools/k3-frame.py refuses any .mk under k3/ it does not name.
+include $(addprefix $(MVP_DIR)/k3/,common.mk frame.mk firmware.mk tree.mk breach.mk form.mk card.mk session.mk)

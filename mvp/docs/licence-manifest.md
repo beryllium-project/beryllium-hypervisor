@@ -58,6 +58,23 @@ require. A distributed boot image (`be-mvp-boot.img`) also holds this
 repository's monitor, under `COPYING`; distributed firmware carries its
 own row's notices and source likewise.
 
+## The board's published files (M11-B)
+
+M11-B reads the board vendor's published release files below, each by
+the size and SHA-256 that `mvp/k3/published-pins.txt` pins
+(planning/mvp-m11-board-addendum.md, B-1). The MVP distributes none of
+them: a card that a session writes holds them for that session, and no
+card image is published. This manifest restates no licence of theirs.
+
+| File | Bytes | SHA-256 |
+| --- | --- | --- |
+| `u-boot.itb` | 2143810 | `850d1005cff4d8ea408a01ce5737832a86244b2acb0e20fcb8bd5d23a7f8d647` |
+| `env.bin` | 16384 | `615756fc8617af2605f8bfd74085133b96e8f14affbb8680bb52decc2bcb4970` |
+| `esos.itb` | 463227 | `4c20db8ad3fae1083b938c3d897abc13cf5770bb68b9d0a52763437d71ad9e70` |
+| `factory/FSBL.bin` | 462784 | `7991c200a80e05dde2918ab9b2194505df81df109ed99bb4703f2d0f8feab85d` |
+| `factory/bootinfo_block.bin` | 80 | `8cde21b4e18f0b72f2c98b5ae686dfe8ef75d8dc641393e97b52cf318b294e4b` |
+| `fw_dynamic.itb` | 270615 | `c52886d9656f5e3d4623582dff1a580a69dac8c3974057df58d628aece9911a4` |
+
 ## The licences, one line per row
 
 `mvp/tools/check-licenses.py` reads these lines: each licence named here

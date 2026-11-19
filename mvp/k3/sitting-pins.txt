@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
+# The sittings' pins (planning/mvp-m11-board-addendum.md, B-1): a line
+# `firmware IMAGE sha256=HEX bytes=N` for each image under test, taken
+# from the board gate's announcement and added in the commit that puts
+# the same SHA-256 into the M11 plan's decision record; and at most one
+# line `card IMAGE sha256=HEX bytes=N` for each, the card written for it,
+# from the card's tools' announcement. The card's tools refuse a firmware
+# or a card without its line here; the board gate never reads this file.

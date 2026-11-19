@@ -20,6 +20,9 @@ this tool's table otherwise), where its notice
 text is (LICENSES/ and the pinned source's own files), its corresponding
 source, and whether the MVP distributes a binary of it (it distributes
 none). A pointer the pins cannot state refuses the manifest (stop 12).
+It also lists the board vendor's published files that M11-B reads, from
+mvp/k3/published-pins.txt, by size and SHA-256, none of them distributed,
+and restates no licence of theirs.
 
 --check (`./mvp/mvp check`, beside tools/check-licenses.py) requires that
 every component the guest build touches has a row (each source and each
@@ -59,8 +62,9 @@ B3_BUILD = "bringup/k3-b3/tests/build-uboot.sh"
 FIRMWARE_PINS = "mvp/firmware/pins.mk"
 FIRMWARE_SERIES = "mvp/firmware/patches/series"
 FIRMWARE_CONFIG = "mvp/firmware/config"
+PUBLISHED = "mvp/k3/published-pins.txt"
 INPUTS = (LOCK, PINS, GUEST_MK, B1_MAKEFILE, B3_BUILD, FIRMWARE_PINS,
-          "COPYING")
+          PUBLISHED, "COPYING")
 HEADER = ("<!-- SPDX-License-Identifier: GPL-3.0-only -->\n"
           "<!-- Copyright (C) 2026 James Morris "
           "<jamorris@linux.microsoft.com> -->\n")
@@ -117,8 +121,15 @@ def facts(root):
                           rf"^MVP_FIRMWARE_{name} := (\S+)$",
                           f"{FIRMWARE_PINS}'s MVP_FIRMWARE_{name}")
         for name in ("URL", "COMMIT", "TREE")}
+    lines = [line for line in text[PUBLISHED].splitlines()
+             if line.strip() and not line.startswith("#")]
+    published = [re.fullmatch(r"published (\S+) sha256=([0-9a-f]{64}) "
+                              r"bytes=([1-9][0-9]*)", line) for line in lines]
+    if not lines or not all(published):
+        raise Unstated(f"{PUBLISHED}'s published lines")
     return {"lock": lock, "sources": sources, "b1": b1, "b3": b3,
             "firmware": firmware,
+            "published": [match.groups() for match in published],
             "pins": re.findall(r"^MVP_PIN_([A-Z0-9]+)_TAG=",
                                text[LOCK], re.M) + ["FIRMWARE"],
             "copying": text["COPYING"],
@@ -252,8 +263,9 @@ def cell(text):
     return text.replace("|", "\\|")
 
 
-def render(rows):
-    """The manifest's text: its prose wrapped at 72 columns."""
+def render(rows, published):
+    """The manifest's text: its prose wrapped at 72 columns; PUBLISHED,
+    the board's published files, (name, SHA-256, bytes) each."""
     def para(text):
         return textwrap.fill(text, 72, break_on_hyphens=False) + "\n"
     lines = [HEADER, "# Licence manifest: the MVP's guest software and "
@@ -294,6 +306,17 @@ def render(rows):
                    "(`be-mvp-boot.img`) also holds this repository's "
                    "monitor, under `COPYING`; distributed firmware carries "
                    "its own row's notices and source likewise."),
+              "## The board's published files (M11-B)", "",
+              para("M11-B reads the board vendor's published release files "
+                   f"below, each by the size and SHA-256 that `{PUBLISHED}` "
+                   "pins (planning/mvp-m11-board-addendum.md, B-1). The MVP "
+                   "distributes none of them: a card that a session writes "
+                   "holds them for that session, and no card image is "
+                   "published. This manifest restates no licence of theirs."),
+              "| File | Bytes | SHA-256 |", "| --- | --- | --- |"]
+    lines += [f"| `{name}` | {size} | `{digest}` |"
+              for name, digest, size in published]
+    lines += ["",
               "## The licences, one line per row", "",
               para("`mvp/tools/check-licenses.py` reads these lines: each "
                    "licence named here is in use."), "```text"]
@@ -337,8 +360,8 @@ def check(root, guest=None):
         if identifier not in known["copying"]:
             findings.append(f"COPYING does not name {identifier}")
     manifest = root / MANIFEST
-    if not manifest.is_file() or \
-            manifest.read_text(encoding="utf-8") != render(rows):
+    if not manifest.is_file() or manifest.read_text(
+            encoding="utf-8") != render(rows, known["published"]):
         findings.append(f"{MANIFEST} is not a fresh generation: run "
                         "mvp/tools/licence-manifest.py --write")
     lines += [f"{key}: licence={licence} outputs="
@@ -353,9 +376,10 @@ def check(root, guest=None):
 
 
 def write(root):
-    rows = components(facts(root))
+    known = facts(root)
+    rows = components(known)
     path = root / MANIFEST
-    path.write_text(render(rows), encoding="utf-8")
+    path.write_text(render(rows, known["published"]), encoding="utf-8")
     print(f"{TAG}: wrote {MANIFEST} components={len(rows)}")
 
 
@@ -406,6 +430,9 @@ def self_test(scratch, root):
         ("a firmware source pin that cannot be stated",
          lambda top: edit(top / FIRMWARE_PINS, "MVP_FIRMWARE_TREE :=", "# "),
          None, "MVP_FIRMWARE_TREE cannot be stated from the pins (stop 12)"),
+        ("a published file's pin that cannot be stated",
+         lambda top: edit(top / PUBLISHED, " bytes=", " bytes=0x"), None,
+         f"{PUBLISHED}'s published lines"),
         ("B1's OpenSBI commit other than the lock's",
          lambda top: edit(top / B1_MAKEFILE, "OPENSBI_COMMIT := ",
                           "OPENSBI_COMMIT := 0"), None,

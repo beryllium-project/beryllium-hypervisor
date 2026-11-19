@@ -355,7 +355,7 @@ BOOT_IMAGE_FORM = re.compile(r"^(?:(?:gcc|clang)(?:/te-poc|/anchor)?|"
 QEMU_IMAGE = "be-mvp-boot-qemu.img"
 NAME_FORM = re.compile(r"^[a-z0-9][a-z0-9.-]{0,63}$")
 ELF_FORM = re.compile(r"^(?:(?:gcc|clang)(?:/te-poc|/anchor)?|"
-                      r"(?:variants|probes)/"
+                      r"(?:variants|probes|k3/check/[a-z0-9][a-z0-9-]{0,31})/"
                       r"(?:gcc|clang)/[a-z0-9][a-z0-9.-]{0,63})/"
                       r"be-mvp-boot\.elf$")
 EXPECT_FORM = re.compile(r"^[a-z0-9][a-z0-9.-]{0,63}\.json$")
@@ -513,7 +513,8 @@ def source_state():
 
 def image_manifest(build):
     """(SHA-256, path relative to BUILD) of every image, firmware binary,
-    guest input, and deterministic partition output."""
+    guest input, and deterministic partition output, and of every output
+    that check makes for the board under k3/check/ (M11-B)."""
     paths = []
     for toolchain in TOOLCHAINS:
         directories = [build / toolchain] + [build / toolchain / name
@@ -552,6 +553,8 @@ def image_manifest(build):
         directory = build / "partition" / scenario_name
         paths += sorted(path for path in directory.rglob("*")
                         if path.is_file())
+    paths += sorted(path for path in (build / "k3" / "check").rglob("*")
+                    if path.is_file())
     if not any(path.name == "be-mvp-boot.img" for path in paths):
         raise Refused(f"no boot image under {build}")
     return [(file_sha(path), str(path.relative_to(build))) for path in paths]
@@ -754,10 +757,11 @@ def boundary_row(attempt, row, record, table="attempts.tsv"):
 
 
 def boundary_trees(attempts, images):
-    """Each boundary-on attempt's device tree among the partition outputs
-    images.sha256 lists."""
+    """Each boundary-on attempt's device tree among the partition outputs,
+    and the board's under k3/check/ (M11-B), that images.sha256 lists."""
     trees = {digest for digest, path in images
-             if path.startswith("partition/") and path.endswith(".dtb")}
+             if path.startswith(("partition/", "k3/check/")) and
+             path.endswith(".dtb")}
     for attempt in attempts:
         if attempt["boundary"] == "on" and attempt["dtb_sha256"] not in trees:
             raise Refused(f"{attempt['stem']} ran a device tree "
@@ -928,12 +932,15 @@ def costs_table(suite, runs):
 
 
 def references(build):
-    """Every reference manifest under BUILD/references/TOOLCHAIN/ with its
-    pin IMAGE.sha256 beside it: {(toolchain, image): (path, SHA-256,
-    whether the image logs)}."""
+    """Every reference manifest under BUILD/references/TOOLCHAIN/, and the
+    board's under BUILD/k3/check/references/TOOLCHAIN/ (M11-B; an image's
+    name in both is refused), with its pin IMAGE.sha256 beside it:
+    {(toolchain, image): (path, SHA-256, whether the image logs)}."""
     found = {}
-    for toolchain in TOOLCHAINS:
-        for path in sorted((build / "references" / toolchain).glob("*.json")):
+    bases = (build / "references", build / "k3" / "check" / "references")
+    for toolchain, base in [(toolchain, base) for toolchain in TOOLCHAINS
+                            for base in bases]:
+        for path in sorted((base / toolchain).glob("*.json")):
             pin, digest = path.with_suffix(".sha256"), file_sha(path)
             try:
                 value = json.loads(path.read_text(encoding="utf-8"))
@@ -949,6 +956,9 @@ def references(build):
                     f"{digest}  {path.name}\n".encode("ascii"):
                 raise Refused(f"{pin} is not the pin of {path.name}; run "
                               "make -C mvp references")
+            if (toolchain, path.stem) in found:
+                raise Refused(f"{path} is a second reference of "
+                              f"{toolchain}/{path.stem}")
             found[(toolchain, path.stem)] = (path, digest,
                                              run != "pre-measurement")
     return found
@@ -1065,6 +1075,11 @@ def development(build, out, home):
                     build / "capture" / f"{record}.txt")
     for record in sorted((build / "records" / "policy").glob("*")):
         writer.copy(f"records/policy/{record.name}", record)
+    # M11-B's tier-1 records (mvp/k3/), where check made any.
+    for record in sorted((build / "records" / "k3").rglob("*")):
+        if record.is_file():
+            writer.copy(f"records/{record.relative_to(build / 'records')}",
+                        record)
     writer.copy("qemu/summary.txt", suite / "summary.txt")
     writer.copy("qemu/attempts.tsv", suite / "attempts.tsv")
     plans = {}
@@ -1623,10 +1638,11 @@ def board_record(campaign, build, out, title, home, state):
 
 
 # ---------------------------------------------------------------- self-test
-def reference_file(build, toolchain, image, run, note=None):
+def reference_file(build, toolchain, image, run, note=None,
+                   base="references"):
     """A synthetic reference manifest of IMAGE in run class RUN, and its
-    pin; NOTE makes another of the same image."""
-    path = build / "references" / toolchain / f"{image}.json"
+    pin, under BUILD/BASE; NOTE makes another of the same image."""
+    path = build / base / toolchain / f"{image}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({
         "contract": {"run": run}, "image": image, "note": note,
@@ -2335,6 +2351,53 @@ def self_test(scratch):
     case("an existing directory that is not a bundle is never replaced",
          "is not a bundle" in
          (refused(development, build, scratch / "not-a-bundle", home) or ""))
+
+    # M11-B: what check makes for the board joins the bundle, and a build
+    # without it bundles as before.
+    case("a build without the board's outputs bundles none of them",
+         "  k3/" not in (first / "images.sha256").read_text(encoding="ascii")
+         and not (first / "records" / "k3").exists())
+    before = image_manifest(build)
+    board_tree = build / "k3" / "check" / "tree" / "board.dtb"
+    board_tree.parent.mkdir(parents=True)
+    board_tree.write_bytes(b"a board tree\n")
+    reference_file(build, "gcc", "k3-board", "complete",
+                   base="k3/check/references")
+    (build / "records" / "k3").mkdir()
+    (build / "records" / "k3" / "k3-frame-check.txt").write_text(
+        "BE_MVP_K3_FRAME: PASS\n", encoding="ascii")
+    stdout, sys.stdout = sys.stdout, quiet
+    try:
+        development(build, scratch / "bundle-k3", home)
+    finally:
+        sys.stdout = stdout
+    board_bundle = scratch / "bundle-k3"
+    after = image_manifest(build)
+    case("the board's outputs, records, and references join the bundle, "
+         "after every earlier line", after[:len(before)] == before and
+         [path for _, path in after[len(before):]] == [
+             "k3/check/references/gcc/k3-board.json",
+             "k3/check/references/gcc/k3-board.sha256",
+             "k3/check/tree/board.dtb"] and all(
+             (board_bundle / name).is_file() for name in (
+                 "records/k3/k3-frame-check.txt",
+                 "references/gcc/k3-board.json",
+                 "references/gcc/k3-board.sha256")))
+    case("a boundary-on attempt may run a board tree that check made",
+         refused(boundary_trees, [{"boundary": "on", "stem": "x",
+                                   "dtb_sha256": file_sha(board_tree)}],
+                 image_manifest(build)) is None)
+    case("an attempt's image may lie under k3/check/, and nowhere else "
+         "under k3/", ELF_FORM.match("k3/check/breach/gcc/k3-breach-g1/"
+                                     "be-mvp-boot.elf") and not
+         ELF_FORM.match("k3/work/breach/gcc/k3-breach-g1/be-mvp-boot.elf"))
+    reference_file(build, "gcc", "two-guests", "complete",
+                   base="k3/check/references")
+    case("a board reference of an image that has one already is refused",
+         "is a second reference of gcc/two-guests" in
+         (refused(references, build) or ""))
+    shutil.rmtree(build / "k3")
+    shutil.rmtree(build / "records" / "k3")
 
     campaign = scratch / "campaign" / "20261024T000000Z"
     campaign.mkdir(parents=True)

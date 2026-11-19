@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
+# The board vendor's published release files that M11-B reads, each by
+# its path in the release directory, its SHA-256, and its size
+# (planning/mvp-m11-board-addendum.md, B-1). The board gate checks each,
+# in the directory that K3_PUBLISHED names, before any other step
+# (mvp/k3/frame.mk); the licence manifest lists them. No file of the
+# vendor's is committed.
+published u-boot.itb sha256=850d1005cff4d8ea408a01ce5737832a86244b2acb0e20fcb8bd5d23a7f8d647 bytes=2143810
+published env.bin sha256=615756fc8617af2605f8bfd74085133b96e8f14affbb8680bb52decc2bcb4970 bytes=16384
+published esos.itb sha256=4c20db8ad3fae1083b938c3d897abc13cf5770bb68b9d0a52763437d71ad9e70 bytes=463227
+published factory/FSBL.bin sha256=7991c200a80e05dde2918ab9b2194505df81df109ed99bb4703f2d0f8feab85d bytes=462784
+published factory/bootinfo_block.bin sha256=8cde21b4e18f0b72f2c98b5ae686dfe8ef75d8dc641393e97b52cf318b294e4b bytes=80
+published fw_dynamic.itb sha256=c52886d9656f5e3d4623582dff1a580a69dac8c3974057df58d628aece9911a4 bytes=270615
