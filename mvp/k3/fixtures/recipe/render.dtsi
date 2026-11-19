@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jmorris@namei.org>
+// A stand-in for the backend's OpenSBI nodes, for tools/k3-recipe.py's
+// self-test: joined to the stand-in board's step 3 and to the stand-in
+// QEMU tree, with the descriptor's digest (@DIGEST@) and be_park's harts
+// (@PARK@).
+/ {
+	chosen {
+		opensbi-config {
+			compatible = "opensbi,config";
+			cold-boot-harts = <&{/cpus/cpu@0}>;
+		};
+
+		opensbi-domains {
+			compatible = "opensbi,domain,config";
+			config-digest = <@DIGEST@>;
+
+			be_region_00: be_region_00 {
+				compatible = "opensbi,domain,memregion";
+				base = <0x00 0x80100000>;
+				order = <0x0c>;
+			};
+
+			be_boot {
+				compatible = "opensbi,domain,instance";
+				possible-harts = <&{/cpus/cpu@0} &{/cpus/cpu@1} &{/cpus/cpu@2}>;
+				boot-hart = <&{/cpus/cpu@0}>;
+				regions = <&be_region_00 0x38>;
+			};
+
+			be_park {
+				compatible = "opensbi,domain,instance";
+				possible-harts = <@PARK@>;
+				boot-hart = <&{/cpus/cpu@0}>;
+				regions = <&be_region_00 0x20>;
+			};
+		};
+	};
+};

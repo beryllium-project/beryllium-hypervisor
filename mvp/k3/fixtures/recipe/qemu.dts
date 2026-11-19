@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jmorris@namei.org>
+// A stand-in QEMU tree of eight harts for tools/k3-recipe.py's self-test,
+// every value made up.
+/dts-v1/;
+
+/ {
+	#address-cells = <0x02>;
+	#size-cells = <0x02>;
+	model = "stand-in machine";
+
+	cpus {
+		#address-cells = <0x01>;
+		#size-cells = <0x00>;
+
+		cpu@0 {
+			device_type = "cpu";
+			reg = <0x00>;
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			reg = <0x01>;
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			reg = <0x02>;
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			reg = <0x03>;
+		};
+
+		cpu@4 {
+			device_type = "cpu";
+			reg = <0x04>;
+		};
+
+		cpu@5 {
+			device_type = "cpu";
+			reg = <0x05>;
+		};
+
+		cpu@6 {
+			device_type = "cpu";
+			reg = <0x06>;
+		};
+
+		cpu@7 {
+			device_type = "cpu";
+			reg = <0x07>;
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x00 0x80000000 0x00 0x40000000>;
+	};
+
+	chosen {
+	};
+};

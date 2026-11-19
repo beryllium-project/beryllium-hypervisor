@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jmorris@namei.org>
+// A stand-in FIT for tools/k3-recipe.py's self-test, every value made up:
+// two configurations, one described by the product's name (@PRODUCT@),
+// whose tree is board.dtb with its CRC-32 (@CRC@).
+/dts-v1/;
+
+/ {
+	description = "stand-in FIT";
+	#address-cells = <0x02>;
+
+	images {
+		uboot {
+			type = "standalone";
+			compression = "none";
+			load = <0x00 0x80200000>;
+			data = [00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f];
+		};
+
+		fdt_1 {
+			type = "flat_dt";
+			compression = "none";
+			data = [d0 0d fe ed];
+		};
+
+		fdt_2 {
+			type = "flat_dt";
+			compression = "none";
+			data = /incbin/("board.dtb");
+
+			hash-1 {
+				algo = "crc32";
+				value = <@CRC@>;
+			};
+		};
+	};
+
+	configurations {
+		default = "conf_1";
+
+		conf_1 {
+			description = "other-product";
+			loadables = "uboot";
+			fdt = "fdt_1";
+		};
+
+		conf_2 {
+			description = "@PRODUCT@";
+			loadables = "uboot";
+			fdt = "fdt_2";
+		};
+	};
+};

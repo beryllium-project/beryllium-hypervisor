@@ -1,0 +1,45 @@
+{
+  "schema": "be-mvp-k3-platform-v1",
+  "platform": "stand-in",
+  "purpose": "A stand-in platform description for tools/k3-recipe.py's self-test: the facts of mvp/k3/platform.json's form, for the stand-in board tree beside it, every value made up.",
+  "product": {"value": "stand-in-product", "source": "stand-in"},
+  "model": {"value": "stand-in board", "source": "stand-in"},
+  "cells": {"address": 2, "size": 2, "source": "stand-in"},
+  "tree_memory": {"base": "0x80000000", "size": "0x40000000", "source": "stand-in"},
+  "memory": {"base": "0x80000000", "size": "0x80000000", "source": "stand-in"},
+  "boot_hart": {"value": 0, "source": "stand-in"},
+  "harts": {"count": 16, "hypervisor": [0, 1, 2, 3, 4, 5, 6, 7], "cache_block": 64, "source": "stand-in"},
+  "firmware": {"load": "0x80000000", "end_max": "0x80300000", "source": "stand-in"},
+  "low_reserved": {"base": "0x80000000", "size": "0x1000000", "source": "stand-in"},
+  "spl_tree": {"room_end": "0x80600000", "source": "stand-in"},
+  "root_devices": {
+    "console": {"path": "/soc/serial@30000000", "compatible": "ns16550", "base": "0x30000000"},
+    "aplic-m": {"path": "/soc/interrupt-controller@32000000", "compatible": "riscv,aplic", "base": "0x32000000"},
+    "imsic-m": {"path": "/soc/interrupt-controller@33000000", "compatible": "riscv,imsics", "base": "0x33000000"},
+    "clint": {"path": "/soc/timer@31000000", "compatible": "riscv,clint0", "base": "0x31000000"},
+    "source": "stand-in"
+  },
+  "breach": {
+    "console_scratch": {"offset": "0x1c", "width": 4},
+    "imsic_s": {"path": "/soc/interrupt-controller@34000000", "base": "0x34000000", "stride": "0x40000"},
+    "timer_width": 4,
+    "source": "stand-in"
+  },
+  "devices": {
+    "source": "stand-in",
+    "list": [
+      {"path": "/soc/serial@30000000", "compatible": "ns16550", "reg": [["0x30000000", "0x100"]], "status": "okay", "kind": "console"},
+      {"path": "/soc/timer@31000000", "compatible": "riscv,clint0", "reg": [["0x31000000", "0x10000"]], "status": "okay", "kind": "timer"},
+      {"path": "/soc/interrupt-controller@32000000", "compatible": "riscv,aplic", "reg": [["0x32000000", "0x4000"]], "status": "okay", "kind": "interrupt-controller-m"},
+      {"path": "/soc/interrupt-controller@33000000", "compatible": "riscv,imsics", "reg": [["0x33000000", "0x10000"]], "status": "okay", "kind": "interrupt-file-m"},
+      {"path": "/soc/interrupt-controller@34000000", "compatible": "riscv,imsics", "reg": [["0x34000000", "0x400000"]], "status": "okay", "kind": "interrupt-file-s"},
+      {"path": "/soc/spi@35000000", "compatible": "made-up,qspi", "reg": [["0x35000000", "0x1000"]], "status": "disabled", "kind": "spi-flash-controller"},
+      {"path": "/soc/mailbox@36000000", "compatible": "riscv,rpmi-shmem-mbox", "reg": [["0x36000000", "0x1000"]], "status": "disabled", "kind": "other"},
+      {"path": "/soc/fuse@37000000", "compatible": "made-up,efuse", "reg": [["0x37000000", "0x400"]], "status": "okay", "kind": "efuse"},
+      {"path": "/soc/i2c@38000000", "compatible": "made-up,i2c", "reg": [["0x38000000", "0x38"]], "status": "okay", "kind": "i2c"},
+      {"path": "/soc/gpio@39000000", "compatible": "made-up,gpio", "reg": [["0x39000000", "0x800"]], "status": "disabled", "kind": "other"},
+      {"path": "/soc/rproc@0", "compatible": "made-up,rproc", "reg": [["0x0", "0x0"]], "status": "disabled", "kind": "other"},
+      {"path": "/soc/usb@0/dwc@3a000000", "compatible": "made-up,dwc", "reg": [["0x3a000000", "0x1000"]], "status": "okay", "kind": "storage"}
+    ]
+  }
+}
