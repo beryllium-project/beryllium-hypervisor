@@ -753,6 +753,10 @@ def self_test(tool, fixtures, scratch):
     sorted_ = scratch / "sorted.dtb"
     FDT.run([str(tool), "-s", "-I", "dts", "-O", "dtb", "-o", str(sorted_),
              str(board.parent / "tree.dts")])
+    reserved = scratch / "reserved.dts"
+    reserved.write_text(step3.read_text(encoding="utf-8").replace(
+        "/dts-v1/;\n", "/dts-v1/;\n/memreserve/ 0x80000000 0x1000;\n", 1),
+        encoding="utf-8")
 
     for name, action, tag in (
             ("the descriptor's nodes alone", lambda: tried(board), None),
@@ -761,6 +765,8 @@ def self_test(tool, fixtures, scratch):
                 "37000000};\n/ {\n\tchosen {")), "TREE: a node of step 3"),
             ("step 3's order changed", lambda: tried(sorted_),
              "TREE: step 3's"),
+            ("step 3's reserve map changed", lambda: tried(rendered(
+                reserved, park)), "TREE: step 3's"),
             ("a QEMU tree without be_park", lambda: tried(board, qemu=rendered(
                 fixtures / "qemu.dts", range(3, 8), "be_park {", "x {")),
              "TREE: the QEMU tree has no be_park"),

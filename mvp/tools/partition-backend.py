@@ -6,11 +6,19 @@
 --control-hart boot (M11-7, step 1) renders no OpenSBI domain for hart 0,
 which stays in be_boot; confined (M11-8, step 2), the default, renders
 M11-5's tree, with be_control. The tables name their step either way
-("control_hart")."""
+("control_hart").
+
+--platform k3-com260 (M11-B, B-3) is the board, from the facts of
+--platform-file (mvp/k3/platform.json): --board-tree renders onto the
+recipe's step 3, --board-tables writes the board's plain-PMP tables and
+the root OpenSBI domain's regions as its banner prints them, and
+--self-test runs the board's cases. The default, k3-like, is unchanged."""
 
 import argparse
+import contextlib
 import dataclasses
 import hashlib
+import io
 import json
 import os
 import pathlib
@@ -25,6 +33,7 @@ FDT_MAGIC = 0xD00DFEED
 FDT_BEGIN_NODE, FDT_END_NODE, FDT_PROP, FDT_NOP, FDT_END = 1, 2, 3, 4, 9
 PMP_A_NAPOT, PMP_R, PMP_W, PMP_X, PMP_L = 0x18, 1, 2, 4, 0x80
 TABLE_SCHEMA = "be-pmp-tables-v1"
+ROOT_SCHEMA = "be-mvp-k3-root-v1"
 HEX = re.compile(r"0x(?:0|[1-9a-f][0-9a-f]*)\Z")
 
 
@@ -332,6 +341,7 @@ class Region:
     su: tuple = ()
     firmware: bool = False
     shared: bool = False
+    mmio: bool = False
 
     @property
     def order(self):
@@ -414,16 +424,12 @@ def reset_regmap(fdt, target):
     return False
 
 
-def platform(fdt, firmware):
-    memory = [path for path in fdt.order
-              if prop(fdt, path, "device_type", False) == b"memory\0"]
-    require(len(memory) == 1, "base tree does not have one memory node")
-    ram = reg(fdt, memory[0])[0]
-    require(ram == (0x80000000, 0x200000000),
-            f"base tree RAM is {ram}, not k3-like's")
-    start, rw, linked_end = (firmware[name] + ram[0] for name in (
+def firmware_regions(firmware, load, harts):
+    """The root OpenSBI domain's two firmware regions: the build's layout
+    symbols at LOAD, and HARTS harts' stacks and heap after _fw_end
+    (platform/generic/platform.c, fw_platform_calculate_heap_size)."""
+    start, rw, linked_end = (firmware[name] + load for name in (
         "_fw_start", "_fw_rw_start", "_fw_end"))
-    harts = 8
     stack = harts * 8192
     heap = 0x8000 + 0x1000 * harts + \
         firmware["_tlb_info_size"] * harts * harts
@@ -431,6 +437,19 @@ def platform(fdt, firmware):
     end = linked_end + stack + heap
     rx_base, rx_size = memregion(start, rw - start)
     rw_base, rw_size = memregion(rw, end - rw)
+    return [Region("firmware-rw", rw_base, rw_size, ("read", "write"),
+                   firmware=True),
+            Region("firmware-rx", rx_base, rx_size, ("read", "execute"),
+                   firmware=True)]
+
+
+def platform(fdt, firmware):
+    memory = [path for path in fdt.order
+              if prop(fdt, path, "device_type", False) == b"memory\0"]
+    require(len(memory) == 1, "base tree does not have one memory node")
+    ram = reg(fdt, memory[0])[0]
+    require(ram == (0x80000000, 0x200000000),
+            f"base tree RAM is {ram}, not k3-like's")
     test_path, _ = node_for_range(fdt, 0x100000, "sifive,test")
     uart_path, _ = node_for_range(fdt, 0x10000000, "ns16550")
     aplic_path, aplic_regs = node_for_range(fdt, 0x0C000000, "riscv,aplic")
@@ -445,11 +464,7 @@ def platform(fdt, firmware):
     timer_end = max(base + size for base, size in timer_regs)
     require(aplic_size == 0x8000 and imsic_size == 0x8000 and
             timer_end <= 0x2010000, "k3-like interrupt ranges changed")
-    rows = [
-        Region("firmware-rw", rw_base, rw_size, ("read", "write"),
-               firmware=True),
-        Region("firmware-rx", rx_base, rx_size, ("read", "execute"),
-               firmware=True),
+    rows = firmware_regions(firmware, ram[0], 8) + [
         Region("test-device", 0x100000, 0x1000, ("read", "write"),
                ("read", "write"), shared=True),
         Region("uart", 0x10000000, 0x1000, ("read", "write"),
@@ -461,6 +476,179 @@ def platform(fdt, firmware):
     ]
     return [row for row in rows
             if row.name != "test-device" or reset_regmap(fdt, test_path)]
+
+
+def board_facts(path):
+    """The board's description, mvp/k3/platform.json's form (B-3), read
+    as data: the backend takes its harts, memory, firmware, and root
+    devices."""
+    value = json.loads(pathlib.Path(path).read_bytes())
+    require(isinstance(value, dict) and
+            value.get("schema") == "be-mvp-k3-platform-v1",
+            f"{path} is not a board description")
+    return value
+
+
+def number(text):
+    require(isinstance(text, str) and HEX.match(text),
+            f"{text!r} is not a hex number")
+    return int(text, 16)
+
+
+def harts_by_reg(fdt, count):
+    """{hart: CPU node}: each enabled CPU node by its reg, as the generic
+    platform counts harts; they must be harts 0 to COUNT - 1."""
+    out = {}
+    for path in fdt.order:
+        if parent(path) == "/cpus" and prop(
+                fdt, path, "device_type", False) == b"cpu\0" and prop(
+                    fdt, path, "status", False) in (None, b"okay\0",
+                                                    b"ok\0"):
+            rows = reg(fdt, path)
+            require(len(rows) == 1 and rows[0][0] not in out,
+                    f"{path} is not one hart of its own")
+            out[rows[0][0]] = path
+    require(sorted(out) == list(range(count)),
+            f"the tree's harts are not 0 to {count - 1}")
+    return out
+
+
+def board_devices(fdt, facts):
+    """The root devices' regions on the board's tree, as the firmware base
+    makes them (lib/utils/serial/uart8250.c, irqchip/aplic.c and
+    imsic.c, timer/aclint_mtimer.c): the console's page, shared; the
+    M-level APLIC and IMSIC, each its reg's one region; the CLINT's
+    64 KiB; each found by compatible at its fact's base and path. The
+    tree's one memory node must be the board's memory, and no enabled
+    syscon reset node may name a regmap, whose page the firmware would add
+    to the root OpenSBI domain (lane F's rule finds none)."""
+    memory = [path for path in fdt.order
+              if prop(fdt, path, "device_type", False) == b"memory\0"]
+    require(len(memory) == 1 and reg(fdt, memory[0]) == [(number(
+        facts["memory"]["base"]), number(facts["memory"]["size"]))],
+            "the tree's memory is not the board's")
+    require(not any(prop(fdt, path, "regmap", False) is not None and
+                    prop(fdt, path, "status", False) in (None, b"okay\0",
+                                                         b"ok\0") and
+                    {"syscon-poweroff", "syscon-reboot"} &
+                    set(compatible(fdt, path)) for path in fdt.order),
+            "the tree has a syscon reset node")
+    rows = []
+    for key, name in (("console", "uart"), ("aplic-m", "aplic-m"),
+                      ("imsic-m", "imsic-m"), ("clint", "aclint-mtimer")):
+        fact = facts["root_devices"][key]
+        base = number(fact["base"])
+        path, ranges = node_in_window(
+            fdt, base, 0x10000, fact["compatible"]) if key == "clint" \
+            else node_for_range(fdt, base, fact["compatible"])
+        size = {"console": 0x1000, "clint": 0x10000}.get(key) or next(
+            length for address, length in ranges if address == base)
+        require(path == fact["path"] and ranges[0][1] <= size and
+                size & (size - 1) == 0 and base % size == 0,
+                f"{key} at {path} is not one region of the board's")
+        rows.append(Region(name, base, size, ("read", "write"), (
+            "read", "write") if key == "console" else (),
+                           shared=key == "console", mmio=True))
+    return rows
+
+
+def platform_k3(fdt, firmware, facts):
+    """The root OpenSBI domain's regions on the board, as platform() gives
+    k3-like's: the firmware's two at its load address, with the board's
+    harts, ending by firmware.end_max; the root devices; and every
+    address, S/U RWX."""
+    count = facts["harts"]["count"]
+    harts_by_reg(fdt, count)
+    rows = firmware_regions(firmware, number(facts["firmware"]["load"]),
+                            count)
+    require(all(row.base + row.size <= number(facts["firmware"]["end_max"])
+                for row in rows), "the firmware's regions pass end_max")
+    return rows + board_devices(fdt, facts) + [
+        Region("all-addresses", 0, 1 << 64, (), ("read", "write", "execute"))]
+
+
+def banner(row):
+    """ROW as the firmware's banner prints a region of an OpenSBI domain,
+    after its name (lib/sbi/sbi_domain.c, sbi_domain_dump)."""
+    def marks(first, rights):
+        return "(" + ",".join(first + [mark for right, mark in (
+            ("read", "R"), ("write", "W"), ("execute", "X"))
+            if right in rights]) + ")"
+    end = (1 << 64) - 1 if row.order == 64 else row.base + row.size - 1
+    return (f"0x{row.base:016x}-0x{end:016x} M: " +
+            marks(["I"] * row.mmio + ["F"] * row.firmware, row.m) +
+            " S/U: " + marks([], row.su))
+
+
+def board_compile(dtc, source, output, include=None):
+    """dtc's warning set for SOURCE compiled to OUTPUT: each warning's
+    "also defined at" lines, which a node defined twice draws, read as
+    the warning's own."""
+    result = run([str(dtc), "-I", "dts", "-O", "dtb"] + (
+        ["-i", str(include)] if include else []) + ["-o", str(output),
+                                                    str(source)])
+    return warning_set(b"\n".join(
+        line for line in result.stderr.splitlines()
+        if not line.startswith(b"  also defined at ")))
+
+
+def board_base(dtc, base, output):
+    """Step 3 compiled alone in OUTPUT, a new private directory: its
+    warning set and tree."""
+    output = private_directory(output)
+    warnings = board_compile(dtc, base, output / "base.dtb")
+    fdt = parse_fdt((output / "base.dtb").read_bytes())
+    (output / "base.dtb").unlink()
+    return output, warnings, fdt
+
+
+def board_tree(descriptor_path, image, base, facts, dtc, output, control):
+    """Step 4 (B-3): the descriptor rendered onto the recipe's step 3, its
+    harts the board's CPU nodes by reg, be_park the descriptor's parked
+    harts and every hart of the board beyond its own; the joined tree may
+    change no dtc warning of step 3's, found in the same run."""
+    value, identity = strict_descriptor(descriptor_path)
+    name, base = image or value["image"], pathlib.Path(base).resolve()
+    output, expected, fdt = board_base(dtc, base, output)
+    count = facts["harts"]["count"]
+    cpus = harts_by_reg(fdt, count)
+    board_devices(fdt, facts)
+    park = [row["hart"] for row in value["harts"] if row["role"] ==
+            "parked"] + list(range(len(value["harts"]), count))
+    source = output / f"{name}.dts"
+    write_new(source, render_tree(value, identity, base.name, control, cpus,
+                                  park).encode())
+    require(board_compile(dtc, source, output / f"{name}.dtb", base.parent)
+            == expected, "the joined tree's dtc warnings differ from step 3's")
+    parse_fdt((output / f"{name}.dtb").read_bytes())
+    print(f"BE_MVP_PARTITION_BACKEND: PASS board-tree image={name} "
+          f"identity={identity[:12]} park={park[0]}-{park[-1]}")
+
+
+def board_tables(descriptor_path, image, base, facts, firmware_elf, dtc,
+                 nm, readelf, output, control):
+    """The board's expected tables, plain PMP alone (B-6), for every hart
+    of the board, with a descriptor; and always the root OpenSBI domain's
+    regions as the banner prints them: from the build's own ELF and the
+    recipe's step 3."""
+    value, identity = strict_descriptor(descriptor_path) if \
+        descriptor_path else (None, None)
+    name, base = image or value["image"], pathlib.Path(base).resolve()
+    symbols = firmware_symbols(firmware_elf, nm, readelf)
+    output, _, fdt = board_base(dtc, base, output)
+    roots = platform_k3(fdt, symbols, facts)
+    hashes = sha(firmware_elf), sha(base)
+    if value is not None:
+        write_new(output / f"{name}-pmp.json", canonical(expected_tables(
+            value, identity, roots, *hashes, control,
+            facts["harts"]["count"], ("plain",))))
+    regions = [banner(row) for row in sorted_regions(roots)]
+    write_new(output / f"{name}-root.json", canonical({
+        "schema": ROOT_SCHEMA, "image": name, "firmware_sha256": hashes[0],
+        "base_tree_sha256": hashes[1], "regions": regions}))
+    print(f"BE_MVP_PARTITION_BACKEND: PASS board-tables image={name} "
+          f"tables={'no' if value is None else 'plain'} "
+          f"root_regions={len(regions)}")
 
 
 def strict_descriptor(path):
@@ -555,7 +743,7 @@ def zero_table():
 
 
 def expected_tables(value, identity, roots, firmware_sha, base_sha,
-                    control="confined"):
+                    control="confined", harts=8, modes=("plain", "smepmp")):
     extents = {row["name"]: row for row in value["extents"]}
     profiles = {row["hart"]: combine(row, extents)
                 for row in value["profiles"]}
@@ -566,10 +754,10 @@ def expected_tables(value, identity, roots, firmware_sha, base_sha,
     result = {"schema": TABLE_SCHEMA, "descriptor_identity": identity,
               "firmware_sha256": firmware_sha, "base_tree_sha256": base_sha,
               "control_hart": control, "modes": {}}
-    for mode in ("plain", "smepmp"):
+    for mode in modes:
         boot = table(roots, mode)
         tables = []
-        for hart in range(8):
+        for hart in range(harts):
             tables.append({"hart": hart, "state": "never-started",
                            "entries": zero_table()})
             if hart in profiles:
@@ -593,7 +781,8 @@ def cells64(value):
     return f"<0x{value >> 32:x} 0x{value & 0xffffffff:x}>"
 
 
-def render_tree(value, identity, base_name, control="confined"):
+def render_tree(value, identity, base_name, control="confined", cpus=None,
+                parked=(3, 4, 5, 6, 7)):
     extents = {row["name"]: row for row in value["extents"]}
     profiles = {row["hart"]: combine(row, extents)
                 for row in value["profiles"]}
@@ -611,7 +800,7 @@ def render_tree(value, identity, base_name, control="confined"):
     calls = {row["role"]: row["allow"] for row in value["calls"]}
 
     def cpu(hart):
-        return f"&{{/cpus/cpu@{hart}}}"
+        return f"&{{{cpus[hart]}}}" if cpus else f"&{{/cpus/cpu@{hart}}}"
 
     def region_list(hart):
         return ", ".join(f"<&{labels[(row.base, row.size)]} "
@@ -676,7 +865,7 @@ def render_tree(value, identity, base_name, control="confined"):
                           int(lifecycle[hart]["resume"], 16),
                           int(private["base"], 16), calls["vs-domain"])
     park_region = labels[(int(park["base"], 16), int(park["size"], 16))]
-    lines += instance("be_park", [3, 4, 5, 6, 7], 0, 100,
+    lines += instance("be_park", parked, 0, 100,
                       f"<&{park_region} 0x20>", int(park["base"], 16))
     lines += ["\t\t};", "\t};", "};", ""]
     return "\n".join(lines)
@@ -828,6 +1017,141 @@ def self_test(descriptor, dtc, scratch):
     print("BE_MVP_PARTITION_BACKEND_SELF_TEST: PASS cases=9")
 
 
+def board_self_test(descriptor, facts, base, dtc, scratch):
+    """The board platform's cases (B-3) on a stand-in step 3 and its
+    description, every value made up: each passing form, and each refusal
+    by its own rule."""
+    scratch = pathlib.Path(scratch)
+    if scratch.exists():
+        shutil.rmtree(scratch)
+    scratch.mkdir(mode=0o700, parents=True)
+    text, results, runs = pathlib.Path(base).read_text(
+        encoding="utf-8"), [], iter(range(1 << 16))
+    _, _, fdt = board_base(dtc, base, scratch / "base")
+    symbols = {"_fw_start": 0, "_fw_rw_start": 0x80000, "_fw_end": 0x90000,
+               "_tlb_info_size": 32}
+    value, identity = strict_descriptor(descriptor)
+
+    def edited(old, new):
+        require(old in text, f"the stand-in lacks {old!r}")
+        path = scratch / f"base-{next(runs)}.dts"
+        path.write_text(text.replace(old, new, 1), encoding="utf-8")
+        return path
+
+    def tree(path=base, board=facts):
+        out = scratch / f"out-{next(runs)}"
+        board_tree(descriptor, "k3-x", path, board, dtc, out, "confined")
+        return (out / "k3-x.dts").read_text(encoding="utf-8")
+
+    def changed(key, field, new):
+        board = json.loads(json.dumps(facts))
+        board[key][field] = new
+        return board
+
+    def case(label, action, refusal=None):
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                action()
+            passed = refusal is None
+        except Refused as error:
+            passed = refusal is not None and refusal in str(error)
+        results.append(passed)
+        print(f"{'ok  ' if passed else 'FAIL'} board: {label}")
+
+    def called(argv, text):
+        with contextlib.redirect_stdout(io.StringIO()) as said:
+            code = main(["--platform", "k3-com260", "--dtc", str(dtc)] + argv)
+        require(code == 1 and text in said.getvalue(), f"{argv} passed")
+
+    (scratch / "facts.json").write_text(json.dumps(facts), encoding="utf-8")
+    files = ["--platform-file", str(scratch / "facts.json"), "--base-dts",
+             str(base)]
+
+    harts = harts_by_reg(fdt, 16)
+    chosen = '\tchosen {\n\t\tstdout-path = "serial0";\n'
+    cells = chosen + ("\t\t#address-cells = <0x01>;\n"
+                      "\t\t#size-cells = <0x00>;\n")
+    roots = [
+        "0x0000000080000000-0x000000008007ffff M: (F,R,X) S/U: ()",
+        "0x0000000080080000-0x00000000800fffff M: (F,R,W) S/U: ()",
+        "0x0000000030000000-0x0000000030000fff M: (I,R,W) S/U: (R,W)",
+        "0x0000000032000000-0x0000000032003fff M: (I,R,W) S/U: ()",
+        "0x0000000031000000-0x000000003100ffff M: (I,R,W) S/U: ()",
+        "0x0000000033000000-0x000000003300ffff M: (I,R,W) S/U: ()",
+        "0x0000000000000000-0xffffffffffffffff M: () S/U: (R,W,X)"]
+    rows = expected_tables(value, identity, platform_k3(fdt, symbols, facts),
+                           "0" * 64, "1" * 64, "confined", 16, ("plain",))
+    for label, action, refusal in (
+            ("be_park is harts 3 to 15, each CPU node by its reg",
+             lambda: require(re.search(
+                 r"be_park \{[^}]*possible-harts = <([^>]*)>", tree()).group(
+                     1).split() == [f"&{{{harts[hart]}}}" for hart in range(
+                         3, 16)] and harts[10] == "/cpus/cpu@a", "be_park"),
+             None),
+            ("tables of plain PMP alone, harts 0 to 15", lambda: require(
+                list(rows["modes"]) == ["plain"] and [sum(
+                    row["state"] == state for row in rows["modes"]["plain"])
+                    for state in ("never-started", "boot", "confined")] ==
+                [16, 3, 3], "tables"), None),
+            ("the root regions as the banner prints them", lambda: require(
+                [banner(row) for row in sorted_regions(platform_k3(
+                    fdt, symbols, facts))] == roots, "root regions"), None),
+            ("a warning of a node that the render defines again",
+             lambda: tree(edited(chosen + "\t\tboot-hartid = <0x00>;\n",
+                                 cells + "boot-hartid = <0x00>;\nx {\n};\n")),
+             None),
+            ("a warning that the joined tree adds", lambda: tree(edited(
+                chosen, cells)), "the joined tree's dtc warnings differ"),
+            ("two CPU nodes of one hart", lambda: tree(edited(
+                "reg = <0x0f>;", "reg = <0x0e>;")), "is not one hart"),
+            ("a hart disabled", lambda: tree(edited(
+                "reg = <0x0f>;", 'reg = <0x0f>;\nstatus = "disabled";')),
+             "the tree's harts are not 0 to 15"),
+            ("memory other than the board's", lambda: tree(board=changed(
+                "memory", "size", "0x40000000")), "memory is not the board's"),
+            ("a syscon reset node", lambda: tree(edited(chosen, (
+                'poweroff {\ncompatible = "syscon-poweroff";\n'
+                "regmap = <0x40>;\n};\n") + chosen)), "a syscon reset node"),
+            ("a root device at another path", lambda: tree(board=changed(
+                "root_devices", "console", dict(facts["root_devices"][
+                    "console"], path="/soc/x"))), "console at /soc/serial"),
+            ("an APLIC of more than one region", lambda: tree(edited(
+                "0x32000000 0x00 0x4000", "0x32000000 0x00 0x3000")),
+             "aplic-m at /soc/interrupt-controller@32000000 is not one"),
+            ("a console of more than a page", lambda: tree(edited(
+                "0x30000000 0x00 0x100", "0x30000000 0x00 0x2000")),
+             "console at /soc/serial@30000000 is not one"),
+            ("an IMSIC off its size's alignment", lambda: tree(edited(
+                "0x33000000 0x00 0x10000", "0x33008000 0x00 0x10000"),
+                changed("root_devices", "imsic-m", dict(facts[
+                    "root_devices"]["imsic-m"], base="0x33008000"))),
+             "imsic-m at /soc/interrupt-controller@33000000 is not one"),
+            ("a firmware past end_max", lambda: platform_k3(
+                fdt, symbols, changed("firmware", "end_max", "0x800c0000")),
+             "the firmware's regions pass end_max"),
+            ("a fact not a hex number", lambda: platform_k3(
+                fdt, symbols, changed("firmware", "end_max", "2097152")),
+             "'2097152' is not a hex number"),
+            ("not a board description", lambda: board_facts(descriptor),
+             "is not a board description"),
+            ("arguments: no description or base", lambda: called(
+                [], "needs --platform-file and --base-dts"), None),
+            ("arguments: a tree without --out", lambda: called(files + [
+                "--board-tree", "--descriptor", str(descriptor)],
+                "board-tree arguments"), None),
+            ("arguments: tables of no image", lambda: called(files + [
+                "--board-tables", "--firmware-elf", "x", "--nm", "x",
+                "--readelf", "x", "--out", "x"], "board-table arguments"),
+             None),
+            ("arguments: no mode", lambda: called(files, "the board takes"),
+             None)):
+        case(label, action, refusal)
+    shutil.rmtree(scratch)
+    print(f"BE_MVP_PARTITION_BOARD_SELF_TEST: "
+          f"{'PASS' if all(results) else 'FAIL'} cases={len(results)}")
+    return 0 if all(results) else 1
+
+
 def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("--descriptor")
@@ -852,9 +1176,37 @@ def main(argv):
     parser.add_argument("--scratch")
     parser.add_argument("--control-hart", choices=("boot", "confined"),
                         default="confined")
+    parser.add_argument("--platform", choices=("k3-like", "k3-com260"),
+                        default="k3-like")
+    parser.add_argument("--platform-file")
+    parser.add_argument("--board-tree", action="store_true")
+    parser.add_argument("--board-tables", action="store_true")
+    parser.add_argument("--image")
     args = parser.parse_args(argv)
     try:
-        if args.normalize_base:
+        if args.platform == "k3-com260":
+            require(args.platform_file and args.base_dts,
+                    "the board needs --platform-file and --base-dts")
+            facts = board_facts(args.platform_file)
+            if args.board_tree:
+                require(args.descriptor and args.out,
+                        "board-tree arguments are missing")
+                board_tree(args.descriptor, args.image, args.base_dts, facts,
+                           args.dtc, args.out, args.control_hart)
+            elif args.board_tables:
+                require((args.descriptor or args.image) and all((
+                    args.firmware_elf, args.nm, args.readelf, args.out)),
+                        "board-table arguments are missing")
+                board_tables(args.descriptor, args.image, args.base_dts,
+                             facts, args.firmware_elf, args.dtc, args.nm,
+                             args.readelf, args.out, args.control_hart)
+            else:
+                require(args.self_test and args.descriptor and args.scratch,
+                        "the board takes --board-tree, --board-tables, or "
+                        "--self-test with --descriptor and --scratch")
+                return board_self_test(args.descriptor, facts, args.base_dts,
+                                       args.dtc, args.scratch)
+        elif args.normalize_base:
             require(args.raw_dtb and args.out_dts and args.out_warnings and
                     args.scratch, "base normalization arguments are missing")
             normalize_dtb(args.raw_dtb, args.dtc, args.out_dts,

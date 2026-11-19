@@ -2022,8 +2022,8 @@
           },
           {
             "path": "mvp/tools/partition-backend.py",
-            "sha256": "bf28c474d6824d6e6a897cc1794292b4d5b8ae6123e09dd945a4245acf1b8c6e",
-            "note": "The descriptor's PMP backend: each image's OpenSBI-domain device tree, joined to QEMU's base tree for plain PMP and for Smepmp, and the expected PMP entry table of every hart in every state. Since M11-B the test device's page is in the root OpenSBI domain's table only where an enabled reset node of the tree names the device, as the firmware adds it; both pinned bases have such nodes, and no table of the candidate's changes."
+            "sha256": "349c87be174c2efdb670cd4b4c5486160b5bb75e4433aeb7857fdbaa138e5ba3",
+            "note": "The descriptor's PMP backend: each image's OpenSBI-domain device tree, joined to QEMU's base tree for plain PMP and for Smepmp, and the expected PMP entry table of every hart in every state. Since M11-B the test device's page is in the root OpenSBI domain's table only where an enabled reset node of the tree names the device, as the firmware adds it; both pinned bases have such nodes, and no table of the candidate's changes. It also renders the board's platform (k3-com260, by its description, k3/platform.json), for M11-B; no run or table of the candidate's uses it."
           },
           {
             "path": "mvp/tests/check-partition.py",

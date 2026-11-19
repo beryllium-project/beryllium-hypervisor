@@ -1,0 +1,276 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jmorris@namei.org>
+// A stand-in step 3 for the partition backend's board cases and for
+// k3-partition-check: the stand-in board tree of tools/k3-recipe.py's
+// self-test after the recipe's steps 1 to 3, as dtc reads it back, with
+// 8 GiB of memory, and harts 10 and 11 named by their hex unit address
+// (the others by the hart's number); every value made up.
+/dts-v1/;
+
+/ {
+	#address-cells = <0x02>;
+	#size-cells = <0x02>;
+	compatible = "made-up,board";
+	model = "stand-in board";
+
+	cpus {
+		#address-cells = <0x01>;
+		#size-cells = <0x00>;
+
+		cpu@0 {
+			device_type = "cpu";
+			reg = <0x00>;
+			riscv,isa-extensions = "i", "m", "a", "c", "h", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			reg = <0x01>;
+			riscv,isa-extensions = "i", "m", "a", "c", "h", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			reg = <0x02>;
+			riscv,isa-extensions = "i", "m", "a", "c", "h", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			reg = <0x03>;
+			riscv,isa-extensions = "i", "m", "a", "c", "h", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@4 {
+			device_type = "cpu";
+			reg = <0x04>;
+			riscv,isa-extensions = "i", "m", "a", "c", "h", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@5 {
+			device_type = "cpu";
+			reg = <0x05>;
+			riscv,isa-extensions = "i", "m", "a", "c", "h", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@6 {
+			device_type = "cpu";
+			reg = <0x06>;
+			riscv,isa-extensions = "i", "m", "a", "c", "h", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@7 {
+			device_type = "cpu";
+			reg = <0x07>;
+			riscv,isa-extensions = "i", "m", "a", "c", "h", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@8 {
+			device_type = "cpu";
+			reg = <0x08>;
+			riscv,isa-extensions = "i", "m", "a", "c", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@9 {
+			device_type = "cpu";
+			reg = <0x09>;
+			riscv,isa-extensions = "i", "m", "a", "c", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@a {
+			device_type = "cpu";
+			reg = <0x0a>;
+			riscv,isa-extensions = "i", "m", "a", "c", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@b {
+			device_type = "cpu";
+			reg = <0x0b>;
+			riscv,isa-extensions = "i", "m", "a", "c", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@12 {
+			device_type = "cpu";
+			reg = <0x0c>;
+			riscv,isa-extensions = "i", "m", "a", "c", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@13 {
+			device_type = "cpu";
+			reg = <0x0d>;
+			riscv,isa-extensions = "i", "m", "a", "c", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@14 {
+			device_type = "cpu";
+			reg = <0x0e>;
+			riscv,isa-extensions = "i", "m", "a", "c", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+
+		cpu@15 {
+			device_type = "cpu";
+			reg = <0x0f>;
+			riscv,isa-extensions = "i", "m", "a", "c", "zicbom";
+			riscv,cbom-block-size = <0x40>;
+			riscv,cboz-block-size = <0x40>;
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x00 0x80000000 0x02 0x00>;
+	};
+
+	chosen {
+		stdout-path = "serial0";
+		boot-hartid = <0x00>;
+	};
+
+	soc {
+		compatible = "simple-bus";
+		#address-cells = <0x02>;
+		#size-cells = <0x02>;
+		ranges;
+
+		serial@30000000 {
+			compatible = "ns16550";
+			reg = <0x00 0x30000000 0x00 0x100>;
+			reg-shift = <0x02>;
+			reg-io-width = <0x04>;
+		};
+
+		timer@31000000 {
+			compatible = "riscv,clint0";
+			reg = <0x00 0x31000000 0x00 0x10000>;
+			clint,has-no-64bit-mmio;
+		};
+
+		interrupt-controller@32000000 {
+			compatible = "riscv,aplic";
+			reg = <0x00 0x32000000 0x00 0x4000>;
+			status = "okay";
+		};
+
+		interrupt-controller@33000000 {
+			compatible = "riscv,imsics";
+			reg = <0x00 0x33000000 0x00 0x10000>;
+		};
+
+		interrupt-controller@34000000 {
+			compatible = "riscv,imsics";
+			reg = <0x00 0x34000000 0x00 0x400000>;
+			riscv,guest-index-bits = <0x06>;
+		};
+
+		spi@35000000 {
+			compatible = "made-up,qspi";
+			reg = <0x00 0x35000000 0x00 0x1000>;
+			#address-cells = <0x01>;
+			#size-cells = <0x00>;
+			status = "disabled";
+
+			flash@0 {
+				compatible = "jedec,spi-nor";
+				reg = <0x00>;
+			};
+		};
+
+		mailbox@36000000 {
+			compatible = "riscv,rpmi-shmem-mbox";
+			reg = <0x00 0x36000000 0x00 0x1000>;
+			#mbox-cells = <0x01>;
+			phandle = <0x40>;
+			status = "disabled";
+		};
+
+		clock@0 {
+			compatible = "made-up,rpmi-clock";
+			mboxes = <0x40 0x01>;
+			status = "disabled";
+		};
+
+		reset@0 {
+			compatible = "made-up,rpmi-reset";
+			mboxes = <0x40 0x02>;
+			status = "disabled";
+		};
+
+		power@0 {
+			compatible = "made-up,rpmi-power";
+			mboxes = <0x40 0x03>;
+			status = "disabled";
+		};
+
+		fuse@37000000 {
+			compatible = "made-up,efuse";
+			reg = <0x00 0x37000000 0x00 0x400>;
+		};
+
+		i2c@38000000 {
+			compatible = "made-up,i2c";
+			reg = <0x00 0x38000000 0x00 0x38>;
+			#address-cells = <0x01>;
+			#size-cells = <0x00>;
+
+			eeprom@50 {
+				compatible = "made-up,eeprom";
+				reg = <0x50>;
+			};
+		};
+
+		gpio@39000000 {
+			compatible = "made-up,gpio";
+			reg = <0x00 0x39000000 0x00 0x800>;
+			status = "disabled";
+		};
+
+		rproc@0 {
+			compatible = "made-up,rproc";
+			reg = <0x00 0x00 0x00 0x00>;
+			fw_boot_entry = <0x00 0x80300000>;
+			status = "disabled";
+		};
+
+		usb@0 {
+			compatible = "made-up,usb";
+			#address-cells = <0x02>;
+			#size-cells = <0x02>;
+			ranges;
+
+			dwc@3a000000 {
+				compatible = "made-up,dwc";
+				reg = <0x00 0x3a000000 0x00 0x1000>;
+			};
+		};
+	};
+};
