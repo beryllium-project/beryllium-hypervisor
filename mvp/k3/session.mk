@@ -15,7 +15,12 @@ endif
 #
 # (./mvp/mvp k3-sitting STEP ... runs it), with the gate's record and the
 # card images of build/mvp/k3/, this tree as the source, and the
-# workstation's USB bus; and in tools-check (tier 1), k3-session-check:
+# workstation's USB bus; the sitting's record, once it has closed or
+# stopped, a board record under mvp/results/ (tools/evidence.py --sitting):
+#
+#   make -C mvp k3-sitting-record K3_SITTING=first|second K3_RUN_ROOT=DIR
+#
+# and in tools-check (tier 1), k3-session-check:
 # the driver's self-test and the sittings' dry run on stand-ins
 # (tests/run-tool-dry-run.sh BUILD OUT sittings, tests/test-k3-session.sh),
 # on the build's images, expectations, and references.
@@ -29,23 +34,24 @@ K3B_SESSION_PLAN_OF = $(foreach session,$(K3B_SESSION_$(1)),$(session):$(K3B_STA
 K3B_SESSION_TOOL := $(PYTHON) -I -B $(MVP_DIR)/tools/k3-sitting.py
 # The dry run's boots from a card are lane K's whole, passing captures
 # (tests/test-k3-form.py --write-card-fixtures): anchor's authority report
-# and measured inputs, then each image's expectation and board image. The
-# hostile-monitor images stand in by QEMU's breach-g1 and breach-c of
-# anchor, with their references, which the dry run gives the board's names.
+# and measured inputs, then each image's expectation and board image, and
+# the board's two hostile-monitor images' references (k3/breach.mk), which
+# lie beside the board's and not among the build's.
+K3B_SESSION_BREACH := k3-breach-g1 k3-breach-c
 K3B_SESSION_CAPTURES = --report $(ANCHOR_REPORT) $(MEASURED_ARGS) \
 	$(foreach i,two-guests-off anchor,$(i)=$(K3B_EXPECT_$(i)):$(K3B_BOARD_IMAGE_$(i))) \
-	$(foreach v,g1 c,k3-breach-$(v)=$(ANCHOR_EXPECT_DIR)/breach-$(v).json:$(MVP_VARIANT_BOOT_IMG_gcc_breach-$(v)):$(REFERENCES)/gcc/breach-$(v).json)
+	$(foreach i,$(K3B_SESSION_BREACH),$(i)=$(K3B_EXPECT_$(i)):$(K3B_BOARD_IMAGE_$(i)):$(K3B_REFERENCE_$(i)))
 
-ifneq ($(filter k3-sitting,$(MAKECMDGOALS)),)
+ifneq ($(filter k3-sitting k3-sitting-record,$(MAKECMDGOALS)),)
 ifeq ($(K3_RUN_ROOT),)
-$(error k3-sitting needs K3_RUN_ROOT, the sitting's directory)
+$(error $(MAKECMDGOALS) needs K3_RUN_ROOT, the sitting's directory)
 endif
 ifeq ($(K3_SITTING),)
-$(error k3-sitting needs K3_SITTING, first or second)
+$(error $(MAKECMDGOALS) needs K3_SITTING, first or second)
 endif
 endif
 
-.PHONY: k3-sitting k3-session-check
+.PHONY: k3-sitting k3-sitting-record k3-session-check
 
 k3-sitting:
 	K3CTL_PIN=$(K3CTL_PIN) $(K3B_SESSION_TOOL) --sitting $(K3_SITTING) \
@@ -55,10 +61,20 @@ k3-sitting:
 		$(if $(filter second,$(K3_SITTING)),--observed $(K3B_DIR)/observed.json) \
 		$(K3_SITTING_STEP)
 
+# The record judges each boot again with the inputs that the sitting ran
+# on, so it builds nothing first.
+k3-sitting-record:
+	$(EVIDENCE) --sitting $(K3_RUN_ROOT) --name $(K3_SITTING) \
+		--build $(BUILD) --gate $(K3B_GATE) --source $(REPO_ROOT) \
+		$(if $(filter second,$(K3_SITTING)),--observed $(K3B_DIR)/observed.json) \
+		--out $(MVP_DIR)/results/$(notdir $(K3_RUN_ROOT)) \
+		--title "M11-B COM260 sitting $(K3_SITTING)"
+
 tools-check: k3-session-check
 
-k3-session-check: $(MVP_EXPECT_STAMP) $(ANCHOR_EXPECT_STAMP) \
-		$(MEASURED_INPUTS) | references
+k3-session-check: $(MVP_EXPECT_STAMP) $(TE_POC_EXPECT_STAMP) \
+		$(ANCHOR_EXPECT_STAMP) $(MEASURED_INPUTS) \
+		$(foreach i,$(K3B_SESSION_BREACH),$(K3B_REFERENCE_$(i))) | references
 	mkdir -p $(K3B_RECORDS) $(K3B_WORK)
 	set -o pipefail; PYTHON=$(PYTHON) \
 		K3_SITTING_PLAN_first='$(call K3B_SESSION_PLAN_OF,first)' \

@@ -375,7 +375,9 @@ k3-sitting)
 	later k3-sitting M11-B1 K3_SITTING_STEP="$step" "$@"
 	;;
 k3-sitting-record)
-	extra=(K3_SITTING)
+	# K3_ENV_STORE: the sitting's store, whose digests the record keeps
+	# out of it.
+	extra=(K3_SITTING K3_ENV_STORE)
 	later k3-sitting-record M11-B1 "$@"
 	;;
 claim-ledger)

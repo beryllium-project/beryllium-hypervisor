@@ -9,6 +9,10 @@ harness", the Evidence stage; work package M0-4).
   evidence.py --board CAMPAIGN --build BUILD --out DIR --preflight FILE
       --load-checks ROOT [--title TEXT]
       the board record of one campaign
+  evidence.py --sitting RUN_ROOT --name first|second --build BUILD
+      --out DIR [--gate DIR] [--source DIR] [--sitting-pins FILE]
+      [--observed FILE] [--store DIR] [--title TEXT]
+      the record of one of M11-B's sittings (its docstring: sitting())
   evidence.py --verify DIR
       every file of a bundle or record against its MANIFEST.sha256
   evidence.py --images BUILD
@@ -220,6 +224,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 
 sys.dont_write_bytecode = True
 
@@ -1659,6 +1664,590 @@ def board_record(campaign, build, out, title, home, state):
     return 0
 
 
+# ------------------------------------------------------ a sitting's record
+# M11-B1: tools/k3-sitting.py's run root, as sitting()'s docstring says.
+SITTING_PLAN = "be-mvp-k3-sitting-plan-v1"
+SITTING_STEP = "be-mvp-k3-sitting-step-v1"
+SITTING_HEAD = (f"schema={SCHEMA}", "kind=board", "record=sitting")
+SITTING_NAMES = ("first", "second")
+# tools/k3-env.sh's K3_ENV_STORE, by default under HOME.
+SITTING_STORE = ".local/state/beryllium/k3-env"
+SITTING_PINS = MVP_DIR / "k3" / "sitting-pins.txt"
+GUEST_PINS = MVP_DIR / "guest" / "pins.txt"
+BOOT_FILES = ("run.txt", "load.txt", "check.txt", "result.json", "reset.txt")
+BOOT_INPUTS = (("expect", "expectation"), ("report", "report"),
+               ("kernel", "kernel"), ("dtb", "dtb"),
+               ("reference", "reference"))
+INPUT_LINE = re.compile(r"input (\S+) path=(/\S+) sha256=([0-9a-f]{64})")
+NAMED = re.compile(r"(\S+) sha256=([0-9a-f]{64})")
+# S3-3: a USB vendor or product ID, in the forms in which the bus, lsusb,
+# udev, and the kernel print one, and a card reader's stable link (lane
+# C's K3_CARD_DEVICE).
+USB_ID = re.compile(r"(?i:\bid_?(?:vendor|product|model)(?:_id)?|"
+                    r"\b(?:vendor|product)_id)\W{0,4}[0-9a-fA-F]{4}\b|"
+                    r"(?<![0-9A-Fa-f:])[0-9A-Fa-f]{4}:[0-9A-Fa-f]{4}"
+                    r"(?![0-9A-Fa-f:])")
+READER = re.compile(r"by-id/|\busb-[\w.#=+@:-]*-[0-9]+:[0-9]+")
+CAPTURES_HEAD = ("# Raw serial captures (not in the repository; retained "
+                 "privately).\n# run sha256 bytes lines\n")
+
+
+def sitting_options(parser):
+    parser.add_argument("--sitting", type=pathlib.Path, metavar="RUN_ROOT")
+    parser.add_argument("--name", choices=SITTING_NAMES)
+    parser.add_argument("--gate", type=pathlib.Path)
+    parser.add_argument("--source", type=pathlib.Path, default=REPO)
+    parser.add_argument("--sitting-pins", type=pathlib.Path,
+                        default=SITTING_PINS)
+    parser.add_argument("--observed", type=pathlib.Path)
+    parser.add_argument("--store", type=pathlib.Path)
+
+
+def sitting_plan(root, name):
+    """RUN_ROOT's sitting/plan.txt (tools/k3-sitting.py's begin): its path,
+    its fields, and {NAME: (path, SHA-256)} of each input it names, the
+    sitting pins among them."""
+    path = root / "sitting" / "plan.txt"
+    if path.is_symlink() or not path.is_file():
+        raise Refused(f"{root} is not a sitting's run root: no "
+                      "sitting/plan.txt")
+    fields, inputs = {}, {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        found = INPUT_LINE.fullmatch(line)
+        if found:
+            inputs[found.group(1)] = (pathlib.Path(found.group(2)),
+                                      found.group(3))
+        elif "=" in line and not line.startswith("pin "):
+            fields.setdefault(*line.split("=", 1))
+    pins = re.fullmatch(r"(/\S+) sha256=([0-9a-f]{64})",
+                        fields.get("sitting_pins", ""))
+    if fields.get("schema") != SITTING_PLAN or \
+            fields.get("sitting") != name or not pins:
+        raise Refused(f"{path} is not sitting {name}'s plan "
+                      f"({SITTING_PLAN})")
+    inputs["sitting-pins"] = (pathlib.Path(pins.group(1)), pins.group(2))
+    return path, fields, inputs
+
+
+def sitting_given(fields, given):
+    """Refused unless each path GIVEN, {plan key: path or None}, is the one
+    that the sitting ran with (R10): a sitting on stand-ins is never
+    recorded with the recipe's fixed paths, nor the reverse."""
+    for key, path in given.items():
+        recorded = fields.get(key, "").split(" sha256=")[0]
+        same = recorded == "none" if path is None else \
+            recorded not in ("", "none") and \
+            pathlib.Path(recorded).resolve() == path.resolve()
+        if not same:
+            raise Refused(f"the sitting ran with {key}={recorded}, and this "
+                          f"record is given {path or 'none'}")
+
+
+def sitting_changed(inputs):
+    """The names of INPUTS whose file is missing or has another SHA-256."""
+    return sorted(name for name, (path, digest) in inputs.items()
+                  if not path.is_file() or file_sha(path) != digest)
+
+
+def sitting_source(source):
+    """(HEAD, state) of the source repository SOURCE, read as
+    source_state() reads the checkout."""
+    environment = clean_environment(GIT_OPTIONAL_LOCKS="0")
+    status, commit = run([GIT, "-C", str(source), "rev-parse", "HEAD"],
+                         environment)
+    if status != 0:
+        raise Refused(f"{source} is not a git repository")
+    status, changes = run([GIT, "-C", str(source), "status",
+                           "--porcelain=v1"], environment)
+    changed = len([line for line in changes.splitlines() if line])
+    return commit.strip(), "unknown" if status else \
+        "clean" if not changed else f"dirty changed={changed}"
+
+
+def sitting_steps(root, steps, name, plan):
+    """[(path, fields)] of each step record in the plan's order, and the
+    sitting's state: closed (end passed) or stopped (its last attempted
+    step stopped). Refused while it is under way, for a record without a
+    verdict or of no step, and if plan.txt is not begin's."""
+    directory, records = root / "sitting" / "steps", []
+    for index, step in enumerate(steps, 1):
+        for attempt in (1, 2):
+            path = directory / f"{index:02d}-{step}-a{attempt}.txt"
+            if not path.is_file():
+                break
+            fields = run_fields(path)
+            if (fields.get("schema"), fields.get("step"),
+                    fields.get("sitting")) != (SITTING_STEP, step, name) or \
+                    not fields.get("verdict"):
+                raise Refused(f"sitting/steps/{path.name} is no finished "
+                              f"record of {step}")
+            records.append((path, fields))
+    stray = sorted(set(os.listdir(directory)) -
+                   {path.name for path, _ in records})
+    if stray:
+        raise Refused(f"sitting/steps/{stray[0]} is the record of no step")
+    if not records or records[0][1].get("plan") != \
+            f"sitting/plan.txt sha256={file_sha(plan)}":
+        raise Refused("sitting/plan.txt is not the one that begin recorded")
+    fields = records[-1][1]
+    if (fields["step"], fields["verdict"]) == ("end", "PASS"):
+        return records, "closed"
+    if fields["verdict"].startswith("STOP "):
+        return records, f"stopped step={fields['step']}"
+    raise Refused(f"the sitting is under way: its last step, "
+                  f"{fields['step']}, passed and is not end")
+
+
+def sitting_readings(root, store):
+    """[path] of RUN_ROOT's readings' records, and every MD5 that the store
+    holds of them (digests.tsv): the NOR's ranges, which stay private."""
+    paths, digests = sorted((root / "readings").glob("reading-*.txt")), set()
+    for path in paths:
+        table = store / root.name / "readings" / path.stem / "digests.tsv"
+        if table.is_symlink() or not table.is_file():
+            raise Refused(f"the store holds no digests of {path.stem} "
+                          f"({table}): give the sitting's store "
+                          "(K3_ENV_STORE), so that the record can show it "
+                          "keeps none")
+        digests.update(re.findall(r"\t([0-9a-f]{32})$", table.read_text(
+            encoding="ascii"), re.M))
+    return paths, digests
+
+
+def sitting_readbacks(root, name):
+    """[(session, image, read-back, same or different)] of each session
+    whose card went in (card-slot.txt): lane C's last finished read-back of
+    the image that started after the session's card=out (his said= time),
+    the record refused if there is none."""
+    slot = [dict(word.split("=", 1) for word in line.split() if "=" in word)
+            for line in (root / "card-slot.txt").read_text(
+                encoding="ascii").splitlines()]
+    rows = []
+    for entry in (entry for entry in slot if entry.get("card") == "in"):
+        session, image = entry.get("session"), entry.get("image", "")
+        out = next((later for later in slot if later.get("card") == "out"
+                    and later.get("session") == session), None)
+        if out is None:
+            raise Refused(f"session {session}'s card is recorded in: "
+                          f"card-out-{session}, then read the card back")
+        form, after = re.compile(rf"readback-{re.escape(image)}-"
+                                 r"([1-9][0-9]*)\.txt"), []
+        for path in sorted((root / "card").glob("readback-*.txt")):
+            found, fields = form.fullmatch(path.name), run_fields(path)
+            if found and "verdict" in fields and (
+                    fields.get("image"), fields.get("sitting")) == (
+                        image, name) and fields.get("started", "") > \
+                    out.get("said", "~"):
+                after.append((int(found.group(1)), path, fields))
+        if not after:
+            raise Refused(f"no read-back of {image} started after session "
+                          f"{session}'s card=out ({out.get('said')}): read "
+                          "the card back first (k3-card-readback)")
+        _, path, fields = max(after, key=lambda row: row[0])
+        rows.append((session, image, path, "same" if fields[
+            "verdict"] == "PASS" else "different"))
+    return rows
+
+
+def optional_bytes(path):
+    return path.read_bytes() if path.is_file() else None
+
+
+def sitting_boot(directory, image, inputs, build, observed, scratch):
+    """One boot's records, checked: its files its SHA256SUMS's, its inputs
+    the plan's of IMAGE by path and SHA-256, and its capture judged again
+    whole by the form as the driver judged it (7.4), into SCRATCH. Returns
+    (run.txt's fields, its export or None, what differs)."""
+    listed = {}
+    for line in (directory / "SHA256SUMS").read_text(
+            encoding="ascii").splitlines():
+        digest, _, file_name = line.partition("  ")
+        listed[file_name] = digest
+    if listed != {path.name: file_sha(path) for path in directory.iterdir()
+                  if path.name != "SHA256SUMS"}:
+        raise Refused(f"{directory.name}: its files are not its SHA256SUMS")
+    fields, paths = run_fields(directory / "run.txt"), {}
+    for key, planned in BOOT_INPUTS:
+        found, planned = NAMED.fullmatch(fields.get(key, "")), \
+            inputs.get(f"{image}.{planned}")
+        if fields.get(key) == "none" and planned is None:
+            continue
+        if not found or planned is None or found.group(2) != planned[1] or \
+                (build / found.group(1)).resolve() != planned[0].resolve():
+            raise Refused(f"{directory.name}: its {key} is not the plan's")
+        paths[key] = planned[0]
+    result = json.loads((directory / "result.json").read_text(
+        encoding="utf-8"))
+    want = {"board": inputs[f"{image}.board"][1],
+            "memory": fields.get("memory", ""),
+            "observed": inputs["observed"][1] if observed else None,
+            **{key: (inputs.get(f"{image}.{key}") or (None, None))[1]
+               for key in ("tables", "partition_authority")}}
+    capture = directory / "serial.log"
+    if fields.get("image") != image or fields.get("image_sha256") != \
+            inputs[f"{image}.board_image"][1] or \
+            fields.get("board_json_sha256") != want["board"] or \
+            fields.get("observed_sha256") != (want["observed"] or "none") or \
+            result.get("inputs") != want:
+        raise Refused(f"{directory.name}: run.txt or result.json does not "
+                      f"name the plan's inputs of {image}")
+    argv = [sys.executable, "-I", "-B", str(CHECKER), str(capture),
+            "--mode", "card", "--expect", str(paths["expect"]), "--board",
+            str(inputs[f"{image}.board"][0]), "--memory", want["memory"],
+            "--image", str(inputs[f"{image}.board_image"][0]), "--toolchain",
+            fields.get("toolchain", ""), "--pins", str(GUEST_PINS)]
+    argv += ["--observed", str(observed)] if observed else []
+    for key in ("report", "kernel", "dtb", "reference"):
+        argv += [f"--{key}", str(paths[key])] if key in paths else []
+    judged = subprocess.run(argv + ["--build-root", str(build), "--json",
+                                    str(scratch / "result.json")],
+                            cwd="/", env=clean_environment(),
+                            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, check=False)
+    differs = [what for what, again, recorded in (
+        ("its exit status", str(judged.returncode).encode(),
+         fields.get("check_status", "").encode()),
+        ("check.txt", judged.stdout, optional_bytes(directory / "check.txt")),
+        ("result.json", optional_bytes(scratch / "result.json"),
+         optional_bytes(directory / "result.json")),
+        ("log.json", optional_bytes(scratch / "log.json"),
+         optional_bytes(directory / "log.json"))) if again != recorded]
+    if "reference" not in paths:
+        if (directory / "log.json").exists():
+            raise Refused(f"{directory.name}: an export, and no reference")
+        return fields, None, differs
+    try:
+        run_class = json.loads(paths["reference"].read_text(
+            encoding="utf-8"))["contract"]["run"]
+    except (OSError, ValueError, KeyError, TypeError):
+        run_class = None
+    key = (fields.get("toolchain"), (result.get("expect") or {}).get(
+        "image"))
+    return fields, log_export(directory / "result.json", {key: (
+        paths["reference"], inputs[f"{image}.reference"][1],
+        run_class != "pre-measurement")}, directory.name)[1], differs
+
+
+def sitting_rewriter(roots, home):
+    """A sitting's record's rewriting: each of ROOTS, (path, token), to its
+    token where a path's part ends, the longest first; a preflight's
+    hostname= to <host>; then rewriter()'s prefixes and code names."""
+    pairs = [(re.compile(re.escape(str(path)).encode() + rb"(?![\w.-])"),
+              token.encode()) for path, token in sorted(
+                  roots, key=lambda pair: -len(str(pair[0])))]
+    base = rewriter(home, code_names=True)
+
+    def rewrite(data):
+        for pattern, token in pairs:
+            data = pattern.sub(token, data)
+        return base(re.sub(rb"(?m)^hostname=.*$", b"hostname=<host>", data))
+    return rewrite
+
+
+def sitting_leaks(out, home, digests, names):
+    """['FILE: what'] of OUT's files that hold what a sitting's record may
+    not (S3-3): what identifying() refuses; a path under the checkout or
+    HOME that no root covered; a digest of DIGESTS; a run of 32 hexadecimal
+    digits in a reading's record; a USB ID; a card reader's link; or one of
+    NAMES, the workstation's host names."""
+    hosts = [re.compile(rf"(?<![\w.-]){re.escape(name)}(?![\w-])")
+             for name in names if name]
+    found = []
+    for path in bundle_files(out):
+        text, relative = path.read_text(encoding="utf-8", errors="replace"), \
+            str(path.relative_to(out))
+        lower = text.lower()
+        found += [f"{relative}: {what}" for what, hit in (
+            ("identifying data (identifying())", identifying(path, home)),
+            ("a path under the checkout or HOME outside the sitting's roots",
+             "<repo>" in text or "<home>" in text),
+            ("a digest of a range of the NOR",
+             any(digest in lower for digest in digests)),
+            ("a run of 32 hexadecimal digits in a reading's record",
+             relative.startswith("mvp/sitting/readings/") and
+             re.search(r"[0-9a-fA-F]{32}", text)),
+            ("a USB vendor or product ID", USB_ID.search(text)),
+            ("a card reader's stable link", READER.search(text)),
+            ("the workstation's host name",
+             any(host.search(text) for host in hosts))) if hit]
+    return found
+
+
+def sitting_cards(root, records, readbacks):
+    """{name: path} of lane C's records that card-in cited, each unchanged
+    since, and of the read-backs after the sessions."""
+    cards = {path.name: path for _, _, path, _ in readbacks}
+    for path, _ in records:
+        for name, digest in re.findall(
+                r"^cited ((?:write|readback)-\S+) sha256=([0-9a-f]{64})$",
+                path.read_text(encoding="utf-8"), re.M):
+            cards[name] = root / "card" / name
+            if file_sha(cards[name]) != digest:
+                raise Refused(f"card/{name} is not the one {path.name} cited")
+    return cards
+
+
+def sitting_boards(gate, inputs, images):
+    """Each image's board.json line of the gate's images.sha256, with the
+    SHA-256 that the sitting read."""
+    lines, boards = (gate / "record" / "images.sha256").read_text(
+        encoding="ascii").splitlines(), []
+    for image in sorted(set(images)):
+        found = [line for line in lines
+                 if line.endswith(f"/images/{image}/board.json")]
+        if len(found) != 1 or not found[0].startswith(
+                inputs[f"{image}.board"][1] + "  "):
+            raise Refused(f"the gate's images.sha256 does not list {image}'s "
+                          "board.json as the sitting read it")
+        boards += found
+    return boards
+
+
+def sitting_boots(root, records, images, inputs, build, observed):
+    """[(directory, image, step's fields, run.txt's, export, differs)] of
+    each boot attempt that a step recorded, each judged again (differs None
+    for one that stopped before its capture). Refused for a directory of no
+    attempt, and if a judgement again differs."""
+    boots, named = [], set()
+    with tempfile.TemporaryDirectory(prefix=".sitting-", dir=build) as work:
+        for _, step in records:
+            if not step["step"].startswith("boot-"):
+                continue
+            image = images[int(step["step"][5:].split(".")[0]) - 1]
+            directory = root / "boots" / f"{step['step']}-a{step['attempt']}"
+            named.add(directory.name)
+            if not (directory / "run.txt").is_file():
+                boots.append((directory, image, step, {}, None, None))
+                continue
+            scratch = pathlib.Path(work) / directory.name
+            scratch.mkdir()
+            boots.append((directory, image, step, *sitting_boot(
+                directory, image, inputs, build, observed, scratch)))
+    stray = set(os.listdir(root / "boots")) - named if (
+        root / "boots").is_dir() else set()
+    if stray:
+        raise Refused(f"boots/{min(stray)} is no boot attempt of a step")
+    for directory, image, step, fields, _, differs in boots:
+        print(f"{'FAIL' if differs else 'ok  '} {directory.name} {image}: "
+              f"recorded {step['verdict'].split()[0]}, " + (
+                  "no capture to judge" if differs is None else
+                  f"judged again, {', '.join(differs)} not the same"
+                  if differs else f"judged again: exit "
+                  f"{fields['check_status']}, the same output, result.json, "
+                  "and log.json"))
+    failed = sum(bool(boot[5]) for boot in boots)
+    if failed:
+        raise Refused(f"judged again, {failed} of the boots do not give "
+                      "their records")
+    return boots
+
+
+def sitting_lines(records, boots, readings, readbacks, root):
+    """bundle.txt's lines of the steps, boots, readings, read-backs, resets,
+    unplanned boots, and stops."""
+    verdicts = [step["verdict"].split()[0] for _, step in records]
+    stops = {word[5:] for _, step in records
+             for word in step["verdict"].split()[1:2]
+             if word.startswith("stop=")}
+    if any(row[3] == "different" for row in readbacks):
+        stops.add("B3")
+    resets = [row.split("\t")[3:4] for row in (root / "resets.tsv").read_text(
+        encoding="ascii").splitlines()[1:]]
+    unplanned = root / "readings" / "unplanned.txt"
+    lines = [f"steps={len(records)} pass={verdicts.count('PASS')} "
+             f"stop={verdicts.count('STOP')}"]
+    for directory, image, step, fields, _, differs in boots:
+        lines.append(
+            f"boot={directory.name} image={image} outcome="
+            f"{fields.get('outcome', 'none')} check="
+            f"{fields.get('check_status', 'none')} stops="
+            f"{fields.get('stops', 'none')} usb="
+            f"{fields.get('usb', 'none').split()[0]} verdict="
+            f"{step['verdict'].split()[0]} judged="
+            f"{'none' if differs is None else 'again'} excerpt="
+            f"{fields.get('excerpt', 'none' if differs is None else 'kept')}")
+    for path in readings:
+        last = path.read_text(encoding="utf-8").rsplit("attempt_utc=", 1)[-1]
+        equal = len(re.findall(r"^range=[a-z]+ equal$", last, re.M))
+        lines.append(f"reading={path.stem} verdict={verdict_line(path)} "
+                     f"equal={equal}")
+    lines += [f"readback={session} image={image} record={path.name} "
+              f"verdict={verdict}" for session, image, path, verdict in
+              readbacks]
+    return lines + [
+        "resets=" + " ".join(f"{method}={resets.count([method])}"
+                             for method in RESET_METHODS),
+        "unplanned_boots=" + str(len(unplanned.read_text(
+            encoding="utf-8").splitlines()) if unplanned.is_file() else 0),
+        f"stops={' '.join(sorted(stops)) or 'none'}"]
+
+
+def sitting(args, build, out, home):
+    """The record of a sitting (M11-B1; planning/mvp-m11-board-addendum.md,
+    "The sittings, and their sessions", B-11): a board record of the run
+    root of tools/k3-sitting.py, made once the sitting has closed or
+    stopped, at its commit and before the next gate run (R10).
+
+    Before it writes, it requires: plan.txt of the sitting --name; the
+    build, the gate, the source, the sitting pins, and the observed facts
+    given the ones that the sitting ran with; every input that plan.txt
+    names, with its SHA-256; the source's HEAD the plan's commit; each
+    step's records, the sitting closed or stopped; each boot's files its
+    SHA256SUMS's, its inputs the plan's, and its whole capture judged again
+    by the form with them, with the same exit status, output, result.json,
+    and log.json; the store's digests of each reading; lane C's records
+    that card-in cited, unchanged; and, for each session whose card went
+    in, a finished read-back of its image that started after its card=out:
+    same if it passed, else different, which puts stop B3 in the bundle.
+
+    It keeps, under OUT: each boot's run.txt, load.txt, check.txt,
+    result.json, reset.txt, its excerpt from `Autoboot in` (none for a boot
+    that the ROM or the SPL refused), and its export; captures.txt and
+    originals.sha256; and mvp/: bundle.txt (kind=board, record=sitting),
+    the tool record and lock, the scenarios, the boots' references, gate/
+    (gate.txt, each board.json's line of the gate's images.sha256),
+    sitting/ (plan.txt, steps/, refusals.txt, card-slot.txt, readings/),
+    session/ (the console's and the staging's records, env/), the
+    preflights, and cards/ (lane C's records). Never a serial log, the
+    store, board.json, card.json, or a reading's digest.
+
+    Each path under the build, the source, the run root, the store, or the
+    serial log is written from its root (<build>, <source>, <run-root>,
+    <store>, <serial-log>), and a preflight's hostname= is <host>. A record
+    that would then hold what sitting_leaks() finds is removed and refused
+    (S3-3). A device node, the board's own paths, and what U-Boot and the
+    guest print are kept, as MVP 1.0's board records keep them, and so are
+    the boot ROM's lines, which the owner reads before it is committed."""
+    if out.exists():
+        raise Refused(f"{out} exists; a record is never overwritten")
+    if not args.name:
+        raise Refused("--sitting needs --name, the sitting: first or second")
+    root = args.sitting.resolve()
+    gate = (args.gate or build / "k3" / "gate").resolve()
+    store = (args.store or pathlib.Path(os.environ.get("K3_ENV_STORE") or (
+        home or "/nonexistent") + "/" + SITTING_STORE)).resolve()
+    observed = args.observed.resolve() if args.observed else None
+    plan, fields, inputs = sitting_plan(root, args.name)
+    sitting_given(fields, {"build": build, "gate": gate,
+                           "source": args.source.resolve(),
+                           "sitting_pins": args.sitting_pins.resolve(),
+                           "observed": observed})
+    changed = sitting_changed(inputs)
+    if changed:
+        raise Refused("inputs changed since begin: " + " ".join(changed))
+    commit, tree = sitting_source(args.source)
+    if commit != fields.get("source_commit"):
+        raise Refused(f"the source's HEAD {commit} is not the sitting's "
+                      f"commit {fields.get('source_commit')}")
+    records, state = sitting_steps(root, fields.get("steps", "").split(","),
+                                   args.name, plan)
+    readings, digests = sitting_readings(root, store)
+    readbacks = sitting_readbacks(root, args.name)
+    cards = sitting_cards(root, records, readbacks)
+    images = [entry.split(":")[0] for entry in fields.get("plan", "").split()]
+    boards = sitting_boards(gate, inputs, images)
+    boots = sitting_boots(root, records, images, inputs, build, observed)
+    copies = [(f"{directory.name}/{name}", directory / name)
+              for directory, *_ in boots for name in BOOT_FILES]
+    copies += [("mvp/sitting/plan.txt", plan)] + [
+        (f"mvp/sitting/steps/{path.name}", path) for path, _ in records]
+    copies += [(f"mvp/sitting/{path.name}", path) for path in (
+        root / "sitting" / "refusals.txt", root / "card-slot.txt")]
+    copies += [(f"mvp/sitting/readings/{path.name}", path)
+               for path in sorted((root / "readings").glob("*.txt"))]
+    copies += [(f"mvp/session/{name}", root / name) for name in SESSION_FILES]
+    copies += [(f"mvp/session/env/{path.name}", path)
+               for path in sorted((root / "env").glob("*.txt"))]
+    copies += [(f"mvp/cards/{name}", path) for name, path in sorted(
+        cards.items())]
+    copies = [(relative, path) for relative, path in copies if path.is_file()]
+    roots = [(build, "<build>"), (args.source.resolve(), "<source>"),
+             (root, "<run-root>"), (store, "<store>")] + (
+                 [(pathlib.Path(fields["serial_log"]), "<serial-log>")]
+                 if fields.get("serial_log", "").startswith("/") else [])
+    writer = Writer(out, sitting_rewriter(roots, home))
+    out.mkdir(parents=True)
+    try:
+        for relative, path in copies:
+            writer.copy(relative, path)
+        preflights = [root / f"preflight-{when}" / "preflight.txt"
+                      for when in ("before", "after")]
+        for when, path in zip(("before", "after"), preflights):
+            writer.text(f"mvp/preflight-{when}.txt", b0_sanitize(
+                path.read_bytes().decode("utf-8", "replace"), home))
+        captures, references, exports = [], {}, 0
+        for directory, image, step, run_txt, export, differs in boots:
+            if differs is None:
+                continue
+            capture = directory / "serial.log"
+            raw = capture.read_bytes()
+            captures.append((directory.name, capture, raw))
+            try:
+                writer.write(f"{directory.name}/handoff-excerpt.log",
+                             excerpt_tail(capture, home, lambda data: data))
+            except Refused:
+                run_txt["excerpt"] = "none"
+            if export:
+                writer.copy(f"{directory.name}/log.json", export)
+                exports += 1
+            found = NAMED.fullmatch(run_txt.get("reference", ""))
+            if found:
+                references[(run_txt["toolchain"], image)] = build / \
+                    found.group(1)
+        writer.text("captures.txt", CAPTURES_HEAD + "".join(
+            f"{name} {sha(raw)} {len(raw)} {raw.count(10)}\n"
+            for name, _, raw in captures))
+        writer.text("originals.sha256", "".join(
+            f"{file_sha(path)}  {path.relative_to(root)}\n" for path in
+            [path for _, path in copies] + preflights +
+            [capture for _, capture, _ in captures]))
+        lock_status = write_tools(writer, "mvp/")
+        scenario_lines = write_scenario(writer, scenarios(build), "mvp/")
+        for (toolchain, image), path in sorted(references.items()):
+            writer.copy(f"mvp/references/{toolchain}/{image}.json", path)
+            writer.text(f"mvp/references/{toolchain}/{image}.sha256",
+                        f"{file_sha(path)}  {image}.json\n")
+        writer.copy("mvp/gate/gate.txt", gate / "record" / "gate.txt")
+        writer.text("mvp/gate/board-json.sha256", "\n".join(boards) + "\n")
+        lines = sitting_lines(records, boots, readings, readbacks, root)
+        writer.text("mvp/bundle.txt", "\n".join([
+            *SITTING_HEAD, f"title={args.title}", f"sitting={args.name}",
+            f"run_root={root.name}", "launcher=uboot-autoboot-card",
+            f"result={state}", f"source_commit={commit}",
+            f"source_tree={tree}",
+            f"sitting_source_tree={fields.get('source_state')}",
+            f"gate_commit={fields.get('gate_commit')}",
+            f"gate_sha256={inputs['gate.txt'][1]}",
+            f"sitting_pins_sha256={inputs['sitting-pins'][1]}",
+            "observed_sha256=" + (inputs["observed"][1] if observed
+                                  else "none"),
+            f"rehearsal={fields.get('rehearsal')}",
+            f"lock_sha256={file_sha(LOCK)}",
+            f"lock_check_status={lock_status}",
+            f"closure_sha256={file_sha(CLOSURE)}", *scenario_lines,
+            f"inputs={len(inputs)}", f"references={len(references)}",
+            f"log_exports={exports}", *lines,
+            "published=not-compared", "platform_record=none",
+            "rom_lines=kept in each boot's check.txt and result.json as the "
+            "form wrote them; the owner reads them before this record is "
+            "committed"]) + "\n")
+        leaks = sitting_leaks(out, home, digests, {
+            os.uname().nodename, os.uname().nodename.split(".")[0]})
+        for leak in leaks:
+            print(f"finding {leak}")
+        if leaks:
+            raise Refused(f"the record would hold what it may not "
+                          f"(findings={len(leaks)}); it is not kept")
+        write_manifest(out)
+    except BaseException:
+        shutil.rmtree(out)
+        raise
+    print(f"BE_MVP_EVIDENCE: PASS sitting {out} result={state.split()[0]} "
+          f"boots={len(boots)} readings={len(readings)} "
+          f"readbacks={len(readbacks)} {lines[-1]}")
+    return 0
+
+
 # ---------------------------------------------------------------- self-test
 def reference_file(build, toolchain, image, run, note=None,
                    base="references"):
@@ -2656,10 +3245,157 @@ def self_test(scratch):
          rules.get("MAC address") == MAC and
          rules.get("serial number") == SERIAL)
     quiet.close()
+    sitting_self_test(scratch / "sitting", case, refused)
     passed = sum(results)
     print(f"BE_MVP_EVIDENCE_SELF_TEST: {'PASS' if passed == len(results) else 'FAIL'} "
           f"cases={passed}/{len(results)}")
     return 0 if passed == len(results) else 1
+
+
+def sitting_self_test(scratch, case, refused):
+    """A sitting's record's rules on synthetic inputs, each with the input
+    that it refuses (the whole record is the sittings' dry run's,
+    tests/test-k3-session.sh, cases 1, 28, and 29)."""
+    root, store, out = scratch / "run", scratch / "store", scratch / "out"
+
+    def write(path, text):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    pins, image, plan = scratch / "pins.txt", scratch / "image.img", \
+        root / "sitting" / "plan.txt"
+    write(pins, "pins\n")
+    write(image, "image\n")
+    write(plan, "\n".join([
+        f"schema={SITTING_PLAN}", "sitting=first", "plan=a:1:be-mvp-a-gcc.img",
+        "steps=begin,card-in-1,boot-1.1,card-out-1,end", "build=/b",
+        "gate=/b/k3/gate", "observed=none",
+        f"sitting_pins={pins} sha256={file_sha(pins)}",
+        f"input a.board_image path={image} sha256={file_sha(image)}",
+        f"pin a.firmware sha256={'0' * 64} bytes=1"]) + "\n")
+    _, fields, inputs = sitting_plan(root, "first")
+    case("a sitting's plan: its fields, and its inputs with the sitting pins",
+         set(inputs) == {"a.board_image", "sitting-pins"} and
+         fields["gate"] == "/b/k3/gate" and refused(
+             sitting_plan, root, "second"))
+    case("a record given the paths that the sitting ran with; refused with "
+         "the recipe's for a sitting on stand-ins, or with observed facts "
+         "that it had not", refused(sitting_given, fields, {
+             "gate": pathlib.Path("/b/k3/gate"), "observed": None}) is None
+         and all(refused(sitting_given, fields, given) for given in (
+             {"gate": pathlib.Path("/b/stand/gate")},
+             {"observed": pathlib.Path("/b/observed.json")})))
+    write(image, "changed\n")
+    case("an input changed since begin is named",
+         sitting_changed(inputs) == ["a.board_image"])
+
+    def step(index, name, verdict, **more):
+        write(root / "sitting" / "steps" / f"{index:02d}-{name}-a1.txt",
+              "".join(f"{key}={value}\n" for key, value in {
+                  "schema": SITTING_STEP, "step": name, "attempt": 1,
+                  "sitting": "first", **more, "verdict": verdict}.items()))
+
+    steps = fields["steps"].split(",")
+    step(1, "begin", "PASS", plan=f"sitting/plan.txt sha256={file_sha(plan)}")
+    step(2, "card-in-1", "PASS")
+    step(3, "boot-1.1", "STOP stop=B4 the ROM's lines are the NOR's")
+    stopped = sitting_steps(root, steps, "first", plan)[1]
+    step(4, "card-out-1", "PASS")
+    under_way = refused(sitting_steps, root, steps, "first", plan)
+    step(5, "end", "PASS")
+    case("a sitting stopped at a boot; under way once card-out-1 passed; "
+         "closed once end passed", stopped == "stopped step=boot-1.1" and
+         "under way" in (under_way or "") and
+         sitting_steps(root, steps, "first", plan)[1] == "closed")
+    write(root / "sitting" / "steps" / "06-x-a1.txt", "x\n")
+    stray = refused(sitting_steps, root, steps, "first", plan)
+    (root / "sitting" / "steps" / "06-x-a1.txt").unlink()
+    text = plan.read_text(encoding="utf-8")
+    write(plan, text + "# changed\n")
+    case("a record of no step, and a plan.txt that is not begin's, refused",
+         "of no step" in (stray or "") and "not the one that begin" in (
+             refused(sitting_steps, root, steps, "first", plan) or ""))
+    write(plan, text)
+
+    def readback(number, started, verdict="PASS", image="a"):
+        write(root / "card" / f"readback-{image}-{number}.txt",
+              f"image={image}\nsitting=first\nstarted={started}\n" +
+              (f"verdict={verdict}\n" if verdict else ""))
+
+    write(root / "card-slot.txt", "card=out step=begin\ncard=in session=1 "
+          "image=a said=2026-01-01T10:00:00Z\ncard=out session=1 image=a "
+          "said=2026-01-01T11:00:00Z\n")
+    readback(1, "2026-01-01T09:00:00Z")
+    readback(2, "2026-01-01T11:00:00Z")
+    early = refused(sitting_readbacks, root, "first")
+    readback(3, "2026-01-01T11:05:00Z", "FAIL first_difference=0x10")
+    failed = sitting_readbacks(root, "first")[0][2:]
+    readback(4, "2026-01-01T11:10:00Z")
+    readback(5, "2026-01-01T11:20:00Z", None)
+    readback(6, "2026-01-01T11:30:00Z", image="b")
+    case("the read-back after a session: none counted before or at his "
+         "said= time; one that failed, different; the last finished one of "
+         "its image that passed, same",
+         "read the card back first" in (early or "") and failed == (
+             root / "card" / "readback-a-3.txt", "different") and
+         sitting_readbacks(root, "first")[0][2:] == (
+             root / "card" / "readback-a-4.txt", "same"))
+    write(root / "card-slot.txt", "card=in session=1 image=a said=x\n")
+    case("a card recorded in when the record is made is refused",
+         "recorded in" in (refused(sitting_readbacks, root, "first") or ""))
+    write(root / "readings" / "reading-0.txt", "verdict=PASS\n")
+    missing = refused(sitting_readings, root, store)
+    write(store / root.name / "readings" / "reading-0" / "digests.tsv",
+          f"bootinfo\t{'ab' * 16}\nwhole\t{'cd' * 16}\n")
+    case("a reading whose digests the store does not hold refuses the "
+         "record; the store's digests are read",
+         "store holds no digests" in (missing or "") and
+         sitting_readings(root, store)[1] == {"ab" * 16, "cd" * 16})
+    rewrite = sitting_rewriter([(pathlib.Path("/w/build"), "<build>"), (
+        pathlib.Path("/w/build/stand/source"), "<source>")], "/h")
+    case("each root to its token, the longest first, where a part of the "
+         "path ends; a preflight's hostname= to <host>; HOME to <home>",
+         rewrite(b"/w/build/x /w/build/stand/source/y /w/build/stand/"
+                 b"source-c /w/buildx\nhostname=k3e\n/h/z\n") ==
+         b"<build>/x <source>/y <build>/stand/source-c /w/buildx\n"
+         b"hostname=<host>\n<home>/z\n")
+
+    def leaks(relative, text):
+        shutil.rmtree(out, ignore_errors=True)
+        write(out / relative, text)
+        return " ".join(sitting_leaks(out, "/h", {"ab" * 16},
+                                      {"ws1.example", "ws1"}))
+
+    case("a file of a board's and a boot's facts holds nothing that the "
+         "record may not", leaks("mvp/x.txt", f"cpu@0 0x10010000 sha256="
+                                 f"{'ef' * 32} at 2026-11-19T02:24:45Z "
+                                 "ws10 usb=clean\n") == "")
+    for name, relative, text, what in (
+            ("another account's home path", "x", "/home/other/x\n",
+             "identifying"),
+            ("a path under HOME outside the roots", "x", "<home>/notes\n",
+             "outside the sitting's roots"),
+            ("a digest of a range of the NOR, in any case", "x",
+             f"{'AB' * 16}\n", "a digest of a range"),
+            ("32 hexadecimal digits in a reading's record",
+             "mvp/sitting/readings/reading-0.txt", f"x={'12' * 16}\n",
+             "a run of 32"),
+            ("a USB ID by its attribute", "x", "idVendor=361c\n", "USB"),
+            ("a USB ID pair", "x", "ID 361c:1001 x\n", "USB"),
+            ("a card reader's stable link", "x",
+             "/dev/disk/by-id/usb-X_Y_0-0:0\n", "stable link"),
+            ("the workstation's host name", "x", "at ws1 then\n",
+             "host name")):
+        case(f"{name} refuses the record", what in leaks(relative, text))
+    spec = importlib.util.spec_from_file_location(
+        "claim_ledger_sitting", HERE.parent / "claim-ledger.py")
+    ledger = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ledger)
+    write(scratch / "rec" / "mvp" / "bundle.txt",
+          "\n".join(SITTING_HEAD) + "\n")
+    write_manifest(scratch / "rec")
+    case("a sitting's record is a board record by the claim ledger's method",
+         ledger.board_record(scratch.resolve(), "rec/MANIFEST.sha256"))
 
 
 def main(argv):
@@ -2675,6 +3411,7 @@ def main(argv):
                         metavar=("HOST", "OTHER"))
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--scratch", type=pathlib.Path)
+    sitting_options(parser)
     args = parser.parse_args(argv[1:])
     home = os.environ.get("HOME", "")
     try:
@@ -2703,6 +3440,8 @@ def main(argv):
             raise Refused(f"{out} would replace {build}")
         if args.board:
             return board(args.board.resolve(), build, out, args.title, home)
+        if args.sitting:
+            return sitting(args, build, out, home)
         return development(build, out, home)
     except (Refused, OSError, ValueError) as error:
         print(f"BE_MVP_EVIDENCE: FAIL {error}")
