@@ -1864,3 +1864,27 @@ text above as it says; the text above is otherwise as accepted.
   The gates also built the second sitting's three (`anchor`,
   `k3-breach-g1`, `k3-breach-c`). They are not recorded here: B-1 has
   them made again at M11-B4, with the first sitting's facts.
+- **2026-11-19, the first sitting's card image** (the board
+  addendum's B-4: each card image is made on the workstation as one
+  file for its card's size, with its SHA-256 recorded; M11-B3's exit
+  names it). The image for the first sitting's card, a card of
+  31,927,042,048 bytes, was made for `two-guests-off` from the gates'
+  outputs, at the commit that holds the entry before this one:
+  - `card.img`, 31,927,042,048 bytes, SHA-256
+    `7dcec03cad476ec301319531471ec006b98ef9f7837d0fbdf3f6825235d3c24c`;
+  - in it, the firmware's FIT (541,307 bytes, SHA-256
+    `c36a65821438ad705e4a817d4e0f7f0cebfff3bd665a05ed38759c2b553e5d9f`),
+    which holds the build of the entry before this one; the
+    environment (16,384 bytes, SHA-256
+    `f0a14d293f52d0529c9f920e805840af4f99f8570daa566ede28bd530ed83600`),
+    which names the staged image `be-mvp-two-guests-off-gcc.img` on
+    partition 6; and the vendor's four published files, each byte for
+    byte at its offset. The FIT and the environment are byte for byte
+    the ones that the board gate made.
+  - The same commit adds the line `card two-guests-off` with this
+    SHA-256 to `mvp/k3/sitting-pins.txt`: the reader's tool writes no
+    other image to the card, and the read-back compares the whole
+    card with it.
+
+  The image is not committed or published: it holds the vendor's
+  files.

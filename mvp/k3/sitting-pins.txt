@@ -9,3 +9,4 @@
 # from the card's tools' announcement. The card's tools refuse a firmware
 # or a card without its line here; the board gate never reads this file.
 firmware two-guests-off sha256=d2f1b1e4d8e864673ec24617abc9ca3c5a16664f38d9aa93c09ad7236478eb5e bytes=540600
+card two-guests-off sha256=7dcec03cad476ec301319531471ec006b98ef9f7837d0fbdf3f6825235d3c24c bytes=31927042048
