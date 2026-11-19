@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 James Morris <jmorris@namei.org>
 """M11-B's card (planning/mvp-m11-board-addendum.md, B-1 and B-4): the
-firmware's FIT, and U-Boot's environment for a microSD card.
+firmware's FIT, U-Boot's environment, and the image of a whole microSD
+card.
 
   k3-card.py fit --image IMAGE --firmware FILE --board FILE --dtc DTC
                  --build DIR --work DIR --out FILE
@@ -10,7 +11,12 @@ firmware's FIT, and U-Boot's environment for a microSD card.
   k3-card.py env --default FILE --pins FILE --image IMAGE --board FILE
                  --staged NAME --be-part N --templates FILE
                  --build DIR --out FILE --report FILE
-  k3-card.py --self-test --scratch DIR --dtc DTC [--outputs DIR]
+  k3-card.py image --image IMAGE --bytes N --card DIR --published DIR
+                   --pins FILE --sitting-pins FILE --gate-sums FILE
+                   --board FILE --sfdisk SFDISK --sfdisk-sha256 HEX
+                   --build DIR
+  k3-card.py --self-test --scratch DIR --dtc DTC --sfdisk SFDISK
+             --sfdisk-sha256 HEX [--outputs DIR]
 
 Purpose: fit puts one of the board gate's firmware builds (lane T's
 fw_dynamic.bin, which IMAGE's board.json names by its path from the
@@ -38,14 +44,36 @@ is checked again by every rule, rendered as U-Boot exports an
 environment (each name once, sorted, NUL-separated, zero-padded, the
 CRC-32 first), and parsed back. Its report names what was kept (by
 group), removed (with each rule and reason), changed, and added, and
-holds no value.
+holds no value. What the board's own code does at boot, whatever the
+environment holds, is not the card's to change: among it, the vendor's
+U-Boot writes the power chip's register on every boot of this board,
+from either medium, to clear the chip's fastboot flag (the board's
+k3.c, get_reboot_config), and nothing of the card's changes that.
+
+image makes the image of a whole card of N bytes (a multiple of 4,096,
+from 16 MiB to 64 GiB) in DIR, the card's directory, from the FIT and
+the environment there (each the gate's twin, by the gate record's
+images.sha256) and the four published files that a card carries, each
+by its pin: a protective MBR; a GPT whose 128 entries are unused, its
+first usable sector at 12 MiB; each file at its area's offset; zeros;
+and the backup table in the last 33 sectors. The firmware in the FIT
+must be the sitting pin's (B-1). The file is sparse: the first 12 MiB
+and the backup table are written, and the rest is a hole. It is then
+read back whole: each region against what it should hold, the table by
+the vendor's U-Boot's rules (disk/part_efi.c), and by the tool lock's
+sfdisk, whose SHA-256 is checked first; card.json (its regions, each
+with its SHA-256, and the identities that it was made from) and
+SHA256SUMS are written beside it. A refusal after the image is written
+removes what this run wrote. The image is the same bytes for the same
+inputs and N, its disk GUID included.
 
 --self-test runs every rule on inputs that it writes itself (no file of
 the vendor's), each refusal with a case that fails by it alone; with
 --outputs it leaves its deterministic outputs there.
 
 Trust: reads its inputs, never a device; writes only its outputs, each
-created exclusively, and its scratch (WORK, --scratch); runs only DTC.
+created exclusively, and its scratch (WORK, --scratch); runs only DTC
+and SFDISK.
 Scope: M11-B's card. Exit 0 pass, 1 refused, 2 usage.
 """
 
@@ -62,6 +90,7 @@ import stat
 import struct
 import subprocess
 import sys
+import uuid
 import zlib
 
 FIRMWARE = "fw_dynamic.bin"
@@ -247,7 +276,13 @@ def sha(data):
 
 def read_regular(path, follow=False):
     """PATH's bytes: a regular file, not empty, and, unless FOLLOW, not a
-    symbolic link; a FIFO is refused without blocking."""
+    symbolic link; a FIFO is refused without blocking. The vendor's
+    published files are read with FOLLOW, as the board gate's first step
+    reads them: the release directory as published may hold links, and
+    each file is bound by its pin's SHA-256 and size, whatever path
+    reaches it. This build's own files (the firmware, the FIT, the
+    environment, board.json, the gate record, the pins) never hold a link,
+    and one there is refused."""
     flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NONBLOCK
     try:
         descriptor = os.open(path, flags if follow else flags |
@@ -362,10 +397,9 @@ def gate_sum(path, name):
     return found[0]
 
 
-def announced(kind, image, sitting, build, path, data):
+def announced(kind, image, sitting, build, path, digest, size):
     return (f"BE_MVP_K3_{kind}: PASS image={image} sitting={sitting} "
-            f"file={path.relative_to(build)} sha256={sha(data)} "
-            f"bytes={len(data)}")
+            f"file={path.relative_to(build)} sha256={digest} bytes={size}")
 
 
 def under(build, path):
@@ -503,7 +537,8 @@ def make_fit(args):
     if structure(text) != structure(source):
         raise Refused("the FIT, read back, is not the template's structure")
     write_new(out, blob)
-    print(announced("FIT", image, board["sitting"], build, out, blob))
+    print(announced("FIT", image, board["sitting"], build, out, sha(blob),
+                    len(blob)))
 
 
 # ----------------------------------------------------------- environment
@@ -749,7 +784,7 @@ def make_environment(args):
                   data_bytes=rendered.index(b"\0\0", 4) - 2)
     summary = " ".join(f"{name}={value}" for name, value in counts.items())
     line = announced("ENVIRONMENT", image, board["sitting"], build, out,
-                     rendered)
+                     sha(rendered), len(rendered))
     report = ["schema=be-mvp-k3-card-environment-v1", f"image={image}",
               f"default_sha256={sha(blob)}",
               f"templates_sha256={sha(read_regular(args.templates))}"]
@@ -768,8 +803,339 @@ def make_environment(args):
     print(line)
 
 
+# ------------------------------------------------------------ card image
+SECTOR = 512
+# The card's areas (the addendum's statement 9, from the vendor's
+# genimage.cfg and partition_universal.json): each area's name, offset,
+# and size, and the file that it holds from its first byte, zeros after
+# it. Every other byte below the first usable sector is zero, as on the
+# vendor's own card.
+AREAS = (("env", 0xA0000, 0x10000, "environment.bin"),
+         ("bootinfo", 0x100000, 0x20000, "factory/bootinfo_block.bin"),
+         ("fsbl", 0x180000, 0x80000, "factory/FSBL.bin"),
+         ("esos", 0x400000, 0x300000, "esos.itb"),
+         ("fit", 0x700000, FIT_AREA, "firmware.itb"),
+         ("uboot", 0x800000, 0x400000, "u-boot.itb"))
+PUBLISHED = ("factory/bootinfo_block.bin", "factory/FSBL.bin", "esos.itb",
+             "u-boot.itb")
+# The first usable sector, at 12 MiB, the vendor's card's: everything that
+# the SPL and U-Boot read lies below any partition that a later tool might
+# add. A table is a header and 128 entries of 128 bytes, 33 sectors.
+HEAD = 0xC00000
+ENTRIES = 128 * 128
+TABLE = SECTOR + ENTRIES
+HEADER = "<8sIIIIQQQQ16sQIII"
+CARD_SIZE = re.compile(r"[1-9][0-9]{0,11}")
+CARD_MIN, CARD_MAX = 16 << 20, 64 << 30
+CHUNK = 4 << 20
+OUTPUTS = ("card.img", "card.json", "SHA256SUMS")
+
+
+def regions(size):
+    """[(name, offset, length)] of a card of SIZE bytes, contiguous from
+    its first byte to its last: the MBR, the primary table, the areas and
+    the gaps between them, zeros, and the backup table."""
+    found, end = [], 0
+    for name, offset, length in [("mbr", 0, SECTOR),
+                                 ("gpt-primary", SECTOR, TABLE)] + [
+            area[:3] for area in AREAS]:
+        if offset > end:
+            gaps = sum(region[0].startswith("gap-") for region in found)
+            found.append((f"gap-{gaps}", end, offset - end))
+        found.append((name, offset, length))
+        end = offset + length
+    return found + [("zeros", end, size - TABLE - end),
+                    ("gpt-backup", size - TABLE, TABLE)]
+
+
+def protective_mbr(sectors):
+    """UEFI's protective MBR for a disk of SECTORS sectors: no boot code,
+    one record of type 0xEE from sector 1 to the end (or to 2 TiB), with
+    the CHS fields that UEFI gives a disk beyond them."""
+    record = bytes((0, 0, 2, 0, 0xEE, 0xFF, 0xFF, 0xFF)) + struct.pack(
+        "<II", 1, min(sectors - 1, 0xFFFFFFFF))
+    return bytes(446) + record + bytes(48) + b"\x55\xaa"
+
+
+def gpt(sectors, guid, backup=False):
+    """The primary table (its header, then its entries) or the backup (its
+    entries, then its header) of a disk of SECTORS sectors, with no
+    partition; GUID is the disk's, as GPT stores it."""
+    entries = bytes(ENTRIES)
+    header = bytearray(struct.pack(
+        HEADER, b"EFI PART", 0x10000, 92, 0, 0,
+        sectors - 1 if backup else 1, 1 if backup else sectors - 1,
+        HEAD // SECTOR, sectors - 34, guid,
+        sectors - 33 if backup else 2, 128, 128, zlib.crc32(entries)))
+    header[16:20] = zlib.crc32(header).to_bytes(4, "little")
+    header = bytes(header.ljust(SECTOR, b"\0"))
+    return entries + header if backup else header + entries
+
+
+def disk_guid(image, size, digests):
+    """The card's disk GUID: the first 16 bytes of a SHA-256 of IMAGE, the
+    card's SIZE, and its files' DIGESTS, as an RFC 9562 version 8 UUID, so
+    that the same inputs give the same GUID, and a card of another image
+    or size another."""
+    seed = bytearray(hashlib.sha256("\n".join(
+        ["be-mvp-k3-card-v1 disk GUID", image, str(size), *digests]).encode(
+            "ascii")).digest()[:16])
+    seed[6] = seed[6] & 0x0F | 0x80
+    seed[8] = seed[8] & 0x3F | 0x80
+    return uuid.UUID(bytes=bytes(seed))
+
+
+def write_card(path, size, first, last):
+    """PATH, created exclusively: FIRST at its start, LAST at its end, and
+    a hole of SIZE bytes in all between them, which reads as zeros."""
+    try:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                             os.O_NOFOLLOW | os.O_CLOEXEC, 0o644)
+    except OSError as error:
+        raise Refused(f"{path}: {error.strerror}") from error
+    with os.fdopen(descriptor, "wb") as file:
+        file.write(first)
+        file.truncate(size)
+        file.seek(size - len(last))
+        file.write(last)
+
+
+def card_regions(path, size, expected):
+    """([(name, offset, length, SHA-256)], SHA-256) of the card image at
+    PATH, read once from its first byte to its last: each region must
+    hold EXPECTED[name] (bytes) from its first byte and zeros after it."""
+    found, whole = [], hashlib.sha256()
+    with open(path, "rb") as file:
+        if os.fstat(file.fileno()).st_size != size:
+            raise Refused(f"{path} is not {size} bytes")
+        for name, offset, length in regions(size):
+            digest, want, done = hashlib.sha256(), expected.get(name, b""), 0
+            while done < length:
+                chunk = file.read(min(CHUNK, length - done))
+                part = want[done:done + len(chunk)]
+                if not chunk or chunk[:len(part)] != part or chunk.count(
+                        0, len(part)) != len(chunk) - len(part):
+                    raise Refused(f"{path}'s {name} at {offset + done:#x} is "
+                                  "not what it should hold")
+                digest.update(chunk)
+                whole.update(chunk)
+                done += len(chunk)
+            found.append((name, offset, length, digest.hexdigest()))
+    return found, whole.hexdigest()
+
+
+def sector_reader(path):
+    """READ(lba, count): COUNT sectors of the file at PATH from LBA."""
+    def read(lba, count):
+        with open(path, "rb") as file:
+            file.seek(lba * SECTOR)
+            data = file.read(count * SECTOR)
+        if len(data) != count * SECTOR:
+            raise Refused(f"{path} has no sectors {lba} to {lba + count - 1}")
+        return data
+    return read
+
+
+def table_problems(read, sectors):
+    """What the vendor's U-Boot (disk/part_efi.c) finds wrong in the table
+    of a card of SECTORS sectors, READ(lba, count) its sectors: nothing
+    when U-Boot takes the card for a GPT disk, finds its primary table
+    valid (so that it never reads the backup, which must be valid too),
+    and finds no partition in either."""
+    mbr = read(0, 1)
+    # part_test_efi and is_pmbr_valid (part_efi.c:313-323, 976-1006): a
+    # card without them is read as a DOS disk.
+    protective = mbr[510:] == b"\x55\xaa" and any(
+        mbr[450 + 16 * index] == 0xEE and
+        mbr[454 + 16 * index:458 + 16 * index] == b"\1\0\0\0"
+        for index in range(4))
+    problems = [] if protective else ["the MBR is not a protective MBR"]
+    for name, lba in (("primary", 1), ("backup", sectors - 1)):
+        problems += [f"the {name} table {problem}"
+                     for problem in header_problems(read, lba, sectors)]
+    return problems
+
+
+def header_problems(read, lba, sectors):
+    """The first rule of U-Boot's (is_gpt_valid) that the table whose
+    header is at LBA breaks, if any; then whether an entry is used."""
+    header = read(lba, 1)
+    (signature, _, size, crc, _, mine, _, first, last, _, start, count,
+     length, crc_entries) = struct.unpack_from(HEADER, header)
+    # validate_gpt_header (part_efi.c:91-148); U-Boot compares the usable
+    # sectors with the card's count of sectors.
+    if signature != b"EFI PART":
+        return ["has a wrong signature"]
+    # U-Boot takes the header's size as the header gives it; this tool
+    # refuses one beyond the header's sector.
+    if not 92 <= size <= SECTOR:
+        return ["has a header size beyond its sector"]
+    if zlib.crc32(header[:16] + bytes(4) + header[20:size]) != crc:
+        return ["has a wrong header CRC"]
+    if mine != lba:
+        return ["does not name its own sector (my_lba)"]
+    if first > sectors:
+        return ["has its first usable sector beyond the card"]
+    if last > sectors:
+        return ["has its last usable sector beyond the card"]
+    # alloc_read_gpt_entries (part_efi.c:1121-1160): with no entries,
+    # U-Boot cannot allocate them, and says so at every lookup.
+    if not count * length:
+        return ["has no entries"]
+    blocks = -(-count * length // SECTOR)
+    if count * length > ENTRIES or start + blocks > sectors:
+        return ["has entries other than 128 of 128 bytes on the card"]
+    entries = read(start, blocks)[:count * length]
+    # validate_gpt_entries (part_efi.c:150-168)
+    if zlib.crc32(entries) != crc_entries:
+        return ["has a wrong entries' CRC"]
+    # is_pte_valid (part_efi.c:1168-1193): an entry is used when its type
+    # GUID is not zero, and a lookup by name stops at the first unused one
+    # (disk/part.c:668-698).
+    used = [index + 1 for index in range(count)
+            if entries[index * length:index * length + 16] != bytes(16)]
+    return [f"has its entry {used[0]} used"] if used else []
+
+
+def sfdisk_problems(sfdisk, path, size, guid):
+    """What the tool lock's sfdisk finds wrong with the card image at PATH:
+    it must read a GPT of the card's disk GUID and usable sectors with no
+    partition, verify it without an error, exit 0, and print nothing on
+    stderr, where it warns (exit 0) of a backup header with a bad CRC."""
+    printed = {}
+    for option in ("--json", "--verify"):
+        result = subprocess.run([str(sfdisk), option, str(path)],
+                                capture_output=True, check=False,
+                                env={"PATH": "/usr/bin", "LC_ALL": "C"})
+        if result.returncode or result.stderr:
+            return [f"sfdisk {option}: exit {result.returncode}, stderr "
+                    f"{result.stderr.decode('utf-8', 'replace')[:200]!r}"]
+        printed[option] = result.stdout.decode("utf-8", "replace")
+    try:
+        table = json.loads(printed["--json"])["partitiontable"]
+    except (ValueError, KeyError, TypeError):
+        return ["sfdisk --json printed no partition table"]
+    sectors = size // SECTOR
+    wanted = {"label": "gpt", "id": str(guid).upper(), "unit": "sectors",
+              "firstlba": HEAD // SECTOR, "lastlba": sectors - 34,
+              "sectorsize": SECTOR}
+    problems = [f"sfdisk --json gives {key} {table.get(key)!r}, not "
+                f"{value!r}" for key, value in wanted.items()
+                if table.get(key) != value]
+    problems += ["sfdisk --json lists partitions"] * ("partitions" in table)
+    free = sectors - 34 - HEAD // SECTOR + 1
+    if printed["--verify"].splitlines() != [
+            f"{path}:", "No errors detected.", "Header version: 1.0",
+            "Using 0 out of 128 partitions.",
+            f"A total of {free} free sectors is available in 1 segment."]:
+        problems.append("sfdisk --verify printed "
+                        f"{printed['--verify'][:300]!r}")
+    return problems
+
+
+def make_card(args):
+    image, size = args.image, args.bytes
+    if not IMAGE.fullmatch(image):
+        raise Refused(f"{image!r} is not an image's name")
+    size = int(size) if CARD_SIZE.fullmatch(size) else 0
+    if size % 4096 or not CARD_MIN <= size <= CARD_MAX:
+        raise Refused(f"{args.bytes!r} is not a card's size: a multiple of "
+                      "4096 bytes, from 16 MiB to 64 GiB")
+    directory = args.card
+    if directory.is_symlink() or not directory.is_dir():
+        raise Refused(f"{directory} is not a directory")
+    build, path = under(args.build, directory / "card.img")
+    for name in OUTPUTS:
+        if os.path.lexists(directory / name):
+            raise Refused(f"{directory / name} exists")
+    if sha(read_regular(args.sfdisk, follow=True)) != args.sfdisk_sha256:
+        raise Refused(f"{args.sfdisk} is not the tool lock's sfdisk")
+    board = board_facts(args.board, image)
+    fit = read_regular(directory / "firmware.itb")
+    environment = read_regular(directory / "environment.bin")
+    firmware = fdt_properties(fit).get("/images/opensbi/data", b"")
+    facts = (sha(firmware), len(firmware))
+    # B-1: a card carries only a firmware whose SHA-256 the sitting's pin
+    # records; the FIT and the environment are the gate's twins.
+    if facts != pin(args.sitting_pins, "firmware", image):
+        raise Refused(f"the firmware in {directory / 'firmware.itb'} is not "
+                      "the sitting pin's")
+    if facts != (board["firmware"]["sha256"], board["firmware"]["bytes"]):
+        raise Refused(f"the firmware in {directory / 'firmware.itb'} is not "
+                      f"the one that {args.board} describes")
+    for name, data in (("card-firmware.itb", fit),
+                       ("card-environment.bin", environment),
+                       (FIRMWARE, firmware)):
+        if gate_sum(args.gate_sums, f"k3/gate/images/{image}/{name}") != \
+                sha(data):
+            raise Refused(f"{args.gate_sums} lists another {name} for "
+                          f"{image}")
+    values = parse_environment(environment, "environment.bin")[1]
+    if values.get("be_image") != board["staged_name"] or values.get(
+            "bootcmd") != BOOTCMD or not PART.fullmatch(values.get(
+                "be_part", "")):
+        raise Refused("environment.bin is not the card's environment for "
+                      f"{board['staged_name']}")
+    contents = {"environment.bin": environment, "firmware.itb": fit}
+    for name in PUBLISHED:
+        data = read_regular(args.published / name, follow=True)
+        if pin(args.pins, "published", name) != (sha(data), len(data)):
+            raise Refused(f"{args.published / name} is not its pin's")
+        contents[name] = data
+    for area, _, length, name in AREAS:
+        if len(contents[name]) > length:
+            raise Refused(f"{name} is {len(contents[name])} bytes, more "
+                          f"than its area, {area}, holds")
+    sectors = size // SECTOR
+    guid = disk_guid(image, size, [sha(contents[name]) for _, _, _, name in
+                                   AREAS])
+    expected = {"mbr": protective_mbr(sectors),
+                "gpt-primary": gpt(sectors, guid.bytes_le),
+                "gpt-backup": gpt(sectors, guid.bytes_le, backup=True)}
+    first = bytearray(HEAD)
+    first[:SECTOR + TABLE] = expected["mbr"] + expected["gpt-primary"]
+    for area, offset, _, name in AREAS:
+        first[offset:offset + len(contents[name])] = contents[name]
+        expected[area] = contents[name]
+    made = []
+    try:
+        write_card(path, size, first, expected["gpt-backup"])
+        made.append(path)
+        found, whole = card_regions(path, size, expected)
+        problems = table_problems(sector_reader(path), sectors)
+        problems += sfdisk_problems(args.sfdisk, path, size, guid)
+        if problems:
+            raise Refused(f"{path}: " + "; ".join(problems))
+        record = {
+            "schema": "be-mvp-k3-card-v1", "image": image,
+            "sitting": board["sitting"], "card_bytes": size,
+            "card_sha256": whole, "disk_guid": str(guid).upper(),
+            "be_image": values["be_image"], "be_part": values["be_part"],
+            "firmware_sha256": sha(firmware),
+            "firmware_bytes": len(firmware), "fit_sha256": sha(fit),
+            "environment_sha256": sha(environment),
+            "published": {name: sha(contents[name]) for name in PUBLISHED},
+            "regions": [{"name": name, "offset": offset, "length": length,
+                         "sha256": digest}
+                        for name, offset, length, digest in found]}
+        text = (json.dumps(record, indent=2) + "\n").encode("ascii")
+        write_new(directory / "card.json", text)
+        made.append(directory / "card.json")
+        write_new(directory / "SHA256SUMS", "".join(
+            f"{digest}  {name}\n" for name, digest in sorted({
+                "card.img": whole, "card.json": sha(text),
+                "environment.bin": sha(environment),
+                "firmware.itb": sha(fit)}.items())).encode("ascii"))
+    except BaseException:
+        for output in made:
+            output.unlink()
+        raise
+    print(announced("CARD", image, board["sitting"], build, path, whole,
+                    size))
+
+
 # ------------------------------------------------------------- self-test
-def self_test(scratch, dtc, outputs=None):
+def self_test(scratch, dtc, sfdisk, sfdisk_sha256, outputs=None):
     """Each rule's seeded case fails by that rule alone; the good inputs
     pass, and give the same bytes twice."""
     shutil.rmtree(scratch, ignore_errors=True)
@@ -844,6 +1210,7 @@ def self_test(scratch, dtc, outputs=None):
     (scratch / "work").mkdir()
     status, output, out = fit("--sitting-pins", sitting, "--gate-sums",
                               sums, name="good")
+    good_fit = out
     text = dtc_run(dtc, "-I", "dtb", "-O", "dts", out).decode("ascii") \
         if status == 0 else ""
     crc = zlib.crc32(firmware)
@@ -1050,7 +1417,11 @@ def self_test(scratch, dtc, outputs=None):
         case(f"structure: {label}: differs", source != other_values and
              compiled(source) != ours)
 
-    environment_tests(scratch, run, put, case, board, outputs, numbers)
+    good_environment = environment_tests(scratch, run, put, case, board,
+                                         outputs, numbers)
+    card_tests(scratch, run, put, case, (board, made_up, numbers), outputs,
+               (sfdisk, sfdisk_sha256), (good_fit, good_environment,
+                                         firmware))
     shutil.rmtree(scratch, ignore_errors=True)
     failed = results.count(False)
     print(f"BE_MVP_K3_CARD_SELF_TEST: {'FAIL' if failed else 'PASS'} "
@@ -1165,6 +1536,7 @@ def environment_tests(scratch, run, put, case, board, outputs, numbers):
         f"sha256={sha(blob)} bytes={ENV_SIZE}"])
     case("env: the same bytes again", environment()[2].joinpath(
         "environment.bin").read_bytes() == blob)
+    made_environment = out / "environment.bin"
     if outputs and status == 0:
         shutil.copyfile(out / "environment.bin", outputs / "environment.bin")
         shutil.copyfile(out / "environment.txt", outputs / "environment.txt")
@@ -1254,6 +1626,316 @@ def environment_tests(scratch, run, put, case, board, outputs, numbers):
         case(f"env: {label}: refused", status == 1 and expected in output
              and made == [changes.get("existing") == "environment.bin",
                           changes.get("existing") == "environment.txt"])
+    return made_environment
+
+
+def card_tests(scratch, run, put, case, makers, outputs, tools, inputs):
+    """The card image maker's cases, on stand-ins of the four published
+    files that they write, the FIT and the environment that the cases
+    above made, and the lock's sfdisk."""
+    board, made_up, numbers = makers
+    sfdisk, pinned = tools
+    fit_path, environment_path, firmware = inputs
+    fit, environment = fit_path.read_bytes(), environment_path.read_bytes()
+    size, other = 16 << 20, "0" * 64
+    sectors = size // SECTOR
+    files = {"factory/bootinfo_block.bin": made_up(80, "bootinfo"),
+             "factory/FSBL.bin": made_up(4000, "fsbl"),
+             "esos.itb": made_up(5000, "esos"),
+             "u-boot.itb": made_up(6000, "u-boot")}
+
+    def published(changes=None, pinned_as=None):
+        """A release directory of stand-ins, and its pins (PINNED_AS gives
+        a file another SHA-256 there)."""
+        number, chosen = next(numbers), {**files, **(changes or {})}
+        pinned_as = pinned_as or {}
+        for name, data in chosen.items():
+            put(scratch / f"published-{number}" / name, data)
+        return scratch / f"published-{number}", put(
+            scratch / f"published-{number}.txt", "".join(
+                f"published {name} sha256="
+                f"{sha(pinned_as.get(name, data))} bytes={len(data)}\n"
+                for name, data in chosen.items()))
+
+    release, pins = published()
+    sitting = put(scratch / "card-sitting.txt", f"firmware anchor "
+                  f"sha256={sha(firmware)} bytes={len(firmware)}\n")
+    good_board = board()
+
+    def sums(fit_digest, environment_digest):
+        return (f"{sha(firmware)}  k3/gate/images/anchor/{FIRMWARE}\n"
+                f"{fit_digest}  k3/gate/images/anchor/card-firmware.itb\n"
+                f"{environment_digest}  "
+                "k3/gate/images/anchor/card-environment.bin\n")
+
+    def card(contents=(fit, environment), gate=None, existing=None,
+             options=None):
+        number = next(numbers)
+        directory = scratch / f"card-{number}" / "k3" / "card" / "anchor"
+        put(directory / "firmware.itb", contents[0])
+        put(directory / "environment.bin", contents[1])
+        if existing:
+            put(directory / existing, "")
+        arguments = {
+            "image": "anchor", "bytes": str(size), "card": directory,
+            "published": release, "pins": pins, "sitting-pins": sitting,
+            "gate-sums": put(scratch / f"card-{number}.sha256", gate or sums(
+                sha(contents[0]), sha(contents[1]))),
+            "board": good_board, "sfdisk": sfdisk, "sfdisk-sha256": pinned,
+            "build": scratch / f"card-{number}", **(options or {})}
+        status, output = run("image", *[part for name, value in
+                                        arguments.items()
+                                        for part in (f"--{name}", value)])
+        return status, output, directory
+
+    status, output, directory = card()
+    image = directory / "card.img"
+    data = image.read_bytes() if status == 0 else bytes(size)
+    record = json.loads((directory / "card.json").read_text()) if \
+        status == 0 else {}
+    case("card: made, and announced", status == 0 and output.splitlines()[
+        -1:] == ["BE_MVP_K3_CARD: PASS image=anchor sitting=second "
+                 f"file=k3/card/anchor/card.img sha256={sha(data)} "
+                 f"bytes={size}"])
+    # The layout, written here apart from the maker's tables: the
+    # protective MBR's record, the two headers, each file at its offset
+    # (the addendum's statement 9), and zeros everywhere else.
+    placed = {0x1BE: bytes.fromhex("00000200eeffffff01000000ff7f0000"),
+              0x1FE: b"\x55\xaa", 0x200: b"EFI PART",
+              size - SECTOR: b"EFI PART", 0xA0000: environment,
+              0x100000: files["factory/bootinfo_block.bin"],
+              0x180000: files["factory/FSBL.bin"],
+              0x400000: files["esos.itb"], 0x700000: fit,
+              0x800000: files["u-boot.itb"]}
+    case("card: the protective MBR, both headers, and each file at its "
+         "offset", all(data[offset:offset + len(value)] == value
+                       for offset, value in placed.items()))
+    rest = bytearray(data)
+    for offset, length in [(0, SECTOR + TABLE), (size - TABLE, TABLE)] + [
+            (offset, len(value)) for offset, value in placed.items()
+            if offset >= 0xA0000 and offset < size - TABLE]:
+        rest[offset:offset + length] = bytes(length)
+    case("card: zeros everywhere else", rest.count(0) == size)
+    guid = uuid.UUID(record.get("disk_guid", "0" * 32))
+    case("card: its disk GUID, of version 8, in both headers",
+         guid.version == 8 and data[0x200 + 56:0x200 + 72] == guid.bytes_le
+         == data[size - SECTOR + 56:size - SECTOR + 72])
+    found = record.get("regions", [])
+    case("card.json: 14 regions, contiguous from the first byte to the "
+         "last, each with its SHA-256", [region["name"] for region in found]
+         == ["mbr", "gpt-primary", "gap-0", "env", "gap-1", "bootinfo",
+             "gap-2", "fsbl", "gap-3", "esos", "fit", "uboot", "zeros",
+             "gpt-backup"] and all(
+                 region["offset"] == sum(earlier["length"] for earlier in
+                                         found[:index]) and
+                 region["sha256"] == sha(data[region["offset"]:region[
+                     "offset"] + region["length"]])
+                 for index, region in enumerate(found)) and sum(
+                     region["length"] for region in found) == size)
+    case("card.json: the image, its sitting and size, its SHA-256, the be_ "
+         "variables, and the identities that it was made from",
+         record.get("schema") == "be-mvp-k3-card-v1" and
+         record.get("image") == "anchor" and record.get("sitting") ==
+         "second" and record.get("card_bytes") == size and
+         record.get("card_sha256") == sha(data) and (
+             record.get("be_image"), record.get("be_part")) == (
+             "be-mvp-anchor-gcc.img", "6") and (
+             record.get("firmware_sha256"), record.get("firmware_bytes"),
+             record.get("fit_sha256"), record.get("environment_sha256")) == (
+             sha(firmware), len(firmware), sha(fit), sha(environment)) and
+         record.get("published") == {name: sha(value)
+                                     for name, value in files.items()})
+    case("card: SHA256SUMS", status == 0 and (
+        directory / "SHA256SUMS").read_text() == "".join(
+            f"{sha(value)}  {name}\n" for name, value in sorted({
+                "card.img": data, "card.json": (
+                    directory / "card.json").read_bytes(),
+                "environment.bin": environment, "firmware.itb": fit}.items())))
+    again = card()[2]
+    case("card: the same bytes in another directory", status == 0 and (
+        again / "card.json").exists() and (again / "card.json").read_bytes()
+        == (directory / "card.json").read_bytes() and sha(
+            (again / "card.img").read_bytes()) == sha(data))
+    if outputs and status == 0:
+        shutil.copyfile(image, outputs / "card.img")
+        shutil.copyfile(directory / "card.json", outputs / "card.json")
+
+    # U-Boot's rules for the table (disk/part_efi.c), each broken alone,
+    # on the primary table and on the backup.
+    read = sector_reader(image) if status == 0 else (
+        lambda lba, count: bytes(count * SECTOR))
+    base = {lba: read(lba, 1) for lba in (*range(34),
+                                          *range(sectors - 33, sectors))}
+
+    def table(changes):
+        changed = {**base, **changes}
+        return table_problems(lambda lba, count: b"".join(
+            changed.get(lba + index, bytes(SECTOR))
+            for index in range(count)), sectors)
+
+    def header(lba, offset, value, fix=True):
+        sector = bytearray(base[lba])
+        sector[offset:offset + len(value)] = value
+        if fix:
+            sector[16:20] = bytes(4)
+            sector[16:20] = zlib.crc32(sector[:92]).to_bytes(4, "little")
+        return {lba: bytes(sector)}
+
+    case("table: the card's, as U-Boot reads it: nothing found",
+         table({}) == [])
+    wrong = "the MBR is not a protective MBR"
+    mutations = [
+        ("an MBR without its signature", {0: base[0][:510] + bytes(2)},
+         wrong),
+        ("an MBR record of another type", {0: base[0][:450] + b"\x83" +
+                                           base[0][451:]}, wrong),
+        ("an MBR record from another sector", {0: base[0][:454] + b"\2" +
+                                               base[0][455:]}, wrong)]
+    used = {}
+    for name, lba, entries in (("primary", 1, 2),
+                               ("backup", sectors - 1, sectors - 33)):
+        named, typed = bytearray(base[entries]), bytearray(base[entries])
+        named[56], typed[0] = 1, 1
+        used[name] = {entries: bytes(typed), **header(lba, 88, zlib.crc32(
+            bytes(typed) + bytes(ENTRIES - SECTOR)).to_bytes(4, "little"))}
+        mutations += [
+            (f"a {name} header's signature", header(
+                lba, 0, b"EFI PARX", fix=False), "has a wrong signature"),
+            (f"a {name} header's size", header(lba, 12, (600).to_bytes(
+                4, "little")), "has a header size beyond its sector"),
+            (f"a {name} header's CRC", header(lba, 16, bytes(4), fix=False),
+             "has a wrong header CRC"),
+            (f"a {name} header's own sector", header(lba, 24, (lba ^ 1)
+                                                     .to_bytes(8, "little")),
+             "does not name its own sector"),
+            (f"a {name} header's first usable sector", header(
+                lba, 40, (sectors + 1).to_bytes(8, "little")),
+             "has its first usable sector beyond the card"),
+            (f"a {name} header's last usable sector", header(
+                lba, 48, (sectors + 1).to_bytes(8, "little")),
+             "has its last usable sector beyond the card"),
+            (f"a {name} table with no entries", header(lba, 80, bytes(4)),
+             "has no entries"),
+            (f"a {name} table's entry changed", {entries: bytes(named)},
+             "has a wrong entries' CRC"),
+            (f"a {name} table with an entry used", used[name],
+             "has its entry 1 used")]
+    for label, changes, expected in mutations:
+        problems = table(changes)
+        case(f"table: {label}: found, and nothing else", len(problems) == 1
+             and expected in problems[0])
+
+    def copy(name, changes):
+        path = scratch / f"{name}.img"
+        shutil.copyfile(image, path)
+        with open(path, "r+b") as file:
+            for lba, sector in changes.items():
+                file.seek(lba * SECTOR)
+                file.write(sector)
+        return path
+
+    case("sfdisk: the card's: nothing found", status == 0 and
+         sfdisk_problems(sfdisk, image, size, guid) == [])
+    case("sfdisk: a backup header with a wrong CRC: found on stderr", any(
+        "stderr" in problem for problem in sfdisk_problems(sfdisk, copy(
+            "backup-crc", header(sectors - 1, 16, bytes(4), fix=False)),
+            size, guid)))
+    case("sfdisk: a table with a partition: found", "sfdisk --json lists "
+         "partitions" in sfdisk_problems(sfdisk, copy("used", {
+             **used["primary"], **used["backup"]}), size, guid))
+    case("sfdisk: another disk GUID: found", any(
+        "gives id" in problem for problem in sfdisk_problems(
+            sfdisk, image, size, uuid.UUID(int=1))))
+
+    # The read-back of the image, region by region.
+    expected = {"mbr": data[:SECTOR], "gpt-primary": data[SECTOR:SECTOR +
+                                                          TABLE],
+                "gpt-backup": data[size - TABLE:], "env": environment,
+                "bootinfo": files["factory/bootinfo_block.bin"],
+                "fsbl": files["factory/FSBL.bin"],
+                "esos": files["esos.itb"], "fit": fit,
+                "uboot": files["u-boot.itb"]}
+
+    def regions_found(path):
+        try:
+            return card_regions(path, size, expected)[1]
+        except Refused as error:
+            return str(error)
+
+    case("layout: the card read back region by region", regions_found(
+        image) == sha(data))
+    for label, offset in (("a byte in a gap", 0x150000),
+                          ("a byte after a file in its area",
+                           0x700000 + len(fit)),
+                          ("a byte in the zeros", HEAD + 4096)):
+        changed = bytearray(read(offset // SECTOR, 1))
+        changed[offset % SECTOR] = 1
+        case(f"layout: {label}: found", "is not what it should hold" in
+             regions_found(copy("layout", {offset // SECTOR:
+                                           bytes(changed)})))
+    longer = copy("longer", {})
+    with open(longer, "ab") as file:
+        file.write(bytes(4096))
+    case("layout: an image of another size: found", f"is not {size} bytes"
+         in regions_found(longer))
+
+    environment_values = parse_environment(environment, "environment")[1]
+    warns = put(scratch / "sfdisk-warns", f"#!/bin/sh\necho warning >&2\n"
+                f"exec '{sfdisk}' \"$@\"\n")
+    warns.chmod(0o755)
+    refusals = [
+        ("a size not a multiple of 4096", {"options": {
+            "bytes": str(size + 512)}}, "is not a card's size"),
+        ("a size below 16 MiB", {"options": {"bytes": str(size - 4096)}},
+         "is not a card's size"),
+        ("a size above 64 GiB", {"options": {
+            "bytes": str(CARD_MAX + 4096)}}, "is not a card's size"),
+        ("a size of another form", {"options": {"bytes": "0x1000000"}},
+         "is not a card's size"),
+        ("an image's name of another form", {"options": {
+            "image": "Anchor"}}, "is not an image's name"),
+        ("a card directory that is a file", {"options": {"card": sitting}},
+         "is not a directory"),
+        ("an existing output", {"existing": "card.json"},
+         "card.json exists"),
+        ("an sfdisk unlike the lock's", {"options": {
+            "sfdisk-sha256": other}}, "is not the tool lock's sfdisk"),
+        ("board.json of another image", {"options": {"board": board(
+            image="two-guests-off")}}, "it is not anchor's"),
+        ("a firmware unlike the sitting pin's", {"options": {
+            "sitting-pins": put(scratch / "card-unlike.txt",
+                                f"firmware anchor sha256={other} "
+                                f"bytes={len(firmware)}\n")}},
+         "is not the sitting pin's"),
+        ("a firmware unlike board.json's", {"options": {"board": board(
+            sha256=other)}}, "is not the one that"),
+        ("a FIT unlike the gate's twin", {"gate": sums(other, sha(
+            environment))}, "lists another card-firmware.itb"),
+        ("an environment unlike the gate's twin", {"gate": sums(
+            sha(fit), other)}, "lists another card-environment.bin"),
+        ("an environment of another size", {"contents": (
+            fit, environment[:-1])}, "is 16383 bytes, not 16384"),
+        ("an environment for another image", {"contents": (fit, render({
+            **environment_values, "be_image": "be-mvp-other-gcc.img"}))},
+         "is not the card's environment"),
+        ("a published file unlike its pin", {"options": dict(zip(
+            ("published", "pins"), published(pinned_as={
+                "esos.itb": b"other"})))}, "is not its pin's"),
+        ("a published file missing", {"options": {
+            "published": scratch / "nowhere"}}, "No such file"),
+        ("an sfdisk that warns, after the image is written", {"options": {
+            "sfdisk": warns, "sfdisk-sha256": sha(warns.read_bytes())}},
+         "stderr 'warning")]
+    refusals += [(f"{name} larger than its area, {area}", {"options": dict(
+        zip(("published", "pins"), published({name: made_up(
+            length + 1, name)})))}, "more than its area")
+        for area, _, length, name in AREAS if name in files]
+    for label, keywords, expected in refusals:
+        status, output, directory = card(**keywords)
+        left = [name for name in OUTPUTS if (directory / name).exists()]
+        case(f"card: {label}: refused, nothing left", status == 1 and
+             expected in output and left == ["card.json"] * bool(
+                 keywords.get("existing")))
 
 
 def main(argv):
@@ -1261,9 +1943,9 @@ def main(argv):
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--self-test", action="store_true")
-    parser.add_argument("--scratch", type=pathlib.Path)
-    parser.add_argument("--outputs", type=pathlib.Path)
-    parser.add_argument("--dtc", type=pathlib.Path)
+    for option in ("--scratch", "--outputs", "--dtc", "--sfdisk"):
+        parser.add_argument(option, type=pathlib.Path)
+    parser.add_argument("--sfdisk-sha256")
     commands_ = parser.add_subparsers(dest="command")
     command = commands_.add_parser("fit")
     for option in ("--firmware", "--board", "--dtc", "--build", "--work",
@@ -1278,18 +1960,29 @@ def main(argv):
         command.add_argument(option, type=pathlib.Path, required=True)
     for option in ("--image", "--staged", "--be-part"):
         command.add_argument(option, required=True)
+    command = commands_.add_parser("image")
+    for option in ("--card", "--published", "--pins", "--sitting-pins",
+                   "--gate-sums", "--board", "--sfdisk", "--build"):
+        command.add_argument(option, type=pathlib.Path, required=True)
+    for option in ("--image", "--bytes", "--sfdisk-sha256"):
+        command.add_argument(option, required=True)
     args = parser.parse_args(argv[1:])
     if args.self_test == bool(args.command) or (args.self_test and not (
-            args.scratch and args.dtc)):
-        parser.error("give fit, env, or --self-test --scratch DIR --dtc DTC")
+            args.scratch and args.dtc and args.sfdisk and
+            args.sfdisk_sha256)):
+        parser.error("give fit, env, image, or --self-test --scratch DIR "
+                     "--dtc DTC --sfdisk SFDISK --sfdisk-sha256 HEX")
     if args.command == "fit" and (args.sitting_pins is None) != (
             args.gate_sums is None):
         parser.error("give both --sitting-pins and --gate-sums, or neither")
     if args.self_test:
-        return self_test(args.scratch.resolve(), args.dtc, args.outputs)
-    kind = {"fit": "FIT", "env": "ENVIRONMENT"}[args.command]
+        return self_test(args.scratch.resolve(), args.dtc, args.sfdisk,
+                         args.sfdisk_sha256, args.outputs)
+    kind, make = {"fit": ("FIT", make_fit),
+                  "env": ("ENVIRONMENT", make_environment),
+                  "image": ("CARD", make_card)}[args.command]
     try:
-        (make_fit if args.command == "fit" else make_environment)(args)
+        make(args)
     except (Refused, OSError) as error:
         print(f"BE_MVP_K3_{kind}: FAIL refused: {error}")
         return 1
