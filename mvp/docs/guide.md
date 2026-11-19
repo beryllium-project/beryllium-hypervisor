@@ -1857,7 +1857,9 @@ parts, in the order of the build:
   tables by SHA-256 (`build/mvp/records/partition/`). The run harness
   boots a tree only if that record admits it.
 - **The firmware** (section 2 and below): OpenSBI at a pinned commit
-  with ten patches of the project's own. They add an experimental SBI
+  with patches of the project's own: ten that this firmware builds, and
+  since M11-B an eleventh that only the board's configuration builds
+  (section 11). They add an experimental SBI
   extension, `0x08004246`, with two functions. Function 0, which the
   monitor calls `confine`, moves the calling hart from the boot OpenSBI
   domain into its own narrow one and does not return; M-mode allows it
@@ -1902,8 +1904,9 @@ the generic platform's `fw_dynamic.bin` in the reduced configuration of
 SHA-256 with `MVP_PIN_FIRMWARE_BIN_SHA256` in the lock. The build is
 reproducible: the evaluator builds the same source again and compares
 the binary with the host's. `firmware-test` runs the firmware's own
-tests, which `check` runs too: the two pure decisions of the series (the
-guard of `confine` and the call filter) on the host, and a bare-metal
+tests, which `check` runs too: the pure decisions of the series (the
+guard of `confine`, the call filter, and since M11-B the halt-only
+reset device's check) on the host, and a bare-metal
 payload under QEMU whose rows are judged from outside the machine.
 [`mvp/firmware/README.md`](../firmware/README.md) describes the series,
 the configuration, and the tests. One more binary is built for one
@@ -1992,6 +1995,270 @@ row for each part of the clause with its methods and evidence, and one
 for each sentence of the limit. `./mvp/mvp claim-ledger check` checks
 both sets, and that the second set's rows are the page's words. The set
 names the candidate's tree once the gates have passed at it.
+
+## 11. The boundary on the board: the tools (M11-B)
+
+This section is about the M11 plan's
+[board addendum](../../planning/mvp-m11-board-addendum.md), which plans
+runs of the M11 candidate on the COM260. What exists is the tools, each
+tested under emulation or on files. **No run of this section has been
+made on the board**, and nothing here changes a claim. The board's runs
+are made in two sittings, with the responsible human present, each
+after his own sign-off; their records will be board records under
+`mvp/results/`.
+
+### What is different on the board
+
+- **No oracle.** Under QEMU the harness stops the machine and reads its
+  PMP registers from outside. Nothing reads the board so: the witness is
+  the console. M-mode prints each hart's commit record, and the judge
+  takes the records' values with the board's expected tables. Its line
+  says `witness=printed`.
+- **The firmware comes from a card.** The board boots the vendor's
+  published boot chain from a microSD card, with the project's firmware
+  in the firmware's place. The firmware's device tree is built into it,
+  and that tree disables the SPI flash's controller, so that nothing
+  after the SPL has a flash device. No step of these tools writes the
+  NOR flash.
+- **The firmware only halts.** By its source, the vendor's firmware
+  resets the board through a mailbox to the board's real-time cores,
+  which the project's firmware does not use. The board's configuration
+  has one reset device of the project's own, which stops the calling
+  hart and touches no device. A run ends at the monitor's last line
+  and M-mode's records; the next boot is a reset by the dongle.
+- **Sixteen harts, and plain PMP.** The monitor uses harts 0 to 2; the
+  firmware's tree parks harts 3 to 15. The published tree's CPUs list
+  no Smepmp.
+- **GCC's images alone**, and four of them: `two-guests-off` in the
+  first sitting (the boundary off), and `anchor` and two hostile-monitor
+  images in the second (the boundary on).
+
+### The board's firmware
+
+```sh
+./mvp/mvp k3-firmware
+```
+
+The series under `mvp/firmware/patches/` has an eleventh patch, a
+system reset device that only halts (`CONFIG_SBI_SYSTEM_RESET_HALT`,
+off by default). With the option off the firmware is section 10's, byte
+for byte, and its pinned binaries do not change.
+`mvp/firmware/build.sh` makes the board's configuration from two
+settings: `FIRMWARE_WITH=CONFIG_SBI_SYSTEM_RESET_HALT`, which is the
+committed configuration with that one line more, and
+`FIRMWARE_FDT=/absolute/path/to/tree.dtb`, which builds a device tree
+in. After a build with a tree, the binary's bytes at the tree's place
+are compared with the tree. `k3-firmware` builds the configuration
+without a tree and compares it with its pin in
+`mvp/k3/firmware-pins.txt`. [`mvp/firmware/README.md`](../firmware/README.md)
+has the details.
+
+`check` builds three such firmwares and runs five rows with them on
+QEMU's `k3-like` machine, GCC's images:
+
+| Row | Firmware | What it shows |
+| --- | --- | --- |
+| `k3-halt` | the board's configuration | on a tree without QEMU's reset devices, a run under the boundary ends with the records and then the halt |
+| `k3-reset-absent` | section 10's binary | on the same tree, with no reset device at all, the monitor's first check fails as declared |
+| `k3-halt-fallback` | the board's configuration | on QEMU's own tree, QEMU's reset devices outrank the halt device |
+| `k3-first` | with a tree built in, as the first sitting's | a boundary-off run that ends at the monitor's last line and the halt |
+| `k3-second` | with a tree built in, as the second sitting's | a run under the boundary on the built-in tree |
+
+A machine that halts never tells the harness that it is done. The
+harness therefore ends such a run when a declared last line has been
+printed and the machine has stayed quiet for a settling time, and the
+judge then requires each hart to be where a halted hart is: hart 0 in
+the firmware's hang, the others in the firmware's wait. For a
+boundary-off run that verdict is in a record of its own,
+`.halt.txt`.
+
+### The firmware's device tree
+
+The board's firmware cannot take the SPL's tree as it is, and the
+project does not write one by hand. `mvp/tools/k3-recipe.py` makes it
+from the tree that the vendor's published U-Boot image carries for the
+board:
+
+- step 0: that tree, taken out of a copy of the published file that
+  has been checked against its pin (`mvp/k3/published-pins.txt`);
+- step 1: the memory node and the boot hart, as the SPL would set them;
+- step 2: the SPI flash's controller disabled;
+- step 3: the firmware's mailbox and its clients disabled;
+- step 4, for an image under the boundary: the image's partition
+  descriptor rendered onto step 3, by the same backend that renders
+  QEMU's trees (`mvp/tools/partition-backend.py --platform k3-com260`).
+
+Each step must be its input with its own changes and nothing else.
+`mvp/k3/platform.json` is the board's description: each fact that
+these tools read, with its source. Its facts come from the published
+tree and the vendor's published sources; the first sitting's boots are
+what compares them with the board. The independent check of section
+10 (`mvp/tests/check-partition.py`) has the board's rules too, written
+apart from the backend's.
+
+`check` runs all of this on stand-ins with made-up values
+(`k3-recipe-check`, `k3-partition-check`). The published files are
+never copied into the repository, so the recipe on the real tree is
+the gate's.
+
+### The board gate
+
+```sh
+./mvp/mvp k3-board-gate K3_PUBLISHED=/absolute/path/to/published
+MVP_K3_PUBLISHED=/absolute/path/to/published ./mvp/mvp evaluate
+```
+
+`K3_PUBLISHED` names a directory that holds the vendor's published
+files. The gate is never part of `check`, and it runs after a `check`
+of the same commit in the same tree, whose outputs it uses (the images,
+their expectations, and their references). Its record, under
+`build/mvp/k3/gate/record/`, names the commit and says whether the
+tree was clean; `evaluate` and a sitting take only the record of a
+clean tree. Its steps, each with a record of its own:
+
+1. the published files, each by its pinned size and SHA-256;
+2. the recipe on the published tree, made twice and compared;
+3. the board's description against that tree;
+4. the tree of each of the four images;
+5. the firmware in the board's configuration, built once for each
+   image with its tree built in;
+6. each image's expected tables and root regions, from its own
+   firmware build, and the independent check on them;
+7. the hostile-monitor declarations against the tree's devices;
+8. each image's `board.json`, which names everything that a sitting
+   reads for the image, each file by its path and SHA-256;
+9. each image's firmware as the card holds it, and the card's
+   environment.
+
+Everything that a sitting reads is under
+`build/mvp/k3/gate/images/IMAGE/`. With `MVP_K3_PUBLISHED` set,
+`evaluate` also runs the gate in the evaluator, and requires its
+outputs to equal the host's gate's, byte for byte.
+
+### The hostile-monitor images for the board
+
+The second sitting runs two hostile-monitor images, `k3-breach-g1` and
+`k3-breach-c`. Each is section 10's `breach-g1` or `breach-c` with one
+thing changed, its table of attempts, which is made from a declaration
+for the board (`mvp/k3/breach/`): the rows on devices are on five of
+the board's devices, at their registers. `check` requires each image
+to equal its candidate image outside the table.
+
+The declarations are held to stricter rules than QEMU's
+(`mvp/tools/gen-breach.py board-check`). Every byte that a row touches
+must lie inside one of those five devices, in the firmware's memory,
+or in ordinary memory, and must meet no other device. A row on a
+device that holds persistent state is refused first. Each write, jump,
+or call on one of those devices or on the firmware's memory, and each
+start of a hart, says what it would do on the board if the boundary
+failed. These rules exist because on the board a failed boundary lets
+the attempt happen.
+
+`check` runs both images under QEMU. There the board's device
+addresses are plain memory outside every profile: the runs show that
+each row resolves, is denied or refused as planned, and is counted.
+They show nothing about the board's devices.
+
+### The card
+
+A card holds the vendor's published boot chain with the project's
+firmware in the firmware's place, and an environment whose `bootcmd`
+loads one image from the board's Beryllium partition and boots it. The
+environment is the published one with every variable that writes
+storage or firmware, or downloads, removed. Each card is made, written,
+and read back on the workstation, through one USB card reader; nothing
+is written on the board.
+
+1. The gate (above). Each image's firmware line, `firmware IMAGE
+   sha256=… bytes=…`, goes into `mvp/k3/sitting-pins.txt` from the
+   gate's announcement of that firmware.
+2. A dry run, with the card in the reader: `./mvp/mvp k3-card-write
+   K3_CARD_IMAGE=IMAGE K3_CARD_DEVICE=/dev/disk/by-id/usb-NAME
+   K3_RUN_ROOT=/absolute/path/to/sitting`. It prints the reader's
+   facts, the card's size among them, and writes nothing.
+3. The card image, for that size: `./mvp/mvp k3-card
+   K3_CARD_IMAGE=IMAGE K3_CARD_BYTES=N
+   K3_PUBLISHED=/absolute/path/to/published`. Its line goes into
+   `sitting-pins.txt` as `card IMAGE sha256=… bytes=N`, and the pins
+   are committed.
+4. The dry run again. It prints the regions that the write would
+   write, an access rule for this one reader, the one command that
+   installs the rule and the one that removes it, and a confirmation
+   value. The responsible human runs the install command.
+5. The write: the same command with `K3_CARD_CONFIRM=HEX`. Another
+   card, another reader, or the same card taken out and put back gives
+   another confirmation, and the write is refused.
+6. The read-back: `./mvp/mvp k3-card-readback …`. Every byte of the
+   card is read and compared.
+
+The tools refuse to run as root.
+
+### The sittings
+
+A sitting is a time when the responsible human is at the board. A
+session is every boot between one card's insertion and its removal.
+`mvp/tools/k3-sitting.py` drives a sitting one step at a time:
+
+```sh
+./mvp/mvp k3-sitting STEP K3_SITTING=first|second \
+    K3_RUN_ROOT=/absolute/path/to/sitting K3_SERIAL_LOG=/path/to/log
+```
+
+The steps are `begin`, `preflight`, `stage`, `reading-0`; for each
+session S, `card-in-S`, its boots `boot-S.1` and on, `card-out-S`, and
+`reading-S`; then `end`. `status` shows each step's state and contacts
+nothing.
+
+- `begin` and `card-in-S` take the human's word (`K3_WORD`), and they
+  and `card-out-S` the time of his statement (`K3_HUMAN_SAID`).
+- `begin` checks every input before it acts: the gate's record, each
+  image's `board.json` and the files that it names, the sitting's
+  pins, and the source, whose commit must descend from the gate's with
+  nothing changed since but the pins, the first sitting's observed
+  facts, records, and planning pages.
+- A reading boots the board from its NOR and has U-Boot digest six
+  ranges of the flash. Each range must equal the reading before it.
+  The digests stay in a private store; the record says `equal` or
+  `different`.
+- While a card is recorded as in the slot, the console tool types
+  nothing. Each boot is one reset by the dongle. Its capture is judged
+  before the next reset, by `mvp/tests/check-capture.py --mode card`.
+- The workstation's USB bus is read before a card goes in, before a
+  reading, and at each boot's judgement. The boot ROM's download
+  device there means that the ROM did not take the card; it, or a
+  fastboot interface, stops the sitting.
+- A step that stops names its stop of the addendum and leaves the
+  board as it is.
+
+The form for a boot from a card requires, in order: the boot ROM's
+lines of a boot from a card; the SPL's banner; the firmware's banner,
+with the fields that follow from the build equal to `board.json`'s,
+the root regions line by line, and the PMP's count and grain at the
+plan's thresholds; U-Boot's lines; the load; the monitor's lines, by
+the rules that judge them under QEMU; and M-mode's commit records.
+`mvp/tests/test-k3-form.py` tests it on captures built from parts,
+with made-up values and no line of a real log.
+
+After a sitting, `./mvp/mvp k3-sitting-record K3_SITTING=first|second
+K3_RUN_ROOT=…` makes its record under `mvp/results/`. It judges each
+boot again from the kept inputs, and it refuses a record that holds a
+digest of the flash, a USB ID, the reader's link, or the workstation's
+host name or paths.
+
+`check` runs both sittings whole on stand-ins of the board, the
+dongle, the console, the reader, and the gate (`k3-session-check`).
+
+### What this section does not show
+
+Nothing here is a board result. Under QEMU these tools show that the
+firmware halts as built, that the harness and the judges handle a
+machine that halts, that the board's trees and tables are what their
+rules require, and that the sittings' steps run in order and stop
+where they must, on stand-ins. Whether the board's firmware boots,
+whether its banner is what `board.json` expects, and whether the
+board's PMP holds the profiles are what the sittings are for. A board
+run, when there is one, is diagnostic evidence for one board, never
+hardware validation.
 
 This guide documents responsible-human accepted MVP 1.0 release
 candidate 4, exact commit `d70a8535` (`RC4`, accepted 2026-11-05), over

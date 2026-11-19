@@ -475,3 +475,44 @@ additions is the responsible human's decision (the plan's D-2).
 
 The M12 lane's commits, made in the same weeks, carry another session's
 trailer; that lane's own pages describe it.
+
+## 10. After the release: M11-B, the board's tools
+
+This section covers M11-B1 and M11-B2 alone: the tools for the M11
+candidate's runs on the board, and the one M-mode addition
+([the board addendum](../../planning/mvp-m11-board-addendum.md)). They
+were made in section 9's second session,
+`3c4fb211-3c09-44ad-aa0c-03005b177919`, on the workstation, on
+2026-11-18 and 19, by the practice that section 9 describes. No board
+step is part of them.
+
+- The owner session ran on `claude-fable-5.2`. It wrote the addendum,
+  the entries of the decision record, each lane's brief and reviews,
+  the commit messages, the ledger's notes, and the words of the README
+  and the guide. It read every change line by line, changed the tools
+  one rule at a time to see that their tests fail, and ran the checks
+  on the stacked and the landed tree.
+- Five coding sub-agents on Claude Opus 5.5 (`claude-opus-5.5`, `max`
+  effort, `long_context` tier) wrote the code, the tests, and the
+  tools, each in a lane of its own, from the addendum and its brief.
+- Two more sub-agents on the same model worked on the addendum itself:
+  one read the vendor's published sources and files for its facts, and
+  one reviewed its drafts.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The board addendum, the entries of the decision record, and the words of the README, the guide, the commit messages, and the ledger's notes | The owner session; a reviewing sub-agent read the addendum's drafts | Plan revision S3-E's acceptance, then the addendum's |
+| The addendum's acceptance, and each decision that a stop returned to him: the soft limits re-set twice, and one erratum of the addendum | The responsible human | His replies, which the plan's decision record quotes |
+| The eleventh patch of the firmware's series (a reset device that only halts), the firmware build's settings for the board, the end of a run whose machine halts, and their rows under QEMU | A coding sub-agent on `claude-opus-5.5`, the patch written afresh from the addendum under BSD-2-Clause, with an `AI-assisted-by` line and no access to the characterization's scratch | The addendum's B-1 and B-2; the plan's D-2 and Q9 |
+| The frame, the recipe for the firmware's tree, the board's description, the backend's and the checker's board platform, the generator's board rules, the board's hostile-monitor images, the board gate's steps, and the evaluator's side | A coding sub-agent on `claude-opus-5.5` | The addendum's B-1, B-3, and B-10 |
+| The capture checker's form for a boot from a card, and the ledger tool's method for a board run | A coding sub-agent on `claude-opus-5.5` | The addendum's B-8 and B-11 |
+| The card's makers and the card reader's tool | A coding sub-agent on `claude-opus-5.5` | The addendum's B-4 |
+| The sittings' driver, the console tool's rule for a card, the readings, and the sitting's record | A coding sub-agent on `claude-opus-5.5` | The addendum's "The sittings, and their sessions" |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted the addendum or a result, decided a stop, re-set
+a limit, added a `Signed-off-by`, or pushed, and none contacted the
+board for these two packages. In the packages after them the session
+writes each card, on the workstation, through the one card reader
+whose access rule the responsible human installs (the addendum's QB4),
+and each sitting at the board needs his word and his presence.
