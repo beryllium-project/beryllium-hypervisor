@@ -269,7 +269,11 @@
 # each runs up to them, checks what comes before, and is reported WAITING,
 # and the dry run ends INCOMPLETE and fails.
 #
-#   run-tool-dry-run.sh BUILD_DIR OUT
+#   run-tool-dry-run.sh BUILD_DIR OUT [sittings]
+#
+# With sittings (M11-B's, mvp/k3/session.mk's k3-session-check), the
+# preamble alone, without the captures that need the board images, then
+# tests/test-k3-session.sh's cases in place of these.
 #
 # with FIRMWARE_BIN and OPENSBI_FW, the pinned base and earlier firmware
 # whose copies the firmware-pin case changes, in the environment
@@ -277,10 +281,11 @@
 # shellcheck disable=SC2016 # U-Boot's ${...}, as typed
 set -euo pipefail
 
-if [ "$#" -ne 2 ]; then
-	printf 'usage: %s BUILD_DIR OUT\n' "$0" >&2
+if [ "$#" -ne 2 ] && { [ "$#" -ne 3 ] || [ "$3" != sittings ]; }; then
+	printf 'usage: %s BUILD_DIR OUT [sittings]\n' "$0" >&2
 	exit 2
 fi
+sittings=${3:-}
 
 build=$(cd -- "$1" && pwd)
 out=$2
@@ -306,7 +311,7 @@ rm -rf -- "$out"
 mkdir -p -- "$out"
 out=$(cd -- "$out" && pwd)
 fixtures=$out/fixtures
-"$python" -B "$checker" --write-fixtures "$fixtures" \
+[ -n "$sittings" ] || "$python" -B "$checker" --write-fixtures "$fixtures" \
 	--expect-dir "$expect_dir" --expect-dir "$te_poc_expect_dir" \
 	--report "$te_poc_report" --expect-dir "$anchor_expect_dir" \
 	--report "$anchor_report" --kernel "$kernel" --dtb "$measured_dtb" \
@@ -570,7 +575,8 @@ print(json.dumps(dict(zip(sys.argv[1::2], sys.argv[2::2]))))' \
 		"$(sha "$build/variants/gcc/wrong-measurement/be-mvp-boot.img")" "$fixtures/standin-kexec-wrong-measurement.console.log" \
 		"$(sha "$build/variants/gcc/no-grant-check/be-mvp-boot.img")" "$fixtures/standin-kexec-no-grant-check.console.log"
 }
-all_captures=$(captures)
+all_captures='{}'
+[ -n "$sittings" ] || all_captures=$(captures)
 # The human's saved environment, as the fake U-Boot holds it: a MAC address
 # and a serial#, which no record may hold.
 human_env='{"arch": "riscv", "baudrate": "115200", "board": "k3",
@@ -723,6 +729,12 @@ uboot_state() {
 	"$python" -B -c 'import json, sys
 print(json.load(open(sys.argv[1]))["state"])' "$FAKE_UBOOT/state.json"
 }
+
+if [ -n "$sittings" ]; then
+	# shellcheck source-path=SCRIPTDIR source=test-k3-session.sh
+	. "$here/test-k3-session.sh"
+	exit 0
+fi
 
 # ------------------------------------------------------------- preflight
 # preflight NAME WANT [JSON settings]: k3-preflight.sh on the fake board.

@@ -98,6 +98,19 @@
 #       K3_RUN_ROOT=DIR
 #                                      the whole card read back through
 #                                      BYID, each region compared (human)
+#   ./mvp k3-sitting STEP K3_SITTING=first|second K3_RUN_ROOT=DIR
+#                                      M11-B's sittings, one step at a time
+#                                      (tools/k3-sitting.py; human,
+#                                      present): STEP status, begin,
+#                                      preflight, stage, reading-N,
+#                                      card-in-S, boot-S.B, card-out-S, or
+#                                      end, with K3_SERIAL_LOG and, as the
+#                                      step needs them, K3_WORD (his word),
+#                                      K3_HUMAN_SAID (when he said it),
+#                                      K3_REHEARSAL, K3_SITTING_RESUME, and
+#                                      K3_CARD_DEVICE
+#   ./mvp k3-sitting-record K3_SITTING=first|second K3_RUN_ROOT=DIR
+#                                      the sitting's record
 #   ./mvp claim-ledger check|render|self-test
 #                                      the claim ledger and the release
 #                                      surfaces under docs/ (M4-1)
@@ -132,7 +145,8 @@
 # (K3_TMUX_SESSION, the operator's picocom session; K3_TYPE_DELAY,
 # K3_ECHO_SECONDS, K3_PROMPT_SECONDS, K3_BOOT_SECONDS, K3_AUTOBOOT_SECONDS,
 # K3_STOP_RETRY_SECONDS,
-# K3_IDLE_SECONDS, K3_HUMAN_SECONDS; TMUX_TMPDIR; tools/k3-console.sh),
+# K3_IDLE_SECONDS, K3_HUMAN_SECONDS; TMUX_TMPDIR; tools/k3-console.sh), the
+# sittings' (K3_CARD_BOOT_SECONDS; tools/k3-sitting.py),
 # K3_CAMPAIGN_SKIP (tools/k3-campaign.sh: a stopped session resumed at a
 # group), typing into the MVP's (K3_GUEST_TYPING=human-authorized, the
 # authorization, K3_INPUT_SESSION, K3_GUEST_READY_SECONDS,
@@ -156,6 +170,7 @@ board=(K3_SSH K3_SSH_OPTIONS K3_SUDO K3_WAIT_SECONDS K3_TAIL_SECONDS
 	K3_ENV_STORE K3_PARTITION_UUID K3_DOWN_SECONDS K3_FEDORA_SECONDS K3_POLL_SECONDS
 	K3_TMUX_SESSION K3_TYPE_DELAY K3_ECHO_SECONDS K3_PROMPT_SECONDS
 	K3_BOOT_SECONDS K3_AUTOBOOT_SECONDS K3_STOP_RETRY_SECONDS K3_IDLE_SECONDS K3_HUMAN_SECONDS
+	K3_CARD_BOOT_SECONDS
 	K3_CAMPAIGN_SKIP TMUX_TMPDIR K3_RESET K3CTL K3CTL_DEV SSH_AUTH_SOCK
 	K3_GUEST_TYPING K3_INPUT_SESSION K3_GUEST_READY_SECONDS
 	K3_GUEST_ECHO_SECONDS K3_GUEST_STEP_SECONDS K3_GUEST_KEY_DELAY)
@@ -342,6 +357,26 @@ k3-card-write)
 k3-card-readback)
 	extra=(K3_CARD_IMAGE K3_CARD_DEVICE)
 	later k3-card-readback M11-B1 "$@"
+	;;
+k3-sitting)
+	# The step is the wrapper's argument alone: a caller's own
+	# K3_SITTING_STEP is refused, as any other variable it does not pass.
+	[ "$#" -ge 1 ] || { usage; exit 2; }
+	step=$1
+	shift
+	[[ $step =~ ^(status|begin|preflight|stage|end|reading-(0|[1-9])|card-(in|out)-[1-9]|boot-[1-9]\.[1-9])$ ]] ||
+		{ usage; exit 2; }
+	command="k3-sitting $step"
+	extra=("${board[@]}" K3_SITTING K3_WORD K3_HUMAN_SAID K3_REHEARSAL
+		K3_SITTING_RESUME K3_CARD_DEVICE)
+	assignments "$@"
+	unset K3_SITTING_STEP
+	extra+=(K3_SITTING_STEP)
+	later k3-sitting M11-B1 K3_SITTING_STEP="$step" "$@"
+	;;
+k3-sitting-record)
+	extra=(K3_SITTING)
+	later k3-sitting-record M11-B1 "$@"
 	;;
 claim-ledger)
 	[ "$#" -eq 1 ] || { usage; exit 2; }

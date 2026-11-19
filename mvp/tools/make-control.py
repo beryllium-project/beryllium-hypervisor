@@ -45,11 +45,16 @@ Rules, each failing closed:
     CHERI_SDK, CHERI_LINUX_SRC, CHERI_BUSYBOX_SRC, CHERI_MUSL_SRC, and
     CHERI_LLVM_SRC (paths), and CHERI_LINUX_COMMIT, CHERI_BUSYBOX_COMMIT,
     CHERI_MUSL_COMMIT, and CHERI_LLVM_COMMIT (40 hexadecimal digits); and
-    M11-B's board gate's K3_PUBLISHED (an absolute path), and its card's
+    M11-B's board gate's K3_PUBLISHED (an absolute path); its card's
     K3_CARD_IMAGE (an image's name), K3_CARD_BYTES (a card's size in
     bytes), K3_CARD_DEVICE (a USB card reader's link under
     /dev/disk/by-id/), and K3_CARD_CONFIRM (12 lower-case hexadecimal
-    digits);
+    digits); and its sittings' (tools/k3-sitting.py): K3_SITTING (first
+    or second), K3_SITTING_STEP (status or a step's name),
+    K3_SITTING_RESUME (a step's name), K3_WORD
+    (human-authorized:sitting-NAME or session-IMAGE), K3_HUMAN_SAID (a
+    UTC time, YYYY-MM-DDTHH:MM:SSZ), and K3_REHEARSAL (a date,
+    YYYY-MM-DD);
   - the environment may not set MAKEFILES, a variable any MVP makefile, a
     fragment that mvp/tools.mk names, or the tool lock assigns, or a
     variable that changes the compilers, the loader, the shell, or Python;
@@ -74,6 +79,8 @@ LOCK = MVP_DIR / "tools" / "lock" / "tool-lock.conf"
 PASS = "BE_MVP_MAKE_CONTROL: PASS"
 
 SAFE = r"[A-Za-z0-9._/:@+,~-]"
+SITTING_STEP = (r"begin|preflight|stage|end|reading-(?:0|[1-9])|"
+                r"card-(?:in|out)-[1-9]|boot-[1-9]\.[1-9]")
 PATH_FORM = re.compile(rf"^/{SAFE}*$")
 SOURCE_FORM = re.compile(rf"^(?:/|https://|file:///){SAFE}*$")
 CALLER = {
@@ -119,6 +126,17 @@ CALLER = {
     "K3_CARD_DEVICE": re.compile(
         r"^/dev/disk/by-id/usb-[0-9A-Za-z#+.:=@_-]{1,200}$"),
     "K3_CARD_CONFIRM": re.compile(r"^[0-9a-f]{12}$"),
+    # M11-B: the sittings (mvp/k3/session.mk): the sitting and its step,
+    # the stopped step taken up, the responsible human's word and the time
+    # of his statement, and the rehearsal's date.
+    "K3_SITTING": re.compile(r"^(?:first|second)$"),
+    "K3_SITTING_STEP": re.compile(rf"^(?:status|{SITTING_STEP})$"),
+    "K3_SITTING_RESUME": re.compile(rf"^(?:{SITTING_STEP})$"),
+    "K3_WORD": re.compile(r"^human-authorized:(?:sitting-(?:first|second)|"
+                          r"session-[a-z0-9]+(?:-[a-z0-9]+)*)$"),
+    "K3_HUMAN_SAID": re.compile(r"^20[0-9]{2}-[01][0-9]-[0-3][0-9]T"
+                                r"[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z$"),
+    "K3_REHEARSAL": re.compile(r"^20[0-9]{2}-[01][0-9]-[0-3][0-9]$"),
 }
 # Environment names that change Make, the shell, the compilers, the loader,
 # Python, or the guest kernel build, beyond the makefiles' own variables.
@@ -544,6 +562,15 @@ def self_test():
                     "K3_CARD_DEVICE=/dev/disk/by-id/usb-Example_Reader_"
                     "0#1+2=x@y.z-0:0", "K3_CARD_CONFIRM=0123456789ab",
                     "K3_RUN_ROOT=/home/x/s"])
+    expect("sittings", ["k3-sitting", "K3_SITTING=second",
+                        "K3_SITTING_STEP=boot-1.2",
+                        "K3_SITTING_RESUME=card-out-3",
+                        "K3_WORD=human-authorized:session-k3-breach-g1",
+                        "K3_HUMAN_SAID=2026-11-20T10:21:30Z",
+                        "K3_REHEARSAL=2026-11-17"])
+    expect("sitting status", ["k3-sitting", "K3_SITTING=first",
+                              "K3_SITTING_STEP=status",
+                              "K3_WORD=human-authorized:sitting-first"])
     refusals = [
         ("caller CC", ["check", "CC=cc"], None, "variable assignment CC"),
         ("caller SHELL", ["check", "SHELL=/bin/sh"], None,
@@ -630,6 +657,22 @@ def self_test():
         ("jobserver at top", ["check"],
          {"MAKEFLAGS": "--jobserver-auth=fifo:/x"}, "--jobserver-auth"),
         ("jobs value", ["-j0", "check"], None, "invalid value"),
+        ("sitting", ["k3-sitting", "K3_SITTING=third"], None,
+         "not of its form"),
+        ("sitting step", ["k3-sitting", "K3_SITTING_STEP=boot-1"], None,
+         "not of its form"),
+        ("sitting resume", ["k3-sitting", "K3_SITTING_RESUME=../stage"],
+         None, "not of its form"),
+        ("sitting resume of status", ["k3-sitting",
+                                      "K3_SITTING_RESUME=status"], None,
+         "not of its form"),
+        ("his word", ["k3-sitting",
+                      "K3_WORD=human-authorised:sitting-first"], None,
+         "not of its form"),
+        ("his time", ["k3-sitting", "K3_HUMAN_SAID=2026-11-20 10:21:30"],
+         None, "not of its form"),
+        ("the rehearsal", ["k3-sitting", "K3_REHEARSAL=17-11-2026"], None,
+         "not of its form"),
     ]
     for name, args, environment, text in refusals:
         expect(name, args, environment,
