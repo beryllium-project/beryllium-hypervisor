@@ -238,6 +238,13 @@ def private_problem(info, uid):
     return None if mode == 0o700 else f"has mode {mode:04o}, not 0700"
 
 
+def last_attempt(text):
+    """TEXT from its last attempt_utc= line on (k3-env.sh's records hold
+    one such line per attempt)."""
+    index = text.rfind("\nattempt_utc=")
+    return text if index < 0 else text[index + 1:]
+
+
 def key_values(text):
     """The first value of each KEY=VALUE line of TEXT."""
     fields = {}
@@ -1149,9 +1156,12 @@ class Sitting:
 
     # ------------------------------------------------- the children
     def child_env(self, **extra):
-        """The step's environment for a child: no PYTHON* variable."""
+        """The step's environment for a child: no PYTHON* variable, and
+        none of the human's authorizations to type, which a step gives
+        where it needs one (the reading's K3_NOR_READ)."""
         environment = {name: value for name, value in self.env.items()
-                       if not name.startswith("PYTHON")}
+                       if not name.startswith("PYTHON") and
+                       name not in ("K3_NOR_READ", "K3_DIAGNOSTICS")}
         environment.update(extra)
         return environment
 
@@ -1484,15 +1494,17 @@ class Sitting:
             raise Stop(*stop)
         argv = [ENV_TOOL, "reading", number] + (
             ["--hang"] if context["hang"] else [])
-        code, text = self.tool(record, "reading", argv)
+        code, text = self.tool(record, "reading", argv, self.child_env(
+            K3_NOR_READ="human-authorized"))
         if code:
             label, reason = tool_stop(text, ("tool", last_stop_text(text)))
             raise Stop(label, reason + (HANG if context["hang"] and
                                         label == "1" else ""))
-        fields = key_values((self.root / "readings" / f"reading-{number}.txt"
-                             ).read_text(encoding="utf-8"))
+        fields = key_values(last_attempt((
+            self.root / "readings" / f"reading-{number}.txt").read_text(
+                encoding="utf-8")))
         if number == 0:
-            if not fields.get("memory"):
+            if fields.get("memory", "none") == "none":
                 raise Stop("tool", "reading-0 recorded no memory line")
             record.line(f"memory={fields['memory']}")
         record.line(f"compared={fields.get('compared', 'none')}")
@@ -1846,6 +1858,12 @@ def test_records(cases, scratch):
     os.symlink(scratch / "elsewhere", slot)
     cases.refused("ledger: a symbolic link", "not a regular file",
                   read_ledger, slot)
+    cases.case("records: a reading's last attempt", key_values(last_attempt(
+        "attempt_utc=1\nmemory=8 GiB\nverdict=STOP stop=3 x\n"
+        "attempt_utc=2\nmemory=16 GiB\nverdict=PASS\n")) == {
+            "attempt_utc": "2", "memory": "16 GiB", "verdict": "PASS"})
+    cases.case("records: a reading's one attempt", key_values(last_attempt(
+        "attempt_utc=1\nmemory=8 GiB\n"))["memory"] == "8 GiB")
 
 
 def test_variables(cases):
@@ -2259,6 +2277,13 @@ class World:
 
 def test_world(cases, scratch):
     world, now = World(scratch), time.time()
+    given = world.sitting({"K3_RUN_ROOT": "/r", "K3_NOR_READ": "x",
+                           "K3_DIAGNOSTICS": "x", "PYTHONPATH": "/p"})
+    cases.case("children: no authorization to type, and no PYTHON*",
+               given.child_env() == {"K3_RUN_ROOT": "/r"})
+    cases.case("children: the reading's K3_NOR_READ, given by the step",
+               given.child_env(K3_NOR_READ="human-authorized")[
+                   "K3_NOR_READ"] == "human-authorized")
     text = world.sitting().facts(now)
     cases.case("begin: its inputs", all(line in text.splitlines() for line in (
         f"gate_commit={world.commits['a']}",

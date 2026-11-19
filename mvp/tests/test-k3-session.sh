@@ -13,13 +13,16 @@
 # Trust:   test-only; every stand-in lies under OUT with made-up values but
 #          the boot ROM's USB IDs, which the bus rule names, and the board
 #          steps of the bases reach the fakes alone.
-# Scope:   cases 3 (the declarations), 19 (the order: begin, preflight, and
-#          stage, one stopped and taken up, one stopped twice), 31 (the
-#          refusals that act on nothing, in one table), 4 to 7 (the console
-#          tool's rule for a card recorded in, and what a sitting's run
-#          root types), 13 (a boot from a card with none recorded in), and
-#          32 (k3-uboot.py medium's and wait-end's outcomes). The last line
-#          is BE_MVP_K3_SESSION: PASS self_test=N cases=M.
+# Scope:   cases 3 (the declarations), 19 (the order: begin, preflight,
+#          stage, and reading-0, a step stopped and taken up, one stopped
+#          twice), 31 (the refusals that act on nothing, in one table), 4
+#          to 7 (the console tool's rule for a card recorded in, and what a
+#          sitting's run root types), 13 (a boot from a card with none
+#          recorded in, at the console and through the driver's reading),
+#          32 (k3-uboot.py medium's and wait-end's outcomes), and 8 to 11
+#          (k3-env.sh reading: a difference, its own checks and refusals, a
+#          missed s, and what stays private; k3-env.sh fedora). The last
+#          line is BE_MVP_K3_SESSION: PASS self_test=N cases=M.
 # shellcheck shell=bash disable=SC2154
 
 unset K3_SITTING K3_SITTING_STEP K3_WORD K3_HUMAN_SAID K3_REHEARSAL \
@@ -478,7 +481,24 @@ json.dump(config, open(path, "w"))' "$FAKE_K3_BOARD"
 		fail "order: the refusals are not in sitting/refusals.txt"
 	[ ! -s "$FAKE_UBOOT/received.log" ] && [ ! -s "$FAKE_K3CTL/commands.log" ] ||
 		fail "order: a key or a dongle command before any reading"
-	pass sitting-order "begin; preflight stop 8, refused untaken, taken up (resumed=, set aside); stage refused after the stop, stopped twice, B10; status"
+	# reading-0 stopped once (a read error), then taken up.
+	nor_board order-reading '{"read_error": [1]}'
+	root=$K3_RUN_ROOT
+	for step in begin preflight stage; do
+		drive "order-reading.$step" 0 "$root" first "$step"
+	done
+	drive order-reading.1 1 "$root" first reading-0
+	grep -q '^BE_MVP_K3_SITTING: STOP step=reading-0 attempt=1 stop=3 sf read 1 did not print Read: OK; the board is left at the U-Boot prompt$' \
+		"$out/order-reading.1.txt" || fail "order: reading-0's stop"
+	drive order-reading.refused 5 "$root" first reading-0
+	grep -q 'REFUSED reading-0: reading-0 stopped; K3_SITTING_RESUME=reading-0 takes it up' \
+		"$out/order-reading.refused.txt" || fail "order: reading-0 ran again untaken"
+	drive order-reading.2 0 "$root" first reading-0 K3_SITTING_RESUME=reading-0
+	has "$root/sitting/steps/04-reading-0-a2.txt" resumed=reading-0 \
+		'memory=16 GiB' compared=none verdict=PASS
+	[ "$(grep -c '^attempt_utc=' "$root/readings/reading-0.txt")" = 2 ] ||
+		fail "order: reading-0's record does not hold two attempts"
+	pass sitting-order "begin; preflight stop 8, refused untaken, taken up (resumed=, set aside); stage refused after the stop, stopped twice, B10; status; reading-0 stop 3 (a read error), refused untaken, taken up: memory recorded, compared=none"
 }
 
 # ------------------------------------------------- 31: the refusals
@@ -626,11 +646,16 @@ reading_lines=('sf probe' 'sf read 0x140000000 0x0 0x800000'
 	'md5sum 0x1400b0000 0x750000' 'md5sum 0x140000000 0x800000')
 shell_session=$mvp_dir/scenarios/two-guests/sessions/shell.json
 
-# console_sitting NAME in|out: a fresh board, and K3_RUN_ROOT a sitting's
-# run root (a stand-in sitting/plan.txt) with its console session, the
-# card recorded in or out.
+# console_sitting NAME in|out: a fresh board, and stand_in_sitting.
 console_sitting() {
 	board "$1"
+	stand_in_sitting "$1" "$2"
+}
+
+# stand_in_sitting NAME in|out: K3_RUN_ROOT a sitting's run root (a
+# stand-in sitting/plan.txt) with its console session, the card recorded in
+# or out.
+stand_in_sitting() {
 	mkdir -m 700 -- "$K3_RUN_ROOT" "$K3_RUN_ROOT/sitting"
 	printf 'schema=be-mvp-k3-sitting-plan-v1\nsitting=first\n' \
 		>"$K3_RUN_ROOT/sitting/plan.txt"
@@ -880,7 +905,7 @@ card_capture() {
 }
 
 case_card_boot() {
-	local name rom text
+	local name rom text root
 	for name in card none; do
 		rom='ROM: stand-in boot from a card\r\nrom m:0x1 d:0x2\r\n\r\n'
 		text="came from a card, and no card is recorded in (S3-E's stop (q)); nothing was typed"
@@ -902,7 +927,26 @@ case_card_boot() {
 			fail "card-boot-$name: a key was sent"
 		fi
 	done
-	pass sitting-card-boot "the card recorded out and a boot from a card: stop B3, no s; a boot whose medium cannot be told: stop B3, no s"
+	# Through the driver: reading-1 after session 1 (stand-in records), its
+	# boot from a card in the fake, the card recorded out.
+	nor_board card-boot-driver
+	root=$K3_RUN_ROOT
+	for name in begin preflight stage reading-0; do
+		drive "card-boot-driver.$name" 0 "$root" first "$name"
+	done
+	setup "$root" first passed:card-in-1,boot-1.1,boot-1.2,boot-1.3,card-out-1
+	setup "$root" first in:1
+	setup "$root" first out:1
+	card_capture "$out/card-boot-driver.capture" 'ROM: stand-in boot from a card\r\n\r\n'
+	printf '{"image": "two-guests-off", "capture": "%s"}\n' \
+		"$out/card-boot-driver.capture" >"$FAKE_K3_BOARD/card.json"
+	name=$(lines '"v": "s"' "$FAKE_UBOOT/received.log")
+	drive card-boot-driver 1 "$root" first reading-1
+	grep -q "^BE_MVP_K3_SITTING: STOP step=reading-1 attempt=1 stop=B3 k3-console.sh stop-autoboot stopped (exit 1): the boot of reset [0-9]* came from a card, and no card is recorded in (S3-E's stop (q)); nothing was typed\$" \
+		"$out/card-boot-driver.txt" || fail "card-boot-driver: $(tail -n 1 "$out/card-boot-driver.txt")"
+	[ "$(lines '"v": "s"' "$FAKE_UBOOT/received.log")" = "$name" ] ||
+		fail "card-boot-driver: an s at the boot from a card"
+	pass sitting-card-boot "the card recorded out and a boot from a card: stop B3, no s; a boot whose medium cannot be told: stop B3, no s; the driver's reading-1 at a boot from a card: stop B3, no s"
 }
 
 # ---------------------------------- 32: the readers of a boot from reset
@@ -958,6 +1002,188 @@ case_readers() {
 	pass sitting-readers "medium: nor, card, none; wait-end: the end with the last hart's record committed=0 and committed=1, a record cut short (terminal), the end with no digest, a second SPL banner (boot), a boot from the NOR, U-Boot's prompt, Fedora, and the time limit"
 }
 
+# ------------------------------------------------------------ the readings
+env_tool=$tools/k3-env.sh
+nor_file=$out/nor.bin
+"$python" -B -c 'import random, sys
+open(sys.argv[1], "wb").write(random.Random(9).randbytes(8 << 20))' "$nor_file"
+ranges=(bootinfo record fsbl env images whole)
+
+# nor_board NAME [FAULTS]: a fresh board whose NOR is its own copy of
+# nor.bin, the fake U-Boot's faults FAULTS; its run root new, as begin
+# wants it.
+nor_board() {
+	board "$1" '{}' "{\"nor\": \"$out/board-$1/nor.bin\", \"faults\": ${2:-"{}"}}"
+	cp -- "$nor_file" "$FAKE_K3_BOARD/nor.bin"
+}
+
+# reading_sitting NAME [FAULTS]: a nor_board, and stand_in_sitting NAME out.
+reading_sitting() {
+	nor_board "$@"
+	stand_in_sitting "$1" out
+}
+
+# reading NAME STATUS N [VAR=VALUE...]: k3-env.sh reading N, authorized.
+reading() {
+	local name=$1 want=$2 number=$3
+	shift 3
+	expect "$name" "$want" env K3_NOR_READ=human-authorized "$@" "$env_tool" \
+		reading "$number"
+}
+
+# flip FILE OFFSET: one bit of FILE's byte at OFFSET (hexadecimal) flipped.
+flip() {
+	"$python" -B -c 'import sys
+data = bytearray(open(sys.argv[1], "rb").read())
+data[int(sys.argv[2], 16)] ^= 0x80
+open(sys.argv[1], "wb").write(data)' "$1" "$2"
+}
+
+# last_typed: the line of the fake U-Boot's last record of a key, empty
+# when that key ended no typed line.
+last_typed() {
+	tail -n 1 -- "$FAKE_UBOOT/received.log" | sed -n 's/.*"line": "\([^"]*\)".*/\1/p'
+}
+
+dongle_resets() {
+	lines '^reset$' "$FAKE_K3CTL/commands.log"
+}
+
+# at_prompt NAME LINE RESETS: nothing typed after LINE, RESETS resets by
+# the dongle, and the fake U-Boot at its prompt.
+at_prompt() {
+	[ "$(last_typed)" = "$2" ] && [ "$(dongle_resets)" = "$3" ] &&
+		[ "$(uboot_state)" = prompt ] ||
+		fail "$1: after its stop, the last line typed is $(last_typed), $(dongle_resets) resets, the board $(uboot_state)"
+}
+
+# ------------------------------------------- 8: a reading that differs
+# Reading 0, then one more byte flipped before each of readings 1 to 5, in
+# bootinfo, record, fsbl, env, and images in turn: each differs from the
+# one before in that range and the whole flash (any byte is in both), the
+# four others equal. Then the sitting's end, k3-env.sh fedora.
+case_reading_differs() {
+	local root number=0 row name range state resets
+	reading_sitting reading-differs
+	root=$K3_RUN_ROOT
+	reading reading-differs.0 0 0
+	grep -qxF 'BE_MVP_K3_ENV: PASS reading-0 ranges=6 compared=none' \
+		"$out/reading-differs.0.txt" || fail "reading-differs: reading 0"
+	has "$root/readings/reading-0.txt" fedora_shutdown=clean-halt \
+		'medium=nor rom_lines=5' 'memory=16 GiB' sf_probe=8MiB sf_read_1=OK \
+		sf_read_2=OK whole_again=equal compared=none published=not-compared \
+		verdict=PASS
+	for row in bootinfo:0x100 record:0x10100 fsbl:0x1a100 env:0xa0100 images:0x7fff00; do
+		name=${row%%:*} number=$((number + 1)) resets=$(($(dongle_resets) + 1))
+		flip "$FAKE_K3_BOARD/nor.bin" "${row#*:}"
+		reading "reading-differs.$number" 1 "$number"
+		grep -qxF "BE_MVP_K3_ENV: STOP stop=B2 reading $number differs from reading $((number - 1)) in $name,whole (S3-E's stop (p)); the board is left at the U-Boot prompt" \
+			"$out/reading-differs.$number.txt" ||
+			fail "reading-differs: reading $number: $(tail -n 1 "$out/reading-differs.$number.txt")"
+		for range in "${ranges[@]}"; do
+			state=equal
+			[ "$range" != "$name" ] && [ "$range" != whole ] || state=different
+			grep -qx "range=$range $state" "$root/readings/reading-$number.txt" ||
+				fail "reading-differs: reading $number's $range is not $state"
+		done
+		at_prompt "reading-differs.$number" 'md5sum 0x140000000 0x800000' "$resets"
+	done
+	state=$(lines '"v": "s"' "$FAKE_UBOOT/received.log")
+	expect reading-differs.fedora 0 "$env_tool" fedora
+	has "$root/env/fedora.txt" fedora=up 'audit=banners=7 resets=7 findings=0' verdict=PASS
+	[ "$(lines '"v": "s"' "$FAKE_UBOOT/received.log")" = "$state" ] &&
+		[ "$(uboot_state)" = fedora ] || fail "reading-differs: fedora typed s, or Fedora is not up"
+	# Taken up again (end's second attempt): Fedora answers, so no reset.
+	resets=$(dongle_resets)
+	expect reading-differs.fedora-again 0 "$env_tool" fedora
+	grep -qx 'fedora=up-before' "$root/env/fedora.txt" && [ "$(dongle_resets)" = "$resets" ] ||
+		fail "reading-differs: fedora reset a board whose Fedora answered"
+	pass sitting-reading-differs "readings 1 to 5, a byte flipped before each in bootinfo, record, fsbl, env, images: STOP stop=B2 naming that range and whole, the four others equal, nothing typed after the last md5sum, no reset after, the board at its prompt; then fedora: a reset with no s, Fedora up, the audit; again, with Fedora up: no reset"
+}
+
+# --------------------------------------- 9: the reading's own checks
+# Each fault on a board of its own: its stop, nothing typed after the line
+# that failed, no reset after the reading's one, the board at its prompt.
+# Then the refusals, each exit 5 (2 for the usage) with nothing contacted.
+case_reading_faults() {
+	local row name faults want text last root before
+	for row in 'probe|{"nor_total": "16 MiB"}|3|sf probe did not print SF: Detected ... total 8 MiB; nothing was read, and the board is left at the U-Boot prompt|sf probe' \
+		'read|{"read_error": [1]}|3|sf read 1 did not print Read: OK; the board is left at the U-Boot prompt|sf read 0x140000000 0x0 0x800000' \
+		'md5|{"md5_range": [3]}|3|md5sum of fsbl did not print exactly md5 for 14001a000 ... 14009ffff ==> MD5; the board is left at the U-Boot prompt|md5sum 0x14001a000 0x86000' \
+		"again|{\"read_differs\": [2]}|4|the second read's whole digest is not the first's; the board is left at the U-Boot prompt|md5sum 0x140000000 0x800000"; do
+		IFS='|' read -r name faults want text last <<<"$row"
+		reading_sitting "reading-fault-$name" "$faults"
+		reading "reading-fault-$name" 1 0
+		grep -qxF "BE_MVP_K3_ENV: STOP stop=$want $text" "$out/reading-fault-$name.txt" ||
+			fail "reading-fault-$name: $(tail -n 1 "$out/reading-fault-$name.txt")"
+		grep -qxF "verdict=STOP stop=$want $text" "$K3_RUN_ROOT/readings/reading-0.txt" ||
+			fail "reading-fault-$name: the record's verdict"
+		at_prompt "reading-fault-$name" "$last" 1
+	done
+	root=$K3_RUN_ROOT
+	before=$(contacts "$root"; sha "$root/readings/reading-0.txt")
+	expect reading-refused.word 5 "$env_tool" reading 0
+	reading reading-refused.previous 5 2
+	mv -- "$out/store/$(basename -- "$root")/readings" "$out/reading-refused.store"
+	ln -s -- "$out/reading-refused.store" "$out/store/$(basename -- "$root")/readings"
+	reading reading-refused.link 5 0
+	rm -- "$out/store/$(basename -- "$root")/readings"
+	mv -- "$out/reading-refused.store" "$out/store/$(basename -- "$root")/readings"
+	mv -- "$root/sitting/plan.txt" "$root/sitting/plan.target"
+	ln -s -- plan.target "$root/sitting/plan.txt"
+	reading reading-refused.plan 5 0
+	for row in 'word|it needs K3_NOR_READ=human-authorized' \
+		"previous|reading 1's six digests are not in the store" \
+		"link|the store's readings is a symbolic link" \
+		"plan|K3_RUN_ROOT is not a sitting's run root (no sitting/plan.txt)"; do
+		grep -qxF "BE_MVP_K3_ENV: REFUSED reading: ${row#*|}; nothing was contacted" \
+			"$out/reading-refused.${row%%|*}.txt" || fail "reading-refused: ${row%%|*}"
+	done
+	expect reading-refused.number 2 env K3_NOR_READ=human-authorized "$env_tool" reading 10
+	expect reading-refused.option 2 env K3_NOR_READ=human-authorized "$env_tool" reading 0 --hand
+	[ "$(contacts "$root"; sha "$root/readings/reading-0.txt")" = "$before" ] ||
+		fail "reading-refused: a refusal contacted a fake, or wrote a record"
+	pass sitting-reading-faults "a 16 MiB probe, a read error, an md5sum of another range, a second read that differs: stops 3, 3, 3, 4, nothing typed after, the board at its prompt; refused with nothing contacted: no K3_NOR_READ, no reading 1's digests, the store's readings a link, plan.txt a link, N 10, an option not --hang"
+}
+
+# ------------------------------------------ 10: a missed s in a reading
+case_reading_missed_s() {
+	reading_sitting reading-missed '{"miss_s": 2}'
+	reading reading-missed 0 0 K3_ECHO_SECONDS=5
+	grep -q '^unplanned_boot step=reading-0 attempt=1 ' "$K3_RUN_ROOT/readings/unplanned.txt" ||
+		fail "reading-missed: no unplanned boot recorded"
+	has "$K3_RUN_ROOT/readings/reading-0.txt" verdict=PASS
+	[ "$(dongle_resets)" = 2 ] &&
+		[ "$(autoboot_s counts "$FAKE_UBOOT")" = 'stopped=1 ignored=2 late=0 after-prompt=0' ] ||
+		fail "reading-missed: $(dongle_resets) resets, $(autoboot_s counts "$FAKE_UBOOT")"
+	reading_sitting reading-missed-twice '{"miss_s": 4}'
+	reading reading-missed-twice 1 0 K3_ECHO_SECONDS=5
+	grep -qxF 'BE_MVP_K3_ENV: STOP stop=12 a second missed s' "$out/reading-missed-twice.txt" &&
+		[ "$(lines '"line": ' "$FAKE_UBOOT/received.log")" = 0 ] ||
+		fail "reading-missed-twice: $(tail -n 1 "$out/reading-missed-twice.txt")"
+	pass sitting-reading-missed-s "one missed s: the unplanned boot recorded, Fedora shut down, a second reset, then PASS; two: STOP stop=12 a second missed s, nothing typed"
+}
+
+# ------------------------------------------ 11: the reading's privacy
+# On case 8's run root and store: no digest in the record or the output.
+case_reading_private() {
+	local root=$out/session-reading-differs store=$out/store/session-reading-differs
+	local digest
+	! grep -qE '[0-9a-fA-F]{32}' "$root"/readings/*.txt ||
+		fail "reading-private: a 32-digit run in readings/"
+	[ "$(lines 'prompt	template=md5-[a-z]* output_bytes=[0-9]* output_sha256=withheld$' "$root/keys.log")" = 42 ] &&
+		[ "$(lines 'prompt	template=md5-' "$root/keys.log")" = 42 ] ||
+		fail "reading-private: an md5sum's output_sha256 is not withheld"
+	[ -z "$(find "$store/readings" \( -type f ! -perm 0600 \) -o \( -type d ! -perm 0700 \))" ] &&
+		[ "$(find "$store/readings" -type f -name digests.tsv | wc -l)" = 6 ] ||
+		fail "reading-private: the store's modes"
+	while read -r _ digest; do
+		! grep -rqF -- "$digest" "$root" "$out"/reading-differs.*.txt ||
+			fail "reading-private: a digest in the run root or an output"
+	done < <(cat -- "$store"/readings/*/digests.tsv)
+	pass sitting-reading-private "no 32-digit run in readings/*.txt; 42 md5sums, each output_sha256=withheld; the store's 6 digests.tsv and outputs 0600 in 0700 directories; no digest in the run root or the step's output"
+}
+
 case_declarations
 case_order
 case_refusals
@@ -967,5 +1193,9 @@ case_card_state
 case_templates
 case_card_boot
 case_readers
-cases=9
+case_reading_differs
+case_reading_faults
+case_reading_missed_s
+case_reading_private
+cases=13
 printf 'BE_MVP_K3_SESSION: PASS self_test=%s cases=%s\n' "$self_test" "$cases"

@@ -32,7 +32,11 @@ Purpose: let the dry run drive tools/k3-console.sh, k3-env.sh, k3-run.sh,
          characterization's commands, and answers Ctrl-C with
          <INTERRUPT>; its crc32 prints the CRC-32 as upstream's does, or,
          with silent_crc32, nothing, as this BSP's does (the
-         characterization of 2026-10-30). A poweroff the fake board
+         characterization of 2026-10-30). With nor, its sf probe and sf
+         read (the sittings' reading of the NOR) print U-Boot 2022.10's
+         lines and read that file's bytes, the NOR's, into its RAM at
+         0x140000000, over which md5sum digests from its start address.
+         A poweroff the fake board
          receives over ssh (FAKE_K3_BOARD/poweroff) prints Linux's last
          lines and halts it. A card in the slot (FAKE_K3_BOARD/card.json,
          {"image": IMAGE, "capture": PATH}, which the sittings' dry run
@@ -79,10 +83,16 @@ Scope:   DIR/config.json: session, panes (the session's panes, each
          corrupt_after_saveenv ([N, {name: value}]: the saved
          environment changed after the Nth saveenv), and bad_crc (the
          boots, counted from 1, at which U-Boot reports a bad environment
-         CRC and uses its default environment). serve records received.log
+         CRC and uses its default environment); with nor (an 8 MiB file,
+         the NOR's bytes), nor_total (sf probe's size, else `8 MiB`),
+         read_error and read_differs (the sf reads, counted from 1, that
+         print `Read: ERROR -5` and fill nothing, or whose bytes have one
+         bit flipped), and md5_range (the md5sums, counted from 1, that
+         print an end one byte further). serve records received.log
          (every key and line with the state it met, and whether a line is
-         a template), autoboot.log (each `s` the window met, stopped or
-         ignored, and the first key after a window if it is a lone `s`,
+         a template, a diagnostic, or one of the reading's), autoboot.log
+         (each `s` the window met, stopped or ignored, and the first key
+         after a window if it is a lone `s`,
          late: after the deadline, or after the prompt an `s` brought;
          each with its seconds after `Autoboot in`; and each deadline,
          with when the boot command ran), resets.log (the state each
@@ -156,6 +166,12 @@ TEMPLATES = [re.compile(pattern) for pattern in (
     r"fsuuid nvme 0:[1-9]\d?", r"ls nvme 0:[1-9]\d? /",
     r"fdt addr \$\{fdtcontroladdr\}", r"fdt print /reserved-memory",
     r'setenv be_t "\$\{bootcmd\}"', r"run be_ld", r"run be_go")]
+# The reading's lines (the sittings' console rule), written again here so
+# that the dry run checks the console tool against a list of its own.
+READING = ("sf probe", "sf read 0x140000000 0x0 0x800000",
+           "md5sum 0x140000000 0x10000", "md5sum 0x140010000 0xa000",
+           "md5sum 0x14001a000 0x86000", "md5sum 0x1400a0000 0x10000",
+           "md5sum 0x1400b0000 0x750000", "md5sum 0x140000000 0x800000")
 # The read-only diagnostic forms k3-console.sh's diag may type (its
 # diagnostic(): exact strings and anchored regexes), written again here so
 # that the dry run checks the console tool against a list of its own; a
@@ -271,6 +287,9 @@ class Board:
         self.counts = {"pulses": 0, "keys": 0, "pieces": 0, "prompts": 0,
                        "saves": 0, "stops": 0, "boots": 0}
         self.memory, self.boot_time, self.spurious = b"", time.time(), None
+        # The sf reads and md5sums so far (read_error, read_differs,
+        # md5_range).
+        self.reads = self.sums = 0
         self.feed, self.keys, self.shown = "", 0, None
         self.typed, self.segments, self.probe = "", [], None
         self.played = False
@@ -336,7 +355,7 @@ class Board:
             lines[3] = ("Loading Environment from mtdENV... *** Warning - "
                         "bad CRC, using default environment")
         self.env.update(fdtcontroladdr="2fbe8aa50")
-        self.scanned, self.memory = False, b""
+        self.scanned, self.probed, self.memory = False, False, b""
         self.fedora(False)
         self.say(*SPL_LINES, stamped=False)
         self.say(UBOOT_BANNER, "", stamped=False)
@@ -450,7 +469,8 @@ class Board:
             record.update(line=self.line, template=any(
                 pattern.fullmatch(self.line) for pattern in TEMPLATES),
                 diagnostic=any(pattern.fullmatch(self.line)
-                               for pattern in DIAGNOSTICS))
+                               for pattern in DIAGNOSTICS),
+                reading=self.line in READING)
             self.write("\r\n")
             self.state, line = "busy", self.line
             self.run(line)
@@ -537,8 +557,13 @@ class Board:
         elif name == "load":
             return self.load(argv)
         elif name == "md5sum":
-            data = self.memory[:int(argv[2] or "0", 16)]
-            self.say(f"md5 for 140000000 ... {0x140000000 + len(data) - 1:x}"
+            start = int(argv[1] or "0", 16)
+            data = self.memory[max(start - 0x140000000, 0):][
+                :int(argv[2] or "0", 16)]
+            self.sums += 1
+            end = start + len(data) - 1 + \
+                (self.sums in self.faults.get("md5_range", []))
+            self.say(f"md5 for {start:x} ... {end:x}"
                      f" ==> {hashlib.md5(data).hexdigest()}")
         elif name == "crc32":
             data = self.memory[:int(argv[2] or "0", 16)]
@@ -548,6 +573,14 @@ class Board:
                          f"{zlib.crc32(data):08x}")
         elif name == "booti":
             self.booti()
+        elif argv == ["sf", "probe"] and "nor" in self.config:
+            self.probed = True
+            self.say("SF: Detected gd25lq64c with page size 256 Bytes, erase "
+                     "size 4 KiB, total " +
+                     self.faults.get("nor_total", "8 MiB"))
+        elif argv[:2] == ["sf", "read"] and len(argv) == 5 and \
+                "nor" in self.config:
+            return self.sf_read(int(argv[3], 16), int(argv[4], 16))
         else:
             self.say(f"Unknown command '{name}' - try 'help'")
             return 1
@@ -555,6 +588,26 @@ class Board:
 
     def partition(self):
         return self.board / "partition"
+
+    def sf_read(self, offset, length):
+        """sf read into the RAM at 0x140000000 (the only address typed),
+        after sf probe, with U-Boot 2022.10's lines."""
+        if not self.probed:
+            self.say("No SPI flash selected. Please run `sf probe'")
+            return 1
+        self.reads += 1
+        nor = pathlib.Path(self.config["nor"]).read_bytes()
+        self.say("device 0 whole chip" if (offset, length) == (0, len(nor))
+                 else f"device 0 offset {offset:#x}, size {length:#x}")
+        if self.reads in self.faults.get("read_error", []):
+            self.say(f"SF: {length} bytes @ {offset:#x} Read: ERROR -5")
+            return 1
+        data = bytearray(nor[offset:offset + length])
+        if self.reads in self.faults.get("read_differs", []):
+            data[len(data) // 2] ^= 1
+        self.memory = bytes(data)
+        self.say(f"SF: {length} bytes @ {offset:#x} Read: OK")
+        return 0
 
     def load(self, argv):
         path = self.partition() / argv[4].lstrip("/")

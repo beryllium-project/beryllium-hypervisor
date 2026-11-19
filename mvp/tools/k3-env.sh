@@ -107,6 +107,10 @@ env_dir=$run_root/env
 store=$store_root/$(basename -- "$run_root")
 state=$env_dir/state.txt
 step=
+# A sitting's reading (below): --hang for its first reset alone, and the
+# private store's file for the resets' outputs.
+hang=
+resets_out=
 
 # stop N TEXT: the plan's stop condition N; the step's record says so.
 stop() {
@@ -129,19 +133,23 @@ sha() {
 	sha256sum -- "$1" | cut -d' ' -f1
 }
 
-# console ARGS: k3-console.sh; a stop of it is this step's.
+# console ARGS: k3-console.sh; a stop of it is this step's, with the
+# console's own label (a sitting's B3 among them) and text, from the lines
+# that this call added to the keystroke log (1 when it added none).
 console() {
-	local status=0
+	local status=0 keylog=${K3_KEYLOG:-$run_root/keys.log} before=0 line label
 
+	[ ! -f "$keylog" ] || before=$(wc -l <"$keylog")
 	"${console[@]}" "$@" || status=$?
 	case $status in
 	0 | 3) return "$status" ;;
 	5) stop 5 "k3-console.sh refused a line" ;;
 	*)
-		stop "$(sed -n 's/^[^\t]*\tstop\tstop=\([0-9]*\) .*/\1/p' \
-			"${K3_KEYLOG:-$run_root/keys.log}" 2>/dev/null | tail -n 1 |
-			grep . || echo 1)" \
-			"k3-console.sh $1 stopped (exit $status)"
+		line=$(tail -n "+$((before + 1))" -- "$keylog" 2>/dev/null |
+			sed -n 's/^[^\t]*\tstop\tstop=\([0-9A-Za-z]*\) /\1 /p' |
+			tail -n 1 || true)
+		label=${line%% *} line=${line#"${line%% *}"}
+		stop "${label:-1}" "k3-console.sh $1 stopped (exit $status)${line:+:$line}"
 		;;
 	esac
 }
@@ -197,14 +205,27 @@ settle() {
 	done
 }
 
+# fedora_autoboot WHAT: after a reset with no `s`, the bootcmd's Fedora up
+# over ssh within K3_FEDORA_SECONDS of WHAT (stop 2 otherwise).
+fedora_autoboot() {
+	local deadline=$((SECONDS + fedora_seconds))
+
+	until fedora_up; do
+		[ "$SECONDS" -lt "$deadline" ] ||
+			stop 2 "Fedora did not autoboot within ${fedora_seconds} s of $1"
+		sleep "$poll_seconds"
+	done
+}
+
 # fresh_prompt: a reset, then `s` at `Autoboot in`; a missed `s` is an
 # unplanned boot, recorded and not counted, then one more try.
 fresh_prompt() {
 	local attempt status
 
 	for attempt in 1 2; do
-		console reset >>"$env_dir/resets.txt"
-		printf '\n' >>"$env_dir/resets.txt"
+		console reset ${hang:+"$hang"} >>"${resets_out:-$env_dir/resets.txt}"
+		printf '\n' >>"${resets_out:-$env_dir/resets.txt}"
+		hang=
 		status=0
 		console stop-autoboot || status=$?
 		[ "$status" = 3 ] || return 0
@@ -373,7 +394,7 @@ do_select() {
 }
 
 do_restore() {
-	local accepted deadline name
+	local accepted name
 
 	[ "$(value installed "$state")" = yes ] &&
 		[ "$(value restored "$state")" = no ] ||
@@ -394,12 +415,7 @@ do_restore() {
 	check restore "$store/record1.txt" "$store/record3.txt" "$accepted"
 	printf 'installed=yes\nrestored=yes\n' >"$state"
 	console reset >>"$env_dir/resets.txt"
-	deadline=$((SECONDS + fedora_seconds))
-	until fedora_up; do
-		[ "$SECONDS" -lt "$deadline" ] ||
-			stop 2 "Fedora did not autoboot within ${fedora_seconds} s of the restore"
-		sleep "$poll_seconds"
-	done
+	fedora_autoboot "the restore"
 	record "fedora=up" "verdict=PASS"
 	printf '%s: PASS restore (record 3 is record 1 but V; Fedora autobooted)\n' "$tag"
 }
@@ -482,6 +498,206 @@ do_characterize() {
 	printf '%s: PASS characterize (V=%s; no saveenv)\n' "$tag" "$names"
 }
 
+# ------------------------------------------------- a sitting's readings
+#   k3-env.sh reading N [--hang]  M11-B's sittings (planning/mvp-m11-board-
+#                             addendum.md; S3-E item 9): reading N, 0 to 9,
+#                             of a sitting's run root, with no saveenv:
+#                             Fedora shut down cleanly over ssh if it
+#                             answers; a fresh prompt (--hang: its first
+#                             reset admits MVP 1.0's hang reason, after a
+#                             boot that never ended); U-Boot's DRAM line;
+#                             sf probe (8 MiB); the read of the NOR into
+#                             RAM; item 9's six md5sums; the read and the
+#                             whole digest again (equal); for N above 0,
+#                             each range against reading N-1's, any
+#                             difference S3-E's stop (p), B2. The board is
+#                             left at the U-Boot prompt.
+#   k3-env.sh fedora          a sitting's end: a reset with no `s` (unless
+#                             Fedora answers already), Fedora's autoboot
+#                             over ssh within K3_FEDORA_SECONDS, the audit
+#
+# A reading is refused, exit 5 and nothing contacted, without
+# K3_NOR_READ=human-authorized (the sittings' driver gives it to this step
+# alone), outside a sitting's run root (sitting/plan.txt, a regular file),
+# with a symbolic link for the store's directories, or, for N above 0,
+# without reading N-1's six digests in the store. Its record is
+# K3_RUN_ROOT/readings/reading-N.txt (an attempt_utc= line per attempt;
+# medium=, memory=, the probe's and the reads' verdicts, compared=,
+# range=NAME equal|different, published=, the verdict) and holds no digest
+# and no path; readings/unplanned.txt, its unplanned boots. The ranges'
+# MD5s (digests.tsv), each command's output, and the resets' outputs (which
+# name the dongle's device) are private, in K3_ENV_STORE/<the run root's
+# name>/readings/reading-N/, made again at each attempt (directories 0700,
+# files 0600): five of the six ranges are the board's private bytes (S3-E
+# item 9), and no record needs a digest. The published files are not
+# compared (published=not-compared).
+
+# Item 9's ranges: NAME, then the md5sum line's address and length.
+ranges=("bootinfo 0x140000000 0x10000" "record 0x140010000 0xa000"
+	"fsbl 0x14001a000 0x86000" "env 0x1400a0000 0x10000"
+	"images 0x1400b0000 0x750000" "whole 0x140000000 0x800000")
+
+# refuse WHY: a reading refused before anything is contacted (exit 5).
+refuse() {
+	printf '%s: REFUSED reading: %s; nothing was contacted\n' "$tag" "$1" >&2
+	exit 5
+}
+
+# digests_ok FILE: six lines, item 9's names in order, each NAME TAB MD5.
+digests_ok() {
+	local row names=
+
+	for row in "${ranges[@]}"; do
+		names+="${row%% *}"$'\n'
+	done
+	[ -f "$1" ] && [ ! -L "$1" ] && [ "$(cut -f1 -- "$1")"$'\n' = "$names" ] &&
+		! grep -qvxE '[a-z]+'$'\t''[0-9a-f]{32}' -- "$1"
+}
+
+# nor_text FILE: a command's output, the BSP's stamps and CRs removed.
+nor_text() {
+	sed -E 's/\[ *[0-9]+\.[0-9]+\] //g' -- "$1" | tr -d '\r'
+}
+
+# nor_read N: the NOR's 8 MiB into RAM at 0x140000000; Read: OK, or stop 3.
+nor_read() {
+	typed 'sf read 0x140000000 0x0 0x800000' "$dir/sf-read-$1.txt"
+	[[ $(nor_text "$dir/sf-read-$1.txt") == *'Read: OK'* ]] ||
+		stop 3 "sf read $1 did not print Read: OK; the board is left at the U-Boot prompt"
+	record "sf_read_$1=OK"
+}
+
+# nor_md5 NAME ADDRESS LENGTH [FILE]: one range's md5sum, which must print
+# exactly `md5 for START ... END ==> MD5` (its first and last address, no
+# 0x), else stop 3; md5, and NAME's line in digests.tsv (none with FILE,
+# the output's name then).
+nor_md5() {
+	local start end pattern text out=$dir/md5-${4:-$1}.txt
+
+	printf -v start '%x' $(($2))
+	printf -v end '%x' $(($2 + $3 - 1))
+	typed "md5sum $2 $3" "$out"
+	text=$(nor_text "$out" | grep . || true)
+	pattern="^md5 for $start \\.\\.\\. $end ==> ([0-9a-f]{32})\$"
+	[[ $text =~ $pattern ]] ||
+		stop 3 "md5sum of $1 did not print exactly md5 for $start ... $end ==> MD5; the board is left at the U-Boot prompt"
+	md5=${BASH_REMATCH[1]}
+	[ -n "${4:-}" ] || printf '%s\t%s\n' "$1" "$md5" >>"$dir/digests.tsv"
+}
+
+do_reading() {
+	# LC_ALL=C: bash's own matching here by bytes, as the reviewed scratch
+	# tool's.
+	local number=$1 dir before='' row name address length md5 whole text \
+		differs=() offset now=() previous=() index LC_ALL=C
+
+	[ "${K3_NOR_READ:-}" = human-authorized ] ||
+		refuse "it needs K3_NOR_READ=human-authorized"
+	[ -f "$run_root/sitting/plan.txt" ] && [ ! -L "$run_root/sitting/plan.txt" ] ||
+		refuse "K3_RUN_ROOT is not a sitting's run root (no sitting/plan.txt)"
+	if [ "$number" != 0 ]; then
+		before=$store/readings/reading-$((number - 1))
+		digests_ok "$before/digests.tsv" ||
+			refuse "reading $((number - 1))'s six digests are not in the store"
+	fi
+	for name in "$store/readings" "$store/readings/reading-$number"; do
+		[ ! -L "$name" ] || refuse "the store's ${name#"$store/"} is a symbolic link"
+	done
+	# Every file of this step is the account's alone.
+	umask 077
+	env_dir=$run_root/readings
+	prepare "reading-$number"
+	dir=$store/readings/reading-$number
+	mkdir -p -- "$store/readings"
+	chmod 0700 -- "$store/readings"
+	rm -rf -- "$dir"
+	mkdir -- "$dir"
+	resets_out=$dir/resets.txt
+	: >"$dir/digests.tsv"
+	if fedora_up; then
+		poweroff
+	fi
+	fresh_prompt
+	text=$(sed -n 's/^[^\t]*\tmedium\t//p' -- "${K3_KEYLOG:-$run_root/keys.log}" |
+		tail -n 1 || true)
+	[ "${text%% *}" = medium=nor ] ||
+		stop B3 "this reading's boot is not recorded as the NOR's (${text:-no medium}); the board is left at the U-Boot prompt"
+	record "$text"
+	# The boot's DRAM line, as tests/check-capture.py's card mode reads it
+	# (the stamp gone, stripped); reading 0's is the sitting's reference for
+	# the memory size (the addendum's outline of a sitting, item 2).
+	offset=$(tail -n 1 -- "$run_root/resets.tsv" | cut -f2)
+	text=$(tail -c "+$((offset + 1))" -- "${K3_SERIAL_LOG:-}" | awk '
+		{
+			gsub(/\r/, "")
+			sub(/^\[ *[0-9]+\.[0-9][0-9][0-9]\] ?/, "")
+			sub(/^[ \t]+/, "")
+			sub(/[ \t]+$/, "")
+		}
+		found == "" && /^DRAM: +[^ \t]/ { sub(/^DRAM: +/, ""); found = $0 }
+		END { print (found == "" ? "none" : found) }')
+	record "memory=$text"
+	typed 'sf probe' "$dir/sf-probe.txt"
+	text=$(nor_text "$dir/sf-probe.txt")
+	grep -F 'SF: Detected ' <<<"$text" | grep -F ' total 8 MiB' >/dev/null ||
+		stop 3 "sf probe did not print SF: Detected ... total 8 MiB; nothing was read, and the board is left at the U-Boot prompt"
+	record "sf_probe=8MiB"
+	nor_read 1
+	for row in "${ranges[@]}"; do
+		read -r name address length <<<"$row"
+		nor_md5 "$name" "$address" "$length"
+	done
+	whole=$md5
+	nor_read 2
+	nor_md5 whole 0x140000000 0x800000 whole-again
+	[ "$md5" = "$whole" ] ||
+		stop 4 "the second read's whole digest is not the first's; the board is left at the U-Boot prompt"
+	record "whole_again=equal"
+	if [ -z "$before" ]; then
+		record "compared=none"
+	else
+		record "compared=reading-$((number - 1))"
+		# Line by line, NAME and MD5 together: a line missing from either
+		# file is a difference.
+		mapfile -t now <"$dir/digests.tsv"
+		mapfile -t previous <"$before/digests.tsv"
+		for index in "${!ranges[@]}"; do
+			name=${ranges[index]%% *}
+			if [ -n "${now[index]:-}" ] && [ "${now[index]}" = "${previous[index]:-}" ]; then
+				record "range=$name equal"
+			else
+				record "range=$name different"
+				differs+=("$name")
+			fi
+		done
+		[ "${#differs[@]}" = 0 ] ||
+			stop B2 "reading $number differs from reading $((number - 1)) in $(IFS=,; printf '%s' "${differs[*]}") (S3-E's stop (p)); the board is left at the U-Boot prompt"
+	fi
+	record "published=not-compared" "verdict=PASS"
+	printf '%s: PASS reading-%s ranges=6 %s\n' "$tag" "$number" \
+		"$([ -n "$before" ] && echo equal=6 || echo compared=none)"
+}
+
+do_fedora() {
+	local text
+
+	prepare fedora
+	if fedora_up; then
+		record "fedora=up-before"
+	else
+		console reset >>"$env_dir/resets.txt"
+		fedora_autoboot "the sitting's last reset"
+	fi
+	text=$(console audit) || exit 1
+	record "fedora=up" "audit=$text" "verdict=PASS"
+	printf '%s: PASS fedora (Fedora up; %s)\n' "$tag" "$text"
+}
+
+usage() {
+	printf 'usage: %s record|install FILE|select FILE|restore|characterize FILE|reading N [--hang]|fedora\n' "$0" >&2
+	exit 2
+}
+
 [ "$#" -ge 1 ] || { sed -n '/^#   k3-env.sh record/,/^#                             with K3_LAUNCH=typed)/s/^# \{0,1\}//p' -- "$0" >&2; exit 2; }
 command=$1
 shift
@@ -491,5 +707,11 @@ install:1) do_install "$1" ;;
 select:1) do_select "$1" ;;
 restore:0) do_restore ;;
 characterize:1) do_characterize "$1" ;;
-*) printf 'usage: %s record|install FILE|select FILE|restore|characterize FILE\n' "$0" >&2; exit 2 ;;
+reading:1 | reading:2)
+	[[ $1 =~ ^[0-9]$ ]] && [ "${2---hang}" = --hang ] || usage
+	hang=${2:-}
+	do_reading "$1"
+	;;
+fedora:0) do_fedora ;;
+*) usage ;;
 esac

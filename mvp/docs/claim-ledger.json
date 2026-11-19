@@ -318,9 +318,9 @@
         },
         {
           "path": "mvp/tools/k3-env.sh",
-          "sha256": "92b7ae659bd2bc23ab81e3dc1140aa6877edba7faf582afbb59b6673f87e4d9c",
+          "sha256": "cc14bc15bfcf8b5de02f88b3a6787456183818db69a0d29dcb2d22d31ddb0b4c",
           "evidence_source_commit": "aeb9fb46b0ef602d7e1c838d42a84d045e79a7c0",
-          "note": "The session's install, select, and restore of U-Boot's saved environment through the console tool's templates, each at a fresh prompt: be_ld (ending in md5sum), be_go, be_boot (nvme scan first), bootcmd, and be_orig_bootcmd; the printenv comparison before every saveenv; the two records and V; the private store. In the clean repository, F4 (the security review's S-05) revised this file: its Python, tools/k3-uboot.py, runs as /usr/bin/python3 -I -B, with every PYTHON* variable cleared; this SHA-256 is that revision's, which no internal commit holds."
+          "note": "The session's install, select, and restore of U-Boot's saved environment through the console tool's templates, each at a fresh prompt: be_ld (ending in md5sum), be_go, be_boot (nvme scan first), bootcmd, and be_orig_bootcmd; the printenv comparison before every saveenv; the two records and V; the private store. In the clean repository, F4 (the security review's S-05) revised this file: its Python, tools/k3-uboot.py, runs as /usr/bin/python3 -I -B, with every PYTHON* variable cleared; this SHA-256 is that revision's, which no internal commit holds. M11-B adds two steps, for a sitting's run root alone (planning/mvp-m11-board-addendum.md): reading N, U-Boot's MD5 of the NOR's six ranges (S3-E's item 9) by the console tool's reading lines, only with K3_NOR_READ, each range compared with the reading before it and any difference S3-E's stop (p), the digests kept in the private store; and fedora, the board's own system up after the sitting's last reset. The session's steps above type what they typed, and their stops keep their numbers and texts."
         },
         {
           "path": "mvp/tests/check-capture.py",
