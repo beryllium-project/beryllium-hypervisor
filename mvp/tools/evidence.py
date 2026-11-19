@@ -210,6 +210,7 @@ prefixes alone and refuses either.
 """
 
 import argparse
+import contextlib
 import hashlib
 import importlib.util
 import json
@@ -709,6 +710,7 @@ def qemu_attempts(build):
         boundary_row(attempt, row, suite / f"{stem}.boundary.txt")
         attempt["stem"] = stem
         attempt["breach"] = breach_row(build, attempt, row, suite)
+        attempt["halt"] = halt_row(build, attempt, row, suite)
         attempts.append(attempt)
     if not attempts:
         raise Refused("attempts.tsv has no attempt")
@@ -733,6 +735,26 @@ def breach_row(build, attempt, row, suite):
         raise Refused(f"attempts.tsv row {row!r} and its breach record "
                       f"{record.name} do not agree")
     return plan
+
+
+def halt_row(build, attempt, row, suite):
+    """M11-B: whether an attempt's run has the halt mark in its expectation
+    under k3/check. If so, its halt record names that image or says that
+    the run could not be judged; if not, it has none."""
+    marked = [json.loads(path.read_text(encoding="utf-8")) for path in
+              build.glob(f"k3/check/**/expect/{attempt['run']}.json")]
+    marked = [value.get("image") for value in marked if "halt" in value]
+    record = suite / f"{attempt['stem']}.halt.txt"
+    text = record.read_text(encoding="utf-8") if record.is_file() else ""
+    last = text.splitlines()[-1] if text.strip() else ""
+    match = re.fullmatch(r"BE_MVP_HALT: (?:PASS|FAIL) image=(\S+) "
+                         r"boundary=off .*", last)
+    if marked and (match and [match.group(1)] != marked or not match and
+                   not last.startswith("BE_MVP_HALT: FAIL ")) or \
+            not marked and record.exists():
+        raise Refused(f"attempts.tsv row {row!r} and its halt record "
+                      f"{record.name} do not agree")
+    return bool(marked)
 
 
 def boundary_row(attempt, row, record, table="attempts.tsv"):
@@ -1084,7 +1106,7 @@ def development(build, out, home):
     writer.copy("qemu/attempts.tsv", suite / "attempts.tsv")
     plans = {}
     for attempt in attempts:
-        for suffix in ATTEMPT_FILES:
+        for suffix in ATTEMPT_FILES + ("halt.txt",) * attempt["halt"]:
             writer.copy(f"qemu/{attempt['stem']}.{suffix}",
                         suite / f"{attempt['stem']}.{suffix}")
         if attempt["breach"]:
@@ -2195,6 +2217,25 @@ def self_test(scratch):
          "bundle", "gcc-payload.1.breach.txt is missing" in
          (refused(development, build, scratch / "bundle-3", home) or ""))
     record.write_text(original, encoding="ascii")
+    # M11-B: halt_row() and the bundle's copy; the last record a stray.
+    mark = build / "k3" / "check" / "expect" / "te-poc-k3-like.json"
+    mark.parent.mkdir(parents=True)
+    record = build / "qemu" / "suite" / "gcc-te-poc-k3-like.1.halt.txt"
+    ok, copy = ("BE_MVP_HALT: PASS image=te-poc-k3-like boundary=off x\n",
+                scratch / "bundle-3" / "qemu" / record.name)
+    for text, marked, want in (
+            ("", 1, "agree"), (ok.replace("=te-poc-", "="), 1, "agree"),
+            ("BE_MVP_HALT: FAIL x\n", 1, ""), (ok, 1, ""), (ok, 0, "agree")):
+        mark.write_text("{" + '"halt": 1, ' * marked +
+                        '"image": "te-poc-k3-like"}', encoding="ascii")
+        if text:
+            record.write_text(text, encoding="ascii")
+        with contextlib.redirect_stdout(quiet):
+            found = refused(development, build, scratch / "bundle-3", home)
+        case(f"a halt record {text.split()[1:3]}, marked={marked}: " +
+             (want and "refused" or "bundled"), want in (found or "") and (
+                 want or copy.is_file() and copy.read_text() == text))
+    mark.unlink(), record.unlink()
     record = build / "qemu" / "suite" / "gcc-k3-like.2.boundary.txt"
     record.write_text("BE_MVP_BOUNDARY: PASS image=two-guests\n",
                       encoding="ascii")
