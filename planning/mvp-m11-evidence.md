@@ -2087,3 +2087,569 @@ with its reading.
 - **One commit of the range is not M11's**: the planning site's
   entries for two pages of M12, which that lane's signed pages were
   waiting for.
+
+## M11-B1 and M11-B2: the board's tools, and the M-mode addition
+
+### Outcome first
+
+These are the first two work packages of the
+[board addendum](mvp-m11-board-addendum.md): the tools for the M11
+candidate's runs on the board (M11-B1) and the one M-mode addition
+(M11-B2). **No step of either has run on the board.** Everything below
+is emulation, or a tool run on files.
+
+Their exits hold at the last commit that changes a tool, which as
+reviewed, unsigned, is `964696195fb0a887f004131d8d743d5a598f4bc9` (tree
+`1917147b98fd882f8465cf1c4e06627ad8f5111b`). A sign-off gives each
+commit of the range another name and the same change; this section
+names commits by their subjects.
+
+- M11-B1, "B-10's tests pass": each of B-10's tests that can run before
+  a sitting passes ("B-10's list", below).
+- M11-B2, "its two tests pass under QEMU. The build for QEMU is
+  unchanged, byte for byte": the rows `k3-halt` and `k3-reset-absent`
+  pass, and both pinned firmware binaries are the candidate's.
+
+**No image of the candidate's changes.** In a clone at the path of the
+candidate's gates' clone, every one of the 801 outputs that the
+candidate's record lists (`mvp/results/20261118-m11-candidate/host/`
+`images.sha256`) is byte for byte the same, the monitors' ELF files
+among them (801 of 801 at M11-B3's gates, below; `check` makes 64
+more outputs there, all under `k3/check/`).
+
+**No input of the proofs' records changes** (stop B7): nothing under
+`mvp/src`, `mvp/Makefile`, `mvp/scenarios`, `mvp/guest`,
+`mvp/tools/lock`, the four tools that the records bind, or
+`bringup/k3-b2`.
+
+M11-B3's gates, at the same commit, are in the next section.
+
+### The commits
+
+Twenty-seven commits on the working branch, over the decision
+record's two entries of 2026-11-18 and 2026-11-19, in the order in
+which the five lanes depend on each other:
+
+| Lane | Commits, by subject |
+| --- | --- |
+| The frame | "the frame for the board's build and its gate" |
+| F, the addition | "a reset device that only halts, and the board's build"; "the test device's region only under a reset node"; "the end of a run whose machine halts"; "the board firmware's tier-1 build, and B-2's rows in QEMU"; "the sittings' two firmware forms under QEMU" |
+| T, the tree | "the recipe for the board firmware's device tree"; "the board's description and hostile-monitor declarations"; "the partition backend's board platform"; "D-3's checker on the board's trees and tables"; "the generator's rules for the board's declarations"; "the bundle carries a halting run's halt record"; "the board's hostile-monitor images and their QEMU rows"; "the board gate's steps, and each image's board.json"; "evaluate runs the board gate, given the published files" |
+| K, the form | "the capture checker's form for a boot from a card"; "the claim ledger's method for a diagnostic board run" |
+| C, the card | "the firmware's FIT and the card's environment"; "the card image"; "the reader's tool: the dry run, the write, the read-back"; "card.mk, the gate's step, and the commands" |
+| S, the sittings | "the driver of the two sittings at the board"; "the console tool types nothing while a card is in the slot"; "the reading of the NOR, and the board back on its own boot"; "a sitting's boots from a card, judged by the card-boot form"; "the record of a sitting" |
+| The owner's words | "the README, the guide, and the disclosure for M11-B's tools" |
+
+Each lane was written by a coding sub-agent on `claude-opus-5.5` in a
+clone of its own, part by part; the owner session read every part line
+by line and then landed it. The commit boundaries are the owner's: a
+lane's small later fixes are folded into the commit that they correct,
+and no commit holds another lane's file.
+
+### The addition (B-2), and the firmware's builds (B-1)
+
+- **The patch.** `0011` adds `CONFIG_SBI_SYSTEM_RESET_HALT` (default
+  n): one reset device, at priority 1, for the shutdown type alone,
+  which stops the calling hart in `sbi_hart_hang()` and touches no
+  device. It is 48 lines of C. It was written afresh from the addendum
+  under BSD-2-Clause, by a tool that can be named, with an
+  `AI-assisted-by` line and no `Signed-off-by` (D-2, Q9).
+- **The build for QEMU is unchanged.** With the option off, the
+  firmware's binary and the binary without the boundary extension have
+  the lock's SHA-256 (`fdab16e9…`, `f997165a…`), and both ELF files are
+  byte for byte the candidate's.
+- **The board's configuration** is the committed one with that one
+  line more (`FIRMWARE_WITH`); Kconfig's resolution must differ from
+  the committed configuration's in that setting alone. With
+  `FIRMWARE_FDT` a device tree is built in, and after the build the
+  binary's bytes at the tree's place are compared with the tree. Built
+  twice in two directories, the binary is the same.
+- **Its two tests** (B-2), on QEMU's `k3-like` machine with a tree
+  that has no reset device of QEMU's: `k3-halt`, a run under the
+  boundary that ends with the commit records and then the halt; and
+  `k3-reset-absent`, the candidate's own binary on the same tree, which
+  finds no reset device, so that the monitor's first check fails as
+  declared. Three more rows go beyond B-2's two: `k3-halt-fallback`
+  (QEMU's reset devices outrank the halt device), and `k3-first` and
+  `k3-second`, which boot the form that each sitting's firmware has, a
+  tree built in.
+- **A run whose machine halts** ends when its declared last line has
+  been printed and the console has been quiet for a settling time. The
+  judge then requires hart 0 inside `sbi_hart_hang` and every other
+  hart inside the firmware's wait, by the firmware ELF's own symbols.
+
+### The firmware's tree (B-3)
+
+- **The recipe** (`tools/k3-recipe.py`) on the published tree, at the
+  gate: step 0 is the tree that the published U-Boot image carries for
+  the board's product; steps 1 to 3 are each their input with their
+  own changes alone, read back through the lock's dtc, with no new
+  warning; made twice, the results are equal. In `check` the recipe
+  runs on stand-ins with made-up values (77 cases, a refusal for each
+  rule).
+- **The board's description** (`k3/platform.json`) holds each fact
+  with its source and the published tree's 69 devices with their
+  kinds; the gate compares it with the tree.
+- **The backend's board platform and D-3's checker**: the tree and the
+  tables of each of the four images, from each image's own firmware
+  build, pass the independent checker, which has the board's rules
+  apart from the backend's; its mutations on the published step 3 are
+  each refused by their own rule (28 at the gate, on the published
+  step 3; 28 in `check`, on a stand-in, with the backend's own 20
+  cases).
+- **The model of the root regions** is compared with a firmware's own
+  print under QEMU alone (the `k3-like` platform, in the two board
+  images' runs). The board's own banner is first seen at the first
+  sitting.
+
+### The board's hostile-monitor images (B-10)
+
+- `k3-breach-g1` and `k3-breach-c` are the candidate's `breach-g1` and
+  `breach-c` with the table of attempts made from the board's
+  declarations: each must equal its candidate image outside the table,
+  and does (`changed=67` and `changed=69` bytes of the tables).
+- The declarations pass the generator's board rules against the
+  published tree's devices, and each of stop B9's mutations is
+  refused: a row on a device that holds persistent state, on another
+  device, in the real-time cores' memory, where nothing lies, and off
+  the end of one of the five devices.
+- Under QEMU, with the boundary on: `k3-breach-g1`, 112 rows, 73
+  denied, 33 refused, 1 illegal instruction, 5 controls allowed;
+  `k3-breach-c`, 132 rows, 85 denied, 31 refused, 7 rejected, 2
+  illegal, 2 of no byte, 5 controls. M-mode's counts are the declared
+  ones. Under QEMU the board's device addresses are memory outside
+  every profile, so these runs test the declarations, the counts, and
+  the hook, and nothing of the board's devices.
+
+### The form for a boot from a card (B-8), and the ledger tool's method
+
+- `tests/check-capture.py --mode card` is tested on captures built
+  from parts, with made-up values and no line of a real log: three
+  shapes pass (the boundary off, on, and a hostile-monitor image's),
+  and a mutation of each requirement fails with its own finding and
+  its stop of the addendum (`BE_MVP_K3_FORM: PASS shapes=3
+  mutations=122 variants=7 inputs=32 medium=6 refusals=10 written=6`).
+- It requires and refuses some lines beyond B-8's list, and reads some
+  of B-8's items more strictly ("Departures", below).
+- `tools/claim-ledger.py` has the rules for rows about the board, with
+  no such row in the ledger: the ledger and both renderings are
+  unchanged but for the pins and notes of this range.
+
+### The card (B-4)
+
+- The makers' self-test and the reader tool's test pass, the latter
+  on a stand-in machine of regular files (206 and 194 cases).
+- At the gate, each image's FIT has the structure of the published
+  firmware image, and the card's environment is the published one
+  with 25 variables removed by rule and 93 kept.
+- **In these two packages no card was written, and the reader's tool
+  did not run on a reader.** The first sitting's card is M11-B3's
+  (below).
+
+### The sittings' tools
+
+- Both sittings run whole on stand-ins of the board, the dongle, the
+  console, the workstation's USB bus, and the gate, each boot a
+  capture that the card-boot form's test wrote and the form judged;
+  with them, a boot that fails with each kind of stop, a boot that
+  never ends, a reading that differs in each range, each typing
+  command refused with a card in, and the record of each sitting.
+  (`BE_MVP_K3_SESSION: PASS self_test=183 cases=27`).
+- **The first sitting was rehearsed on the gate's real outputs, on
+  files**, by the lane's writer, on the stack of the five lanes before
+  the landing (2026-11-19, 05:48Z): the gate's record and
+  `board.json`; a card image of a made-up size, written and read back
+  through the reader tool's stand-in machine; a capture that the
+  form's test wrote from the real `board.json`; then every step of
+  the driver, through the sitting's record. Every step passed, and no
+  real output differed from what a tool expects. No board, no reader,
+  and no card was touched.
+- **As uid 0** the dry run's two ends run the card reader's tool for
+  another uid, and say so in a NOTE line: the evaluator's container is
+  uid 0, and that tool refuses uid 0, as it should. A first trial of
+  `evaluate` on the stack failed there (2026-11-19, 05:42Z), which is
+  how this was found; the tool is unchanged.
+
+### B-10's list
+
+B-10 names what must pass "before any sitting, under emulation or
+offline". Each item, where it runs, and what it printed at M11-B3's
+gates (the next section has their times):
+
+| B-10's item | Where | Result |
+| --- | --- | --- |
+| The addition's two tests | `check`: the rows `k3-halt` and `k3-reset-absent` | Both pass, each at its first attempt |
+| The recipe's tests: each step's effect on the published tree, read back through the compiler | The gate: `k3-gate-recipe`, `k3-gate-platform`, `k3-gate-tree` | `PASS extract`, the description's `findings=0`, four trees, `room trees=4` |
+| D-3's independent checker on each of the board's trees and expected tables, with its mutations | The gate: `k3-gate-partition` | Four images pass (three with profiles 8, 8, 9; `two-guests-off` with the boundary off); 28 mutations refused |
+| The board's two hostile-monitor images under QEMU's `k3-like` machine, the boundary on | `check`: the rows `k3-breach-g1` and `k3-breach-c` | Both pass at their first attempt; each run's banner equals the backend's model of the root regions |
+| The generator's refusal of a row outside the list, with one mutation for each kind of device | The gate: `k3-gate-breach`, against the published tree's 69 devices | Both declarations pass; 28 and 27 mutations refused |
+| The form for a boot from a card, on synthetic captures: a passing one, and one mutation for each requirement | `check`: `k3-form-check` | Three shapes pass; 122 mutations fail, each with its own finding |
+| The card's tools, on a file in place of a device, and their refusals; the read-back's refusal of a card with an old backup table or an old partition's bytes | `check`: `k3-card-check` | 206 and 194 cases |
+| The first sitting's firmware build, on the host and in the evaluator, equal byte for byte | The gate on the host, and again inside `evaluate` | The next section |
+| The candidate's own gates, which must still pass | M11-B3 | The next section |
+
+### The soft limits
+
+Counted as the addendum counts them, from M11-E's candidate; the
+limits are the decision record's (2026-11-18, `limits: ok; b7: a`, and
+2026-11-19, `card 11000`):
+
+| Lane | Limit | Now |
+| --- | --- | --- |
+| The addition | 80 left of the firmware additions' limit | 48 |
+| The addition's tests, and the board's build rules | 3,000 | 2,430 |
+| The frame | 1,200 | 1,123 |
+| The tree's recipe, the backend's second platform, the checker, and the declarations with the generator's rules | 2,500 | 2,387 |
+| The card's tools and the session's tools, with their dry runs | 11,000 | 10,419 |
+| The form for a boot from a card, the end of a halting run, and the ledger tool's method | 3,500 | 2,950 |
+
+"Now" is one diff from the candidate to the tip, 19,309 counted lines
+in 41 files, each line given to the lane of the commit that wrote it.
+While they wrote, the lanes kept running counts, which count a line
+again when a later part rewrote it and split one shared file
+otherwise: 2,403, 1,150, 2,396, 10,543, and 2,985. Those were the
+numbers held against the limits.
+
+No limit is passed. Stop B8 fired twice while the lanes were written,
+and the responsible human re-set the limits each time, before anything
+of the lanes was landed; nothing was cut to meet a limit.
+
+### The owner's own tests
+
+On each part the owner session changed the tools one rule at a time
+and ran the lane's tests. Where it kept a count, in nine parts: 141
+such changes, of which 117 failed the tests at once. Of the other 24,
+21 led to new test rows, and one was another form of the same code.
+Two are gaps that stay: nothing shows that the banner comparison's
+three mutations were made, and the console's audit after a boot's
+judgement finds nothing that the dry run can make.
+
+### Departures and readings for review
+
+Each is the session's reading or choice, made while the lanes were
+written, and each stands unless the responsible human says otherwise.
+
+From the addendum:
+
+1. **B-2, where the halt device lives.** It is a member of the
+   firmware's static list of reset devices in the core library, built
+   only with its option. A statement added to the platform's code
+   would have changed the candidate's ELF, which the expected tables
+   bind.
+2. **B-1, where the board builds' pins live.** The three tier-1 builds
+   are pinned beside the tool lock, in `k3/firmware-pins.txt`, since
+   the lock is an input of the proofs' records. A sitting's firmware
+   is pinned in `k3/sitting-pins.txt` in the commit that puts its
+   SHA-256 into the decision record.
+3. **B-2, rows beyond its two tests:** `k3-halt-fallback`, `k3-first`,
+   and `k3-second`.
+4. **B-10, a hart among 8 to 15.** The declarations start hart 8 and
+   read its status, as B-10 has it, and also start hart 15. The three
+   rows stand in the places of the candidate's two rows on the S-level
+   interrupt controller, which the board's tree disables, and of its
+   row on the power device, which the board lacks. Each table then
+   keeps its row count, and each image differs from the candidate's in
+   the table's bytes alone.
+5. **B-10, what an attempt would do if the boundary failed.** Each
+   declaration says it, in an entry of its own, for every row that
+   writes, invalidates a cache block, jumps, or calls on one of the
+   five devices or the firmware's place, for the two hart starts, and
+   for the store into the memory that no extent names. A row that only
+   reads has none. The generator requires the entries, and refuses one
+   that names no row or a row that only reads.
+6. **B-4, the card's environment.** Beyond the variables that write
+   storage or firmware or download, the boot menu's and the splash's
+   are removed: 25 removed in all, 93 kept. The step's expected counts
+   are constants of the tool.
+7. **B-8, the form.** It goes beyond B-8's list in four ways. Each
+   was taken from the vendor's published sources, or from the board's
+   own log of boots from the NOR.
+   - *Required too:* the environment's line, loaded from the card, in
+     either of the two shapes that the vendor's U-Boot prints; and the
+     power chip's line, once, with a value other than the one that
+     sends U-Boot into its download mode.
+   - *Refused too*, a line of each of fifteen kinds: an MTD device
+     removed; a failed write of the identity data; a write to a block
+     device; a failure of the power chip's driver; fastboot's USB
+     lines; the environment saved; the vendor's search of a card for a
+     flashing table; the splash's partition lines; a network line; a
+     variable not defined; an environment file loaded; one of the
+     vendor's boot flows begun; the SPL's environment lines; a second
+     SPL banner or firmware banner; and one more form of a partition
+     table's error.
+   - *Read more strictly:* the firmware banner's 35 fields, each once
+     and in order, with the build's fields equal to `board.json`'s;
+     B-6's thresholds as rules (at least 14 PMP entries, a grain of at
+     most 12 bits, privilege version 1.12 or later); the root OpenSBI
+     domain's regions text for text; each hart assigned to exactly one
+     OpenSBI domain; and, with the boundary on, the commit records'
+     values against the plain PMP table and the declared counts.
+   - *Not read:* a hostile-monitor image's own record of its attempts
+     (the decision record's erratum of 2026-11-18, `b7: a`).
+8. **S3-E's item 9, a reading.** A reading types ten lines from eight
+   templates: the probe, the read, the six digests, and then the read
+   and the whole flash's digest again, which must be equal.
+9. **M11-B6's "redacted as MVP 1.0's are".** A sitting's record is
+   held to stricter rules than MVP 1.0's board records: no path of the
+   workstation outside its named roots, no host name of the
+   workstation, no digest of a range of the NOR, no USB ID, no
+   reader's link. It holds no `images.sha256`: the inputs that the
+   sitting ran on are in its plan, each by path and SHA-256.
+10. **The gate makes all four images now.** The second sitting's three
+    firmware builds are made again at M11-B4, with the first sitting's
+    facts, as the addendum has it.
+11. **The order around a sitting.** The driver takes a gate's record
+    only if its commit is an ancestor of the source's commit, with
+    nothing changed since but the sitting's pins, the observed facts,
+    records, and planning pages. A sign-off rewrites commits, so the
+    board gate is run again at the signed commit before a sitting.
+
+From the plan and the conventions:
+
+12. **The frame** is a lane that the addendum did not name (the
+    decision record, 2026-11-18).
+13. **`evaluate` gains a setting**, `MVP_K3_PUBLISHED`. Without it
+    nothing of the gate runs, and the evaluator's record is as before.
+14. **The halt record of a boundary-off run** is a file of its own,
+    `.halt.txt`, which the bundle carries.
+15. **The commits.** The lanes were written in parallel on a shared
+    frame and landed in dependency order; a whole `check` was run from
+    a clean clone at each lane's last commit and at the tip, not at
+    every commit. Each commit passed the ledger's check and the
+    fragments' own check.
+16. **The scratch text check** admits one shell utility by its
+    absolute path under `/usr/bin`, where the tools call it as a
+    program: its name is one of the claim's forbidden phrasings, which
+    is why this record does not write it.
+
+Found, and left:
+
+17. **`mvp/Makefile`'s comment** counts two pure decisions (the
+    README's open item 136).
+18. **The `shim-rule` variant's race** (the README's open item 137):
+    the release's own, seen twice in a lane's whole check under load.
+    Not changed.
+19. **M11-B's rows run only where their expectations exist** (the
+    README's open item 138).
+20. **The tools' comments use working names**: the five lanes in which
+    they were written, parts of a lane, and items of the lanes'
+    reviews, which no public page defines; three messages of the
+    sittings' driver name a lane too. The README's entry for M11-B
+    under "Design" now says which lane is which, and its open item 140
+    owes a sweep, in a commit of its own, before M11-B's result. It
+    was found while the last lane finished, and a sweep then would
+    have changed fifteen files that had passed their checks.
+
+### What is not shown
+
+The README's open item 139 has the list. In short: nothing of the
+board; the board's description against the board; the card's tools on
+a real reader (M11-B3, below, runs them on one, for the first
+sitting's card); the records' values under the board's tables; the
+sitting's record through its own recipe; and the board's
+hostile-monitor images on the board's devices. The sittings are what
+test these.
+
+## M11-B3: the gates, and the first sitting's card
+
+### Outcome first
+
+M11-B3's exit is "They pass. The firmware's and the image's SHA-256
+are in the decision record": B-10's list and the candidate's gates at
+one commit that holds M11-B1 and M11-B2, and the first sitting's card
+image, written to its card and read back.
+
+- **The gates pass** at the commit named in the section above
+  (unsigned `964696195fb0a887f004131d8d743d5a598f4bc9`, tree
+  `1917147b98fd882f8465cf1c4e06627ad8f5111b`), each from a clean clone
+  on `l1`, 2026-11-19, 07:22Z to 14:30Z.
+- **Every image of the candidate's is unchanged**: all 801 outputs of
+  the candidate's signed record, byte for byte.
+- **`verify`** gives the candidate's verdict and counts in every
+  suite. One prover run that ended inside its time limit in the
+  candidate's run reached it in this one; the mutant that it belongs
+  to is killed in both. That one count is put to the responsible
+  human with its reading (the plan's stop 9; below).
+- **The first sitting's firmware and card**: the build's and the
+  image's SHA-256 are in the decision record and in the sitting's
+  pins; the image is on the card; and the whole card, read back, is
+  the image.
+
+**Nothing here ran on the board.** The gates are emulation and tools
+run on files; the card was written on the workstation.
+
+### The gates
+
+One after another, and until 10:12Z with nothing heavy beside them
+(departure 1, below). The clone is at the path of the candidate's
+gates' clone, so that every output can be compared with the
+candidate's.
+
+| Gate | UTC | Result |
+| --- | --- | --- |
+| The tool lock | 07:22 | `BE_MVP_LOCK: PASS roles=33` |
+| `./mvp/mvp check` | 07:22 to 07:49 | `BE_MVP_CHECK: PASS`. 118 runs under QEMU in 131 attempts: 82 under the boundary, 36 with it off; the 13 other attempts were refused by `BE_MVP:02` and made again, as before. Six sessions. The bundle holds 1,180 files and 865 images |
+| The board gate, on the vendor's published files | 07:50 | `BE_MVP_K3_GATE: PASS steps=9 images=38` |
+| `./mvp/mvp evaluate`, with the board gate inside the evaluator | 07:50 to 08:17 | `BE_MVP_EVALUATE: PASS`. Inside: `check` passes (118 runs in 127 attempts). The host's and the evaluator's outputs are equal, 865 of 865; and the gate's, made again inside, 38 of 38 |
+| The U-Boot rehearsal | 08:17 to 08:20 | `BE_MVP_UBOOT_REHEARSAL: PASS cases=7 attempts=7 refused=0` |
+| `kernel-repro` | 08:20 to 08:21 | `BE_MVP_KERNEL_REPRO: PASS outputs=23 identical` |
+| `./be model-check` | 08:21 to 08:23 | Stage 1: `PASS theorems=26 assumptions_closed=26 citations=100`. `BE_MODEL_DIFFERENTIAL: PASS instances=4 mutations=91`. |
+| The model's evaluator | 08:23 to 08:26 | `BE_EVALUATION: Model 0.2 rootless evidence PASS` |
+| The CHERI check | 08:26 to 08:51 | `BE_MVP_CHERI_CHECK: PASS` (1,506 s). 56 runs in 68 attempts and six sessions on the CHERI build; 94 capture mutations, each rejected; the plain build's 222 images equal to the reference's; the regression build's 50 runs in 60 attempts and six sessions. |
+| `./mvp/mvp verify` | 08:51 to 14:30 | Exit 0 after 20,382 s. Every suite's line is the candidate's, but for one count of the near-limit list: one prover run reached its time limit, where it had given up inside it. No verdict changes (below). |
+
+**The images.** The gates' `check` bundle lists 865 outputs. The 801
+that the candidate's record lists are byte for byte the candidate's;
+the 64 others are M11-B's, all under `k3/check/`. Both firmware ELF
+files, which no record lists, were compared with the candidate's
+gates' build at the same path: equal.
+
+Fourteen of the 64 name the commit that they were built from: the
+reference manifests of M11-B's seven rows under QEMU, and the seven
+files that hold their digests. At one commit they are the same on any
+host (the host's and the evaluator's are equal, above). Between two
+commits they differ in that one field, so a `check` at a later commit,
+or at a signed one, can agree with this list in 851 outputs at most.
+The bundle's own reference manifests name their commit too, but the
+list does not hold them ("Found, and left", below).
+
+**The board's firmware builds** (B-1), made at the gate on the host
+and again inside the evaluator, equal byte for byte, each 540,600
+bytes:
+
+| Image | Sitting | SHA-256 of `fw_dynamic.bin` |
+| --- | --- | --- |
+| `two-guests-off` | first | `d2f1b1e4d8e864673ec24617abc9ca3c5a16664f38d9aa93c09ad7236478eb5e` |
+| `anchor` | second | `d71737154979310c4c8d4a452cb878ff79c320a6b39c791cd668dd57a67a5309` |
+| `k3-breach-g1` | second | `a91dceb4280968e077e5fd4f0fbbeada084013ffe180cc561d4e54413b497b37` |
+| `k3-breach-c` | second | `7d4a9dbee8c8f2b8b9024b5fab717f2dcfcf0717c2c446b70e8bad8be35e8c4e` |
+
+The second sitting's three are made again at M11-B4, with the first
+sitting's facts; only the first is pinned now.
+
+**`verify`.** Against the candidate's record on this host, by the
+comparison that M11-E used: 32 files; 12 are equal byte for byte, 30
+once run metadata is set aside, and two differ, each in one line.
+
+- `verify.txt`: the near-limit list counts 264 runs that reached their
+  limit, where the candidate's counts 263. Every other suite's line is
+  the candidate's: the WP arm proves 130 of 134 goals and kills 18 of
+  24 mutants; the CN arm proves 5 of 55; CBMC on Leaf A, 336 of 336
+  properties; CBMC on the ring, 13,547 of 14,931.
+- `leaf-a/wp/mutants.txt`: the line of mutant m16 (a constant of
+  `be_mvp_denial_decide` changed from 0 to 1). It is killed in both
+  runs, by the same goals. One part of one of those goals, `D_E7`,
+  ended without a proof inside its 120 s in the candidate's run (the
+  prover gave up; the report keeps no time for such a run), and
+  reached the limit in this run. The goal's four other unproved parts
+  reach the limit in both runs. The provers of that job were slower
+  throughout in this run: its slowest proof took 35.7 s, where the
+  candidate's took 24.7 s, and the two parts of `D_E7` that took
+  14.1 s and 13.5 s there took 18.2 s and 18.9 s here.
+
+**The reading, for the responsible human (the plan's stop 9).** No
+verdict changes, and no contract or statement. One count changes, and
+only because one prover run crossed its time limit: the plan has such
+a count recorded as that and put to the responsible human. The host
+was more loaded than at the candidate's run. Until 10:12Z these gates
+ran with nothing heavy beside them. Then the responsible human asked
+whether the M12 lane had to wait for these runs; the owner session
+answered that it need not, and lifted the hold. That lane's image
+builds ran from 10:29Z to 12:09Z, and the owner session's own setup of
+a second host for development checks ran from 11:04Z to 11:08Z. Mutant
+m16's job ran from about 10:45Z to 11:10Z. `verify` took 20,382 s,
+against the candidate's 19,847 s. His sign-off of this section accepts
+the reading, as his sign-off of M11-4's section did for the crossing
+there.
+
+### The first sitting's firmware and card
+
+- **The firmware.** The gate's build for `two-guests-off`, the same on
+  the host and inside the evaluator, is recorded in the plan's
+  decision record and pinned in `mvp/k3/sitting-pins.txt` (the commit
+  "the first sitting's firmware build is recorded and pinned"):
+  `fw_dynamic.bin`, 540,600 bytes, SHA-256 `d2f1b1e4…eb5e`, the table
+  above.
+- **The card image.** Made at that commit, in the gates' clone, from
+  the gate's outputs, for the card's size (14:33Z): `card.img`,
+  31,927,042,048 bytes, SHA-256
+  `7dcec03cad476ec301319531471ec006b98ef9f7837d0fbdf3f6825235d3c24c`.
+  Its FIT (SHA-256 `c36a6582…5d9f`) and its environment (SHA-256
+  `f0a14d29…3600`) are byte for byte the ones that the gate made. It
+  is recorded and pinned in the next commit ("the first sitting's card
+  image is recorded and pinned"), and is not committed: it holds the
+  vendor's files.
+- **The reader.** One USB card reader, named by its stable ID path.
+  The reader tool's dry run wrote the access rule for it (QB4), and
+  the responsible human installed the rule with one command (by
+  09:01Z): his account may open that reader's whole-disk node, and
+  nothing else changes. Until then the tool had run on no reader; its
+  test uses regular files that stand for a machine.
+- **The write.** A dry run through the make target passed each of the
+  tool's checks on the real reader and printed the write's
+  confirmation (14:35Z). With it, the tool wrote the whole card,
+  14:36Z to 15:11Z: 31,927,042,048 bytes in 2,106 s (15.2 MB/s),
+  the image, the zeros to the card's last blocks, and the backup
+  table; flushed; the bytes that it wrote have the image's SHA-256.
+- **The read-back.** The tool then read the whole card back, 15:12Z
+  to 15:39Z: 31,927,042,048 bytes, whose SHA-256 is the image's, and
+  each of the fourteen regions equal to the image's (the tables, the
+  environment, the vendor's four files, the FIT, the gaps, the zeros,
+  and the backup table). The card had not been taken out of the
+  reader between the write and the read-back.
+- The two records, and the reader's rule, are in the sittings' private
+  area beside the working clone; a sitting's record takes the card's
+  records with it (M11-B6).
+
+So M11-B3's exit holds: the gates pass, and the firmware's and the
+image's SHA-256 are in the decision record.
+
+### What was run, and what was not
+
+- The gates ran at the last commit that changes a tool. The two
+  commits after it change the sitting's pins and the decision record,
+  and the one after those changes this record alone. A whole `check`
+  from a clean clone passes at the second of them, the commit of the
+  card's pin (14:37Z to 15:04Z: 118 runs under QEMU in 123 attempts,
+  six sessions, `BE_MVP_CHECK: PASS`).
+- No record of these gates is committed: the board's result (M11-B6)
+  brings the records. The logs are kept beside the working clone.
+- The gates' driver is the owner's scratch script, after the
+  candidate's.
+- A development check, which is not a gate: on a second host (a
+  virtual machine with another maker's processors), in the pinned
+  evaluator image built there from Fedora's own repositories, a whole
+  `check` of the gates' commit passes, and its 865 outputs are byte
+  for byte this host's (11:25Z to 12:08Z).
+
+### Departures at M11-B3
+
+Each stands unless the responsible human says otherwise.
+
+1. **Other work ran beside `verify`.** Until 10:12Z the gates ran
+   with nothing heavy beside them, as the candidate's gates did.
+   From then on the M12 lane's work could run on the host (the
+   reading above says why), and did. One count of `verify` differs
+   from the candidate's, and its reading is above.
+2. **The card was written before the range's sign-off**, as the
+   work package has it. A sign-off gives the commits other names, so
+   before the first sitting the board gate is run again at the signed
+   commit, and the card's image is made again there: it must have the
+   pinned SHA-256, which the card was read back against.
+3. **The whole `check` after the gates** is at the commit of the
+   card's pin, not at the range's last commit, which changes this
+   record alone.
+4. **The reader tool's first dry run** was made before the card's
+   image existed, from the working tree, to give the access rule for
+   the responsible human to install; it reads the system's own
+   description of the reader and writes nothing to it. The dry run
+   that gave the write's confirmation was made after the image and
+   its pin, through the make target.
+
+Found, and left:
+
+5. **Fourteen of M11-B's 64 listed outputs name their commit** ("The
+   images", above). A comparison of two commits' lists must set them
+   aside. Whether the list should hold them is settled with M11-B4's
+   work, with the sweep of the working names (the section above,
+   item 20).
