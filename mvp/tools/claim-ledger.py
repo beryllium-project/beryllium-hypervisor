@@ -39,16 +39,22 @@ eight checks: its schema (exactly its keys; its name, M<number> candidate,
 whose first word prefixes its IDs, in order; its page, a claim-<name>.md;
 its tree null or 40 hex digits; no text naming a row of the first set), and
 if that fails, the other seven skip; its methods (host unit test,
-adversarial test, semantic checker, and emulation alone, and evidence for
-every row); its evidence, by the release's rules, and a gates' record (a
-cited MANIFEST.sha256 beside an rc.txt) only once the set names its tree,
-which the record's rc.txt must name; its tree, a tree of this repository
-that a commit on this line (HEAD and its ancestors) has, skipped as the
-commits check is but never for a marker, and skipped in a shallow clone
-where the tree is not found; its OpenSBI commit, the one in
+adversarial test, semantic checker, and emulation alone, and in a board row
+the release's diagnostic board run (M11-B, B-11), every board row after
+every clause row; and evidence for every row); its evidence, by the
+release's rules, a board record (a MANIFEST.sha256 beside mvp/bundle.txt
+of kind=board) cited by each board row and by no clause row, and a gates'
+record (a cited MANIFEST.sha256 beside an rc.txt) only once the set names
+its tree, which the record's rc.txt must name; its tree, a tree of this
+repository that a commit on this line (HEAD and its ancestors) has, skipped
+as the commits check is but never for a marker, and skipped in a shallow
+clone where the tree is not found; its OpenSBI commit, the one in
 mvp/firmware/pins.mk; its rendering; its page (exactly two blockquotes: the
 claim rows' parts, each ending at . , ; or :, joined by one space, are the
-first, and the non-claim rows' sentences, one each, the second; once the
+first, and the non-claim rows' sentences, one each, the second; with board
+rows three, their parts the second, the limit with a sentence that the
+board's evidence is diagnostic and not hardware validation, and each of its
+sentences that names the emulator starting "Under emulation,"; once the
 set names its tree, the page names it too); and the plan's three words,
 never used of the boundary. join adds records to a
 verified bundle under records/claim-ledger/ and writes its manifest again
@@ -57,6 +63,10 @@ mutations of a copy, each failing exactly its own check (S1 H39), variants
 that pass, and the two markers' cases in a scratch repository; then the
 second set's cases, from a generator of their own and counted apart, with
 its tree's cases in another scratch repository and a shallow clone of it.
+The second set's board cases run on a board base: the docs themselves where
+the set has board rows; else the docs with two made-up board rows, their
+paragraph, "Under emulation," in the limit, and its diagnostic sentence, so
+that every case holds before the board's rows exist and after.
 """
 
 import argparse
@@ -69,6 +79,7 @@ import re
 import shutil
 import subprocess
 import sys
+import textwrap
 
 sys.dont_write_bytecode = True
 
@@ -89,9 +100,12 @@ RELEASE_NAME = re.compile(re.escape(RELEASE) + r" ([1-9][0-9]*)")
 SELF_DESCRIPTION = re.compile(
     r"(?:statement of the claim for|This guide documents|discloses the AI "
     r"assistance in developing) MVP 1\.0 release candidate ([1-9][0-9]*)")
+# The release's method for a run on a board, which the second set's board
+# rows (M11-B, planning/mvp-m11-board-addendum.md, B-11) take from it.
+BOARD_RUN = "diagnostic board run"
 VOCABULARY = ["by construction", "host unit test", "adversarial test",
               "deterministic report", "semantic checker", "emulation",
-              "diagnostic board run", "proof about the abstract model",
+              BOARD_RUN, "proof about the abstract model",
               "differential agreement", "not run"]
 COVERAGE = ["host unit test", "semantic checker", "not run"]
 NOT_RUN = "not run"
@@ -159,7 +173,7 @@ SEED = 20261028
 CANDIDATE_NAME = re.compile(r"(M[1-9][0-9]*) candidate")
 CANDIDATE_PAGE = re.compile(r"claim-(?!ledger)[a-z0-9]+(?:-[a-z0-9]+)*\.md")
 CANDIDATE_METHODS = ["host unit test", "adversarial test", "semantic checker",
-                     "emulation"]
+                     "emulation", BOARD_RUN]
 RELEASE_ROW = re.compile(r"(?<![A-Za-z0-9-])[CU]-[0-9]{2,}")
 # The words that the plan's "Claim text" never uses of the boundary: whole,
 # or in a hyphenated compound, in any case ("unverified" is another word).
@@ -673,12 +687,24 @@ def check_candidate_schema(context):
                  f"non_claims={len(candidate['non_claims'])}")
 
 
+def board_rows(candidate):
+    """The set's board rows: the claim rows whose methods include the
+    release's diagnostic board run (B-11). The others are the clause's."""
+    return [row for row in candidate["claims"] if BOARD_RUN in row["methods"]]
+
+
 def check_candidate_methods(context):
-    """The methods that the plan's "Claim text" names, and no other (no
-    board run, no proof, no `not run`); none repeated; evidence for every
-    row."""
-    out = []
+    """The methods that the plan's "Claim text" names, and a board row's
+    diagnostic board run, and no other (no proof, no `not run`); none
+    repeated; evidence for every row; and every board row after every
+    clause row, so that the page is cut by method."""
+    out, board = [], None
     for row in context["data"]["candidate"]["claims"]:
+        if BOARD_RUN in row["methods"]:
+            board = board or row
+        elif board:
+            out.append(f"{board['id']}: a board row before the clause row "
+                       f"{row['id']}")
         name, methods = row["id"], row["methods"]
         for method in methods:
             if OVERCLAIM.search(method):
@@ -703,15 +729,38 @@ def record_trees(manifest):
         if line.startswith("candidate_tree=")]
 
 
+def board_record(repo, relative):
+    """Whether RELATIVE is a board record's MANIFEST.sha256: its directory
+    holds mvp/bundle.txt with the evidence tool's schema and kind=board, as
+    tools/evidence.py writes a board record."""
+    if not relative.endswith("/MANIFEST.sha256"):
+        return False
+    bundle = repository_file(repo, relative[:-len("MANIFEST.sha256")] +
+                             "mvp/bundle.txt")
+    lines = bundle.read_text(encoding="utf-8", errors="replace").splitlines(
+    ) if bundle else []
+    return f"schema={evidence_tool().SCHEMA}" in lines and \
+        "kind=board" in lines
+
+
 def check_candidate_evidence(context):
-    """The release's evidence rules over the set's rows; and a cited gates'
-    record (a MANIFEST.sha256 beside an rc.txt) only once the set names its
-    tree, which the record's rc.txt names on its one candidate_tree= line."""
+    """The release's evidence rules over the set's rows; a board row cites a
+    board record, and no clause row cites one (the clause is about
+    emulation); and a cited gates' record (a MANIFEST.sha256 beside an
+    rc.txt) only once the set names its tree, which the record's rc.txt
+    names on its one candidate_tree= line."""
     candidate, repo = context["data"]["candidate"], context["repo"].resolve()
     out, detail = check_evidence({"repo": repo,
                                   "data": {"claims": candidate["claims"]}})
     tree = candidate["candidate_tree"]
     for row in candidate["claims"]:
+        cited = any(board_record(repo, entry["path"])
+                    for entry in row["evidence"])
+        if BOARD_RUN in row["methods"] and not cited:
+            out.append(f"{row['id']}: a board row cites no board record")
+        elif BOARD_RUN not in row["methods"] and cited:
+            out.append(f"{row['id']}: a row without the board method cites "
+                       "a board record")
         for index, entry in enumerate(row["evidence"], 1):
             where = f"{row['id']} evidence {index}"
             path = repository_file(repo, entry["path"])
@@ -838,9 +887,13 @@ def check_candidate_page(context):
     outside fenced code, the clause and then the limit, each ended by a
     blank line or the end. The claim rows' parts, joined by one space, are
     the clause, each ending at a mark of punctuation; the non-claim rows'
-    sentences, joined by one space, are the limit, each one sentence. Once
-    the set names its tree, the page names it, by its first eight hex digits
-    in backticks or in full."""
+    sentences, joined by one space, are the limit, each one sentence. With
+    board rows (B-11), three: the clause rows' parts, the board rows' parts
+    (the page's paragraph about the board), and the limit, one of whose
+    sentences says that the board's evidence is diagnostic and not hardware
+    validation, and each of whose sentences that names the emulator starts
+    "Under emulation,". Once the set names its tree, the page names it, by
+    its first eight hex digits in backticks or in full."""
     candidate = context["data"]["candidate"]
     page = context["docs"] / candidate["page"]
     if page.is_symlink() or not page.is_file():
@@ -849,18 +902,30 @@ def check_candidate_page(context):
     quotes, lazy = blockquotes(text)
     out = [f"{page.name} line {number} continues a blockquote without '>'"
            for number in lazy]
-    parts = [row["claim"] for row in candidate["claims"]]
+    board = [row["claim"] for row in board_rows(candidate)]
+    parts = [row["claim"] for row in candidate["claims"]
+             if BOARD_RUN not in row["methods"]]
     sentences = [row["sentence"] for row in candidate["non_claims"]]
-    if len(quotes) != 2:
-        out.append(f"{page.name} has {len(quotes)} blockquotes, not two (the "
-                   "clause, then the limit)")
+    wanted = [(parts, "the claim rows' parts are not the page's clause")] + [
+        (board, "the board rows' parts are not the page's board paragraph")
+    ] * bool(board) + [(sentences, "the non-claim rows' sentences are not "
+                        "the page's limit")]
+    if len(quotes) != len(wanted):
+        out.append(f"{page.name} has {len(quotes)} blockquotes, " + (
+            "not three (the clause, the board's paragraph, then the limit)"
+            if board else "not two (the clause, then the limit)"))
     else:
-        out += [f"{what}, {parting(' '.join(rows), quote)}" for rows, what,
-                quote in ((parts, "the claim rows' parts are not the page's "
-                           "clause", quotes[0]),
-                          (sentences, "the non-claim rows' sentences are not "
-                           "the page's limit", quotes[1]))
-                if " ".join(rows) != quote]
+        out += [f"{what}, {parting(' '.join(rows), quote)}" for (rows, what),
+                quote in zip(wanted, quotes) if " ".join(rows) != quote]
+    if board and not any("diagnostic" in sentence and
+                         "not hardware validation" in sentence
+                         for sentence in sentences):
+        out.append("the limit has no sentence that the board's evidence is "
+                   "diagnostic and not hardware validation")
+    out += [f"{row['id']} names the emulator without 'Under emulation,'"
+            for row in candidate["non_claims"] if board and "the emulator"
+            in row["sentence"] and not row["sentence"].startswith(
+                "Under emulation,")]
     out += [f"{row['id']}'s part does not end at a mark of punctuation "
             "(. , ; :)" for row in candidate["claims"]
             if not row["claim"].endswith((".", ",", ";", ":"))]
@@ -872,7 +937,8 @@ def check_candidate_page(context):
     if tree and f"`{tree[:8]}`" not in text and tree not in text:
         out.append(f"{page.name} does not name the candidate tree {tree[:8]}")
     return out, (f"page={page.name} parts={len(parts)} "
-                 f"sentences={len(sentences)}")
+                 f"sentences={len(sentences)}" + (f" board={len(board)}"
+                                                  if board else ""))
 
 
 def check_candidate_words(context):
@@ -997,11 +1063,21 @@ def render(data):
 
 def render_candidate(data):
     """The second set's table (rendering_name): the candidate, its claim
-    rows (the parts of its page's clause), its non-claim rows (the
-    sentences of the limit), and each artifact's full identity."""
+    rows (the parts of its page's clause, and a board row's of its
+    paragraph about the board), its non-claim rows (the sentences of the
+    limit), and each artifact's full identity."""
     candidate = data["candidate"]
     tree = candidate["candidate_tree"]
     named = f"`{tree}`" if tree else "not named yet"
+    parts = [
+        "row without the board method is a part of the page's clause, in",
+        "order, and those parts are the whole clause; each board row, a",
+        "diagnostic board run on one board, is a part of the page's",
+        "paragraph about the board, in order, and those parts are the whole",
+        "paragraph. Each non-claim row is a sentence of the page's limit,"
+    ] if board_rows(candidate) else [
+        "row is a part of the page's clause, in order, and the parts are the",
+        "whole clause. Each non-claim row is a sentence of the page's limit,"]
     lines = HEADER + [
         "", f"# The claim ledger: the {candidate['name']}", "",
         "This file is rendered from [`claim-ledger.json`](claim-ledger.json)",
@@ -1011,8 +1087,7 @@ def render_candidate(data):
         "that states the claim, kept apart from MVP 1.0's rows in",
         "[the MVP 1.0 claim ledger](claim-ledger.md). No row here names one",
         "of those, and nothing here is part of MVP 1.0's claim. Each claim",
-        "row is a part of the page's clause, in order, and the parts are the",
-        "whole clause. Each non-claim row is a sentence of the page's limit,",
+        *parts,
         "in order, and every sentence has its row. Every part is read with",
         "the whole limit. Each artifact's full SHA-256 is under",
         "[Evidence](#evidence), with a note. The evidence is the candidate's",
@@ -1025,7 +1100,8 @@ def render_candidate(data):
         f"| OpenSBI commit | `{candidate['opensbi_commit']}` |",
         f"| Candidate tree | {named} |",
         "", "## Claims", "",
-        "| ID | Part of the clause | Method | Evidence |",
+        "| ID | Part of the clause" + " or of the board's paragraph" * bool(
+            board_rows(candidate)) + " | Method | Evidence |",
         "| --- | --- | --- | --- |"]
     lines += [f"| {row['id']} | {row['claim']} | {'; '.join(row['methods'])} "
               "| " + ("; ".join(f"`{entry['path']}` (`{entry['sha256'][:12]}`)"
@@ -1134,18 +1210,23 @@ def mutate(work, kind, argument):
 def candidate_cases(head_tree, claims):
     """The second set's cases for self_test's loop, as its own: (name,
     expected check or None, (target, kind, argument)), with picks from a
-    generator of their own, so that the first set's do not move; and a gates'
+    generator of their own, so that the first set's do not move; a gates'
     record that the release's rows CLAIMS cite, with an evidence entry for
-    it. HEAD_TREE is a tree on this line."""
+    it; and a board record that they cite, for board_base(). HEAD_TREE is a
+    tree on this line."""
     rng = random.Random(SEED + 11)
     candidate = json.loads((DOCS / "claim-ledger.json").read_text("utf-8"))[
         "candidate"]
     parts, sentences = candidate["claims"], candidate["non_claims"]
     prefix, page = candidate["name"].split()[0], candidate["page"]
-    cited = [(row, index) for row, part in enumerate(parts)
-             for index in range(len(part["evidence"]))]
-    rows = [rng.randrange(len(parts)) for _ in range(7)]
-    swap = rng.sample(range(len(parts)), 2)
+    # Drawn from the clause rows (every row until the set has board rows),
+    # so that no case lands on a board row.
+    clause = [number for number, part in enumerate(parts)
+              if BOARD_RUN not in part["methods"]]
+    cited = [(row, index) for row in clause
+             for index in range(len(parts[row]["evidence"]))]
+    rows = [clause[rng.randrange(len(clause))] for _ in range(7)]
+    swap = rng.sample(clause, 2)
     notes = [rng.randrange(len(sentences)) for _ in range(2)]
     picks = [rng.choice(cited) for _ in range(3)]
     record = rng.choice(sorted({
@@ -1154,6 +1235,11 @@ def candidate_cases(head_tree, claims):
         (REPO / entry["path"]).with_name("rc.txt").is_file()}))
     entry = {"path": record, "sha256": file_sha(REPO / record),
              "note": "A gates' record of the candidate."}
+    # The board base's record, a board record that the release's rows
+    # cite, drawn after every other pick so that none of them depends on it.
+    board = rng.choice(sorted({
+        entry_["path"] for claim in claims for entry_ in claim["evidence"]
+        if board_record(REPO, entry_["path"])}))
     # The first line of each of the page's blockquotes, with a word added.
     lines = (DOCS / page).read_text("utf-8").splitlines()
     starts = [f"\n{line}\n" for number, line in enumerate(lines)
@@ -1204,21 +1290,23 @@ def candidate_cases(head_tree, claims):
         return (f"{parts[number]['id']} evidence "
                 f"{len(parts[number]['evidence']) + 1}", "both", edit)
 
-    def split(key, field, letter):
-        """The last row of KEY cut in two at the space nearest the middle of
-        its FIELD after a word that ends in no mark of punctuation; the
-        second half a new row with the next ID and the rest copied."""
+    def split(key, field, letter, at=-1):
+        """Row AT of KEY (the last) cut in two at the space nearest the
+        middle of its FIELD after a word that ends in no mark of
+        punctuation; the second half a new row after it, with the rest
+        copied, and the rows from it numbered again."""
         def edit(data):
-            rows_, last = data["candidate"][key], data["candidate"][key][-1]
+            rows_, last = data["candidate"][key], data["candidate"][key][at]
             words = last[field]
             cut = min((index for index, char in enumerate(words)
                        if char == " " and words[index - 1] not in ".,;:!?"),
                       key=lambda index: abs(2 * index - len(words)))
-            rows_.append(dict(last, **{
-                "id": f"{prefix}-{letter}{len(rows_) + 1:02d}",
+            rows_.insert(rows_.index(last) + 1, dict(last, **{
                 field: words[cut + 1:]}))
             last[field] = words[:cut]
-        return (candidate[key][-1]["id"], "ledger", edit)
+            for number, row_ in enumerate(rows_, 1):
+                row_["id"] = f"{prefix}-{letter}{number:02d}"
+        return (candidate[key][at]["id"], "ledger", edit)
 
     def unnamed(data, work):
         """The set names a tree that the page does not: its own where it
@@ -1240,9 +1328,6 @@ def candidate_cases(head_tree, claims):
         ("a candidate note naming a release row", "candidate schema", note(
             notes[0], lambda row_: row_.update(note=row_["note"] +
                                                " (C-25)"))),
-        ("a board run as a candidate method", "candidate methods", row(
-            rows[1], lambda part: part["methods"].append(
-                "diagnostic board run"))),
         ("a proof as a candidate method", "candidate methods", row(
             rows[2], lambda part: part["methods"].append(
                 "proof about the abstract model"))),
@@ -1266,13 +1351,13 @@ def candidate_cases(head_tree, claims):
         ("a word added to the page's clause", "candidate page",
          text(page, plainly(starts[0]), starts[0])),
         ("a word added to the page's limit", "candidate page",
-         text(page, plainly(starts[1]), starts[1])),
-        ("a third blockquote on the page", "candidate page",
-         text(page, "> A third quote.")),
+         text(page, plainly(starts[-1]), starts[-1])),
+        ("an extra blockquote on the page", "candidate page",
+         text(page, "> An extra quote.")),
         ("a sentence of the limit cut over two rows", "candidate page",
          split("non_claims", "sentence", "N")),
         ("a part of the clause cut mid-phrase", "candidate page",
-         split("claims", "claim", "C")),
+         split("claims", "claim", "C", clause[-1])),
         ("a named tree that the page does not name", "candidate page",
          ("", "both", unnamed)),
         ('"isolated" in a candidate note', "candidate words", note(
@@ -1288,7 +1373,168 @@ def candidate_cases(head_tree, claims):
                         "release's text.")),
         ('"unverified", "isolation", and "verify" on the page', None,
          text(page, "The unverified parts, the isolation, and how to verify "
-                    "them are elsewhere."))], (record, entry)
+                    "them are elsewhere."))], (record, entry), board
+
+
+def quote_spans(lines):
+    """[first, end] of each blockquote among LINES outside fenced code, as
+    blockquotes() reads them."""
+    spans, fenced = [], False
+    for number, line in enumerate(lines):
+        if not fenced and re.match(r" {0,3}>", line):
+            if spans and spans[-1][1] == number:
+                spans[-1][1] += 1
+            else:
+                spans.append([number, number + 1])
+        elif line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+    return spans
+
+
+def quoted(text):
+    """TEXT as a blockquote's lines, broken at spaces alone, so that
+    blockquotes() reads TEXT back."""
+    return ["> " + line for line in textwrap.wrap(
+        text, 70, break_on_hyphens=False, break_long_words=False)]
+
+
+def requote(path, index, text):
+    """The page PATH with its blockquote INDEX written again as TEXT."""
+    lines = path.read_text("utf-8").splitlines()
+    first, end = quote_spans(lines)[index]
+    lines[first:end] = quoted(text)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def board_base(base, record):
+    """The board cases' base (B-11), the copy of the docs BASE: as it is
+    where the set has board rows; else with two made-up board rows after the
+    clause rows, citing RECORD, a board record; their paragraph after the
+    clause; "Under emulation, " before each sentence of the limit that
+    names the emulator; and the board's diagnostic sentence at the limit's
+    end, the tables rendered again."""
+    def edit(data, work):
+        candidate = data["candidate"]
+        prefix = candidate["name"].split()[0]
+        parts, sentences = candidate["claims"], candidate["non_claims"]
+        for claim in ("On one board, booted from a card, the images ran,",
+                      "and M-mode's record showed each hart confined."):
+            parts.append({"id": f"{prefix}-C{len(parts) + 1:02d}",
+                          "claim": claim, "methods": [BOARD_RUN],
+                          "evidence": [{"path": record,
+                                        "sha256": file_sha(REPO / record),
+                                        "note": "A board record."}]})
+        for row in sentences:
+            if "the emulator" in row["sentence"] and \
+                    not row["sentence"].startswith("Under emulation,"):
+                row["sentence"] = f"Under emulation, {row['sentence']}"
+        sentences.append({"id": f"{prefix}-N{len(sentences) + 1:02d}",
+                          "sentence": "On the board this is diagnostic "
+                                      "evidence from one board, and it is not "
+                                      "hardware validation.",
+                          "note": "A made-up sentence of the board base."})
+        path = work / candidate["page"]
+        lines = path.read_text("utf-8").splitlines()
+        end = quote_spans(lines)[0][1]
+        lines[end:end] = ["", *quoted(" ".join(
+            row["claim"] for row in board_rows(candidate)))]
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        requote(path, -1, " ".join(row["sentence"] for row in sentences))
+    if not board_rows(json.loads((base / "claim-ledger.json").read_text(
+            "utf-8"))["candidate"]):
+        mutate(base, "both", edit)
+
+
+def board_cases(base):
+    """The second set's board cases (B-11), as candidate_cases() gives its
+    own, each with its base, the board base BASE, by name, and a part of the
+    finding wanted (None for a variant)."""
+    candidate = json.loads((base / "claim-ledger.json").read_text("utf-8"))[
+        "candidate"]
+    parts, page = candidate["claims"], candidate["page"]
+    prefix = candidate["name"].split()[0]
+    board = [number for number, part in enumerate(parts)
+             if BOARD_RUN in part["methods"]]
+    clause = [number for number in range(len(parts)) if number not in board]
+    record = next(entry for number in board
+                  for entry in parts[number]["evidence"]
+                  if board_record(REPO, entry["path"]))
+    plain = next(entry for number in clause
+                 for entry in parts[number]["evidence"]
+                 if not entry["path"].endswith("/MANIFEST.sha256"))
+    lines = (base / page).read_text("utf-8").splitlines()
+    first, end = quote_spans(lines)[1]
+    paragraph = "\n" + "\n".join(lines[first:end]) + "\n"
+    emulator = next(row["id"] for row in candidate["non_claims"]
+                    if "the emulator" in row["sentence"])
+
+    def row(number, change):
+        return (parts[number]["id"], "ledger", lambda data: change(
+            data["candidate"]["claims"][number]))
+
+    def before(data):
+        rows_ = data["candidate"]["claims"]
+        rows_.insert(clause[-1], rows_.pop(board[0]))
+        for number, row_ in enumerate(rows_, 1):
+            row_["id"] = f"{prefix}-C{number:02d}"
+
+    def limit(keep, change=None):
+        """The limit's rows that KEEP holds for, the one with the emulator's
+        ID changed by CHANGE, numbered again, and the page's limit written
+        from them."""
+        def edit(data, work):
+            rows_ = [row_ for row_ in data["candidate"]["non_claims"]
+                     if keep(row_["sentence"])]
+            for number, row_ in enumerate(rows_, 1):
+                if change and row_["id"] == emulator:
+                    row_["sentence"] = change(row_["sentence"])
+                row_["id"] = f"{prefix}-N{number:02d}"
+            data["candidate"]["non_claims"] = rows_
+            requote(work / page, -1, " ".join(row_["sentence"]
+                                              for row_ in rows_))
+        return edit
+
+    def unqualified(sentence):
+        rest = sentence.removeprefix("Under emulation, ")
+        return rest[:1].upper() + rest[1:]
+
+    def text(new, old):
+        return ("", "text", (page, old, new))
+    return [(name, expected, change, base.name, finding)
+            for name, expected, change, finding in (
+        ("the board base as it is", None, ("", None, None), None),
+        ("a board row citing a board record and a plain file", None,
+         row(board[0], lambda part: part["evidence"].append(dict(plain))),
+         None),
+        ("a board row with other methods beside the board's", None,
+         row(board[-1], lambda part: part.update(methods=[
+             *(method for method in ("adversarial test", "semantic checker")
+               if method not in part["methods"]), *part["methods"]])),
+         None),
+        ("a board row without a board record", "candidate evidence",
+         row(board[0], lambda part: part.update(evidence=[dict(plain)])),
+         ": a board row cites no board record"),
+        ("a clause row citing a board record", "candidate evidence",
+         row(clause[-1], lambda part: part["evidence"].append(dict(record))),
+         ": a row without the board method cites a board record"),
+        ("a board row before a clause row", "candidate methods",
+         (parts[board[0]]["id"], "ledger", before),
+         ": a board row before the clause row "),
+        ("a word added to the board's paragraph", "candidate page",
+         text(re.sub(r"\n> ?", "\n> plainly ", paragraph, count=1),
+              paragraph),
+         "the board rows' parts are not the page's board paragraph"),
+        ("the board's paragraph missing", "candidate page",
+         text("", paragraph), "blockquotes, not three"),
+        ("the board's diagnostic sentence missing", "candidate page",
+         ("", "both", limit(lambda sentence: not (
+             "diagnostic" in sentence and
+             "not hardware validation" in sentence))),
+         "the limit has no sentence that the board's evidence is "
+         "diagnostic"),
+        ("an emulator sentence unqualified", "candidate page",
+         (emulator, "both", limit(lambda sentence: True, unqualified)),
+         "names the emulator without 'Under emulation,'"))]
 
 
 def candidate_direct_cases(scratch, record):
@@ -1347,6 +1593,7 @@ def candidate_direct_cases(scratch, record):
                             "candidate_tree": (record_trees(REPO / path) +
                                                [None])[0],
                             "claims": [{"id": "M11-C01",
+                                        "methods": ["emulation"],
                                         "evidence": [entry]}]}}}), None))
     return out
 
@@ -1465,25 +1712,35 @@ def self_test(scratch):
         ("a guide of wrapper commands and kernel-repro", None, text(
             "guide.md", "```sh\n./mvp/mvp check\n"
             "make -C mvp kernel-repro LINUX_GIT=<mirror>\n```"))]
-    # The second set's cases follow the first's, counted apart.
-    second, record = candidate_cases(tree.strip() or "e" * 40, claims)
+    # The second set's cases follow the first's, counted apart; its board
+    # cases run on a base of their own, each naming a part of its finding.
+    second, record, board = candidate_cases(tree.strip() or "e" * 40, claims)
+    shutil.copytree(scratch / "base", scratch / "board")
+    board_base(scratch / "board", board)
+    second += board_cases(scratch / "board")
     passed, counts = [], [0, 0, 0, 0]
-    for number, (name, expected, (target, kind, argument)) in enumerate(
-            cases + second):
+    for number, (name, expected, (target, kind, argument), *within) in \
+            enumerate(cases + second):
         if expected == "commits" and commits_reason:
             print(f"skip {name} ({commits_reason})")
             continue
+        base, finding = within or ("base", None)
         work = scratch / "case"
         shutil.rmtree(work, ignore_errors=True)
-        shutil.copytree(scratch / "base", work)
+        shutil.copytree(scratch / base, work)
         mutate(work, kind, argument)
         results, _ = run_checks(work / "claim-ledger.json", work, REPO, reason)
         failed = [check for check, status, _, _ in results if status == "FAIL"]
-        passed.append(failed == ([expected] if expected else []))
+        missing = finding and not any(
+            finding in item for check, _, findings, _ in results
+            if check == expected for item in findings)
+        passed.append(failed == ([expected] if expected else []) and
+                      not missing)
         counts[2 * (number >= len(cases)) + (expected is None)] += 1
         print(f"{'ok  ' if passed[-1] else 'FAIL'} {name}"
               + (f" ({target})" * bool(target)) + ": "
-              + (f"failed {', '.join(failed)}" if failed else "passed"))
+              + (f"failed {', '.join(failed)}" if failed else "passed")
+              + (f", no finding with {finding!r}" if missing else ""))
     # The two markers (SNAPSHOT.txt and RELEASE.txt), in a scratch
     # repository of its own so that the source is never marked: well formed,
     # the commits check skips; malformed, naming a commit of the repository
