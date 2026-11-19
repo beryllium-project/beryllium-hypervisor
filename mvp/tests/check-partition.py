@@ -857,6 +857,39 @@ def rounded(base, size):
     return 0, 1 << 64
 
 
+def test_device_rooted(fdt):
+    """Whether the root OpenSBI domain holds the test device's page
+    (0x100000): OpenSBI adds it with the device's syscon regmap, which it
+    makes for an enabled syscon-poweroff or syscon-reboot node whose regmap
+    property is the device's phandle (lib/utils/reset/fdt_reset_syscon.c,
+    lib/utils/regmap/fdt_regmap_syscon.c; M11-B's tree without reset
+    devices has none)."""
+    handles = set()
+    for path in fdt.order:
+        names = fdt_strings(fdt_prop(fdt, path, "compatible", False) or b"\0")
+        if not any(name.startswith("sifive,test") for name in names):
+            continue
+        try:
+            at_base = any(address == 0x100000
+                          for address, _ in fdt_reg(fdt, path))
+        except Refused:
+            continue
+        for name in ("phandle", "linux,phandle"):
+            value = fdt_prop(fdt, path, name, False)
+            if at_base and value is not None and len(value) == 4:
+                handles.add(fdt_cells(value)[0])
+    for path in fdt.order:
+        regmap = fdt_prop(fdt, path, "regmap", False)
+        status = fdt_prop(fdt, path, "status", False)
+        names = fdt_strings(fdt_prop(fdt, path, "compatible", False) or b"\0")
+        if regmap is not None and len(regmap) >= 4 and \
+                fdt_cells(regmap[:4])[0] in handles and \
+                (status is None or status[:2] == b"ok") and \
+                {"syscon-poweroff", "syscon-reboot"} & set(names):
+            return True
+    return False
+
+
 def platform_regions(fdt, symbols):
     memory = [path for path in fdt.order if
               fdt_prop(fdt, path, "device_type", False) == b"memory\0"]
@@ -894,7 +927,7 @@ def platform_regions(fdt, symbols):
         require(len(rows) == 1, f"base tree {part} at {base:#x}")
         return fixed or rows[0][1]
 
-    return [
+    rows = [
         Region("firmware-rw", *rw, ("read", "write"), (), True),
         Region("firmware-rx", *rx, ("read", "execute"), (), True),
         Region("test-device", 0x100000, 0x1000, ("read", "write"),
@@ -911,6 +944,8 @@ def platform_regions(fdt, symbols):
         Region("all-addresses", 0, 1 << 64, (),
                ("read", "write", "execute")),
     ]
+    return [row for row in rows
+            if row.name != "test-device" or test_device_rooted(fdt)]
 
 
 def combine(profile, extent_ranges):
@@ -1342,6 +1377,57 @@ def tree_mutations(descriptor_path, value, identity, domains, extent_ranges,
                                       "confined" else "confined"))
     table_case("tables that name no step", "expected-table identities differ",
                lambda doc: doc.pop("control_hart"))
+    # M11-B (O4): the boot table holds the test device's page only where
+    # the tree has a reset node that names the device, as OpenSBI's root
+    # OpenSBI domain does. A base with one, its tree, and the backend's
+    # tables of it; then each tree against the other's tables.
+    reset_base = scratch / "base-reset.dts"
+    test_node = ' test@100000 { compatible = "sifive,test1";'
+    require(base.read_text(encoding="utf-8").count(test_node) == 1,
+            "the synthetic base's test device")
+    reset_base.write_text(base.read_text(encoding="utf-8").replace(
+        test_node, ' poweroff { compatible = "syscon-poweroff"; '
+        'regmap = <0x15>;\n  offset = <0>; value = <0x5555>; };\n'
+        ' test@100000 { phandle = <0x15>; compatible = "sifive,test1";'),
+        encoding="utf-8")
+    reset_source, reset_dtb = scratch / "reset.dts", scratch / "reset.dtb"
+    reset_source.write_text(original.replace(
+        f'/include/ "{base.name}"', f'/include/ "{reset_base.name}"', 1),
+        encoding="utf-8")
+    subprocess.run([dtc, "-I", "dts", "-O", "dtb", "-i", str(scratch),
+                    "-o", str(reset_dtb), str(reset_source)], check=True,
+                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    reset_fdt = fdt_parse(reset_dtb.read_bytes())
+    reset_path = scratch / "reset-tables.json"
+    made = subprocess.run([
+        sys.executable, "-I", "-B", backend, "--test-tables",
+        "--descriptor", descriptor_path, "--base-dtb", reset_dtb,
+        "--firmware-elf", firmware, "--base-dts", reset_base,
+        "--out-tables", reset_path, "--dtc", dtc, "--control-hart",
+        control], check=False, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    require(made.returncode == 0, "backend test-table generation failed")
+    reset_tables, _ = read_json(reset_path, True)
+    tables_check(reset_tables, identity, firmware, reset_base, reset_fdt,
+                 extent_ranges, profiles, symbols, control)
+    boot_regions = [[row["region"] for row in next(
+        table["entries"] for table in doc["modes"]["plain"]
+        if table["state"] == "boot")] for doc in (table_document,
+                                                   reset_tables)]
+    require("test-device" not in boot_regions[0] and
+            "test-device" in boot_regions[1],
+            "the backend's boot tables do not follow the reset node")
+    wanted = f"plain: hart {next(iter(profiles))} boot table: entry " \
+        f"{boot_regions[1].index('test-device')} metadata differs"
+    expected_refusal("the test device's page, the tree without a reset node",
+                     wanted, lambda: tables_check(
+                         reset_tables, identity, firmware, reset_base,
+                         clean_fdt, extent_ranges, profiles, symbols,
+                         control))
+    expected_refusal("no test device's page, the tree with a reset node",
+                     wanted, lambda: tables_check(
+                         table_document, identity, firmware, base, reset_fdt,
+                         extent_ranges, profiles, symbols, control))
     check("hart 0 in a narrow domain", "be_g0: harts differs",
           lambda text: block(text, "be_g0", lambda body: body.replace(
               "possible-harts = <&{/cpus/cpu@1}>;",
@@ -1357,7 +1443,7 @@ def tree_mutations(descriptor_path, value, identity, domains, extent_ranges,
         check("step 2 without be_control", "OpenSBI domain names differ",
               lambda text: text, render("step-1.dts", "boot"))
     shutil.rmtree(scratch)
-    return 20 + (control == "boot")
+    return 22 + (control == "boot")
 
 
 def actual_check(args):

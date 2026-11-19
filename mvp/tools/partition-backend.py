@@ -392,6 +392,28 @@ def firmware_symbols(elf, nm, readelf):
     return wanted
 
 
+def reset_regmap(fdt, target):
+    """Whether OpenSBI adds TARGET's page to the root OpenSBI domain,
+    TARGET an enabled syscon (QEMU's test device): it does when an enabled
+    syscon-poweroff or syscon-reboot node's regmap names TARGET
+    (lib/utils/reset/fdt_reset_syscon.c,
+    lib/utils/regmap/fdt_regmap_syscon.c), and not otherwise."""
+    handles = {cells(value)[0] for value in (
+        prop(fdt, target, name, False) for name in ("phandle",
+                                                    "linux,phandle"))
+        if value is not None and len(value) == 4}
+    for path in fdt.order:
+        status, regmap = (prop(fdt, path, name, False)
+                          for name in ("status", "regmap"))
+        if regmap is not None and len(regmap) >= 4 and \
+                cells(regmap[:4])[0] in handles and \
+                (status is None or status.startswith(b"ok")) and \
+                {"syscon-poweroff", "syscon-reboot"} & set(
+                    compatible(fdt, path)):
+            return True
+    return False
+
+
 def platform(fdt, firmware):
     memory = [path for path in fdt.order
               if prop(fdt, path, "device_type", False) == b"memory\0"]
@@ -423,7 +445,7 @@ def platform(fdt, firmware):
     timer_end = max(base + size for base, size in timer_regs)
     require(aplic_size == 0x8000 and imsic_size == 0x8000 and
             timer_end <= 0x2010000, "k3-like interrupt ranges changed")
-    return [
+    rows = [
         Region("firmware-rw", rw_base, rw_size, ("read", "write"),
                firmware=True),
         Region("firmware-rx", rx_base, rx_size, ("read", "execute"),
@@ -437,6 +459,8 @@ def platform(fdt, firmware):
         Region("aclint-mtimer", 0x02000000, 0x10000, ("read", "write")),
         Region("all-addresses", 0, 1 << 64, (), ("read", "write", "execute")),
     ]
+    return [row for row in rows
+            if row.name != "test-device" or reset_regmap(fdt, test_path)]
 
 
 def strict_descriptor(path):
