@@ -524,6 +524,17 @@ for entry in "${k3_runs[@]}"; do
 	wanted "variant/gcc/$name" || continue
 	runs+=("gcc/$name $(row_elf gcc '' "$image") $k3_machine $k3_cpu $oracle_k3 $role $firmware_sbi $k3_firmware/rows/expect/$name.json - -")
 done
+# M11-B (B-10): the board's two hostile-monitor images, GCC's, on anchor's
+# rows, where check made their expectations (mvp/k3/breach.mk); each run's
+# banner is then compared with the backend's root regions (T-6, below).
+k3_breach=$build/k3/check/breach
+k3_banners=()
+for name in k3-breach-g1 k3-breach-c; do
+	[[ $monitor = riscv && -e $k3_breach/expect/$name.json ]] || continue
+	wanted "anchor/gcc/$name" || continue
+	runs+=("gcc/$name $k3_breach/gcc/$name/be-mvp-boot.elf $k3_machine $k3_cpu $oracle_k3 base $firmware_sbi $k3_breach/expect/$name.json $anchor_dir/authority-report.json $measured")
+	k3_banners+=("$name")
+done
 earlier_firmware=${BE_MVP_EARLIER_FIRMWARE:-}
 needs_earlier=0
 needs_no_boundary=0
@@ -1012,6 +1023,18 @@ for entry in "${runs[@]}"; do
 	tc_runs[$toolchain]=$((${tc_runs[$toolchain]:-0} + 1))
 	tc_attempts[$toolchain]=$((${tc_attempts[$toolchain]:-0} + run_attempts))
 	tc_refused[$toolchain]=$((${tc_refused[$toolchain]:-0} + run_refusals))
+done
+# M11-B (T-6): each board image's run, its banner's Domain0 regions in
+# number, order, and text the backend's for its pair's tree and the
+# firmware base, with three mutations refused (tools/k3-board.py banner).
+for name in "${k3_banners[@]}"; do
+	pair=${name#k3-}
+	"$python" -I -B "$(dirname -- "$here")/tools/k3-board.py" banner \
+		--image "$name" --dtb "$build/partition/anchor/$pair/plain/$pair.dtb" \
+		--firmware-elf "$firmware_elf" --nm "$nm_tool" \
+		--readelf "$(sed -n 's/^MVP_TOOL_cross_readelf_command=\(\/[^ ]*\)$/\1/p' -- "$lock")" \
+		--console "$output/gcc-$name.1.console.log" | tee -a -- "$summary" ||
+		failed=$((failed + 1))
 done
 for toolchain in gcc clang; do
 	[ -n "${tc_runs[$toolchain]:-}" ] || continue

@@ -35,10 +35,21 @@ K3B_EXPECT_anchor := $(GEN)/anchor/expect/anchor.json
 K3B_STAGED_anchor := be-mvp-anchor-gcc.img
 K3B_SITTING_k3-breach-g1 := second
 K3B_BOARD_IMAGE_k3-breach-g1 := $(K3B_CHECK)/breach/gcc/k3-breach-g1/be-mvp-boot.img
+K3B_EXPECT_k3-breach-g1 := $(K3B_CHECK)/breach/expect/k3-breach-g1.json
 K3B_STAGED_k3-breach-g1 := be-mvp-anchor-k3-breach-g1-gcc.img
 K3B_SITTING_k3-breach-c := second
 K3B_BOARD_IMAGE_k3-breach-c := $(K3B_CHECK)/breach/gcc/k3-breach-c/be-mvp-boot.img
+K3B_EXPECT_k3-breach-c := $(K3B_CHECK)/breach/expect/k3-breach-c.json
 K3B_STAGED_k3-breach-c := be-mvp-anchor-k3-breach-c-gcc.img
+# Each image's reference manifest (tools/gen-reference.py), and the ELF of
+# its monitor, which the board's tables are checked against.
+K3B_REFERENCE_two-guests-off := $(BUILD)/references/gcc/two-guests-off.json
+K3B_REFERENCE_anchor := $(BUILD)/references/gcc/anchor.json
+K3B_REFERENCE_k3-breach-g1 := $(K3B_CHECK)/references/gcc/k3-breach-g1.json
+K3B_REFERENCE_k3-breach-c := $(K3B_CHECK)/references/gcc/k3-breach-c.json
+K3B_ELF_anchor := $(BUILD)/gcc/anchor/be-mvp.elf
+K3B_ELF_k3-breach-g1 := $(K3B_CHECK)/breach/gcc/k3-breach-g1/be-mvp.elf
+K3B_ELF_k3-breach-c := $(K3B_CHECK)/breach/gcc/k3-breach-c/be-mvp.elf
 
 # The board gate's steps, in order; each fragment adds its own.
 K3B_GATE_STEPS :=
