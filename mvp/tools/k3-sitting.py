@@ -19,9 +19,10 @@ order_problem()'s; a refusal acts on nothing.
 
 begin checks every input before it acts (the gate's record, each image's
 board.json and the files it names by SHA-256, the sitting pins' firmware
-lines, the expectations, the second sitting's observed facts, R9's source
-rule), records them in sitting/plan.txt, and a later step refuses when one
-has changed. It takes the responsible human's word for the sitting
+lines, the expectations, the second sitting's observed facts, lane K's card
+mode in the tree's checker, R9's source rule), records them in
+sitting/plan.txt, and a later step refuses when one has changed. It takes
+the responsible human's word for the sitting
 (K3_WORD=human-authorized:sitting-NAME), as card-in-S takes his word for
 the session (human-authorized:session-IMAGE); K3_HUMAN_SAID is the UTC
 time of his statement (his word, the card in, the card out), and the
@@ -39,7 +40,9 @@ boot-S.B: the console's reset (the banners within K3_CARD_BOOT_SECONDS,
 120 by default: every boot from a card trains the memory in full), the
 wait for the run's end (k3-uboot.py wait-end), the capture, lane K's form
 (tests/check-capture.py --mode card), the bus, and the console's audit;
-the stop is boot_stop()'s, and nothing more is sent. reading-N is
+the stop is boot_stop()'s, the form's by its result.json's card.stops
+(form_stop()), and nothing more is sent. run.txt names each input of the
+form by its path from the build and its SHA-256. reading-N is
 k3-env.sh reading N (--hang after a session whose last boot never ended).
 end: Fedora (k3-env.sh fedora), the preflight again (B2 if its verdict
 line is not the first's), and lane C's command that removes the card
@@ -123,6 +126,10 @@ FASTBOOT = ("ff", "42", "03")
 INTERFACE_NAME = re.compile(r"(usb[0-9]+|[0-9]+-[0-9]+(?:\.[0-9]+)*):"
                             r"[0-9]+\.[0-9]+")
 TOOL_STOP = re.compile(r"STOP stop=(\S+) (.*)")
+# Lane K's form: a stop that result.json's card.stops names, and its card
+# mode in the usage (tests/check-capture.py, K-1).
+FORM_STOP = re.compile(r"B[0-9]+")
+CARD_MODE = re.compile(r"--mode \{[a-z,]*\bcard\b[a-z,]*\}")
 PLAN_SCHEMA = "be-mvp-k3-sitting-plan-v1"
 STEP_SCHEMA = "be-mvp-k3-sitting-step-v1"
 PLAN_PIN = re.compile(r"pin ([a-z0-9]+(?:-[a-z0-9]+)*)\.firmware "
@@ -189,6 +196,14 @@ def first_word(text):
 def first_match(text, pattern):
     match = re.search(pattern, text, re.M)
     return match.group(0).strip() if match else ""
+
+
+def read_json(path):
+    """PATH's JSON, or None when it cannot be read or parsed."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
 
 
 def read_line(path):
@@ -704,12 +719,43 @@ def bus_stop(usb, place):
 
 
 # ------------------------------------------------- a boot's verdicts
-def form_stop(text, sitting):
-    """The stop of a capture that lane K's form refused: the first
-    `(stop Bn)` of its findings, else "any other capture that the form
-    refuses", B5 in the first sitting and B6 in the second."""
-    match = re.search(r"\(stop (B[2-6])\)", text)
-    return match.group(1) if match else ("B5" if sitting == "first" else "B6")
+def sitting_stop(sitting):
+    """"Any other capture that the form refuses": B5 in the first sitting,
+    B6 in the second."""
+    return "B5" if sitting == "first" else "B6"
+
+
+def form_stop(result, sitting):
+    """(label, stops) of a capture that lane K's form refused (exit 1), by
+    result.json's card.stops, a list sorted by number: its first, or the
+    sitting's when it is empty, or a tool stop when it is not a list of
+    B-numbers; STOPS the list as recorded (none when empty)."""
+    card = result.get("card") if isinstance(result, dict) else None
+    stops = card.get("stops") if isinstance(card, dict) else None
+    if not isinstance(stops, list) or not all(
+            isinstance(stop, str) and FORM_STOP.fullmatch(stop)
+            for stop in stops):
+        return "tool", "unreadable"
+    return (stops[0], ",".join(stops)) if stops else \
+        (sitting_stop(sitting), "none")
+
+
+def form_finding(text, label):
+    """The form's first finding that names LABEL's stop, else its first
+    finding, else its last line."""
+    findings = [line[9:] for line in text.splitlines()
+                if line.startswith("finding: ")]
+    return next((finding for finding in findings
+                 if finding.endswith(f"(stop {label})")),
+                findings[0] if findings else last_stop_text(text))
+
+
+def form_present(path):
+    """Whether the capture checker at PATH has lane K's card mode."""
+    run = subprocess.run([PYTHON, "-I", "-B", str(path), "--help"],
+                         cwd="/", capture_output=True, text=True,
+                         check=False, env={"PATH": "/usr/bin"})
+    return run.returncode == 0 and CARD_MODE.search(run.stdout) is not None
 
 
 def boot_stop(bus, outcome, form, audit, console):
@@ -1319,6 +1365,9 @@ class Sitting:
                                         .date())
             if problem:
                 raise Refused(problem)
+        if not form_present(CHECK_CAPTURE):
+            raise Refused("tests/check-capture.py has no card mode (lane "
+                          "K's form, --mode card)")
         context["plan"] = self.facts(now)
         if records["begin"] and os.path.lexists(self.plan_file) and \
                 self.plan_file.read_text(encoding="utf-8") != \
@@ -1526,6 +1575,9 @@ class Sitting:
         reset = key_values(text)
         console = None if code == 0 else tool_stop(
             text, ("tool", last_stop_text(text)))
+        if console and console[0] == "12":
+            console = (banner_label(console[1], read_ledger(self.slot)),
+                       console[1])
         if console and "reset_utc" not in reset:
             raise Stop(*console)
         log, offset = context["log"], int(reset["offset_before"])
@@ -1564,17 +1616,19 @@ class Sitting:
                  directory / "result.json"]
         form_code, form_text = self.tool(record, "form", argv,
                                          output=directory / "check.txt")
-        finding = next((line for line in form_text.splitlines()
-                        if "(stop B" in line), last_stop_text(form_text))
-        form = None if form_code == 0 else ("tool", "the form cannot judge "
-                                            "its inputs") \
-            if form_code == 2 else (form_stop(form_text, self.name), finding)
+        label, stops = form_stop(read_json(directory / "result.json"),
+                                 self.name) if form_code == 1 else \
+            (None, "none")
+        finding = form_finding(form_text, label)
+        form = None if form_code == 0 else (label, finding) \
+            if form_code == 1 else ("tool", "the form cannot judge its "
+                                    "inputs")
         outcome_stop = outcome_stop or {
             "boot": ("B3", "a boot that the session did not plan: a second "
                      "SPL banner after the reset's (S3-E's stop (q))"),
             "nor": ("B4", "the boot's ROM lines are the NOR's: the boot ROM "
                     "did not take the card"),
-            "timeout": ((form or (form_stop("", self.name),))[0],
+            "timeout": ((form or (sitting_stop(self.name),))[0],
                         f"a run that never ends: no end line within "
                         f"{context['wait']:g} s; {finding}")}.get(outcome)
         audit_code, audit_text = self.tool(record, "audit",
@@ -1594,8 +1648,13 @@ class Sitting:
             f"session={number}", f"image={image}",
             f"image_sha256={board['board_image']['sha256']}",
             f"board_json_sha256={file_sha(board_path)}",
-            f"expect={files['expectation'].name} "
-            f"sha256={file_sha(files['expectation'])}",
+            *(f"{key}=" + (f"{path.relative_to(self.build).as_posix()} "
+                          f"sha256={file_sha(path)}" if path else "none")
+              for key, path in (("expect", files["expectation"]),
+                                ("report", measured.get("report")),
+                                ("kernel", measured.get("kernel")),
+                                ("dtb", measured.get("dtb")),
+                                ("reference", files.get("reference")))),
             f"memory={context['memory']}",
             "observed_sha256=" + (file_sha(self.args.observed)
                                   if self.args.observed else "none"),
@@ -1609,7 +1668,7 @@ class Sitting:
             f"spl_banner={first_match(text, r'^U-Boot SPL .*$')}",
             f"uboot_banner={first_match(text, r'^U-Boot 20.*$')}",
             "board_kernel=none (boot from system reset)",
-            f"check_status={form_code}",
+            f"check_status={form_code}", f"stops={stops}",
             first_match(form_text, r"^BE_MVP_RESULT: .*$"), usb,
             f"banner_audit={'PASS' if audit is None else audit[1]}"] + (
                 [] if stop is None else [f"stop={stop[0]} {stop[1]}"]) + [
@@ -1620,6 +1679,7 @@ class Sitting:
                        sorted(directory.iterdir()) if path.is_file())
         create(directory / "SHA256SUMS", sums)
         record.line(f"outcome={outcome}")
+        record.line(f"stops={stops}")
         record.line(usb)
         if stop is not None:
             raise Stop(*stop)
@@ -2068,13 +2128,29 @@ def test_bus(cases, scratch):
                                        "reading")[0][0] == "tool")
 
 
-def test_verdicts(cases):
-    cases.case("form: its finding's stop", form_stop(
-        "FAIL x (stop B2); y (stop B5)", "first") == "B2")
-    cases.case("form: the first sitting's", form_stop("FAIL", "first")
-               == "B5")
-    cases.case("form: the second sitting's", form_stop("FAIL", "second")
-               == "B6")
+def test_verdicts(cases, scratch):
+    given = lambda stops: {"card": {"stops": stops}}
+    cases.case("form: a B11 alone", form_stop(given(["B11"]), "first") ==
+               ("B11", "B11"))
+    cases.case("form: B3 with B11, the first of the list", form_stop(given(
+        ["B3", "B11"]), "second") == ("B3", "B3,B11"))
+    cases.case("form: an empty list, the sitting's", [form_stop(
+        given([]), name) for name in SITTINGS] == [("B5", "none"),
+                                                   ("B6", "none")])
+    cases.case("form: a stop of another form, or no list, a tool stop", [
+        form_stop(value, "first")[0] for value in (
+            given(["B3", "stop 4"]), given("B3"), {"card": None}, None)] ==
+        ["tool"] * 4)
+    cases.case("form: the finding of its stop", form_finding(
+        "finding: a\nfinding: b (stop B4)\nlast", "B4") == "b (stop B4)" and
+        form_finding("finding: a\nlast", "B5") == "a" and
+        form_finding("x\nlast", "B5") == "last")
+    stand_in = scratch / "check-capture.py"
+    stand_in.write_text("print('usage: x [--mode {direct,kexec,uboot}]')\n",
+                        encoding="utf-8")
+    cases.case("form: the card mode, present in the tree's checker, absent "
+               "from a checker without it", form_present(CHECK_CAPTURE) and
+               not form_present(stand_in))
     stops = [("B4", "bus"), ("B3", "boot"), ("B5", "form"), ("12", "audit"),
              ("1", "console")]
     for number in range(5):
@@ -2482,7 +2558,7 @@ def self_test(scratch):
     test_variables(cases)
     test_cards(cases, scratch)
     test_bus(cases, scratch)
-    test_verdicts(cases)
+    test_verdicts(cases, scratch)
     test_files(cases, scratch)
     test_world(cases, scratch)
     if cases.failures:

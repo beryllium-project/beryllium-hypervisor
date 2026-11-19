@@ -19,15 +19,22 @@
 #          to 7 (the console tool's rule for a card recorded in, and what a
 #          sitting's run root types), 13 (a boot from a card with none
 #          recorded in, at the console and through the driver's reading),
-#          32 (k3-uboot.py medium's and wait-end's outcomes), and 8 to 11
+#          32 (k3-uboot.py medium's and wait-end's outcomes), 8 to 11
 #          (k3-env.sh reading: a difference, its own checks and refusals, a
-#          missed s, and what stays private; k3-env.sh fedora). The last
-#          line is BE_MVP_K3_SESSION: PASS self_test=N cases=M.
+#          missed s, and what stays private; k3-env.sh fedora), and the
+#          boots from a card on lane K's captures (its writer, K2, on the
+#          build's images): 1 and 2 (the whole sittings), 12 (a boot from
+#          the NOR with the card in), 14 to 16 (the form's refusal, a run
+#          that never ends, an unplanned boot), 17 and 18 (the dongle, an
+#          input changed), 20 (the close-out), 25 (the bus), 27 (the end),
+#          and 30 (the fakes). The last line is BE_MVP_K3_SESSION: PASS
+#          self_test=N cases=M.
 # shellcheck shell=bash disable=SC2154
 
 unset K3_SITTING K3_SITTING_STEP K3_WORD K3_HUMAN_SAID K3_REHEARSAL \
 	K3_SITTING_RESUME K3_CARD_BOOT_SECONDS K3_NOR_READ K3_CARD_DEVICE
-for name in K3_SITTING_PLAN_first K3_SITTING_PLAN_second K3_SITTING_IMAGES; do
+for name in K3_SITTING_PLAN_first K3_SITTING_PLAN_second K3_SITTING_IMAGES \
+	K3_SITTING_CAPTURES; do
 	[ -n "${!name:-}" ] ||
 		fail "$name is not set: run make -C mvp k3-session-check"
 done
@@ -73,10 +80,15 @@ commit_c=$(source_git "$stand/source-c" rev-parse HEAD)
 # that tools/k3-frame.py record writes over stand-in step records), its
 # variants, the sitting pins and theirs, the cards (lane C's card.json and
 # SHA256SUMS) and theirs, lane C's records' fields, the observed facts, and
-# the workstation's bus; every path of board.json relative to BUILD.
+# the workstation's bus; every path of board.json relative to BUILD. Then
+# gate-k2, for the boots from a card: lane K's captures of the four images
+# (its writer, K2, on K3_SITTING_CAPTURES), each board.json the capture's
+# with the stand-in gate's files.
+read -r -a captures <<<"$K3_SITTING_CAPTURES"
 "$python" -I -B - "$stand" "$build" "$tools" "$commit_a" "$commit_c" \
-	"$plan_first" "$plan_second" >"$out/stand.txt" <<'EOF'
-import hashlib, importlib.util, json, pathlib, shutil, sys
+	"$plan_first" "$plan_second" "$mvp_dir" "${captures[@]}" \
+	>"$out/stand.txt" <<'EOF'
+import hashlib, importlib.util, json, pathlib, shutil, subprocess, sys
 stand, build, tools = map(pathlib.Path, sys.argv[1:4])
 commit_a, commit_c = sys.argv[4:6]
 plans = dict(zip(("first", "second"), sys.argv[6:8]))
@@ -220,6 +232,50 @@ for name, entries in (
                 path.mkdir(parents=True)
             else:
                 put(path, f"{value}\n")
+
+# K2's options, then IMAGE=EXPECT:BOARD_IMAGE[:REFERENCE]; an expectation of
+# another image (QEMU's hostile-monitor images of anchor, standing in for
+# the board's) and its reference are given IMAGE's name, as the board's are.
+k2, mvp, words, options, specs = stand / "k2", pathlib.Path(sys.argv[8]), \
+    sys.argv[9:], [], []
+link = lambda path: {"file": path.relative_to(build).as_posix(),
+                     "sha256": sha(path)}
+while words:
+    word = words.pop(0)
+    if word.startswith("--"):
+        options += [word, words.pop(0)]
+        continue
+    image, _, rest = word.partition("=")
+    files = [pathlib.Path(name) for name in rest.split(":")]
+    expect = json.loads(files[0].read_text())
+    if expect["image"] != image:
+        reference = json.loads(files[2].read_text())
+        expect["image"] = reference["image"] = reference["variant"] = image
+        files[0], files[2] = (stand / "k2-inputs" / f"{image}{kind}.json"
+                              for kind in ("", "-reference"))
+        put(files[0], json.dumps(expect))
+        put(files[2], json.dumps(reference))
+    specs.append(f"{image}=" + ":".join(map(str, files)))
+subprocess.run([sys.executable, "-I", "-B", str(mvp / "tests/test-k3-form.py"),
+                "--write-card-fixtures", str(k2), "--memory", "16 GiB",
+                "--build-root", str(build), "--fixtures",
+                str(mvp / "k3/fixtures/form"), *options, *specs], check=True)
+shutil.copytree(stand / "gate", stand / "gate-k2")
+for plan in plans.values():
+    for image in (entry.split(":")[0] for entry in plan.split()):
+        path = stand / "gate-k2" / "images" / image / "board.json"
+        board = json.loads(path.read_text())
+        made = json.loads((k2 / image / "board.json").read_text())
+        args = json.loads((k2 / image / "card-args.json").read_text())
+        made.update({key: board[key] for key in (
+            "staged_name", "tree", "root", "check")}, **{key: link(
+                pathlib.Path(args[args.index(f"--{option}") + 1])) for
+                key, option in (("expectation", "expect"),
+                                ("reference", "reference"))})
+        made["firmware"] = dict(board["firmware"], **{
+            key: made["firmware"][key] for key in ("load", "entry")})
+        path.write_text(json.dumps(made, indent=1, sort_keys=True))
+seal(stand / "gate-k2", commit_a)
 EOF
 
 # ---------------------------------------------------------------- helpers
@@ -246,8 +302,8 @@ image_of() {
 
 # drive NAME STATUS ROOT SITTING STEP [ARGUMENT...]: the driver's command
 # line, as the recipe's, with the stand-ins for its fixed paths (an
-# argument gate=, cards=, source=, or pins= names another under OUT/stand,
-# usb= another bus, observed=none none), the run root's serial log, and
+# argument gate=, cards=, source=, pins=, or observed= names another under
+# OUT/stand, usb= another bus, observed=none none), the run root's serial log, and
 # what the step needs (his word, his time, the rehearsal's date) unless a
 # VAR=VALUE gives another value or -VAR none.
 drive() {
@@ -281,6 +337,7 @@ drive() {
 		pins=*) pins=$stand/${argument#pins=} ;;
 		usb=*) usb=$stand/usb/${argument#usb=} ;;
 		observed=none) observed= ;;
+		observed=*) observed=$stand/${argument#observed=} ;;
 		-*) unset "vars[${argument#-}]" ;;
 		*=*) vars[${argument%%=*}]=${argument#*=} ;;
 		esac
@@ -623,6 +680,10 @@ case_refusals() {
 	row 31.66 N link -- 5 'symbolic link' drive begin
 	row 31.67 N -- 5 "changed since the gate's commit" drive begin source=source-c
 	row 31.68 N -- 5 'not an ancestor' drive begin gate=gate-c
+	# S3-2: each step's own rule on the card's state, behind the order's.
+	row 31.71 F passed:reading-0,card-in-1 -- 5 "boot-1.1 needs session 1's card recorded in" drive boot-1.1
+	row 31.72 F passed:reading-0 in:1 -- 5 'card-in-1 needs the card recorded out' drive card-in-1
+	row 31.73 N -- 2 'refused K3_SITTING_STEP=end' wrapper begin K3_SITTING=first K3_SITTING_STEP=end
 	# S-6: status through the wrapper prints the recipe's fixed inputs.
 	row 31.69 N -- 0 'input observed=none' wrapper status K3_SITTING=first
 	row 31.70 N -- 0 "input observed=$repo_root/mvp/k3/observed.json" wrapper status K3_SITTING=second
@@ -635,7 +696,18 @@ case_refusals() {
 	done
 	has "$out/row-31.69.txt" "input plan=$plan_first"
 	has "$out/row-31.70.txt" "input plan=$plan_second"
-	pass sitting-refusals "$rows rows: each its exit status and reason, no fake contacted; S-6's recipe inputs through the wrapper"
+	# begin's own check of lane K's card mode: the driver's copy beside a
+	# capture checker without it.
+	mkdir -p -- "$out/no-card-mode/tools" "$out/no-card-mode/tests"
+	mkdir -m 700 -- "$out/rows/no-card-mode"
+	cp -- "$sitting_tool" "$out/no-card-mode/tools/"
+	printf 'print("usage: check-capture.py [--mode {direct,kexec,uboot}]")\n' \
+		>"$out/no-card-mode/tests/check-capture.py"
+	sitting_tool=$out/no-card-mode/tools/k3-sitting.py drive no-card-mode 5 \
+		"$out/rows/no-card-mode" first begin
+	grep -qF "REFUSED begin: tests/check-capture.py has no card mode (lane K's form, --mode card)" \
+		"$out/no-card-mode.txt" || fail "sitting-refusals: begin without the card mode"
+	pass sitting-refusals "$rows rows: each its exit status and reason, no fake contacted; S-6's recipe inputs through the wrapper; begin beside a checker without the card mode"
 }
 
 # ------------------------------------------------------ the console's rule
@@ -1106,7 +1178,7 @@ case_reading_differs() {
 # that failed, no reset after the reading's one, the board at its prompt.
 # Then the refusals, each exit 5 (2 for the usage) with nothing contacted.
 case_reading_faults() {
-	local row name faults want text last root before
+	local row name faults want text last root before tool
 	for row in 'probe|{"nor_total": "16 MiB"}|3|sf probe did not print SF: Detected ... total 8 MiB; nothing was read, and the board is left at the U-Boot prompt|sf probe' \
 		'read|{"read_error": [1]}|3|sf read 1 did not print Read: OK; the board is left at the U-Boot prompt|sf read 0x140000000 0x0 0x800000' \
 		'md5|{"md5_range": [3]}|3|md5sum of fsbl did not print exactly md5 for 14001a000 ... 14009ffff ==> MD5; the board is left at the U-Boot prompt|md5sum 0x14001a000 0x86000' \
@@ -1143,7 +1215,18 @@ case_reading_faults() {
 	expect reading-refused.option 2 env K3_NOR_READ=human-authorized "$env_tool" reading 0 --hand
 	[ "$(contacts "$root"; sha "$root/readings/reading-0.txt")" = "$before" ] ||
 		fail "reading-refused: a refusal contacted a fake, or wrote a record"
-	pass sitting-reading-faults "a 16 MiB probe, a read error, an md5sum of another range, a second read that differs: stops 3, 3, 3, 4, nothing typed after, the board at its prompt; refused with nothing contacted: no K3_NOR_READ, no reading 1's digests, the store's readings a link, plan.txt a link, N 10, an option not --hang"
+	# S12-1: k3-env.sh's own rule on the reading's medium, behind the
+	# console's: a copy of the console tool that records a card's medium for
+	# the NOR's that it judged, the tree's other tools beside it.
+	reading_sitting reading-medium
+	# shellcheck disable=SC2016 # the console's line as the copy holds it
+	tool=$(mutant reading-medium -e 's/^\t\tkeys medium "\$medium"$/\t\tkeys medium "medium=card rom_lines=1"/')
+	cp -- "$env_tool" "${tool%/*}/k3-env.sh"
+	expect reading-medium 1 env K3_NOR_READ=human-authorized "${tool%/*}/k3-env.sh" reading 0
+	grep -qxF "BE_MVP_K3_ENV: STOP stop=B3 this reading's boot is not recorded as the NOR's (medium=card rom_lines=1); the board is left at the U-Boot prompt" \
+		"$out/reading-medium.txt" && [ "$(lines '"line": ' "$FAKE_UBOOT/received.log")" = 0 ] ||
+		fail "reading-medium: k3-env.sh's own rule on the medium did not stop B3 before any line"
+	pass sitting-reading-faults "a 16 MiB probe, a read error, an md5sum of another range, a second read that differs: stops 3, 3, 3, 4, nothing typed after, the board at its prompt; refused with nothing contacted: no K3_NOR_READ, no reading 1's digests, the store's readings a link, plan.txt a link, N 10, an option not --hang; a console that records another medium: k3-env.sh's own B3, no line typed"
 }
 
 # ------------------------------------------ 10: a missed s in a reading
@@ -1184,6 +1267,335 @@ case_reading_private() {
 	pass sitting-reading-private "no 32-digit run in readings/*.txt; 42 md5sums, each output_sha256=withheld; the store's 6 digests.tsv and outputs 0600 in 0700 directories; no digest in the run root or the step's output"
 }
 
+# ------------------------------------------------- the boots from a card
+reading_order=("${reading_lines[@]}" 'sf read 0x140000000 0x0 0x800000'
+	'md5sum 0x140000000 0x800000')
+reader=/dev/disk/by-id/usb-Stand_In_Reader_0-0:0
+sit_args=()
+
+# k2_sitting NAME SITTING [FAULTS]: a nor_board NAME, and SITTING's begin,
+# preflight, stage, and reading-0 through the driver on gate-k2, each
+# passing: the case's root and sitting.
+k2_sitting() {
+	local step
+	nor_board "$1" "${3:-}"
+	root=$K3_RUN_ROOT sitting=$2 case_name=$1
+	for step in begin preflight stage reading-0; do
+		sit "$step" 0 "$step"
+	done
+}
+
+# sit NAME STATUS STEP [ARGUMENT...]: the driver's STEP of the case's
+# sitting on gate-k2, with sit_args; at card-in and card-out, the
+# responsible human's statement made now.
+sit() {
+	local said=()
+	case $3 in
+	card-in-* | card-out-*) said=("K3_HUMAN_SAID=$(date -u +%Y-%m-%dT%H:%M:%SZ)") ;;
+	esac
+	drive "$case_name.$1" "$2" "$root" "$sitting" "$3" gate=gate-k2 \
+		"${sit_args[@]}" "${said[@]}" "${@:4}"
+}
+
+# insert IMAGE [CAPTURE]: a card in the fake's slot, which boots CAPTURE
+# (K2's of IMAGE by default).
+insert() {
+	printf '{"image": "%s", "capture": "%s"}\n' "$1" \
+		"${2:-$stand/k2/$1/serial.log}" >"$FAKE_K3_BOARD/card.json"
+}
+
+# derived NAME SED...: K2's capture of two-guests-off changed by each sed
+# expression, as OUT/captures/NAME.log.
+derived() {
+	local file=$out/captures/$1.log
+	shift
+	mkdir -p -- "$out/captures"
+	sed "$@" -- "$stand/k2/two-guests-off/serial.log" >"$file"
+	cmp -s -- "$file" "$stand/k2/two-guests-off/serial.log" &&
+		fail "derived: $file is K2's capture"
+	printf '%s\n' "$file"
+}
+
+# session S BOOTS: session S of the case's sitting, each step passing:
+# lane C's records, the card in, card-in-S, BOOTS boots from it, the card
+# out, card-out-S, and reading-S.
+session() {
+	local image boot
+	image=$(image_of "$sitting" "$1")
+	card_records "$root" "$image"
+	insert "$image"
+	sit "card-in-$1" 0 "card-in-$1"
+	for boot in $(seq "$2"); do
+		sit "boot-$1.$boot" 0 "boot-$1.$boot"
+	done
+	rm -- "$FAKE_K3_BOARD/card.json"
+	sit "card-out-$1" 0 "card-out-$1"
+	sit "reading-$1" 0 "reading-$1"
+}
+
+# equal N...: each reading N found each range equal to the one before.
+equal() {
+	local number
+	for number; do
+		[ "$(grep -c '^range=[a-z]* equal$' "$root/readings/reading-$number.txt")" = 6 ] ||
+			fail "$case_name: reading $number is not equal=6"
+	done
+}
+
+# passed N: N boots of the run root, each passing, judged by the form.
+passed() {
+	[ "$(grep -lx 'verdict=PASS' "$root"/boots/*/run.txt | wc -l)" = "$1" ] &&
+		[ "$(grep -lx 'stops=none' "$root"/boots/*/run.txt | wc -l)" = "$1" ] ||
+		fail "$case_name: not $1 boots, each passing the form"
+}
+
+# --------------------------------------- 1: the whole first sitting
+case_sitting_first() {
+	local runs
+	k2_sitting sitting-first first
+	session 1 3
+	sit end 0 end
+	runs=$(printf 'ping status ping reset ping status %.0s' 1 2 3 4 5 6)
+	expect_dongle sitting-first "${runs% }"
+	[ "$(sed -n 's/.*"line": "\([^"]*\)".*/\1/p' "$FAKE_UBOOT/received.log" | tr '\n' '|')" = \
+		"$(printf '%s|' "${reading_order[@]}" "${reading_order[@]}")" ] ||
+		fail "sitting-first: the typed lines are not each reading's ten"
+	[ "$(lines '"card": true' "$FAKE_UBOOT/received.log")" = 0 ] ||
+		fail "sitting-first: a key reached a boot from a card"
+	[ "$(cut -d' ' -f1 "$root/card-slot.txt" | tr '\n' ' ')" = 'card=out card=in card=out ' ] &&
+		[ "$(grep -c ' said=20[^ ]* recorded=20' "$root/card-slot.txt")" = 2 ] ||
+		fail "sitting-first: card-slot.txt is not out, in, out, with his times"
+	equal 1
+	passed 3
+	# The first sitting's facts, as the owner takes them for the second.
+	"$python" -B -c 'import json, sys
+json.dump(json.load(open(sys.argv[1]))["observed"], open(sys.argv[2], "w"), indent=1, sort_keys=True)' \
+		"$root/boots/boot-1.1-a1/result.json" "$stand/observed-first.json"
+	pass sitting-first "every step on the declared plan: six resets by the dongle; each reading's s and ten lines, and nothing typed in a boot from a card; card-slot.txt out, in, out with his times; reading 1 equal=6; three boots, each passing the form"
+}
+
+# --------------------------------------- 2: the whole second sitting
+case_sitting_second() {
+	[ -s "$stand/observed-first.json" ] || fail "sitting-second: no facts of sitting-first"
+	sit_args=(observed=observed-first.json)
+	k2_sitting sitting-second second
+	session 1 3
+	session 2 1
+	session 3 1
+	sit end 0 end "K3_CARD_DEVICE=$reader"
+	sit_args=()
+	[ "$(dongle_resets)" = 10 ] || fail "sitting-second: $(dongle_resets) resets, not ten"
+	equal 1 2 3
+	passed 5
+	grep -qF "NOTE the last sitting has ended: remove the card reader's access rule; BE_MVP_K3_CARD: REMOVE /usr/bin/sudo " \
+		"$out/sitting-second.end.txt" || fail "sitting-second: the access rule's removal"
+	pass sitting-second "three sessions with the first sitting's facts: ten resets; four readings, each equal=6; five boots, each passing the form; the access rule's removal printed"
+}
+
+# ------------------------------------- 12: a boot from the NOR, card in
+case_nor_boot() {
+	local resets keys
+	k2_sitting nor-boot first
+	card_records "$root" two-guests-off
+	sit card-in-1 0 card-in-1
+	resets=$(dongle_resets) keys=$(lines '"t": ' "$FAKE_UBOOT/received.log")
+	sit boot-1.1 1 boot-1.1
+	grep -q "^BE_MVP_K3_SITTING: STOP step=boot-1.1 attempt=1 stop=B4 the boot's ROM lines are the NOR's" \
+		"$out/nor-boot.boot-1.1.txt" || fail "nor-boot: not B4"
+	has "$root/boots/boot-1.1-a1/run.txt" outcome=nor
+	grep -q '(stop B4)$' "$root/boots/boot-1.1-a1/check.txt" || fail "nor-boot: no finding of the form's B4"
+	[ "$(dongle_resets)" = $((resets + 1)) ] && [ "$(lines '"t": ' "$FAKE_UBOOT/received.log")" = "$keys" ] ||
+		fail "nor-boot: a key, or a reset after the boot"
+	# The NOR's own boot command runs on, to Fedora; the close-out.
+	wait_state fedora
+	sit card-out-1 0 card-out-1
+	sit reading-1 0 reading-1
+	grep -qx fedora_shutdown=clean-halt "$root/readings/reading-1.txt" &&
+		[ "$(tail -n 1 "$root/resets.tsv" | cut -f5)" = fedora-down ] ||
+		fail "nor-boot: reading-1 did not shut Fedora down, then reset"
+	equal 1
+	sit end 0 end
+	pass sitting-nor-boot "the card recorded in and none in the slot: outcome nor, STOP stop=B4 with the form's finding, no key and no reset after, the NOR's boot to Fedora; then card-out-1, reading-1 (Fedora shut down, the reset fedora-down, equal=6), and end"
+}
+
+# -------------------------------------- 14: captures the form refuses
+case_form_refused() {
+	local resets
+	k2_sitting form-refused first
+	card_records "$root" two-guests-off
+	insert two-guests-off "$(derived flash \
+		-e '/^DRAM:/a SF: Detected gd25lq64c with page size 256 Bytes, erase size 4 KiB, total 8 MiB' \
+		-e 's/^\(.* reboot: read PMIC reg 0xab value\) 0x0$/\1 0x1/')"
+	sit card-in-1 0 card-in-1
+	resets=$(dongle_resets)
+	sit boot-1.1 1 boot-1.1
+	grep -q '^BE_MVP_K3_SITTING: STOP step=boot-1.1 attempt=1 stop=B2 .*(stop B2)$' \
+		"$out/form-refused.boot-1.1.txt" || fail "form-refused: not B2 of the flash's line"
+	has "$root/boots/boot-1.1-a1/run.txt" stops=B2,B11
+	insert two-guests-off "$(derived monitor -e 's/^\(BE_MVP:13 RUN_COMPLETE domains=2 records=\)138 /\1137 /')"
+	sit boot-1.1-again 1 boot-1.1 K3_SITTING_RESUME=boot-1.1
+	grep -q '^BE_MVP_K3_SITTING: STOP step=boot-1.1 attempt=2 stop=B5 ' "$out/form-refused.boot-1.1-again.txt" ||
+		fail "form-refused: a monitor line changed is not the sitting's B5"
+	[ "$(dongle_resets)" = $((resets + 2)) ] || fail "form-refused: a reset after a stop"
+	rm -- "$FAKE_K3_BOARD/card.json"
+	sit card-out-1 0 card-out-1
+	sit reading-1 0 reading-1
+	equal 1
+	sit end 0 end
+	pass sitting-form-refused "a probe of the flash with the power chip's download flag: STOP stop=B2, stops=B2,B11 recorded; taken up, a monitor line changed: STOP stop=B5; no reset after either; card-out-1, reading-1 equal=6, and end"
+}
+
+# -------------------------- 15 and 20: a run that never ends, closed out
+case_never_ends() {
+	local resets
+	k2_sitting never-ends first
+	card_records "$root" two-guests-off
+	insert two-guests-off "$(derived cut -e '/^Starting kernel \.\.\./q')"
+	sit card-in-1 0 card-in-1
+	resets=$(dongle_resets)
+	sit boot-1.1 1 boot-1.1 K3_WAIT_SECONDS=2
+	grep -q '^BE_MVP_K3_SITTING: STOP step=boot-1.1 attempt=1 stop=B5 a run that never ends: no end line within 2 s; ' \
+		"$out/never-ends.boot-1.1.txt" && grep -qx outcome=timeout "$root/boots/boot-1.1-a1/run.txt" &&
+		[ "$(dongle_resets)" = $((resets + 1)) ] ||
+		fail "never-ends: not the time limit's stop with the form's, or a reset after"
+	pass sitting-never-ends "a capture cut after Starting kernel: outcome timeout, STOP naming the time limit with the form's finding, no reset after"
+	# O5: reading-1's one reset by the hang reason, after the timeout.
+	rm -- "$FAKE_K3_BOARD/card.json"
+	sit card-out-1 0 card-out-1
+	sit reading-1 0 reading-1
+	[ "$(tail -n 1 "$root/resets.tsv" | cut -f5)" = hang ] || fail "close-out: reading-1's reset is not the hang reason's"
+	equal 1
+	sit end 0 end
+	pass sitting-close-out "after the stopped boot: card-out-1, reading-1 (its reset by the hang reason, --hang), and end"
+}
+
+# ----------------------------------------- 16: boots the session did not plan
+case_unplanned_boot() {
+	local spl='U-Boot SPL 2022.10 (Jan 01 2026 - 00:00:00 +0000)'
+	k2_sitting unplanned first
+	card_records "$root" two-guests-off
+	insert two-guests-off "$(derived second -e "\$a $spl")"
+	sit card-in-1 0 card-in-1
+	sit boot-1.1 1 boot-1.1
+	grep -q '^BE_MVP_K3_SITTING: STOP step=boot-1.1 attempt=1 stop=B3 a boot that the session did not plan' \
+		"$out/unplanned.boot-1.1.txt" || fail "unplanned: a second SPL banner is not B3"
+	has "$root/boots/boot-1.1-a1/run.txt" outcome=boot
+	# A banner between two boots, inside the session: the next reset's audit.
+	k2_sitting unplanned-in first
+	card_records "$root" two-guests-off
+	insert two-guests-off
+	sit card-in-1 0 card-in-1
+	sit boot-1.1 0 boot-1.1
+	printf '%s\nU-Boot 2022.10 (stand-in)\n' "$spl" >>"$K3_SERIAL_LOG"
+	sit boot-1.2 1 boot-1.2
+	grep -q '^BE_MVP_K3_SITTING: STOP step=boot-1.2 attempt=1 stop=B3 .*an unexplained banner' \
+		"$out/unplanned-in.boot-1.2.txt" || fail "unplanned: a banner inside the session is not B3"
+	# Outside it: after reading-0, before the card goes in.
+	k2_sitting unplanned-out first
+	printf '%s\nU-Boot 2022.10 (stand-in)\n' "$spl" >>"$K3_SERIAL_LOG"
+	card_records "$root" two-guests-off
+	insert two-guests-off
+	sit card-in-1 0 card-in-1
+	sit boot-1.1 1 boot-1.1
+	grep -q '^BE_MVP_K3_SITTING: STOP step=boot-1.1 attempt=1 stop=12 .*an unexplained banner' \
+		"$out/unplanned-out.boot-1.1.txt" || fail "unplanned: a banner outside the session is not 12"
+	pass sitting-unplanned-boot "a second SPL banner in a boot: outcome boot, STOP stop=B3; a banner between two boots: the next reset's audit, STOP stop=B3 inside the session, 12 outside it"
+}
+
+# --------------------------- 18 and 17: an input changed, then the dongle
+case_dongle() {
+	local board=$stand/gate-k2/images/two-guests-off/board.json before
+	k2_sitting dongle first
+	card_records "$root" two-guests-off
+	insert two-guests-off
+	sit card-in-1 0 card-in-1
+	cp -- "$board" "$out/dongle.board.json"
+	printf ' ' >>"$board"
+	before=$(contacts "$root")
+	sit boot-1.1-changed 5 boot-1.1
+	grep -q '^BE_MVP_K3_SITTING: REFUSED boot-1.1: .* has changed since begin' "$out/dongle.boot-1.1-changed.txt" &&
+		[ "$(contacts "$root")" = "$before" ] || fail "inputs-changed: not refused before any reset"
+	cp -- "$out/dongle.board.json" "$board"
+	pass sitting-inputs-changed "board.json changed after begin: boot-1.1 refused, exit 5, before any reset"
+	before=$(grep -c . "$FAKE_K3CTL/commands.log")
+	"$python" -B -c 'import json, sys
+path = sys.argv[1] + "/spec.json"
+spec = json.load(open(path))
+spec["fcrec"] = 1
+json.dump(spec, open(path, "w"))' "$FAKE_K3CTL"
+	sit boot-1.1 1 boot-1.1
+	grep -qF "STOP step=boot-1.1 attempt=1 stop=1 the dongle's status before the reset is not clean" \
+		"$out/dongle.boot-1.1.txt" &&
+		[ "$(tail -n +$((before + 1)) "$FAKE_K3CTL/commands.log" | tr '\n' ' ')" = 'ping status ' ] ||
+		fail "dongle: not the console's stop 1 after ping and status alone"
+	pass sitting-dongle "fcrec=1 at boot-1.1: the console's STOP stop=1, the dongle received ping and status alone, the boot step stopped"
+}
+
+# ------------------------------------- 25: the workstation's bus at a boot
+case_usb() {
+	k2_sitting usb first
+	card_records "$root" two-guests-off
+	insert two-guests-off
+	sit card-in-1 0 card-in-1
+	sit boot-1.1 1 boot-1.1 usb=rom
+	grep -qF "STOP step=boot-1.1 attempt=1 stop=B4 the boot ROM's download device is on the workstation's bus: the ROM did not take the card" \
+		"$out/usb.boot-1.1.txt" || fail "usb: the boot ROM's device is not B4"
+	has "$root/boots/boot-1.1-a1/run.txt" check_status=0
+	sit boot-1.1-again 1 boot-1.1 usb=fastboot K3_SITTING_RESUME=boot-1.1
+	grep -qF 'STOP step=boot-1.1 attempt=2 stop=B3 a fastboot interface is on the workstation' \
+		"$out/usb.boot-1.1-again.txt" || fail "usb: a fastboot interface of another device is not B3"
+	! grep -h 'STOP\|^usb=' "$out"/usb.boot-1.1*.txt "$root"/boots/*/run.txt | grep -q '361c\|1001\|1234' ||
+		fail "usb: a device's ID in a stop or a record"
+	pass sitting-usb "the boot ROM's download device at a boot's judgement: STOP stop=B4 ahead of the form's pass; a fastboot interface of another device: STOP stop=B3; no ID in either"
+}
+
+# ------------------------------------------------- 27: the sitting's end
+case_end() {
+	k2_sitting end first
+	session 1 3
+	cp -- "$root/preflight-before/verdict.txt" "$out/end.verdict"
+	sed -i 's/ timebase_frequency=24000000 / timebase_frequency=25000000 /' "$root/preflight-before/verdict.txt"
+	sit end 1 end
+	grep -qF 'STOP step=end attempt=1 stop=B2 the preflight after the sitting is not the one before it' \
+		"$out/end.end.txt" || fail "end: another verdict line is not B2"
+	cp -- "$out/end.verdict" "$root/preflight-before/verdict.txt"
+	sit end-again 0 end K3_SITTING_RESUME=end "K3_CARD_DEVICE=$reader"
+	grep -qF "NOTE the card reader's access rule stays until the last sitting has ended; BE_MVP_K3_CARD: REMOVE /usr/bin/sudo /usr/bin/rm -f " \
+		"$out/end.end-again.txt" || fail "end: no line of the access rule's removal"
+	has "$root/env/fedora.txt" fedora=up-before
+	! grep -qh 'udevadm\|rules\.d' "$FAKE_K3_BOARD/commands.log" "$FAKE_K3CTL/commands.log" "$FAKE_UBOOT/tmux.log" ||
+		fail "end: the access rule's removal reached a fake"
+	pass sitting-end "the preflight after with another verdict line: STOP stop=B2; taken up: lane C's removal printed, with the rule kept until the last sitting; nothing of it reached a fake"
+}
+
+# ---------------------------------------------- 30: the sittings' fakes
+case_fakes() {
+	"$python" -B - "$out" "${reading_order[@]}" <<'EOF' || fail "sitting-fakes: a fake received what a sitting never sends"
+import json, pathlib, sys
+out, lines, bad = pathlib.Path(sys.argv[1]), set(sys.argv[2:]), []
+for board in sorted(out.glob("board-*")):
+    plan = out / f"session-{board.name[6:]}" / "sitting" / "plan.txt"
+    if not plan.is_file() or "schema=be-mvp-k3-sitting-plan-v1\n" not in \
+            plan.read_text():
+        continue
+    received = board / "uboot" / "received.log"
+    for record in map(json.loads, received.read_text().splitlines() if
+                      received.is_file() else []):
+        if record.get("card") or record.get("line", next(iter(lines))) not \
+                in lines or record["state"] == "autoboot" and record[
+                    "v"] != "s":
+            bad.append(f"{board.name}: {record}")
+    commands = board / "k3ctl" / "commands.log"
+    bad += [f"{board.name}: {line}" for line in (commands.read_text().split(
+        ) if commands.is_file() else []) if line not in ("ping", "status",
+                                                         "reset")]
+print("\n".join(bad) or "clean")
+sys.exit(bool(bad))
+EOF
+	hostile_clean sitting-fakes
+	pass sitting-fakes "on the sittings' boards: every typed line a reading's, every key at the autoboot an s, no key in a boot from a card, the dongles' commands ping, status, and reset alone; no hostile trap reached"
+}
+
 case_declarations
 case_order
 case_refusals
@@ -1197,5 +1609,15 @@ case_reading_differs
 case_reading_faults
 case_reading_missed_s
 case_reading_private
-cases=13
+case_sitting_first
+case_sitting_second
+case_nor_boot
+case_form_refused
+case_never_ends
+case_unplanned_boot
+case_dongle
+case_usb
+case_end
+case_fakes
+cases=25
 printf 'BE_MVP_K3_SESSION: PASS self_test=%s cases=%s\n' "$self_test" "$cases"
