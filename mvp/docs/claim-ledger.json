@@ -2027,8 +2027,8 @@
           },
           {
             "path": "mvp/tests/check-partition.py",
-            "sha256": "5462b058ce07b93fcdd87a1fc1137acbe117553fb22e761b6dbe53a53aceb65c",
-            "note": "The independent checker of a descriptor, its tree, and its tables against the scenario, the layout, the linked image, and the firmware, with its self-test and its mutations. Its record binds the tree and the tables by SHA-256: the run harness starts a run under the boundary only if that record passed for this tree and these tables, and a refused tree only as the negative that declares its refusal. Since M11-B it reads the test device's region by the same rule, by its own reading of the tree, with a mutation for each direction."
+            "sha256": "909d65200c1a879c5c122287364d6207612ff8f90fa0d569127b2cb8cd2828f1",
+            "note": "The independent checker of a descriptor, its tree, and its tables against the scenario, the layout, the linked image, and the firmware, with its self-test and its mutations. Its record binds the tree and the tables by SHA-256: the run harness starts a run under the boundary only if that record passed for this tree and these tables, and a refused tree only as the negative that declares its refusal. Since M11-B it reads the test device's region by the same rule, by its own reading of the tree, with a mutation for each direction. It also has a board mode, for the board's trees, tables, and root regions (M11-B)."
           },
           {
             "path": "mvp/firmware/tests/fwtest.py",
