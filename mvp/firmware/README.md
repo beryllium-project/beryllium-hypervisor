@@ -96,8 +96,10 @@ B-3) is the candidate's with one line more. `build.sh` makes it when
   option that the setting would select, or make visible, stops the build.
 - **A tree built in.** `FIRMWARE_FDT=/absolute/tree.dtb`, with
   `FIRMWARE_WITH` alone: a regular file of at most 128 KiB whose header
-  has the FDT magic and its own size. Its copy, `OUT/fdt/board.dtb`, is
-  OpenSBI's `FW_FDT_PATH`, and after the build its bytes must be the
+  has the FDT magic and its own size. Its copy, `OUT/fdt/board.dtb`,
+  must have the size and the header that were checked, so that a file
+  changed after its check is not built in. The copy is OpenSBI's
+  `FW_FDT_PATH`, and after the build its bytes must be the
   binary's at `fw_fdt_bin` (found with the lock's `nm`,
   `MVP_FIRMWARE_TOOL_NM`). Without `FIRMWARE_FDT`, the binary must carry
   no tree. A tree enlarges the read-only part, which can move
@@ -118,6 +120,23 @@ make and nm, so no compiler runs): each refusal with its own message,
 before anything is written where the input is wrong; each check after
 the build; and the forms, the candidate's and `FIRMWARE_WITHOUT`'s
 among them, passing.
+
+**Tier 1** (`mvp/k3/firmware.mk`, inside `check`): `k3-firmware`
+(`./mvp/mvp k3-firmware`) builds the board's configuration without a
+tree in `build/mvp/k3/work/firmware/board/`, requires its
+`fw_dynamic.bin` to match the `firmware board` line of
+`mvp/k3/firmware-pins.txt`, and copies it, its ELF, and its record into
+`build/mvp/k3/check/firmware/board/`, which the evidence bundle lists.
+B-2's two tests are rows of `tests/run-qemu.sh` on QEMU's `k3-like`
+machine, with the candidate's `two-guests` image under the tree without
+reset devices (`mvp/partition/base/k3-like-no-reset.dts`, the plain base
+without its `poweroff` and `reboot` nodes): `k3-halt`, under that build,
+ends with the commit records and the halt; `k3-reset-absent`, under the
+candidate's pinned binary, which has no such device, fails the monitor's
+first check. A third row, `k3-halt-fallback`, boots `two-guests-off` under
+that build and QEMU's own tree, whose syscon devices the base prefers,
+and ends with QEMU's shutdown. `k3-firmware-check` runs the test above
+and `tools/k3-firmware-rows.py`'s self-test and tree check.
 
 ## Allocation after cold boot
 

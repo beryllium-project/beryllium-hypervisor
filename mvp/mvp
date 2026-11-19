@@ -80,6 +80,10 @@
 #                                      in DIR, each by its pinned size and
 #                                      SHA-256 (k3/published-pins.txt),
 #                                      then each step of mvp/k3/
+#   ./mvp k3-firmware [FIRMWARE_GIT=...]
+#                                      M11-B's board firmware configuration
+#                                      built without a tree and checked
+#                                      against k3/firmware-pins.txt
 #   ./mvp claim-ledger check|render|self-test
 #                                      the claim ledger and the release
 #                                      surfaces under docs/ (M4-1)
@@ -308,6 +312,9 @@ k3-env)
 k3-board-gate)
 	extra=(K3_PUBLISHED)
 	later k3-board-gate M11-B1 "$@"
+	;;
+k3-firmware)
+	later k3-firmware M11-B1 "$@"
 	;;
 claim-ledger)
 	[ "$#" -eq 1 ] || { usage; exit 2; }

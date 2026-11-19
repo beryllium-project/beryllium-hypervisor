@@ -120,7 +120,16 @@
 #
 # M11-B: a boundary-on run whose expectation names boundary.reset (halt or
 # absent) has no shutdown; the oracle stops its machine a settle after its
-# last line (halt_line, below), and only that end passes.
+# last line (halt_line, below), and only that end passes. Such a run boots
+# under the tree without reset devices that check made for its firmware
+# role (BUILD_DIR/k3/check/firmware/no-reset/ROLE/). B-2's rows (k3-halt,
+# k3-reset-absent, k3-halt-fallback; GCC, where check made their inputs)
+# boot the firmware role board, the board's configuration without a tree
+# (BUILD_DIR/k3/check/firmware/board/fw_dynamic.bin, its SHA-256 the
+# firmware board line of k3/firmware-pins.txt, checked before the suite
+# and before each run), or base. A run whose expectation check made under
+# BUILD_DIR/k3/check/ is judged against its reference there, under
+# BUILD_DIR/k3/check/references/.
 #
 # QEMU's boot hart is a lottery (planning research 2). A boot hart that is
 # a domain hart of its run is refused, as Plan revision M0-A.2 declares:
@@ -495,15 +504,30 @@ for toolchain in "${variant_toolchains[@]}"; do
 		runs+=("$toolchain/$name $build/variants/$toolchain/$image/be-mvp-boot.elf $k3_machine $cpu $machine_class $pmp $menvcfg $mseccfg $boundary base $firmware_sbi $anchor_dir/expect/$image.json $anchor_dir/authority-report.json $measured")
 	done
 done
+# M11-B (planning/mvp-m11-board-addendum.md, B-2): the halt-only reset
+# device's rows, each "run image firmware-role", the plain monitor's and
+# GCC's alone, where check made their expectations (mvp/k3/firmware.mk).
+k3_firmware=$build/k3/check/firmware
+k3_runs=()
+[ "$monitor" != riscv ] || [ ! -e "$k3_firmware/rows/expect/k3-halt.json" ] ||
+	k3_runs=("k3-halt two-guests board" "k3-reset-absent two-guests base"
+		"k3-halt-fallback two-guests-off board")
+for entry in "${k3_runs[@]}"; do
+	read -r name image role <<<"$entry"
+	wanted "variant/gcc/$name" || continue
+	runs+=("gcc/$name $(row_elf gcc '' "$image") $k3_machine $k3_cpu $oracle_k3 $role $firmware_sbi $k3_firmware/rows/expect/$name.json - -")
+done
 earlier_firmware=${BE_MVP_EARLIER_FIRMWARE:-}
 needs_earlier=0
 needs_no_boundary=0
+needs_board=0
 for entry in "${runs[@]}"; do
 	read -r _ _ _ _ _ _ _ _ _ firmware_role _ _ _ _ <<<"$entry"
 	case $firmware_role in
 	base) ;;
 	earlier) needs_earlier=1 ;;
 	no-boundary) needs_no_boundary=1 ;;
+	board) needs_board=1 ;;
 	*) printf 'unknown firmware role %s\n' "$firmware_role" >&2; exit 2 ;;
 	esac
 done
@@ -518,6 +542,18 @@ if [ "$needs_no_boundary" = 1 ]; then
 	pinned_firmware "$no_boundary_firmware" "$no_boundary_pin" \
 		"the lock's MVP_PIN_FIRMWARE_NO_BOUNDARY_BIN_SHA256" \
 		BE_MVP_NO_BOUNDARY_FIRMWARE
+fi
+board_firmware=$build/k3/check/firmware/board/fw_dynamic.bin
+board_pins=$(dirname -- "$here")/k3/firmware-pins.txt
+if [ "$needs_board" = 1 ]; then
+	[ -r "$board_firmware" ] ||
+		{ printf 'the board firmware %s is not readable\n' "$board_firmware" >&2; exit 2; }
+	board_pin=$(sed -n 's/^firmware board sha256=\([0-9a-f]\{64\}\) bytes=[1-9][0-9]*$/\1/p' \
+		-- "$board_pins")
+	[[ $board_pin =~ ^[0-9a-f]{64}$ ]] ||
+		{ printf '%s pins no board firmware (one firmware board line)\n' "$board_pins" >&2; exit 2; }
+	pinned_firmware "$board_firmware" "$board_pin" \
+		"k3/firmware-pins.txt's firmware board pin" BOARD_FIRMWARE
 fi
 if [ "$needs_earlier" = 1 ]; then
 	[ "$monitor" = riscv ] ||
@@ -574,6 +610,14 @@ for entry in "${runs[@]}"; do
 	[[ $entry != *" no-boundary "* ]] ||
 		[ -r "${no_boundary_firmware%.bin}.elf" ] ||
 		missing+=("${no_boundary_firmware%.bin}.elf")
+	[[ $entry != *" board "* ]] || [ -r "${board_firmware%.bin}.elf" ] ||
+		missing+=("${board_firmware%.bin}.elf")
+	case $expect in
+	"$build"/k3/check/*)
+		[ -r "$build/k3/check/references/${label%%/*}/${label#*/}.json" ] ||
+			missing+=("$build/k3/check/references/${label%%/*}/${label#*/}.json")
+		;;
+	esac
 	if [ -r "$expect" ] && [ "$(breach_image "$expect")" = yes ]; then
 		[ -r "${elf%/*}/breach-plan.json" ] ||
 			missing+=("${elf%/*}/breach-plan.json")
@@ -620,6 +664,12 @@ pinned_role() {
 			BE_MVP_NO_BOUNDARY_FIRMWARE
 		run_firmware=$no_boundary_firmware
 		run_firmware_elf=${no_boundary_firmware%.bin}.elf
+		;;
+	board)
+		pinned_firmware "$board_firmware" "$board_pin" \
+			"k3/firmware-pins.txt's firmware board pin" BOARD_FIRMWARE
+		run_firmware=$board_firmware
+		run_firmware_elf=${board_firmware%.bin}.elf
 		;;
 	*)
 		printf 'unknown firmware role %s\n' "$1" >&2
@@ -730,6 +780,13 @@ run() {
 	[ "$report" = - ] || reported=(--report "$report")
 	[ "$inputs" = - ] ||
 		reported+=(--kernel "${inputs%%:*}" --dtb "${inputs#*:}")
+	# M11-B: a board row's reference, and its boot image beside its ELF.
+	case $expect in
+	"$build"/k3/check/*)
+		reported+=(--reference "$build/k3/check/references/$toolchain/$name.json"
+			--image "${elf%.elf}.img")
+		;;
+	esac
 	# beryllium-cheri: the control runs cap-store's image without the CPU
 	# addition, and its checker reads that image (--image) for the log.
 	if [ "$name" = cap-store-control ]; then
@@ -760,6 +817,12 @@ run() {
 			dtb=$negative/${negative##*/}.dtb
 			tables=$negative/${negative##*/}-pmp.json
 			record=$negative/record.json
+		fi
+		# M11-B: the tree without reset devices of the run's firmware role.
+		if [ "$halt" != - ]; then
+			dtb=$k3_firmware/no-reset/$firmware_role/$pair.dtb
+			tables=$k3_firmware/no-reset/$firmware_role/$pair-pmp.json
+			record=$k3_firmware/no-reset/$firmware_role/record.json
 		fi
 		authority=$build/gen/partition/$scenario_name/authority-report.json
 		if ! check=$("$python" -I -B "$boundary_checker" gate \

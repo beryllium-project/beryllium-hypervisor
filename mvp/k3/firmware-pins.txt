@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
+# The tier-1 firmware that QEMU's rows boot (CONVENTIONS section 2; the
+# release review's S-01): a line `firmware NAME sha256=HEX bytes=N` each.
+# board: the board's configuration, the candidate's with
+# CONFIG_SBI_SYSTEM_RESET_HALT, built without a tree by k3-firmware
+# (mvp/k3/firmware.mk); tests/run-qemu.sh checks it before every run of
+# the firmware role board.
+firmware board sha256=f37f95b6ed6fcd66f17804e672b67feda2060814a38dcffb874e8ad929cd7532 bytes=278456

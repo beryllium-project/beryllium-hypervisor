@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 James Morris <jmorris@namei.org>
+//
+// QEMU's k3-like tree for plain PMP without the machine's two reset
+// devices (planning/mvp-m11-board-addendum.md, B-2's tests): the base's
+// syscon-poweroff and syscon-reboot nodes are deleted, so that no reset
+// driver of the firmware matches a node of this tree.
+/include/ "k3-like-pmp.dts"
+
+/ {
+	/delete-node/ poweroff;
+	/delete-node/ reboot;
+};
