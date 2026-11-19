@@ -1826,3 +1826,19 @@ text above as it says; the text above is otherwise as accepted.
       instruction, which those counts do not hold, is not shown on
       the board;". Like the rest of B-11's words, they are used only
       if M11-B's result is accepted.
+- **2026-11-19, `card 11000`** (the board addendum's stop B8 again,
+  put to the responsible human before the lane reached its limit; read
+  as the reply that was asked, `card: 11000`). The soft limit of the
+  lane "the card's tools and the session's tools, with their dry
+  runs" is re-set from 10,000 counted lines to 11,000. The other
+  lanes' limits stand as the entry before this one has them.
+  - When the question was put, the card's tools were finished but for
+    one change, at 4,420 lines; with it they are 4,454. The session's
+    driver, with its self-test and the first cases of its dry run,
+    stood at 3,312 lines, where its design had about 2,200 for that
+    part. The session's tools still to come (the console tool's rule
+    for a card in the slot, the readings, the cases of a boot from a
+    card, and the sitting's record) were estimated at about 2,300.
+    That made about 10,050 lines, between 9,550 and 10,550.
+  - Nothing was cut to meet a limit, and nothing of the lane was
+    landed before this entry.
