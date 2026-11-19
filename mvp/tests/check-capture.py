@@ -3204,7 +3204,8 @@ def record_block(text, boundary):
     records cut from its end, where a boundary-on run whose tree holds a
     digest (BOUNDARY, the expectation's section) prints them, each hart's
     lines in the firmware's form; a record line elsewhere, or in any other
-    run, is a finding."""
+    run, is a finding, as it is in a run whose firmware has no reset
+    device to print them at (M11-B, "reset": "absent")."""
     parts = text.split("\n")
     end = len(parts) - (parts[-1] == "")
     start = end
@@ -3213,8 +3214,10 @@ def record_block(text, boundary):
     block = [line.rstrip("\r") for line in parts[start:end]]
     early = [number for number, line in enumerate(parts[:start], 1)
              if RECORD_LINE.search(line)]
-    if not (boundary and boundary.get("record")):
+    absent = bool(boundary) and boundary.get("reset") == "absent"
+    if not (boundary and boundary.get("record")) or absent:
         return text, ["M-mode's commit record in a " + (
+            "run whose firmware has no reset device" if absent else
             "run whose tree holds no digest" if boundary else
             "boundary-off run")] if block or early else []
     findings = [f"line {number}: a commit-record line before the monitor's "
@@ -4814,19 +4817,27 @@ def boundary_cases(latest, root):
     """M11-7's and M11-8's base: two-guests' current stand-in in its
     boundary-on form (boundary_expect()) under a step-1 tree, the same
     without a digest in the tree, and under a step-2 tree, each with its
-    expectation, whatever step the build's own expectation declares;
-    [(name, expectation, text, wanted)]."""
+    expectation, whatever step the build's own expectation declares; and
+    (M11-B) the first without its record, under a firmware with no reset
+    device; [(name, expectation, text, wanted)]."""
     on = boundary_expect(latest["two-guests"], "boot")
     bare = json.loads(json.dumps(on))
     bare["boundary"]["record"] = False
     second = boundary_expect(latest["two-guests"], "confined")
+    # M11-B: the base firmware on a tree without reset devices prints the
+    # digest and no record.
+    absent = json.loads(json.dumps(on))
+    absent["boundary"]["reset"] = "absent"
     source = fixture(M9_FIXTURES["two-guests"])
     return [("M11-7 boundary-on stand-in", on,
              current_log_standin(source, on, root), "PASS"),
             ("M11-7 boundary-on stand-in, no digest in the tree", bare,
              current_log_standin(source, bare, root), "PASS"),
             ("M11-8 boundary-on stand-in, step 2: hart 0's record committed",
-             second, current_log_standin(source, second, root), "PASS")]
+             second, current_log_standin(source, second, root), "PASS"),
+            ("M11-B boundary-on stand-in, no reset device: no record",
+             absent, current_log_standin(source, on, root).split(
+                 "Domain commit hart0: ")[0], "PASS")]
 
 
 def control_negative_cases(latest, root):
@@ -4873,15 +4884,18 @@ def control_negative_mutations(text):
 
 
 def boundary_mutations(on, text, off, off_text):
-    """M11-7's rules, each one's smallest edit of a passing boundary-on
-    stand-in TEXT (expectation ON), or of the boundary-off OFF_TEXT
-    (expectation OFF): [(name, expectation, text, wanted finding)]."""
+    """M11-7's rules, and M11-B's for a firmware with no reset device,
+    each one's smallest edit of a passing boundary-on stand-in TEXT
+    (expectation ON), or of the boundary-off OFF_TEXT (expectation OFF):
+    [(name, expectation, text, wanted finding)]."""
     parts = lines(text)
     first = where(parts, "Domain commit hart0: ")
     block = parts[first:-1]
     last = where(parts, "BE_MVP:14 SHUTDOWN")
     bare = json.loads(json.dumps(on))
     bare["boundary"]["record"] = False
+    absent = json.loads(json.dumps(on))
+    absent["boundary"]["reset"] = "absent"
     off_parts = lines(off_text)
     return [
         ("the record before the monitor's last line", on, text_of(
@@ -4896,6 +4910,11 @@ def boundary_mutations(on, text, off, off_text):
          "commit digest or record before the markers of a boundary-off"),
         ("the record where the tree holds no digest", bare, text,
          "a run whose tree holds no digest"),
+        ("the record where the firmware has no reset device", absent, text,
+         "a run whose firmware has no reset device"),
+        ("no digest line where the firmware has no reset device", absent,
+         delete(text_of(parts[:first] + [""]), "Domain commit digest"),
+         "0 configuration digest lines before the markers, expected 1"),
         ("a third status", on, replace_in(
             text, "BE_MVP:02 ", "status=1:1,2:1", "status=1:1,2:1,3:1"),
          "malformed boundary-on BE_MVP:02"),

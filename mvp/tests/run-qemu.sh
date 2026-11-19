@@ -118,6 +118,10 @@
 # the run that declares that negative and the checker's refusal of it.
 # M11-8 adds the control hart's five, each under its own tree likewise.
 #
+# M11-B: a boundary-on run whose expectation names boundary.reset (halt or
+# absent) has no shutdown; the oracle stops its machine a settle after its
+# last line (halt_line, below), and only that end passes.
+#
 # QEMU's boot hart is a lottery (planning research 2). A boot hart that is
 # a domain hart of its run is refused, as Plan revision M0-A.2 declares:
 # the checker's REFUSED verdict, a precondition failing rather than an
@@ -223,6 +227,15 @@ read -r -a toolchains <<<"${BE_MVP_QEMU_TOOLCHAINS:-gcc clang}"
 read -r -a variant_toolchains <<<"${BE_MVP_QEMU_VARIANT_TOOLCHAINS:-gcc clang}"
 read -r -a probe_toolchains <<<"${BE_MVP_QEMU_PROBE_TOOLCHAINS:-gcc clang}"
 terminal_regex='BE_MVP:14 SHUTDOWN|BE_MVP:FAIL|BE_K3_B3: FAIL'
+# M11-B (planning/mvp-m11-board-addendum.md, B-2): a run whose expectation
+# names boundary.reset has a machine that halts, and ends halt_settle
+# seconds after its last line: under the halt-only device (halt), the
+# commit record of QEMU's last hart, hart7 under -smp 8 (its counts line,
+# or a committed hart's pmpaddr8 line); with no reset device (absent), the
+# monitor's SRST_RETURNED.
+halt_line='^Domain commit hart7: (committed=0 pmp_faults=[0-9]+ blocked_calls=[0-9]+ failed_calls=[0-9]+|pmpaddr8=(0x[0-9a-f]{16},){7}0x[0-9a-f]{16})\r?\n'
+returned_line='^BE_MVP:SRST_RETURNED\r?\n'
+halt_settle=2
 # The plan's k3-like machine and CPU (B6's).
 k3_machine='virt,aia=aplic-imsic,aia-guests=7'
 k3_cpu='rv64,h=true,sstc=true,svadu=false,svade=true,sv48=off,sv57=off,smstateen=true'
@@ -619,9 +632,9 @@ pinned_role() {
 boot() {
 	local stem=$1 elf=$2 machine=$3 cpu=$4 firmware_role=$5 machine_class=$6
 	local pmp=$7 menvcfg=$8 mseccfg=$9 boundary=${10} dtb=${11:--}
-	local words=${12:--}
+	local words=${12:--} halt=${13:--}
 	local console=$stem.console.log
-	local boundary_arg=() tree_arg=()
+	local boundary_arg=() tree_arg=() halt_arg=()
 	local qemu_pid deadline terminal_at status
 
 	pinned_role "$firmware_role"
@@ -677,11 +690,18 @@ boot() {
 		;;
 	*) printf 'oracle boundary declaration %s is not off, plain, or smepmp\n' "$boundary" >&2; return 2 ;;
 	esac
+	case $halt in
+	-) ;;
+	halt) halt_arg=(--halt-line "$halt_line" --halt-settle "$halt_settle") ;;
+	absent) halt_arg=(--halt-line "$returned_line" --halt-settle "$halt_settle") ;;
+	*) printf 'boundary.reset %s is not halt or absent\n' "$halt" >&2; return 2 ;;
+	esac
 	"$python" -I -B "$oracle" run --record "$stem.oracle.json" \
 		--exit-file "$stem.exit.txt" --qemu-output "$stem.qemu.txt" \
 		--terminal-file "$console" --terminal-regex "$terminal_regex" \
 		--timeout "$timeout_seconds" --grace "$grace_seconds" --harts 8 \
 		--machine-class "$machine_class" "${boundary_arg[@]}" \
+		"${halt_arg[@]}" \
 		--pmp "$pmp" --menvcfg "$menvcfg" --mseccfg "$mseccfg" \
 		--ram-base 0x80000000 --ram-size 0x200000000 \
 		--elf-word "boot-entry=$elf" -- \
@@ -702,7 +722,7 @@ run() {
 	local hart sha check elf_sha reported=() addition=$cheri_cpu
 	local oracle_verdict oracle_detail oracle_failure=''
 	local pair mode=off dtb=- tables=- record=- authority=- dtb_sha=-
-	local negative control=-
+	local negative control=- halt=-
 	local scenario_name limit=$max_attempts boundary_verdict
 	local boundary_failure='' breach=no plan=- breach_words=- extra=()
 	local breach_verdict breach_failure=''
@@ -727,6 +747,8 @@ run() {
 		mode=$boundary limit=1
 		# M11-8: the tree's step, as the expectation declares it.
 		control=$(boundary_field "$expect" control_hart)
+		# M11-B: whether its machine halts, and how.
+		halt=$(boundary_field "$expect" reset)
 		scenario_name=$(expect_field "$expect" scenario)
 		dtb=$build/partition/$scenario_name/$pair/$mode/$pair.dtb
 		tables=$build/partition/$scenario_name/$pair/$mode/$pair-pmp.json
@@ -771,7 +793,8 @@ run() {
 		boot "$stem" "$elf" "$machine" "$cpu${addition:+,$addition}" \
 			"$firmware_role" \
 			"$machine_class" "$pmp" "$menvcfg" "$mseccfg" "$mode" "$dtb" \
-			"$([ "$mode" = off ] && echo "$breach_words" || echo -)"
+			"$([ "$mode" = off ] && echo "$breach_words" || echo -)" \
+			"$halt"
 		status=$(cat -- "$stem.exit.txt")
 		set +e
 		"$python" -B "$checker" "$stem.console.log" \

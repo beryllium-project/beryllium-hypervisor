@@ -70,6 +70,17 @@ expectation's declaration with harts 1 and 2 never started and hart 0
 boot (no monitor confined it), the banner's digest and no printed record
 (the run ends with no reset).
 
+M11-B (planning/mvp-m11-board-addendum.md, B-2): a declaration's "reset"
+names a run whose machine halts. `halt`, for the board's firmware
+("firmware": "board", whose tables are made from its own ELF, as the
+base's are): the banner's one shutdown device is halt and its one reboot
+device none (---), and hart 0's program counter lies inside
+sbi_hart_hang, by its place and size in the run's firmware ELF (the
+lock's nm -S; an ELF with the symbol absent, twice, or without a size is
+refused). `absent`, for the base firmware on a tree that holds a digest:
+the banner shows neither device, and M-mode prints no record, having no
+reset device to report at.
+
 `breach` judges a breach image's run (M11-7; D-10's hostile-monitor rows)
 by its plan (tools/gen-breach.py plan): the hook's record, which the
 oracle read where the plan places it (the hooked VS-domain hart's
@@ -112,6 +123,7 @@ import json
 import pathlib
 import re
 import shutil
+import subprocess
 import sys
 
 sys.dont_write_bytecode = True
@@ -154,6 +166,13 @@ DEFINE = re.compile(r"^#define\s+BE_MVP_(\w+)\s+BE_MVP_C\((0x[0-9a-fA-F]+|"
                     r"[0-9]+)\)", re.M)
 NOT_APPLICABLE = "BE_MVP_BOUNDARY: NOT-APPLICABLE boundary=off\n"
 TABLE_SCHEMA = "be-pmp-tables-v1"
+# M11-B: the firmware a run boots, how its machine halts, the banner's
+# reset devices, and the symbol in which the halt-only device stops hart 0.
+FIRMWARES = ("base", "no-boundary", "board")
+RESETS = ("halt", "absent")
+DEVICE_LINE = re.compile(r"Platform (Reboot|Shutdown) Device\s*: (\S+)")
+HANG = "sbi_hart_hang"
+NM_SIZED = re.compile(r"([0-9a-f]+) ([0-9a-f]+) [A-Za-z] (\S+)")
 
 
 class Refused(Exception):
@@ -165,6 +184,23 @@ def defines(path):
             DEFINE.findall(pathlib.Path(path).read_text(encoding="utf-8"))}
 
 
+def sized_symbol(text, name):
+    """NAME's address and size in TEXT, nm -S's output: defined once, with a
+    size (C-2)."""
+    found = []
+    for line in text.splitlines():
+        if line.split()[-1:] != [name]:
+            continue
+        match = NM_SIZED.fullmatch(line.strip())
+        if not match or not int(match.group(2), 16):
+            raise Refused(f"{name} has no size in the firmware's ELF")
+        found.append((int(match.group(1), 16), int(match.group(2), 16)))
+    if len(found) != 1:
+        raise Refused(f"{name} is defined {len(found)} times in the "
+                      f"firmware's ELF, not once")
+    return found[0]
+
+
 def declaration(expect):
     """The expectation's boundary section, its form checked."""
     boundary = expect.get("boundary")
@@ -172,7 +208,7 @@ def declaration(expect):
         raise Refused("the expectation declares no boundary")
     known = {"control_hart", "pair", "identity", "record", "firmware",
              "harts", "counts", "phase", "negative", "refusal",
-             "fallthrough"}
+             "fallthrough", "reset"}
     if set(boundary) - known or not {"control_hart", "pair", "record",
                                      "harts"} <= set(boundary):
         raise Refused("the boundary section is not of its form")
@@ -191,6 +227,17 @@ def declaration(expect):
     if boundary["control_hart"] == "boot" and harts["0"] != "boot":
         raise Refused(f"the boundary section declares hart 0 {harts['0']} "
                       f"under a step-1 tree, which leaves it boot")
+    firmware, reset = boundary.get("firmware", "base"), boundary.get("reset")
+    if firmware not in FIRMWARES or reset not in RESETS + (None,):
+        raise Refused(f"the boundary section's firmware {firmware!r} or "
+                      f"reset {reset!r} is not of its form")
+    if (reset == "halt" and firmware != "board") or \
+            (reset == "absent" and (firmware != "base" or
+                                    not boundary["record"])):
+        raise Refused(f"the boundary section declares reset {reset} for "
+                      f"the {firmware} firmware" + (
+                          "" if boundary["record"] else
+                          " on a tree that holds no digest"))
     return boundary
 
 
@@ -422,8 +469,10 @@ def confined_findings(hart, mode, oracle_hart, fields, cfg, addr, shown,
 
 
 def judge(expect, record, text, tables, mode, authority, symbols,
-          layout=None, header=None):
-    """(findings, facts) of D-10's four checks for one run."""
+          layout=None, header=None, hang=None):
+    """(findings, facts) of D-10's four checks for one run; HANG,
+    sbi_hart_hang's place and size in the run's firmware, for a run whose
+    machine halts (M11-B)."""
     boundary = declaration(expect)
     if tables.get("schema") != TABLE_SCHEMA:
         raise Refused(f"the tables are not of schema {TABLE_SCHEMA}")
@@ -453,8 +502,11 @@ def judge(expect, record, text, tables, mode, authority, symbols,
     findings += found
     digests, shown_lines = printed(text)
     shown = {}
-    # A fall-through ends with no reset, so M-mode prints no record.
-    if boundary["record"] and not boundary.get("fallthrough"):
+    reset = boundary.get("reset")
+    # A fall-through ends with no reset, and a firmware with no reset device
+    # resets nothing, so M-mode prints no record in either.
+    if boundary["record"] and not boundary.get("fallthrough") and \
+            reset != "absent":
         if sorted(shown_lines) != list(range(HARTS)):
             findings.append(f"M-mode printed records for harts "
                             f"{sorted(shown_lines)}, not 0 to 7")
@@ -466,10 +518,32 @@ def judge(expect, record, text, tables, mode, authority, symbols,
     elif shown_lines:
         findings.append("M-mode printed a commit record, but the tree holds "
                         "no digest" if not boundary["record"] else
-                        "M-mode printed a commit record in a fall-through")
+                        "M-mode printed a commit record, but the run's "
+                        "firmware has no reset device" if reset == "absent"
+                        else "M-mode printed a commit record in a "
+                        "fall-through")
     elif digests and not boundary["record"]:
         findings.append("M-mode printed a digest, but the tree holds no "
                         "digest")
+    if reset is not None:
+        devices = [match.groups() for match in map(
+            DEVICE_LINE.fullmatch, text.replace("\r", "").split("\n"))
+            if match]
+        for kind, wanted in (("Reboot", "---"), ("Shutdown", "halt" if
+                                                 reset == "halt" else "---")):
+            found = [name for line, name in devices if line == kind]
+            if found != [wanted]:
+                findings.append(f"the banner's {kind.lower()} devices are "
+                                f"{found}, not [{wanted!r}]")
+    if reset == "halt":
+        if hang is None:
+            raise Refused(f"a run whose machine halts needs {HANG}'s place "
+                          f"and size")
+        pc, start = int(oracle_harts[0]["pc"], 16), \
+            qemu_oracle.FIRMWARE_BASE + hang[0]
+        if not start <= pc < start + hang[1]:
+            findings.append(f"hart 0: pc 0x{pc:x} outside {HANG} "
+                            f"[0x{start:x}, 0x{start + hang[1]:x})")
     declared_states = {int(hart): state
                        for hart, state in boundary["harts"].items()}
     declared_states.update({hart: "never-started"
@@ -798,15 +872,23 @@ def check(args):
     symbols = qemu_oracle.symbol_addresses(
         args.nm, args.firmware_elf,
         ("_fw_start", "_fw_end", qemu_oracle.RECORD_SYMBOL))
-    if boundary.get("firmware", "base") == "base" and \
+    if boundary.get("firmware", "base") in ("base", "board") and \
             hashlib.sha256(pathlib.Path(args.firmware_elf).read_bytes()
                            ).hexdigest() != tables["firmware_sha256"]:
         raise Refused("the firmware's ELF is not the tables' firmware")
+    hang = None
+    if boundary.get("reset") == "halt":
+        listed = subprocess.run([args.nm, "-S", args.firmware_elf],
+                                capture_output=True, text=True, check=False)
+        if listed.returncode:
+            raise Refused("nm -S failed on the firmware's ELF")
+        hang = sized_symbol(listed.stdout, HANG)
     text = pathlib.Path(args.console).read_bytes().decode("utf-8", "replace")
     findings, facts = judge(
         expect, read_json(args.oracle), text, tables, args.pmp_mode,
         read_json(args.partition_authority), symbols, defines(args.layout),
-        defines(args.boundary_header) if args.boundary_header else None)
+        defines(args.boundary_header) if args.boundary_header else None,
+        hang)
     output = result_text(findings, facts)
     write_new(args.out, output)
     print(output, end="")
@@ -856,6 +938,7 @@ def synthetic_tables(control_hart="boot"):
 
 SYMBOLS = {"_fw_start": 0, "_fw_end": 0x52000,
            qemu_oracle.RECORD_SYMBOL: 0x41230}
+HANG_PLACE = (0x77d2, 0x12)
 LAYOUT = {"G0_BLOCK_HPA": 0x102060000, "G1_BLOCK_HPA": 0x102064000,
           "BLOCK_STATE_OFFSET": 0x3000}
 HEADER = {"BOUNDARY_PHASE_OFFSET": 0x130, "BOUNDARY_PHASE_FAILED": 2,
@@ -1159,7 +1242,7 @@ def self_test(scratch):
 
     def run(name, change=None, mode="plain", states=None, expect=None,
             want=None, record=True, counts=None, header=HEADER, seen=None,
-            control_hart="boot"):
+            control_hart="boot", hang=None):
         oracle, text, tables = synthetic_run(mode, states or base_states,
                                              record, counts, seen,
                                              control_hart)
@@ -1168,7 +1251,7 @@ def self_test(scratch):
             text = change(oracle, tables, expect, text) or text
         try:
             findings, _ = judge(expect, oracle, text, tables, mode,
-                                authority, SYMBOLS, LAYOUT, header)
+                                authority, SYMBOLS, LAYOUT, header, hang)
         except Refused as error:
             findings = [f"refused: {error}"]
         ok = (not findings) if want is None else \
@@ -1495,6 +1578,84 @@ def self_test(scratch):
         lambda oracle, tables, expect, text: expect["boundary"].update(
             phase=[1]), want="VS domain 1's state word was not read")
 
+    # M11-B: a run whose machine halts, under the board's firmware (the
+    # halt-only device) or the base on a tree without reset devices.
+    devices = ("Platform Reboot Device      : ---\n"
+               "Platform Shutdown Device    : {}\n")
+
+    def halted(pc=0x800077d4, shutdown="halt", extra=""):
+        def change(oracle, tables, expect, text):
+            oracle["harts"][0]["pc"] = qemu_oracle.hex64(pc)
+            return devices.format(shutdown) + extra + text
+        return change
+
+    def no_device(shutdown="---", records=False):
+        def change(oracle, tables, expect, text):
+            text = text.replace("BE_MVP:07 ", "BE_MVP:FAIL boot ", 1)
+            return devices.format(shutdown) + (
+                text if records else text.split("Domain commit hart0:")[0])
+        return change
+    halts = second(firmware="board", reset="halt")
+    unstarted = {0: "boot", 1: "never-started", 2: "never-started"}
+    absent = second({"0": "boot", "1": "never-started",
+                     "2": "never-started"}, {"fail": "boot", "after": "none"},
+                    reset="absent")
+    for name, change, want, hang in (
+            ("hart 0 in sbi_hart_hang", halted(), None, HANG_PLACE),
+            ("hart 0 past sbi_hart_hang", halted(0x800077e4),
+             "hart 0: pc 0x800077e4 outside sbi_hart_hang", HANG_PLACE),
+            ("a shutdown device other than halt",
+             halted(shutdown="syscon-poweroff"),
+             "the banner's shutdown devices are ['syscon-poweroff']",
+             HANG_PLACE),
+            ("two reboot device lines",
+             halted(extra="Platform Reboot Device      : ---\n"),
+             "the banner's reboot devices are ['---', '---']", HANG_PLACE),
+            ("no place for sbi_hart_hang", halted(),
+             "refused: a run whose machine halts needs sbi_hart_hang", None)):
+        run(f"halt: {name}", change, states=step2, expect=halts,
+            control_hart="confined", hang=hang, want=want)
+    for name, change, want in (
+            ("no reset device, no record", no_device(), None),
+            ("a printed record", no_device(records=True),
+             "the run's firmware has no reset device"),
+            ("a shutdown device", no_device("syscon-poweroff"),
+             "the banner's shutdown devices are ['syscon-poweroff'], "
+             "not ['---']")):
+        run(f"absent: {name}", change, states=unstarted, expect=absent,
+            seen={1: (), 2: ()}, control_hart="confined", want=want)
+    for name, extra, want in (
+            ("reset halt for the base firmware", {"reset": "halt"},
+             "reset halt for the base firmware"),
+            ("reset absent for the board's firmware",
+             {"reset": "absent", "firmware": "board"},
+             "reset absent for the board firmware"),
+            ("reset absent on a tree without a digest",
+             {"reset": "absent", "record": False},
+             "on a tree that holds no digest"),
+            ("an unknown reset", {"reset": "reboot"},
+             "reset 'reboot' is not of its form"),
+            ("an unknown firmware", {"firmware": "vendor"},
+             "firmware 'vendor' or reset None is not of its form")):
+        run(f"declaration: {name}", states=step2, control_hart="confined",
+            expect=second(**extra), want=want)
+    listing = ("0000000000000000 T _fw_start\n"
+               "00000000000077d2 0000000000000012 t sbi_hart_hang\n")
+    for name, text, want in (
+            ("its place and size", listing, None),
+            ("absent", listing.replace("sbi_hart_hang", "sbi_hart_wake"),
+             "sbi_hart_hang is defined 0 times"),
+            ("defined twice", listing + "0000000000008000 0000000000000012 "
+             "t sbi_hart_hang\n", "sbi_hart_hang is defined 2 times"),
+            ("without a size", listing.replace("0000000000000012 t", "t"),
+             "sbi_hart_hang has no size")):
+        try:
+            place, detail = sized_symbol(text, HANG), None
+        except Refused as error:
+            place, detail = None, str(error)
+        cases.append((f"nm -S: {HANG} {name}", place == HANG_PLACE
+                      if want is None else want in (detail or ""),
+                      detail or f"0x{place[0]:x}+0x{place[1]:x}"))
     def words_case():
         expect = expectation(phase=[0, 1])
         document = words_document(expect, LAYOUT, HEADER, {

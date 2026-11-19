@@ -9,7 +9,7 @@
       --pmp CLASS --menvcfg CLASS --mseccfg CLASS [--pmp-mode MODE]
       --ram-base ADDRESS --ram-size BYTES
       --elf-word NAME=ELF [--record-table FW_ELF --nm NM]
-      [--words FILE] -- QEMU ARG...
+      [--words FILE] [--halt-line REGEX --halt-settle S] -- QEMU ARG...
   qemu_oracle.py result FILE
   qemu_oracle.py not-attached FILE
   qemu_oracle.py --self-test --scratch DIR
@@ -55,6 +55,17 @@ boundary's checker (tests/check-boundary.py) judges. --words FILE names
 further RAM words and device registers; a device register must be one of
 a closed list, each read with no side effect at its own width: the UART's
 scratch register and the S-level APLIC's source configurations.
+
+M11-B (planning/mvp-m11-board-addendum.md, B-2): a run whose firmware
+halts in place of a shutdown names its last line, --halt-line REGEX (on
+the console's bytes, multiline, the line's end included), and
+--halt-settle S, above zero and shorter than the grace. The harness
+stops the machine S seconds after that line first appears, for the
+reason `halt line`, or, if anything followed the line, for a reason that
+names what followed. In such a run only a stop for `halt line` passes: a
+guest SHUTDOWN fails, as a stop by the grace or the timeout does.
+decide() is the run loop's choice, a pure function of the console's
+bytes and the times.
 """
 
 import argparse
@@ -73,6 +84,7 @@ import threading
 import time
 
 SCHEMA = "be-mvp-qemu-oracle-v1"
+HALT_LINE = "halt line"
 QMP_TIMEOUT = 10.0
 QUIT_TIMEOUT = 10.0
 MAX_LINE = 1024 * 1024
@@ -824,7 +836,8 @@ class OracleProcess:
         write_new(self.record, json.dumps(value, indent=2,
                                           ensure_ascii=True) + "\n")
 
-    def finish(self, end=None, harness_reason=None, harness_pass=False):
+    def finish(self, end=None, harness_reason=None, harness_pass=False,
+               halting=False):
         if self.finished:
             raise OracleError("the oracle was finished twice")
         self.finished = True
@@ -850,13 +863,20 @@ class OracleProcess:
         self.qmp.close()
         qemu_exit = exit_text(status)
         end_detail = self._end_detail(end)
-        allowed_end = end.kind == "guest-shutdown" or (
-            harness_pass and end.kind == "stopped-by-harness")
+        # A machine that halts passes only when the harness stopped it for
+        # its halt line.
+        if halting:
+            allowed_end = end.kind == "stopped-by-harness" and \
+                end.reason == HALT_LINE
+        else:
+            allowed_end = end.kind == "guest-shutdown" or (
+                harness_pass and end.kind == "stopped-by-harness")
         passed = error is None and allowed_end and qemu_exit == "0x00000000"
         if error is not None:
             detail = error
         elif not allowed_end:
-            detail = end_detail
+            detail = "guest shutdown in a run whose machine halts" if \
+                halting and end.kind == "guest-shutdown" else end_detail
         elif qemu_exit != "0x00000000":
             detail = f"QEMU exit after quit is {qemu_exit}"
         else:
@@ -865,9 +885,76 @@ class OracleProcess:
         return Outcome(passed, detail, qemu_exit)
 
 
+@dataclasses.dataclass(frozen=True)
+class RunLimits:
+    """When the run loop stops the machine: the attempt's deadline, the
+    grace after the terminal marker, and, in a run whose machine halts, its
+    last line and the settle after it."""
+
+    deadline: float
+    grace: float
+    terminal: re.Pattern
+    halt: re.Pattern | None = None
+    settle: float = 0.0
+
+
+@dataclasses.dataclass(frozen=True)
+class Seen:
+    """When the terminal marker and the halt line were first seen, and
+    where the halt line ends in the console's bytes."""
+
+    terminal_at: float | None = None
+    halt_at: float | None = None
+    halt_end: int = 0
+
+
+def decide(data, now, seen, limits):
+    """One turn of the run loop: (SEEN brought up to DATA, the console's
+    bytes, at time NOW; the harness's reason to stop the machine, or
+    None to go on)."""
+    terminal_at, halt_at, halt_end = \
+        seen.terminal_at, seen.halt_at, seen.halt_end
+    if terminal_at is None and limits.terminal.search(data):
+        terminal_at = now
+    if limits.halt is not None and halt_at is None:
+        match = limits.halt.search(data)
+        if match:
+            halt_at, halt_end = now, match.end()
+    seen = Seen(terminal_at, halt_at, halt_end)
+    if halt_at is not None and now - halt_at >= limits.settle:
+        if halt_end == len(data):
+            return seen, HALT_LINE
+        later = data[halt_end:].split(b"\n", 1)[0].rstrip(b"\r")[:80]
+        return seen, "a line after the halt line: " + repr(
+            later.decode("ascii", "backslashreplace"))
+    if terminal_at is not None and now - terminal_at >= limits.grace:
+        return seen, "grace period after terminal marker"
+    if now >= limits.deadline:
+        return seen, "attempt timeout"
+    return seen, None
+
+
+def halt_limit(line, settle, grace):
+    """--halt-line and --halt-settle: the line's pattern, or None for a run
+    that ends with a shutdown."""
+    if (line is None) != (settle is None):
+        raise OracleError("--halt-line and --halt-settle go together")
+    if line is None:
+        return None
+    if not 0 < settle < grace:
+        raise OracleError("the halt settle is not above zero and shorter "
+                          "than the grace")
+    try:
+        return re.compile(line.encode("ascii"), re.M)
+    except (re.error, UnicodeError) as error:
+        raise OracleError(f"the halt line is not a pattern: {error}") \
+            from error
+
+
 def direct_run(args):
     if args.timeout <= 0 or args.grace < 0:
         raise OracleError("the run limits are invalid")
+    halt = halt_limit(args.halt_line, args.halt_settle, args.grace)
     if not args.command:
         raise OracleError("no QEMU command was given")
     words, devices = [], ()
@@ -902,10 +989,9 @@ def direct_run(args):
             write_failure_record(args.record, "QEMU or QMP setup failed")
             write_new(args.exit_file, "killed:none\n")
             return 1
-        deadline = started + args.timeout
-        terminal_at = None
-        end = None
-        harness_reason = None
+        limits = RunLimits(started + args.timeout, args.grace, terminal,
+                           halt, args.halt_settle or 0.0)
+        seen, end, harness_reason = Seen(), None, None
         while True:
             try:
                 end = oracle.wait_end(0.05)
@@ -915,17 +1001,12 @@ def direct_run(args):
                 break
             if oracle.process.poll() is not None:
                 break
-            now = time.monotonic()
-            data = terminal_file.read_bytes()
-            if terminal_at is None and terminal.search(data):
-                terminal_at = now
-            if terminal_at is not None and now - terminal_at >= args.grace:
-                harness_reason = "grace period after terminal marker"
+            seen, harness_reason = decide(terminal_file.read_bytes(),
+                                          time.monotonic(), seen, limits)
+            if harness_reason is not None:
                 break
-            if now >= deadline:
-                harness_reason = "attempt timeout"
-                break
-        outcome = oracle.finish(end=end, harness_reason=harness_reason)
+        outcome = oracle.finish(end=end, harness_reason=harness_reason,
+                                halting=halt is not None)
     status = oracle.process.returncode
     write_new(args.exit_file, launcher_exit(status) + "\n")
     return 0 if outcome.passed else 1
@@ -1125,7 +1206,7 @@ def self_test(scratch):
     def run_one(name, defect=None, end="guest-shutdown",
                 classes=("readable", "readable", "absent"),
                 machine="test", boundary=False, harness=False, status=0,
-                attached=()):
+                attached=(), reason="planted limit", halting=False):
         client, server = socket.socketpair()
         process = FakeProcess(status)
         peer = ScriptedPeer(server, process, defect, end, 2, classes,
@@ -1139,8 +1220,8 @@ def self_test(scratch):
         if not harness:
             finish_end = oracle.wait_end(1)
         outcome = oracle.finish(end=finish_end,
-                                harness_reason=("planted limit"
-                                                if harness else None))
+                                harness_reason=(reason if harness else None),
+                                halting=halting)
         peer.thread.join(timeout=1)
         return outcome, record.read_bytes()
 
@@ -1207,6 +1288,95 @@ def self_test(scratch):
     case("QEMU's status after quit", lambda: (
         not (outcome := run_one("exit", status=1)[0]).passed and
         outcome.qemu_exit == "0x00000001", outcome.detail))
+
+    # M11-B: a run whose machine halts ends only by its halt line.
+    later = "a line after the halt line: 'BE_MVP:SRST_RETURNED'"
+    case("a halting run stopped for its halt line", lambda: (
+        (outcome := run_one("halt", end=None, harness=True,
+                            reason=HALT_LINE, halting=True))[0].passed and
+        json.loads(outcome[1])["end"] == {"kind": "stopped-by-harness",
+                                          "reason": HALT_LINE},
+        outcome[0].detail))
+    case("a guest shutdown in a halting run", lambda: (
+        not (outcome := run_one("halt-shutdown", halting=True)[0]).passed
+        and outcome.detail == "guest shutdown in a run whose machine halts",
+        outcome.detail))
+    case("a halting run stopped by the grace", lambda: (
+        not (outcome := run_one(
+            "halt-grace", end=None, harness=True, halting=True,
+            reason="grace period after terminal marker")[0]).passed and
+        "stopped by the harness: grace period" in outcome.detail,
+        outcome.detail))
+    case("a halting run with a line after its halt line", lambda: (
+        not (outcome := run_one("halt-later", end=None, harness=True,
+                                halting=True, reason=later))[0].passed and
+        json.loads(outcome[1])["end"]["reason"] == later, outcome[0].detail))
+    marker = b"BE_MVP:14 SHUTDOWN type=0 reason=0\r\n"
+    last = (b"Domain commit hart7: committed=0 pmp_faults=0 blocked_calls=0 "
+            b"failed_calls=0\r\n")
+    limits = RunLimits(300.0, 10.0, re.compile(rb"BE_MVP:14 SHUTDOWN"),
+                       re.compile(rb"^Domain commit hart7: committed=0 "
+                                  rb"pmp_faults=[0-9]+ blocked_calls=[0-9]+ "
+                                  rb"failed_calls=[0-9]+\r?\n", re.M), 2.0)
+
+    def turns(steps, halt=True):
+        seen, reason = Seen(), None
+        for data, now in steps:
+            seen, reason = decide(data, now, seen, limits if halt else
+                                  dataclasses.replace(limits, halt=None))
+        return reason
+    for name, steps, halt, wanted in (
+            ("nothing", ((b"", 1.0),), True, None),
+            ("nothing at the deadline", ((b"", 300.0),), True,
+             "attempt timeout"),
+            ("the marker alone", ((marker, 5.0), (marker, 14.9)), True, None),
+            ("the marker alone after the grace", ((marker, 5.0),
+                                                  (marker, 15.0)), True,
+             "grace period after terminal marker"),
+            ("a halt line still being written", ((marker + last[:-2], 5.0),
+                                                 (marker + last[:-2], 7.0)),
+             True, None),
+            ("the halt line within its settle", ((marker + last, 5.0),
+                                                 (marker + last, 6.9)), True,
+             None),
+            ("the halt line after its settle", ((marker + last, 5.0),
+                                                (marker + last, 7.0)), True,
+             HALT_LINE),
+            ("a line after the halt line", (
+                (marker + last, 5.0),
+                (marker + last + b"BE_MVP:SRST_RETURNED\r\n", 7.0)), True,
+             later),
+            ("a part of a line after the halt line", (
+                (marker + last + b"BE_MVP:SRST", 5.0),
+                (marker + last + b"BE_MVP:SRST", 7.0)), True,
+             "a line after the halt line: 'BE_MVP:SRST'"),
+            ("the halt line where none is declared", (
+                (marker + last, 5.0), (marker + last, 7.0)), False, None)):
+        case(f"decide: {name}", lambda steps=steps, halt=halt,
+             wanted=wanted: ((reason := turns(steps, halt)) == wanted,
+                             str(reason)))
+
+    def halt_case(line, settle, wanted):
+        try:
+            pattern = halt_limit(line, settle, 10.0)
+        except OracleError as error:
+            return wanted is not None and wanted in str(error), str(error)
+        return wanted is None and (pattern is None) == (line is None), \
+            "accepted"
+    for name, line, settle, wanted in (
+            ("a halt line and its settle", r"^x\r?\n", 2.0, None),
+            ("neither", None, None, None),
+            ("a halt line without its settle", r"^x\r?\n", None,
+             "go together"),
+            ("a settle without a halt line", None, 2.0, "go together"),
+            ("a settle of zero", r"^x\r?\n", 0.0,
+             "not above zero and shorter than the grace"),
+            ("a settle as long as the grace", r"^x\r?\n", 10.0,
+             "not above zero and shorter than the grace"),
+            ("a halt line that is not a pattern", "(", 2.0,
+             "not a pattern")):
+        case(f"halt arguments: {name}", lambda line=line, settle=settle,
+             wanted=wanted: halt_case(line, settle, wanted))
 
     def malformed():
         try:
@@ -1414,6 +1584,8 @@ def main(argv):
     run.add_argument("--record-table")
     run.add_argument("--nm")
     run.add_argument("--words")
+    run.add_argument("--halt-line")
+    run.add_argument("--halt-settle", type=float)
     run.add_argument("command", nargs=argparse.REMAINDER)
     result = commands.add_parser("result")
     result.add_argument("record")
