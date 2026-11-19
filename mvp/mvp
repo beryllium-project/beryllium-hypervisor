@@ -107,7 +107,8 @@
 # K3_RECORD_TITLE (board-evidence's title; default MVP COM260 campaign),
 # and JOBS. evaluate also passes the evaluator's own settings from the
 # environment (MVP_EVALUATOR_BUILD, MVP_EVALUATOR_RPMS, MVP_LINUX_MIRROR,
-# MVP_FIRMWARE_MIRROR, and MVP_OPENSBI_FW; tools/evaluator/evaluate.sh),
+# MVP_FIRMWARE_MIRROR, MVP_OPENSBI_FW, and M11-B's MVP_K3_PUBLISHED;
+# tools/evaluator/evaluate.sh),
 # never as arguments, and
 # no other variable. The k3-* commands also pass the board tools' own
 # settings from the environment (K3_SSH, K3_SSH_OPTIONS, K3_SUDO,
@@ -147,7 +148,7 @@ board=(K3_SSH K3_SSH_OPTIONS K3_SUDO K3_WAIT_SECONDS K3_TAIL_SECONDS
 # The evaluator's own settings (tools/evaluator/evaluate.sh), from the
 # environment only: its arguments are mvp check's.
 evaluator=(MVP_EVALUATOR_BUILD MVP_EVALUATOR_RPMS MVP_LINUX_MIRROR
-	MVP_FIRMWARE_MIRROR MVP_OPENSBI_FW)
+	MVP_FIRMWARE_MIRROR MVP_OPENSBI_FW MVP_K3_PUBLISHED)
 
 usage() {
 	sed -n '/^#   \.\/mvp help/,/SSH agent\.$/s/^# \{0,1\}//p' -- "$0"

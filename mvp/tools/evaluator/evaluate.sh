@@ -74,7 +74,17 @@
 # MVP_OPENSBI_FW, the earlier OpenSBI firmware (default B1's build), which
 # must have the lock's MVP_PIN_OPENSBI_BIN_SHA256 and is mounted for the
 # firmware-version negative; and
-# MVP_RPM_CACHE, a directory of exact RPMs the fetch tries first. MAKE_ARGS
+# MVP_RPM_CACHE, a directory of exact RPMs the fetch tries first; and
+# MVP_K3_PUBLISHED (M11-B, planning/mvp-m11-board-addendum.md, B-1), the
+# board vendor's published release directory, an absolute path: with it,
+# before the build, the published files must be their pins
+# (mvp/k3/published-pins.txt) and the host's board gate record
+# (build/mvp/k3/gate/record) must verify and name the host bundle's commit
+# and a clean tree; after mvp check, a second container with the same
+# mounts and that directory read-only at /mnt/k3-published runs mvp
+# k3-board-gate, and its record's images.sha256 must equal the host's
+# (k3-published.txt, k3-host-gate.txt, k3-gate.log, and k3-identity.txt in
+# the record). Without it nothing of the gate runs. MAKE_ARGS
 # go to `mvp check`, under the Make controls; an MVP_RPM_CACHE=DIR among
 # them (the wrapper's VAR=VALUE form, which reaches here as an argument and
 # not as the environment) seeds the fetch too, so that `./mvp/mvp evaluate
@@ -139,6 +149,7 @@ cache=${MVP_EVALUATOR_RPMS:-$tree/build/mvp-evaluator/rpms}
 firmware=${MVP_OPENSBI_FW:-$tree/build/$firmware_build}
 host_bundle=$tree/build/mvp/evidence/check
 records=$tree/build/mvp-evaluator/record
+k3_published=${MVP_K3_PUBLISHED:-}
 record=
 early=()
 
@@ -246,6 +257,8 @@ case $hidden in
 *) refuse "the hidden build tree $hidden is not under $tree/build" ;;
 esac
 [ -f "$closure" ] || refuse "$closure is missing"
+[ -z "$k3_published" ] || [[ $k3_published == /* && -d $k3_published ]] ||
+	refuse "MVP_K3_PUBLISHED $k3_published is not an absolute path to a directory"
 [ -x "${podman:-/nonexistent}" ] || refuse "the lock's podman (${podman:-none}) is missing"
 start_record
 note "earlier_firmware sha256=$firmware_sha256 (the lock's MVP_PIN_OPENSBI_BIN_SHA256)"
@@ -259,6 +272,26 @@ note "firmware_source commit=$firmware_commit tree=$firmware_tree"
 /usr/bin/cmp -s -- "$record/host-images.sha256" "$host_bundle/images.sha256" ||
 	die "the host's images changed since its last check; run ./mvp/mvp check"
 note "host source=$(/usr/bin/sed -n 's/^source_commit=//p' "$host_bundle/bundle.txt") $(/usr/bin/sed -n 's/^source_tree=/tree=/p' "$host_bundle/bundle.txt") images=$(/usr/bin/wc -l <"$record/host-images.sha256")"
+
+# M11-B, with MVP_K3_PUBLISHED alone: the published files by their pins,
+# and the host's gate record, of the host bundle's commit and a clean tree.
+k3_gate_before() {
+	local gate=$tree/build/mvp/k3/gate/record commit
+
+	"${python[@]}" "$tools/k3-frame.py" published \
+		--pins "$mvp/k3/published-pins.txt" --dir "$k3_published" \
+		--out "$record/k3-published.txt" >/dev/null ||
+		die "the published files are not their pins ($record/k3-published.txt)"
+	"${python[@]}" "$evidence" --verify "$gate" >"$record/k3-host-gate.txt" ||
+		die "the host's gate record $gate does not verify; run ./mvp/mvp k3-board-gate"
+	commit=$(/usr/bin/sed -n 's/^source_commit=//p' "$host_bundle/bundle.txt")
+	/usr/bin/grep -qx -- "source_commit=$commit" "$gate/gate.txt" ||
+		die "the host's gate record is not of the host bundle's commit $commit"
+	/usr/bin/grep -qx -- source_tree=clean "$gate/gate.txt" ||
+		die "the host's gate record is not of a clean tree"
+	note "k3 $(/usr/bin/tail -n 1 -- "$record/k3-published.txt")"
+}
+[ -z "$k3_published" ] || k3_gate_before
 
 # The closure's RPMs, each verified by its SHA-256 (Plan revision M0-B.2).
 "${python[@]}" "$here/fetch-closure.py" --cache "$cache" >"$record/fetch.txt" 2>&1 || {
@@ -343,4 +376,37 @@ if ! "${python[@]}" "$evidence" --compare-images "$host_bundle/images.sha256" \
 	die "the evaluator's images differ from the host's ($record/image-identity.txt)"
 fi
 note "$(/usr/bin/tail -n 1 -- "$record/image-identity.txt")"
+
+# M11-B, with MVP_K3_PUBLISHED alone: the gate in a second container with
+# the same mounts and the published directory read-only, its images then
+# the host's gate's, byte for byte.
+k3_gate_after() {
+	local status
+
+	set +e
+	"$podman" run --rm --init --network=none --security-opt label=disable \
+		-v "$tree:$tree:ro" \
+		-v "$hidden:$tree/build" \
+		-v "$firmware:$tree/build/$firmware_build:ro" \
+		-v "$mirror:/mnt/linux-mirror:ro" \
+		-v "$firmware_mirror:/mnt/firmware-mirror:ro" \
+		-v "$k3_published:/mnt/k3-published:ro" \
+		-w "$tree" "$tag" \
+		/usr/bin/env -i PATH=/usr/bin LC_ALL=C LANG=C SHELL=/bin/bash \
+		GIT_OPTIONAL_LOCKS=0 HOME="$tree/build/mvp/evaluator-home" \
+		LINUX_GIT=/mnt/linux-mirror FIRMWARE_GIT=/mnt/firmware-mirror \
+		/usr/bin/bash "$mvp/mvp" k3-board-gate K3_PUBLISHED=/mnt/k3-published \
+		2>&1 | /usr/bin/tee -- "$record/k3-gate.log"
+	status=${PIPESTATUS[0]}
+	set -e
+	[ "$status" = 0 ] || die "the board gate failed in $tag (exit $status)"
+	"${python[@]}" "$evidence" --compare-images \
+		"$tree/build/mvp/k3/gate/record/images.sha256" \
+		"$hidden/mvp/k3/gate/record/images.sha256" >"$record/k3-identity.txt" || {
+		/usr/bin/grep -v '^same ' "$record/k3-identity.txt" >&2 || true
+		die "the evaluator's gate images differ from the host's ($record/k3-identity.txt)"
+	}
+	note "k3 $(/usr/bin/tail -n 1 -- "$hidden/mvp/k3/gate/record/gate.txt") $(/usr/bin/tail -n 1 -- "$record/k3-identity.txt")"
+}
+[ -z "$k3_published" ] || k3_gate_after
 note "PASS image=$tag"
