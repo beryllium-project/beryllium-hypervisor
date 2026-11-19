@@ -99,3 +99,151 @@ k3-partition-check: $(FIRMWARE_ELF) $(GEN)/anchor/authority-report.json \
 		$(K3B_PARTITION_ELF) --scratch $(K3B_PARTITION_WORK)/mutations && \
 	echo "BE_MVP_K3_PARTITION: PASS trees=3 tables=3 root=4 checks=4"; } | \
 		tee $(K3B_RECORDS)/k3-partition-check.txt
+
+# The board gate's steps (tier 2; the design's 5.2), after
+# k3-gate-published and each after the one before, each recorded under
+# record/steps/: k3-gate-recipe, the recipe on the published FIT, twice;
+# k3-gate-platform, the description against the tree, and the tree's
+# devices; k3-gate-tree, each image's tree (step 4 for the three with the
+# boundary on, rendered with their descriptor and tested against the
+# candidate's QEMU tree; step 3 for two-guests-off), and the room left
+# after each; k3-gate-firmware, lane F's build of the board's
+# configuration with each tree built in, which holds the tree
+# (tools/k3-board.py holds-tree); k3-gate-partition, each image's tables
+# and root regions from its own build, D-3's checker on them and on its
+# own monitor, and the checker's board mutations on the published step 3;
+# k3-gate-breach, the generator's board rules on the tree's devices; and
+# k3-gate-board, each image's board.json, then the announcements. Every
+# output that an image's sitting reads is under images/IMAGE/; the rest
+# under work/.
+K3B_GATE_STEPS += k3-gate-recipe k3-gate-platform k3-gate-tree \
+	k3-gate-firmware k3-gate-partition k3-gate-breach k3-gate-board
+K3B_GATE_WORK := $(K3B_GATE)/work
+K3B_GATE_IMAGES := $(K3B_GATE)/images
+K3B_GATE_STEP3 := $(K3B_GATE_WORK)/recipe/step3
+K3B_GATE_BASE := --platform-file $(K3B_PLATFORM) \
+	--base-dts $(K3B_GATE_STEP3).dts
+K3B_GATE_ON := anchor k3-breach-g1 k3-breach-c
+k3b_record = | tee $(K3B_GATE)/record/steps/$(1).txt
+# $(1) an image with the boundary on, $(2) its descriptor: its tree on
+# step 3, tested against the candidate's QEMU tree of that descriptor.
+k3b_tree = $(K3B_PARTITION) $(K3B_GATE_BASE) --board-tree --image $(1) \
+	--descriptor $(GEN)/partition/anchor/$(2).json \
+	--out $(K3B_GATE_IMAGES)/$(1) && \
+	$(K3B_RECIPE) tree --dir $(K3B_GATE_WORK)/recipe \
+	--tree $(K3B_GATE_IMAGES)/$(1)/$(1).dtb \
+	--qemu-tree $(BUILD)/partition/anchor/$(2)/plain/$(2).dtb \
+	--descriptor $(GEN)/partition/anchor/$(2).json \
+	--identity-header $(GEN)/partition/anchor/$(2)-identity.h
+# $(1) an image: its firmware's ELF in the gate, for the backend and D-3's
+# checker; its build's directory.
+k3b_gate_elf = --firmware-elf $(K3B_GATE_IMAGES)/$(1)/fw_dynamic.elf \
+	--nm $(MVP_TOOL_cross_nm_command) \
+	--readelf $(MVP_TOOL_cross_readelf_command)
+k3b_gate_build = $(K3B_GATE_WORK)/firmware/$(1)
+# $(1) an image with the boundary on, $(2) its descriptor: its tables and
+# root regions, D-3's checker on them and on its own monitor.
+k3b_tables = $(K3B_PARTITION) $(K3B_GATE_BASE) --board-tables --image $(1) \
+	--descriptor $(GEN)/partition/anchor/$(2).json $(call \
+	k3b_gate_elf,$(1)) --out $(K3B_GATE_WORK)/partition/$(1) && \
+	$(K3B_CHECKER) $(K3B_GATE_BASE) $(K3B_ANCHOR) --image $(1) \
+	--descriptor $(GEN)/partition/anchor/$(2).json \
+	--partition-authority $(GEN)/partition/anchor/authority-report.json \
+	--authority-report $(GEN)/anchor/authority-report.json \
+	--dtb $(K3B_GATE_IMAGES)/$(1)/$(1).dtb \
+	--tables $(K3B_GATE_WORK)/partition/$(1)/$(1)-pmp.json \
+	--root $(K3B_GATE_WORK)/partition/$(1)/$(1)-root.json \
+	$(call k3b_gate_elf,$(1)) --image-elf $(K3B_ELF_$(1)) \
+	--record $(K3B_GATE_IMAGES)/$(1)/$(1)-check.json && \
+	cp $(K3B_GATE_WORK)/partition/$(1)/$(1)-pmp.json \
+	$(K3B_GATE_WORK)/partition/$(1)/$(1)-root.json $(K3B_GATE_IMAGES)/$(1)/
+
+.PHONY: k3-gate-recipe k3-gate-platform k3-gate-tree k3-gate-firmware \
+	k3-gate-partition k3-gate-breach k3-gate-board
+
+k3-board-gate: k3-gate-board
+
+k3-gate-recipe: k3-gate-published
+	mkdir -m 700 $(K3B_GATE_WORK) $(K3B_GATE_IMAGES)
+	set -o pipefail; { $(K3B_RECIPE) extract --fit $(K3_PUBLISHED)/u-boot.itb \
+		--pins $(K3B_PUBLISHED_PINS) --platform $(K3B_PLATFORM) \
+		--dtc $(MVP_TOOL_dtc_command) --out $(K3B_GATE_WORK)/recipe \
+		--twice $(K3B_GATE_WORK)/recipe-twice && \
+	echo "BE_MVP_K3_GATE[$@]: PASS"; } $(call k3b_record,$@)
+
+k3-gate-platform: k3-gate-recipe
+	set -o pipefail; { $(K3B_RECIPE) platform --platform $(K3B_PLATFORM) \
+		--dir $(K3B_GATE_WORK)/recipe \
+		--out $(K3B_GATE_WORK)/recipe/devices.json && \
+	echo "BE_MVP_K3_GATE[$@]: PASS"; } $(call k3b_record,$@)
+
+k3-gate-tree: k3-gate-platform $(foreach i,$(K3B_GATE_ON),\
+		$(BUILD)/partition/anchor/$(patsubst k3-%,%,$(i))/plain/$(patsubst \
+		k3-%,%,$(i)).dtb)
+	set -o pipefail; { $(foreach i,$(K3B_GATE_ON),$(call \
+		k3b_tree,$(i),$(patsubst k3-%,%,$(i))) &&) \
+	$(K3B_RECIPE) tree --dir $(K3B_GATE_WORK)/recipe \
+		--tree $(K3B_GATE_STEP3).dtb && \
+	mkdir -m 700 $(K3B_GATE_IMAGES)/two-guests-off && \
+	cp $(K3B_GATE_STEP3).dtb \
+		$(K3B_GATE_IMAGES)/two-guests-off/two-guests-off.dtb && \
+	$(K3B_RECIPE) room --dir $(K3B_GATE_WORK)/recipe \
+		--platform $(K3B_PLATFORM) $(foreach \
+		i,$(K3B_IMAGES),$(K3B_GATE_IMAGES)/$(i)/$(i).dtb) && \
+	echo "BE_MVP_K3_GATE[$@]: PASS images=$(words $(K3B_IMAGES))"; } \
+		$(call k3b_record,$@)
+
+k3-gate-firmware: k3-gate-tree $(K3B_FIRMWARE_INPUTS)
+	set -o pipefail; { $(foreach i,$(K3B_IMAGES),$(K3B_FW_BUILD_ENV) \
+		FIRMWARE_FDT=$(K3B_GATE_IMAGES)/$(i)/$(i).dtb \
+		$(MVP_DIR)/firmware/build.sh $(FIRMWARE_SRC) \
+		$(call k3b_gate_build,$(i)) && \
+		$(K3B_BOARD) holds-tree --nm $(MVP_TOOL_cross_nm_command) \
+		--build $(call k3b_gate_build,$(i)) \
+		--tree $(K3B_GATE_IMAGES)/$(i)/$(i).dtb && \
+		cp $(addprefix $(call k3b_gate_build,$(i))/platform/generic/firmware/,\
+		fw_dynamic.bin fw_dynamic.elf) $(K3B_GATE_IMAGES)/$(i)/ &&) \
+	echo "BE_MVP_K3_GATE[$@]: PASS images=$(words $(K3B_IMAGES))"; } \
+		$(call k3b_record,$@)
+
+k3-gate-partition: k3-gate-firmware $(GEN)/partition/anchor/authority-report.json \
+		$(GEN)/anchor/authority-report.json \
+		$(foreach i,$(K3B_GATE_ON),$(K3B_ELF_$(i)))
+	set -o pipefail; { $(foreach i,$(K3B_GATE_ON),$(call \
+		k3b_tables,$(i),$(patsubst k3-%,%,$(i))) &&) \
+	$(K3B_PARTITION) $(K3B_GATE_BASE) --board-tables --image two-guests-off \
+		$(call k3b_gate_elf,two-guests-off) \
+		--out $(K3B_GATE_WORK)/partition/two-guests-off && \
+	cp $(K3B_GATE_WORK)/partition/two-guests-off/two-guests-off-root.json \
+		$(K3B_GATE_IMAGES)/two-guests-off/ && \
+	$(K3B_CHECKER) $(K3B_GATE_BASE) --off --image two-guests-off \
+		--dtb $(K3B_GATE_IMAGES)/two-guests-off/two-guests-off.dtb \
+		$(call k3b_gate_elf,two-guests-off) \
+		--root $(K3B_GATE_IMAGES)/two-guests-off/two-guests-off-root.json \
+		--record $(K3B_GATE_IMAGES)/two-guests-off/two-guests-off-check.json && \
+	$(K3B_CHECKER) $(K3B_GATE_BASE) $(K3B_ANCHOR) --mutation-test \
+		--descriptor $(GEN)/partition/anchor/anchor.json \
+		--dtc $(MVP_TOOL_dtc_command) \
+		--backend $(MVP_DIR)/tools/partition-backend.py \
+		$(call k3b_gate_elf,anchor) \
+		--scratch $(K3B_GATE_WORK)/partition/mutations && \
+	echo "BE_MVP_K3_GATE[$@]: PASS images=$(words $(K3B_IMAGES))"; } \
+		$(call k3b_record,$@)
+
+k3-gate-breach: k3-gate-partition
+	set -o pipefail; { $(foreach i,$(K3B_BREACH_PAIRS),\
+		$(K3B_BREACH) board-check $(call k3b_breach_declaration,$(i)) \
+		$(K3B_BREACH_SOURCES) --platform-file $(K3B_PLATFORM) \
+		--devices $(K3B_GATE_WORK)/recipe/devices.json --mutations &&) \
+	echo "BE_MVP_K3_GATE[$@]: PASS" \
+		"declarations=$(words $(K3B_BREACH_PAIRS))"; } $(call k3b_record,$@)
+
+k3-gate-board: k3-gate-breach $(foreach i,$(K3B_IMAGES),\
+		$(K3B_BOARD_IMAGE_$(i)) $(K3B_EXPECT_$(i)) $(K3B_REFERENCE_$(i)))
+	set -o pipefail; $(K3B_BOARD) board --build $(BUILD) \
+		--platform $(K3B_PLATFORM) \
+		--extensions-on '$(K3B_FW_SBI_EXTENSIONS_ON)' \
+		--extensions-off '$(K3B_FW_SBI_EXTENSIONS_OFF)' \
+		--shutdown $(K3B_FW_RESET_DEVICE) $(foreach i,$(K3B_IMAGES),--image \
+		$(i):$(K3B_SITTING_$(i)):$(K3B_STAGED_$(i)):$(K3B_BOARD_IMAGE_$(i)):$(K3B_EXPECT_$(i)):$(K3B_REFERENCE_$(i))) \
+		$(call k3b_record,$@)
