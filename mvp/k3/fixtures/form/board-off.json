@@ -1,0 +1,110 @@
+{
+ "schema": "be-mvp-k3-board-v1",
+ "image": "two-guests-off",
+ "sitting": "first",
+ "toolchain": "gcc",
+ "boundary": "off",
+ "digest": null,
+ "staged_name": "be-mvp-two-guests-off-gcc.img",
+ "board_image": {
+  "file": "stand-in/two-guests-off/be-mvp-boot.img",
+  "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+ },
+ "firmware": {
+  "file": "stand-in/two-guests-off/fw_dynamic.bin",
+  "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "bytes": 4096,
+  "load": "0x40000000",
+  "entry": "0x40000000"
+ },
+ "tree": {
+  "file": "stand-in/two-guests-off/board.dtb",
+  "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+ },
+ "tables": null,
+ "partition_authority": null,
+ "sbi_version": "3.0",
+ "sbi_extensions": {
+  "standard": "ipi,base,hsm,srst,dbcn",
+  "experimental": "dcommit"
+ },
+ "reset_device": {
+  "reboot": "---",
+  "shutdown": "halt"
+ },
+ "platform_name": "stand-in board",
+ "product_name": "stand_in_product",
+ "root_regions": [
+  "0x0000000040000000-0x000000004003ffff M: (F,R,X) S/U: ()",
+  "0x0000000040040000-0x000000004007ffff M: (F,R,W) S/U: ()",
+  "0x0000000010000000-0x0000000010000fff M: (I,R,W) S/U: (R,W)",
+  "0x000000000c000000-0x000000000c3fffff M: (I,R,W) S/U: ()",
+  "0x0000000000000000-0xffffffffffffffff M: () S/U: (R,W,X)"
+ ],
+ "harts": [
+  {
+   "hartid": 0,
+   "role": "control"
+  },
+  {
+   "hartid": 1,
+   "role": "vs-domain"
+  },
+  {
+   "hartid": 2,
+   "role": "vs-domain"
+  },
+  {
+   "hartid": 3,
+   "role": "parked"
+  },
+  {
+   "hartid": 4,
+   "role": "parked"
+  },
+  {
+   "hartid": 5,
+   "role": "parked"
+  },
+  {
+   "hartid": 6,
+   "role": "parked"
+  },
+  {
+   "hartid": 7,
+   "role": "parked"
+  },
+  {
+   "hartid": 8,
+   "role": "parked"
+  },
+  {
+   "hartid": 9,
+   "role": "parked"
+  },
+  {
+   "hartid": 10,
+   "role": "parked"
+  },
+  {
+   "hartid": 11,
+   "role": "parked"
+  },
+  {
+   "hartid": 12,
+   "role": "parked"
+  },
+  {
+   "hartid": 13,
+   "role": "parked"
+  },
+  {
+   "hartid": 14,
+   "role": "parked"
+  },
+  {
+   "hartid": 15,
+   "role": "parked"
+  }
+ ]
+}

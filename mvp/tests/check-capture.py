@@ -3,7 +3,8 @@
 # Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
 """Check one MVP serial capture against its image's expectation file.
 
-  check-capture.py CAPTURE --expect FILE [--mode direct|kexec|uboot]
+  check-capture.py CAPTURE --expect FILE [--mode direct|kexec|uboot|card]
+                   [--board BOARD.json --memory SIZE [--observed OBS.json]]
                    [--monitor riscv|cheri [--cheri-mutations]]
                    [--pins F] [--sbi-version V] [--kexec-fdt ADDR]
                    [--image BOOT_IMG | --image-bytes N [--image-md5 HEX]
@@ -102,6 +103,44 @@ MVPINIT or kernel timestamp after its start); the last line is whole.
           so is the boot hart; without (the board) the boot hart is 0: a
           start-rule line, or a SHIM line naming another hart, is a finding
           (the board tools' stop condition 6), never a refusal
+  card    a boot of the board from a card under the project's firmware
+          (M11-B; planning/mvp-m11-board-addendum.md, B-8), asked for and
+          never inferred: --board (the gate's board.json of the image),
+          --memory (U-Boot's DRAM size in the sitting's boot from the NOR),
+          --image, and in the second sitting --observed (the first's
+          facts). In order: the boot ROM's lines (before the SPL banner,
+          NULs dropped, spaces collapsed), none a boot from the NOR's; one
+          SPL banner, with no environment loaded by the SPL; one firmware
+          banner, its fields (CARD_FIELDS) once each and in order, the
+          build's board.json's, B-6's thresholds met, the root OpenSBI
+          domain's regions board.json's, each hart assigned to one OpenSBI
+          domain (the root alone with the boundary off; the parked harts
+          to one of their own with it on), any other line recorded; one
+          U-Boot banner, then once each and in order its DRAM line
+          (--memory), `Loading Environment from MMC... ` ending in `OK`
+          (on that line, or alone on a later one before the product
+          name's: the card's driver prints while the load initialises the
+          card), the product name (board.json's), the training record's
+          save, the no-device line, the power chip's line (its flag not
+          the download mode's), the no-partition line, and the autoboot
+          line; none of CARD_REFUSED's lines; the load as uboot's, `fail
+          to get alias node efuse_power` alone after `Starting kernel
+          ...`; the commit records of board.json's harts, in its order;
+          and with the boundary on, their values by
+          tests/check-boundary.py's judge_board(), with board.json's
+          tables and partition authority (files under --build-root, each
+          by its SHA-256). --observed, required in the second sitting,
+          holds the ROM's lines, the banner's hardware facts and other
+          lines, and the memory to the first sitting's. A finding names
+          its stop (CARD_STOPS; else the sitting's, B5 or B6); result.json
+          adds observed, card (the banner as printed, the notes, the
+          boundary's line, and the stops, a list, as the last line's
+          stops= has them), and inputs. Any finding is a FAIL and exit
+          status 1: a caller decides by the exit status, and names the
+          stop from card.stops; exit 2 is an input refused, named on
+          standard error, with no result.json. No capture is a refusal:
+          the banner's boot hart is board.json's control hart, and a start
+          rule is a finding
 
 The shim (Plan revision M0-A.2): a boot hart B other than 0 prints
 `BE_MVP_SHIM: boot_hart=0x<B> starting hart 0` first, and B is the
@@ -541,6 +580,136 @@ OPENSBI_BANNER = re.compile(r"OpenSBI v[0-9]")
 # The BSP's lines U-Boot's handoff prints before the shim's.
 UBOOT_NOISE = ("fail to get alias node efuse_power",
                "Removing MTD device #0 (nor0) with use count 1")
+# M11-B's card mode (planning/mvp-m11-board-addendum.md, B-8). A boot ROM
+# line of a boot from the NOR (the retained boots': its choice of the NOR,
+# the NOR's ID, the card's failed try; the ROM has no source).
+CARD_ROM_NOR = re.compile(r"bm:4|nor m:.*|.*sd f!.*")
+# The firmware's banner (lib/sbi/sbi_init.c, sbi_domain.c, and sbi_hart.c
+# at the firmware's pin): the version line, the art, `LABEL<pad>: VALUE`.
+CARD_FIRMWARE = re.compile(r"OpenSBI v[0-9]+\.[0-9]+")
+CARD_ART = re.compile(r"[ _/\\|()'.<]+")
+CARD_FIELD = re.compile(r"([A-Z][A-Za-z0-9 ]*?[A-Za-z0-9]) *: ?(.*)")
+CARD_DOMAIN = re.compile(r"Domain([0-9]+) (Name|Init Order|Boot HART|HARTs|"
+                         r"Region[0-9]{2}|Next Address|Next Arg1|Next Mode|"
+                         r"SysReset|SysSuspend)")
+CARD_FIELDS = tuple(f"{group} {name}" for group, names in (
+    ("Platform", ("Name", "Features", "HART Count", "HART Protection",
+                  "IPI Device", "Timer Device", "Console Device",
+                  "HSM Device", "PMU Device", "Reboot Device",
+                  "Shutdown Device", "Suspend Device", "CPPC Device")),
+    ("Firmware", ("Base", "Size", "RW Offset", "RW Size", "Heap Offset",
+                  "Heap Size", "Scratch Size")),
+    ("Runtime", ("SBI Version",)), ("Standard", ("SBI Extensions",)),
+    ("Experimental", ("SBI Extensions",)),
+    ("Boot HART", ("ID", "Domain", "Priv Version", "Base ISA",
+                   "ISA Extensions", "PMP Count", "PMP Granularity",
+                   "PMP Address Bits", "MHPM Info", "Debug Triggers",
+                   "MIDELEG", "MEDELEG"))) for name in names)
+# Printed only where the tree holds a digest, or the hart has Smrnmi.
+CARD_OPTIONAL = ("Domain commit digest", "Boot HART Smrnmi Init")
+# The hardware's facts in the banner, as mvp/k3/observed.json keys them.
+CARD_HARDWARE = {name.lower().replace(" ", "_"): f"Boot HART {name}"
+                 for name in ("Priv Version", "Base ISA", "ISA Extensions",
+                              "PMP Count", "PMP Granularity",
+                              "PMP Address Bits", "MHPM Info",
+                              "Debug Triggers")}
+CARD_DEVICES = {name.lower(): f"Platform {name} Device" for name in (
+    "IPI", "Timer", "Console", "HSM", "PMU", "Suspend", "CPPC")}
+CARD_BOARD_SCHEMA = "be-mvp-k3-board-v1"
+CARD_OBSERVED_SCHEMA = "be-mvp-k3-observed-v1"
+CARD_ROLES = ("control", "vs-domain", "parked")
+# U-Boot's DRAM size as lib/display_options.c's print_size() writes it.
+CARD_MEMORY = re.compile(r"[1-9][0-9]*(?:\.[1-9])? [EPTGMK]iB|"
+                         r"(?:0|[1-9][0-9]*) Bytes")
+# The vendor's U-Boot at its published release's commit (its board's own
+# files under board/<vendor>/k3/): the SPL's lines of an environment that it
+# loads (spl.c:675-685; never on a boot from a card, :671-672); and
+# U-Boot's, once each after its banner, in order: common/board_f.c:214,
+# 234; env/env.c:211, 219 (the driver's name, k3.c:1316-1336 picking MMC
+# in a card's boot mode; no newline between the two prints, so what the
+# driver's load prints, env/mmc.c:392-437, lands between the name and
+# OK); k3.c:1712 (the TLV item's); k3.c:520 (the training
+# record's save), then drivers/mtd/mtd_uboot.c:272 (no flash device of
+# mtdparts' name); k3.c:752 (the power chip's flag, which U-Boot clears on
+# every boot; its low three bits 0x1 send U-Boot into its download mode
+# over USB, k3.c:753-754, include/configs/k3.h:112-114); and k3.c:800
+# (printed in a card's boot mode alone, k3.c:954-955). Allowed, and
+# recorded: k3.c:1641 (the MAC addresses are the identity EEPROM's).
+CARD_SPL_ENVIRONMENT = re.compile(r"has init env successful|load env from "
+                                  r"storage fail.*|spl_load_env, can not "
+                                  r"load env from storage")
+CARD_DRAM = re.compile(r"DRAM: +(\S.*)")
+CARD_ENVIRONMENT = re.compile(r"Loading Environment from (\S+)\.\.\. ?(.*)")
+CARD_PRODUCT = re.compile(r"TLV item: product_name = (.*)")
+CARD_SAVE = re.compile(r"save DDR training info")
+CARD_NO_DEVICE = re.compile(r"Could not find a valid device for (\S+)")
+CARD_PMIC = re.compile(r"[a-z]+ reboot: read PMIC reg 0xab value "
+                       r"0x([0-9a-f]+)")
+CARD_PMIC_USB = (0x7, 0x1)
+CARD_NO_PARTITION = re.compile(r"NO partition bootfs in card")
+CARD_MAC = re.compile(r"Found ([0-9]+) valid MAC addresses\.")
+CARD_NOISE = UBOOT_NOISE[:1]
+# The lines that a boot from a card must not hold, anywhere before the
+# first marker: drivers/mtd/spi/spi-nor-core.c:4163; k3.c:444;
+# drivers/mtd/mtdcore.c:559; the board's k3-tlvinfo.c:174, 268;
+# k3.c:1647; env/common.c:261; disk/part_efi.c:99, 116, 126, 137, 142, 165,
+# 681, 693, 700, 1031, 1037, 1095, 1100, 1105, 1148, 1157; k3.c:418;
+# k3.c:742, 749, 761; cmd/fastboot.c:60, 67, 79; env/env.c:290; k3.c:808;
+# drivers/fastboot/fb_mmc.c:926 and the board's splash.c:107, 128;
+# common/board_r.c:510; common/cli.c:159; k3.c:1386; and the first line of
+# each of the board's k3.env boot flows (nor_boot, mmc_boot, ufs_boot,
+# udisk_boot, nand_boot, nfs_boot).
+CARD_REFUSED = tuple((rule, what, re.compile(text)) for rule, what, text in (
+    ("flash", "a flash was detected", r"SF: Detected "),
+    ("nor-write", "a write to the NOR", r"write [0-9]+byte to spinor "),
+    ("mtd", "U-Boot had an MTD device", r"Removing MTD device "),
+    ("tlv-reset", "a rewrite of the identity EEPROM", r"reset tlv data"),
+    ("tlv-write", "a write to the identity EEPROM",
+     r"write to tlv_data fail"),
+    ("mac", "a new MAC address", r"generate [0-9]+ random ethaddr\."),
+    ("environment", "a bad environment",
+     r"\*\*\* Warning - .*, using default environment"),
+    ("partition-table", "a partition table's error or fallback",
+     r"\*\*\* ERROR: (?:Invalid GPT|Invalid Backup GPT|Misplaced Backup GPT|"
+     r"Can't read (?:MBR header|GPT header|GPT Entries)) \*\*\*|Using Backup "
+     r"GPT|GUID Partition Table .* is wrong|GPT: \w+ incorrect|ERROR: "
+     r"Can't allocate \S+ bytes for GPT Entries"),
+    ("block-write", "a write of the training record to a block device",
+     r"write [0-9]+byte to block device"),
+    ("pmic", "the power chip's flag was not read and cleared",
+     r"[a-z]+ reboot: (?:get PMIC device failed: -?[0-9]+|PMIC read failed|"
+     r"PMIC write failed)"),
+    ("fastboot", "U-Boot tried its download mode over USB",
+     r"USB init failed: -?[0-9]+|TCPM init failed: -?[0-9]+|USB cable not "
+     r"detected\."),
+    ("save-environment", "something saved the environment",
+     r"Saving Environment to "),
+    ("flash-from-card", "the vendor's flash from a card looked in the card",
+     r"Can NOT find partition table .* in card"),
+    ("splash", "a splash ran, so the environment is not the card's",
+     r"Cannot find partition: bootfs$|Failed to get partition index for "
+     r"bootfs$"),
+    ("net", "the network started", r"^Net:"),
+    ("undefined", "a run of a variable that the environment lacks",
+     r'^## Error: ".*" not defined$'),
+    ("environment-file", "an environment file imported over the card's",
+     r"load env_\S+\.txt from bootfs successful"),
+    ("vendor-boot", "U-Boot entered one of the vendor's boot flows",
+     r"^Try to boot from ")))
+# K-1: the addendum's stop for each card rule that has one; a finding of
+# any other rule is its sitting's ("any other capture that the form
+# refuses": B5 in the first, B6 in the second).
+CARD_STOPS = {"nor": "B4", "spl": "B4", "spl-environment": "B4",
+              "second-boot": "B3", "flash": "B2", "nor-write": "B2",
+              "mtd": "B2", "no-device": "B2", "product": "B3",
+              "tlv-reset": "B3", "tlv-write": "B3", "mac": "B3",
+              "environment": "B3", "partition-table": "B3",
+              "block-write": "B3", "environment-source": "B3",
+              "flash-from-card": "B3", "splash": "B3", "net": "B3",
+              "undefined": "B3", "vendor-boot": "B3",
+              "environment-file": "B3", "pmic-usb": "B11",
+              "pmic": "B11", "fastboot": "B11", "save-environment": "B11"}
+CARD_SITTINGS = {"first": "B5", "second": "B6"}
 FIRMWARE = re.compile(r"BE_MVP:02 FIRMWARE_PROBED hsm=([01]) ipi=([01]) "
                       rf"status=((?:[0-9]+:{SIGNED},)*[0-9]+:{SIGNED}) "
                       r"started=(none|[0-9]+)")
@@ -1140,6 +1309,17 @@ def uboot_facts(capture, options, findings, facts):
     watchdog = [text for text in texts if UBOOT_WATCHDOG.fullmatch(text)]
     if watchdog:
         facts["uboot_watchdog"] = watchdog[-1]
+    fdt = uboot_load(capture, texts, options, findings, facts, UBOOT_NOISE)
+    if not qemu:
+        board_shim(capture, findings)
+    return hart, fdt
+
+
+def uboot_load(capture, texts, options, findings, facts, noise):
+    """U-Boot's load and booti after its one autoboot line (the uboot and
+    card modes), TEXTS the loader's lines as uboot_text() leaves them, and
+    only blank lines and NOISE's after `Starting kernel ...`: U-Boot's
+    device tree, which the shim must report."""
     # One boot per run (M5's attribution rule): exactly one autoboot line,
     # and U-Boot's lines are read after it. Reading them after the *last*
     # autoboot line let an image print its own autoboot line and a forged
@@ -1235,20 +1415,26 @@ def uboot_facts(capture, options, findings, facts):
                      f"between 'Starting kernel ...' and the markers"
                      for index in range(found["Starting kernel"][0] + 1,
                                         len(texts))
-                     if texts[index] and texts[index] not in UBOOT_NOISE]
-    if not qemu:
-        for line in capture.monitor[:2]:
-            shim = SHIM_LINE.fullmatch(line.text)
-            if line.text.startswith(RULE_TAG) or \
-                    shim and int(shim.group(1), 16):
-                findings.append(f"line {line.number}: {line.text[:40]!r}: "
-                                f"a board boot enters the shim on hart 0 "
-                                f"(stop condition 6)")
-    return hart, fdt
+                     if texts[index] and texts[index] not in noise]
+    return fdt
+
+
+def board_shim(capture, findings):
+    """A board's boot is on hart 0: a start-rule line, or a SHIM line naming
+    another hart, is a finding (the board tools' stop condition 6)."""
+    for line in capture.monitor[:2]:
+        shim = SHIM_LINE.fullmatch(line.text)
+        if line.text.startswith(RULE_TAG) or \
+                shim and int(shim.group(1), 16):
+            findings.append(f"line {line.number}: {line.text[:40]!r}: "
+                            f"a board boot enters the shim on hart 0 "
+                            f"(stop condition 6)")
 
 
 def boot_facts(capture, mode, options, findings, facts):
     """The boot hart the loader names, and the FDT the shim must report."""
+    if mode == "card":
+        return card_facts(capture, options, findings, facts)
     if mode == "kexec":
         return handoff_facts(capture, options, findings, facts)
     if mode == "uboot":
@@ -1270,6 +1456,361 @@ def boot_facts(capture, mode, options, findings, facts):
                         f"{values['sbi_version']}, not {wanted}")
     hart = values.get("boot_hart")
     return (int(hart) if hart is not None else None), None
+
+
+# ------------------------------------------------------------ the card mode
+def rom_lines(text):
+    """The boot ROM's lines of TEXT, a capture of a boot from reset (K1,
+    C1): its non-blank lines before its first SPL banner, NUL bytes removed
+    and whitespace collapsed; none without an SPL banner. It prints
+    nothing; lane S's driver imports it, and card_facts() uses it."""
+    lines = [line.rstrip("\r") for line in text.split("\n")]
+    spl = next((index for index, line in enumerate(lines)
+                if SPL_BANNER.fullmatch(uboot_text(line))), 0)
+    rom = (" ".join(line.replace("\0", "").split()) for line in lines[:spl])
+    return [line for line in rom if line]
+
+
+def boot_medium(text):
+    """The medium that TEXT's boot came from, by its boot ROM's lines (K1):
+    nor where one of them is a boot from the NOR's (CARD_ROM_NOR, C1.2),
+    card where there are others, none where there are none (C1.1). It
+    prints nothing; lane S's driver imports it, and card_facts() uses it."""
+    rom = rom_lines(text)
+    return "nor" if any(map(CARD_ROM_NOR.fullmatch, rom)) else \
+        "card" if rom else "none"
+
+
+def card_banner(lines, start, end):
+    """The firmware's banner from its version line, LINES[START], to its
+    last field before END: (its lines as printed, its fields in order as
+    (label, value), its other lines as (index, text)). Its art is the lines
+    before its first field (lib/sbi/sbi_init.c's BANNER)."""
+    fields, other, pending, last = [], [], [], start
+    for index in range(start + 1, end):
+        text = lines[index].rstrip()
+        match = CARD_FIELD.fullmatch(text.strip())
+        if match and (match.group(1) in CARD_FIELDS + CARD_OPTIONAL or
+                      CARD_DOMAIN.fullmatch(match.group(1))):
+            fields.append(match.groups())
+            other, pending, last = other + pending, [], index
+        elif text.strip() and (fields or not CARD_ART.fullmatch(text)):
+            pending.append((index, text))
+    return [line.rstrip() for line in lines[start:last + 1]], fields, other
+
+
+def card_domains(fields, board, find):
+    """The root OpenSBI domain's regions, board.json's; each of its harts
+    assigned (`*`, lib/sbi/sbi_domain.c's dump) to one OpenSBI domain: with
+    the boundary off the root alone, with it on the parked harts all to one
+    that holds no other. The parked harts' OpenSBI domain, NAME:COUNT."""
+    domains = {}
+    for label, value in fields:
+        match = CARD_DOMAIN.fullmatch(label)
+        if match:
+            domains.setdefault(int(match.group(1)), []).append(
+                (match.group(2), value))
+    root = domains.get(0, [])
+    names = [value for field, value in root if field == "Name"]
+    regions = [value for field, value in root if field.startswith("Region")]
+    if names != ["root"]:
+        find("domains", f"the first OpenSBI domain's names are {names}, not "
+             f"['root']")
+    if len(regions) != len(board["root_regions"]):
+        find("domains", f"the root OpenSBI domain has {len(regions)} regions, "
+             f"board.json's {len(board['root_regions'])}")
+    for number, (got, want) in enumerate(zip(regions,
+                                             board["root_regions"])):
+        if got != want:
+            find("domains", f"Domain0 Region{number:02d} {got!r} is not "
+                 f"board.json's {want!r}")
+    owners = {}
+    for number, items in sorted(domains.items()):
+        for value in (value for field, value in items if field == "HARTs"):
+            tokens = [re.fullmatch(r"0x([0-9a-f]+)(\*?)", token)
+                      for token in value.split(",")]
+            if not all(tokens):
+                find("domains", f"Domain{number} HARTs {value!r} is not of "
+                     f"the firmware's form")
+            for token in (token for token in tokens if token and
+                          token.group(2)):
+                owners.setdefault(int(token.group(1), 16), []).append(number)
+    roles = {hart["hartid"]: hart["role"] for hart in board["harts"]}
+    for hart in sorted(set(roles) | set(owners)):
+        if hart not in roles:
+            find("domains", f"an OpenSBI domain is assigned hart {hart}, "
+                 f"which board.json does not name")
+        elif len(owners.get(hart, [])) != 1:
+            find("domains", f"hart {hart} is assigned to "
+                 f"{len(owners.get(hart, []))} OpenSBI domains, not one")
+    if board["boundary"] == "off":
+        if len(domains) != 1:
+            find("domains", f"a boundary-off banner shows {len(domains)} "
+                 f"OpenSBI domains, not the root alone")
+        return "none"
+    parked = {hart for hart, role in roles.items() if role == "parked"}
+    homes = {number for hart in parked for number in owners.get(hart, [])}
+    if len(homes) != 1:
+        find("domains", f"the parked harts are assigned to {len(homes)} "
+             f"OpenSBI domains, not one")
+        return "none"
+    home = homes.pop()
+    mixed = sorted(hart for hart, numbers in owners.items()
+                   if home in numbers and hart not in parked)
+    if mixed:
+        find("domains", f"the parked harts' OpenSBI domain is assigned harts "
+             f"{mixed} too")
+    name = [value for field, value in domains[home] if field == "Name"]
+    return f"{name[0] if name else home}:{len(parked)}"
+
+
+def card_build(value, board, find):
+    """The banner's fields that follow from the build, against board.json,
+    and B-6's thresholds."""
+    control = next(hart["hartid"] for hart in board["harts"]
+                   if hart["role"] == "control")
+    wanted = {"Platform Name": board["platform_name"],
+              "Platform HART Count": str(len(board["harts"])),
+              "Platform HART Protection": "pmp",
+              "Platform Reboot Device": board["reset_device"]["reboot"],
+              "Platform Shutdown Device": board["reset_device"]["shutdown"],
+              "Runtime SBI Version": board["sbi_version"],
+              "Standard SBI Extensions": board["sbi_extensions"]["standard"],
+              "Experimental SBI Extensions":
+                  board["sbi_extensions"]["experimental"],
+              "Boot HART ID": str(control)}
+    for label, want in wanted.items():
+        if value(label) not in (None, want):
+            find("banner", f"the banner's {label} is {value(label)!r}, not "
+                 f"{want!r}")
+    base, load = value("Firmware Base"), board["firmware"]["load"]
+    if base is not None and not (re.fullmatch(r"0x[0-9a-f]+", base) and
+                                 int(base, 16) == int(load, 16)):
+        find("banner", f"the banner's Firmware Base is {base!r}, not "
+             f"board.json's load {load}")
+    for label, form, ok, what in (
+            ("Boot HART PMP Count", r"([0-9]+)", lambda n: int(n) >= 14,
+             "at least 14 entries"),
+            ("Boot HART PMP Granularity", r"([0-9]+) bits",
+             lambda n: int(n) <= 12, "a grain of at most 4 KiB (12 bits)"),
+            ("Boot HART Priv Version", r"v([0-9]+)\.([0-9]+)",
+             lambda *n: tuple(map(int, n)) >= (1, 12), "v1.12 or later")):
+        match = re.fullmatch(form, value(label) or "")
+        if value(label) is not None and not (match and ok(*match.groups())):
+            find("banner", f"the banner's {label} is {value(label)!r}, not "
+                 f"{what} (B-6)")
+
+
+def card_uboot(texts, start, board, memory, find):
+    """U-Boot's lines after its banner at START: once each, its DRAM line
+    (MEMORY), its environment's (the card's MMC, OK), its product name's
+    (board.json's), the training record's save, then the no-device line, the
+    power chip's (its flag not the download mode's), and the no-partition
+    line. ({name: index}, {the DRAM size, the device's name, the power chip's
+    value, the MAC addresses' count})."""
+    found = {}
+    for name, pattern in (("DRAM:", CARD_DRAM),
+                          ("Loading Environment from", CARD_ENVIRONMENT),
+                          ("TLV item: product_name", CARD_PRODUCT),
+                          ("save DDR training info", CARD_SAVE),
+                          ("Could not find a valid device for",
+                           CARD_NO_DEVICE),
+                          ("read PMIC reg 0xab", CARD_PMIC),
+                          ("NO partition bootfs in card",
+                           CARD_NO_PARTITION)):
+        hits = [(index, match) for index, text in enumerate(
+            texts[start:], start) for match in [pattern.fullmatch(text)]
+                if match]
+        if len(hits) == 1:
+            found[name] = hits[0]
+        elif name == "Could not find a valid device for" and \
+                "save DDR training info" in found and not hits:
+            find("no-device", "the vendor's save of the training record "
+                 "without its line that no valid flash device was found")
+        else:
+            find({"Loading Environment from": "environment-source"}.get(
+                name, "uboot"), f"{len(hits)} {name!r} lines after U-Boot's "
+                 f"banner, expected 1")
+    size = found["DRAM:"][1].group(1) if "DRAM:" in found else None
+    if size is not None and size != memory:
+        find("uboot", f"U-Boot's memory {size!r} is not the sitting's "
+             f"{memory!r}")
+    source, loaded = found.get("Loading Environment from"), None
+    if source:
+        # Its OK ends its line, or stands alone on a later one before the
+        # product name's line (or the autoboot line): between them, the
+        # driver's lines, which CARD_REFUSED judges as any of U-Boot's.
+        index, match = source
+        end = found.get("TLV item: product_name", (None,))[0] or next(
+            (at for at in range(index, len(texts))
+             if UBOOT_AUTOBOOT.fullmatch(texts[at])), len(texts))
+        loaded = 0 if match.group(2) == "OK" else next(
+            (at - index for at in range(index + 1, end)
+             if texts[at] == "OK"), None)
+        if match.group(1) != "MMC":
+            find("environment-source", f"U-Boot's environment came from "
+                 f"{match.group(1)}, not from the card's MMC")
+        if loaded is None:
+            find("environment-source", "U-Boot's environment's load did not "
+                 "end in OK")
+    product = found.get("TLV item: product_name")
+    if product and product[1].group(1) != board["product_name"]:
+        find("product", f"U-Boot's product name {product[1].group(1)!r} is "
+             f"not the board's {board['product_name']!r}")
+    pmic = found.get("read PMIC reg 0xab")
+    if pmic and int(pmic[1].group(1), 16) & CARD_PMIC_USB[0] == \
+            CARD_PMIC_USB[1]:
+        find("pmic-usb", f"the power chip's register 0xab holds "
+             f"0x{pmic[1].group(1)}: its flag sends U-Boot into its download "
+             f"mode over USB")
+    device = found.get("Could not find a valid device for")
+    macs = [match.group(1) for match in map(CARD_MAC.fullmatch, texts[start:])
+            if match]
+    return ({name: index for name, (index, _) in found.items()}, {
+        "memory": size, "no_flash_device": device[1].group(1) if device else
+        None, "pmic": f"0x{pmic[1].group(1)}" if pmic else None,
+        "mac_addresses": ",".join(macs) or None, "environment_lines":
+        None if loaded is None else str(loaded)})
+
+
+def card_facts(capture, options, findings, facts):
+    """The card mode (M11-B, B-8): (the banner's boot hart, U-Boot's device
+    tree, which the shim must report). facts["card"] keeps, for evaluate()
+    and main(): the observed facts (mvp/k3/observed.json's form), the
+    banner's lines as printed, the notes, and each finding that names its
+    stop (CARD_STOPS)."""
+    board, memory = options["card_board"], options["card_memory"]
+    reference = options.get("card_observed")
+    card = {"sitting": board["sitting"], "tagged": [], "notes": [],
+            "banner": []}
+    facts.update(launcher_mode="card", card=card)
+
+    def find(rule, text):
+        stop = CARD_STOPS.get(rule)
+        findings.append(f"{text} (stop {stop})" if stop else text)
+        card["tagged"] += [(findings[-1], stop)] if stop else []
+    lines = capture.loader
+    texts = [uboot_text(line) for line in lines]
+    spl, firmware, uboot, autoboot = ([
+        index for index, text in enumerate(texts) if pattern.fullmatch(text)]
+        for pattern in (SPL_BANNER, CARD_FIRMWARE, UBOOT_BANNER,
+                        UBOOT_AUTOBOOT))
+    # A second SPL or firmware banner is a second boot from reset in one
+    # capture: stop B3's "a boot that the session did not plan". A second
+    # U-Boot banner alone is not one (U-Boot's version command prints it).
+    for rule, label, hits in (("second-boot" if spl else "spl",
+                               "U-Boot SPL banner", spl),
+                              ("second-boot" if firmware else "banner",
+                               "firmware banner", firmware),
+                              ("uboot", "U-Boot banner", uboot)):
+        if len(hits) != 1:
+            find(rule, f"{len(hits)} {label} lines before the markers, "
+                 f"expected 1")
+    loader = "\n".join(lines)
+    rom, medium = rom_lines(loader), boot_medium(loader)
+    if spl and medium == "none":
+        find("rom", "no boot ROM line before the SPL banner")
+    if medium == "nor":
+        find("nor", "the boot ROM's lines are those of a boot from the NOR")
+    for index in range(spl[0] if spl else 0, uboot[0] if uboot else
+                       len(texts)):
+        if CARD_SPL_ENVIRONMENT.fullmatch(texts[index]):
+            find("spl-environment", f"line {index + 1}: {texts[index]!r}: "
+                 f"the SPL loaded an environment, as it does on no boot "
+                 f"from a card")
+    values, fields, other = {}, [], []
+    if len(firmware) == 1:
+        card["banner"], fields, other = card_banner(lines, firmware[0], next(
+            (index for index in uboot if index > firmware[0]), len(lines)))
+        got = [label for label, _ in fields if label in CARD_FIELDS]
+        for label in CARD_FIELDS:
+            if got.count(label) != 1:
+                find("banner", f"{got.count(label)} {label!r} lines in the "
+                     f"firmware's banner, expected 1")
+        if sorted(got) == sorted(CARD_FIELDS) and got != list(CARD_FIELDS):
+            find("banner", "the firmware's banner's fields are out of order")
+    for label, text in fields:
+        values.setdefault(label, []).append(text)
+
+    def value(label):
+        return values[label][0] if len(values.get(label, ())) == 1 else None
+    card_build(value, board, find)
+    parked = card_domains(fields, board, find) if fields else "none"
+    digest = value("Domain commit digest")
+    if digest and board["digest"] and digest != board["digest"]:
+        find("banner", f"the banner's digest {digest} is not board.json's "
+             f"{board['digest']}")
+    card["notes"] = [f"line {index + 1}: {text!r} inside the firmware's "
+                     f"banner" for index, text in other]
+    indexes, read = card_uboot(texts, uboot[0] + 1 if uboot else 0, board,
+                               memory, find)
+    for number, text in enumerate(texts, 1):
+        for rule, what, pattern in CARD_REFUSED:
+            if pattern.search(text):
+                find(rule, f"line {number}: {text[:80]!r}: {what}")
+    order = [(name, hits[0]) for name, hits in (
+        ("the SPL banner", spl), ("the firmware's banner", firmware),
+        ("U-Boot's banner", uboot)) if len(hits) == 1]
+    order += [(f"{name!r}", index) for name, index in indexes.items()]
+    order += [("the autoboot line", autoboot[0])] if len(autoboot) == 1 \
+        else []
+    for (first, one), (second, two) in zip(order, order[1:]):
+        if two < one:
+            find("order", f"the card boot's lines are out of order: {second} "
+                 f"before {first}")
+            break
+    fdt = uboot_load(capture, texts, options, findings, facts, CARD_NOISE)
+    board_shim(capture, findings)
+    firmware_facts = {key: value(label) for key, label in
+                      CARD_HARDWARE.items()}
+    firmware_facts.update(devices={key: value(label) for key, label in
+                                   CARD_DEVICES.items()},
+                          other_lines=[text for _, text in other])
+    card["observed"] = {"schema": CARD_OBSERVED_SCHEMA, "rom": rom,
+                        "firmware": firmware_facts,
+                        "uboot": {"memory": read["memory"]}}
+    if reference is not None:
+        card_reference(card["observed"], reference, find)
+    card["facts"] = dict(
+        sitting=board["sitting"], rom_lines=str(len(rom)),
+        rom_sha256=hashlib.sha256("\n".join(rom).encode()).hexdigest()[:12],
+        memory=read["memory"] or "none", product=board["product_name"],
+        harts=str(len(board["harts"])), **{
+            key: firmware_facts[key] or "none" for key in CARD_HARDWARE
+            if key.startswith(("pmp", "priv"))},
+        digest=(digest or "none")[:12], parked=parked,
+        other_lines=str(len(other)),
+        no_flash_device=read["no_flash_device"] or "none",
+        pmic=read["pmic"] or "none",
+        mac_addresses=read["mac_addresses"] or "none",
+        environment_lines=read["environment_lines"] or "none",
+        reference="none" if reference is None else "observed")
+    facts.update(spl_banner=texts[spl[0]] if spl else "none",
+                 uboot_banner=texts[uboot[0]] if uboot else "none",
+                 boot_hart=value("Boot HART ID") or "none",
+                 sbi_version=value("Runtime SBI Version") or "none")
+    hart = value("Boot HART ID")
+    return (int(hart) if hart and hart.isdigit() else None), fdt
+
+
+def card_reference(observed, reference, find):
+    """With --observed: the ROM's lines, the banner's hardware facts and
+    other lines, and U-Boot's memory size are the first sitting's."""
+    mine, theirs = observed["firmware"], reference["firmware"]
+    pairs = [("the boot ROM's lines", observed["rom"], reference["rom"]),
+             ("the firmware's banner's other lines", mine["other_lines"],
+              theirs["other_lines"]),
+             ("U-Boot's memory", observed["uboot"]["memory"],
+              reference["uboot"]["memory"])]
+    pairs += [(label, mine[key], theirs[key])
+              for key, label in CARD_HARDWARE.items()]
+    pairs += [(label, mine["devices"][key], theirs["devices"][key])
+              for key, label in CARD_DEVICES.items()]
+    for what, got, want in pairs:
+        if got != want:
+            find("reference", f"{what} are not the first sitting's" if
+                 isinstance(want, list) else
+                 f"{what} {got!r} is not the first sitting's {want!r}")
 
 
 def boundary_loader_findings(capture, boundary, boot_hart, facts):
@@ -3199,13 +3740,15 @@ def forged_findings(capture, expect):
     return findings
 
 
-def record_block(text, boundary):
+def record_block(text, boundary, order=None):
     """M11-7: (the capture before M-mode's commit records, findings): the
     records cut from its end, where a boundary-on run whose tree holds a
     digest (BOUNDARY, the expectation's section) prints them, each hart's
     lines in the firmware's form; a record line elsewhere, or in any other
     run, is a finding, as it is in a run whose firmware has no reset
-    device to print them at (M11-B, "reset": "absent")."""
+    device to print them at (M11-B, "reset": "absent"). The harts are
+    ORDER's hart IDs, in the firmware's order (the card mode's,
+    board.json's), or else LAYOUT's, hart N N-th."""
     parts = text.split("\n")
     end = len(parts) - (parts[-1] == "")
     start = end
@@ -3225,25 +3768,29 @@ def record_block(text, boundary):
     if not block:
         return text, findings + ["no commit record after the monitor's "
                                  "last line"]
+    harts = LAYOUT["HARTS"] if order is None else len(order)
     hart = at = 0
     while at < len(block):
+        wanted = hart if order is None else \
+            order[hart] if hart < len(order) else -1
         match = RECORD_LINE.fullmatch(block[at])
         counts = RECORD_FORMS[0].fullmatch(match.group(2)) \
-            if int(match.group(1)) == hart else None
+            if int(match.group(1)) == wanted else None
         size = 5 if counts and counts.group(1) == "1" else 1
         for offset in range(size):
             match = RECORD_LINE.fullmatch(block[at + offset]) \
                 if at + offset < len(block) else None
-            if not counts or not match or int(match.group(1)) != hart or \
+            if not counts or not match or int(match.group(1)) != wanted or \
                     not RECORD_FORMS[offset].fullmatch(match.group(2)):
                 return text, findings + [
-                    f"line {start + at + offset + 1}: not the firmware's "
-                    f"commit-record line {offset} of hart {hart}"]
+                    f"line {start + at + offset + 1}: " + (
+                        f"not the firmware's commit-record line {offset} "
+                        f"of hart {wanted}" if wanted >= 0 else
+                        f"a commit record beyond the {harts} harts")]
         at += size
         hart += 1
-    if hart != LAYOUT["HARTS"]:
-        findings.append(f"the commit record holds {hart} harts, not "
-                        f"{LAYOUT['HARTS']}")
+    if hart != harts:
+        findings.append(f"the commit record holds {hart} harts, not {harts}")
     return "\n".join(parts[:start]) + "\n", findings
 
 
@@ -3257,9 +3804,12 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
     prefixes = [domain["prefix"] for domain in expect["domains"]]
     console = expect.get("console_input")
     boundary = expect.get("boundary")
+    whole = data.decode("utf-8", "replace") if isinstance(data, bytes) \
+        else data
     text, recorded = record_block(
-        data.decode("utf-8", "replace") if isinstance(data, bytes) else data,
-        boundary)
+        whole, boundary, [hart["hartid"] for hart in
+                          options["card_board"]["harts"]]
+        if mode == "card" else None)
     capture = Capture(text, prefixes, {
         int(domain): texts for domain, texts in expect.get(
             "forged", {}).items()}, bool(console or "forged" in expect))
@@ -3272,6 +3822,9 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
                                       facts)
     findings += recorded + boundary_loader_findings(capture, boundary,
                                                     boot_hart, facts)
+    if mode == "card":
+        facts["card"]["boundary"] = card_boundary(whole, expect, options,
+                                                  findings)
     outcome = expect["outcome"]
     rule, stream = shim_findings(capture.monitor, expect, boot_hart,
                                  kexec_fdt, findings, facts)
@@ -3417,6 +3970,7 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
             verdict, findings = "FAIL", [
                 "a boundary-on run is no refusal: its tree restricts the "
                 "cold boot to hart 0"]
+    card = facts.pop("card", None)
     last = capture.monitor[-1].text if capture.monitor else ""
     terminal = "fail-marker" if any(
         line.text.startswith((FAIL_PREFIX, "BE_K3_B3: FAIL"))
@@ -3438,6 +3992,17 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
     if logged and verdict != "REFUSED":
         out.update(log=log_record, log_declared=declared,
                    log_export=exported)
+    # The card mode's (M11-B, K-1): its stops, each tagged finding's, and
+    # the sitting's for any other finding.
+    if card is not None:
+        tagged = dict(card["tagged"])
+        named = {tagged.get(finding, CARD_SITTINGS[card["sitting"]])
+                 for finding in findings}
+        out.update(observed=card["observed"], card={
+            "sitting": card["sitting"], "facts": card["facts"],
+            "banner": card["banner"], "notes": card["notes"],
+            "boundary": card["boundary"],
+            "stops": sorted(named, key=lambda stop: int(stop[1:]))})
     return verdict, out
 
 
@@ -3999,12 +4564,13 @@ def uboot_options(name):
                 image_crc32=crc, image_md5=md5)
 
 
-def current_log_standin(text, expect, root):
+def current_log_standin(text, expect, root, paths=None):
     """TEXT with its whole measurement-log surface rendered for the
     current image from its reference, preserving only the retained run's
-    ticks, and in the boundary-on form where EXPECT declares it. The
-    result is a synthetic stand-in, never a captured log."""
-    text = log_standin(text, expect, root)
+    ticks, and in the boundary-on form where EXPECT declares it; PATHS,
+    (reference, boot image), in place of the build's (default_paths()).
+    The result is a synthetic stand-in, never a captured log."""
+    text = log_standin(text, expect, root, paths)
     return boundary_form(text, expect) if "boundary" in expect else text
 
 
@@ -4073,7 +4639,7 @@ def boundary_expect(expect, control_hart):
     return out
 
 
-def log_standin(text, expect, root):
+def log_standin(text, expect, root, paths=None):
     """current_log_standin()'s log surface: TEXT with every measurement-log
     line rendered from the current reference."""
     parts = lines(text)
@@ -4148,7 +4714,8 @@ def log_standin(text, expect, root):
     if not any(line_.startswith("BE_MVP:19 LOG record seq=0 ")
                for line_ in parts):
         return text_of(parts)
-    reference_path, boot_path = LOG.default_paths(root, "gcc", expect)
+    reference_path, boot_path = paths or LOG.default_paths(root, "gcc",
+                                                           expect)
     reference = LOG.Reference(reference_path.read_bytes())
     rendered = LOG.expected_lines(reference, LOG.log_harts(expect))
     boot = boot_path.read_bytes()
@@ -6912,6 +7479,8 @@ def cheri_mutation_test(data, expect, args, options, verdict, record):
 def report(verdict, record, name):
     """The checker's printed lines."""
     out = [f"finding: {finding}" for finding in record["findings"]]
+    card = record.get("card")
+    out += [f"note: {note}" for note in card["notes"]] if card else []
     out += [f"{stop}" for stop in record["stops"]]
     fields = record["fields"]
     counts = " ".join(f"{key}={fields[key]}" for key in (
@@ -6929,7 +7498,7 @@ def report(verdict, record, name):
     for label, values in sorted(record["probe_values"].items()):
         out.append(f"BE_MVP_PROBE_VALUES: {label} " + " ".join(
             f"{key}={value}" for key, value in values.items()))
-    if fields.get("launcher_mode") == "uboot":
+    if fields.get("launcher_mode") in ("uboot", "card"):
         out.append(("BE_MVP_UBOOT: " + " ".join(
             f"{key}={fields[key]}" for key in (
                 "load_bytes", "load_digest_kind", "load_digest",
@@ -6939,8 +7508,14 @@ def report(verdict, record, name):
     out += log_report(record)
     # beryllium-cheri: the CHERI rules' mutations (--cheri-mutations).
     out += record.get("cheri_mutations", [])
+    if card:
+        out.append("BE_MVP_CARD: " + " ".join(
+            f"{key}={value.replace(' ', '_')}"
+            for key, value in card["facts"].items()))
+        out.append(card["boundary"])
     out.append(f"BE_MVP_RESULT: {verdict} terminal={record['terminal']}")
-    out.append(f"BE_MVP_CAPTURE[{fields['mode']} {name}]: {verdict}")
+    out.append(f"BE_MVP_CAPTURE[{fields['mode']} {name}]: {verdict}" + (
+        f" stops={','.join(card['stops']) or 'none'}" if card else ""))
     return "\n".join(out)
 
 
@@ -6979,6 +7554,36 @@ def log_report(record):
     out += [f"BE_MVP_LOG_SELF_REPORT: {finding} (declared)"
             for finding in record.get("log_declared") or []]
     return out
+
+
+def load_check_boundary():
+    """tests/check-boundary.py, whose judge_board() judges a boot from a
+    card's commit records (C11): loaded once, by the card mode alone."""
+    global CHECK_BOUNDARY
+    if CHECK_BOUNDARY is None:
+        spec = importlib.util.spec_from_file_location(
+            "mvp_check_boundary", HERE / "check-boundary.py")
+        CHECK_BOUNDARY = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(CHECK_BOUNDARY)
+    return CHECK_BOUNDARY
+
+
+CHECK_BOUNDARY = None
+
+
+def card_boundary(text, expect, options, findings):
+    """The card mode's judgement of M-mode's records (C11): TEXT, the whole
+    capture, by judge_board() with board.json's tables and partition
+    authority, its findings added to FINDINGS; the boundary's line, today's
+    NOT-APPLICABLE one with the boundary off."""
+    checker = load_check_boundary()
+    if "boundary" not in expect:
+        return checker.NOT_APPLICABLE.strip()
+    found, facts = checker.judge_board(
+        expect, options["card_board"], text, options["card_tables"],
+        options["card_authority"])
+    findings += found
+    return checker.board_line(found, facts)
 
 
 def load_check_image():
@@ -7073,6 +7678,159 @@ def report_for(expect, reports):
     return reports.get(expect.get("report", {}).get("sha256"))
 
 
+def card_board_problem(board, expect, toolchain, keys=False):
+    """What of BOARD (board.json) is not of its form, or not the
+    expectation's (its image, its boundary, a digest exactly where the tree
+    holds one, its tables and partition authority exactly where the
+    boundary is on); or None. With KEYS, the keys it checks, in order (the
+    test refuses each in turn)."""
+    if not isinstance(board, dict) or board.get("schema") != \
+            CARD_BOARD_SCHEMA:
+        return f"not of schema {CARD_BOARD_SCHEMA}"
+
+    def text(*keys):
+        value = board
+        for key in keys:
+            value = value.get(key) if isinstance(value, dict) else None
+        return value if isinstance(value, str) else None
+
+    def form(pattern, *keys):
+        return re.fullmatch(pattern, text(*keys) or "") is not None
+
+    def linked(key):
+        """A file under the build root, by its path from it, and SHA-256."""
+        name = text(key, "file") or ""
+        return bool(name) and not name.startswith("/") and ".." not in \
+            name.split("/") and form(r"[0-9a-f]{64}", key, "sha256")
+    boundary, harts = expect.get("boundary"), board.get("harts")
+    harts = harts if isinstance(harts, list) and all(
+        isinstance(hart, dict) for hart in harts) else []
+    roles = {hart.get("hartid"): hart.get("role") for hart in harts}
+    regions = board.get("root_regions")
+    checks = (
+        ("image", board.get("image") == expect["image"]),
+        ("sitting", board.get("sitting") in CARD_SITTINGS),
+        ("toolchain", text("toolchain") in (toolchain,) if toolchain else
+         text("toolchain") is not None),
+        ("boundary", board.get("boundary") == ("on" if boundary else "off")),
+        ("digest", form(r"[0-9a-f]{64}", "digest") if boundary and
+         boundary.get("record") else board.get("digest", 0) is None),
+        ("board_image", form(r"[0-9a-f]{64}", "board_image", "sha256")),
+        ("firmware", form(r"0x[0-9a-f]+", "firmware", "load")),
+        ("sbi_version", form(r"[0-9]+\.[0-9]+", "sbi_version")),
+        ("sbi_extensions", None not in (text("sbi_extensions", "standard"),
+                                        text("sbi_extensions",
+                                             "experimental"))),
+        ("reset_device", None not in (text("reset_device", "reboot"),
+                                      text("reset_device", "shutdown"))),
+        ("platform_name", bool(text("platform_name"))),
+        ("product_name", bool(text("product_name"))),
+        ("root_regions", isinstance(regions, list) and bool(regions) and all(
+            isinstance(region, str) for region in regions)),
+        ("harts", len(roles) == len(harts) and all(
+            type(hart) is int and hart >= 0 for hart in roles) and set(
+                roles.values()) <= set(CARD_ROLES) and [
+                    sorted(hart for hart, role in roles.items()
+                           if role == name) for name in CARD_ROLES[:2]] ==
+         [[0], [1, 2]]),
+        ("tables", linked("tables") if boundary else
+         board.get("tables", 0) is None),
+        ("partition_authority", linked("partition_authority") if boundary
+         else board.get("partition_authority") is None))
+    if keys:
+        return [name for name, _ in checks]
+    problems = [name for name, good in checks if not good]
+    return f"{', '.join(problems)} not of its form, or not the " \
+        f"expectation's" if problems else None
+
+
+def card_observed_form(observed):
+    """Whether OBSERVED is of mvp/k3/observed.json's form: exactly its keys,
+    each value a string, or a list of strings, as card_facts() writes it."""
+    def keyed(value, keys):
+        return isinstance(value, dict) and set(value) == set(keys)
+
+    def strings(values):
+        return isinstance(values, list) and all(
+            isinstance(value, str) for value in values)
+    if not keyed(observed, ("schema", "rom", "firmware", "uboot")) or \
+            observed["schema"] != CARD_OBSERVED_SCHEMA:
+        return False
+    firmware, uboot = observed["firmware"], observed["uboot"]
+    return strings(observed["rom"]) and keyed(
+        firmware, (*CARD_HARDWARE, "devices", "other_lines")) and strings(
+            [firmware[key] for key in CARD_HARDWARE]) and keyed(
+                firmware["devices"], CARD_DEVICES) and strings(list(
+                    firmware["devices"].values())) and strings(
+                        firmware["other_lines"]) and keyed(
+                            uboot, ("memory",)) and isinstance(
+                                uboot["memory"], str) and \
+        CARD_MEMORY.fullmatch(uboot["memory"]) is not None
+
+
+def card_options(parser, args, expect, image):
+    """The card mode's inputs (M11-B), each refused by name on standard
+    error before any record is written (K-2): board.json, against the
+    expectation and --image, and with the boundary on its tables and
+    partition authority (files under --build-root, each of its SHA-256, by
+    tests/check-boundary.py's board_refusal()); --memory, of print_size()'s
+    form (K-3); and observed.json, of its own; with each one's SHA-256 for
+    the record."""
+    if not (args.board and args.memory and image is not None):
+        parser.error("--mode card needs --board, --memory, and --image")
+    if not CARD_MEMORY.fullmatch(args.memory):
+        parser.error(f"--memory {args.memory!r} is not a size as U-Boot "
+                     f"prints it (a number, then KiB to EiB, or Bytes)")
+    loaded, inputs = {}, {"memory": args.memory, "observed": None,
+                          "tables": None, "partition_authority": None}
+    for name, path in (("board", args.board), ("observed", args.observed)):
+        if path is not None:
+            try:
+                data = pathlib.Path(path).read_bytes()
+                loaded[name] = json.loads(data)
+            except (OSError, ValueError) as error:
+                parser.error(f"--{name} {path} cannot be read: {error}")
+            inputs[name] = hashlib.sha256(data).hexdigest()
+    why = card_board_problem(loaded["board"], expect, args.toolchain)
+    if why:
+        parser.error(f"--board {args.board}: {why}")
+    if loaded["board"]["sitting"] == "second" and not args.observed:
+        parser.error(f"--board {args.board} is of the second sitting, whose "
+                     f"captures need --observed (the first sitting's facts)")
+    if hashlib.sha256(image).hexdigest() != \
+            loaded["board"]["board_image"]["sha256"]:
+        parser.error(f"--image {args.image[0]} is not board.json's "
+                     f"board_image")
+    if args.observed and not card_observed_form(loaded["observed"]):
+        parser.error(f"--observed {args.observed} is not of "
+                     f"{CARD_OBSERVED_SCHEMA}'s form")
+    root = pathlib.Path(args.build_root or DEFAULT_BUILD)
+    for name in ("tables", "partition_authority") if "boundary" in expect \
+            else ():
+        entry = loaded["board"][name]
+        try:
+            data = (root / entry["file"]).read_bytes()
+            loaded[name] = json.loads(data)
+        except (OSError, ValueError) as error:
+            parser.error(f"--board {args.board}: its {name} cannot be read: "
+                         f"{error}")
+        if hashlib.sha256(data).hexdigest() != entry["sha256"]:
+            parser.error(f"--board {args.board}: its {name} "
+                         f"{entry['file']} is not of its SHA-256")
+        inputs[name] = entry["sha256"]
+    why = load_check_boundary().board_refusal(
+        expect, loaded["tables"], loaded["partition_authority"]) \
+        if "boundary" in expect else None
+    if why:
+        parser.error(f"--expect {args.expect} with --board {args.board}: "
+                     f"{why}")
+    return {"card_board": loaded["board"], "card_memory": args.memory,
+            "card_observed": loaded.get("observed"),
+            "card_tables": loaded.get("tables"),
+            "card_authority": loaded.get("partition_authority"),
+            "card_inputs": inputs}
+
+
 def main(argv):
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -7081,8 +7839,13 @@ def main(argv):
     parser.add_argument("--expect")
     parser.add_argument("--expect-dir", action="append")
     parser.add_argument("--report", action="append", default=[])
-    parser.add_argument("--mode", choices=("direct", "kexec", "uboot"),
-                        default="direct")
+    parser.add_argument("--mode", choices=("direct", "kexec", "uboot",
+                                           "card"), default="direct")
+    # M11-B's card mode: the gate's board.json of the image, U-Boot's DRAM
+    # size in the sitting's boot from the NOR, the first sitting's facts.
+    parser.add_argument("--board")
+    parser.add_argument("--memory")
+    parser.add_argument("--observed")
     # beryllium-cheri: the monitor variant whose values the checks expect.
     parser.add_argument("--monitor", choices=tuple(MONITOR_HEDELEG),
                         default="riscv")
@@ -7114,6 +7877,14 @@ def main(argv):
     global HEDELEG, HEDELEG_REQUIRED
     HEDELEG, HEDELEG_REQUIRED = MONITOR_HEDELEG[args.monitor]
     many = args.self_test or args.mutation_test or args.write_fixtures
+    # K-4: the card mode is asked for, and its inputs are its alone.
+    if args.mode != "card" and (args.board or args.memory or args.observed):
+        parser.error("--board, --memory, and --observed are the card "
+                     "mode's (--mode card)")
+    if args.mode == "card" and (many or args.check_image or
+                                args.sbi_version):
+        parser.error("--mode card judges one capture, its SBI version "
+                     "board.json's")
     if args.cheri_mutations and (args.monitor != "cheri" or many):
         parser.error("--cheri-mutations judges one capture of the "
                      "CHERI-aware monitor (--monitor cheri)")
@@ -7211,6 +7982,9 @@ def main(argv):
             parser.error(f"--{key.replace('_', '-')} is not --image's")
         if given is not None:
             options[key] = given
+    if args.mode == "card":
+        options.update(card_options(parser, args, expect,
+                                    options.get("image_data")))
     verdict, record = evaluate(
         data, expect, args.mode, read_pins(args.pins),
         pathlib.Path(args.report[0]).read_bytes() if args.report else None,
@@ -7223,6 +7997,8 @@ def main(argv):
     record["expect"] = {"image": expect["image"],
                         "scenario_sha256": expect["scenario_sha256"]}
     record["toolchain"] = args.toolchain
+    if args.mode == "card":
+        record["inputs"] = options["card_inputs"]
     # The rebuilt log (log.json; mvp/docs/log-profile.md, 5.2), when the
     # run printed a block that rebuilds, in the run record.
     exported = record.pop("log_export", None)

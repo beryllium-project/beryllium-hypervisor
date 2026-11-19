@@ -101,6 +101,14 @@ at its value; and writes STEM.breach.txt, one line per row and the
 verdict line `BE_MVP_BREACH: PASS` or `FAIL`, or the one line
 `BE_MVP_BREACH: FAIL <reason>` when the run cannot be judged.
 
+`judge_board()` judges a boundary-on boot of the board from a card
+(M11-B, planning/mvp-m11-board-addendum.md, B-8) for tests/check-capture.py
+--mode card: no oracle reads the board, so the printed records alone are
+judged, against the declaration, the gate's board.json, the tables' plain
+PMP mode, and the partition authority, and its line claims no reading
+(`witness=printed`; `hook=not-read` for a breach image, whose hook keeps
+its record in memory).
+
 `gate` is the run harness's admission of a boundary-on run's device tree
 (D-3, D-10): the run starts only if the partition checker's record of the
 paired image (tests/check-partition.py --record) passed, names the
@@ -661,6 +669,153 @@ def judge(expect, record, text, tables, mode, authority, symbols,
             f">{states[hart]}" if states[hart] != declared_states[hart]
             else "") for hart in range(3))
     return findings, facts
+
+
+# M11-B: what a board image never declares (no such run is made on the
+# board), so a declaration that names one cannot be judged by judge_board().
+BOARD_REFUSED = ("identity", "phase", "negative", "refusal", "fallthrough")
+
+
+def board_refusal(expect, tables, authority):
+    """Why a boundary-on boot of the board cannot be judged with EXPECT,
+    TABLES, and the partition AUTHORITY, or None: a declaration not of its
+    form or naming what BOARD_REFUSED lists; tables not of their schema,
+    without the plain PMP mode (the board's, B-6), of another step, or
+    without a confined table for a hart declared confined or started; an
+    authority with no row for the declared pair."""
+    try:
+        boundary = declaration(expect)
+    except Refused as error:
+        return str(error)
+    odd = [key for key in BOARD_REFUSED if key in boundary]
+    if odd:
+        return f"the boundary section declares {', '.join(odd)}, which " \
+            f"no board image does"
+    if not isinstance(tables, dict) or tables.get("schema") != TABLE_SCHEMA:
+        return f"the tables are not of schema {TABLE_SCHEMA}"
+    if "plain" not in (tables.get("modes") or {}):
+        return "the tables have no plain PMP mode, the board's (B-6)"
+    if tables.get("control_hart") != boundary["control_hart"]:
+        return f"the tables' control_hart {tables.get('control_hart')!r} " \
+            f"is not the declaration's {boundary['control_hart']!r}"
+    try:
+        for hart, state in boundary["harts"].items():
+            if state in ("confined", "started"):
+                table_of(tables, "plain", int(hart), "confined")
+    except Refused as error:
+        return str(error)
+    except (KeyError, TypeError, AttributeError):
+        return "the tables' plain PMP mode is not of its form"
+    if not authority_rows(authority).get(boundary["pair"]):
+        return f"the partition authority names no {boundary['pair']}"
+    return None
+
+
+def authority_rows(authority):
+    """The partition authority's identities, by image, of its rows that
+    are of their form."""
+    rows = authority.get("descriptors") if isinstance(authority, dict) \
+        else None
+    return {row["image"]: row["identity"] for row in rows or ()
+            if isinstance(row, dict) and isinstance(row.get("image"), str)
+            and isinstance(row.get("identity"), str)}
+
+
+def judge_board(expect, board, text, tables, authority):
+    """(findings, facts) of a boundary-on boot of the board from a card
+    (M11-B, B-8; tests/check-capture.py --mode card), from TEXT, the whole
+    capture, and BOARD, the gate's board.json. No oracle reads the board:
+    what M-mode printed is the only source, and the facts claim no reading.
+    Each record of the control hart and the VS-domain harts by its
+    declared state (C-1's, by the capture's lines, as judge() has it):
+    confined, committed, with its plain PMP confined table's configuration
+    bytes, an address where the entry is not off, menvcfg.CBIE clear, and
+    mseccfg zero; a started hart, those rules where it printed committed;
+    any other, not committed. Each parked hart's, not committed (B-3). Each
+    count the declared sum, zero unless declared. The committed harts the
+    declared ones. The tables the paired image's; board.json's digest, the
+    banner's, and BE_MVP:02's identity the partition authority's of the
+    pair. The records' form, number, and order are the capture checker's
+    (record_block()); a hart with no record of that form is left to it."""
+    why = board_refusal(expect, tables, authority)
+    if why:
+        raise Refused(why)
+    boundary, findings = expect["boundary"], []
+    identity = authority_rows(authority)[boundary["pair"]]
+    digests, shown_lines = printed(text)
+    declared = {int(hart): state for hart, state in boundary["harts"].items()}
+    seen = lifecycle(text)
+    states = effective_states(expect, declared, seen, findings)
+    findings += control_findings(boundary, text, seen)
+    roles = {hart["hartid"]: hart["role"] for hart in board["harts"]}
+    committed, others = set(), {}
+    for hart, role in roles.items():
+        shown = printed_record(shown_lines.get(hart, []))
+        state = "parked" if role == "parked" else states[hart]
+        if role == "parked":
+            kind = "unprinted" if shown is None else "committed" if \
+                shown[0]["committed"] else "uncommitted"
+            others[kind] = others.get(kind, 0) + 1
+        if shown is None:
+            continue
+        fields, cfg, addr = shown
+        what = f"hart {hart} ({state})"
+        committed |= {hart} if fields["committed"] else set()
+        if state == "confined" and not fields["committed"]:
+            findings.append(f"{what}: printed not committed")
+        elif state in ("confined", "started") and fields["committed"]:
+            findings += against_table(f"{what} printed", cfg, addr, table_of(
+                tables, "plain", hart, "confined"))
+            if fields["menvcfg"] & MENVCFG_CBIE:
+                findings.append(f"{what}: the printed menvcfg "
+                                f"0x{fields['menvcfg']:016x} has CBIE set")
+            if fields["mseccfg"]:
+                findings.append(f"{what}: under plain PMP the printed "
+                                f"mseccfg is 0x{fields['mseccfg']:x}, not 0")
+        elif fields["committed"]:
+            findings.append(f"{what}: printed committed")
+        wanted = boundary.get("counts", {}).get(str(hart), {})
+        findings += [f"{what}: {name}={fields[name]} printed, declared "
+                     f"{wanted.get(name, 0)}" for name in COUNTS
+                     if fields[name] != wanted.get(name, 0)]
+    confined = {hart for hart, state in states.items() if state == "confined"}
+    started = {hart for hart, state in states.items() if state == "started"}
+    if not confined <= committed <= confined | started:
+        findings.append(f"committed harts {sorted(committed)}, declared "
+                        f"{sorted(confined)}")
+    if tables.get("descriptor_identity") != identity:
+        findings.append(f"the tables are not the paired image "
+                        f"{boundary['pair']}'s")
+    if board.get("digest") != identity:
+        findings.append(f"board.json's digest {board.get('digest')} is not "
+                        f"the partition authority's identity of "
+                        f"{boundary['pair']}, {identity}")
+    if digests != [identity]:
+        findings.append(f"the banner's digests {digests}, expected "
+                        f"{boundary['pair']}'s {identity}")
+    for line in text.replace("\r", "").split("\n"):
+        match = FIRMWARE_ON.search(line)
+        if match and match.group(1) != "none" and \
+                match.group(1) not in digests:
+            findings.append(f"BE_MVP:02's identity {match.group(1)} is not "
+                            f"the banner's")
+    facts = {"image": expect["image"], "pair": boundary["pair"],
+             "pmp_mode": "plain", "control_hart": boundary["control_hart"],
+             "harts": ",".join(f"{hart}:{declared[hart]}" + (
+                 f">{states[hart]}" if states[hart] != declared[hart]
+                 else "") for hart in range(3)),
+             "others": ",".join(f"{count}:{kind}" for kind, count in
+                                sorted(others.items())) or "none",
+             "witness": "printed", "identity": identity[:12]}
+    # The hook keeps its record in memory, which nothing reads on the board.
+    facts.update({"hook": "not-read"} if "breach" in expect else {})
+    return findings, facts
+
+
+def board_line(findings, facts):
+    """judge_board()'s verdict line, which says what M-mode printed."""
+    return f"BE_MVP_BOUNDARY: {'FAIL' if findings else 'PASS'} " + " ".join(
+        f"{key}={value}" for key, value in facts.items())
 
 
 BREACH_PLAN = "be-mvp-breach-plan-v1"

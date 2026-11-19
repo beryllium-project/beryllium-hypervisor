@@ -1,0 +1,30 @@
+{
+ "schema": "be-mvp-k3-observed-v1",
+ "rom": [
+  "rom: stand-in line 1",
+  "rom: stand-in line 2"
+ ],
+ "firmware": {
+  "priv_version": "v1.12",
+  "base_isa": "rv64imafdch",
+  "isa_extensions": "stand-in,extensions",
+  "pmp_count": "16",
+  "pmp_granularity": "12 bits",
+  "pmp_address_bits": "54",
+  "mhpm_info": "4 (0x00000078)",
+  "debug_triggers": "2 triggers",
+  "devices": {
+   "ipi": "stand-in-ipi",
+   "timer": "stand-in-timer @ 1000000Hz",
+   "console": "stand-in-uart",
+   "hsm": "stand-in-hsm",
+   "pmu": "---",
+   "suspend": "---",
+   "cppc": "---"
+  },
+  "other_lines": []
+ },
+ "uboot": {
+  "memory": "4 GiB"
+ }
+}
