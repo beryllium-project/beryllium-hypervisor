@@ -8,5 +8,5 @@
 # (mvp/k3/firmware.mk); tests/run-qemu.sh checks it before every run of
 # the firmware role board.
 firmware board sha256=f37f95b6ed6fcd66f17804e672b67feda2060814a38dcffb874e8ad929cd7532 bytes=278456
-firmware first sha256=9eb5d284cd92eca0eb4a1f3dfed754fd5e4c46d16cfc5226c1f471c241625160 bytes=278456
-firmware second sha256=a2efbfddc6e7a05801b3de6ea4f8366d323237b8eb24589d9bc1795c8c0671bf bytes=278456
+firmware first sha256=692004f8933e11100ed346e59682e4b067fce1c7de86fdeb68a81663741f6e46 bytes=278456
+firmware second sha256=d81e6f9c56cdb9fe3dd8226afe00a59f654d840f6caeddd17432bb4cd19948e7 bytes=278456

@@ -40,7 +40,9 @@ tools/gen-reference.py reads there.
 
 tree-check compiles both trees with the lock's dtc and decompiles them
 sorted: the tree without reset devices must be the plain base with its
-poweroff and reboot nodes removed and nothing else changed.
+poweroff and reboot nodes removed, its console named intel,xscale-uart,
+then ns16550a, as tools/k3-recipe.py's step 4 names the board's, and
+nothing else changed.
 
 Trust: it reads its inputs, runs dtc on the two trees, and writes only
 OUT or its scratch. Scope: M11-B, B-2's tests. Exit 0 pass, 1 fail or
@@ -67,6 +69,10 @@ ROWS = ("k3-halt", "k3-reset-absent", "k3-halt-fallback", "k3-first",
 LAYOUT = ("_fw_start", "_fw_rw_start", "_fw_end")
 NM_LINE = re.compile(r"([0-9a-f]+) [A-Za-z] (\S+)")
 REMOVED = ("poweroff", "reboot")
+# QEMU's console under soc: its node, its name in the base, and its names
+# in the tree without reset devices.
+CONSOLE = ("\t\tserial@10000000 {", '\t\t\tcompatible = "ns16550a";',
+           '\t\t\tcompatible = "intel,xscale-uart", "ns16550a";')
 CONFINED = {"0": "confined", "1": "confined", "2": "confined"}
 CHANGES = {
     "k3-halt": "the board's firmware configuration (the candidate's with "
@@ -293,9 +299,20 @@ def top_nodes(text):
     return children, rest
 
 
+def console(children):
+    """The index, in soc's lines, of the compatible of QEMU's console."""
+    soc = children.get("soc", [])
+    require(CONSOLE[0] in soc, "the tree has no soc/serial@10000000")
+    start = soc.index(CONSOLE[0])
+    found = [index for index in range(start, soc.index("\t\t};", start))
+             if soc[index].startswith("\t\t\tcompatible = ")]
+    require(len(found) == 1, "the console has not one compatible")
+    return found[0]
+
+
 def tree_check(base, no_reset, dtc, scratch):
     """The number of root children that the tree without reset devices
-    keeps, each the base's."""
+    keeps, each the base's but for the console's names."""
     scratch = new_directory(scratch)
     whole, whole_rest = top_nodes(decompiled(dtc, base, scratch, "base"))
     cut, cut_rest = top_nodes(decompiled(dtc, no_reset, scratch, "no-reset"))
@@ -309,6 +326,12 @@ def tree_check(base, no_reset, dtc, scratch):
     added = sorted(set(cut) - set(whole))
     require(not added, "the tree without reset devices adds " +
             ", ".join(added))
+    at, now = console(whole), console(cut)
+    require(whole["soc"][at] == CONSOLE[1],
+            "the base's console is not named ns16550a alone")
+    require(cut["soc"][now] == CONSOLE[2], "the tree without reset devices "
+            "does not name its console intel,xscale-uart, then ns16550a")
+    whole["soc"][at] = CONSOLE[2]
     changed = sorted(name for name in cut if cut[name] != whole[name])
     require(not changed, "the tree without reset devices changes " +
             ", ".join(changed))
@@ -526,6 +549,9 @@ def self_test(args):
     rule = pathlib.Path(args.no_reset).read_text(encoding="utf-8")
     deleted = "\t/delete-node/ poweroff;\n\t/delete-node/ reboot;\n"
     require(rule.count(deleted) == 1, "the rule's two deletions")
+    names = '"intel,xscale-uart", "ns16550a"'
+    named = "&{/soc/serial@10000000} {\n\tcompatible = " + names + ";\n};\n"
+    require(rule.count(named) == 1, "the rule's console")
     count = iter(range(1000))
 
     def tree_case(text):
@@ -553,7 +579,12 @@ def self_test(args):
              "changes chosen"),
             ("a root property changed",
              rule.replace(deleted, "\tmodel = \"x\";\n" + deleted),
-             "changes the root's properties")):
+             "changes the root's properties"),
+            ("the console named as QEMU's alone", rule.replace(named, ""),
+             "does not name its console"),
+            ("the console's two names swapped", rule.replace(
+                names, '"ns16550a", "intel,xscale-uart"'),
+             "does not name its console")):
         case(f"tree-check: {name}", tree_case(text), wanted)
 
     print(f"{TAG}_SELF_TEST: {'PASS' if not failed else 'FAIL'} "

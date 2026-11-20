@@ -4,10 +4,16 @@
 // QEMU's k3-like tree for plain PMP without the machine's two reset
 // devices (planning/mvp-m11-board-addendum.md, B-2's tests): the base's
 // syscon-poweroff and syscon-reboot nodes are deleted, so that no reset
-// driver of the firmware matches a node of this tree.
+// driver of the firmware matches a node of this tree. Its console is
+// named as tools/k3-recipe.py's step 4 names the board's: intel,xscale-uart,
+// then QEMU's own name, by which the partition backend finds it.
 /include/ "k3-like-pmp.dts"
 
 / {
 	/delete-node/ poweroff;
 	/delete-node/ reboot;
+};
+
+&{/soc/serial@10000000} {
+	compatible = "intel,xscale-uart", "ns16550a";
 };

@@ -130,7 +130,9 @@ tree in `build/mvp/k3/work/firmware/board/`, requires its
 B-2's two tests are rows of `tests/run-qemu.sh` on QEMU's `k3-like`
 machine, with the candidate's `two-guests` image under the tree without
 reset devices (`mvp/partition/base/k3-like-no-reset.dts`, the plain base
-without its `poweroff` and `reboot` nodes): `k3-halt`, under that build,
+without its `poweroff` and `reboot` nodes, and with its console named
+`intel,xscale-uart`, then `ns16550a`, as `tools/k3-recipe.py`'s step 4
+names the board's): `k3-halt`, under that build,
 ends with the commit records and the halt; `k3-reset-absent`, under the
 candidate's pinned binary, which has no such device, fails the monitor's
 first check. A third row, `k3-halt-fallback`, boots `two-guests-off` under

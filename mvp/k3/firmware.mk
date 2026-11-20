@@ -14,7 +14,8 @@ endif
 #                      its pin in k3/firmware-pins.txt, copied into
 #                      k3/check/firmware/board/ for QEMU's rows
 #   k3-firmware-rows   the rows' inputs (qemu-test's): the tree without
-#                      reset devices (partition/base/k3-like-no-reset.dts)
+#                      reset devices (partition/base/k3-like-no-reset.dts),
+#                      its console named as the board's after step 4,
 #                      rendered for two-guests's descriptor and recorded by
 #                      the partition checker for each firmware, board and
 #                      base; the sittings' two forms, the board's
