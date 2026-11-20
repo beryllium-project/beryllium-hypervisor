@@ -1,7 +1,7 @@
 {
   "schema": "be-mvp-k3-platform-v1",
   "platform": "stand-in",
-  "purpose": "A stand-in platform description for the partition backend's board cases and k3-partition-check: the facts of mvp/k3/platform.json's form, for the stand-in step 3 beside it, every value made up.",
+  "purpose": "A stand-in platform description for the partition backend's board cases and k3-partition-check: the facts of mvp/k3/platform.json's form, for the stand-in step 4 beside it, every value made up.",
   "product": {"value": "stand-in-product", "source": "stand-in"},
   "model": {"value": "stand-in board", "source": "stand-in"},
   "cells": {"address": 2, "size": 2, "source": "stand-in"},
@@ -28,7 +28,7 @@
   "devices": {
     "source": "stand-in",
     "list": [
-      {"path": "/soc/serial@30000000", "compatible": "ns16550", "reg": [["0x30000000", "0x100"]], "status": "okay", "kind": "console"},
+      {"path": "/soc/serial@30000000", "compatible": "intel,xscale-uart", "reg": [["0x30000000", "0x100"]], "status": "okay", "kind": "console"},
       {"path": "/soc/timer@31000000", "compatible": "riscv,clint0", "reg": [["0x31000000", "0x10000"]], "status": "okay", "kind": "timer"},
       {"path": "/soc/interrupt-controller@32000000", "compatible": "riscv,aplic", "reg": [["0x32000000", "0x4000"]], "status": "okay", "kind": "interrupt-controller-m"},
       {"path": "/soc/interrupt-controller@33000000", "compatible": "riscv,imsics", "reg": [["0x33000000", "0x10000"]], "status": "okay", "kind": "interrupt-file-m"},

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 James Morris <jmorris@namei.org>
 // A stand-in for the backend's OpenSBI nodes, for tools/k3-recipe.py's
-// self-test: joined to the stand-in board's step 3 and to the stand-in
+// self-test: joined to the stand-in board's step 4 and to the stand-in
 // QEMU tree, with the descriptor's digest (@DIGEST@) and be_park's harts
 // (@PARK@).
 / {

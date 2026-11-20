@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 James Morris <jmorris@namei.org>
-// A stand-in step 3 for the partition backend's board cases and for
+// A stand-in step 4 for the partition backend's board cases and for
 // k3-partition-check: the stand-in board tree of tools/k3-recipe.py's
-// self-test after the recipe's steps 1 to 3, as dtc reads it back, with
+// self-test after the recipe's steps 1 to 4, as dtc reads it back, with
 // 8 GiB of memory, and harts 10 and 11 named by their hex unit address
 // (the others by the hart's number); every value made up.
 /dts-v1/;
@@ -156,6 +156,10 @@
 		boot-hartid = <0x00>;
 	};
 
+	aliases {
+		console = "/soc/serial@30000000";
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <0x02>;
@@ -163,7 +167,7 @@
 		ranges;
 
 		serial@30000000 {
-			compatible = "ns16550";
+			compatible = "intel,xscale-uart", "ns16550";
 			reg = <0x00 0x30000000 0x00 0x100>;
 			reg-shift = <0x02>;
 			reg-io-width = <0x04>;

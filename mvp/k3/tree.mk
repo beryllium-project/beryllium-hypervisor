@@ -9,9 +9,9 @@ endif
 # under fixtures/recipe/ (every value made up), with the lock's dtc.
 #
 # k3-partition-check (tier 1): the backend's board platform (k3-com260) on
-# the stand-in step 3 and description under fixtures/partition/: its own
+# the stand-in step 4 and description under fixtures/partition/: its own
 # board cases; then the candidate's descriptors of anchor, breach-g1, and
-# breach-c rendered onto it, each tree through the recipe's step-4 test and
+# breach-c rendered onto it, each tree through the recipe's tree test and
 # identity comparison against the candidate's QEMU tree, and the tables and
 # root regions from the candidate's firmware ELF, with the boundary-off
 # root regions and tree beside them; D-3's checker (tests/check-partition.py
@@ -23,7 +23,7 @@ K3B_PARTITION := $(PYTHON) -I -B $(MVP_DIR)/tools/partition-backend.py \
 	--platform k3-com260 --dtc $(MVP_TOOL_dtc_command)
 K3B_PARTITION_STAND_IN := \
 	--platform-file $(K3B_DIR)/fixtures/partition/platform.json \
-	--base-dts $(K3B_DIR)/fixtures/partition/step3.dts
+	--base-dts $(K3B_DIR)/fixtures/partition/step4.dts
 K3B_PARTITION_WORK := $(K3B_WORK)/partition
 K3B_PARTITION_IMAGES := anchor breach-g1 breach-c
 K3B_PARTITION_ELF := --firmware-elf $(FIRMWARE_ELF) \
@@ -57,8 +57,8 @@ k3-partition-check: $(FIRMWARE_ELF) $(GEN)/anchor/authority-report.json \
 	rm -rf $(K3B_PARTITION_WORK)
 	mkdir -p $(K3B_RECORDS) $(K3B_PARTITION_WORK)/base
 	$(MVP_TOOL_dtc_command) -I dts -O dtb \
-		-o $(K3B_PARTITION_WORK)/base/step3.dtb \
-		$(K3B_DIR)/fixtures/partition/step3.dts
+		-o $(K3B_PARTITION_WORK)/base/step4.dtb \
+		$(K3B_DIR)/fixtures/partition/step4.dts
 	set -o pipefail; { $(K3B_PARTITION) $(K3B_PARTITION_STAND_IN) \
 		--self-test --descriptor $(GEN)/partition/anchor/anchor.json \
 		--scratch $(K3B_PARTITION_WORK)/self-test && \
@@ -87,9 +87,9 @@ k3-partition-check: $(FIRMWARE_ELF) $(GEN)/anchor/authority-report.json \
 		--image two-guests-off $(K3B_PARTITION_ELF) \
 		--out $(K3B_PARTITION_WORK)/two-guests-off && \
 	$(K3B_RECIPE) tree --dir $(K3B_PARTITION_WORK)/base \
-		--tree $(K3B_PARTITION_WORK)/base/step3.dtb && \
+		--tree $(K3B_PARTITION_WORK)/base/step4.dtb && \
 	$(K3B_CHECKER) $(K3B_PARTITION_STAND_IN) --off --image two-guests-off \
-		--dtb $(K3B_PARTITION_WORK)/base/step3.dtb $(K3B_PARTITION_ELF) \
+		--dtb $(K3B_PARTITION_WORK)/base/step4.dtb $(K3B_PARTITION_ELF) \
 		--root $(K3B_PARTITION_WORK)/two-guests-off/two-guests-off-root.json \
 		--record $(K3B_PARTITION_WORK)/two-guests-off/two-guests-off-check.json && \
 	$(K3B_CHECKER) $(K3B_PARTITION_STAND_IN) $(K3B_ANCHOR) --mutation-test \
@@ -104,14 +104,14 @@ k3-partition-check: $(FIRMWARE_ELF) $(GEN)/anchor/authority-report.json \
 # k3-gate-published and each after the one before, each recorded under
 # record/steps/: k3-gate-recipe, the recipe on the published FIT, twice;
 # k3-gate-platform, the description against the tree, and the tree's
-# devices; k3-gate-tree, each image's tree (step 4 for the three with the
-# boundary on, rendered with their descriptor and tested against the
-# candidate's QEMU tree; step 3 for two-guests-off), and the room left
-# after each; k3-gate-firmware, firmware/build.sh's build of the board's
-# configuration with each tree built in, which holds the tree
+# devices; k3-gate-tree, each image's tree (the descriptor's step for the
+# three with the boundary on, rendered with their descriptor and tested
+# against the candidate's QEMU tree; step 4 for two-guests-off), and the
+# room left after each; k3-gate-firmware, firmware/build.sh's build of the
+# board's configuration with each tree built in, which holds the tree
 # (tools/k3-board.py holds-tree); k3-gate-partition, each image's tables
 # and root regions from its own build, D-3's checker on them and on its
-# own monitor, and the checker's board mutations on the published step 3;
+# own monitor, and the checker's board mutations on the published step 4;
 # k3-gate-breach, the generator's board rules on the tree's devices; and
 # k3-gate-board, each image's board.json, then the announcements. Every
 # output that an image's sitting reads is under images/IMAGE/; the rest
@@ -120,13 +120,13 @@ K3B_GATE_STEPS += k3-gate-recipe k3-gate-platform k3-gate-tree \
 	k3-gate-firmware k3-gate-partition k3-gate-breach k3-gate-board
 K3B_GATE_WORK := $(K3B_GATE)/work
 K3B_GATE_IMAGES := $(K3B_GATE)/images
-K3B_GATE_STEP3 := $(K3B_GATE_WORK)/recipe/step3
+K3B_GATE_STEP4 := $(K3B_GATE_WORK)/recipe/step4
 K3B_GATE_BASE := --platform-file $(K3B_PLATFORM) \
-	--base-dts $(K3B_GATE_STEP3).dts
+	--base-dts $(K3B_GATE_STEP4).dts
 K3B_GATE_ON := anchor k3-breach-g1 k3-breach-c
 k3b_record = | tee $(K3B_GATE)/record/steps/$(1).txt
 # $(1) an image with the boundary on, $(2) its descriptor: its tree on
-# step 3, tested against the candidate's QEMU tree of that descriptor.
+# step 4, tested against the candidate's QEMU tree of that descriptor.
 k3b_tree = $(K3B_PARTITION) $(K3B_GATE_BASE) --board-tree --image $(1) \
 	--descriptor $(GEN)/partition/anchor/$(2).json \
 	--out $(K3B_GATE_IMAGES)/$(1) && \
@@ -183,9 +183,9 @@ k3-gate-tree: k3-gate-platform $(foreach i,$(K3B_GATE_ON),\
 	set -o pipefail; { $(foreach i,$(K3B_GATE_ON),$(call \
 		k3b_tree,$(i),$(patsubst k3-%,%,$(i))) &&) \
 	$(K3B_RECIPE) tree --dir $(K3B_GATE_WORK)/recipe \
-		--tree $(K3B_GATE_STEP3).dtb && \
+		--tree $(K3B_GATE_STEP4).dtb && \
 	mkdir -m 700 $(K3B_GATE_IMAGES)/two-guests-off && \
-	cp $(K3B_GATE_STEP3).dtb \
+	cp $(K3B_GATE_STEP4).dtb \
 		$(K3B_GATE_IMAGES)/two-guests-off/two-guests-off.dtb && \
 	$(K3B_RECIPE) room --dir $(K3B_GATE_WORK)/recipe \
 		--platform $(K3B_PLATFORM) $(foreach \

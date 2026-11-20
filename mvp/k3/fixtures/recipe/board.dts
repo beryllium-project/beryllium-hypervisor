@@ -154,6 +154,10 @@
 		stdout-path = "serial0";
 	};
 
+	aliases {
+		console = "/soc/serial@30000000";
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <0x02>;

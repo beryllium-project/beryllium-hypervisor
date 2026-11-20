@@ -404,7 +404,7 @@ def self_test(scratch, dtc):
 
 def board_cases(case, build, dtc):
     """board on a stand-in build: an image with the boundary on and one
-    with it off, the stand-in step 3 their tree; then each binding of the
+    with it off, the stand-in step 4 their tree; then each binding of the
     record refused."""
     fixtures = HERE.parent / "k3" / "fixtures" / "partition"
     platform = fixtures / "platform.json"
@@ -418,9 +418,9 @@ def board_cases(case, build, dtc):
     here = "k3/gate/images/"
     (build / here).mkdir(parents=True)
     subprocess.run([str(dtc), "-q", "-I", "dts", "-O", "dtb", "-o",
-                    str(build / "step3.dtb"), str(fixtures / "step3.dts")],
+                    str(build / "step4.dtb"), str(fixtures / "step4.dts")],
                    check=True)
-    tree = (build / "step3.dtb").read_bytes()
+    tree = (build / "step4.dtb").read_bytes()
     identity = "ab" * 32
     put("gen/partition/anchor/authority-report.json", {"descriptors": [
         {"image": "pair", "identity": identity}]})

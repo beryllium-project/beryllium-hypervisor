@@ -71,7 +71,7 @@ tools-check: k3-board-check
 k3-breach-images: $(K3B_BREACH_REFERENCES)
 
 # k3-board-check (tier 1): tools/k3-board.py's self-test, on stand-ins,
-# the stand-in step 3 compiled by the lock's dtc.
+# the stand-in step 4 compiled by the lock's dtc.
 k3-board-check:
 	mkdir -p $(K3B_RECORDS) $(K3B_WORK)
 	set -o pipefail; $(K3B_BOARD) --self-test --scratch $(K3B_WORK)/board \

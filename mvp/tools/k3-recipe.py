@@ -14,18 +14,19 @@ U-Boot FIT carries for the board's product, and its tests.
 
 extract copies the FIT into DIR, a new private directory, checks the copy
 against its pin, and takes the tree of the one configuration that
-platform.json's product describes, as the SPL does (step 0). Steps 1 to 3
+platform.json's product describes, as the SPL does (step 0). Steps 1 to 4
 (the SPL's memory node and boot-hartid; the SPI flash's controller
-disabled; the RPMI mailbox and its clients disabled) are each dtc source
-over the step before, compiled and read back by the lock's dtc; each must
-be its input with its own changes made and nothing else, and draw no dtc
-warning that its input does not. --twice makes all again elsewhere and
-requires the same bytes. platform checks platform.json's tree facts and
-writes the tree's devices with their kinds. tree checks a board tree: step
-3 with the descriptor's OpenSBI nodes added, the descriptor's identity, and
-the QEMU tree's OpenSBI domains, but be_park's harts beyond QEMU's; with
-the boundary off, step 3 itself. room checks that each tree, put after
-U-Boot's image, leaves the firmware's fixups 8 KiB.
+disabled; the RPMI mailbox and its clients disabled; the console named so
+that the firmware keeps its unit enable) are each dtc source over the step
+before, compiled and read back by the lock's dtc; each must be its input
+with its own changes made and nothing else, and draw no dtc warning that
+its input does not. --twice makes all again elsewhere and requires the
+same bytes. platform checks platform.json's tree facts, the console's
+names among them, and writes the tree's devices with their kinds. tree
+checks a board tree: step 4 with the descriptor's OpenSBI nodes added, the
+descriptor's identity, and the QEMU tree's OpenSBI domains, but be_park's
+harts beyond QEMU's; with the boundary off, step 4 itself. room checks that
+each tree, put after U-Boot's image, leaves the firmware's fixups 8 KiB.
 
 It shares tools/partition-backend.py's FDT reader and file helpers, loaded
 as a module; tests/check-partition.py shares no code with either. Exit 0
@@ -145,9 +146,12 @@ def bases(fdt, path):
 
 
 def dts(value):
-    """A property's value as dtc source, and as the tree's bytes."""
-    if isinstance(value, str):
-        return f'"{value}"', value.encode() + b"\0"
+    """A property's value as dtc source, and as the tree's bytes: a string,
+    a tuple of strings, or a list of cells."""
+    if isinstance(value, (str, tuple)):
+        texts = (value,) if isinstance(value, str) else value
+        return (", ".join(f'"{text}"' for text in texts),
+                b"".join(text.encode() + b"\0" for text in texts))
     return ("<" + " ".join(f"{cell:#x}" for cell in value) + ">",
             struct.pack(f">{len(value)}I", *value))
 
@@ -244,6 +248,44 @@ def mailbox(fdt, facts):
         box + clients
 
 
+# The console's names, in an order that matters. The board's UART needs
+# bit 6 of its interrupt-enable register, the unit enable, set; the
+# vendor's firmware and U-Boot set it. The firmware base's 8250 driver sets
+# it only for a node that it matches as intel,xscale-uart, and clears it
+# for ns16550; it tries a node's names in order, so intel,xscale-uart comes
+# first. The vendor's U-Boot does not know that name, skips it, and binds
+# its driver by the published name, which therefore follows.
+UNIT_ENABLE = "intel,xscale-uart"
+
+
+def console(fdt, facts):
+    """Step 4: the console's compatible becomes UNIT_ENABLE, then its
+    published name. The node is the one that /aliases/console names, and
+    must be the description's console: enabled, named by the published name
+    alone, with the description's reg, and with a reg-shift and reg-io-width
+    that put its scratch register where the description does."""
+    fact, scratch = facts["root_devices"]["console"], facts["breach"][
+        "console_scratch"]
+    path, published = fact["path"], fact["compatible"]
+    listed = [[[number(base), number(size)] for base, size in row["reg"]]
+              for row in facts["devices"]["list"] if row["path"] == path]
+    require(FDT.prop(fdt, "/aliases", "console", False) ==
+            path.encode() + b"\0",
+            f"STEP4: /aliases/console does not name {path}")
+    require(enabled(fdt, path), f"STEP4: {path} is not enabled")
+    require(FDT.compatible(fdt, path) == [published],
+            f"STEP4: {path}'s compatible is not {published!r} alone")
+    require(listed == [[list(row) for row in FDT.reg(fdt, path)]],
+            f"STEP4: {path}'s reg is not the description's")
+    require(7 << FDT.cell_count(fdt, path, "reg-shift", 0) == number(
+        scratch["offset"]), f"STEP4: {path}'s reg-shift does not put "
+            "register 7 at the description's scratch offset")
+    require(FDT.cell_count(fdt, path, "reg-io-width", 1) == scratch[
+        "width"], f"STEP4: {path}'s reg-io-width is not the description's "
+            "scratch width")
+    return [], {path: {"compatible": (UNIT_ENABLE, published)}}, []
+
+
 def step(out, tool, index, before, rule, facts, previous, extra=""):
     """Step INDEX as dtc source over the step before, compiled, read back,
     and required to be its input with its changes made, and nothing else."""
@@ -293,7 +335,7 @@ def same_files(first, second):
 
 
 def extract(fit, pins, facts, tool, out, twice=None, extra=None):
-    """Steps 0 to 3 into OUT, a new private directory."""
+    """Steps 0 to 4 into OUT, a new private directory."""
     out = FDT.private_directory(out)
     copied = out / FIT_NAME
     FDT.write_new(copied, read_regular(fit))
@@ -314,7 +356,7 @@ def extract(fit, pins, facts, tool, out, twice=None, extra=None):
     lines = [f"fit: PASS configuration={record['configuration']} "
              f"tree={record['tree']} sha256={FDT.sha(copied)}",
              f"step0: PASS sha256={record['step0']}"]
-    for index, rule in enumerate((memory, flash, mailbox), 1):
+    for index, rule in enumerate((memory, flash, mailbox, console), 1):
         before, warned, line = step(out, tool, index, before, rule, facts,
                                     warned, (extra or {}).get(index, ""))
         record[f"step{index}"] = FDT.sha(out / f"step{index}.dtb")
@@ -323,7 +365,7 @@ def extract(fit, pins, facts, tool, out, twice=None, extra=None):
     if twice is not None:
         extract(fit, pins, facts, tool, twice, extra=extra)
         lines.append(f"twice: PASS files={len(same_files(out, twice))}")
-    return lines + [f"{TAG}: PASS extract step3_sha256={record['step3']}"]
+    return lines + [f"{TAG}: PASS extract step4_sha256={record['step4']}"]
 
 
 def devices(fdt):
@@ -346,23 +388,23 @@ def devices(fdt):
 
 
 def platform(facts, work, out):
-    """platform.json's tree facts against steps 0 and 3: (findings, lines);
+    """platform.json's tree facts against steps 0 and 4: (findings, lines);
     with no finding, the tree's devices with their kinds into OUT."""
-    zero, three = (FDT.parse_fdt((work / f"step{index}.dtb").read_bytes())
-                   for index in (0, 3))
+    zero, four = (FDT.parse_fdt((work / f"step{index}.dtb").read_bytes())
+                  for index in (0, 4))
     harts, roots, breach = (facts[key] for key in (
         "harts", "root_devices", "breach"))
     console, imsic, scratch = roots["console"]["path"], breach["imsic_s"], \
         breach["console_scratch"]
     names = {index: set(FDT.strings(FDT.prop(
-        three, path, "riscv,isa-extensions"))) for index, path in
-             cpus(three).items()}
+        four, path, "riscv,isa-extensions"))) for index, path in
+             cpus(four).items()}
     entries = [int.from_bytes(rows["fw_boot_entry"].value, "big")
-               for rows in three.nodes.values() if "fw_boot_entry" in rows]
+               for rows in four.nodes.values() if "fw_boot_entry" in rows]
 
     def found(node, compatible, base):
-        return "reg" in three.nodes.get(node, {}) and compatible in \
-            FDT.compatible(three, node) and number(base) in bases(three, node)
+        return "reg" in four.nodes.get(node, {}) and compatible in \
+            FDT.compatible(four, node) and number(base) in bases(four, node)
 
     def banks(key, tree):
         return [FDT.reg(tree, path) for path in tree.order if
@@ -380,33 +422,36 @@ def platform(facts, work, out):
             "address", "size")] == [facts["cells"][key] for key in (
                 "address", "size")], "CELLS"),
         (banks("tree_memory", zero), "TREE_MEMORY"),
-        (banks("memory", three), "MEMORY"),
+        (banks("memory", four), "MEMORY"),
         (sorted(names) == list(range(harts["count"])), "HARTS: ids"),
         (sorted(index for index, row in names.items() if "h" in row) ==
          harts["hypervisor"], "HARTS: hypervisor"),
         (not [row for row in names.values() if "smepmp" in row],
          "HARTS: smepmp"),
-        ({FDT.prop(three, path, f"riscv,{kind}-block-size", False) for path
-          in cpus(three).values() for kind in ("cbom", "cboz")} ==
+        ({FDT.prop(four, path, f"riscv,{kind}-block-size", False) for path
+          in cpus(four).values() for kind in ("cbom", "cboz")} ==
          {struct.pack(">I", harts["cache_block"])}, "HARTS: cache block"),
         (entries and min(entries) == number(facts["firmware"]["end_max"]),
          "FIRMWARE: end_max"),
         *[(found(row["path"], row["compatible"], row["base"]) and enabled(
-            three, row["path"]), f"ROOT: {name}")
+            four, row["path"]), f"ROOT: {name}")
           for name, row in roots.items() if name != "source"],
+        (FDT.compatible(four, console) == [UNIT_ENABLE, roots["console"][
+            "compatible"]], f"CONSOLE: {console} is not named "
+         f"{UNIT_ENABLE}, then its published name"),
         (number(scratch["offset"]) == 7 << FDT.cell_count(
-            three, console, "reg-shift", 0) and scratch["width"] ==
-         FDT.cell_count(three, console, "reg-io-width", 1),
+            four, console, "reg-shift", 0) and scratch["width"] ==
+         FDT.cell_count(four, console, "reg-io-width", 1),
          "BREACH: console_scratch"),
         (found(imsic["path"], "riscv,imsics", imsic["base"]) and number(
             imsic["stride"]) == 0x1000 << FDT.cell_count(
-                three, imsic["path"], "riscv,guest-index-bits", 0),
+                four, imsic["path"], "riscv,guest-index-bits", 0),
          "BREACH: imsic_s"),
         (breach["timer_width"] == (4 if "clint,has-no-64bit-mmio" in
-                                   three.nodes.get(roots["clint"]["path"],
-                                                   {}) else 8),
+                                   four.nodes.get(roots["clint"]["path"],
+                                                  {}) else 8),
          "BREACH: timer_width")] if not condition]
-    listed = devices(three)
+    listed = devices(four)
     named = {row["path"]: row for row in facts["devices"]["list"]}
     bad += [] if len(named) == len(facts["devices"]["list"]) else [
         "DEVICES: a path named twice"]
@@ -449,25 +494,26 @@ def view(fdt):
 
 
 def tree(work, path, qemu=None, descriptor=None, header=None):
-    """Step 4's test (B-3): a board tree against step 3 and the QEMU tree
-    of the same descriptor; without one, the boundary-off tree."""
-    data, base_data = path.read_bytes(), (work / "step3.dtb").read_bytes()
+    """The test of the descriptor's step (B-3): a board tree against step 4
+    and the QEMU tree of the same descriptor; without one, the boundary-off
+    tree."""
+    data, base_data = path.read_bytes(), (work / "step4.dtb").read_bytes()
     if descriptor is None:
-        require(data == base_data, "TREE: the boundary-off tree is not step 3")
+        require(data == base_data, "TREE: the boundary-off tree is not step 4")
         return [f"{TAG}: PASS tree off sha256={FDT.sha(path)}"]
     base, board = FDT.parse_fdt(base_data), FDT.parse_fdt(data)
     was, now, cpu_nodes = nodes(base), nodes(board), set(cpus(base).values())
     require(set(was) <= set(now) and DOMAINS in now and all(
         node in was or node in (CONFIG, DOMAINS) or node.startswith(
-            DOMAINS + "/") for node in now), "TREE: a node of step 3 gone, "
+            DOMAINS + "/") for node in now), "TREE: a node of step 4 gone, "
             "or one beyond the descriptor's added")
     for node, rows in was.items():
         mine = {name: value for name, value in now[node].items() if name !=
                 "phandle" or node not in cpu_nodes or "phandle" in rows}
-        require(mine == rows, f"TREE: {node} differs from step 3")
+        require(mine == rows, f"TREE: {node} differs from step 4")
     require([node for node in board.order if node in was] == base.order and
             board.reserves == base.reserves,
-            "TREE: step 3's order of nodes or reserve map changed")
+            "TREE: step 4's order of nodes or reserve map changed")
     identity, other = FDT.sha(descriptor), FDT.parse_fdt(qemu.read_bytes())
     require(FDT.prop(board, DOMAINS, "config-digest") == bytes.fromhex(
         identity) == FDT.prop(other, DOMAINS, "config-digest", False),
@@ -540,7 +586,7 @@ def self_test(tool, fixtures, scratch):
         return out
 
     good = published()
-    expect("extract: steps 0 to 3, twice, the same bytes", lambda: extract(
+    expect("extract: steps 0 to 4, twice, the same bytes", lambda: extract(
         good / FIT_NAME, good / "pins.txt", facts, tool, work,
         scratch / "again"))
     for name, old, new, tag in (
@@ -601,7 +647,28 @@ def self_test(tool, fixtures, scratch):
             ("STEP3: mboxes ends inside a specifier", "<0x40 0x01>",
              "<0x40>", "STEP3: /soc/clock@0:mboxes ends"),
             ("STEP3: a mailbox with no #mbox-cells", "#mbox-cells = <0x01>;",
-             "", "STEP3: /soc/mailbox@36000000 has no")):
+             "", "STEP3: /soc/mailbox@36000000 has no"),
+            ("STEP4: no console alias", "\tconsole = ", "\tserial0 = ",
+             "STEP4: /aliases/console does not name"),
+            ("STEP4: the alias names another node",
+             'console = "/soc/serial@30000000"',
+             'console = "/soc/fuse@37000000"',
+             "STEP4: /aliases/console does not name"),
+            ("STEP4: the console disabled", '"ns16550";',
+             '"ns16550";\nstatus = "disabled";',
+             "STEP4: /soc/serial@30000000 is not enabled"),
+            ("STEP4: the console already named so", '"ns16550";',
+             '"intel,xscale-uart", "ns16550";',
+             "STEP4: /soc/serial@30000000's compatible"),
+            ("STEP4: the console named otherwise", '"ns16550";',
+             '"ns16550a";', "STEP4: /soc/serial@30000000's compatible"),
+            ("STEP4: the console's reg", "0x30000000 0x00 0x100>",
+             "0x30000000 0x00 0x200>", "STEP4: /soc/serial@30000000's reg "),
+            ("STEP4: the console's reg-shift", "reg-shift = <0x02>",
+             "reg-shift = <0x00>", "STEP4: /soc/serial@30000000's reg-shift"),
+            ("STEP4: the console's reg-io-width", "reg-io-width = <0x04>",
+             "reg-io-width = <0x01>",
+             "STEP4: /soc/serial@30000000's reg-io-width")):
         expect(name, lambda: extracted(published(
             board=text("board.dts", old, new))), tag)
     for name, key, field, value, tag in (
@@ -717,6 +784,27 @@ def self_test(tool, fixtures, scratch):
         bad = platform(changed, work, scratch / f"devices-{next(runs)}")[0]
         expect(f"platform: {name}", lambda: require(
             len(bad) == 1 and bad[0].startswith(tag), f"{bad}"))
+
+    def named(names):
+        """Steps 0 and 4 of the stand-in, step 4's console named NAMES."""
+        top = FDT.private_directory(scratch / f"named-{next(runs)}")
+        shutil.copyfile(work / "step0.dtb", top / "step0.dtb")
+        (top / "step4.dts").write_text((work / "step4.dts").read_text(
+            encoding="utf-8").replace(
+                'compatible = "intel,xscale-uart", "ns16550";',
+                f"compatible = {names};"), encoding="utf-8")
+        dtc(tool, top / "step4.dts", top / "step4.dtb")
+        return top
+
+    for name, names in (("named as published alone", '"ns16550"'),
+                        ("with its two names in the other order",
+                         '"ns16550", "intel,xscale-uart"')):
+        changed = copy.deepcopy(facts)
+        device(changed, "/soc/serial@30000000").update(compatible="ns16550")
+        bad = platform(changed, named(names),
+                       scratch / f"devices-{next(runs)}")[0]
+        expect(f"platform: the console {name}", lambda: require(
+            len(bad) == 1 and bad[0].startswith("CONSOLE"), f"{bad}"))
     old = 'reg = <0x04>;\n\t\t\triscv,isa-extensions = "'
     bad = platform(facts, extracted(published(board=text(
         "board.dts", old, old + 'smepmp", "'))), scratch / "smepmp")[0]
@@ -742,8 +830,8 @@ def self_test(tool, fixtures, scratch):
         dtc(tool, top / "tree.dts", top / "tree.dtb")
         return top / "tree.dtb"
 
-    step3, park = work / "step3.dts", range(3, 16)
-    board = rendered(step3, park)
+    step4, park = work / "step4.dts", range(3, 16)
+    board = rendered(step4, park)
     qemu = rendered(fixtures / "qemu.dts", range(3, 8))
 
     def tried(path, qemu=qemu, descriptor=fixtures / "descriptor.json",
@@ -754,27 +842,27 @@ def self_test(tool, fixtures, scratch):
     FDT.run([str(tool), "-s", "-I", "dts", "-O", "dtb", "-o", str(sorted_),
              str(board.parent / "tree.dts")])
     reserved = scratch / "reserved.dts"
-    reserved.write_text(step3.read_text(encoding="utf-8").replace(
+    reserved.write_text(step4.read_text(encoding="utf-8").replace(
         "/dts-v1/;\n", "/dts-v1/;\n/memreserve/ 0x80000000 0x1000;\n", 1),
         encoding="utf-8")
 
     for name, action, tag in (
             ("the descriptor's nodes alone", lambda: tried(board), None),
-            ("a node of step 3 gone", lambda: tried(rendered(
-                step3, park, "/ {\n\tchosen {", "/delete-node/ &{/soc/fuse@"
-                "37000000};\n/ {\n\tchosen {")), "TREE: a node of step 3"),
-            ("step 3's order changed", lambda: tried(sorted_),
-             "TREE: step 3's"),
-            ("step 3's reserve map changed", lambda: tried(rendered(
-                reserved, park)), "TREE: step 3's"),
+            ("a node of step 4 gone", lambda: tried(rendered(
+                step4, park, "/ {\n\tchosen {", "/delete-node/ &{/soc/fuse@"
+                "37000000};\n/ {\n\tchosen {")), "TREE: a node of step 4"),
+            ("step 4's order changed", lambda: tried(sorted_),
+             "TREE: step 4's"),
+            ("step 4's reserve map changed", lambda: tried(rendered(
+                reserved, park)), "TREE: step 4's"),
             ("a QEMU tree without be_park", lambda: tried(board, qemu=rendered(
                 fixtures / "qemu.dts", range(3, 8), "be_park {", "x {")),
              "TREE: the QEMU tree has no be_park"),
             ("a node beyond the descriptor's", lambda: tried(rendered(
-                step3, park, "\t\topensbi-domains {",
+                step4, park, "\t\topensbi-domains {",
                 "x {\n};\nopensbi-domains {")), "TREE: a node"),
-            ("a property of step 3 changed", lambda: tried(rendered(
-                step3, park, "\tchosen {", 'chosen {\nstdout-path = "x";')),
+            ("a property of step 4 changed", lambda: tried(rendered(
+                step4, park, "\tchosen {", 'chosen {\nstdout-path = "x";')),
              "TREE: /chosen differs"),
             ("another descriptor", lambda: tried(
                 board, descriptor=fixtures / "platform.json"),
@@ -783,10 +871,10 @@ def self_test(tool, fixtures, scratch):
                 board, header=fixtures / "descriptor.json"),
              "IDENTITY: the identity header"),
             ("be_park without hart 15", lambda: tried(rendered(
-                step3, range(3, 15))), "TREE: the OpenSBI domains"),
+                step4, range(3, 15))), "TREE: the OpenSBI domains"),
             ("a region's access differs", lambda: tried(rendered(
-                step3, park, "0x38>", "0x30>")), "TREE: the OpenSBI domains"),
-            ("boundary off: step 3", lambda: tree(work, work / "step3.dtb"),
+                step4, park, "0x38>", "0x30>")), "TREE: the OpenSBI domains"),
+            ("boundary off: step 4", lambda: tree(work, work / "step4.dtb"),
              None),
             ("boundary off: another tree", lambda: tree(work, board),
              "TREE: the boundary-off")):
