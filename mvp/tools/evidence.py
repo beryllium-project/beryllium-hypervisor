@@ -1690,6 +1690,36 @@ USB_ID = re.compile(r"(?i:\bid_?(?:vendor|product|model)(?:_id)?|"
 READER = re.compile(r"by-id/|\busb-[\w.#=+@:-]*-[0-9]+:[0-9]+")
 CAPTURES_HEAD = ("# Raw serial captures (not in the repository; retained "
                  "privately).\n# run sha256 bytes lines\n")
+# A record made at a commit later than the sitting's (sitting_commits()):
+# under the trees that its making reads, RECORD_WATCHED, only the paths of
+# RECORD_MAY_CHANGE may differ from the sitting's commit. Under mvp/ it
+# reads the form and what the form loads, the tool lock, the scenarios,
+# and the pins; under bringup/, the lock tool's check reads the three files
+# that hold its OpenSBI and U-Boot pins; nothing else of the source is
+# read. The record's tool, tools/evidence.py, is named by source_commit,
+# and its dry run, tests/test-k3-session.sh, is read by no sitting or record.
+RECORD_WATCHED = ("bringup/", "mvp/")
+RECORD_MAY_CHANGE = ("mvp/tests/test-k3-session.sh", "mvp/tools/evidence.py")
+# The bundle's commits= line: what the sitting's tools did, then what the
+# tree that ran this tool did, and, by tool_tree (sitting_tool_tree()), what
+# the record shows of that tree's form: unchanged since the sitting only
+# where that tree is the source, whose watched trees the rule reads.
+SITTING_COMMITS = (
+    "commits=the boots were run and judged at the sitting with the tools of "
+    "sitting_commit (the driver, the console tool, and the form), whose "
+    "records this record copies as the sitting wrote them; this record was "
+    "made with tools/evidence.py of the tree that ran it, which judged each "
+    "boot's capture again with that tree's form; ")
+SITTING_TOOL_TREE = {
+    "source": "that tree is the source, where under the watched trees no "
+              "tracked path differs from sitting_commit but those of "
+              "changed_since_sitting, so that form is the sitting's, byte for "
+              "byte",
+    "other": "that tree is not the source, so the record shows nothing of "
+             "that form beyond its results, which are the sitting's: each "
+             "boot judged again gave the same exit status, output, "
+             "result.json, and log.json"}
+COMMIT_FORM = re.compile(r"[0-9a-f]{40}")
 
 
 def sitting_options(parser):
@@ -1764,11 +1794,55 @@ def sitting_source(source):
         "clean" if not changed else f"dirty changed={changed}"
 
 
+def sitting_commits(source, head, sitting):
+    """([path], count) of the source's working tree against SITTING, the
+    commit that the sitting ran at: the paths under RECORD_WATCHED that
+    differ from it, sorted, and how many differ elsewhere. Refused unless
+    HEAD is SITTING or descends from it, and unless each of those paths is
+    one of RECORD_MAY_CHANGE. The paths are git diff's against SITTING,
+    tracked ones, with no rename detection, which would name a file moved
+    out of the watched trees by its new name alone."""
+    if not COMMIT_FORM.fullmatch(sitting):
+        raise Refused(f"plan.txt's source_commit {sitting!r} is not a "
+                      "commit")
+    environment = clean_environment(GIT_OPTIONAL_LOCKS="0")
+
+    def git(*words):
+        return subprocess.run([GIT, "-C", str(source), *words],
+                              env=environment, stdin=subprocess.DEVNULL,
+                              capture_output=True, text=True, check=False)
+    if git("merge-base", "--is-ancestor", sitting, head).returncode:
+        raise Refused(f"the source's HEAD {head[:12]} is not the sitting's "
+                      f"commit {sitting[:12]} and does not descend from it")
+    changed = git("diff", "--name-only", "-z", "--no-renames", sitting)
+    if changed.returncode:
+        raise Refused("the source's changes since the sitting's commit "
+                      "cannot be listed")
+    paths = sorted(filter(None, changed.stdout.split("\0")))
+    watched = [path for path in paths if path.startswith(RECORD_WATCHED)]
+    for path in watched:
+        if path not in RECORD_MAY_CHANGE:
+            raise Refused(f"{path} differs from the sitting's commit "
+                          f"{sitting[:12]} in the source, and is not a path "
+                          "that a record may change (may_change)")
+    return watched, len(paths) - len(watched)
+
+
+def sitting_tool_tree(source):
+    """(tool_tree, the bundle's commits= line) of a record whose source is
+    SOURCE: source where SOURCE is the tree that runs this tool (REPO), by
+    any path to it, else other."""
+    tree = "source" if source.resolve() == REPO.resolve() else "other"
+    return tree, SITTING_COMMITS + SITTING_TOOL_TREE[tree]
+
+
 def sitting_steps(root, steps, name, plan):
     """[(path, fields)] of each step record in the plan's order, and the
-    sitting's state: closed (end passed) or stopped (its last attempted
-    step stopped). Refused while it is under way, for a record without a
-    verdict or of no step, and if plan.txt is not begin's."""
+    sitting's state, as the driver's order reads it: closed once end's
+    last attempt passed; else stopped at the plan's first step whose last
+    attempt stopped. Refused while it is under way (no step stands stopped,
+    and end has not passed), for a record without a verdict or of no step,
+    and if plan.txt is not begin's."""
     directory, records = root / "sitting" / "steps", []
     for index, step in enumerate(steps, 1):
         for attempt in (1, 2):
@@ -1789,18 +1863,41 @@ def sitting_steps(root, steps, name, plan):
     if not records or records[0][1].get("plan") != \
             f"sitting/plan.txt sha256={file_sha(plan)}":
         raise Refused("sitting/plan.txt is not the one that begin recorded")
-    fields = records[-1][1]
-    if (fields["step"], fields["verdict"]) == ("end", "PASS"):
+    last = {fields["step"]: fields["verdict"] for _, fields in records}
+    if last.get("end") == "PASS":
         return records, "closed"
-    if fields["verdict"].startswith("STOP "):
-        return records, f"stopped step={fields['step']}"
-    raise Refused(f"the sitting is under way: its last step, "
-                  f"{fields['step']}, passed and is not end")
+    stopped = next((step for step in steps
+                    if last.get(step, "").startswith("STOP ")), None)
+    if stopped:
+        return records, f"stopped step={stopped}"
+    raise Refused("the sitting is under way: no step stands stopped, and "
+                  "end has not passed")
+
+
+def sitting_preflights(root, records):
+    """[(when, path or None, bundle line)] of the preflights before and
+    after the sitting: each file where it is; absent only where the step
+    that makes it (preflight, end) did not pass, as in a sitting that
+    stopped before that step; refused otherwise."""
+    last = {fields["step"]: fields["verdict"] for _, fields in records}
+    found = []
+    for when, step in (("before", "preflight"), ("after", "end")):
+        path = root / f"preflight-{when}" / "preflight.txt"
+        if path.is_file():
+            found.append((when, path, f"preflight_{when}=kept"))
+        elif last.get(step) == "PASS":
+            raise Refused(f"preflight-{when}/preflight.txt is missing, and "
+                          f"{step} passed")
+        else:
+            found.append((when, None,
+                          f"preflight_{when}=absent: {step} did not pass"))
+    return found
 
 
 def sitting_readings(root, store):
     """[path] of RUN_ROOT's readings' records, and every MD5 that the store
-    holds of them (digests.tsv): the NOR's ranges, which stay private."""
+    holds of them (digests.tsv, empty for a reading that stopped before its
+    first range): the NOR's ranges, which stay private."""
     paths, digests = sorted((root / "readings").glob("reading-*.txt")), set()
     for path in paths:
         table = store / root.name / "readings" / path.stem / "digests.tsv"
@@ -1819,9 +1916,12 @@ def sitting_readbacks(root, name):
     whose card went in (card-slot.txt): lane C's last finished read-back of
     the image that started after the session's card=out (his said= time),
     the record refused if there is none."""
+    ledger = root / "card-slot.txt"
+    if not ledger.is_file():
+        raise Refused("no card-slot.txt in the run root: begin did not "
+                      "finish")
     slot = [dict(word.split("=", 1) for word in line.split() if "=" in word)
-            for line in (root / "card-slot.txt").read_text(
-                encoding="ascii").splitlines()]
+            for line in ledger.read_text(encoding="ascii").splitlines()]
     rows = []
     for entry in (entry for entry in slot if entry.get("card") == "in"):
         session, image = entry.get("session"), entry.get("image", "")
@@ -1857,10 +1957,16 @@ def sitting_boot(directory, image, inputs, build, observed, scratch):
     """One boot's records, checked: its files its SHA256SUMS's, its inputs
     the plan's of IMAGE by path and SHA-256, and its capture judged again
     whole by the form as the driver judged it (7.4), into SCRATCH. Returns
-    (run.txt's fields, its export or None, what differs)."""
+    (run.txt's fields, its export or None, what differs). A form that ended
+    before its verdict (exit 2 on an input that it could not read, or a
+    crash) wrote no result.json: run.txt alone then names the inputs, and
+    the judgement again must write none."""
+    sums = directory / "SHA256SUMS"
+    if not sums.is_file():
+        raise Refused(f"{directory.name}: its run.txt has no SHA256SUMS: the "
+                      "attempt did not finish")
     listed = {}
-    for line in (directory / "SHA256SUMS").read_text(
-            encoding="ascii").splitlines():
+    for line in sums.read_text(encoding="ascii").splitlines():
         digest, _, file_name = line.partition("  ")
         listed[file_name] = digest
     if listed != {path.name: file_sha(path) for path in directory.iterdir()
@@ -1876,8 +1982,9 @@ def sitting_boot(directory, image, inputs, build, observed, scratch):
                 (build / found.group(1)).resolve() != planned[0].resolve():
             raise Refused(f"{directory.name}: its {key} is not the plan's")
         paths[key] = planned[0]
-    result = json.loads((directory / "result.json").read_text(
-        encoding="utf-8"))
+    result_file = directory / "result.json"
+    result = json.loads(result_file.read_text(encoding="utf-8")) \
+        if result_file.is_file() else None
     want = {"board": inputs[f"{image}.board"][1],
             "memory": fields.get("memory", ""),
             "observed": inputs["observed"][1] if observed else None,
@@ -1888,7 +1995,7 @@ def sitting_boot(directory, image, inputs, build, observed, scratch):
             inputs[f"{image}.board_image"][1] or \
             fields.get("board_json_sha256") != want["board"] or \
             fields.get("observed_sha256") != (want["observed"] or "none") or \
-            result.get("inputs") != want:
+            result is not None and result.get("inputs") != want:
         raise Refused(f"{directory.name}: run.txt or result.json does not "
                       f"name the plan's inputs of {image}")
     argv = [sys.executable, "-I", "-B", str(CHECKER), str(capture),
@@ -1912,9 +2019,10 @@ def sitting_boot(directory, image, inputs, build, observed, scratch):
          optional_bytes(directory / "result.json")),
         ("log.json", optional_bytes(scratch / "log.json"),
          optional_bytes(directory / "log.json"))) if again != recorded]
-    if "reference" not in paths:
+    if result is None or "reference" not in paths:
         if (directory / "log.json").exists():
-            raise Refused(f"{directory.name}: an export, and no reference")
+            raise Refused(f"{directory.name}: an export, and no " + (
+                "result.json" if result is None else "reference"))
         return fields, None, differs
     try:
         run_class = json.loads(paths["reference"].read_text(
@@ -1982,6 +2090,9 @@ def sitting_cards(root, records, readbacks):
                 r"^cited ((?:write|readback)-\S+) sha256=([0-9a-f]{64})$",
                 path.read_text(encoding="utf-8"), re.M):
             cards[name] = root / "card" / name
+            if not cards[name].is_file():
+                raise Refused(f"card/{name}, which {path.name} cited, is "
+                              "missing")
             if file_sha(cards[name]) != digest:
                 raise Refused(f"card/{name} is not the one {path.name} cited")
     return cards
@@ -2051,8 +2162,9 @@ def sitting_lines(records, boots, readings, readbacks, root):
              if word.startswith("stop=")}
     if any(row[3] == "different" for row in readbacks):
         stops.add("B3")
-    resets = [row.split("\t")[3:4] for row in (root / "resets.tsv").read_text(
-        encoding="ascii").splitlines()[1:]]
+    table = root / "resets.tsv"
+    resets = [row.split("\t")[3:4] for row in table.read_text(
+        encoding="ascii").splitlines()[1:]] if table.is_file() else []
     unplanned = root / "readings" / "unplanned.txt"
     lines = [f"steps={len(records)} pass={verdicts.count('PASS')} "
              f"stop={verdicts.count('STOP')}"]
@@ -2086,12 +2198,14 @@ def sitting(args, build, out, home):
     """The record of a sitting (M11-B1; planning/mvp-m11-board-addendum.md,
     "The sittings, and their sessions", B-11): a board record of the run
     root of tools/k3-sitting.py, made once the sitting has closed or
-    stopped, at its commit and before the next gate run (R10).
+    stopped, before the next gate run, at the sitting's commit or at a
+    later one in whose source no tracked path under RECORD_WATCHED differs
+    from it but those of RECORD_MAY_CHANGE (sitting_commits()).
 
     Before it writes, it requires: plan.txt of the sitting --name; the
     build, the gate, the source, the sitting pins, and the observed facts
     given the ones that the sitting ran with; every input that plan.txt
-    names, with its SHA-256; the source's HEAD the plan's commit; each
+    names, with its SHA-256; the source as sitting_commits() requires; each
     step's records, the sitting closed or stopped; each boot's files its
     SHA256SUMS's, its inputs the plan's, and its whole capture judged again
     by the form with them, with the same exit status, output, result.json,
@@ -2108,8 +2222,8 @@ def sitting(args, build, out, home):
     (gate.txt, each board.json's line of the gate's images.sha256),
     sitting/ (plan.txt, steps/, refusals.txt, card-slot.txt, readings/),
     session/ (the console's and the staging's records, env/), the
-    preflights, and cards/ (lane C's records). Never a serial log, the
-    store, board.json, card.json, or a reading's digest.
+    preflights that ran, and cards/ (the card's records). Never a serial
+    log, the store, board.json, card.json, or a reading's digest.
 
     Each path under the build, the source, the run root, the store, or the
     serial log is written from its root (<build>, <source>, <run-root>,
@@ -2136,11 +2250,12 @@ def sitting(args, build, out, home):
     if changed:
         raise Refused("inputs changed since begin: " + " ".join(changed))
     commit, tree = sitting_source(args.source)
-    if commit != fields.get("source_commit"):
-        raise Refused(f"the source's HEAD {commit} is not the sitting's "
-                      f"commit {fields.get('source_commit')}")
+    since, elsewhere = sitting_commits(args.source, commit,
+                                       fields.get("source_commit", ""))
+    tool_tree, commits_line = sitting_tool_tree(args.source)
     records, state = sitting_steps(root, fields.get("steps", "").split(","),
                                    args.name, plan)
+    preflights = sitting_preflights(root, records)
     readings, digests = sitting_readings(root, store)
     readbacks = sitting_readbacks(root, args.name)
     cards = sitting_cards(root, records, readbacks)
@@ -2170,11 +2285,10 @@ def sitting(args, build, out, home):
     try:
         for relative, path in copies:
             writer.copy(relative, path)
-        preflights = [root / f"preflight-{when}" / "preflight.txt"
-                      for when in ("before", "after")]
-        for when, path in zip(("before", "after"), preflights):
-            writer.text(f"mvp/preflight-{when}.txt", b0_sanitize(
-                path.read_bytes().decode("utf-8", "replace"), home))
+        for when, path, _ in preflights:
+            if path is not None:
+                writer.text(f"mvp/preflight-{when}.txt", b0_sanitize(
+                    path.read_bytes().decode("utf-8", "replace"), home))
         captures, references, exports = [], {}, 0
         for directory, image, step, run_txt, export, differs in boots:
             if differs is None:
@@ -2199,7 +2313,8 @@ def sitting(args, build, out, home):
             for name, _, raw in captures))
         writer.text("originals.sha256", "".join(
             f"{file_sha(path)}  {path.relative_to(root)}\n" for path in
-            [path for _, path in copies] + preflights +
+            [path for _, path in copies] +
+            [path for _, path, _ in preflights if path is not None] +
             [capture for _, capture, _ in captures]))
         lock_status = write_tools(writer, "mvp/")
         scenario_lines = write_scenario(writer, scenarios(build), "mvp/")
@@ -2211,11 +2326,17 @@ def sitting(args, build, out, home):
         writer.text("mvp/gate/board-json.sha256", "\n".join(boards) + "\n")
         lines = sitting_lines(records, boots, readings, readbacks, root)
         writer.text("mvp/bundle.txt", "\n".join([
-            *SITTING_HEAD, f"title={args.title}", f"sitting={args.name}",
+            *SITTING_HEAD, f"title={args.title}", commits_line,
+            f"sitting={args.name}",
             f"run_root={root.name}", "launcher=uboot-autoboot-card",
             f"result={state}", f"source_commit={commit}",
-            f"source_tree={tree}",
+            f"source_tree={tree}", f"tool_tree={tool_tree}",
+            f"sitting_commit={fields.get('source_commit')}",
             f"sitting_source_tree={fields.get('source_state')}",
+            "changed_since_sitting=" + (",".join(since) or "none"),
+            f"changed_elsewhere={elsewhere}",
+            "watched=" + ",".join(RECORD_WATCHED),
+            "may_change=" + ",".join(RECORD_MAY_CHANGE),
             f"gate_commit={fields.get('gate_commit')}",
             f"gate_sha256={inputs['gate.txt'][1]}",
             f"sitting_pins_sha256={inputs['sitting-pins'][1]}",
@@ -2226,7 +2347,8 @@ def sitting(args, build, out, home):
             f"lock_check_status={lock_status}",
             f"closure_sha256={file_sha(CLOSURE)}", *scenario_lines,
             f"inputs={len(inputs)}", f"references={len(references)}",
-            f"log_exports={exports}", *lines,
+            f"log_exports={exports}",
+            *[line for _, _, line in preflights], *lines,
             "published=not-compared", "platform_record=none",
             "rom_lines=kept in each boot's check.txt and result.json as the "
             "form wrote them; the owner reads them before this record is "
@@ -3289,24 +3411,41 @@ def sitting_self_test(scratch, case, refused):
     case("an input changed since begin is named",
          sitting_changed(inputs) == ["a.board_image"])
 
-    def step(index, name, verdict, **more):
-        write(root / "sitting" / "steps" / f"{index:02d}-{name}-a1.txt",
+    def step(index, name, verdict, attempt=1, **more):
+        write(root / "sitting" / "steps" /
+              f"{index:02d}-{name}-a{attempt}.txt",
               "".join(f"{key}={value}\n" for key, value in {
-                  "schema": SITTING_STEP, "step": name, "attempt": 1,
+                  "schema": SITTING_STEP, "step": name, "attempt": attempt,
                   "sitting": "first", **more, "verdict": verdict}.items()))
+
+    def state():
+        try:
+            return sitting_steps(root, steps, "first", plan)[1]
+        except Refused as error:
+            return str(error)
 
     steps = fields["steps"].split(",")
     step(1, "begin", "PASS", plan=f"sitting/plan.txt sha256={file_sha(plan)}")
     step(2, "card-in-1", "PASS")
+    states = [state()]
     step(3, "boot-1.1", "STOP stop=B4 the ROM's lines are the NOR's")
-    stopped = sitting_steps(root, steps, "first", plan)[1]
+    states.append(state())
     step(4, "card-out-1", "PASS")
-    under_way = refused(sitting_steps, root, steps, "first", plan)
-    step(5, "end", "PASS")
-    case("a sitting stopped at a boot; under way once card-out-1 passed; "
-         "closed once end passed", stopped == "stopped step=boot-1.1" and
-         "under way" in (under_way or "") and
-         sitting_steps(root, steps, "first", plan)[1] == "closed")
+    states.append(state())
+    step(5, "end", "STOP stop=B2 another preflight")
+    states.append(state())
+    step(5, "end", "PASS", attempt=2)
+    states.append(state())
+    case("a sitting under way until a step stops; then stopped at the "
+         "plan's first step that stopped, card-out-1 passed or a later step "
+         "stopped; closed once end passed", "under way" in states[0] and
+         states[1:4] == ["stopped step=boot-1.1"] * 3 and
+         states[4] == "closed")
+    for name in ("05-end-a1.txt", "05-end-a2.txt"):
+        (root / "sitting" / "steps" / name).unlink()
+    step(3, "boot-1.1", "PASS", attempt=2)
+    case("a step that stopped and was taken up and passed stands stopped no "
+         "longer: under way", "under way" in state())
     write(root / "sitting" / "steps" / "06-x-a1.txt", "x\n")
     stray = refused(sitting_steps, root, steps, "first", plan)
     (root / "sitting" / "steps" / "06-x-a1.txt").unlink()
@@ -3343,6 +3482,10 @@ def sitting_self_test(scratch, case, refused):
     write(root / "card-slot.txt", "card=in session=1 image=a said=x\n")
     case("a card recorded in when the record is made is refused",
          "recorded in" in (refused(sitting_readbacks, root, "first") or ""))
+    (root / "card-slot.txt").unlink()
+    case("a run root without card-slot.txt is refused: begin did not finish",
+         "begin did not finish" in (
+             refused(sitting_readbacks, root, "first") or ""))
     write(root / "readings" / "reading-0.txt", "verdict=PASS\n")
     missing = refused(sitting_readings, root, store)
     write(store / root.name / "readings" / "reading-0" / "digests.tsv",
@@ -3351,6 +3494,61 @@ def sitting_self_test(scratch, case, refused):
          "record; the store's digests are read",
          "store holds no digests" in (missing or "") and
          sitting_readings(root, store)[1] == {"ab" * 16, "cd" * 16})
+    write(root / "readings" / "reading-1.txt", "attempt_utc=x\nverdict=STOP "
+          "stop=1 no reset was made\n")
+    write(store / root.name / "readings" / "reading-1" / "digests.tsv", "")
+    readings, digests = sitting_readings(root, store)
+    lines = sitting_lines([], [], readings, [], root)
+    case("a reading that stopped before its first range: its record kept, "
+         "its STOP in the lines, no digest; no resets.tsv, no reset",
+         [path.name for path in readings] == ["reading-0.txt",
+                                              "reading-1.txt"] and
+         digests == {"ab" * 16, "cd" * 16} and "reading=reading-1 verdict="
+         "STOP stop=1 no reset was made equal=0" in lines and
+         "resets=human=0 k3ctl=0" in lines)
+    write(root / "resets.tsv", "seq\toffset\tutc\tmethod\treason\n"
+          "1\t0\tx\tk3ctl\tfedora-down\n")
+    case("resets.tsv's resets are counted by method",
+         "resets=human=0 k3ctl=1" in sitting_lines([], [], [], [], root))
+    write(scratch / "cited.txt", f"cited write-a-1.txt sha256={'0' * 64}\n")
+    case("a card record that card-in cited, missing, is refused",
+         "card/write-a-1.txt, which cited.txt cited, is missing" in (
+             refused(sitting_cards, root, [(scratch / "cited.txt", {})],
+                     []) or ""))
+
+    def preflights(*verdicts):
+        return [line for _, _, line in sitting_preflights(
+            root, [(None, {"step": step, "verdict": verdict})
+                   for step, verdict in verdicts])]
+    write(root / "preflight-before" / "preflight.txt", "hostname=k3e\n")
+    write(root / "preflight-after" / "preflight.txt", "hostname=k3e\n")
+    kept = preflights(("preflight", "PASS"), ("end", "PASS"))
+    (root / "preflight-after" / "preflight.txt").unlink()
+    stopped = preflights(("preflight", "PASS"), ("end", "STOP stop=2 x"))
+    after = refused(preflights, ("preflight", "PASS"), ("end", "PASS"))
+    (root / "preflight-before" / "preflight.txt").unlink()
+    before = refused(preflights, ("preflight", "PASS"))
+    case("each preflight kept where it ran; absent where its step did not "
+         "pass, as the bundle says; refused where its step passed",
+         kept == ["preflight_before=kept", "preflight_after=kept"] and
+         stopped == ["preflight_before=kept",
+                     "preflight_after=absent: end did not pass"] and
+         preflights(("preflight", "STOP stop=3 x")) == [
+             "preflight_before=absent: preflight did not pass",
+             "preflight_after=absent: end did not pass"] and
+         "preflight-after/preflight.txt is missing, and end passed" in (
+             after or "") and "preflight-before/preflight.txt is missing, "
+         "and preflight passed" in (before or ""))
+    sitting_commits_self_test(scratch / "source", case, refused)
+    (scratch / "tool-tree").symlink_to(REPO)
+    trees = [sitting_tool_tree(path) for path in (
+        REPO, scratch / "tool-tree", scratch / "source")]
+    case("tool_tree: source for the tree that runs the tool, by any path to "
+         "it, else other; only source's commits= line says that the form "
+         "that judged again is the sitting's",
+         [tree for tree, _ in trees] == ["source", "source", "other"] and
+         [line.endswith("so that form is the sitting's, byte for byte")
+          for _, line in trees] == [True, True, False])
     rewrite = sitting_rewriter([(pathlib.Path("/w/build"), "<build>"), (
         pathlib.Path("/w/build/stand/source"), "<source>")], "/h")
     case("each root to its token, the longest first, where a part of the "
@@ -3396,6 +3594,77 @@ def sitting_self_test(scratch, case, refused):
     write_manifest(scratch / "rec")
     case("a sitting's record is a board record by the claim ledger's method",
          ledger.board_record(scratch.resolve(), "rec/MANIFEST.sha256"))
+
+
+def sitting_commits_self_test(repo, case, refused):
+    """sitting_commits() on a repository of its own at REPO: HEAD the
+    sitting's commit, then each kind of later state, each put back."""
+    environment = clean_environment(
+        HOME=str(repo.parent), GIT_CONFIG_NOSYSTEM="1",
+        GIT_OPTIONAL_LOCKS="0", GIT_AUTHOR_NAME="stand-in",
+        GIT_AUTHOR_EMAIL="stand-in@invalid", GIT_COMMITTER_NAME="stand-in",
+        GIT_COMMITTER_EMAIL="stand-in@invalid")
+
+    def git(*words):
+        return subprocess.run([GIT, "-C", str(repo), *words],
+                              env=environment, stdin=subprocess.DEVNULL,
+                              capture_output=True, text=True,
+                              check=True).stdout.strip()
+
+    def commit(message, files=None):
+        for relative, text in (files or {}).items():
+            (repo / relative).parent.mkdir(parents=True, exist_ok=True)
+            (repo / relative).write_text(text, encoding="utf-8")
+        git("add", "-A")
+        git("commit", "-q", "--allow-empty", "-m", message)
+        return git("rev-parse", "HEAD")
+
+    def judged(sitting):
+        head = git("rev-parse", "HEAD")
+        return refused(sitting_commits, repo, head, sitting) or \
+            sitting_commits(repo, head, sitting)
+
+    repo.mkdir(parents=True)
+    git("init", "-q", "-b", "main")
+    first = commit("first", {"mvp/tests/check-capture.py": "form\n"})
+    base = commit("the sitting's", {"mvp/tools/x.py": "x\n"})
+    rows = [("HEAD the sitting's commit", ([], 0), judged(base))]
+    later = commit("later", {"mvp/tools/evidence.py": "e\n",
+                             "planning/page.md": "p\n", "NOTES.md": "n\n"})
+    rows.append(("a later commit that changes the record's tool, a plan's "
+                 "page, and a file at the root",
+                 (["mvp/tools/evidence.py"], 2), judged(base)))
+    for name, relative in (("the MVP's README", "mvp/README.md"),
+                           ("a page of mvp/docs/", "mvp/docs/guide.md"),
+                           ("the form", "mvp/tests/check-capture.py"),
+                           ("the driver", "mvp/tools/k3-sitting.py"),
+                           ("a monitor's header", "mvp/src/x.h"),
+                           ("the oracle", "mvp/tests/qemu_oracle.py"),
+                           ("a file of bringup/", "bringup/k3-b1/Makefile")):
+        commit(name, {relative: "changed\n"})
+        rows.append((f"a later commit that changes {name}",
+                     f"{relative} differs from the sitting's commit",
+                     judged(base)))
+        git("reset", "-q", "--hard", later)
+    git("mv", "mvp/tests/check-capture.py", "planning/check-capture.py")
+    commit("moved")
+    rows.append(("the form moved under planning/",
+                 "mvp/tests/check-capture.py differs", judged(base)))
+    git("reset", "-q", "--hard", later)
+    (repo / "mvp" / "tests" / "check-capture.py").write_text(
+        "edited\n", encoding="utf-8")
+    rows.append(("the form changed and not committed",
+                 "mvp/tests/check-capture.py differs", judged(base)))
+    git("checkout", "-q", "--", "mvp/tests/check-capture.py")
+    git("checkout", "-q", "-b", "side", first)
+    commit("side", {"mvp/tools/y.py": "y\n"})
+    rows.append(("a HEAD that does not descend from the sitting's commit",
+                 "does not descend from it", judged(base)))
+    rows.append(("a source_commit that is not a commit's name",
+                 "is not a commit", judged("main")))
+    case("the later-commit rule: " + "; ".join(name for name, _, _ in rows),
+         [got for _, _, got in rows[:2]] == [want for _, want, _ in rows[:2]]
+         and all(want in got for _, want, got in rows[2:]))
 
 
 def main(argv):

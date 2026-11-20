@@ -32,7 +32,9 @@
 #          17 and 18 (the dongle, an input changed), 20 (the close-out), 25
 #          (the bus), 27 (the end), 28 and 29 (the record of a sitting,
 #          tools/evidence.py --sitting, and the read-back after a session),
-#          and 30 (the fakes). The last line is BE_MVP_K3_SESSION: PASS
+#          33 (the record of a sitting that stopped: the first sitting's
+#          facts, and a sitting that the bus stopped at reading-1), and 30
+#          (the fakes). The last line is BE_MVP_K3_SESSION: PASS
 #          self_test=N cases=M.
 # shellcheck shell=bash disable=SC2154
 
@@ -1441,7 +1443,7 @@ recorded() {
 	local dir=$out/records/${2##*/}
 
 	expect "$1.verify" 0 "$python" -B "$tools/evidence.py" --verify "$dir"
-	[ "$(grep -c '^ok   boot-.*: recorded PASS, judged again: exit 0, the same output, result.json, and log.json$' "$out/$1.record.txt")" = \
+	[ "$(grep -cE '^ok   boot-.*: recorded (PASS|STOP), judged again: exit [01], the same output, result\.json, and log\.json$' "$out/$1.record.txt")" = \
 		"$(find "$2/boots" -name run.txt | wc -l)" ] ||
 		fail "$1: a boot not judged again"
 	"$python" -B - "$tools" "$dir" "$out/store/${2##*/}" <<'EOF' || fail "$1: the record is no board record by the ledger's method, or holds what it may not"
@@ -1787,21 +1789,45 @@ case_record() {
 		make_record "record-$name" 1 "$copy" first
 		refused_record "$name" "finding mvp/sitting/refusals.txt: $why"
 	done
-	# S5-1: the source one commit past the sitting's (then put back).
+	# The source one commit past the sitting's that changes the record's
+	# tool and a plan's page: the record made, naming both commits, the
+	# tool, and one path elsewhere. Then a later commit that changes the
+	# driver: refused. The source is put back after each.
 	copy=$(copy head)
 	name=$(source_git "$stand/source" rev-parse HEAD)
-	source_git "$stand/source" commit -q --allow-empty -m later
+	mkdir -p -- "$stand/source/planning"
+	printf 'a page\n' >"$stand/source/planning/page.md"
+	printf 'a later tool\n' >"$stand/source/mvp/tools/evidence.py"
+	source_git "$stand/source" add planning/page.md mvp/tools/evidence.py
+	source_git "$stand/source" commit -q -m later
 	text=$(source_git "$stand/source" rev-parse HEAD)
-	make_record record-head 1 "$copy" first
-	source_git "$stand/source" update-ref refs/heads/main "$name"
-	refused_record head "the source's HEAD $text is not the sitting's commit $name"
+	make_record record-head 0 "$copy" first
+	source_git "$stand/source" reset -q --hard "$name"
+	has "$out/records/session-record-head/mvp/bundle.txt" \
+		"source_commit=$text" "sitting_commit=$name" \
+		changed_since_sitting=mvp/tools/evidence.py changed_elsewhere=1 \
+		watched=bringup/,mvp/ may_change=mvp/tests/test-k3-session.sh,mvp/tools/evidence.py
+	copy=$(copy driver)
+	printf 'a changed driver\n' >"$stand/source/mvp/tools/k3-sitting.py"
+	source_git "$stand/source" add mvp/tools/k3-sitting.py
+	source_git "$stand/source" commit -q -m driver
+	make_record record-driver 1 "$copy" first
+	source_git "$stand/source" reset -q --hard "$name"
+	refused_record driver "mvp/tools/k3-sitting.py differs from the sitting's commit ${name:0:12} in the source"
+	# A passing boot's result.json and export gone, with their lines of
+	# SHA256SUMS: judged again, the form writes both, so it is refused.
+	copy=$(copy result)
+	rm -f -- "$copy/boots/boot-1.1-a1/result.json" "$copy/boots/boot-1.1-a1/log.json"
+	sed -i '/  \(result\|log\)\.json$/d' -- "$copy/boots/boot-1.1-a1/SHA256SUMS"
+	make_record record-result 1 "$copy" first
+	refused_record result 'FAIL boot-1.1-a1 two-guests-off: recorded PASS, judged again, result.json'
 	# S5-2: one byte of a boot's load.txt changed after the boot, and not
 	# its line of SHA256SUMS, which nothing else of the record compares.
 	copy=$(copy sums)
 	sed -i '1s/^./X/' -- "$copy/boots/boot-1.1-a1/load.txt"
 	make_record record-sums 1 "$copy" first
 	refused_record sums 'boot-1.1-a1: its files are not its SHA256SUMS'
-	pass sitting-record "case 1's and case 2's records (cases 1 and 2); refused, and no record left: a digest of a range of the NOR in a step record; a capture changed with its SHA256SUMS (judged again, not the same); board.json, and the second sitting's observed.json, changed; a sitting on stand-ins with the recipe's paths, by the tool and by ./mvp/mvp; a path of the checkout outside the sitting's roots, the workstation's host name, a USB ID, the reader's link; the source one commit past the sitting's (S5-1); one byte of a boot's load.txt, its SHA256SUMS unchanged (S5-2)"
+	pass sitting-record "case 1's and case 2's records (cases 1 and 2); the record made at a later commit that changes the record's tool and a plan's page, naming both commits, the tool, and one path elsewhere; refused, and no record left: a digest of a range of the NOR in a step record; a capture changed with its SHA256SUMS (judged again, not the same); board.json, and the second sitting's observed.json, changed; a sitting on stand-ins with the recipe's paths, by the tool and by ./mvp/mvp; a path of the checkout outside the sitting's roots, the workstation's host name, a USB ID, the reader's link; a later commit that changes the driver; a passing boot's result.json and export gone; one byte of a boot's load.txt, its SHA256SUMS unchanged"
 }
 
 # ------------------------------------- 29: the read-back after a session
@@ -1823,6 +1849,79 @@ case_readback() {
 	has "$out/records/session-record-failed-readback/mvp/bundle.txt" stops=B3 \
 		'readback=1 image=two-guests-off record=readback-two-guests-off-2.txt verdict=different'
 	pass sitting-readback "no read-back after card-out-1, and one that started before his card=out time: the record refused; one that failed: the record made, different, stops=B3"
+}
+
+# ------------------------- 33: the record of a sitting that stopped
+# The first sitting's facts: begin to card-in-1 passed; boot-1.1's banners
+# began and did not finish (the boot ROM's lines of a boot from a card,
+# the SPL's banner and two lines of its own, then nothing), outcome
+# no-banners, the form's exit 1; card-out-1; then reading-1, whose reset
+# the port-open rule refused, so that it stopped with no reset made and
+# an empty digests.tsv in the store; no end and no preflight after. The
+# record of that run root, and of a copy of it made before reading-1 (a
+# sitting stopped at a boot, the card out and read back). Then a sitting
+# whose three boots passed and whose reading-1 the bus stopped before its
+# reading began: its record, stopped at reading-1, with no reading-1.
+case_stopped_record() {
+	local early=$out/session-record-stopped-boot store record boot
+	k2_sitting stopped first
+	store=$out/store/${root##*/} record=$out/records/${root##*/}
+	card_records "$root" two-guests-off
+	insert two-guests-off "$(derived first-sitting -e '/^spl: a stand-in line$/{s//DDR Part Number: stand-in, Size: 0MB, Data Rate: 0MT\/s\nDDR training consume 0ms/;q}')"
+	sit card-in-1 0 card-in-1
+	sit boot-1.1 1 boot-1.1 K3_CARD_BOOT_SECONDS=2
+	has "$root/boots/boot-1.1-a1/run.txt" outcome=no-banners check_status=1 verdict=STOP
+	rm -- "$FAKE_K3_BOARD/card.json"
+	sit card-out-1 0 card-out-1
+	read_back "$root" two-guests-off
+	printf 'insertion=new\n' >>"$root/card/readback-two-guests-off-2.txt"
+	cp -a -- "$root" "$early"
+	cp -a -- "$store" "$out/store/${early##*/}"
+	make_record stopped-boot.record 0 "$early" first
+	recorded stopped-boot "$early"
+	has "$out/records/${early##*/}/mvp/bundle.txt" 'result=stopped step=boot-1.1' \
+		preflight_before=kept 'preflight_after=absent: end did not pass'
+	sit reading-1 1 reading-1
+	grep -q '^BE_MVP_K3_SITTING: STOP step=reading-1 attempt=1 stop=1 k3-console.sh reset stopped (exit 1): the port-open rule holds no reason to reset now ' \
+		"$out/stopped.reading-1.txt" || fail "stopped-record: reading-1's reset not refused: $(tail -n 1 "$out/stopped.reading-1.txt")"
+	[ "$(tail -n +2 -- "$root/resets.tsv" | cut -f5 | tr '\n' ' ')" = 'fedora-down idle-prompt ' ] &&
+		[ -f "$store/readings/reading-1/digests.tsv" ] && [ ! -s "$store/readings/reading-1/digests.tsv" ] &&
+		[ "$(grep -c . -- "$store/readings/reading-0/digests.tsv")" = 6 ] &&
+		[ ! -e "$root/preflight-after" ] && [ ! -e "$root/sitting/steps/${index[first:end]}-end-a1.txt" ] ||
+		fail "stopped-record: not the first sitting's resets, digests, and missing end"
+	make_record stopped.record 0 "$root" first
+	recorded stopped "$root"
+	has "$record/mvp/bundle.txt" 'result=stopped step=boot-1.1' 'steps=8 pass=6 stop=2' \
+		preflight_before=kept 'preflight_after=absent: end did not pass' \
+		'resets=human=0 k3ctl=2' 'stops=1 B3' changed_since_sitting=none changed_elsewhere=0 tool_tree=other \
+		'boot=boot-1.1-a1 image=two-guests-off outcome=no-banners check=1 stops=B3,B5 usb=clean verdict=STOP judged=again excerpt=none'
+	grep -q '^reading=reading-1 verdict=STOP stop=1 k3-console.sh reset stopped (exit 1): .* equal=0$' "$record/mvp/bundle.txt" &&
+		grep -q '^commits=the boots were run and judged at the sitting with the tools of sitting_commit .*; that tree is not the source, so the record shows nothing of that form beyond its results, ' "$record/mvp/bundle.txt" &&
+		grep -q '^attempt_utc=' "$record/mvp/sitting/readings/reading-1.txt" &&
+		grep -q '^verdict=STOP stop=1 ' "$record/mvp/sitting/readings/reading-1.txt" &&
+		[ ! -e "$record/mvp/preflight-after.txt" ] && [ -f "$record/mvp/preflight-before.txt" ] ||
+		fail "stopped-record: the record's line of its commits, its reading-1, or its preflights"
+	k2_sitting stopped-bus first
+	card_records "$root" two-guests-off
+	insert two-guests-off
+	sit card-in-1 0 card-in-1
+	for boot in 1 2 3; do
+		sit "boot-1.$boot" 0 "boot-1.$boot"
+	done
+	rm -- "$FAKE_K3_BOARD/card.json"
+	sit card-out-1 0 card-out-1
+	read_back "$root" two-guests-off
+	sit reading-1 1 reading-1 usb=fastboot
+	grep -qF 'STOP step=reading-1 attempt=1 stop=j a fastboot interface' "$out/stopped-bus.reading-1.txt" &&
+		[ ! -e "$root/readings/reading-1.txt" ] && [ ! -e "$out/store/${root##*/}/readings/reading-1" ] ||
+		fail "stopped-record: reading-1 not stopped by the bus before its reading began"
+	make_record stopped-bus.record 0 "$root" first
+	recorded stopped-bus "$root"
+	has "$out/records/${root##*/}/mvp/bundle.txt" 'result=stopped step=reading-1' 'steps=10 pass=9 stop=1' \
+		preflight_before=kept 'preflight_after=absent: end did not pass' stops=j
+	! grep -q '^reading=reading-1 ' "$out/records/${root##*/}/mvp/bundle.txt" ||
+		fail "stopped-record: a line of a reading-1 that never began"
+	pass sitting-stopped-record "the first sitting's facts (its banners begun and not finished, outcome no-banners, the form's exit 1; card-out-1; reading-1 refused its reset, stop 1, an empty digests.tsv; no end): its record, result=stopped step=boot-1.1, reading-1's record and STOP kept with no digest, preflight_after absent, and resets fedora-down and idle-prompt; the record before reading-1, the card out and read back; and a sitting whose three boots passed, stopped by a fastboot interface at reading-1 before its reading began: its record, result=stopped step=reading-1, stops=j, no reading-1 line"
 }
 
 # ---------------------------------------------- 30: the sittings' fakes
@@ -1877,6 +1976,7 @@ case_usb
 case_end
 case_record
 case_readback
+case_stopped_record
 case_fakes
-cases=27
+cases=28
 printf 'BE_MVP_K3_SESSION: PASS self_test=%s cases=%s\n' "$self_test" "$cases"
