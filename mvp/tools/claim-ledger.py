@@ -18,7 +18,9 @@ one line per check, then BE_MVP_CLAIM_LEDGER: PASS|FAIL: the schema, exactly,
 with the fixed method vocabulary and claim.md's review items; the methods
 (`not run` alone and without evidence, none naming "verified", "hardware
 validation", or "formal verification"); each artifact a regular file with its
-stated SHA-256, a cited MANIFEST.sha256's record verified against it; each
+stated SHA-256, a cited MANIFEST.sha256's record verified against it, and
+a sitting's record (record=sitting) made by its source's own tool (its
+bundle's tool_tree=source); each
 named commit a commit, skipped, saying so, with --no-git, where git finds
 no repository (the evaluator mounts a linked worktree without one), in a
 fresh-history snapshot of another repository, which SNAPSHOT.txt at the
@@ -185,6 +187,8 @@ FIRMWARE_COMMIT = re.compile(r"^MVP_FIRMWARE_COMMIT :=[ \t]*(\S+)[ \t]*$",
                              re.M)
 SHALLOW = ("a shallow clone: the commit that has the candidate's tree may be "
            "absent (fetch the history to check it)")
+SITTING_TOOL = ("a sitting's record that its source's own tool did not make "
+                "(its bundle does not say tool_tree=source)")
 
 
 class Skip(Exception):
@@ -395,6 +399,20 @@ def repository_file(repo, relative):
     return path
 
 
+def sitting_tool(repo, relative):
+    """[a finding] where RELATIVE, a cited MANIFEST.sha256 of REPO, is a
+    sitting's record (record=sitting in its bundle) that its source's own
+    tool did not make: its bundle does not say tool_tree=source
+    (tools/evidence.py, sitting_tool_tree()). The reading of a record's
+    form, board_record(), takes any; a row cites only such a record."""
+    bundle = repository_file(repo, relative[:-len("MANIFEST.sha256")] +
+                             "mvp/bundle.txt")
+    lines = bundle.read_text(encoding="utf-8", errors="replace").splitlines(
+    ) if bundle else []
+    return [SITTING_TOOL] if "record=sitting" in lines and \
+        "tool_tree=source" not in lines else []
+
+
 def check_evidence(context):
     repo, out, count, records = context["repo"].resolve(), [], 0, {}
     for row in context["data"]["claims"]:
@@ -415,7 +433,8 @@ def check_evidence(context):
                            f"{entry['sha256']}")
             if path.name == "MANIFEST.sha256":
                 if path.parent not in records:
-                    records[path.parent] = evidence_tool().verify(path.parent)
+                    records[path.parent] = evidence_tool().verify(
+                        path.parent) + sitting_tool(repo, relative)
                 out += [f"{where}: {relative}: {finding}"
                         for finding in records[path.parent]]
     return out, f"artifacts={count} records={len(records)}"
@@ -1541,9 +1560,11 @@ def candidate_direct_cases(scratch, record):
     """The second set's cases that call one check alone: its tree's, in a
     scratch repository whose line is a first commit and its child (HEAD),
     with a side branch from the first, and in a shallow clone of that line;
-    and a cited gates' record whose rc.txt names the set's tree. [(name, the
-    outcome wanted, the outcome, findings, detail, the detail wanted or
-    None)], a skip's detail its reason in parentheses, as check prints it."""
+    a cited gates' record whose rc.txt names the set's tree; and board
+    records made here, each cited alone (the evidence check alone).
+    [(name, the outcome wanted, the outcome, findings, detail, the detail
+    wanted or None)], a skip's detail its reason in parentheses, as check
+    prints it."""
     line = scratch / "line"
     line.mkdir()
     git(line, "-c", "init.defaultBranch=main", "init", "-q")
@@ -1595,6 +1616,32 @@ def candidate_direct_cases(scratch, record):
                             "claims": [{"id": "M11-C01",
                                         "methods": ["emulation"],
                                         "evidence": [entry]}]}}}), None))
+    # A board record of its own, cited alone, each its bundle's lines and
+    # its manifest: a sitting's made by another tree's tool, or naming no
+    # tree, fails by the rule alone; the source's own, or a record of no
+    # sitting, passes.
+    head = [f"schema={evidence_tool().SCHEMA}", "kind=board"]
+    for name, wanted, lines in (
+            ("sitting-other", "FAIL", ["record=sitting", "tool_tree=other"]),
+            ("sitting-none", "FAIL", ["record=sitting"]),
+            ("sitting-source", "PASS", ["record=sitting", "tool_tree=source"]),
+            ("campaign-other", "PASS", ["tool_tree=other"])):
+        directory = scratch / "records" / name
+        (directory / "mvp").mkdir(parents=True)
+        (directory / "mvp" / "bundle.txt").write_text(
+            "\n".join(head + lines) + "\n", encoding="utf-8")
+        evidence_tool().write_manifest(directory)
+        cited = {"path": f"{name}/MANIFEST.sha256",
+                 "sha256": file_sha(directory / "MANIFEST.sha256")}
+        outcome, findings, detail = run(check_evidence, {
+            "repo": scratch / "records", "data": {"claims": [{
+                "id": "M11-C08", "evidence": [cited]}]}})
+        alone = findings == [f"M11-C08 evidence 1: {cited['path']}: "
+                             f"{SITTING_TOOL}"]
+        out.append((f"a cited board record, its bundle {' '.join(lines)}",
+                    wanted, outcome if alone or not findings else
+                    "FAIL by another finding", findings, detail, None if
+                    findings else "artifacts=1 records=1"))
     return out
 
 

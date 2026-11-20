@@ -132,10 +132,18 @@ MVPINIT or kernel timestamp after its start); the last line is whole.
           by its SHA-256). --observed, required in the second sitting,
           holds the ROM's lines, the banner's hardware facts and other
           lines, and the memory to the first sitting's. A finding names
-          its stop (CARD_STOPS; else the sitting's, B5 or B6); result.json
+          its stop (CARD_STOPS; else the sitting's, B5 or B6), and the
+          earliest stage that the boot did not reach names its own: the
+          boot ROM's lines a boot from the NOR's, or no SPL banner (B4);
+          then no firmware banner, then no U-Boot banner (the sitting's);
+          a later stage's line that is absent names none, and a line of
+          U-Boot's names its own only where U-Boot went on past its place
+          (a later line of its list, or its autoboot line, after its
+          banner). result.json
           adds observed, card (the banner as printed, the notes, the
-          boundary's line, and the stops, a list, as the last line's
-          stops= has them), and inputs. Any finding is a FAIL and exit
+          boundary's line, and the stops, a list, that stage's first and
+          then the others by number, as the last line's stops= has them),
+          and inputs. Any finding is a FAIL and exit
           status 1: a caller decides by the exit status, and names the
           stop from card.stops; exit 2 is an input refused, named on
           standard error, with no result.json. No capture is a refusal:
@@ -1601,14 +1609,17 @@ def card_build(value, board, find):
                  f"{what} (B-6)")
 
 
-def card_uboot(texts, start, board, memory, find):
+def card_uboot(texts, start, board, memory, find, banner):
     """U-Boot's lines after its banner at START: once each, its DRAM line
     (MEMORY), its environment's (the card's MMC, OK), its product name's
     (board.json's), the training record's save, then the no-device line, the
     power chip's (its flag not the download mode's), and the no-partition
-    line. ({name: index}, {the DRAM size, the device's name, the power chip's
-    value, the MAC addresses' count})."""
-    found = {}
+    line. A line counted zero times names a stop of its own only where
+    U-Boot went on past its place: after U-Boot's BANNER, a later line of
+    this list, or U-Boot's autoboot line; else, as without the banner, it
+    names none. ({name: index}, {the DRAM size, the product name, the
+    device's name, the power chip's value, the MAC addresses' count})."""
+    found, counted = {}, []
     for name, pattern in (("DRAM:", CARD_DRAM),
                           ("Loading Environment from", CARD_ENVIRONMENT),
                           ("TLV item: product_name", CARD_PRODUCT),
@@ -1618,9 +1629,13 @@ def card_uboot(texts, start, board, memory, find):
                           ("read PMIC reg 0xab", CARD_PMIC),
                           ("NO partition bootfs in card",
                            CARD_NO_PARTITION)):
-        hits = [(index, match) for index, text in enumerate(
+        counted.append((name, [(index, match) for index, text in enumerate(
             texts[start:], start) for match in [pattern.fullmatch(text)]
-                if match]
+                               if match]))
+    autoboot = any(map(UBOOT_AUTOBOOT.fullmatch, texts[start:]))
+    for number, (name, hits) in enumerate(counted):
+        past = banner and (autoboot or any(
+            later for _, later in counted[number + 1:]))
         if len(hits) == 1:
             found[name] = hits[0]
         elif name == "Could not find a valid device for" and \
@@ -1629,8 +1644,8 @@ def card_uboot(texts, start, board, memory, find):
                  "without its line that no valid flash device was found")
         else:
             find({"Loading Environment from": "environment-source"}.get(
-                name, "uboot"), f"{len(hits)} {name!r} lines after U-Boot's "
-                 f"banner, expected 1")
+                name, "uboot") if hits or past else "uboot", f"{len(hits)} "
+                 f"{name!r} lines after U-Boot's banner, expected 1")
     size = found["DRAM:"][1].group(1) if "DRAM:" in found else None
     if size is not None and size != memory:
         find("uboot", f"U-Boot's memory {size!r} is not the sitting's "
@@ -1667,7 +1682,8 @@ def card_uboot(texts, start, board, memory, find):
     macs = [match.group(1) for match in map(CARD_MAC.fullmatch, texts[start:])
             if match]
     return ({name: index for name, (index, _) in found.items()}, {
-        "memory": size, "no_flash_device": device[1].group(1) if device else
+        "memory": size, "product": product[1].group(1) if product else None,
+        "no_flash_device": device[1].group(1) if device else
         None, "pmic": f"0x{pmic[1].group(1)}" if pmic else None,
         "mac_addresses": ",".join(macs) or None, "environment_lines":
         None if loaded is None else str(loaded)})
@@ -1677,16 +1693,20 @@ def card_facts(capture, options, findings, facts):
     """The card mode (M11-B, B-8): (the banner's boot hart, U-Boot's device
     tree, which the shim must report). facts["card"] keeps, for evaluate()
     and main(): the observed facts (mvp/k3/observed.json's form), the
-    banner's lines as printed, the notes, and each finding that names its
-    stop (CARD_STOPS)."""
+    banner's lines as printed, the notes, each finding that names its stop
+    (CARD_STOPS), and first, the stop of the earliest stage that the boot
+    did not reach: the boot ROM took the NOR, or no SPL banner (B4); no
+    firmware banner; no U-Boot banner (the sitting's). That stage's finding
+    names it; a later stage's line that is absent names no stop of its
+    own."""
     board, memory = options["card_board"], options["card_memory"]
     reference = options.get("card_observed")
     card = {"sitting": board["sitting"], "tagged": [], "notes": [],
             "banner": []}
     facts.update(launcher_mode="card", card=card)
 
-    def find(rule, text):
-        stop = CARD_STOPS.get(rule)
+    def find(rule, text, stop=None):
+        stop = stop or CARD_STOPS.get(rule)
         findings.append(f"{text} (stop {stop})" if stop else text)
         card["tagged"] += [(findings[-1], stop)] if stop else []
     lines = capture.loader
@@ -1695,6 +1715,12 @@ def card_facts(capture, options, findings, facts):
         index for index, text in enumerate(texts) if pattern.fullmatch(text)]
         for pattern in (SPL_BANNER, CARD_FIRMWARE, UBOOT_BANNER,
                         UBOOT_AUTOBOOT))
+    loader = "\n".join(lines)
+    rom, medium = rom_lines(loader), boot_medium(loader)
+    stage = "nor" if medium == "nor" else "spl" if not spl else \
+        "banner" if not firmware else "uboot" if not uboot else None
+    card["first"] = stage and CARD_STOPS.get(stage,
+                                             CARD_SITTINGS[board["sitting"]])
     # A second SPL or firmware banner is a second boot from reset in one
     # capture: stop B3's "a boot that the session did not plan". A second
     # U-Boot banner alone is not one (U-Boot's version command prints it).
@@ -1705,9 +1731,7 @@ def card_facts(capture, options, findings, facts):
                               ("uboot", "U-Boot banner", uboot)):
         if len(hits) != 1:
             find(rule, f"{len(hits)} {label} lines before the markers, "
-                 f"expected 1")
-    loader = "\n".join(lines)
-    rom, medium = rom_lines(loader), boot_medium(loader)
+                 f"expected 1", card["first"] if rule == stage else None)
     if spl and medium == "none":
         find("rom", "no boot ROM line before the SPL banner")
     if medium == "nor":
@@ -1743,7 +1767,7 @@ def card_facts(capture, options, findings, facts):
     card["notes"] = [f"line {index + 1}: {text!r} inside the firmware's "
                      f"banner" for index, text in other]
     indexes, read = card_uboot(texts, uboot[0] + 1 if uboot else 0, board,
-                               memory, find)
+                               memory, find, bool(uboot))
     for number, text in enumerate(texts, 1):
         for rule, what, pattern in CARD_REFUSED:
             if pattern.search(text):
@@ -1774,8 +1798,8 @@ def card_facts(capture, options, findings, facts):
     card["facts"] = dict(
         sitting=board["sitting"], rom_lines=str(len(rom)),
         rom_sha256=hashlib.sha256("\n".join(rom).encode()).hexdigest()[:12],
-        memory=read["memory"] or "none", product=board["product_name"],
-        harts=str(len(board["harts"])), **{
+        memory=read["memory"] or "none", product=read["product"] or "none",
+        harts=value("Platform HART Count") or "none", **{
             key: firmware_facts[key] or "none" for key in CARD_HARDWARE
             if key.startswith(("pmp", "priv"))},
         digest=(digest or "none")[:12], parked=parked,
@@ -3993,7 +4017,8 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
         out.update(log=log_record, log_declared=declared,
                    log_export=exported)
     # The card mode's (M11-B): its stops, each tagged finding's, and
-    # the sitting's for any other finding.
+    # the sitting's for any other finding; the earliest stage's that the
+    # boot did not reach first (card_facts()), then the others by number.
     if card is not None:
         tagged = dict(card["tagged"])
         named = {tagged.get(finding, CARD_SITTINGS[card["sitting"]])
@@ -4002,7 +4027,8 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
             "sitting": card["sitting"], "facts": card["facts"],
             "banner": card["banner"], "notes": card["notes"],
             "boundary": card["boundary"],
-            "stops": sorted(named, key=lambda stop: int(stop[1:]))})
+            "stops": sorted(named, key=lambda stop: (
+                stop != card["first"], int(stop[1:])))})
     return verdict, out
 
 

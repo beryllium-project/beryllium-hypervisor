@@ -26,8 +26,10 @@ of a shape fails with its own finding and stop, each variant passes, each
 input that board_refusal() refuses is refused, and each refused input of
 the command line exits 2, names itself on standard error, and writes no
 record; rom_lines() and boot_medium() give their values on whole, cut,
-and changed captures. REPORT, IMAGE, and DTB are anchor's authority
-report and measured inputs.
+and changed captures; and captures of boots cut at each stage give their
+stops exactly, the earliest stage that the boot did not reach first, with
+the product name and hart count that they show. REPORT, IMAGE, and DTB
+are anchor's authority report and measured inputs.
 
 --write-card-fixtures (the writer, for the sittings' dry run) makes OUT,
 under BUILD, afresh: OUT/observed.json, the stand-in facts with SIZE as
@@ -44,8 +46,9 @@ passes the form with its own arguments.
 
 Trust: a test; it runs the checker in this process, and as a child for the
 command line's cases, and writes only under --scratch (or OUT), which it
-makes afresh. Scope: the rows C1 to C11 (rows()), the boot's medium, and
-the writer. Exit 0 pass, 1 fail, 2 usage.
+makes afresh. Scope: the rows C1 to C11 (rows()), the stops' order
+(stop_cases()), the boot's medium, and the writer. Exit 0 pass, 1 fail,
+2 usage.
 """
 
 import argparse
@@ -688,14 +691,17 @@ def rows():
     return out
 
 
-def witnessed(shape, card):
+def witnessed(shape, card, board):
     """A shape's boundary line and the facts that it records beside the
     form: NOT-APPLICABLE with the boundary off; with it on PASS and
     witness=printed, and hook=not-read for the hostile image alone; the
-    power chip's flag and the MAC addresses' count."""
+    power chip's flag, the MAC addresses' count, and the product name and
+    hart count, BOARD's."""
     line, facts = card["boundary"], card["facts"]
     return facts["pmic"] == "0x0" and facts["mac_addresses"] == "2" and \
-        facts["environment_lines"] == ("2" if shape == "on" else "0") and (
+        facts["environment_lines"] == ("2" if shape == "on" else "0") and \
+        facts["product"] == board["product_name"] and \
+        facts["harts"] == str(len(board["harts"])) and (
         line == CB.NOT_APPLICABLE.strip() if shape == "off" else
         line.startswith("BE_MVP_BOUNDARY: PASS ") and "witness=printed" in
         line and ("hook=not-read" in line) == (shape == "hostile"))
@@ -714,7 +720,8 @@ def case(name, shape, edit, finding, stop, bases):
     if finding is None:
         facts = record["observed"]
         good = verdict == "PASS" and not stops and (
-            facts == context["standin"] and witnessed(shape, record["card"])
+            facts == context["standin"] and witnessed(
+                shape, record["card"], context["board"])
             if edit is None else stop is None or
             any(stop in note for note in notes) and
             facts["firmware"]["other_lines"] == [stop])
@@ -726,6 +733,105 @@ def case(name, shape, edit, finding, stop, bases):
           f"stops={','.join(stops) or 'none'}" + (
               "" if good else f" {record['findings'][:4]}"))
     return good
+
+
+def keep(*sections):
+    """An edit: the capture cut to SECTIONS, the others left empty."""
+    def edit(parts, context):
+        for name in ORDER:
+            parts[name] = parts[name] if name in sections else []
+    return edit
+
+
+def uboot_until(prefix, *after):
+    """An edit: U-Boot's lines up to its first that starts with PREFIX, then
+    AFTER's."""
+    def edit(parts, context):
+        lines = parts["uboot"]
+        end = next(index for index, line in enumerate(lines)
+                   if line.startswith(prefix))
+        parts["uboot"] = lines[:end + 1] + list(after)
+    return edit
+
+
+def stop_cases(bases):
+    """Captures judged whole, each refused: its stops exactly (the earliest
+    stage that the boot did not reach first, then by number), each finding
+    that names a stop (a part of its text, and the stop), and the product
+    name and hart count of its card facts, as the capture shows them or
+    none."""
+    ddr = ("DDR Part Number: stand-in, Size: 0MB, Data Rate: 0MT/s",
+           "DDR training consume 0ms")
+    first = both(keep("rom", "spl"), swap("spl", "spl: a stand-in line",
+                                          *ddr))
+    later = keep("rom", "spl", "uboot", "load", "monitor", "records")
+    to_uboot, environment = keep("rom", "spl", "banner", "uboot"), \
+        "Loading Environment from MMC... OK"
+    absent = [("0 'Loading Environment from'", "B3")]
+    out = []
+    for name, shape, edit, stops, named, facts in (
+            ("the boot ROM's lines, the SPL's, then nothing", "off", first,
+             ["B5"], [("0 firmware banner", "B5")], ("none", "none")),
+            ("the same in the second sitting", "on", both(refer(), first),
+             ["B6"], [("0 firmware banner", "B6")], ("none", "none")),
+            ("cut after the firmware's banner", "off", keep(
+                "rom", "spl", "banner"), ["B5"],
+             [("0 U-Boot banner", "B5")], ("none", "16")),
+            ("the boot ROM's lines alone", "off", keep("rom"),
+             ["B4", "B5"], [("0 U-Boot SPL banner", "B4")], ("none", "none")),
+            ("no firmware banner, a flash after U-Boot's", "off", both(
+                later, add("uboot", "SF: Detected stand-in with page size "
+                           "256 Bytes", at=-1)), ["B5", "B2"],
+             [("0 firmware banner", "B5"), ("a flash was detected", "B2")],
+             ("stand_in_product", "none")),
+            ("a boot from the NOR with no firmware banner", "off", both(
+                later, add("rom", "bm:4")), ["B4", "B5"],
+             [("a boot from the NOR", "B4")], ("stand_in_product", "none")),
+            ("cut after U-Boot's banner", "off", both(
+                to_uboot, uboot_until("U-Boot 2022")), ["B5"], [],
+             ("none", "16")),
+            ("cut after U-Boot's DRAM line", "off", both(
+                to_uboot, uboot_until("DRAM:")), ["B5"], [], ("none", "16")),
+            ("U-Boot's lines to its product name's, not its environment's",
+             "off", both(to_uboot, swap("uboot", "Loading Environment"),
+                         uboot_until("TLV item")), ["B3", "B5"], absent,
+             ("stand_in_product", "16")),
+            ("U-Boot's DRAM line, then its autoboot line", "off", both(
+                to_uboot, uboot_until("DRAM:", "Autoboot in 0 seconds")),
+             ["B3", "B5"], absent, ("none", "16")),
+            ("U-Boot's environment's line twice, then nothing", "off", both(
+                to_uboot, uboot_until("Loading Environment", environment)),
+             ["B3", "B5"], [("2 'Loading Environment from'", "B3")],
+             ("none", "16")),
+            ("no U-Boot banner, its lines to its product name's, not its "
+             "environment's", "off", both(
+                 to_uboot, swap("uboot", "U-Boot 2022"),
+                 swap("uboot", "Loading Environment"),
+                 uboot_until("TLV item")), ["B5"],
+             [("0 U-Boot banner", "B5")], ("stand_in_product", "16")),
+            ("U-Boot's DRAM line, then its no-partition line", "off", both(
+                to_uboot, uboot_until("DRAM:", "NO partition bootfs in card")),
+             ["B3", "B5"], absent, ("none", "16")),
+            ("another product name", "off", sub(
+                "uboot", "= stand_in_product", "= other"), ["B3"],
+             [("product name 'other'", "B3")], ("other", "16"))):
+        parts, context = copy.deepcopy(bases[shape])
+        edit(parts, context)
+        verdict, record = judge(parts, context)
+        card = record["card"]
+        tagged = [finding for finding in record["findings"]
+                  if re.search(r" \(stop B[0-9]+\)$", finding)]
+        good = verdict == "FAIL" and card["stops"] == stops and \
+            len(tagged) == len(named) and all(
+                part in finding and finding.endswith(f"(stop {stop})")
+                for (part, stop), finding in zip(named, tagged)) and (
+                    card["facts"]["product"], card["facts"]["harts"]) == facts
+        print(f"{'ok  ' if good else 'FAIL'} {name} ({shape}): {verdict} "
+              f"stops={','.join(card['stops']) or 'none'} product="
+              f"{card['facts']['product']} harts={card['facts']['harts']}" + (
+                  "" if good else f" {tagged}"))
+        out.append(good)
+    return out
 
 
 def medium_cases(bases):
@@ -1083,11 +1189,13 @@ def main(argv):
     variants = sum(row[3] is None for row in table)
     inputs, medium = command_line(args, bases), medium_cases(bases)
     refusals, written = refusal_cases(bases), written_cases(args)
-    passed = all(results + inputs + medium + refusals + written)
+    stopped = stop_cases(bases)
+    passed = all(results + inputs + medium + refusals + written + stopped)
     print(f"BE_MVP_K3_FORM: {'PASS' if passed else 'FAIL'} "
           f"shapes={len(SHAPES)} mutations={len(table) - variants} "
           f"variants={variants} inputs={len(inputs)} medium={len(medium)} "
-          f"refusals={len(refusals)} written={len(written)}")
+          f"refusals={len(refusals)} written={len(written)} "
+          f"stops={len(stopped)}")
     return int(not passed)
 
 

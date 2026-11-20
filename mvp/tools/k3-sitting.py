@@ -738,9 +738,11 @@ def sitting_stop(sitting):
 
 def form_stop(result, sitting):
     """(label, stops) of a capture that the form refused (exit 1), by
-    result.json's card.stops, a list sorted by number: its first, or the
-    sitting's when it is empty, or a tool stop when it is not a list of
-    B-numbers; STOPS the list as recorded (none when empty)."""
+    result.json's card.stops, a list whose first is the stop of the
+    earliest stage that the boot did not reach, when there is one, and the
+    rest by number: its first, or the sitting's when it is empty, or a tool
+    stop when it is not a list of B-numbers; STOPS the list as recorded
+    (none when empty)."""
     card = result.get("card") if isinstance(result, dict) else None
     stops = card.get("stops") if isinstance(card, dict) else None
     if not isinstance(stops, list) or not all(
@@ -2182,6 +2184,9 @@ def test_verdicts(cases, scratch):
                ("B11", "B11"))
     cases.case("form: B3 with B11, the first of the list", form_stop(given(
         ["B3", "B11"]), "second") == ("B3", "B3,B11"))
+    cases.case("form: an earliest stage's B5 before B2, the first of the "
+               "list", form_stop(given(["B5", "B2"]), "first") ==
+               ("B5", "B5,B2"))
     cases.case("form: an empty list, the sitting's", [form_stop(
         given([]), name) for name in SITTINGS] == [("B5", "none"),
                                                    ("B6", "none")])
