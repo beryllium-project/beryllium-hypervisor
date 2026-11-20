@@ -2653,3 +2653,368 @@ Found, and left:
    aside. Whether the list should hold them is settled with M11-B4's
    work, with the sweep of the working names (the section above,
    item 20).
+
+## M11-B4, first part: the first sitting, and the corrections after it
+
+### Outcome first
+
+M11-B4's exit is "It passes, or stops. Its facts are in the decision
+record, with each build's and each image's SHA-256. If the facts
+change the board's platform description, M11-B3's gates pass again at
+the commit that holds the change."
+
+- **The first sitting stopped** at its first boot from the card
+  (2026-11-20; the addendum's stop B5: no firmware banner). No line of
+  the project's firmware, of U-Boot, or of the monitor reached the
+  console. The NOR and the card were unchanged afterwards. Its facts
+  are in the decision record. Its record is not in this range
+  (departure 1).
+- **The cause is established from sources, and is not shown on the
+  board**: the published tree names the console `ns16550` alone, and
+  for that name the firmware base clears the UART's unit enable as it
+  sets its console up.
+- **The facts change the platform description**: the recipe now names
+  the console `intel,xscale-uart`, then `ns16550` (the erratum to B-3,
+  on the responsible human's `fix: go`). So every board tree, firmware
+  build, and card changes, and M11-B3's gates are run again.
+- **Nine of the ten gates pass** at the commit that holds the change
+  (unsigned `8af29f25ec1305e3935bdd77bec0003e159590ef`, tree
+  `adb04e652800e5afa490593718eecf1bcad9c6d6`), each from a clean clone
+  on `l1`, 2026-11-20, 15:49Z to 17:20Z. **The tenth, `verify`, runs
+  at that commit as this section is written** (since 19:07Z); its
+  result is added to this record in a commit of its own (departure
+  4). None of its inputs changes in this range.
+- **Every image of the candidate's is unchanged**: all 801 outputs of
+  the candidate's signed record, byte for byte.
+- **The first sitting's firmware and card are made again.** Their
+  SHA-256 are in the decision record and the sitting's pins; the image
+  is on the card; and the whole card, read back, is the image.
+- **The sittings' tools are corrected** where the first sitting showed
+  them wrong: the record of a sitting that stopped, the reset after a
+  boot from a card that stopped, and the stop's name.
+
+**Nothing here shows that the corrected firmware prints on the
+board.** Under QEMU the firmware printed with either name, because
+QEMU's UART has no unit enable. The next sitting's first boot from the
+card is the first direct evidence. By the decision record's entry of
+`fix: go`, that sitting is run only on the responsible human's word
+and with him present, after all ten gates have passed at the commit
+that holds the corrections, that commit is signed, and the card is
+written and read back.
+
+### The first sitting
+
+The decision record's entry of 2026-11-20 has the account; this is
+what the tools' records hold (05:32Z to 05:49Z, at M11-B3's signed
+commit).
+
+| Step | Result |
+| --- | --- |
+| `begin`, `preflight`, `stage`, `reading-0` | Each passed. The reading's boot was from the NOR; U-Boot showed 8 GiB |
+| `card-in-1` | On the responsible human's word |
+| `boot-1.1` | One reset by the dongle, nothing typed. The capture is 191 bytes: four lines of the boot ROM, the SPL's banner, and two lines of its own; then nothing for 120 s. The form refused it; the driver's stop was B3, where the addendum's stop for a boot with no firmware banner is B5 |
+| `card-out-1` | On his word |
+| `reading-1` | Stopped with no reset made: the console tool held no reason to reset a board that hangs after a card's SPL banner |
+| The close | By hand, on his word, outside the driver's records: one reset by the dongle, a boot from the NOR to the board's own system, a reading of the NOR by the reader that the rehearsal used, and the preflight again |
+| The card, read back | Each of its fourteen regions equal to its image |
+
+- The closing reading by hand equals the sitting's first reading in
+  all six ranges, and the preflight's verdict line after equals the
+  one before.
+- The boot ROM's lines hold no identifier; they are in the decision
+  record's account by their count alone.
+
+### The corrections
+
+Each is a commit of its own, written by a coding sub-agent and read
+line by line by the owner session; the last is the owner's words.
+
+| Commit | What |
+| --- | --- |
+| "the record of a sitting that stopped, made at a later commit" | The record tool could not record a sitting that stopped. It now does, and admits a record made at a later commit when, under `mvp/` and `bringup/`, nothing differs from the sitting's commit but the record tool and its dry run |
+| "the board tools say things in plain words" | The sweep of working names (the README's open item 140, closed): comments, eighteen messages, and names inside the sittings' dry run, in 21 files. No rule changes |
+| "the recipe names the board's console as the firmware needs it" | The recipe's step 4, with six refusals, and the rule in the recipe's own check of the description |
+| "the independent checker requires the console's names" | The same rule on every board tree, with three mutations |
+| "QEMU's tree at tier 1 names its console as the board's" | The tier-1 tree, its tree check with two negatives, and the two tier-1 firmware pins |
+| "a board that hangs in a boot from a card can be reset" | The console tool's two reasons, `card-hang` and `card-uboot-hang`, each admitted on the tool's own reading of the log and of the card's ledger, after 30 s of quiet |
+| "the sittings' driver asks for a reset after a stopped boot" | The driver's flag for the closing reading and for a boot taken up again, and the dry run's sittings for each way that a boot from a card stops |
+| "a refused boot's stop is named by the stage that it did not reach" | The form's stop, its facts as the capture shows them, and the claim ledger's rule for a cited record of a sitting |
+| "the first sitting and its corrections in the guide and the README" | The owner's words, with the disclosure's section 11 and two new open items of the README (141, 142) |
+
+**Tried on the first sitting's own bytes**, in private scratch: with
+the corrected reader, the 191 bytes of the boot and the sitting's own
+ledger give `card-hang`, so the closing reading's reset would have
+been admitted and the sitting closed by the tools.
+
+**What the corrections' tests do not show.**
+
+- The unit enable, under QEMU: QEMU's UART keeps only the low four
+  bits of its interrupt-enable register, so the five firmware rows
+  look the same whichever name the firmware matched. They show that
+  the firmware finds, binds, and drives its console with the new name
+  first.
+- How the firmware picks its console: the rules read the one node
+  that the description names. A second serial node earlier in the
+  tree, or a `stdout-path` that resolved elsewhere, would pass them.
+  The published tree holds one serial node, and its `stdout-path`
+  names an alias that the tree lacks, so the firmware scans for a
+  serial node and finds that one.
+- The reading of the firmware base on which every one of these rules
+  rests: names in order, and the unit enable for that one name. The
+  firmware project's own post about this board says the same.
+- A board whose boot ROM or SPL prints lines that the reader does not
+  take for a card's; and a console that drops its output for longer
+  than the quiet, which the reset's argument makes harmless and
+  nothing detects.
+- Whether a boot of the board prints the lines that the form expects
+  after the SPL's. No boot from a card has reached the firmware's
+  banner; a line that the form refuses at the next sitting is a
+  finding, and stops the sitting.
+
+### The gates again
+
+One after another, with nothing heavy beside them: the owner session
+wrote records and ran one small test of its own on two cores, and the
+M12 lane ran nothing. The clones are at the paths of the candidate's
+gates' clones, so that every output can be compared with the
+candidate's.
+
+| Gate | UTC | Result |
+| --- | --- | --- |
+| The tool lock | 15:49 | `BE_MVP_LOCK: PASS roles=33` |
+| `./mvp/mvp check` | 15:49 to 16:19 | `BE_MVP_CHECK: PASS`. 118 runs under QEMU in 126 attempts: 82 under the boundary, 36 with it off; the 8 other attempts were refused by `BE_MVP:02` and made again, as before. Six sessions. The bundle holds 1,152 files and 865 images |
+| The board gate, on the vendor's published files | 16:19 | `BE_MVP_K3_GATE: PASS steps=9 images=38` |
+| `./mvp/mvp evaluate`, with the board gate inside the evaluator | 16:19 to 16:48 | `BE_MVP_EVALUATE: PASS`. Inside: `check` passes (118 runs in 127 attempts). The host's and the evaluator's outputs are equal, 865 of 865; and the gate's, made again inside, 38 of 38 |
+| The U-Boot rehearsal | 16:48 to 16:51 | `BE_MVP_UBOOT_REHEARSAL: PASS cases=7 attempts=7 refused=0` |
+| `kernel-repro` | 16:51 to 16:52 | `BE_MVP_KERNEL_REPRO: PASS outputs=23 identical` |
+| `./be model-check` | 16:52 to 16:54 | Stage 1: `PASS theorems=26 assumptions_closed=26 citations=100`. `BE_MODEL_DIFFERENTIAL: PASS instances=4 mutations=91` |
+| The model's evaluator | 16:54 to 16:56 | `BE_EVALUATION: Model 0.2 rootless evidence PASS` |
+| The CHERI check | 16:56 to 17:20 | `BE_MVP_CHERI_CHECK: PASS` (1,441 s). 56 runs in 64 attempts and six sessions on the CHERI build; 94 capture mutations, each rejected; the plain build's 222 images equal to the reference's; the regression build's 50 runs in 57 attempts and six sessions |
+| `./mvp/mvp verify` | from 19:07 | Running as this section is written; its result follows in a commit of its own |
+
+**The images.** The gates' `check` bundle lists 865 outputs. The 801
+that the candidate's record lists are byte for byte the candidate's.
+Of the 64 others, M11-B's, 32 are byte for byte those of M11-B3's
+gates, and 32 differ, as designed:
+
+- the 17 outputs of the tier-1 firmware rows, whose trees now name
+  the console: the two sittings' firmware forms, each with its tree,
+  its build, and its build's record; and the three trees without
+  reset devices, each with its table and its record;
+- the 14 that name the commit that they were built from;
+- the card environment's report, which holds the digest of
+  `tools/k3-env.sh`, whose comments the sweep changed.
+
+**The board's firmware builds** (B-1), made at the gate on the host
+and again inside the evaluator, equal byte for byte, each 540,600
+bytes. All four change with the console's name:
+
+| Image | Sitting | SHA-256 of `fw_dynamic.bin` |
+| --- | --- | --- |
+| `two-guests-off` | first | `d2b4af5d7e246279cbfb7c665ab48c19c440357b13462eec162232636676c9b4` |
+| `anchor` | second | `a95128a2140951fdb1a442d178ebbb3ce70219c3f9f582f28a658dd09b254cb4` |
+| `k3-breach-g1` | second | `0fd9b322f91ca805844ddd95d073ca6662a77b0f2ab579595efaa4a9e7a028ff` |
+| `k3-breach-c` | second | `1f0ad1f9724bef6bdadab2255883bad884b1e7e9b6464b298e85994103d6794b` |
+
+Only the first is pinned now, as before.
+
+**`verify`'s inputs.** From M11-B3's signed commit to the gates'
+commit, nothing differs under the paths that the proofs' records
+bind (`mvp/src`, `mvp/Makefile`, `mvp/scenarios`, the four tools,
+the tool lock, `mvp/guest`, `bringup/k3-b2`), under `mvp/verify`,
+under `model`, or in the verifier's own definition and the
+specification. So `verify` here is the run of M11-B3's gates again,
+on the same inputs.
+
+### The first sitting's firmware and card, made again
+
+- **The firmware.** The gate's build for `two-guests-off`, the same
+  on the host and inside the evaluator, is recorded in the plan's
+  decision record and pinned in `mvp/k3/sitting-pins.txt` in place of
+  the first run's (the commit "the first sitting's firmware build,
+  made again, is pinned"): `fw_dynamic.bin`, 540,600 bytes, SHA-256
+  `d2b4af5d…c9b4`, the table above. Its device tree's SHA-256 is
+  `f07e3217…c4c1`.
+- **The card image.** Made at that commit, in a copy of the gates'
+  clone (departure 5), from the gate's outputs, for the card's size
+  (17:22Z to 17:23Z): `card.img`, 31,927,042,048 bytes, SHA-256
+  `cbc68f8c01c0389af5040fa6b56e48601539f232096b82ef994ea8effd43dc49`.
+  Its FIT (541,307 bytes, SHA-256 `852b6198…602a`) and its
+  environment (SHA-256 `f0a14d29…3600`, the first card's) are byte
+  for byte the ones that the gate made. It is recorded and pinned in
+  the next commit ("the first sitting's card image, made again, is
+  pinned"), and is not committed: it holds the vendor's files.
+- **The write.** The same card, in the same reader, under the access
+  rule of M11-B3. A dry run through the make target passed each of
+  the tool's checks on the reader and printed the write's
+  confirmation (17:24Z). It is another than the first card's: the
+  image is another, and the reader's disk has another sequence
+  number, since the card was taken out for the sitting and put in
+  again. With it, the tool wrote the whole card, 17:25Z to 18:00Z:
+  31,927,042,048 bytes in 2,102 s (15.2 MB/s), the image, the zeros
+  to the card's last blocks, and the backup table; flushed; the bytes
+  that it wrote have the image's SHA-256.
+- **The read-back.** The tool then read the whole card back, 19:08Z
+  to 19:36Z: 31,927,042,048 bytes, whose SHA-256 is the image's, and
+  each of the fourteen regions equal to the image's (the tables, the
+  environment, the vendor's four files, the FIT, the gaps, the zeros,
+  and the backup table). The card had not been taken out of the
+  reader between the write and the read-back: the reader's disk has
+  the write's sequence number.
+- The records are in the sittings' private area beside the working
+  clone.
+
+### What was run, and what was not
+
+- The gates ran at the last commit that changes a tool or a page
+  under `mvp/`. The two commits after it change the sitting's pins
+  and the decision record, and the one after those changes this
+  record alone. A whole `check` from a clean clone passes at the
+  second of them, the commit of the card's pin (17:24Z to 17:53Z,
+  beside the card's write: 118 runs under QEMU in 129 attempts, six
+  sessions, `BE_MVP_CHECK: PASS`).
+- Before the gates, a whole `check` from a clean clone passed at the
+  content of each commit of the corrections but two: the console
+  tool's reset, whose next commit holds its dry run's sittings, and
+  the last, which is the gates' own commit. The commits' messages
+  give each run. One of them failed once first (departure 2).
+- No record of these gates is committed: the board's result (M11-B6)
+  brings the records. The logs are kept beside the working clone.
+- The gates' driver is the owner's scratch script, after M11-B3's.
+- The second host for development checks (M11-B3) could not be
+  reached on this day, and no check ran there.
+
+### The soft limits
+
+Counted as the addendum counts them, from M11-E's candidate; the
+limits are the decision record's, three of them re-set on 2026-11-20
+(`fix: go`):
+
+| Lane | Limit | At M11-B3 | Now |
+| --- | ---: | ---: | ---: |
+| The addition's tests and the board's build rules | 3,000 | 2,430 | 2,475 |
+| The frame | 1,200 | 1,123 | 1,123 |
+| The tree's recipe, the backend's second platform, the checker on the board's trees, and the hostile-monitor declarations | 3,000 | 2,387 | 2,487 |
+| The card's tools and the session's tools, with their dry runs | 12,500 | 10,419 | 11,341 |
+| The checker's form for a boot from a card, the harness's end of a halting run, and the ledger tool's method | 4,000 | 2,950 | 3,137 |
+
+"Now" is one diff from the candidate to the last commit that changes
+a tool, each line given to the lane of the commit that wrote it, and
+a later commit's lines to the lane that holds most of its file. The
+running counts that were held against the limits while the lanes were
+written count a rewritten line again, and so count the sweep's
+comments: 2,479, 1,150, 2,587, 11,785, and 3,239. No limit is passed
+by either count.
+
+### The owner's own tests
+
+Beside each sub-agent's own tests, the owner session changed the
+corrected tools one rule at a time, in scratch copies, to see that a
+test fails. Where none did, a row was asked for and added.
+
+| Tool | Seeded changes | Fail a test | The rest |
+| --- | ---: | ---: | --- |
+| The console tool's reader (`can-reset`) | 11 | 8 at first, 10 with two rows added | One, the account's check dropped, cannot be shown without another account |
+| The driver's wiring of the flag, each through the whole dry run | 6 | 5 | The sixth fails the row that was added for it, in the sub-agent's run |
+| The form's stage rule and facts | 4 | 4 | |
+| The form's rule for a line of U-Boot's that is absent | 7 | 3 at first, 5 with two captures added | Two change no capture that the form admits: the autoboot line taken anywhere in the capture, and by a search within a line |
+
+The sweep was compared with its form before by a script of the
+owner's, apart from the sub-agent's: the Python files' syntax trees
+but for docstrings, and the other files' lines but for comments and
+the mapped names. Eleven strings in four Python files change,
+sixteen lines of the dry run, and nothing else.
+
+### Departures and readings for review
+
+Each stands unless the responsible human says otherwise.
+
+1. **The first sitting's record is not in this range.** The record
+   tool could not record a sitting that stopped, and its correction
+   has the record made at the commit that corrected it, once that
+   commit is signed. The record then lands in a commit of its own,
+   with its pointer in the README and the guide. Until then the
+   decision record's entry is the sitting's account.
+2. **A whole check failed once, in MVP 1.0's own board-tool dry run**
+   (2026-11-20, 15:02Z to 15:12Z; `late-prompt.record: exit 1,
+   expected 0`), at the content of the commit "a refused boot's stop
+   is named by the stage that it did not reach". The owner session
+   read the cause from the run's records: the dry run's stand-in for
+   U-Boot prints its late prompt, writes a record of its own, and
+   then echoes the console tool's second `s`; held up between the two
+   for longer than the dry run's quiet of 0.05 s, it shows the tool a
+   prompt with nothing after it. Three heavy runs of the owner
+   session's were going at once. This range changes neither that path
+   of the stand-in nor the tool's rule. Run again alone, the same
+   content passed (15:17Z to 15:45Z). It is the README's open item
+   142; the stand-in's correction is owed, and is not in this range.
+3. **Two rehearsals, which are not gates**, at the content of the
+   commit "the sittings' driver asks for a reset after a stopped
+   boot": the CHERI check passed (14:35Z to 15:11Z); `evaluate` with
+   the board gate showed the board-tool dry run, the form's test, and
+   the sittings' dry run passing inside the evaluator, where the
+   tools run as uid 0, and then stopped at the `shim-rule` variant's
+   race (the README's open item 137, its signature exactly), again
+   beside the owner session's other runs. The gates' own `evaluate`,
+   run alone, is in the table above.
+4. **`verify` runs last and apart, and this section does not wait
+   for it.** The other nine gates ran first; then the pins, the
+   card's write, and the whole `check` at the card's pin, so that
+   nothing heavy runs beside `verify`; then `verify`, at the gates'
+   commit, in the gates' clone. It was started at 19:07Z, not when
+   the whole `check` ended at 17:53Z: the owner session was not
+   running between 17:36Z and 19:07Z, and had not chained the two.
+   The card's read-back ran beside its first half hour. Its inputs
+   are those of M11-B3's gates ("`verify`'s inputs", above). Its
+   result is added here in a commit of its own. The decision record
+   has the sitting wait for it; a sign-off of this range before it
+   ends is the responsible human's choice.
+5. **The card was made in a copy of the gates' clone**, so that
+   nothing is written in the clone in which `verify` runs. The copy
+   holds the board gate's outputs as the gates made them; the image's
+   FIT and environment are byte for byte the gate's.
+6. **The card was written before the range's sign-off**, as at
+   M11-B3. Before the first sitting is run again, the board gate is
+   run again at the signed commit and the card's image is made again
+   there: it must have the pinned SHA-256, which the card was read
+   back against.
+7. **The whole `check` after the gates** is at the commit of the
+   card's pin, not at the range's last commit, which changes this
+   record alone.
+8. **The form's reading of "past its place"** (the commit "a refused
+   boot's stop is named by the stage that it did not reach"): a line
+   of U-Boot's that is absent names a stop of its own only where,
+   after U-Boot's banner, a later line of the form's list or the
+   autoboot line is in the capture. It reads what follows the banner,
+   not where those lines stand.
+9. **The quiet before a reset of a hung boot from a card is 30 s, and
+   is not a setting of the wrapper.** A sitting run through
+   `./mvp/mvp` always waits that long.
+10. **The first sitting's own record will keep the stop that the
+    driver named, B3**, beside the form's stops `B3,B5`: the form of
+    the sitting's commit judged that boot, and judges it again where
+    the record is made. The decision record says that the addendum's
+    stop for it is B5.
+11. **The lanes are counted two ways**, and both are given ("The soft
+    limits", above).
+12. **A second sub-agent finished the sittings' tools**, after the
+    first stopped on a network failure, from the first's committed
+    part and its written design. The disclosure's section 11 says so.
+13. **The fourteen listed outputs that name their commit** (the
+    section above this one, item 5) are not settled here. The sweep
+    landed without them, and this range's comparisons set them aside
+    as before. They stay for M11-B4's later work, with an open item
+    of the README then.
+
+### What is not shown
+
+- That the project's firmware prints on the board's console, or boots
+  at all. The first sitting stopped before its first line.
+- Anything of the form's rules for the firmware's banner, U-Boot's
+  lines, the load, and the monitor's lines on a real boot from a
+  card: no boot has reached them. They were written from sources and
+  from the board's own log of boots from the NOR.
+- The corrected tools on the board: the reset after a boot from a
+  card that stopped, and the close-out after it, ran on stand-ins
+  alone.
+- `verify` at the gates' commit, until its result is added.
