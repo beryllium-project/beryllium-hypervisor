@@ -8,5 +8,4 @@
 # line `card IMAGE sha256=HEX bytes=N` for each, the card written for it,
 # from the card's tools' announcement. The card's tools refuse a firmware
 # or a card without its line here; the board gate never reads this file.
-firmware two-guests-off sha256=d2f1b1e4d8e864673ec24617abc9ca3c5a16664f38d9aa93c09ad7236478eb5e bytes=540600
-card two-guests-off sha256=7dcec03cad476ec301319531471ec006b98ef9f7837d0fbdf3f6825235d3c24c bytes=31927042048
+firmware two-guests-off sha256=d2b4af5d7e246279cbfb7c665ab48c19c440357b13462eec162232636676c9b4 bytes=540600

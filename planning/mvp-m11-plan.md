@@ -2001,3 +2001,27 @@ text above as it says; the text above is otherwise as accepted.
     M11-B3's gates have passed again at the commit that holds the
     corrections, that commit is signed, and a card with the new
     firmware has been written and read back.
+- **2026-11-20, the first sitting's firmware build, made again** (the
+  board addendum's B-1; this day's erratum to B-3 changes every board
+  tree, and so every firmware build of the board's). The gates at the
+  commit that holds the corrections built the firmware for the first
+  sitting's image, `two-guests-off` (the boundary off), at the tree
+  `adb04e652800e5afa490593718eecf1bcad9c6d6`, on the host and again
+  inside the evaluator, from the same inputs, and the two are equal
+  byte for byte:
+  - `fw_dynamic.bin`, 540,600 bytes, SHA-256
+    `d2b4af5d7e246279cbfb7c665ab48c19c440357b13462eec162232636676c9b4`.
+  - Its inputs are the pinned firmware base with the series and B-2's
+    one addition, as before, and the device tree that the recipe now
+    makes for this image in four steps, the last naming the console
+    (the tree's SHA-256:
+    `f07e3217f385d0bf15f72c0cdd45fc84e2256576006d1346af2a0c277bc9c4c1`).
+  - The same commit replaces the line `firmware two-guests-off` of
+    `mvp/k3/sitting-pins.txt` with this SHA-256, and removes the
+    card's line: no card holds this build yet. The build of the entry
+    of 2026-11-19 (SHA-256 `d2f1b1e4…eb5e`) is the one that the first
+    sitting ran, and no card is made from it again.
+
+  The gates also built the second sitting's three again. They are
+  still not recorded here: B-1 has them made at M11-B4 with the first
+  sitting's facts, and the first sitting has not passed.
