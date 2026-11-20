@@ -81,9 +81,10 @@ Scope:   DIR/config.json: session, panes (the session's panes, each
          unless DIR/saveenv.release appears or a reset is pulsed first;
          DIR/saveenv.log records how each of them ended),
          corrupt_after_saveenv ([N, {name: value}]: the saved
-         environment changed after the Nth saveenv), and bad_crc (the
+         environment changed after the Nth saveenv), bad_crc (the
          boots, counted from 1, at which U-Boot reports a bad environment
-         CRC and uses its default environment); with nor (an 8 MiB file,
+         CRC and uses its default environment), and dram (the text after
+         U-Boot's `DRAM:`, `16 GiB` by default); with nor (an 8 MiB file,
          the NOR's bytes), nor_total (sf probe's size, else `8 MiB`),
          read_error and read_differs (the sf reads, counted from 1, that
          print `Read: ERROR -5` and fill nothing, or whose bytes have one
@@ -359,6 +360,8 @@ class Board:
             self.env = {"bootcmd": "run bianbu_boot", "bootdelay": "3"}
             lines[3] = ("Loading Environment from mtdENV... *** Warning - "
                         "bad CRC, using default environment")
+        if "dram" in self.faults:
+            lines[1] = f"DRAM:  {self.faults['dram']}"
         self.env.update(fdtcontroladdr="2fbe8aa50")
         self.scanned, self.probed, self.memory = False, False, b""
         self.fedora(False)

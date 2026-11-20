@@ -43,7 +43,13 @@ wait for the run's end (k3-uboot.py wait-end), the capture, the form
 the stop is boot_stop()'s, the form's by its result.json's card.stops
 (form_stop()), and nothing more is sent. run.txt names each input of the
 form by its path from the build and its SHA-256. reading-N is
-k3-env.sh reading N (--hang after a session whose last boot never ended).
+k3-env.sh reading N. The reading's reset, and a boot's reset when the
+boot is taken up again, are given the flag of the session's last boot
+that reached the board (reset_flag(), last_flag()): --hang after a boot
+that never ended, --card-hang after a boot from the card that showed no
+U-Boot banner; the console then admits a reset only on its own reading
+of the log and the card's ledger (k3-console.sh's header), and a refusal
+stops the step and returns the sitting to the responsible human.
 end: Fedora (k3-env.sh fedora), the preflight again (B2 if its verdict
 line is not the first's), and k3-card-device.py's command that removes the
 card reader's access rule, printed and never run.
@@ -145,10 +151,15 @@ LOAD_LINE = re.compile(r"Autoboot in|bytes read in|md5 for|crc32 for|"
                        r"Starting kernel|Bad Linux RISCV|Failed|"
                        r"not found|rror")
 STAMP = re.compile(r"\[ *[0-9]+\.[0-9]+\] ")
-HANG = ("; --hang was given, the session's last boot having never ended, "
-        "and the console's own condition still refused the reset, so that "
-        "boot hung before U-Boot handed over to the MVP: the sitting stops "
-        "here and returns to the responsible human, who is present")
+# The flag that asks the console tool for its condition after a boot whose
+# outcome left the board with no other reason for a reset, by that outcome
+# (k3-console.sh reset); and the words that a step's stop gains when the
+# console still refused the reset (its stop 1, the port-open rule's).
+RESET_FLAGS = {"timeout": "--hang", "no-banners": "--card-hang"}
+REFUSED_RESET = "the port-open rule holds no reason to reset now"
+FLAG_WORDS = {
+    "--hang": "the session's last boot having never ended",
+    "--card-hang": "the session's last boot having shown no U-Boot banner"}
 
 
 class Refused(Exception):
@@ -996,6 +1007,39 @@ def tool_stop(text, default):
     return (found[-1].group(1), found[-1].group(2)) if found else default
 
 
+def reset_flag(outcome):
+    """The console's flag for the next reset after a boot of OUTCOME
+    (RESET_FLAGS), or None."""
+    return RESET_FLAGS.get(outcome)
+
+
+def last_flag(records, number, boot=9):
+    """reset_flag() of session NUMBER's last boot, up to boot-NUMBER.BOOT,
+    that reached the board: RECORDS' last attempt (attempts_of()'s) that
+    recorded an outcome. An attempt whose reset the console refused
+    recorded none, and left the board as the attempt before it did."""
+    for step in (f"boot-{number}.{b}" for b in range(boot, 0, -1)):
+        for _, path, _ in reversed(records.get(step, [])):
+            outcome = key_values(path.read_text(encoding="utf-8")).get(
+                "outcome")
+            if outcome:
+                return reset_flag(outcome)
+    return None
+
+
+def flagged(stop, flag):
+    """STOP, (label, text), with FLAG's words where FLAG was given and the
+    console still refused the reset (its stop 1, the port-open rule's):
+    the sitting then stops and returns to the responsible human."""
+    label, text = stop
+    if flag and label == "1" and REFUSED_RESET in text:
+        text += (f"; {flag} was given, {FLAG_WORDS[flag]}, and the "
+                 "console's own condition still refused the reset: the "
+                 "sitting stops here and returns to the responsible human, "
+                 "who is present")
+    return label, text
+
+
 def preflight_stop(code, verdict):
     """MVP 1.0's stop of a preflight that did not pass, by the first fact
     of its verdict line that fails (tools/k3-preflight.sh's header): 7 an
@@ -1286,7 +1330,8 @@ class Sitting:
                      f"index={self.index(step):02d}", f"attempt={attempt}",
                      f"sitting={self.name}", f"started={utc()}") + \
                 tuple(f"{key}={context[key]}" for key in
-                      ("resumed", "word", "said") if context.get(key)):
+                      ("resumed", "word", "said", "flag")
+                      if context.get(key)):
             record.line(line)
         stop = None
         try:
@@ -1387,11 +1432,8 @@ class Sitting:
         if card != "out":
             raise Refused(f"{step} needs the card recorded out")
         self.serial_log()
-        last = next((f"boot-{number}.{b}" for b in range(9, 0, -1)
-                     if records.get(f"boot-{number}.{b}")), None)
         return {"resumed": self.resumed(records, step),
-                "hang": bool(last) and self.fields_of(records, last).get(
-                    "outcome") == "timeout"}
+                "flag": last_flag(records, number)}
 
     def needs_card_in(self, number, boot, records, card, session, now):
         step, before = f"card-in-{number}", f"reading-{number - 1}"
@@ -1433,7 +1475,12 @@ class Sitting:
         memory = self.fields_of(records, "reading-0").get("memory")
         if not memory:
             raise Refused("reading-0 recorded no memory line")
+        # A boot taken up again resets after the attempt before it, which
+        # may have left no other reason for a reset; a first attempt
+        # follows a reading's prompt or a passing boot's end.
         return {"resumed": self.resumed(records, step), "memory": memory,
+                "flag": last_flag(records, number, boot)
+                if records[step] else None,
                 "log": self.serial_log(),
                 "card_boot": seconds_value(self.env, "K3_CARD_BOOT_SECONDS",
                                            CARD_BOOT_SECONDS, SECONDS_FORM),
@@ -1542,13 +1589,12 @@ class Sitting:
         if stop:
             raise Stop(*stop)
         argv = [ENV_TOOL, "reading", number] + (
-            ["--hang"] if context["hang"] else [])
+            [context["flag"]] if context["flag"] else [])
         code, text = self.tool(record, "reading", argv, self.child_env(
             K3_NOR_READ="human-authorized"))
         if code:
-            label, reason = tool_stop(text, ("tool", last_stop_text(text)))
-            raise Stop(label, reason + (HANG if context["hang"] and
-                                        label == "1" else ""))
+            raise Stop(*flagged(tool_stop(text, (
+                "tool", last_stop_text(text))), context["flag"]))
         fields = key_values(last_attempt((
             self.root / "readings" / f"reading-{number}.txt").read_text(
                 encoding="utf-8")))
@@ -1569,7 +1615,8 @@ class Sitting:
             f"boot-{number}.{boot}-a{record.attempt}"
         os.mkdir(directory, 0o700)
         code, text = self.tool(
-            record, "reset", [CONSOLE, "reset"],
+            record, "reset", [CONSOLE, "reset"] + (
+                [context["flag"]] if context["flag"] else []),
             self.child_env(K3_BOOT_SECONDS=f"{context['card_boot']:g}"),
             directory / "reset.txt")
         reset = key_values(text)
@@ -1579,7 +1626,7 @@ class Sitting:
             console = (banner_label(console[1], read_ledger(self.slot)),
                        console[1])
         if console and "reset_utc" not in reset:
-            raise Stop(*console)
+            raise Stop(*flagged(console, context["flag"]))
         log, offset = context["log"], int(reset["offset_before"])
         outcome, end, outcome_stop = "no-banners", os.stat(log).st_size, None
         if code == 0:
@@ -2177,6 +2224,56 @@ def test_verdicts(cases, scratch):
         "[  1.0] Autoboot in 3\r\nnoise\r\nmd5 for 1 ==> 2\r\n"
         "Starting kernel ...\r\nmd5 for after\r\n") ==
         "Autoboot in 3\nmd5 for 1 ==> 2\nStarting kernel ...\n")
+    cases.case("flag: by the boot's outcome", [reset_flag(outcome) for
+                                                outcome in (
+        "timeout", "no-banners", "prompt", "end", None)] == [
+        "--hang", "--card-hang", None, None, None])
+    steps = scratch / "flags"
+    steps.mkdir()
+
+    def boots(*attempts):
+        """attempts_of()'s records of (STEP, OUTCOME or None) in order."""
+        found = {}
+        for step, outcome in attempts:
+            path = steps / f"{step}-a{len(found.get(step, [])) + 1}.txt"
+            write_fields(path, {"step": step, **(
+                {"outcome": outcome} if outcome else {}),
+                "verdict": "STOP stop=1 x"})
+            found.setdefault(step, []).append((0, path, ""))
+        return found
+    for name, attempts, boot, want in (
+            ("the last boot's", [("boot-1.1", "end"), ("boot-1.2",
+                                                       "no-banners")], 9,
+             "--card-hang"),
+            ("up to a boot", [("boot-1.1", "end"), ("boot-1.2", "timeout")],
+             1, None),
+            ("an attempt that reached no board", [
+                ("boot-1.1", "end"), ("boot-1.2", "timeout"),
+                ("boot-1.2", None)], 9, "--hang"),
+            ("another session's", [("boot-2.1", "timeout")], 9, None),
+            ("no boot", [], 9, None)):
+        cases.case(f"flag: {name}",
+                   last_flag(boots(*attempts), 1, boot) == want)
+        shutil.rmtree(steps)
+        steps.mkdir()
+    refused = ("1", f"k3-console.sh reset stopped (exit 1): {REFUSED_RESET} "
+               "(no idle prompt); no reset was made")
+    for name, stop, flag, words in (
+            ("the console's refusal after --card-hang", refused,
+             "--card-hang", "shown no U-Boot banner"),
+            ("the console's refusal after --hang", refused, "--hang",
+             "never ended"),
+            ("no flag", refused, None, None),
+            ("another stop 1", ("1", "no SPL and U-Boot banner within 2 s "
+                                "of the reset"), "--card-hang", None),
+            ("another stop", ("B3", refused[1]), "--hang", None)):
+        got = flagged(stop, flag)
+        cases.case(f"flag: the words, {name}", got == stop if words is None
+                   else got[0] == stop[0] and got[1].startswith(stop[1]) and
+                   got[1].endswith(f"{words}, and the console's own "
+                                   "condition still refused the reset: the "
+                                   "sitting stops here and returns to the "
+                                   "responsible human, who is present"))
 
 
 def test_files(cases, scratch):

@@ -9,7 +9,14 @@
 #          the steps as a sitting's command runs them, a process from its
 #          command line: the driver's, with this file's stand-ins in place
 #          of the recipe's gate, cards, bus, and source, or ./mvp/mvp itself
-#          for the wrapper's own forms and the recipe's fixed paths.
+#          for the wrapper's own forms and the recipe's fixed paths. A
+#          stand-in boot prints what the board's boots print, in their
+#          order and count, the values made up where a line holds one:
+#          from the NOR, the boot ROM's eight lines, the SPL's banner and
+#          two lines, and U-Boot (tests/fake-uboot.py); from a card
+#          (card_head), the ROM's four lines, the SPL's banner and two
+#          lines, and the rest of a capture that tests/test-k3-form.py
+#          writes, or less of it.
 # Trust:   test-only; every stand-in lies under OUT with made-up values but
 #          the boot ROM's USB IDs, which the bus rule names, and the board
 #          steps of the bases reach the fakes alone. As uid 0 (the
@@ -29,14 +36,18 @@
 #          and the boots from a card on captures that tests/test-k3-form.py
 #          writes (on the build's images): 1 and 2 (the whole sittings, and
 #          their records), 12 (a boot from the NOR with the card in), 14 to
-#          16 (the form's refusal, a run that never ends, an unplanned
-#          boot), 17 and 18 (the dongle, an input changed), 20 (the
-#          close-out), 25 (the bus), 27 (the end), 28 and 29 (the record of
-#          a sitting, tools/evidence.py --sitting, and the read-back after a
-#          session), 33 (the record of a sitting that stopped: the first
-#          sitting's facts, and a sitting that the bus stopped at
-#          reading-1), and 30 (the fakes). The last line is
-#          BE_MVP_K3_SESSION: PASS self_test=N cases=M.
+#          16 (the form's refusal, a run that never ends and its boot taken
+#          up again, an unplanned boot), 17 and 18 (the dongle, an input
+#          changed), 20 (the close-out), 25 (the bus), 27 (the end), 28 and
+#          29 (the record of a sitting, tools/evidence.py --sitting, and the
+#          read-back after a session), 33 (the first sitting's boot, taken
+#          up again and closed out by the tools; the record of the sitting
+#          stopped there, and closed; and a sitting that the bus stopped at
+#          reading-1), 35 (the other ways that a boot from a card stops,
+#          each closed out, or stopped with its record), 36 (a boot whose
+#          form ended before its verdict, and its record), and 30 (the
+#          fakes). The last line is BE_MVP_K3_SESSION: PASS self_test=N
+#          cases=M.
 # shellcheck shell=bash disable=SC2154
 
 unset K3_SITTING K3_SITTING_STEP K3_WORD K3_HUMAN_SAID K3_REHEARSAL \
@@ -1187,9 +1198,10 @@ case_readers() {
 	# can-reset after a boot from a card that stopped: each row's log from
 	# offset 0, the first sitting's boot from a card (rom, spl) or a boot
 	# from the NOR's ROM lines, then what the row adds; its ledger (good:
-	# begin's card=out, and the card in at offset 0); its flag, with the
-	# ledger and a quiet of 0.2 s unless the row says. Each row that wants
-	# none differs from the first row of its reason in one thing alone.
+	# begin's card=out, and the card in at offset 0; empty: a file with no
+	# line); its flag, with the ledger and a quiet of 0.2 s unless the row
+	# says. Each row that wants none differs from the first row of its
+	# reason in one thing alone.
 	local rom=$card_rom spl=$card_spl
 	local norrom='sys: 0x00000000\r\ntry sd...\r\nbm:3\r\nERROR:   CMD8\r\nERROR:   sd f! l:90\r\nbm:4\r\nnor m:0xc8 d:0x6017\r\nj...\r\n\r\n'
 	local uboot='\r\nU-Boot 2022.10 (stand-in)\r\n\r\nDRAM:  16 GiB\r\n'
@@ -1205,6 +1217,8 @@ case_readers() {
 		"card-hang-noisy|card S 1|none|$rom$spl|$good" \
 		"card-hang-out|card S 0.2|none|$rom$spl|card=out step=begin log_offset=0\\ncard=in session=1 image=a log_offset=0\\ncard=out session=1 image=a log_offset=0\\n" \
 		"card-hang-later|card S 0.2|none|$rom$spl|card=out step=begin log_offset=0\\ncard=in session=1 image=a log_offset=10\\n" \
+		"card-hang-only-later|card S 0.2|none|$rom$spl|card=in session=1 image=a log_offset=10\\n" \
+		"card-hang-empty|card S 0.2|none|$rom$spl|empty" \
 		"card-hang-link|card S 0.2|none|$rom$spl|link" \
 		"card-hang-form|card S 0.2|none|$rom$spl|${good}card=out  session=1 image=a log_offset=0\\n" \
 		"card-hang-offset|card S 0.2|none|$rom$spl|${good}card=out session=1 image=a\\n" \
@@ -1213,6 +1227,7 @@ case_readers() {
 		"uboot-hang|hang S 0.2|card-uboot-hang|$rom$spl$uboot|$good" \
 		"uboot-hang-alone|hang|none|$rom$spl$uboot|$good" \
 		"uboot-hang-mvp|hang S 0.2|hang|$rom$spl${uboot}Starting kernel ...\\r\\n\\r\\nBE_MVP:00 BOOT_VALIDATED\\r\\n|$good" \
+		"uboot-hang-not-mvp|hang S 0.2|none|$rom$spl${uboot}Starting kernel ...\\r\\n\\r\\nU-Boot 2022.10 (stand-in)\\r\\n|$good" \
 		"uboot-hang-nor|hang S 0.2|none|$norrom$spl$uboot|$good" \
 		"uboot-hang-no-uboot|hang S 0.2|none|$rom$spl|$good" \
 		"uboot-hang-out|hang S 0.2|none|$rom$spl$uboot|card=out step=begin log_offset=0\\n" \
@@ -1223,6 +1238,7 @@ case_readers() {
 		link) printf '%b' "$good" >"$dir/$name.target" &&
 			ln -s -- "$name.target" "$dir/$name.slot" ;;
 		absent) ;;
+		empty) : >"$dir/$name.slot" ;;
 		*) printf '%b' "$slot" >"$dir/$name.slot" ;;
 		esac
 		read -r -a words <<<"$flag"
@@ -1246,7 +1262,7 @@ case_readers() {
 		[ "$(cat -- "$out/readers.$name.txt")" = "$want" ] ||
 			fail "readers: $name: $(cat -- "$out/readers.$name.txt"), not $want"
 	done
-	pass sitting-readers "medium: nor, card, none; wait-end: the end with the last hart's record committed=0 and committed=1, a record cut short (terminal), the end with no digest, a second SPL banner (boot), a boot from the NOR, U-Boot's prompt, Fedora, and the time limit; can-reset after a boot from a card that stopped: card-hang (after the SPL's lines, or the firmware's banner), card-uboot-hang (U-Boot's banner), and MVP 1.0's hang, and none without the flag, for a boot from the NOR, with no boot ROM line or no SPL banner, with U-Boot's banner (--card-hang) or without it (--hang), with output during the quiet, with the card recorded out at the reset or in only after it, or with a ledger that is a link, holds a line not of its form, without its log_offset, or with a second card=, or is absent, and with --hang alone"
+	pass sitting-readers "medium: nor, card, none; wait-end: the end with the last hart's record committed=0 and committed=1, a record cut short (terminal), the end with no digest, a second SPL banner (boot), a boot from the NOR, U-Boot's prompt, Fedora, and the time limit; can-reset after a boot from a card that stopped: card-hang (after the SPL's lines, or the firmware's banner), card-uboot-hang (U-Boot's banner), and MVP 1.0's hang, and none without the flag, for a boot from the NOR, with no boot ROM line or no SPL banner, with U-Boot's banner (--card-hang) or without it (--hang), with a line not the MVP's after Starting kernel ... (--hang), with output during the quiet, with the card recorded out at the reset or in only after it, or with a ledger that is empty, whose only line is after the reset, that is a link, holds a line not of its form, without its log_offset, or with a second card=, or is absent, and with --hang alone"
 }
 
 # ------------------------------------------------------------ the readings
@@ -1498,6 +1514,14 @@ derived() {
 	printf '%s\n' "$file"
 }
 
+# derived's expressions for the first sitting's boot from a card, its
+# order and count: the boot ROM's four lines in place of the written
+# capture's two (the first after their two NULs), and the SPL's two lines
+# in place of its one; the values made up (card_rom's and card_spl's).
+card_head=(-e '1s/rom: stand-in line 1$/sys: 0x00000000\ntry sd...\nbm:3/'
+	-e 's/^rom: stand-in line 2$/j...\n/'
+	-e 's/^spl: a stand-in line$/DDR Part Number: stand-in, Size: 0MB, Data Rate: 0MT\/s\nDDR training consume 0ms/')
+
 # session S BOOTS: session S of the case's sitting, each step passing:
 # the card's records, the card in, card-in-S, BOOTS boots from it, the card
 # out, card-out-S, and reading-S.
@@ -1567,7 +1591,7 @@ recorded() {
 	local dir=$out/records/${2##*/}
 
 	expect "$1.verify" 0 "$python" -B "$tools/evidence.py" --verify "$dir"
-	[ "$(grep -cE '^ok   boot-.*: recorded (PASS|STOP), judged again: exit [01], the same output, result\.json, and log\.json$' "$out/$1.record.txt")" = \
+	[ "$(grep -cE '^ok   boot-.*: recorded (PASS|STOP), judged again: exit [012], the same output, result\.json, and log\.json$' "$out/$1.record.txt")" = \
 		"$(find "$2/boots" -name run.txt | wc -l)" ] ||
 		fail "$1: a boot not judged again"
 	"$python" -B - "$tools" "$dir" "$out/store/${2##*/}" <<'EOF' || fail "$1: the record is no board record by the ledger's method, or holds what it may not"
@@ -1721,7 +1745,15 @@ case_never_ends() {
 		"$out/never-ends.boot-1.1.txt" && grep -qx outcome=timeout "$root/boots/boot-1.1-a1/run.txt" &&
 		[ "$(dongle_resets)" = $((resets + 1)) ] ||
 		fail "never-ends: not the time limit's stop with the form's, or a reset after"
-	pass sitting-never-ends "a capture cut after Starting kernel: outcome timeout, STOP naming the time limit with the form's finding, no reset after"
+	# Taken up again: its reset by the hang reason (the driver's --hang),
+	# and the same stop.
+	sit boot-1.1-again 1 boot-1.1 K3_SITTING_RESUME=boot-1.1 K3_WAIT_SECONDS=2
+	has "$root/boots/boot-1.1-a2/reset.txt" reason=hang
+	grep -q '^BE_MVP_K3_SITTING: STOP step=boot-1.1 attempt=2 stop=B5 a run that never ends: ' \
+		"$out/never-ends.boot-1.1-again.txt" ||
+		fail "never-ends: the boot taken up again did not stop as the first attempt did"
+	has "$root/boots/boot-1.1-a2/run.txt" outcome=timeout
+	pass sitting-never-ends "a capture cut after Starting kernel: outcome timeout, STOP naming the time limit with the form's finding, no reset after; taken up again with --hang: its reset by the hang reason, the same stop"
 	# reading-1's one reset by the hang reason, after the timeout.
 	rm -- "$FAKE_K3_BOARD/card.json"
 	sit card-out-1 0 card-out-1
@@ -1975,26 +2007,30 @@ case_readback() {
 	pass sitting-readback "no read-back after card-out-1, and one that started before his card=out time: the record refused; one that failed: the record made, different, stops=B3"
 }
 
-# ------------------------- 33: the record of a sitting that stopped
+# ------------- 33: the first sitting's boot, closed out by the tools
 # The first sitting's facts: begin to card-in-1 passed; boot-1.1's banners
-# began and did not finish (the boot ROM's lines of a boot from a card,
-# the SPL's banner and two lines of its own, then nothing), outcome
-# no-banners, the form's exit 1; card-out-1; then reading-1, whose reset
-# the port-open rule refused, so that it stopped with no reset made and
-# an empty digests.tsv in the store; no end and no preflight after. The
-# record of that run root, and of a copy of it made before reading-1 (a
-# sitting stopped at a boot, the card out and read back). Then a sitting
-# whose three boots passed and whose reading-1 the bus stopped before its
-# reading began: its record, stopped at reading-1, with no reading-1.
+# began and did not finish (the first sitting's boot from a card, its
+# SPL's lines, then nothing), outcome no-banners, the form's exit 1. Taken
+# up again, its reset is the console's card-hang, and it stops the same
+# way; card-out-1. The record of a copy of that run root, a sitting
+# stopped at a boot, the card out and read back. Then reading-1, its reset
+# card-hang again, and end; the record of the sitting, closed. Then a
+# sitting whose three boots passed and whose reading-1 the bus stopped
+# before its reading began: its record, stopped at reading-1, with no
+# reading-1.
 case_stopped_record() {
 	local early=$out/session-record-stopped-boot store record boot
 	written_sitting stopped first
 	store=$out/store/${root##*/} record=$out/records/${root##*/}
 	card_records "$root" two-guests-off
-	insert two-guests-off "$(derived first-sitting -e '/^spl: a stand-in line$/{s//DDR Part Number: stand-in, Size: 0MB, Data Rate: 0MT\/s\nDDR training consume 0ms/;q}')"
+	insert two-guests-off "$(derived first-sitting "${card_head[@]}" -e '/DDR training consume/q')"
 	sit card-in-1 0 card-in-1
 	sit boot-1.1 1 boot-1.1 K3_CARD_BOOT_SECONDS=2
 	has "$root/boots/boot-1.1-a1/run.txt" outcome=no-banners check_status=1 verdict=STOP
+	sit boot-1.1-again 1 boot-1.1 K3_SITTING_RESUME=boot-1.1 K3_CARD_BOOT_SECONDS=2
+	has "$root/sitting/steps/${index[first:boot-1.1]}-boot-1.1-a2.txt" flag=--card-hang
+	has "$root/boots/boot-1.1-a2/reset.txt" reason=card-hang
+	has "$root/boots/boot-1.1-a2/run.txt" outcome=no-banners check_status=1 verdict=STOP
 	rm -- "$FAKE_K3_BOARD/card.json"
 	sit card-out-1 0 card-out-1
 	read_back "$root" two-guests-off
@@ -2004,27 +2040,25 @@ case_stopped_record() {
 	make_record stopped-boot.record 0 "$early" first
 	recorded stopped-boot "$early"
 	has "$out/records/${early##*/}/mvp/bundle.txt" 'result=stopped step=boot-1.1' \
-		preflight_before=kept 'preflight_after=absent: end did not pass'
-	sit reading-1 1 reading-1
-	grep -q '^BE_MVP_K3_SITTING: STOP step=reading-1 attempt=1 stop=1 k3-console.sh reset stopped (exit 1): the port-open rule holds no reason to reset now ' \
-		"$out/stopped.reading-1.txt" || fail "stopped-record: reading-1's reset not refused: $(tail -n 1 "$out/stopped.reading-1.txt")"
-	[ "$(tail -n +2 -- "$root/resets.tsv" | cut -f5 | tr '\n' ' ')" = 'fedora-down idle-prompt ' ] &&
-		[ -f "$store/readings/reading-1/digests.tsv" ] && [ ! -s "$store/readings/reading-1/digests.tsv" ] &&
-		[ "$(grep -c . -- "$store/readings/reading-0/digests.tsv")" = 6 ] &&
-		[ ! -e "$root/preflight-after" ] && [ ! -e "$root/sitting/steps/${index[first:end]}-end-a1.txt" ] ||
-		fail "stopped-record: not the first sitting's resets, digests, and missing end"
+		'steps=8 pass=6 stop=2' preflight_before=kept 'preflight_after=absent: end did not pass'
+	sit reading-1 0 reading-1
+	has "$root/sitting/steps/${index[first:reading-1]}-reading-1-a1.txt" flag=--card-hang
+	equal 1
+	sit end 0 end
+	[ "$(tail -n +2 -- "$root/resets.tsv" | cut -f5 | tr '\n' ' ')" = 'fedora-down idle-prompt card-hang card-hang idle-prompt ' ] &&
+		grep -qx 'audit=banners=5 resets=5 findings=0' "$root/env/fedora.txt" &&
+		[ "$(lines '"card": true' "$FAKE_UBOOT/received.log")" = 0 ] ||
+		fail "stopped-record: not the closed sitting's resets and audit, or a key in a boot from the card"
 	make_record stopped.record 0 "$root" first
 	recorded stopped "$root"
-	has "$record/mvp/bundle.txt" 'result=stopped step=boot-1.1' 'steps=8 pass=6 stop=2' \
-		preflight_before=kept 'preflight_after=absent: end did not pass' \
-		'resets=human=0 k3ctl=2' 'stops=1 B3' changed_since_sitting=none changed_elsewhere=0 tool_tree=other \
-		'boot=boot-1.1-a1 image=two-guests-off outcome=no-banners check=1 stops=B3,B5 usb=clean verdict=STOP judged=again excerpt=none'
-	grep -q '^reading=reading-1 verdict=STOP stop=1 k3-console.sh reset stopped (exit 1): .* equal=0$' "$record/mvp/bundle.txt" &&
-		grep -q '^commits=the boots were run and judged at the sitting with the tools of sitting_commit .*; that tree is not the source, so the record shows nothing of that form beyond its results, ' "$record/mvp/bundle.txt" &&
-		grep -q '^attempt_utc=' "$record/mvp/sitting/readings/reading-1.txt" &&
-		grep -q '^verdict=STOP stop=1 ' "$record/mvp/sitting/readings/reading-1.txt" &&
-		[ ! -e "$record/mvp/preflight-after.txt" ] && [ -f "$record/mvp/preflight-before.txt" ] ||
-		fail "stopped-record: the record's line of its commits, its reading-1, or its preflights"
+	has "$record/mvp/bundle.txt" result=closed 'steps=10 pass=8 stop=2' \
+		preflight_before=kept preflight_after=kept 'resets=human=0 k3ctl=5' \
+		stops=B3 changed_since_sitting=none changed_elsewhere=0 tool_tree=other \
+		'boot=boot-1.1-a1 image=two-guests-off outcome=no-banners check=1 stops=B3,B5 usb=clean verdict=STOP judged=again excerpt=none' \
+		'boot=boot-1.1-a2 image=two-guests-off outcome=no-banners check=1 stops=B3,B5 usb=clean verdict=STOP judged=again excerpt=none' \
+		'reading=reading-1 verdict=PASS equal=6'
+	grep -q '^commits=the boots were run and judged at the sitting with the tools of sitting_commit .*; that tree is not the source, so the record shows nothing of that form beyond its results, ' "$record/mvp/bundle.txt" ||
+		fail "stopped-record: the record's line of its commits"
 	written_sitting stopped-bus first
 	card_records "$root" two-guests-off
 	insert two-guests-off
@@ -2045,7 +2079,150 @@ case_stopped_record() {
 		preflight_before=kept 'preflight_after=absent: end did not pass' stops=j
 	! grep -q '^reading=reading-1 ' "$out/records/${root##*/}/mvp/bundle.txt" ||
 		fail "stopped-record: a line of a reading-1 that never began"
-	pass sitting-stopped-record "the first sitting's facts (its banners begun and not finished, outcome no-banners, the form's exit 1; card-out-1; reading-1 refused its reset, stop 1, an empty digests.tsv; no end): its record, result=stopped step=boot-1.1, reading-1's record and STOP kept with no digest, preflight_after absent, and resets fedora-down and idle-prompt; the record before reading-1, the card out and read back; and a sitting whose three boots passed, stopped by a fastboot interface at reading-1 before its reading began: its record, result=stopped step=reading-1, stops=j, no reading-1 line"
+	pass sitting-stopped-record "the first sitting's boot (its banners begun and not finished, outcome no-banners, the form's exit 1), taken up again with --card-hang (its reset card-hang, the same stop); card-out-1; the record of that sitting, stopped at boot-1.1, the card out and read back; reading-1 with --card-hang (its reset card-hang, equal=6), end (the audit's 5 banners and 5 resets, no finding), no key in a boot from the card, and the record, closed, with both boots judged again; and a sitting whose three boots passed, stopped by a fastboot interface at reading-1 before its reading began: its record, result=stopped step=reading-1, stops=j, no reading-1 line"
+}
+
+# ---------------- 35: the other ways that a boot from a card stops
+# closed_out REASON: after the case's boot-1.1 stopped with the card in,
+# card-out-1, the card's read-back, reading-1 (its reset REASON's,
+# equal=6), end (its audit without a finding), and the sitting's record,
+# closed; no key reached a boot from the card.
+closed_out() {
+	rm -- "$FAKE_K3_BOARD/card.json"
+	sit card-out-1 0 card-out-1
+	read_back "$root" two-guests-off
+	sit reading-1 0 reading-1
+	[ "$(tail -n 1 "$root/resets.tsv" | cut -f5)" = "$1" ] ||
+		fail "$case_name: reading-1's reset is not $1's"
+	equal 1
+	sit end 0 end
+	grep -q '^audit=banners=[0-9]* resets=[0-9]* findings=0$' "$root/env/fedora.txt" &&
+		[ "$(lines '"card": true' "$FAKE_UBOOT/received.log")" = 0 ] ||
+		fail "$case_name: the audit found a banner, or a key reached a boot from the card"
+	make_record "$case_name.record" 0 "$root" first
+	recorded "$case_name" "$root"
+	has "$out/records/${root##*/}/mvp/bundle.txt" result=closed preflight_after=kept
+}
+
+# stopped_at NAME OUTCOME REASON CAPTURE [VAR=VALUE...]: a sitting of its
+# own whose boot-1.1, with the driver's settings VAR=VALUE, boots CAPTURE
+# from the card and stops with OUTCOME; then closed_out REASON.
+stopped_at() {
+	local capture=$4 outcome=$2 reason=$3
+	written_sitting "$1" first
+	shift 4
+	card_records "$root" two-guests-off
+	insert two-guests-off "$capture"
+	sit card-in-1 0 card-in-1
+	sit boot-1.1 1 boot-1.1 "$@"
+	has "$root/boots/boot-1.1-a1/run.txt" "outcome=$outcome" verdict=STOP
+	closed_out "$reason"
+}
+
+# The first sitting's boot from a card cut at each of its later stages:
+# after the firmware's banner (no U-Boot banner, so its reset's wait for
+# the banners stops: outcome no-banners, the reading's reset card-hang);
+# at U-Boot's prompt after a load that failed (outcome prompt;
+# idle-prompt); after U-Boot's banner (outcome timeout; the reading's
+# reset card-uboot-hang): each closed out. And after the boot ROM's lines
+# alone (outcome no-banners): the boot taken up again, and then reading-1,
+# each with --card-hang, and each reset refused, since no SPL banner shows
+# a boot from a card, so that each stops (stop 1, the flag's words) with
+# no reset made, the reading with an empty digests.tsv in the store, and
+# the sitting returns to the responsible human; no end; its record,
+# stopped at boot-1.1, holds the boot taken up again as an attempt with no
+# capture to judge, and keeps reading-1's record and stop with no digest.
+case_card_stops() {
+	local capture store record resets
+	local refused="the port-open rule holds no reason to reset now (no idle prompt, no terminal marker or Fedora halted with ${K3_TAIL_SECONDS} s quiet, no boot from a card stopped before U-Boot's banner with the card recorded in and ${K3_CARD_QUIET_SECONDS} s quiet, and no prior halt or terminal marker before a session's first reset); no reset was made; --card-hang was given, the session's last boot having shown no U-Boot banner, and the console's own condition still refused the reset: the sitting stops here and returns to the responsible human, who is present"
+	# shellcheck disable=SC2016 # sed's last line, $
+	stopped_at card-stop-banner no-banners card-hang \
+		"$(derived card-stop-banner "${card_head[@]}" -e '/^U-Boot 2022\.10 /,$d')" \
+		K3_CARD_BOOT_SECONDS=2
+	capture=$(derived card-stop-prompt "${card_head[@]}" \
+		-e "/^Autoboot in 0 seconds\$/{a Failed to load '/be-mvp-two-guests-off-gcc.img'" -e 'q}')
+	printf '=> ' >>"$capture"
+	stopped_at card-stop-prompt prompt idle-prompt "$capture"
+	stopped_at card-stop-uboot timeout card-uboot-hang \
+		"$(derived card-stop-uboot "${card_head[@]}" -e '/^U-Boot 2022\.10 /q')" \
+		K3_WAIT_SECONDS=2
+	written_sitting card-stop-rom first
+	store=$out/store/${root##*/} record=$out/records/${root##*/}
+	card_records "$root" two-guests-off
+	insert two-guests-off "$(derived card-stop-rom "${card_head[@]}" -e '/^j\.\.\./q')"
+	sit card-in-1 0 card-in-1
+	sit boot-1.1 1 boot-1.1 K3_CARD_BOOT_SECONDS=2
+	has "$root/boots/boot-1.1-a1/run.txt" outcome=no-banners check_status=1 verdict=STOP
+	resets=$(grep -cx reset "$FAKE_K3CTL/commands.log")
+	sit boot-1.1-again 1 boot-1.1 K3_SITTING_RESUME=boot-1.1 K3_CARD_BOOT_SECONDS=2
+	grep -qx "BE_MVP_K3_SITTING: STOP step=boot-1.1 attempt=2 stop=1 $refused" \
+		"$out/card-stop-rom.boot-1.1-again.txt" || fail "card-stops: boot-1.1 again: $(tail -n 1 "$out/card-stop-rom.boot-1.1-again.txt")"
+	has "$root/sitting/steps/${index[first:boot-1.1]}-boot-1.1-a2.txt" flag=--card-hang
+	[ "$(grep -cx reset "$FAKE_K3CTL/commands.log")" = "$resets" ] && [ ! -e "$root/boots/boot-1.1-a2/run.txt" ] ||
+		fail "card-stops: boot-1.1 again: a reset reached the dongle, or the attempt has a run.txt"
+	rm -- "$FAKE_K3_BOARD/card.json"
+	sit card-out-1 0 card-out-1
+	read_back "$root" two-guests-off
+	sit reading-1 1 reading-1
+	grep -qx "BE_MVP_K3_SITTING: STOP step=reading-1 attempt=1 stop=1 k3-console.sh reset stopped (exit 1): $refused" \
+		"$out/card-stop-rom.reading-1.txt" || fail "card-stops: reading-1: $(tail -n 1 "$out/card-stop-rom.reading-1.txt")"
+	[ "$(tail -n +2 -- "$root/resets.tsv" | cut -f5 | tr '\n' ' ')" = 'fedora-down idle-prompt ' ] &&
+		[ -f "$store/readings/reading-1/digests.tsv" ] && [ ! -s "$store/readings/reading-1/digests.tsv" ] &&
+		[ "$(grep -c . -- "$store/readings/reading-0/digests.tsv")" = 6 ] &&
+		[ ! -e "$root/preflight-after" ] && [ ! -e "$root/sitting/steps/${index[first:end]}-end-a1.txt" ] ||
+		fail "card-stops: the boot ROM's lines alone: not its resets, digests, and missing end"
+	make_record card-stop-rom.record 0 "$root" first
+	recorded card-stop-rom "$root"
+	grep -qx 'ok   boot-1.1-a2 two-guests-off: recorded STOP, no capture to judge' \
+		"$out/card-stop-rom.record.txt" || fail "card-stops: the record of the boot taken up again"
+	has "$record/mvp/bundle.txt" 'result=stopped step=boot-1.1' 'steps=9 pass=6 stop=3' \
+		preflight_before=kept 'preflight_after=absent: end did not pass' \
+		'resets=human=0 k3ctl=2' 'stops=1 B3' \
+		'boot=boot-1.1-a1 image=two-guests-off outcome=no-banners check=1 stops=B3,B4,B5 usb=clean verdict=STOP judged=again excerpt=none' \
+		'boot=boot-1.1-a2 image=two-guests-off outcome=none check=none stops=none usb=none verdict=STOP judged=none excerpt=none'
+	grep -q '^reading=reading-1 verdict=STOP stop=1 k3-console.sh reset stopped (exit 1): .* equal=0$' "$record/mvp/bundle.txt" &&
+		grep -q '^attempt_utc=' "$record/mvp/sitting/readings/reading-1.txt" &&
+		grep -q '^verdict=STOP stop=1 ' "$record/mvp/sitting/readings/reading-1.txt" &&
+		[ ! -e "$record/mvp/preflight-after.txt" ] && [ -f "$record/mvp/preflight-before.txt" ] ||
+		fail "card-stops: the record's reading-1, or its preflights"
+	pass sitting-card-stops "the first sitting's boot from a card stopped after the firmware's banner (outcome no-banners; reading-1's reset card-hang), at U-Boot's prompt after a failed load (prompt; idle-prompt), and after U-Boot's banner (timeout; card-uboot-hang): each closed out, equal=6, end's audit without a finding, no key in a boot from the card, and its record, closed; after the boot ROM's lines alone (no-banners): the boot taken up again and reading-1, each with --card-hang, each reset refused with no reset made, STOP stop=1 with the flag's words, the step's record flag=--card-hang, an empty digests.tsv, no end; its record, stopped at boot-1.1, the boot taken up again an attempt with no capture to judge, reading-1's record and stop kept with no digest, preflight_after absent"
+}
+
+# ------------------ 36: a boot whose form ended before its verdict
+# A board whose U-Boot prints a DRAM line of more than the size that
+# U-Boot's print_size() prints: reading-0 records it, and the form, given
+# it as the sitting's --memory, exits 2 before any verdict and writes no
+# result.json; the boot stops (stop=tool), its run.txt check_status=2 and
+# stops=none. Then card-out-1, the read-back, and the record of the
+# sitting stopped there: the boot judged again, exit 2 both times, and no
+# result.json either time.
+case_form_exit() {
+	local record
+	written_sitting form-exit first '{"dram": "16 GiB (effective 4 GiB)"}'
+	record=$out/records/${root##*/}
+	has "$root/readings/reading-0.txt" 'memory=16 GiB (effective 4 GiB)'
+	card_records "$root" two-guests-off
+	insert two-guests-off
+	sit card-in-1 0 card-in-1
+	sit boot-1.1 1 boot-1.1
+	grep -qx 'BE_MVP_K3_SITTING: STOP step=boot-1.1 attempt=1 stop=tool the form cannot judge its inputs' \
+		"$out/form-exit.boot-1.1.txt" || fail "form-exit: $(tail -n 1 "$out/form-exit.boot-1.1.txt")"
+	has "$root/boots/boot-1.1-a1/run.txt" check_status=2 stops=none verdict=STOP
+	grep -q "^usage: check-capture.py " "$root/boots/boot-1.1-a1/check.txt" &&
+		[ ! -e "$root/boots/boot-1.1-a1/result.json" ] ||
+		fail "form-exit: the form did not end at its arguments, or wrote a result.json"
+	rm -- "$FAKE_K3_BOARD/card.json"
+	sit card-out-1 0 card-out-1
+	read_back "$root" two-guests-off
+	make_record form-exit.record 0 "$root" first
+	recorded form-exit "$root"
+	grep -qx 'ok   boot-1.1-a1 two-guests-off: recorded STOP, judged again: exit 2, the same output, result.json, and log.json' \
+		"$out/form-exit.record.txt" &&
+		grep -q '^boot=boot-1.1-a1 image=two-guests-off outcome=end check=2 stops=none usb=clean verdict=STOP judged=again ' "$record/mvp/bundle.txt" &&
+		[ -z "$(find "$record" -name result.json -path '*boot-1.1-a1*')" ] ||
+		fail "form-exit: the record does not judge the boot again with exit 2 and no result.json"
+	has "$record/mvp/bundle.txt" 'result=stopped step=boot-1.1' stops=tool
+	pass sitting-form-exit "a DRAM line that print_size() does not print, recorded by reading-0: the form given it as --memory exits 2 before a verdict, no result.json; the boot STOP stop=tool, check_status=2, stops=none; card-out-1 and the read-back; the record, stopped at boot-1.1: the boot judged again, exit 2 and no result.json both times"
 }
 
 # ---------------------------------------------- 30: the sittings' fakes
@@ -2102,6 +2279,8 @@ case_end
 case_record
 case_readback
 case_stopped_record
+case_card_stops
+case_form_exit
 case_fakes
-cases=29
+cases=31
 printf 'BE_MVP_K3_SESSION: PASS self_test=%s cases=%s\n' "$self_test" "$cases"
