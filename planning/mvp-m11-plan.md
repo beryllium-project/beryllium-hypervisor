@@ -1962,3 +1962,42 @@ text above as it says; the text above is otherwise as accepted.
   - **The record** of the sitting is made with the record tool as
     corrected, at a commit later than the sitting's, and follows; it
     names both commits.
+- **2026-11-20, `fix: go`** (an erratum to the board addendum's B-3,
+  and its stop B8, a soft limit; put to the responsible human once,
+  after the first sitting's stop, with the cause as the entry before
+  this one has it).
+  - **An erratum to B-3.** The recipe gains a step after its third:
+    the node that the tree's `/aliases/console` names gets
+    `compatible = "intel,xscale-uart", "ns16550"`, in that order.
+    The firmware base takes a node's names in order, and so keeps
+    the UART's unit enable when it sets the console up; the vendor's
+    U-Boot binds its serial driver by `ns16550`, as before. B-3's
+    step 4 (the descriptor's nodes) and its step 5 (nothing else
+    changes) follow the new step, unchanged. For a run with the
+    boundary built off, the tree has steps 1 to 3 and the new step.
+    The erratum changes no M-mode code, no line of the monitor, and
+    no image of the candidate's.
+  - **Three soft limits of M11-B are re-set**, counted as before,
+    from M11-E's candidate:
+
+    | Lane | Was | Re-set to |
+    | --- | --- | --- |
+    | The tree's recipe, the backend's second platform, the checker on the board's trees, and the hostile-monitor declarations with the generator's rules | 2,500 | 3,000 |
+    | The card's tools and the session's tools, with their dry runs | 11,000 | 12,500 |
+    | The checker's form for a boot from a card, the harness's end of a halting run, and the ledger tool's method | 3,500 | 4,000 |
+
+    When the question was put, the three lanes stood at 2,396, 10,543,
+    and 2,985 lines. By their designs, the recipe's step, with its
+    rule in the recipe's own check and in the tree checker, takes the
+    first to between 2,460 and 2,560. The corrections of the
+    sittings' tools take the second to about 11,500, and the third to
+    about 3,100. Of those corrections, the record of a sitting that
+    stopped (about 400 lines) fits the old limit and was begun before
+    this entry; the reset rule and the name of the stop are written
+    after it. None was landed before this entry, and nothing was cut
+    to meet a limit.
+  - **What it does not do.** No board step follows from it. The first
+    sitting is run again only on his word and with him present, after
+    M11-B3's gates have passed again at the commit that holds the
+    corrections, that commit is signed, and a card with the new
+    firmware has been written and read back.
