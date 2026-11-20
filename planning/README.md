@@ -1700,6 +1700,52 @@ public push now.
   was run. The runs' result tables wait for their authors, as the
   plan's section 6 has it. Accepted 2026-11-17 by the responsible
   human's sign-off of its commit.
+- `mvp-m12-4-walk.md`: the packet and the record of M12-4, the table
+  walk for the Sail RISC-V model, a work package of the M12 plan: the
+  step's exit commit in the lane's clone of the model, the readings
+  that the plan's rules 1 and 11 require, the responsible human's
+  decisions that bear on the step, the walk, what it leaves to the
+  author of the model's pull request 1727, and what was run. The walk
+  is offered to no one, and the runs' results wait for their authors,
+  as the plan's section 6 has it. Accepted 2026-11-20 (UTC) by the
+  responsible human's sign-off of its commit.
+- `mvp-m12-plan-revision-1.md`: revision 1 of the M12 plan, at the
+  responsible human's direction of 2026-11-19: the plan's step 3, the
+  table walk, becomes M12-7, a model of the Supervisor Domains
+  extensions of the specification's frozen release `v0.9` in the Sail
+  RISC-V model, on the model's current `master`. Where it and the plan
+  differ, it governs; the plan's other sections stand, and the MVP
+  plan's text is not changed. Accepted 2026-11-20 (UTC) by the
+  responsible human's sign-off of its commit.
+- `mvp-m12-7-1-environment.md`: the packet and the record of M12-7.1,
+  the first sub-step of M12-7: M12-1's environment made again for the
+  Sail model's `master`, which has the hypervisor extension: the exit
+  commit in the lane's tests' repository, the readings, what changed
+  and why, and what was run. Accepted 2026-11-20 (UTC) by the
+  responsible human's sign-off of its commit.
+- `mvp-m12-7-2-smsd.md`: the packet and the record of M12-7.2, the
+  second sub-step of M12-7: `Smsd`, the base extension of RISC-V
+  Supervisor Domains Access Protection, written to the frozen release
+  `v0.9` in the lane's clone of the Sail RISC-V model: the exit
+  commits, the readings, what the model's `Smsd` covers, the options
+  for the behaviours that the text leaves open, what is not covered,
+  and what was run. The code is offered to no one, and the comparisons
+  with other projects' pull requests wait for their authors. Accepted
+  2026-11-20 (UTC) by the responsible human's sign-off of its commit.
+- `mvp-m12-7-3-qos.md`: the packet and the record of M12-7.3, the
+  third sub-step of M12-7: `Smqosid` and `Smsdqosid`, the two hart
+  extensions of the specification's chapter 9, in the lane's clone of
+  the Sail RISC-V model: the exit commits, the readings, what the
+  model's chapter 9 covers, the options and the four questions that
+  they raise, a correction to the model's `Ssqosid`, what is not
+  covered, and what was run. Accepted 2026-11-20 (UTC) by the
+  responsible human's sign-off of its commit.
+- `mvp-m12-7-4-7-5-not-modelled.md`: the packet and the record of
+  M12-7.4 (`Smsdedbga` and `Smsdetrca`) and M12-7.5 (`Smsdia`), two
+  sub-steps of M12-7 that add no code to the model: the first finds
+  that `v0.9` does not contain its two extensions, and the second that
+  the model lacks the interrupt files that `Smsdia` needs. Accepted
+  2026-11-20 (UTC) by the responsible human's sign-off of its commit.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and

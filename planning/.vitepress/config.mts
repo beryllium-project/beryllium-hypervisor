@@ -608,6 +608,30 @@ export default defineConfig({
             link: '/mvp-m12-3-tests'
           },
           {
+            text: 'MVP M12-4, the table walk: packet and record',
+            link: '/mvp-m12-4-walk'
+          },
+          {
+            text: 'MVP M12 plan, revision 1: the Supervisor Domains model in Sail',
+            link: '/mvp-m12-plan-revision-1'
+          },
+          {
+            text: 'MVP M12-7.1, the environment for the model\'s master: packet and record',
+            link: '/mvp-m12-7-1-environment'
+          },
+          {
+            text: 'MVP M12-7.2, Smsd in the Sail model: packet and record',
+            link: '/mvp-m12-7-2-smsd'
+          },
+          {
+            text: 'MVP M12-7.3, Smqosid and Smsdqosid in the Sail model: packet and record',
+            link: '/mvp-m12-7-3-qos'
+          },
+          {
+            text: 'MVP M12-7.4 and M12-7.5, debug and trace, and interrupt assignment: packet and record',
+            link: '/mvp-m12-7-4-7-5-not-modelled'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1264,6 +1288,30 @@ export default defineConfig({
             link: '/mvp-m12-3-tests'
           },
           {
+            text: 'MVP M12-4, the table walk: packet and record',
+            link: '/mvp-m12-4-walk'
+          },
+          {
+            text: 'MVP M12 plan, revision 1: the Supervisor Domains model in Sail',
+            link: '/mvp-m12-plan-revision-1'
+          },
+          {
+            text: 'MVP M12-7.1, the environment for the model\'s master: packet and record',
+            link: '/mvp-m12-7-1-environment'
+          },
+          {
+            text: 'MVP M12-7.2, Smsd in the Sail model: packet and record',
+            link: '/mvp-m12-7-2-smsd'
+          },
+          {
+            text: 'MVP M12-7.3, Smqosid and Smsdqosid in the Sail model: packet and record',
+            link: '/mvp-m12-7-3-qos'
+          },
+          {
+            text: 'MVP M12-7.4 and M12-7.5, debug and trace, and interrupt assignment: packet and record',
+            link: '/mvp-m12-7-4-7-5-not-modelled'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1803,6 +1851,30 @@ export default defineConfig({
           {
             text: 'MVP M12-3, the directed tests: packet and record',
             link: '/mvp-m12-3-tests'
+          },
+          {
+            text: 'MVP M12-4, the table walk: packet and record',
+            link: '/mvp-m12-4-walk'
+          },
+          {
+            text: 'MVP M12 plan, revision 1: the Supervisor Domains model in Sail',
+            link: '/mvp-m12-plan-revision-1'
+          },
+          {
+            text: 'MVP M12-7.1, the environment for the model\'s master: packet and record',
+            link: '/mvp-m12-7-1-environment'
+          },
+          {
+            text: 'MVP M12-7.2, Smsd in the Sail model: packet and record',
+            link: '/mvp-m12-7-2-smsd'
+          },
+          {
+            text: 'MVP M12-7.3, Smqosid and Smsdqosid in the Sail model: packet and record',
+            link: '/mvp-m12-7-3-qos'
+          },
+          {
+            text: 'MVP M12-7.4 and M12-7.5, debug and trace, and interrupt assignment: packet and record',
+            link: '/mvp-m12-7-4-7-5-not-modelled'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',
