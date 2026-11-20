@@ -10,7 +10,7 @@ M11-5's tree, with be_control. The tables name their step either way
 
 --platform k3-com260 (M11-B, B-3) is the board, from the facts of
 --platform-file (mvp/k3/platform.json): --board-tree renders onto the
-recipe's step 3, --board-tables writes the board's plain-PMP tables and
+recipe's step 4, --board-tables writes the board's plain-PMP tables and
 the root OpenSBI domain's regions as its banner prints them, and
 --self-test runs the board's cases. The default, k3-like, is unchanged."""
 
@@ -593,7 +593,7 @@ def board_compile(dtc, source, output, include=None):
 
 
 def board_base(dtc, base, output):
-    """Step 3 compiled alone in OUTPUT, a new private directory: its
+    """Step 4 compiled alone in OUTPUT, a new private directory: its
     warning set and tree."""
     output = private_directory(output)
     warnings = board_compile(dtc, base, output / "base.dtb")
@@ -603,10 +603,10 @@ def board_base(dtc, base, output):
 
 
 def board_tree(descriptor_path, image, base, facts, dtc, output, control):
-    """Step 4 (B-3): the descriptor rendered onto the recipe's step 3, its
+    """The descriptor's step (B-3), rendered onto the recipe's step 4: its
     harts the board's CPU nodes by reg, be_park the descriptor's parked
     harts and every hart of the board beyond its own; the joined tree may
-    change no dtc warning of step 3's, found in the same run."""
+    change no dtc warning of step 4's, found in the same run."""
     value, identity = strict_descriptor(descriptor_path)
     name, base = image or value["image"], pathlib.Path(base).resolve()
     output, expected, fdt = board_base(dtc, base, output)
@@ -619,7 +619,7 @@ def board_tree(descriptor_path, image, base, facts, dtc, output, control):
     write_new(source, render_tree(value, identity, base.name, control, cpus,
                                   park).encode())
     require(board_compile(dtc, source, output / f"{name}.dtb", base.parent)
-            == expected, "the joined tree's dtc warnings differ from step 3's")
+            == expected, "the joined tree's dtc warnings differ from step 4's")
     parse_fdt((output / f"{name}.dtb").read_bytes())
     print(f"BE_MVP_PARTITION_BACKEND: PASS board-tree image={name} "
           f"identity={identity[:12]} park={park[0]}-{park[-1]}")
@@ -630,7 +630,7 @@ def board_tables(descriptor_path, image, base, facts, firmware_elf, dtc,
     """The board's expected tables, plain PMP alone (B-6), for every hart
     of the board, with a descriptor; and always the root OpenSBI domain's
     regions as the banner prints them: from the build's own ELF and the
-    recipe's step 3."""
+    recipe's step 4."""
     value, identity = strict_descriptor(descriptor_path) if \
         descriptor_path else (None, None)
     name, base = image or value["image"], pathlib.Path(base).resolve()
@@ -1018,7 +1018,7 @@ def self_test(descriptor, dtc, scratch):
 
 
 def board_self_test(descriptor, facts, base, dtc, scratch):
-    """The board platform's cases (B-3) on a stand-in step 3 and its
+    """The board platform's cases (B-3) on a stand-in step 4 and its
     description, every value made up: each passing form, and each refusal
     by its own rule."""
     scratch = pathlib.Path(scratch)

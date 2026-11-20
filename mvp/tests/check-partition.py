@@ -1003,9 +1003,11 @@ def board_harts(fdt, count):
 
 def board_rules(fdt, facts):
     """The board's own rules on its tree (B-3, B-6): harts 0 to 15 by reg;
-    the board's memory; no flash with an enabled path to the root; the
-    RPMI mailbox, and each node whose mboxes holds its phandle, disabled;
-    no CPU listing smepmp, and harts 0 to 2 listing h; no active syscon
+    the board's memory; the console named intel,xscale-uart first, for
+    which alone the firmware base keeps the UART's unit enable, then its
+    published name; no flash with an enabled path to the root; the RPMI
+    mailbox, and each node whose mboxes holds its phandle, disabled; no
+    CPU listing smepmp, and harts 0 to 2 listing h; no active syscon
     reset node with a regmap, whose page the firmware would add to the
     root OpenSBI domain."""
     harts = board_harts(fdt, facts["harts"]["count"])
@@ -1015,6 +1017,11 @@ def board_rules(fdt, facts):
         num(facts["memory"]["base"], "memory base"),
         num(facts["memory"]["size"], "memory size"))],
             "the tree's memory is not the board's")
+    console = facts["root_devices"]["console"]
+    require(compatibles(fdt, console["path"]) == [
+        "intel,xscale-uart", console["compatible"]],
+            f"the console {console['path']} is not named "
+            "intel,xscale-uart, then its published name")
     mailboxes = {handle for handle, path in all_phandles(fdt).items()
                  if "riscv,rpmi-shmem-mbox" in compatibles(fdt, path)}
     for path in fdt.order:
@@ -1095,7 +1102,7 @@ def banner_line(row):
 
 def root_check(root, image, firmware, base_dts, roots):
     """IMAGE-root.json (be-mvp-k3-root-v1): its image, its firmware's and
-    step 3's SHA-256, and the root regions in the firmware's order
+    step 4's SHA-256, and the root regions in the firmware's order
     (sort_regions(), sanitize_domain()'s), each as its banner prints it."""
     require(sorted(root) == ["base_tree_sha256", "firmware_sha256", "image",
                              "regions", "schema"] and
@@ -1672,7 +1679,7 @@ def actual_check(args, facts=None):
 
 def off_check(args, facts):
     """The board's boundary-off image (B-3): its tree, the recipe's
-    step 3, holds no OpenSBI node or digest and keeps the board's rules,
+    step 4, holds no OpenSBI node or digest and keeps the board's rules,
     and its root file is the root OpenSBI domain's regions of its own
     build. Not required, because nothing gives it: an OpenSBI domain of
     the project's, or a cold-boot hart (the firmware cold-boots on the
@@ -1823,7 +1830,7 @@ def self_test(descriptor_path, scenario_path, layout_path, scratch,
 
 def board_mutations(args, facts):
     """The board's mutations (B-3), each refused by its own rule, on the
-    base of --base-dts (a stand-in at tier 1, the recipe's step 3 at the
+    base of --base-dts (a stand-in at tier 1, the recipe's step 4 at the
     gate): the backend renders the descriptor onto it and writes its
     tables and root file from --firmware-elf, and each mutation of a tree
     is an override, by path, appended to the joined source."""
@@ -1954,8 +1961,20 @@ def board_mutations(args, facts):
         refused(label, prefix, lambda: checked(compiled(text)))
     elsewhere = copy.deepcopy(facts)
     elsewhere["root_devices"]["console"]["path"] = "/soc/x"
+    # The regions' path rule alone: the console's rule refuses this first.
     refused("a root device at another path", "the root device console is "
-            "not /soc/x", lambda: checked(fdt, board=elsewhere))
+            "not /soc/x", lambda: board_regions(fdt, symbols, elsewhere))
+    serial = facts["root_devices"]["console"]["compatible"]
+    for label, names in (
+            ("the console named as published alone", [serial]),
+            ("the console's two names in the other order",
+             [serial, "intel,xscale-uart"]),
+            ("a third name before the console's two",
+             ["snps,dw-apb-uart", "intel,xscale-uart", serial])):
+        text = override(console, "compatible = " + ", ".join(
+            f'"{item}"' for item in names) + ";")
+        refused(label, f"the console {console} is not named",
+                lambda: checked(compiled(text)))
     guarded = expected_tree_model(descriptor, domains, extent_ranges,
                                   profiles, args.control_hart,
                                   range(3, count - 1))
