@@ -14,8 +14,8 @@
 #                                settings
 #   k3-console.sh start          begin the session: K3_RUN_ROOT/session.txt
 #   k3-console.sh can-reset      the port-open rule's reason now, or none
-#   k3-console.sh reset [--hang] one reset under the port-open rule, then
-#                                the SPL and U-Boot banners
+#   k3-console.sh reset [--hang|--card-hang]  one reset under the port-open
+#                                rule, then the SPL and U-Boot banners
 #   k3-console.sh stop-autoboot  `s` at `Autoboot in`, then the fresh prompt
 #   k3-console.sh type LINE [OUT]  one template line; its output to OUT
 #   k3-console.sh diag LINE [OUT]  one read-only diagnostic line, one of
@@ -125,6 +125,35 @@
 # the line), then K3_TAIL_SECONDS quiet; or, with
 # --hang, which k3-run.sh passes only after its run's own timeout,
 # `Starting kernel ...` and no later U-Boot or Fedora line (an MVP hang).
+# In a sitting's run root (below) two more conditions may be asked for,
+# after a boot from a card that stopped. Each needs the boot since the
+# last reset to have come from a card, by the boot ROM's lines before its
+# SPL banner (tests/check-capture.py's boot_medium(), which tells them
+# from a boot from the NOR's, and finds none without that banner);
+# card-slot.txt to record the card in at that reset (a regular file of
+# this account's, not a link, its every non-empty line a whole card= line
+# with one log_offset, and of those at or before the reset the last
+# card=in; anything else is the card not in); and then
+# K3_CARD_QUIET_SECONDS with no output, read last. With --card-hang, which
+# the sittings' driver passes after a boot from a card that showed no
+# U-Boot banner, and which is a usage error outside a sitting's run root:
+# card-hang, no U-Boot banner since the reset. With --hang: also
+# card-uboot-hang, U-Boot's banner and no `Starting kernel ...`. Such a
+# reset cuts short nothing that writes what must be finished. The console
+# can fall silent while the boot goes on (the firmware's device tree can
+# leave the console's UART disabled), so what may run then is any stage
+# of the card's chain: the card's SPL, which reads the card alone and
+# writes nothing; the two real-time cores, which the SPL starts at every
+# boot and every reset restarts; the project's firmware, which has no
+# storage driver and whose tree disables the mailbox to those cores; the
+# vendor's U-Boot, to which that tree gives no flash device (so no
+# training record and no probe of the NOR), whose card environment holds
+# no command that writes storage, no hook, and no identity variable, and
+# which at every boot clears three bits of a register of the power chip
+# that the next boot clears again; and the MVP, which reaches no storage
+# device and ends at a halt (planning/mvp-m11-board-addendum.md,
+# statements 7 and 8, B-3, B-5, B-10; planning/mvp-plan.md, S3-E.1
+# statements 1 to 4; tools/k3-card.py).
 # A session's first reset may instead rest on the log's last 64 KiB before
 # the session's start showing fedora-down or a terminal marker (the board
 # left halted or at an MVP terminal marker by a previous session;
@@ -149,7 +178,9 @@
 # K3_AUTOBOOT_SECONDS (from the U-Boot banner to `Autoboot in`, 60),
 # K3_STOP_RETRY_SECONDS (from `s` to a second `s` without a prompt, 0.5),
 # K3_TAIL_SECONDS (5), K3_IDLE_SECONDS (an idle prompt's quiet, 1),
-# K3_PROMPT_SECONDS_QUIET (a prompt's, 0.3), K3_HUMAN_SECONDS (600), K3_RESET
+# K3_PROMPT_SECONDS_QUIET (a prompt's, 0.3), K3_CARD_QUIET_SECONDS (a
+# sitting's quiet after a boot from a card that stopped, 30),
+# K3_HUMAN_SECONDS (600), K3_RESET
 # (k3ctl, or human by default), K3CTL (the client), K3CTL_DEV (its dongle's
 # device, opened only by the client), and K3CTL_PIN (default
 # tools/k3ctl.sha256; the board targets pass that one, the dry run its
@@ -239,6 +270,7 @@ boot_seconds=${K3_BOOT_SECONDS:-60}
 autoboot_seconds=${K3_AUTOBOOT_SECONDS:-60}
 stop_retry_seconds=${K3_STOP_RETRY_SECONDS:-0.5}
 tail_seconds=${K3_TAIL_SECONDS:-5}
+card_quiet_seconds=${K3_CARD_QUIET_SECONDS:-30}
 human_seconds=${K3_HUMAN_SECONDS:-600}
 export K3_IDLE_SECONDS=${K3_IDLE_SECONDS:-1}
 reset_method=${K3_RESET:-human}
@@ -595,7 +627,8 @@ reply() {
 }
 
 reset() {
-	local reason offset seq when banners wait_for spl uboot_banner
+	local reason offset seq when banners wait_for spl uboot_banner why=
+	local rule=("$@")
 
 	need_session
 	if [ -f "$guest_lock" ] && kill -0 "$(cat -- "$guest_lock")" 2>/dev/null; then
@@ -603,9 +636,22 @@ reset() {
 	fi
 	reset_settings
 	audit
+	# In a sitting's run root a flag also asks for its condition after a
+	# boot from a card that stopped (the header), on the card's ledger.
+	if [ "$#" = 1 ] && sitting; then
+		rule+=("$run_root/card-slot.txt" "$card_quiet_seconds")
+	fi
+	case ${1:-} in
+	--hang)
+		why=', no MVP hang'
+		! sitting ||
+			why+=" or boot from a card stopped after U-Boot's banner with the card recorded in and ${card_quiet_seconds} s quiet"
+		;;
+	--card-hang) why=", no boot from a card stopped before U-Boot's banner with the card recorded in and ${card_quiet_seconds} s quiet" ;;
+	esac
 	reason=$("${uboot[@]}" can-reset "$serial_log" "$(segment_start)" \
-		"$tail_seconds" "$@") || reason=$(prior_reason) ||
-		stop 1 "the port-open rule holds no reason to reset now (no idle prompt, no terminal marker or Fedora halted with ${tail_seconds} s quiet${1:+, no MVP hang}, and no prior halt or terminal marker before a session's first reset); no reset was made"
+		"$tail_seconds" "${rule[@]}") || reason=$(prior_reason) ||
+		stop 1 "the port-open rule holds no reason to reset now (no idle prompt, no terminal marker or Fedora halted with ${tail_seconds} s quiet$why, and no prior halt or terminal marker before a session's first reset); no reset was made"
 	offset=$(log_size)
 	seq=$(($(grep -c . "$resets" 2>/dev/null || echo 1)))
 	printf 'method=%s\nreason=%s\nreset_seq=%s\noffset_before=%s\n' \
@@ -1169,7 +1215,10 @@ can-reset:0)
 	"${uboot[@]}" can-reset "$serial_log" "$(segment_start)" "$tail_seconds"
 	;;
 reset:0) reset ;;
-reset:1) [ "$1" = --hang ] || usage; reset --hang ;;
+reset:1)
+	[ "$1" = --hang ] || { [ "$1" = --card-hang ] && sitting; } || usage
+	reset "$1"
+	;;
 stop-autoboot:0) stop_autoboot ;;
 type:1 | type:2) type_line "$@" ;;
 diag:1 | diag:2) type_line "$1" "${2:-}" diag ;;

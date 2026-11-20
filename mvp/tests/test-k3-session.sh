@@ -20,26 +20,30 @@
 #          stage, and reading-0, a step stopped and taken up, one stopped
 #          twice), 31 (the refusals that act on nothing, in one table), 4
 #          to 7 (the console tool's rule for a card recorded in, and what a
-#          sitting's run root types), 13 (a boot from a card with none
-#          recorded in, at the console and through the driver's reading),
-#          32 (k3-uboot.py medium's and wait-end's outcomes), 8 to 11
+#          sitting's run root types), 34 (its flag for a boot from a card
+#          that stopped), 13 (a boot from a card with none recorded in, at
+#          the console and through the driver's reading), 32 (k3-uboot.py
+#          medium's, wait-end's, and can-reset's outcomes), 8 to 11
 #          (k3-env.sh reading: a difference, its own checks and refusals, a
-#          missed s, and what stays private; k3-env.sh fedora), and the
-#          boots from a card on captures that tests/test-k3-form.py writes
-#          (on the build's images): 1 and 2 (the whole sittings, and their
-#          records), 12 (a boot from the NOR with the card in), 14 to 16
-#          (the form's refusal, a run that never ends, an unplanned boot),
-#          17 and 18 (the dongle, an input changed), 20 (the close-out), 25
-#          (the bus), 27 (the end), 28 and 29 (the record of a sitting,
-#          tools/evidence.py --sitting, and the read-back after a session),
-#          33 (the record of a sitting that stopped: the first sitting's
-#          facts, and a sitting that the bus stopped at reading-1), and 30
-#          (the fakes). The last line is BE_MVP_K3_SESSION: PASS
-#          self_test=N cases=M.
+#          missed s, and what stays private; k3-env.sh fedora; its usage),
+#          and the boots from a card on captures that tests/test-k3-form.py
+#          writes (on the build's images): 1 and 2 (the whole sittings, and
+#          their records), 12 (a boot from the NOR with the card in), 14 to
+#          16 (the form's refusal, a run that never ends, an unplanned
+#          boot), 17 and 18 (the dongle, an input changed), 20 (the
+#          close-out), 25 (the bus), 27 (the end), 28 and 29 (the record of
+#          a sitting, tools/evidence.py --sitting, and the read-back after a
+#          session), 33 (the record of a sitting that stopped: the first
+#          sitting's facts, and a sitting that the bus stopped at
+#          reading-1), and 30 (the fakes). The last line is
+#          BE_MVP_K3_SESSION: PASS self_test=N cases=M.
 # shellcheck shell=bash disable=SC2154
 
 unset K3_SITTING K3_SITTING_STEP K3_WORD K3_HUMAN_SAID K3_REHEARSAL \
 	K3_SITTING_RESUME K3_CARD_BOOT_SECONDS K3_NOR_READ K3_CARD_DEVICE
+# The console's quiet after a boot from a card that stopped, before it
+# admits a reset for it (30 s on the board).
+export K3_CARD_QUIET_SECONDS=0.5
 for name in K3_SITTING_PLAN_first K3_SITTING_PLAN_second K3_SITTING_IMAGES \
 	K3_SITTING_CAPTURES; do
 	[ -n "${!name:-}" ] ||
@@ -770,6 +774,11 @@ case_refusals() {
 }
 
 # ------------------------------------------------------ the console's rule
+# The first sitting's boot from a card as its console showed it, the
+# values made up, in printf %b's form: the boot ROM's four lines (the first
+# after two NULs), then the SPL's banner and two lines; then nothing.
+card_rom='\0\0sys: 0x00000000\r\ntry sd...\r\nbm:3\r\nj...\r\n\r\n'
+card_spl='U-Boot SPL 2022.10 (stand-in)\r\nDDR Part Number: stand-in, Size: 0MB, Data Rate: 0MT/s\r\nDDR training consume 0ms\r\n'
 # The reading's eight lines (S3-E item 9), as this dry run's own list.
 reading_lines=('sf probe' 'sf read 0x140000000 0x0 0x800000'
 	'md5sum 0x140000000 0x10000' 'md5sum 0x140010000 0xa000'
@@ -1026,6 +1035,51 @@ case_templates() {
 	pass sitting-templates "in a sitting's run root: 5 of MVP 1.0's templates, the 8 reading lines without K3_NOR_READ, 11 near ones with it, diag, guest-type, probe-type: each refused; outside one, the 8 reading lines refused with K3_NOR_READ; nothing typed"
 }
 
+# ------------------------- 34: the console's flag for a boot that stopped
+# A sitting's run root whose last reset booted a card that stopped after
+# the SPL's lines (the reset's own wait for the banners stops): reset
+# --card-hang with the card recorded out at that reset stops (stop 1)
+# with its condition's words, and no command reaches the dongle; with the
+# card recorded in at it, the reset is made, its reason card-hang in the
+# reset's record, resets.tsv, and the keystroke log; outside a sitting's
+# run root the flag is a usage error.
+case_card_hang_console() {
+	local capture=$out/card-hang-console.capture commands
+	console_sitting card-hang-console out
+	printf '%b' "$card_rom$card_spl" >"$capture"
+	printf '{"image": "two-guests-off", "capture": "%s"}\n' "$capture" \
+		>"$FAKE_K3_BOARD/card.json"
+	halted
+	expect card-hang-console.boot 1 env K3_BOOT_SECONDS=1 "$console" reset
+	grep -qF 'STOP stop=1 no SPL and U-Boot banner within 1 s of the reset' \
+		"$out/card-hang-console.boot.txt" || fail "card-hang-console: the boot's reset did not stop at its banners"
+	commands=$(grep -c . "$FAKE_K3CTL/commands.log")
+	expect card-hang-console.out 1 "$console" reset --card-hang
+	grep -qF "STOP stop=1 the port-open rule holds no reason to reset now (no idle prompt, no terminal marker or Fedora halted with ${K3_TAIL_SECONDS} s quiet, no boot from a card stopped before U-Boot's banner with the card recorded in and ${K3_CARD_QUIET_SECONDS} s quiet, and no prior halt or terminal marker before a session's first reset); no reset was made" \
+		"$out/card-hang-console.out.txt" ||
+		fail "card-hang-console: the card recorded out: $(tail -n 1 "$out/card-hang-console.out.txt")"
+	[ "$(grep -c . "$FAKE_K3CTL/commands.log")" = "$commands" ] ||
+		fail "card-hang-console: a command reached the dongle before the rule refused the reset"
+	rm -- "$FAKE_K3_BOARD/card.json"
+	card_slot in
+	expect card-hang-console.in 0 "$console" reset --card-hang
+	has "$out/card-hang-console.in.txt" reason=card-hang outcome=reset
+	[ "$(tail -n 1 "$K3_RUN_ROOT/resets.tsv" | cut -f5)" = card-hang ] ||
+		fail "card-hang-console: resets.tsv's reason is not card-hang"
+	grep -q '	reset	seq=2 method=k3ctl reason=card-hang offset=' "$K3_RUN_ROOT/keys.log" ||
+		fail "card-hang-console: the keystroke log's reset is not card-hang's"
+	# That reset booted the NOR, and Fedora after it: --hang in a sitting's
+	# run root, refused, names both of its conditions.
+	wait_state fedora
+	expect card-hang-console.hang 1 "$console" reset --hang
+	grep -qF ", no MVP hang or boot from a card stopped after U-Boot's banner with the card recorded in and ${K3_CARD_QUIET_SECONDS} s quiet, and no prior halt" \
+		"$out/card-hang-console.hang.txt" ||
+		fail "card-hang-console: --hang's refusal: $(tail -n 1 "$out/card-hang-console.hang.txt")"
+	rm -- "$K3_RUN_ROOT/sitting/plan.txt"
+	expect card-hang-console.outside 2 "$console" reset --card-hang
+	pass sitting-card-hang-console "a boot from a card that stopped after the SPL's lines: reset --card-hang with the card recorded out at its reset, STOP stop=1 with the condition's words and no command to the dongle; recorded in, the reset made with reason card-hang (its record, resets.tsv, keys.log); --hang refused in a sitting's run root, naming both of its conditions; outside a sitting's run root, --card-hang a usage error"
+}
+
 # ------------------------------------------ 13: a card boot, none in
 # card_capture FILE ROM: a stand-in boot from a card, its boot ROM's lines
 # ROM (made up), then the SPL and U-Boot banners and `Autoboot in 0`.
@@ -1130,7 +1184,69 @@ case_readers() {
 			fail "readers: $name: $(cat -- "$out/readers.$name.txt"), not $want"
 	done
 	unset -f record
-	pass sitting-readers "medium: nor, card, none; wait-end: the end with the last hart's record committed=0 and committed=1, a record cut short (terminal), the end with no digest, a second SPL banner (boot), a boot from the NOR, U-Boot's prompt, Fedora, and the time limit"
+	# can-reset after a boot from a card that stopped: each row's log from
+	# offset 0, the first sitting's boot from a card (rom, spl) or a boot
+	# from the NOR's ROM lines, then what the row adds; its ledger (good:
+	# begin's card=out, and the card in at offset 0); its flag, with the
+	# ledger and a quiet of 0.2 s unless the row says. Each row that wants
+	# none differs from the first row of its reason in one thing alone.
+	local rom=$card_rom spl=$card_spl
+	local norrom='sys: 0x00000000\r\ntry sd...\r\nbm:3\r\nERROR:   CMD8\r\nERROR:   sd f! l:90\r\nbm:4\r\nnor m:0xc8 d:0x6017\r\nj...\r\n\r\n'
+	local uboot='\r\nU-Boot 2022.10 (stand-in)\r\n\r\nDRAM:  16 GiB\r\n'
+	local good='card=out step=begin log_offset=0\ncard=in session=1 image=a log_offset=0\n'
+	local flag words slot writer
+	for row in "card-hang|card S 0.2|card-hang|$rom$spl|$good" \
+		"card-hang-firmware|card S 0.2|card-hang|$rom$spl\\r\\nOpenSBI v1.7\\r\\n|$good" \
+		"card-hang-no-flag||none|$rom$spl|$good" \
+		"card-hang-nor|card S 0.2|none|$norrom$spl|$good" \
+		"card-hang-no-rom|card S 0.2|none|$spl|$good" \
+		"card-hang-no-spl|card S 0.2|none|$rom|$good" \
+		"card-hang-uboot|card S 0.2|none|$rom$spl$uboot|$good" \
+		"card-hang-noisy|card S 1|none|$rom$spl|$good" \
+		"card-hang-out|card S 0.2|none|$rom$spl|card=out step=begin log_offset=0\\ncard=in session=1 image=a log_offset=0\\ncard=out session=1 image=a log_offset=0\\n" \
+		"card-hang-later|card S 0.2|none|$rom$spl|card=out step=begin log_offset=0\\ncard=in session=1 image=a log_offset=10\\n" \
+		"card-hang-link|card S 0.2|none|$rom$spl|link" \
+		"card-hang-form|card S 0.2|none|$rom$spl|${good}card=out  session=1 image=a log_offset=0\\n" \
+		"card-hang-offset|card S 0.2|none|$rom$spl|${good}card=out session=1 image=a\\n" \
+		"card-hang-twice|card S 0.2|none|$rom$spl|card=out step=begin log_offset=0\\ncard=in session=1 log_offset=0 card=out\\n" \
+		"card-hang-absent|card S 0.2|none|$rom$spl|absent" \
+		"uboot-hang|hang S 0.2|card-uboot-hang|$rom$spl$uboot|$good" \
+		"uboot-hang-alone|hang|none|$rom$spl$uboot|$good" \
+		"uboot-hang-mvp|hang S 0.2|hang|$rom$spl${uboot}Starting kernel ...\\r\\n\\r\\nBE_MVP:00 BOOT_VALIDATED\\r\\n|$good" \
+		"uboot-hang-nor|hang S 0.2|none|$norrom$spl$uboot|$good" \
+		"uboot-hang-no-uboot|hang S 0.2|none|$rom$spl|$good" \
+		"uboot-hang-out|hang S 0.2|none|$rom$spl$uboot|card=out step=begin log_offset=0\\n" \
+		"uboot-hang-noisy|hang S 1|none|$rom$spl$uboot|$good"; do
+		IFS='|' read -r name flag want text slot <<<"$row"
+		printf '%b' "$text" >"$dir/$name.log"
+		case $slot in
+		link) printf '%b' "$good" >"$dir/$name.target" &&
+			ln -s -- "$name.target" "$dir/$name.slot" ;;
+		absent) ;;
+		*) printf '%b' "$slot" >"$dir/$name.slot" ;;
+		esac
+		read -r -a words <<<"$flag"
+		args=(can-reset "$dir/$name.log" 0 0.2)
+		[ "${#words[@]}" = 0 ] || args+=("--${words[0]/card/card-hang}")
+		[ "${#words[@]}" != 3 ] || args+=("$dir/$name.slot" "${words[2]}")
+		writer=
+		if [ "${name##*-}" = noisy ]; then
+			# A line every 0.05 s until the reader ends (10 s at most):
+			# not quiet.
+			for _ in $(seq 200); do
+				printf 'spl: a stand-in line\r\n' >>"$dir/$name.log"
+				sleep 0.05
+			done &
+			writer=$!
+		fi
+		status=1
+		[ "$want" = none ] || status=0
+		expect "readers.$name" "$status" "$python" -I -B "$tools/k3-uboot.py" "${args[@]}"
+		[ -z "$writer" ] || { kill "$writer"; wait "$writer" || true; }
+		[ "$(cat -- "$out/readers.$name.txt")" = "$want" ] ||
+			fail "readers: $name: $(cat -- "$out/readers.$name.txt"), not $want"
+	done
+	pass sitting-readers "medium: nor, card, none; wait-end: the end with the last hart's record committed=0 and committed=1, a record cut short (terminal), the end with no digest, a second SPL banner (boot), a boot from the NOR, U-Boot's prompt, Fedora, and the time limit; can-reset after a boot from a card that stopped: card-hang (after the SPL's lines, or the firmware's banner), card-uboot-hang (U-Boot's banner), and MVP 1.0's hang, and none without the flag, for a boot from the NOR, with no boot ROM line or no SPL banner, with U-Boot's banner (--card-hang) or without it (--hang), with output during the quiet, with the card recorded out at the reset or in only after it, or with a ledger that is a link, holds a line not of its form, without its log_offset, or with a second card=, or is absent, and with --hang alone"
 }
 
 # ------------------------------------------------------------ the readings
@@ -1201,7 +1317,7 @@ case_reading_differs() {
 	grep -qxF 'BE_MVP_K3_ENV: PASS reading-0 ranges=6 compared=none' \
 		"$out/reading-differs.0.txt" || fail "reading-differs: reading 0"
 	has "$root/readings/reading-0.txt" fedora_shutdown=clean-halt \
-		'medium=nor rom_lines=5' 'memory=16 GiB' sf_probe=8MiB sf_read_1=OK \
+		'medium=nor rom_lines=8' 'memory=16 GiB' sf_probe=8MiB sf_read_1=OK \
 		sf_read_2=OK whole_again=equal compared=none published=not-compared \
 		verdict=PASS
 	for row in bootinfo:0x100 record:0x10100 fsbl:0x1a100 env:0xa0100 images:0x7fff00; do
@@ -1274,6 +1390,13 @@ case_reading_faults() {
 	expect reading-refused.option 2 env K3_NOR_READ=human-authorized "$env_tool" reading 0 --hand
 	[ "$(contacts "$root"; sha "$root/readings/reading-0.txt")" = "$before" ] ||
 		fail "reading-refused: a refusal contacted a fake, or wrote a record"
+	# With no argument, its usage: the header's two blocks of commands.
+	expect reading-usage 2 "$env_tool"
+	[ "$(head -n 1 "$out/reading-usage.txt")" = '  k3-env.sh record          Fedora shut down cleanly over ssh (step g);' ] &&
+		[ "$(tail -n 1 "$out/reading-usage.txt")" = '                            over ssh within K3_FEDORA_SECONDS, the audit' ] &&
+		[ "$(grep -c '^  k3-env.sh ' "$out/reading-usage.txt")" = 7 ] &&
+		[ "$(wc -l <"$out/reading-usage.txt")" = 36 ] ||
+		fail "reading-usage: not the two blocks of the header's commands: $(wc -l <"$out/reading-usage.txt") lines"
 	# k3-env.sh's own rule on the reading's medium, behind the
 	# console's: a copy of the console tool that records a card's medium for
 	# the NOR's that it judged, the tree's other tools beside it.
@@ -1285,7 +1408,7 @@ case_reading_faults() {
 	grep -qxF "BE_MVP_K3_ENV: STOP stop=B3 this reading's boot is not recorded as the NOR's (medium=card rom_lines=1); the board is left at the U-Boot prompt" \
 		"$out/reading-medium.txt" && [ "$(lines '"line": ' "$FAKE_UBOOT/received.log")" = 0 ] ||
 		fail "reading-medium: k3-env.sh's own rule on the medium did not stop B3 before any line"
-	pass sitting-reading-faults "a 16 MiB probe, a read error, an md5sum of another range, a second read that differs: stops 3, 3, 3, 4, nothing typed after, the board at its prompt; refused with nothing contacted: no K3_NOR_READ, no reading 1's digests, the store's readings a link, plan.txt a link, N 10, an option not --hang; a console that records another medium: k3-env.sh's own B3, no line typed"
+	pass sitting-reading-faults "a 16 MiB probe, a read error, an md5sum of another range, a second read that differs: stops 3, 3, 3, 4, nothing typed after, the board at its prompt; refused with nothing contacted: no K3_NOR_READ, no reading 1's digests, the store's readings a link, plan.txt a link, N 10, an option neither --hang nor --card-hang; with no argument, the usage, the header's two blocks of commands; a console that records another medium: k3-env.sh's own B3, no line typed"
 }
 
 # ------------------------------------------ 10: a missed s in a reading
@@ -1960,6 +2083,7 @@ case_card_typing
 case_card_mutants
 case_card_state
 case_templates
+case_card_hang_console
 case_card_boot
 case_readers
 case_reading_differs
@@ -1979,5 +2103,5 @@ case_record
 case_readback
 case_stopped_record
 case_fakes
-cases=28
+cases=29
 printf 'BE_MVP_K3_SESSION: PASS self_test=%s cases=%s\n' "$self_test" "$cases"

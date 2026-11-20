@@ -12,7 +12,8 @@ k3-run.sh read in the operator's serial log, a picocom log that only grows.
   k3-uboot.py wait-autoboot LOG OFFSET SECONDS
   k3-uboot.py after-stop LOG OFFSET SECONDS [--retried]
   k3-uboot.py idle LOG
-  k3-uboot.py can-reset LOG FROM TAIL [--hang]
+  k3-uboot.py can-reset LOG FROM TAIL [--hang [SLOT QUIET]]
+  k3-uboot.py can-reset LOG FROM TAIL --card-hang SLOT QUIET
   k3-uboot.py fresh LOG FROM
   k3-uboot.py audit LOG START RESETS
   k3-uboot.py follow LOG OFFSET SECONDS TAIL [TYPED]
@@ -69,7 +70,16 @@ optional stamp.
                issue one; and after the line no SPL or U-Boot banner, TAIL
                seconds quiet); with --hang, after a
                run's own timeout, hang (`Starting kernel ...` and no later
-               U-Boot or Fedora line); 1 and `none` when none holds
+               U-Boot or Fedora line); with SLOT and QUIET (a sitting's
+               card-slot.txt, and the seconds of quiet asked for), after a
+               boot from a card that stopped, one more: card-uboot-hang
+               with --hang, its U-Boot banner and no `Starting kernel
+               ...`; card-hang with --card-hang, no U-Boot banner; each
+               only where the boot since FROM came from a card by its boot
+               ROM's lines (tests/check-capture.py's boot_medium(), which
+               needs an SPL banner), SLOT records the card in at FROM
+               (card_in_at()), and then QUIET seconds pass with no output,
+               read last; 1 and `none` when none holds
   can-reset-before  the rule's fedora-down or terminal-marker condition
                for the log from FROM to END (a session's start), the tail
                quiet: the board's state before a session (left halted or
@@ -168,6 +178,7 @@ import json
 import os
 import pathlib
 import re
+import stat
 import sys
 import time
 
@@ -191,6 +202,13 @@ FEDORA_DOWN = re.compile(r"reboot: Restarting system|"
                          r"reboot: Power down")
 BOOT_BANNER = re.compile(LEAD + r"U-Boot (?:SPL )?\d", re.M)
 STARTING = "Starting kernel ..."
+# A line of a sitting's card-slot.txt (tools/k3-sitting.py's ledger): the
+# card's state first, then KEY=VALUE fields, one of them log_offset (the
+# serial log's size when the line was recorded), and no second card= or
+# log_offset=.
+SLOT_LINE = re.compile(r"card=(in|out)(?: (?!card=|log_offset=)[a-z_]+="
+                       r"[^ =]+)* log_offset=([0-9]+)(?: (?!card=|"
+                       r"log_offset=)[a-z_]+=[^ =]+)*")
 # After `Starting kernel ...`, a line of U-Boot (a prompt, a banner, its
 # three-decimal stamp but on the line booti prints last) or of Fedora
 # (Linux's six-decimal stamp, unprefixed, or a login prompt), which an MVP
@@ -355,7 +373,7 @@ def can_reset_before(path, start, end, tail):
     return 0 if reason else 1
 
 
-def can_reset(path, start, tail, hang=False):
+def can_reset(path, start, tail, flag=None, slot=None, wait=0.0):
     text = clean(read(path, start))
     reason = None
     if at_prompt(path) and quiet(path, IDLE_QUIET):
@@ -364,11 +382,39 @@ def can_reset(path, start, tail, hang=False):
         reason = "terminal-marker"
     elif down_at(text) is not None and quiet(path, tail):
         reason = "fedora-down"
-    elif hang and STARTING in text and \
-            not NOT_MVP.search(text, text.rindex(STARTING) + len(STARTING)):
-        reason = "hang"
+    elif flag == "--hang" and STARTING in text:
+        if not NOT_MVP.search(text, text.rindex(STARTING) + len(STARTING)):
+            reason = "hang"
+    elif slot is not None and \
+            checker().boot_medium(read(path, start)) == "card" and \
+            bool(UBOOT.search(text)) == (flag == "--hang") and \
+            card_in_at(slot, start) and quiet(path, wait):
+        reason = "card-uboot-hang" if flag == "--hang" else "card-hang"
     print(reason or "none")
     return 0 if reason else 1
+
+
+def card_in_at(slot, offset):
+    """Whether SLOT, a sitting's card-slot.txt, records the card in at the
+    log's OFFSET: of its lines whose log_offset is at or before OFFSET, the
+    last is card=in. Read to fail closed: a regular file of this
+    account's, not a link, its every non-empty line a whole SLOT_LINE;
+    anything else is the card not in."""
+    try:
+        info = os.lstat(slot)
+        text = pathlib.Path(slot).read_text(encoding="ascii")
+    except (OSError, ValueError):
+        return False
+    if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
+        return False
+    card = None
+    for line in filter(None, text.split("\n")):
+        match = SLOT_LINE.fullmatch(line)
+        if not match:
+            return False
+        if int(match.group(2)) <= offset:
+            card = match.group(1)
+    return card == "in"
 
 
 def typed(text):
@@ -901,10 +947,11 @@ def main(argv):
             return function(args[0], int(args[1]), float(args[2]))
         if command == "idle" and len(args) == 1:
             return idle(args[0])
-        if command == "can-reset" and len(args) in (3, 4) and \
-                args[3:] in ([], ["--hang"]):
+        if command == "can-reset" and (
+                len(args) == 3 or len(args) == 4 and args[3] == "--hang" or
+                len(args) == 6 and args[3] in ("--hang", "--card-hang")):
             return can_reset(args[0], int(args[1]), float(args[2]),
-                             len(args) == 4)
+                             *args[3:5], *map(float, args[5:]))
         if command == "can-reset-before" and len(args) == 4:
             return can_reset_before(args[0], int(args[1]), int(args[2]),
                                     float(args[3]))

@@ -135,10 +135,15 @@ L = 0x108000000
 FDT_FROM, FDT_TO = "fdt=0x0000000108400000", "fdt=0x00000002fbd6b000"
 # The partition's UUID, as tests/fake-board.py's blkid gives it.
 UUID = "66666666-7777-4888-9999-000000000006"
-SPL_LINES = ["ERROR:   CMD8", "ERROR:   sd f! l:90", "bm:4",
-             "nor m:0xc8 d:0x6017", "j...", "",
-             "U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)",
-             "DDR: LPDDR5 16GiB (fake)", ""]
+# A boot from the NOR as the board prints it: the boot ROM's eight lines
+# (its try of a card, then the NOR), the SPL's banner, its memory's part,
+# and its quick training; the values made up where a line holds one.
+SPL_BANNER = "U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)"
+SPL_LINES = ["sys: 0x00000000", "try sd...", "bm:3", "ERROR:   CMD8",
+             "ERROR:   sd f! l:90", "bm:4", "nor m:0xc8 d:0x6017", "j...",
+             "", SPL_BANNER,
+             "DDR Part Number: stand-in, Size: 0MB, Data Rate: 0MT/s",
+             "DDR quick boot consume 0ms", ""]
 UBOOT_BANNER = ("U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: "
                 "jenkins-BSP-build-bsp-deb-395")
 UBOOT_LINES = ["Model: COM260 (fake)", "DRAM:  16 GiB",
@@ -757,7 +762,7 @@ class Board:
             self.released = end
             if index is not None and \
                     index == self.faults.get("banner_after_step"):
-                self.feed += SPL_LINES[6] + "\r\n"
+                self.feed += SPL_BANNER + "\r\n"
         probe = self.probe
         if probe and not self.feed:
             new, at = self.typed[probe["seen"]:], probe["seen"]

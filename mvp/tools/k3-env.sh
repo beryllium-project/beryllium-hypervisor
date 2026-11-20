@@ -107,8 +107,8 @@ env_dir=$run_root/env
 store=$store_root/$(basename -- "$run_root")
 state=$env_dir/state.txt
 step=
-# A sitting's reading (below): --hang for its first reset alone, and the
-# private store's file for the resets' outputs.
+# A sitting's reading (below): its flag, --hang or --card-hang, for its
+# first reset alone, and the private store's file for the resets' outputs.
 hang=
 resets_out=
 
@@ -499,13 +499,16 @@ do_characterize() {
 }
 
 # ------------------------------------------------- a sitting's readings
-#   k3-env.sh reading N [--hang]  M11-B's sittings (planning/mvp-m11-board-
-#                             addendum.md; S3-E item 9): reading N, 0 to 9,
-#                             of a sitting's run root, with no saveenv:
-#                             Fedora shut down cleanly over ssh if it
-#                             answers; a fresh prompt (--hang: its first
-#                             reset admits MVP 1.0's hang reason, after a
-#                             boot that never ended); U-Boot's DRAM line;
+#   k3-env.sh reading N [--hang|--card-hang]  M11-B's sittings
+#                             (planning/mvp-m11-board-addendum.md; S3-E
+#                             item 9): reading N, 0 to 9, of a sitting's
+#                             run root, with no saveenv: Fedora shut down
+#                             cleanly over ssh if it answers; a fresh
+#                             prompt (its first reset given the flag for
+#                             k3-console.sh reset's condition: --hang
+#                             after a boot that never ended, --card-hang
+#                             after a boot from a card that showed no
+#                             U-Boot banner); U-Boot's DRAM line;
 #                             sf probe (8 MiB); the read of the NOR into
 #                             RAM; item 9's six md5sums; the read and the
 #                             whole digest again (equal); for N above 0,
@@ -694,11 +697,17 @@ do_fedora() {
 }
 
 usage() {
-	printf 'usage: %s record|install FILE|select FILE|restore|characterize FILE|reading N [--hang]|fedora\n' "$0" >&2
+	printf 'usage: %s record|install FILE|select FILE|restore|characterize FILE|reading N [--hang|--card-hang]|fedora\n' "$0" >&2
 	exit 2
 }
 
-[ "$#" -ge 1 ] || { sed -n '/^#   k3-env.sh record/,/^#                             with K3_LAUNCH=typed)/s/^# \{0,1\}//p' -- "$0" >&2; exit 2; }
+# With no argument, the header's two blocks of commands.
+[ "$#" -ge 1 ] || {
+	sed -n -e '/^#   k3-env.sh record /,/^#  *(k3-run\.sh with K3_LAUNCH=typed)$/s/^# \{0,1\}//p' \
+		-e '/^#   k3-env.sh reading N /,/^#  *over ssh within K3_FEDORA_SECONDS, the audit$/s/^# \{0,1\}//p' \
+		-- "$0" >&2
+	exit 2
+}
 command=$1
 shift
 case $command:$# in
@@ -708,7 +717,7 @@ select:1) do_select "$1" ;;
 restore:0) do_restore ;;
 characterize:1) do_characterize "$1" ;;
 reading:1 | reading:2)
-	[[ $1 =~ ^[0-9]$ ]] && [ "${2---hang}" = --hang ] || usage
+	[[ $1 =~ ^[0-9]$ ]] && [[ ${2---hang} =~ ^--(card-)?hang$ ]] || usage
 	hang=${2:-}
 	do_reading "$1"
 	;;
