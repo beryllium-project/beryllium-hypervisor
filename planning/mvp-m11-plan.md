@@ -1888,3 +1888,77 @@ text above as it says; the text above is otherwise as accepted.
 
   The image is not committed or published: it holds the vendor's
   files.
+- **2026-11-20, the first sitting** (the board addendum's "The
+  sittings, and their sessions"; M11-B4). It ran at the commit
+  `2b144c8bf80b4f252e8c403af97485402694c7de`, on the responsible
+  human's word and with him at the board, and **stopped at its first
+  boot from the card** (the addendum's stop B5: no firmware banner).
+  No line of the project's firmware, of U-Boot, or of the monitor
+  reached the console.
+  - **What passed before it.** The preflight from the board's own
+    Linux; the staging of `be-mvp-two-guests-off-gcc.img` on
+    partition 6; the first reading of the NOR, in a boot from the NOR
+    in which U-Boot showed 8 GiB of memory; and the card's insertion,
+    on his word.
+  - **The first boot from the card** (the reset at 05:38:22Z, by the
+    dongle; nothing typed). The console showed four lines of the boot
+    ROM: it tried the card and jumped, without the lines by which, in
+    a boot from the NOR, it fails on the card and goes on to the NOR.
+    Then the vendor SPL's banner, its line for the memory part, and
+    its line that the memory training took 3,000 ms (in the boot from
+    the NOR its line was of a quick boot, 9 ms). Then nothing for
+    120 s. The capture is 191 bytes, and the form refused it. The
+    driver named stop B3, the lower in number of the form's two
+    stops; the addendum's stop for a boot without a firmware banner
+    is B5.
+  - **The close.** The card came out on his word (05:45Z). The
+    driver's closing reading then stopped with no reset made: the
+    console tool's rule for a reset holds no reason for a board that
+    hangs after a card's SPL banner. On his word the owner session
+    closed the sitting by hand: one reset by the dongle, with the
+    pinned client (05:46:23Z); a boot from the NOR to the board's own
+    Linux; a reading of the NOR by the reader that the rehearsal
+    used, in a recorded session of its own with its two resets; and
+    the preflight again. These steps are outside the driver's
+    records, and so outside the sitting's record.
+  - **The NOR and the card are unchanged.** The closing reading
+    equals the sitting's first reading in all six ranges. The
+    preflight's verdict line after equals the one before. The card,
+    read back whole after the sitting (05:51Z to 06:18Z), equals its
+    image in each of its fourteen regions.
+  - **What the boot shows.** The boot ROM takes a card with B-4's
+    partition table (QB11), and the SPL runs from it and trains the
+    memory in full. Whether the project's firmware ran is not shown.
+  - **The cause, by source; not shown on the board.** By the vendor's
+    sources, the console's UART on this SoC needs the unit-enable bit
+    (bit 6) of its interrupt-enable register: the vendor's U-Boot
+    sets it by its configuration, and the vendor's own firmware sets
+    it in its 8250 setup. The published tree, which the recipe keeps,
+    names the console's node `ns16550` alone. For that name the
+    firmware base's 8250 driver writes the register as zero; it keeps
+    the bit only for a node that it matches as `intel,xscale-uart`.
+    So the project's firmware switches the console off as it sets it
+    up, and its banner cannot print. The firmware project's own
+    series for this SoC says the same of its tree (its mailing list,
+    2026-09-10, the cover letter of version 4 of the series that adds
+    the platform): "matching only "ns16550" writes 0x00 to UART_IER
+    and stops serial output". With the unit off, a transmitter whose
+    holding register never empties would hold the firmware at its
+    first output, or U-Boot at the wait that precedes its own setup
+    of the UART; which of the two happened is not established.
+  - **The remedy** needs an erratum to the addendum's B-3: a step of
+    the recipe that names the console's node `intel,xscale-uart`
+    before `ns16550`. It needs no M-mode code. The entry after this
+    one records the responsible human's decision on it; this entry
+    changes nothing of the addendum.
+  - **Three defects of the sittings' tools** showed, from one cause:
+    their stand-in for a boot without banners printed nothing at all,
+    where the board printed the ROM's and the SPL's lines. The
+    console tool's rule for a reset, above. The record tool, which
+    could not record a sitting that stopped before its last step: a
+    commit that follows this entry corrects it. And the name of the
+    stop, above. The first and the third are to be corrected with the
+    remedy.
+  - **The record** of the sitting is made with the record tool as
+    corrected, at a commit later than the sitting's, and follows; it
+    names both commits.
