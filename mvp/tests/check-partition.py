@@ -1110,7 +1110,7 @@ def root_check(root, image, firmware, base_dts, roots):
 
 
 def off_rules(fdt):
-    """Boundary off (A-6): no OpenSBI node and no config-digest."""
+    """Boundary off: no OpenSBI node and no config-digest."""
     require(not any(name.startswith("opensbi,") for path in fdt.order
                     for name in compatibles(fdt, path)) and
             not any("config-digest" in rows for rows in fdt.nodes.values()),
@@ -1549,7 +1549,7 @@ def tree_mutations(descriptor_path, value, identity, domains, extent_ranges,
                                       "confined" else "confined"))
     table_case("tables that name no step", "expected-table identities differ",
                lambda doc: doc.pop("control_hart"))
-    # M11-B (O4): the boot table holds the test device's page only where
+    # M11-B: the boot table holds the test device's page only where
     # the tree has a reset node that names the device, as OpenSBI's root
     # OpenSBI domain does. A base with one, its tree, and the backend's
     # tables of it; then each tree against the other's tables.
@@ -1671,7 +1671,7 @@ def actual_check(args, facts=None):
 
 
 def off_check(args, facts):
-    """The board's boundary-off image (A-6, T-2): its tree, the recipe's
+    """The board's boundary-off image (B-3): its tree, the recipe's
     step 3, holds no OpenSBI node or digest and keeps the board's rules,
     and its root file is the root OpenSBI domain's regions of its own
     build. Not required, because nothing gives it: an OpenSBI domain of

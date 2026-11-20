@@ -8,9 +8,10 @@ endif
 # k3-form-check (tier 1): tests/test-k3-form.py's synthetic captures of a
 # boot from a card, judged by tests/check-capture.py --mode card: the three
 # shapes, a mutation for each requirement, the refused inputs, the boot's
-# medium (K1), and the captures that its writer (K2) makes for a sitting's
-# dry run, each passing the form. The test makes its scratch afresh; the
-# record is written by redirection alone and ends BE_MVP_K3_FORM: PASS.
+# medium (rom_lines() and boot_medium()), and the captures that the test's
+# --write-card-fixtures makes for a sitting's dry run, each passing the
+# form. The test makes its scratch afresh; the record is written by
+# redirection alone and ends BE_MVP_K3_FORM: PASS.
 .PHONY: k3-form-check
 
 tools-check: k3-form-check

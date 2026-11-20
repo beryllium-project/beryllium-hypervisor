@@ -32,9 +32,9 @@ K3B_CARD_GATE_OUTPUTS := $(foreach image,$(K3B_IMAGES),$(addprefix \
 # be_part: the partition of the board's NVMe from which the card's U-Boot
 # loads the staged image (tools/k3-env.sh's be_ld), partition 6, ext4
 # `beryllium`, that the responsible human made on 2026-10-30 with
-# tools/k3-make-partition.sh (M5-1). Lane S compares it with each
-# sitting's preflight, and a difference stops the sitting before a card
-# goes in.
+# tools/k3-make-partition.sh (M5-1). tools/k3-sitting.py compares it with
+# each sitting's preflight, and a difference stops the sitting before a
+# card goes in.
 K3B_CARD_BE_PART := 6
 
 # Each of the card's own targets checks its variables as Make reads it.

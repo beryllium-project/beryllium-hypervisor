@@ -92,7 +92,7 @@ optional stamp.
                prints the outcome and the capture's end offset
   medium       the medium that the boot between START (its reset's offset)
                and END came from, by its boot ROM's lines before the SPL
-               banner: lane K's rule (tests/check-capture.py's
+               banner: the capture checker's rule (tests/check-capture.py's
                rom_lines() and boot_medium()), imported, not written
                again; prints medium=nor|card|none rom_lines=N, never a
                line's text; 0 for nor, 1 otherwise (M11-B's sittings: a
@@ -101,7 +101,7 @@ optional stamp.
                sittings): end, the end line and then TAIL seconds with no
                output; the end line is, with LAST_HART (the tree holds a
                digest), the last line of that hart's commit record in the
-               firmware's form (lane K's RECORD_LINE and RECORD_FORMS): its
+               firmware's form (the checker's RECORD_LINE, RECORD_FORMS): its
                counts line when it says committed=0, its pmpaddr8= line
                when committed=1; without, a line matching TERMINAL, the
                expectation's terminal_regex; terminal, with LAST_HART, a
@@ -440,8 +440,8 @@ def follow(path, offset, seconds, tail, typed_at=None):
 
 
 def checker():
-    """Lane K's form, tests/check-capture.py, for its rules on a boot from
-    reset (rom_lines(), boot_medium(), RECORD_LINE, RECORD_FORMS)."""
+    """The capture checker, tests/check-capture.py, for its rules on a boot
+    from reset (rom_lines(), boot_medium(), RECORD_LINE, RECORD_FORMS)."""
     path = pathlib.Path(__file__).resolve().parent.parent / "tests" / \
         "check-capture.py"
     spec = importlib.util.spec_from_file_location("check_capture", path)

@@ -521,7 +521,7 @@ def board_devices(fdt, facts):
     64 KiB; each found by compatible at its fact's base and path. The
     tree's one memory node must be the board's memory, and no enabled
     syscon reset node may name a regmap, whose page the firmware would add
-    to the root OpenSBI domain (lane F's rule finds none)."""
+    to the root OpenSBI domain (reset_regmap()'s rule finds none)."""
     memory = [path for path in fdt.order
               if prop(fdt, path, "device_type", False) == b"memory\0"]
     require(len(memory) == 1 and reg(fdt, memory[0]) == [(number(

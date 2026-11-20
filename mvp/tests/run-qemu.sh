@@ -526,7 +526,7 @@ for entry in "${k3_runs[@]}"; do
 done
 # M11-B (B-10): the board's two hostile-monitor images, GCC's, on anchor's
 # rows, where check made their expectations (mvp/k3/breach.mk); each run's
-# banner is then compared with the backend's root regions (T-6, below).
+# banner is then compared with the backend's root regions (below).
 k3_breach=$build/k3/check/breach
 k3_banners=()
 for name in k3-breach-g1 k3-breach-c; do
@@ -1024,7 +1024,7 @@ for entry in "${runs[@]}"; do
 	tc_attempts[$toolchain]=$((${tc_attempts[$toolchain]:-0} + run_attempts))
 	tc_refused[$toolchain]=$((${tc_refused[$toolchain]:-0} + run_refusals))
 done
-# M11-B (T-6): each board image's run, its banner's Domain0 regions in
+# M11-B: each board image's run, its banner's Domain0 regions in
 # number, order, and text the backend's for its pair's tree and the
 # firmware base, with three mutations refused (tools/k3-board.py banner).
 for name in "${k3_banners[@]}"; do

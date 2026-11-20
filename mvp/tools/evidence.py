@@ -1680,9 +1680,9 @@ BOOT_INPUTS = (("expect", "expectation"), ("report", "report"),
                ("reference", "reference"))
 INPUT_LINE = re.compile(r"input (\S+) path=(/\S+) sha256=([0-9a-f]{64})")
 NAMED = re.compile(r"(\S+) sha256=([0-9a-f]{64})")
-# S3-3: a USB vendor or product ID, in the forms in which the bus, lsusb,
-# udev, and the kernel print one, and a card reader's stable link (lane
-# C's K3_CARD_DEVICE).
+# What a sitting's record may not hold: a USB vendor or product ID, in
+# the forms in which the bus, lsusb, udev, and the kernel print one, and
+# a card reader's stable link (K3_CARD_DEVICE).
 USB_ID = re.compile(r"(?i:\bid_?(?:vendor|product|model)(?:_id)?|"
                     r"\b(?:vendor|product)_id)\W{0,4}[0-9a-fA-F]{4}\b|"
                     r"(?<![0-9A-Fa-f:])[0-9A-Fa-f]{4}:[0-9A-Fa-f]{4}"
@@ -1761,7 +1761,7 @@ def sitting_plan(root, name):
 
 def sitting_given(fields, given):
     """Refused unless each path GIVEN, {plan key: path or None}, is the one
-    that the sitting ran with (R10): a sitting on stand-ins is never
+    that the sitting ran with: a sitting on stand-ins is never
     recorded with the recipe's fixed paths, nor the reverse."""
     for key, path in given.items():
         recorded = fields.get(key, "").split(" sha256=")[0]
@@ -1913,9 +1913,9 @@ def sitting_readings(root, store):
 
 def sitting_readbacks(root, name):
     """[(session, image, read-back, same or different)] of each session
-    whose card went in (card-slot.txt): lane C's last finished read-back of
-    the image that started after the session's card=out (his said= time),
-    the record refused if there is none."""
+    whose card went in (card-slot.txt): the last finished read-back of the
+    image that started after the session's card=out (his said= time), the
+    record refused if there is none."""
     ledger = root / "card-slot.txt"
     if not ledger.is_file():
         raise Refused("no card-slot.txt in the run root: begin did not "
@@ -1956,7 +1956,7 @@ def optional_bytes(path):
 def sitting_boot(directory, image, inputs, build, observed, scratch):
     """One boot's records, checked: its files its SHA256SUMS's, its inputs
     the plan's of IMAGE by path and SHA-256, and its capture judged again
-    whole by the form as the driver judged it (7.4), into SCRATCH. Returns
+    whole by the form as the driver judged it, into SCRATCH. Returns
     (run.txt's fields, its export or None, what differs). A form that ended
     before its verdict (exit 2 on an input that it could not read, or a
     crash) wrote no result.json: run.txt alone then names the inputs, and
@@ -2054,7 +2054,7 @@ def sitting_rewriter(roots, home):
 
 def sitting_leaks(out, home, digests, names):
     """['FILE: what'] of OUT's files that hold what a sitting's record may
-    not (S3-3): what identifying() refuses; a path under the checkout or
+    not: what identifying() refuses; a path under the checkout or
     HOME that no root covered; a digest of DIGESTS; a run of 32 hexadecimal
     digits in a reading's record; a USB ID; a card reader's link; or one of
     NAMES, the workstation's host names."""
@@ -2082,7 +2082,7 @@ def sitting_leaks(out, home, digests, names):
 
 
 def sitting_cards(root, records, readbacks):
-    """{name: path} of lane C's records that card-in cited, each unchanged
+    """{name: path} of the card's records that card-in cited, each unchanged
     since, and of the read-backs after the sessions."""
     cards = {path.name: path for _, _, path, _ in readbacks}
     for path, _ in records:
@@ -2209,7 +2209,7 @@ def sitting(args, build, out, home):
     step's records, the sitting closed or stopped; each boot's files its
     SHA256SUMS's, its inputs the plan's, and its whole capture judged again
     by the form with them, with the same exit status, output, result.json,
-    and log.json; the store's digests of each reading; lane C's records
+    and log.json; the store's digests of each reading; the card's records
     that card-in cited, unchanged; and, for each session whose card went
     in, a finished read-back of its image that started after its card=out:
     same if it passed, else different, which puts stop B3 in the bundle.
@@ -2228,10 +2228,10 @@ def sitting(args, build, out, home):
     Each path under the build, the source, the run root, the store, or the
     serial log is written from its root (<build>, <source>, <run-root>,
     <store>, <serial-log>), and a preflight's hostname= is <host>. A record
-    that would then hold what sitting_leaks() finds is removed and refused
-    (S3-3). A device node, the board's own paths, and what U-Boot and the
+    that would then hold what sitting_leaks() finds is removed and
+    refused. A device node, the board's own paths, and what U-Boot and the
     guest print are kept, as MVP 1.0's board records keep them, and so are
-    the boot ROM's lines, which the owner reads before it is committed."""
+    the boot ROM's lines, which are read before the record is committed."""
     if out.exists():
         raise Refused(f"{out} exists; a record is never overwritten")
     if not args.name:
@@ -2351,7 +2351,7 @@ def sitting(args, build, out, home):
             *[line for _, _, line in preflights], *lines,
             "published=not-compared", "platform_record=none",
             "rom_lines=kept in each boot's check.txt and result.json as the "
-            "form wrote them; the owner reads them before this record is "
+            "form wrote them; they are read before this record is "
             "committed"]) + "\n")
         leaks = sitting_leaks(out, home, digests, {
             os.uname().nodename, os.uname().nodename.split(".")[0]})

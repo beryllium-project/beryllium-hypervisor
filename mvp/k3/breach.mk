@@ -38,7 +38,7 @@ k3-breach-check:
 		tee $(K3B_RECORDS)/k3-breach-check.txt
 
 # k3-breach-images (qemu-test): the board's two hostile-monitor images,
-# GCC's (the design's 6.5), each the candidate's breach-STEM (g1 or c) with
+# GCC's (QB12), each the candidate's breach-STEM (g1 or c) with
 # its table made from the board's declaration. The hook's object is
 # compiled with the candidate's flags, its table's directory the board's;
 # the link, the flat image, and the boot image are the candidate's steps on

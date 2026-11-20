@@ -32,7 +32,7 @@ K3B_SESSION_first := two-guests-off:3
 K3B_SESSION_second := anchor:3 k3-breach-g1:1 k3-breach-c:1
 K3B_SESSION_PLAN_OF = $(foreach session,$(K3B_SESSION_$(1)),$(session):$(K3B_STAGED_$(word 1,$(subst :, ,$(session)))))
 K3B_SESSION_TOOL := $(PYTHON) -I -B $(MVP_DIR)/tools/k3-sitting.py
-# The dry run's boots from a card are lane K's whole, passing captures
+# The dry run's boots from a card are whole, passing captures
 # (tests/test-k3-form.py --write-card-fixtures): anchor's authority report
 # and measured inputs, then each image's expectation and board image, and
 # the board's two hostile-monitor images' references (k3/breach.mk), which

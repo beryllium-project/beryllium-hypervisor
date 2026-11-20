@@ -205,7 +205,7 @@ def defines(path):
 
 def sized_symbol(text, name):
     """NAME's address and size in TEXT, nm -S's output: defined once, with a
-    size (C-2)."""
+    size."""
     found = []
     for line in text.splitlines():
         if line.split()[-1:] != [name]:

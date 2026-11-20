@@ -26,10 +26,10 @@ of a shape fails with its own finding and stop, each variant passes, each
 input that board_refusal() refuses is refused, and each refused input of
 the command line exits 2, names itself on standard error, and writes no
 record; rom_lines() and boot_medium() give their values on whole, cut,
-and changed captures (K1). REPORT, IMAGE, and DTB are anchor's authority
+and changed captures. REPORT, IMAGE, and DTB are anchor's authority
 report and measured inputs.
 
---write-card-fixtures (K2, for lane S's dry run of a sitting) makes OUT,
+--write-card-fixtures (the writer, for the sittings' dry run) makes OUT,
 under BUILD, afresh: OUT/observed.json, the stand-in facts with SIZE as
 U-Boot's memory, the same for every image; and for each IMAGE, under
 OUT/IMAGE/, serial.log, a whole passing capture of a boot from a card
@@ -44,8 +44,8 @@ passes the form with its own arguments.
 
 Trust: a test; it runs the checker in this process, and as a child for the
 command line's cases, and writes only under --scratch (or OUT), which it
-makes afresh. Scope: lane K's rows C1 to C11, K1, and K2. Exit 0 pass, 1
-fail, 2 usage.
+makes afresh. Scope: the rows C1 to C11 (rows()), the boot's medium, and
+the writer. Exit 0 pass, 1 fail, 2 usage.
 """
 
 import argparse
@@ -729,8 +729,8 @@ def case(name, shape, edit, finding, stop, bases):
 
 
 def medium_cases(bases):
-    """K1: rom_lines() and boot_medium() on the off shape's capture, whole,
-    cut where lane S's driver may ask, and changed: each result, and
+    """rom_lines() and boot_medium() on the off shape's capture, whole,
+    cut where tools/k3-uboot.py may ask, and changed: each result, and
     nothing printed."""
     parts, rom = bases["off"][0], bases["off"][1]["standin"]["rom"]
     whole, banner = text(parts), parts["spl"][0] + "\n"
@@ -752,7 +752,7 @@ def medium_cases(bases):
         with contextlib.redirect_stdout(printed):
             got = CC.rom_lines(capture), CC.boot_medium(capture)
         good = got == (lines, medium) and not printed.getvalue()
-        print(f"{'ok  ' if good else 'FAIL'} K1, {name}: medium={got[1]}")
+        print(f"{'ok  ' if good else 'FAIL'} {name}: medium={got[1]}")
         out.append(good)
     return out
 
@@ -801,7 +801,7 @@ def relative(path, root):
 
 
 def write_card(out, root, parts, context, args, observed):
-    """K2's files for one image, under OUT, made afresh: serial.log, PARTS'
+    """One image's files, under OUT, made afresh: serial.log, PARTS'
     capture; board.json, CONTEXT's stand-in, naming its board image's
     SHA-256, and with the boundary on the stand-in tables and partition
     authority written beside it, its paths from ROOT; and card-args.json,
@@ -839,7 +839,7 @@ def write_card(out, root, parts, context, args, observed):
 
 
 def write_card_fixtures(args, parser):
-    """K2: OUT/observed.json, the stand-in facts with --memory as U-Boot's
+    """OUT/observed.json, the stand-in facts with --memory as U-Boot's
     memory, and for each IMAGE=EXPECT:BOARD_IMAGE[:REFERENCE] its files
     (write_card()): a whole passing capture of a boot from a card, its log
     rendered from REFERENCE (or the build's) and BOARD_IMAGE."""
@@ -911,7 +911,7 @@ def judged(printed, record, stops):
 
 def command_line(args, bases):
     """The checker as a child, on the off and on shapes' captures, written
-    by write_card() as K2 writes them: each passing, a boot from the NOR
+    by write_card(): each passing, a boot from the NOR
     failing by its last line, and each refused input by its exit 2, its
     name on standard error, and no record; each of board.json's keys, gone,
     in turn among them."""
@@ -1004,7 +1004,7 @@ def command_line(args, bases):
 
 
 def written_cases(args):
-    """K2's writer as a child, for the four images of this build (anchor's
+    """The writer as a child, for the four images of this build (anchor's
     two hostile-monitor images under QEMU's expectations in the place of
     the board's), then each written capture judged by the checker as a
     child with its own arguments: each passes, with no stop."""
@@ -1035,14 +1035,14 @@ def written_cases(args):
     refused = writer(fake, fake)
     kept = refused.returncode == 2 and "is the build root itself" in \
         refused.stderr and (fake / "kept").is_file()
-    print(f"{'ok  ' if kept else 'FAIL'} K2, OUT the build root itself: "
+    print(f"{'ok  ' if kept else 'FAIL'} writer, OUT the build root itself: "
           f"exit {refused.returncode}")
     run = writer(out, root)
     good = run.returncode == 0
-    print(f"{'ok  ' if good else 'FAIL'} K2, the writer: exit "
+    print(f"{'ok  ' if good else 'FAIL'} the writer: exit "
           f"{run.returncode}" + ("" if good else f" {run.stderr[-300:]!r}"))
     return [kept, good] + [child(
-        f"K2's {name}", [str(out / name / "serial.log"), *read(
+        f"the writer's {name}", [str(out / name / "serial.log"), *read(
             out / name / "card-args.json")], 0, "stops=none",
         out / name / "result.json") if good else False for name in specs]
 

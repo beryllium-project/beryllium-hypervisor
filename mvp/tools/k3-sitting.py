@@ -19,10 +19,10 @@ order_problem()'s; a refusal acts on nothing.
 
 begin checks every input before it acts (the gate's record, each image's
 board.json and the files it names by SHA-256, the sitting pins' firmware
-lines, the expectations, the second sitting's observed facts, lane K's card
-mode in the tree's checker, R9's source rule), records them in
-sitting/plan.txt, and a later step refuses when one has changed. It takes
-the responsible human's word for the sitting
+lines, the expectations, the second sitting's observed facts, the card mode
+of the tree's capture checker, the source's changes since the gate's
+commit), records them in sitting/plan.txt, and a later step refuses when
+one has changed. It takes the responsible human's word for the sitting
 (K3_WORD=human-authorized:sitting-NAME), as card-in-S takes his word for
 the session (human-authorized:session-IMAGE); K3_HUMAN_SAID is the UTC
 time of his statement (his word, the card in, the card out), and the
@@ -30,7 +30,7 @@ first sitting's begin needs the rehearsal's date (K3_REHEARSAL, B12).
 
 card-in-S and card-out-S write card-slot.txt, the ledger whose last line
 the console tool reads: nothing is typed while a card is recorded in
-(B-4). card-in-S needs lane C's last write record and read-back of the
+(B-4). card-in-S needs the card's last write record and read-back of the
 image (K3_RUN_ROOT/card/), card.json (--cards), and the sitting pins, as
 card_problem() and card_json_problem() check them. The workstation's USB
 bus is read as files (bus_stop()): at card-in-S and at a reading before
@@ -38,15 +38,15 @@ either acts, and at each boot's judgement.
 
 boot-S.B: the console's reset (the banners within K3_CARD_BOOT_SECONDS,
 120 by default: every boot from a card trains the memory in full), the
-wait for the run's end (k3-uboot.py wait-end), the capture, lane K's form
+wait for the run's end (k3-uboot.py wait-end), the capture, the form
 (tests/check-capture.py --mode card), the bus, and the console's audit;
 the stop is boot_stop()'s, the form's by its result.json's card.stops
 (form_stop()), and nothing more is sent. run.txt names each input of the
 form by its path from the build and its SHA-256. reading-N is
 k3-env.sh reading N (--hang after a session whose last boot never ended).
 end: Fedora (k3-env.sh fedora), the preflight again (B2 if its verdict
-line is not the first's), and lane C's command that removes the card
-reader's access rule, printed and never run.
+line is not the first's), and k3-card-device.py's command that removes the
+card reader's access rule, printed and never run.
 
 Records: sitting/steps/NN-STEP-aK.txt, attempt K of the plan's NNth step,
 ending verdict=PASS or verdict=STOP stop=LABEL TEXT; sitting/refusals.txt;
@@ -102,7 +102,7 @@ UTC_FORM = re.compile(r"20[0-9]{2}-[01][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:"
 DATE_FORM = re.compile(r"20[0-9]{2}-[01][0-9]-[0-3][0-9]")
 SECONDS_FORM = re.compile(r"[1-9][0-9]{0,3}")
 # A statement of his may be recorded at most this long after now: the
-# owner's typing of the time that he said it.
+# typing of the time that he said it.
 SLACK = 60
 CARD_BOOT_SECONDS = 120
 WAIT_SECONDS = 240
@@ -116,8 +116,8 @@ CARD_RECORD = re.compile(r"(write|readback)-([a-z0-9]+(?:-[a-z0-9]+)*)-"
                          r"([1-9][0-9]*)\.txt")
 PIN_LINE = re.compile(r"(firmware|card) ([a-z0-9]+(?:-[a-z0-9]+)*) "
                       r"sha256=([0-9a-f]{64}) bytes=([1-9][0-9]*)")
-# R9, with S-2: what may change between the gate run's commit and a
-# sitting's.
+# What may change between the gate run's commit and a sitting's: the
+# sitting pins, the observed facts, mvp/results/, and planning/.
 AFTER_GATE = re.compile(r"mvp/k3/sitting-pins\.txt|mvp/k3/observed\.json|"
                         r"mvp/results/.+|planning/.+")
 GATE_LAST = re.compile(r"BE_MVP_K3_GATE: PASS steps=[0-9]+ images=[0-9]+")
@@ -126,8 +126,8 @@ FASTBOOT = ("ff", "42", "03")
 INTERFACE_NAME = re.compile(r"(usb[0-9]+|[0-9]+-[0-9]+(?:\.[0-9]+)*):"
                             r"[0-9]+\.[0-9]+")
 TOOL_STOP = re.compile(r"STOP stop=(\S+) (.*)")
-# Lane K's form: a stop that result.json's card.stops names, and its card
-# mode in the usage (tests/check-capture.py, K-1).
+# The form (tests/check-capture.py --mode card): a stop that result.json's
+# card.stops names, and its card mode in the usage.
 FORM_STOP = re.compile(r"B[0-9]+")
 CARD_MODE = re.compile(r"--mode \{[a-z,]*\bcard\b[a-z,]*\}")
 PLAN_SCHEMA = "be-mvp-k3-sitting-plan-v1"
@@ -552,7 +552,7 @@ def sitting_pins(path):
 
 
 def last_records(directory, image):
-    """(write, readback): lane C's last write record and last read-back of
+    """(write, readback): the card's last write record and last read-back of
     IMAGE under DIRECTORY, by their numbers, each (name, fields), or
     None."""
     last = {"write": None, "readback": None}
@@ -571,7 +571,7 @@ def last_records(directory, image):
 def card_problem(directory, image, sitting, pins, partition, staged,
                  staged_name):
     """The first reason that the card of IMAGE may not go in, or None: its
-    write record and read-back (lane C's, in DIRECTORY), the sitting pins
+    write record and read-back (in DIRECTORY), the sitting pins
     PINS, the preflight's PARTITION, the STAGED names, and board.json's
     STAGED_NAME."""
     write, readback = last_records(directory, image)
@@ -625,7 +625,7 @@ def card_problem(directory, image, sitting, pins, partition, staged,
 
 
 def card_json_problem(directory, image, sitting, written):
-    """The first reason that lane C's card.json of IMAGE, in DIRECTORY
+    """The first reason that k3-card.py's card.json of IMAGE, in DIRECTORY
     (--cards/IMAGE), is not the card that the records WRITTEN name, or
     None."""
     try:
@@ -726,7 +726,7 @@ def sitting_stop(sitting):
 
 
 def form_stop(result, sitting):
-    """(label, stops) of a capture that lane K's form refused (exit 1), by
+    """(label, stops) of a capture that the form refused (exit 1), by
     result.json's card.stops, a list sorted by number: its first, or the
     sitting's when it is empty, or a tool stop when it is not a list of
     B-numbers; STOPS the list as recorded (none when empty)."""
@@ -751,7 +751,7 @@ def form_finding(text, label):
 
 
 def form_present(path):
-    """Whether the capture checker at PATH has lane K's card mode."""
+    """Whether the capture checker at PATH has its card mode."""
     run = subprocess.run([PYTHON, "-I", "-B", str(path), "--help"],
                          cwd="/", capture_output=True, text=True,
                          check=False, env={"PATH": "/usr/bin"})
@@ -781,7 +781,7 @@ def load_lines(text):
     return "".join(f"{line}\n" for line in kept)
 
 
-# ------------------------------------------------------ the source (R9)
+# ----------------------------------------------------------- the source
 def git(source, *args):
     environment = {"PATH": "/usr/bin", "LC_ALL": "C", "LANG": "C",
                    "GIT_OPTIONAL_LOCKS": "0", "GIT_CONFIG_NOSYSTEM": "1",
@@ -809,7 +809,7 @@ def source_rule(source, gate_commit):
                       "be listed")
     for path in sorted(filter(None, changed.stdout.split("\0"))):
         if not AFTER_GATE.fullmatch(path):
-            raise Refused(f"{path} changed since the gate's commit (R9: only "
+            raise Refused(f"{path} changed since the gate's commit (only "
                           "the sitting pins, the observed facts, "
                           "mvp/results/, and planning/ may)")
     status = git(source, "status", "--porcelain=v1")
@@ -1251,7 +1251,7 @@ class Sitting:
             if not begin:
                 raise Refused("no sitting in K3_RUN_ROOT; begin first")
             if present and not set(os.listdir(self.root)) <= {"card"}:
-                raise Refused("K3_RUN_ROOT holds more than lane C's card/: "
+                raise Refused("K3_RUN_ROOT holds more than its card/: "
                               "a sitting begins in a new run root")
             records = {name: [] for name in self.steps}
         else:
@@ -1366,8 +1366,8 @@ class Sitting:
             if problem:
                 raise Refused(problem)
         if not form_present(CHECK_CAPTURE):
-            raise Refused("tests/check-capture.py has no card mode (lane "
-                          "K's form, --mode card)")
+            raise Refused("tests/check-capture.py has no card mode "
+                          "(--mode card)")
         context["plan"] = self.facts(now)
         if records["begin"] and os.path.lexists(self.plan_file) and \
                 self.plan_file.read_text(encoding="utf-8") != \
@@ -1709,7 +1709,8 @@ class Sitting:
                 "--device", context["device"]])
             command = first_match(text, r"^BE_MVP_K3_CARD: REMOVE .*$")
             if code or not command:
-                raise Stop("tool", "lane C's tool printed no removal command")
+                raise Stop("tool", "k3-card-device.py printed no "
+                           "removal command")
             context["notes"].append(f"{rule}; {command}")
         else:
             context["notes"].append(f"{rule}; K3_CARD_DEVICE was not given, "
@@ -1948,7 +1949,7 @@ def test_variables(cases):
              "not a real time"),
             ("later than now", "2026-11-20T10:01:01Z", None,
              "later than now"),
-            ("now and the owner's typing", "2026-11-20T10:01:00Z", None,
+            ("now and the typing's slack", "2026-11-20T10:01:00Z", None,
              None),
             ("before the step before", "2026-11-20T09:59:59Z", now,
              "before reading-0 ended"),

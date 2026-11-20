@@ -596,13 +596,13 @@ plan, "Architecture" and "The triggers for Instance 3").
   fragment may add only `k3-` targets, and joins `tools-check` and
   `qemu-test` by prerequisites alone.
 
-  The tools were written in five parts, called lanes, and their
-  comments and a few of their messages still use the lanes' working
-  names (open item 140): lane F is the firmware's addition, its build
-  for the board, and its rows; lane T the recipe, the board's platform
-  in the backend and the checker, the declarations, and the gate; lane
-  K the form for a boot from a card, and the ledger tool's method; lane
-  C the card's tools; and lane S the sittings' tools.
+  The tools were written in five parts: the firmware's addition, its
+  build for the board, and its rows; the recipe, the board's platform
+  in the backend and the checker, the declarations, and the gate; the
+  form for a boot from a card, and the ledger tool's method; the
+  card's tools; and the sittings' tools. Their comments and messages
+  name the tools and their rules in plain words (open item 140,
+  closed).
 - **Hart region** (port rule `hart-region`, `src/mvp-layout.h`). A NOLOAD
   region of two 64 KiB blocks at `0x1_0204_4000`, right after B7's pool,
   in the pool's segment (Q1). Each block holds the hart's 8 KiB trusted
@@ -13038,7 +13038,17 @@ M5's reset rule.
     conventions. Three messages of `tools/k3-sitting.py`, and the
     notes of its dry run, name a lane too. They are owed a sweep that
     puts the tools' names in their place, in a commit of its own,
-    before M11-B's result. Open.
+    before M11-B's result. **Closed in M11-B4**, by the sweep's commit,
+    which follows the record tool's correction after the first
+    sitting: in 21 files, comments, eighteen messages, and the names
+    inside the sittings' dry run say things in plain words (216 lines
+    put in the place of 213). No rule changes. Of the outputs that
+    `check` lists, one moves with it: the card environment's report
+    (`k3/check/card/environment.txt`), which holds the SHA-256 of
+    `tools/k3-env.sh`. The same report beside a card's image and the
+    board gate's record of its card step hold that digest too, and
+    move likewise. No byte of an image, a tree, a firmware, or a card
+    does.
 
 
 ## Non-claims

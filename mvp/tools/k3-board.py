@@ -18,22 +18,22 @@ same address and of the same size in both ELFs, the flat images equal
 outside it and not inside it, and the boot image the candidate's with its
 flat image, found once there, replaced.
 
-banner (T-6): the k3-like platform's root OpenSBI domain's regions, as
+banner: the k3-like platform's root OpenSBI domain's regions, as
 tools/partition-backend.py writes them (banner(), sorted_regions(), its
 device rows marked MMIO, as the firmware marks a device's and the board's
 rows are), equal in number, order, and text to the Domain0 RegionNN values
 of a run's banner; then one mark, one address, and two rows swapped in the
 banner, each refused.
 
-holds-tree: a gate firmware build (lane F's firmware/build.sh) whose record
+holds-tree: a gate firmware build (firmware/build.sh's) whose record
 names the tree's SHA-256 as fdt_sha256, and whose fw_dynamic.bin holds the
 tree's bytes at its ELF's fw_fdt_bin.
 
 board: each image's board.json under k3/gate/images/IMAGE/, every path in
-it from BUILD (the form that lanes K, C, and S read), its parts bound to
-each other (the check record's tree, tables, root file, and identity; the
-root file's firmware); then each image's firmware announced, and the
-gate's step line.
+it from BUILD (the form that tests/check-capture.py, tools/k3-card.py, and
+tools/k3-sitting.py read), its parts bound to each other (the check
+record's tree, tables, root file, and identity; the root file's
+firmware); then each image's firmware announced, and the gate's step line.
 
 It shares tools/partition-backend.py's FDT reader and helpers, loaded as a
 module. Exit 0 pass, 1 fail or refused, 2 usage.

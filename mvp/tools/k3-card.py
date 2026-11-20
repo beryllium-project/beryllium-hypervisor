@@ -21,7 +21,7 @@ card.
   k3-card.py --self-test --scratch DIR --dtc DTC --sfdisk SFDISK
              --sfdisk-sha256 HEX [--outputs DIR]
 
-Purpose: fit puts one of the board gate's firmware builds (lane T's
+Purpose: fit puts one of the board gate's firmware builds (its
 fw_dynamic.bin, which IMAGE's board.json names by its path from the
 build root, k3/gate/images/IMAGE/fw_dynamic.bin, and describes; the
 firmware read must be that file) in a FIT with the structure of the
@@ -347,12 +347,12 @@ def strict_json(path):
 
 def gate_firmware(image):
     """IMAGE's firmware in the board gate, by its path from the build root
-    (build/mvp), as lane T's board.json names it."""
+    (build/mvp), as the gate's board.json names it."""
     return f"k3/gate/images/{image}/{FIRMWARE}"
 
 
 def board_facts(path, image):
-    """What fit, env, and image read of lane T's board.json (schema
+    """What fit, env, and image read of the gate's board.json (schema
     be-mvp-k3-board-v1): IMAGE's sitting, staged name, and firmware, which
     it names by its path from the build root, gate_firmware(IMAGE)."""
     board = strict_json(path)
@@ -1155,8 +1155,8 @@ def make_card(args):
 
 # ------------------------------------------------------- the board gate
 GATE_TAG = "BE_MVP_K3_GATE[k3-gate-card]"
-# What the gate requires of the published env.bin, by its pin, as the
-# design's section 2.4 read it: each variable that the rules remove, with
+# What the gate requires of the published env.bin, by its pin, as a
+# reading of that file found it: each variable that the rules remove, with
 # its rules, and the report's counts. A change in the rules, or in the
 # pinned default, fails the gate until they are read again. data_bytes,
 # which the staged name's length moves, is recorded and not compared.

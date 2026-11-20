@@ -100,14 +100,14 @@ k3-partition-check: $(FIRMWARE_ELF) $(GEN)/anchor/authority-report.json \
 	echo "BE_MVP_K3_PARTITION: PASS trees=3 tables=3 root=4 checks=4"; } | \
 		tee $(K3B_RECORDS)/k3-partition-check.txt
 
-# The board gate's steps (tier 2; the design's 5.2), after
+# The board gate's steps (tier 2, as common.mk has it), after
 # k3-gate-published and each after the one before, each recorded under
 # record/steps/: k3-gate-recipe, the recipe on the published FIT, twice;
 # k3-gate-platform, the description against the tree, and the tree's
 # devices; k3-gate-tree, each image's tree (step 4 for the three with the
 # boundary on, rendered with their descriptor and tested against the
 # candidate's QEMU tree; step 3 for two-guests-off), and the room left
-# after each; k3-gate-firmware, lane F's build of the board's
+# after each; k3-gate-firmware, firmware/build.sh's build of the board's
 # configuration with each tree built in, which holds the tree
 # (tools/k3-board.py holds-tree); k3-gate-partition, each image's tables
 # and root regions from its own build, D-3's checker on them and on its

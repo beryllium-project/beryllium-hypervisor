@@ -208,8 +208,8 @@
 # An md5sum's output is a private digest: its keystroke line holds
 # output_sha256=withheld. Before its `s`, stop-autoboot reads the boot's
 # medium from the boot ROM's lines since the last reset (tools/k3-uboot.py
-# medium, lane K's rule): anything but the NOR is stop B3 (S3-E's stop
-# (q)), and nothing is typed.
+# medium, tests/check-capture.py's rule): anything but the NOR is stop B3
+# (S3-E's stop (q)), and nothing is typed.
 #
 # Exit status: 0 done; 1 a stop (the last line names the plan's stop
 # condition); 2 a usage error; 3 stop-autoboot missed `s` (the boot command
@@ -388,7 +388,7 @@ card_refuse() {
 	exit 5
 }
 
-# sitting_refuse WHAT: WHAT refused in a sitting's run root (R5).
+# sitting_refuse WHAT: WHAT refused in a sitting's run root, card in or out.
 sitting_refuse() {
 	sitting || return 0
 	keys refused "$1 in a sitting's run root"

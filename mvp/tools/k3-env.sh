@@ -586,8 +586,8 @@ nor_md5() {
 }
 
 do_reading() {
-	# LC_ALL=C: bash's own matching here by bytes, as the reviewed scratch
-	# tool's.
+	# LC_ALL=C: bash's own matching here by bytes, whatever the caller's
+	# locale.
 	local number=$1 dir before='' row name address length md5 whole text \
 		differs=() offset now=() previous=() index LC_ALL=C
 

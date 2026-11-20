@@ -696,7 +696,7 @@ CARD_REFUSED = tuple((rule, what, re.compile(text)) for rule, what, text in (
      r"load env_\S+\.txt from bootfs successful"),
     ("vendor-boot", "U-Boot entered one of the vendor's boot flows",
      r"^Try to boot from ")))
-# K-1: the addendum's stop for each card rule that has one; a finding of
+# The addendum's stop for each card rule that has one; a finding of
 # any other rule is its sitting's ("any other capture that the form
 # refuses": B5 in the first, B6 in the second).
 CARD_STOPS = {"nor": "B4", "spl": "B4", "spl-environment": "B4",
@@ -1460,10 +1460,10 @@ def boot_facts(capture, mode, options, findings, facts):
 
 # ------------------------------------------------------------ the card mode
 def rom_lines(text):
-    """The boot ROM's lines of TEXT, a capture of a boot from reset (K1,
-    C1): its non-blank lines before its first SPL banner, NUL bytes removed
-    and whitespace collapsed; none without an SPL banner. It prints
-    nothing; lane S's driver imports it, and card_facts() uses it."""
+    """The boot ROM's lines of TEXT, a capture of a boot from reset: its
+    non-blank lines before its first SPL banner, NUL bytes removed and
+    whitespace collapsed; none without an SPL banner. It prints nothing;
+    tools/k3-uboot.py imports it, and card_facts() uses it."""
     lines = [line.rstrip("\r") for line in text.split("\n")]
     spl = next((index for index, line in enumerate(lines)
                 if SPL_BANNER.fullmatch(uboot_text(line))), 0)
@@ -1472,10 +1472,10 @@ def rom_lines(text):
 
 
 def boot_medium(text):
-    """The medium that TEXT's boot came from, by its boot ROM's lines (K1):
-    nor where one of them is a boot from the NOR's (CARD_ROM_NOR, C1.2),
-    card where there are others, none where there are none (C1.1). It
-    prints nothing; lane S's driver imports it, and card_facts() uses it."""
+    """The medium that TEXT's boot came from, by its boot ROM's lines: nor
+    where one of them is a boot from the NOR's (CARD_ROM_NOR), card where
+    there are others, none where there are none. It prints nothing;
+    tools/k3-uboot.py imports it, and card_facts() uses it."""
     rom = rom_lines(text)
     return "nor" if any(map(CARD_ROM_NOR.fullmatch, rom)) else \
         "card" if rom else "none"
@@ -3992,7 +3992,7 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
     if logged and verdict != "REFUSED":
         out.update(log=log_record, log_declared=declared,
                    log_export=exported)
-    # The card mode's (M11-B, K-1): its stops, each tagged finding's, and
+    # The card mode's (M11-B): its stops, each tagged finding's, and
     # the sitting's for any other finding.
     if card is not None:
         tagged = dict(card["tagged"])
@@ -7558,7 +7558,7 @@ def log_report(record):
 
 def load_check_boundary():
     """tests/check-boundary.py, whose judge_board() judges a boot from a
-    card's commit records (C11): loaded once, by the card mode alone."""
+    card's commit records: loaded once, by the card mode alone."""
     global CHECK_BOUNDARY
     if CHECK_BOUNDARY is None:
         spec = importlib.util.spec_from_file_location(
@@ -7572,7 +7572,7 @@ CHECK_BOUNDARY = None
 
 
 def card_boundary(text, expect, options, findings):
-    """The card mode's judgement of M-mode's records (C11): TEXT, the whole
+    """The card mode's judgement of M-mode's records: TEXT, the whole
     capture, by judge_board() with board.json's tables and partition
     authority, its findings added to FINDINGS; the boundary's line, today's
     NOT-APPLICABLE one with the boundary off."""
@@ -7770,11 +7770,11 @@ def card_observed_form(observed):
 
 def card_options(parser, args, expect, image):
     """The card mode's inputs (M11-B), each refused by name on standard
-    error before any record is written (K-2): board.json, against the
+    error before any record is written: board.json, against the
     expectation and --image, and with the boundary on its tables and
     partition authority (files under --build-root, each of its SHA-256, by
     tests/check-boundary.py's board_refusal()); --memory, of print_size()'s
-    form (K-3); and observed.json, of its own; with each one's SHA-256 for
+    form; and observed.json, of its own; with each one's SHA-256 for
     the record."""
     if not (args.board and args.memory and image is not None):
         parser.error("--mode card needs --board, --memory, and --image")
@@ -7877,7 +7877,7 @@ def main(argv):
     global HEDELEG, HEDELEG_REQUIRED
     HEDELEG, HEDELEG_REQUIRED = MONITOR_HEDELEG[args.monitor]
     many = args.self_test or args.mutation_test or args.write_fixtures
-    # K-4: the card mode is asked for, and its inputs are its alone.
+    # The card mode is asked for, and its inputs are its alone.
     if args.mode != "card" and (args.board or args.memory or args.observed):
         parser.error("--board, --memory, and --observed are the card "
                      "mode's (--mode card)")

@@ -1196,7 +1196,7 @@ def board_rules(declaration, facts, platform, listed):
             for low, high in targets(item, rows[item["row"]], facts)]
     effects = declaration.get("effects")
     require(isinstance(effects, dict), "the board's declaration has no "
-            "effects, {row: text} (T-4)")
+            "effects, {row: text}")
     for name, (op, classes) in found.items():
         require(op not in CHANGES or name in effects or not {
             "device", "firmware"} & set(classes), f"row {name}: a {op} on "
@@ -1211,7 +1211,7 @@ def board_rules(declaration, facts, platform, listed):
 
 
 def board_mutations(declaration, facts, platform, listed):
-    """B9's mutations (the design's 6.3): each one change at a path in a
+    """B9's mutations: each one change at a path in a
     copy of the declaration (0), the description (1), or the list (2), its
     address taken from the list, refused by its own reason alone:
     [(name, ok, detail)]."""
@@ -1313,9 +1313,9 @@ def board_input(declaration, facts, platform_file, devices_file=None,
 
 
 def board_expectation(path, domain, candidate, image):
-    """The expectation of the board's image IMAGE (M11-B; the design's
-    6.6): CANDIDATE, its candidate's, with image, where, toolchains,
-    change, and the boundary's counts replaced, the counts PATH's."""
+    """The expectation of the board's image IMAGE (M11-B, B-10): CANDIDATE,
+    its candidate's, with image, where, toolchains, change, and the
+    boundary's counts replaced, the counts PATH's."""
     name = "breach-c" if domain == CONTROL else f"breach-g{domain}"
     require("platform" in load(path) and image == f"k3-{name}" and
             candidate.get("image") == name == candidate.get(
@@ -1641,7 +1641,7 @@ def board_cases(case, cases, layout, header, symbols, inputs):
         cases += [(f"board {role} refused: {name}", ok, detail) for
                   name, ok, detail in board_mutations(declaration, facts,
                                                       platform, listed)]
-        # T4-1: a jump's 4 bytes and a cache block's 64 across an end (the
+        # A jump's 4 bytes and a cache block's 64 across an end (the
         # firmware's place made to end 32 bytes into a block), each refused
         # where its first byte alone would be admitted.
         end = ranges(next(d for d in listed if d["kind"] == "console"))[0][1]
