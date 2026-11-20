@@ -2025,3 +2025,26 @@ text above as it says; the text above is otherwise as accepted.
   The gates also built the second sitting's three again. They are
   still not recorded here: B-1 has them made at M11-B4 with the first
   sitting's facts, and the first sitting has not passed.
+- **2026-11-20, the first sitting's card image, made again** (the
+  board addendum's B-4). The image for the first sitting's card, the
+  same card of 31,927,042,048 bytes, was made for `two-guests-off`
+  from the gates' outputs, at the commit that holds the entry before
+  this one:
+  - `card.img`, 31,927,042,048 bytes, SHA-256
+    `cbc68f8c01c0389af5040fa6b56e48601539f232096b82ef994ea8effd43dc49`;
+  - in it, the firmware's FIT (541,307 bytes, SHA-256
+    `852b619870c7575e0797533731730a560be3662e44833af01554f24913c4602a`),
+    which holds the build of the entry before this one; the
+    environment (16,384 bytes, SHA-256
+    `f0a14d293f52d0529c9f920e805840af4f99f8570daa566ede28bd530ed83600`),
+    which is byte for byte the first card's; and the vendor's four
+    published files, each byte for byte at its offset. The FIT and the
+    environment are byte for byte the ones that the board gate made.
+  - The same commit adds the line `card two-guests-off` with this
+    SHA-256 to `mvp/k3/sitting-pins.txt`. The image of the entry of
+    2026-11-19 (SHA-256 `7dcec03c…c24c`) is the one that the first
+    sitting's card held. The card is written again with this one, the
+    whole card, and read back.
+
+  The image is not committed or published: it holds the vendor's
+  files.
