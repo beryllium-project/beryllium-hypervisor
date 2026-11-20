@@ -2001,11 +2001,14 @@ names the candidate's tree once the gates have passed at it.
 This section is about the M11 plan's
 [board addendum](../../planning/mvp-m11-board-addendum.md), which plans
 runs of the M11 candidate on the COM260. What exists is the tools, each
-tested under emulation or on files. **No run of this section has been
-made on the board**, and nothing here changes a claim. The board's runs
-are made in two sittings, with the responsible human present, each
-after his own sign-off; their records will be board records under
-`mvp/results/`.
+tested under emulation or on files, and one sitting that stopped.
+**The first sitting ran on 2026-11-20 and stopped at its first boot
+from the card**, before any line of the project's firmware reached the
+console. The M11 plan's decision record has its account.
+**No boot of the project's firmware has yet shown a line on the
+board**, and nothing here changes a claim. The board's runs are made
+in sittings, with the responsible human present, each after his own
+sign-off; their records are board records under `mvp/results/`.
 
 ### What is different on the board
 
@@ -2084,9 +2087,26 @@ board:
 - step 1: the memory node and the boot hart, as the SPL would set them;
 - step 2: the SPI flash's controller disabled;
 - step 3: the firmware's mailbox and its clients disabled;
-- step 4, for an image under the boundary: the image's partition
-  descriptor rendered onto step 3, by the same backend that renders
-  QEMU's trees (`mvp/tools/partition-backend.py --platform k3-com260`).
+- step 4: the console named as the firmware needs it. The node that
+  `/aliases/console` names gets `compatible = "intel,xscale-uart",
+  "ns16550"`, in that order. The board's UART sends only while bit 6
+  of its interrupt-enable register, the unit enable, is set. The
+  firmware base tries a node's names in order, and keeps that bit only
+  for a node that it matches as `intel,xscale-uart`; for the published
+  name alone it clears the bit, and the console falls silent as the
+  firmware starts. The vendor's U-Boot binds its driver by `ns16550`,
+  as before. The step refuses a console that is not the description's,
+  by its alias, status, published name, `reg`, `reg-shift`, and
+  `reg-io-width`;
+- then, for an image under the boundary, the descriptor's step: the
+  image's partition descriptor rendered onto step 4, by the same
+  backend that renders QEMU's trees (`mvp/tools/partition-backend.py
+  --platform k3-com260`). With the boundary off, the tree is step 4
+  itself.
+
+Step 4 came after the first sitting (below), whose first boot from the
+card printed nothing after the SPL's lines: the tree then still had the
+published name alone.
 
 Each step must be its input with its own changes and nothing else.
 `mvp/k3/platform.json` is the board's description: each fact that
@@ -2095,6 +2115,23 @@ tree and the vendor's published sources; the first sitting's boots are
 what compares them with the board. The independent check of section
 10 (`mvp/tests/check-partition.py`) has the board's rules too, written
 apart from the backend's.
+
+The console's names are checked three times:
+
+- the recipe's own check of the description requires step 4's console
+  to carry the two names in that order;
+- the independent check requires the same of every final board tree,
+  with the boundary on and off;
+- QEMU's tree without reset devices names QEMU's console the same way
+  (`"intel,xscale-uart", "ns16550a"`), so the five firmware rows boot
+  firmware that binds its console by the same entry.
+
+None of them shows that the board's UART sends. QEMU's UART keeps only
+the low four bits of that register, so a run under QEMU looks the same
+whichever name the firmware matched. The checks read names, and they
+rest on one reading of the firmware base's source. The firmware's
+banner on the board's console, at a sitting, is the first direct
+evidence.
 
 `check` runs all of this on stand-ins with made-up values
 (`k3-recipe-check`, `k3-partition-check`). The published files are
@@ -2228,7 +2265,39 @@ nothing.
   device there means that the ROM did not take the card; it, or a
   fastboot interface, stops the sitting.
 - A step that stops names its stop of the addendum and leaves the
-  board as it is.
+  board as it is. A stopped step may be taken up once
+  (`K3_SITTING_RESUME=STEP`); a step that stops twice is not tried a
+  third time. After a stop, what remains is that step again, or the
+  close-out: the card out, the closing reading, and `end`.
+
+**A boot that stops.** A boot from a card can leave the board hung,
+with no prompt and no end. The console tool admits a reset of such a
+board only where it reads three things itself:
+
+- the boot since its last reset came from a card: the boot ROM's lines
+  before an SPL banner are not a boot from the NOR's;
+- the sitting's ledger of the card records the card in at that reset;
+- the console has then been quiet for 30 s.
+
+Its reason is `card-hang` where the boot showed no U-Boot banner, and
+`card-uboot-hang` where it showed one and never started the monitor.
+The driver asks for it, for the closing reading and for a boot taken
+up again, by what the session's last boot showed. A refusal makes no
+reset, stops the step, and returns the sitting to the responsible
+human. That is what happens after a boot that showed the boot ROM's
+lines and no SPL banner: without that banner the tools do not take
+the boot for a card's. The console tool's header says why such a
+reset cuts short nothing that must finish, whichever stage of the
+card's chain is running; the console can fall silent while the boot
+goes on.
+
+The form names a refused boot's stop by the earliest stage that the
+boot did not reach: the boot ROM took the NOR, or no SPL banner (B4);
+then no firmware banner, then no U-Boot banner (B5 in the first
+sitting, B6 in the second). That stop comes first among the boot's
+stops. A line that is merely absent, in a stage that the boot did not
+reach, names no stop of its own; nor does U-Boot's environment line
+where U-Boot did not get past its place.
 
 The form for a boot from a card requires, in order: the boot ROM's
 lines of a boot from a card; the SPL's banner; the firmware's banner,
@@ -2245,20 +2314,36 @@ boot again from the kept inputs, and it refuses a record that holds a
 digest of the flash, a USB ID, the reader's link, or the workstation's
 host name or paths.
 
+- **A sitting that stopped is recorded as stopped**, at the step where
+  it stopped (`result=stopped step=…`), with what its later steps
+  left: a closing reading that stopped keeps its record and its stop,
+  with no digest; a preflight that never ran is named absent.
+- **A record may be made at a later commit** than the sitting's. A
+  tool that cannot record a sitting has to be corrected after it. The
+  record is admitted when, under `mvp/` and `bringup/`, no tracked
+  path differs from the sitting's commit but the record tool and its
+  dry run. It names both commits, the paths that differ, and which
+  tree ran the tool (`tool_tree`).
+- **The claim ledger takes a sitting's record only where the source's
+  own tool made it** (`tool_tree=source`).
+
 `check` runs both sittings whole on stand-ins of the board, the
 dongle, the console, the reader, and the gate (`k3-session-check`).
 
 ### What this section does not show
 
-Nothing here is a board result. Under QEMU these tools show that the
-firmware halts as built, that the harness and the judges handle a
-machine that halts, that the board's trees and tables are what their
-rules require, and that the sittings' steps run in order and stop
-where they must, on stand-ins. Whether the board's firmware boots,
-whether its banner is what `board.json` expects, and whether the
-board's PMP holds the profiles are what the sittings are for. A board
-run, when there is one, is diagnostic evidence for one board, never
-hardware validation.
+The first sitting is the one board result here, and it is a boot that
+stopped: it shows that the boot ROM takes the card and that the SPL
+runs from it and trains the memory, and nothing of the firmware. Its
+cause is established from sources, not shown on the board. Under QEMU
+these tools show that the firmware halts as built, that the harness
+and the judges handle a machine that halts, that the board's trees and
+tables are what their rules require, and that the sittings' steps run
+in order and stop where they must, on stand-ins. Whether the board's
+firmware boots and prints, whether its banner is what `board.json`
+expects, and whether the board's PMP holds the profiles are what the
+sittings are for. A board run is diagnostic evidence for one board,
+never hardware validation.
 
 This guide documents responsible-human accepted MVP 1.0 release
 candidate 4, exact commit `d70a8535` (`RC4`, accepted 2026-11-05), over

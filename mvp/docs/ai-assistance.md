@@ -31,8 +31,9 @@ repository's history, which this repository does not hold, and the commit
 IDs it names are that repository's. The files it cites under `.github/`,
 and the internal session handoff, are that repository's too and are not
 part of this one. Section 8 discloses the assistance in the release path's
-steps 2 and 3, which made this repository, and section 9 the assistance
-in M11, the first milestone made after the release.
+steps 2 and 3, which made this repository, section 9 the assistance
+in M11, the first milestone made after the release, and sections 10
+and 11 the assistance in M11's work for the board.
 
 ## 1. The responsible human
 
@@ -516,3 +517,61 @@ board for these two packages. In the packages after them the session
 writes each card, on the workstation, through the one card reader
 whose access rule the responsible human installs (the addendum's QB4),
 and each sitting at the board needs his word and his presence.
+
+## 11. After the release: M11-B3 and M11-B4, the card, the first sitting, and its corrections
+
+This section covers M11-B3 (the gates, and the first sitting's card)
+and M11-B4 as far as the first sitting and the corrections that
+followed it. They were made in the same session as section 10, on the
+workstation, from 2026-11-19 to 2026-11-20, by the same practice. This
+is the first part of M11 in which an AI system acted on the board.
+Before it, the owner session had read the board's NOR on the
+responsible human's word (2026-11-16), with a reader made for that
+from the board tools, and had run the one rehearsal of the MVP plan's
+revision S3-E with him present (2026-11-17).
+
+- **The card.** The owner session, on `claude-fable-5.2`, made the
+  card's image and wrote it to the card with the card reader's tool,
+  through the one reader whose access rule the responsible human had
+  installed, and read the card back.
+- **The first sitting** (2026-11-20). The responsible human gave his
+  word for it and was at the board; he put the card in the slot and
+  took it out. The owner session ran the sitting's steps, each through
+  the tools: the preflight and the staging over SSH, the resets by the
+  dongle, and the typed lines of the reading of the NOR. Nothing was
+  typed while the card was in. When the first boot from the card
+  stopped and the tools could not close the sitting, the owner session
+  closed it by hand, on his word: one reset by the dongle through the
+  pinned client, and a reading of the NOR by the reader that the
+  rehearsal had used. Those steps are outside the sitting's record,
+  and the plan's decision record tells them.
+- **The cause.** The owner session found it in the vendor's published
+  sources and the firmware base's source, and then in a post of the
+  firmware project's own mailing list that says the same. One
+  sub-agent on Claude Opus 5.5 (`claude-opus-5.5`) then read the boot
+  chain through in those sources, from the SPL to the firmware's
+  console, and reported what else could stop a boot. The owner session
+  wrote the decision record's entry. The cause is established from
+  sources, and is not shown on the board.
+- **The corrections.** Four coding sub-agents on `claude-opus-5.5`
+  (`max` effort, `long_context` tier) wrote them, each from a brief
+  and a design that the owner session had accepted. The owner session
+  read every change line by line, changed the tools one rule at a time
+  to see that their tests fail, and ran the checks.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The gates at M11-B3's commit, the firmware's and the card image's pins, and the card written and read back | The owner session | The addendum's M11-B3 and QB4 |
+| The first sitting's steps on the board, and its close by hand | The owner session, through the tools, with the responsible human at the board | His word for the sitting, and his word for the close |
+| The decision that followed the first sitting: the erratum to the addendum's B-3, and three soft limits re-set | The responsible human | His reply, which the plan's decision record quotes |
+| The entries of the decision record, the briefs and reviews, the commit messages, the ledger's notes, and the words of the README and the guide | The owner session | The addendum, and that decision |
+| The sweep of working names out of the tools' comments and messages | A coding sub-agent on `claude-opus-5.5` | The README's open item 140 |
+| The recipe's console step, its rule in the recipe's check and in the independent checker, and QEMU's tree at tier 1 | A coding sub-agent on `claude-opus-5.5` | The erratum to B-3 |
+| The record of a sitting that stopped, made at a later commit | A coding sub-agent on `claude-opus-5.5`, which stopped on a network failure after this part | The addendum's "The sittings, and their sessions" |
+| The console tool's reset after a boot from a card that stopped, the driver's flag, the stop's name, the form's facts, and the ledger's rule for a cited sitting's record | A second coding sub-agent on `claude-opus-5.5`, from the first one's design | The same |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, decided a stop, re-set a limit, added
+a `Signed-off-by`, or pushed. No AI system wrote to the board's NOR
+flash, changed its saved environment, or typed while a card was in
+the slot.
