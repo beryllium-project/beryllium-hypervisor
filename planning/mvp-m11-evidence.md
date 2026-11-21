@@ -3443,3 +3443,361 @@ Each stands unless the responsible human says otherwise.
 - The PMP of harts 1 and 2: the banner speaks for the boot hart.
 - More than three boots, one card, and one board. The run is
   diagnostic evidence for one board, never hardware validation.
+
+## M11-B4, second part, continued: the second sitting's builds and card images, and two tools corrected
+
+This section follows the first sitting's second run. It tells the
+second sitting's preparation: its three firmware builds, their card
+images, the first of its cards written, and two corrections of tools
+that the work brought out. No board step is in it.
+
+### Outcome first
+
+- **The second sitting's three firmware builds were made on the host
+  and inside the evaluator, and each pair is equal** (the addendum's
+  B-1), at two commits: the words' commit of the section above, and
+  this range's last commit under `mvp/`. They are recorded in the
+  plan's decision record and pinned.
+- **Their card images are made and pinned**, for a card of the size
+  of the one card so far. They were made again at this range's
+  content, and are byte for byte the same.
+- **`anchor`'s image is on that card**, written whole and read back:
+  each of the card's fourteen regions equals the image's.
+- **Two tools were corrected first**, each after a whole check
+  stopped:
+  - the frame tool's self-test, which rested on the tree's own pins
+    (the README's open item 144);
+  - **the console tool's helper**, whose verdicts after a quiet could
+    rest on a stale read of the serial log (the README's open item
+    142, closed). It decides when the console tool may type and when
+    it may ask for a reset, so its change is the part of this range
+    that most needs the responsible human's eye.
+- **Not done:** the cards of the two hostile-monitor images, which
+  wait for the responsible human's answer on the cards (QB3); and
+  the second sitting, each of whose sessions is on his word.
+
+### What happened, in order
+
+All times are UTC, on 2026-11-21.
+
+| UTC | What | Result |
+| --- | --- | --- |
+| 05:09 to 05:43 | The board gate on the host, then `evaluate` with the gate inside the evaluator, at the words' commit of the section above, in its first build (departure 6 there) | Passed; each output equal |
+| 05:44 to 05:47 | The first form of the two pins' commits, and between them the three card images | Made |
+| 05:48 to 06:23 | `anchor`'s image written to the card | Passed |
+| 05:48 to 05:58 | A whole `check` at the first form of the card pins' commit | **Stopped**, in the frame tool's self-test |
+| 06:23 to 06:51 | The card read back | Passed: fourteen regions equal |
+| 06:50 to 06:56 | The frame tool's correction, the pins' commits again with the same values, and the words, on the range of the section above | Committed |
+| 06:57 to 07:07 | A whole `check` at that content | **Stopped**, at the board tools' dry run, in its `late-prompt` case |
+| 07:09 to 07:19 | The whole `check` again, with one sentence of the README changed | **Stopped**, at the same case |
+| 07:20 to 07:25 | The owner's reading of the two stops' records, and a reproduction | The cause: a stale read in the console tool's helper |
+| 07:28 to 09:12 | A sub-agent's correction of the helper, with a case for the dry run and a reading of the board tools' waits | Delivered; read by the owner |
+| 09:21 to 09:22 | This range as it is: the two corrections, the pins, the words | Committed |
+| 09:22 to 09:52 | A whole `check` at the words' commit | Passed |
+| 09:52 to 10:22 | The board gate on the host, then `evaluate` with the gate inside the evaluator, in that check's clone | Passed; each output equal |
+| 10:22 to 10:24 | The four card images again, in the same clone | Each equals its pin |
+
+### The builds, made twice, at two commits
+
+**First**, at the words' commit of the section above (the commit "the
+words for the first sitting's second run", whose `mvp/` tree is
+`512c0d5d0b80a6f12b51241f29c3b87294157b43`), in the clean clone of
+that commit's first whole check:
+
+| Step | UTC | Result |
+| --- | --- | --- |
+| The board gate, on the vendor's published files, on the host | 05:09:00 to 05:09:32 | `BE_MVP_K3_GATE: PASS steps=9 images=38` |
+| `./mvp/mvp evaluate`, with the board gate inside the evaluator | 05:09:32 to 05:43:35 | `BE_MVP_EVALUATE: PASS`. Inside: `check` passes (118 runs in 124 attempts). The host's and the evaluator's outputs are equal: 865 of 865 of `check`'s, and 38 of 38 of the gate's |
+
+**Then**, at this range's words' commit (the commit "the words for
+the second sitting's preparation", whose `mvp/` tree is
+`5a6eeb46d42984bec2bb647bc9292a22e885cf39`), in the clean clone of
+its whole check:
+
+| Step | UTC | Result |
+| --- | --- | --- |
+| The whole `check` | 09:22:34 to 09:52:19 | `BE_MVP_CHECK: PASS`, after the tool lock (`roles=33`). 118 runs under QEMU in 129 attempts; the eleven other attempts were refused by `BE_MVP:02` and made again. Six sessions. The board tools' dry run passes with 42 cases, `late-prompt` and `stale-read` among them; the sittings' dry run passes (`self_test=195 cases=31`); the frame's self-test and check pass (`cases=62`, `files=26`) |
+| The board gate, on the host | 09:52:19 to 09:52:48 | `BE_MVP_K3_GATE: PASS steps=9 images=38` |
+| `./mvp/mvp evaluate`, with the board gate inside the evaluator | 09:52:48 to 10:22:07 | `BE_MVP_EVALUATE: PASS`. Inside: `check` passes (118 runs in 128 attempts), its dry runs among it. The host's and the evaluator's outputs are equal: 865 of 865 of `check`'s, and 38 of 38 of the gate's |
+
+So each of the board's four firmware builds is byte for byte the
+same on the host and inside the evaluator, at both commits. Each has
+540,600 bytes:
+
+| Image | Sitting | SHA-256 of `fw_dynamic.bin` |
+| --- | --- | --- |
+| `two-guests-off` | first | `d2b4af5d7e246279cbfb7c665ab48c19c440357b13462eec162232636676c9b4` |
+| `anchor` | second | `a95128a2140951fdb1a442d178ebbb3ce70219c3f9f582f28a658dd09b254cb4` |
+| `k3-breach-g1` | second | `0fd9b322f91ca805844ddd95d073ca6662a77b0f2ab579595efaa4a9e7a028ff` |
+| `k3-breach-c` | second | `1f0ad1f9724bef6bdadab2255883bad884b1e7e9b6464b298e85994103d6794b` |
+
+These are the values of the table in "The gates again", above: the
+builds have not changed since the corrections' commit, where they
+were also made twice, and the board gate made them once more at the
+commit of the first sitting's second run. The commit "the second
+sitting's firmware builds are pinned" records the three and adds
+their lines to `mvp/k3/sitting-pins.txt`. After the second making,
+each of the four builds was compared with its line there: equal.
+
+### The card images
+
+Made from the first making's outputs of the gate, for a card of
+31,927,042,048 bytes, at the first form of the firmware pins' commit
+(05:45Z to 05:46Z):
+
+| Image | SHA-256 of `card.img` | Its FIT |
+| --- | --- | --- |
+| `anchor` | `6338fd6848c198d7482fb41ad168edf0c2bc9c4d1c30ee3972e9a698c5acff41` | 541,299 bytes |
+| `k3-breach-g1` | `ce9c87b2708a5cee01e61a54245ec7a73fbad05ffa14e0c87e07d696b0bf24a2` | 541,307 bytes |
+| `k3-breach-c` | `70e2300b5639a911e3b5d777b1f192f5f072c2bed878295eaba440947de18040` | 541,303 bytes |
+
+- Each image's FIT and environment are byte for byte the ones that
+  the board gate made; the decision record's entry has their SHA-256
+  values. The card image's maker compared each firmware with its pin.
+- The commit "the second sitting's card images are pinned" adds the
+  three `card` lines. No image is committed: each holds the vendor's
+  files.
+- **Made again** at this range's words' commit, from the second
+  making's outputs (10:22:07Z to 10:24:16Z): each of the four images,
+  the first sitting's among them, has the SHA-256 of its `card` line.
+
+### `anchor`'s card
+
+The one card so far, the first sitting's, in the same reader, under
+the access rule of M11-B3.
+
+- **The dry run** (05:47Z) passed each of the tool's checks on the
+  reader, and printed the write's confirmation for this insertion of
+  the card.
+- **The write** (05:48:45Z to 06:23:54Z, by the tool's record):
+  31,927,042,048 bytes in 2,108.9 s, 15.1 MB/s; `BE_MVP_K3_CARD: PASS
+  write image=anchor`.
+- **The read-back** (06:24:26Z to 06:51:47Z): each of the card's
+  fourteen regions equals the image's, and the card is in the same
+  insertion as at the write; `BE_MVP_K3_CARD: PASS readback
+  image=anchor`.
+- The first sitting's image on the card went with the write. It can
+  be made again from its pins, and was (above).
+- The write and the read-back ran at the first form of the card
+  pins' commit. The tool compared the image with its pin there, and
+  that pin's value is this range's.
+
+### The frame tool's self-test
+
+- **What stopped.** A whole `check` at the first form of the card
+  pins' commit, from a clean clone (05:48:18Z to 05:58:07Z), stopped
+  at `k3-frame-check`: `FAIL check: a firmware pin and a card pin for
+  one image`, `BE_MVP_K3_FRAME_SELF_TEST: FAIL cases=62`.
+- **The cause.** Two cases of the self-test added made-up pins for
+  `anchor` to a copy of the tree's own `k3/sitting-pins.txt`. Once
+  the tree pinned `anchor`'s firmware build, the first case's copy
+  named `firmware anchor` twice, which the tool rightly refuses. The
+  tool's rules were right; the case rested on what the tree pinned.
+- **The correction** is the commit "the frame tool's self-test rests
+  on its own pins": both cases write the copied file whole, for a
+  made-up image `x`. Nine lines added and six removed, inside the
+  self-test alone; no case added or removed, and no rule changed. A
+  coding sub-agent of the session wrote it, on Claude Opus 5.5, in a
+  clone of its own, from a brief; the owner read each line.
+- **Tried**, by the sub-agent and again by the owner (06:54Z), each in
+  scratch trees: the self-test passes with no pin line, with the
+  first sitting's two, and with both sittings' eight; without the
+  correction it passes with two and fails with eight, by that one
+  case; with the tool's rule against a name twice switched off for
+  the sitting pins, the second case fails and no other. By the owner
+  also: with a rule that takes one image's two pins for one name, in
+  a tree with no pin line, the two cases fail and no other. By the
+  sub-agent also: with a rule that refuses a card pin for an image
+  that has a firmware pin, in a tree with no pin line, the first case
+  fails and no other; and with the second case's own second line
+  removed, that case fails.
+- **Found and left** (the README's open item 144): no case of the
+  self-test covers `k3/firmware-pins.txt`.
+
+### The console tool's helper
+
+`mvp/tools/k3-uboot.py` reads the serial log for the console tool and
+judges what U-Boot has printed, before a line is typed or a reset is
+asked for.
+
+- **What stopped.** Two whole checks of this range, one after the
+  other (06:57:46Z to 07:07:33Z, and 07:09:39Z to 07:19:23Z), stopped
+  at `run-tool-check`: `BE_MVP_RUN_TOOL_DRY_RUN: FAIL
+  late-prompt.record: exit 1, expected 0`. Every other case of the dry
+  run passed; nothing after the dry run was reached. Nothing else of
+  the owner session's ran beside either case, the M12 lane's lock for
+  heavy work was free, and the load average was under 1.
+- **The first reading was wrong.** The same case had stopped one
+  whole check on 2026-11-20. The section "M11-B4, first part" above
+  (its departure 2) and the README's open item 142 gave its cause as
+  the dry run's stand-in U-Boot, held up between two writes for
+  longer than the dry run's quiet of 0.05 s. After the first of
+  today's two stops the owner still read it so, changed one sentence
+  of the item, and ran the check again. After the second the owner
+  read the two runs' records.
+- **What the records show.** The stand-in's own records have its
+  echo of the tool's second `s` written about a millisecond after its
+  late prompt, in both runs: it was not held up. The console tool's
+  record of the first run names a fresh prompt at a log size of
+  1,025 bytes, which is the log with the echo in it.
+- **The cause.** The helper's probe after the `s` that stops the
+  autoboot read the log, and then waited for a quiet whose first
+  measure of the log's size came after the read. The echo reached
+  the log between the two, so it was in neither, and the probe
+  reported a fresh prompt. The console tool's next step found the
+  prompt's line not empty and stopped, typing nothing. The owner
+  reproduced it in scratch with no timing: the helper loaded by its
+  path, and the echo appended right after the read that returned the
+  prompt alone.
+- **The same pattern elsewhere.** A second coding sub-agent, on
+  Claude Opus 5.5, read every wait of the board tools for it: the
+  helper whole, the console tool's own waits, the sittings' driver,
+  and the session tool's loops. It found the pattern under the
+  helper's idle prompt, the two ends of a run, and the reasons that
+  admit a reset at an idle prompt, with Fedora down, after a boot
+  from a card, and for an MVP that hangs past its timeout. At a late
+  prompt the wrong verdict errs toward a stop; in the reasons for a
+  reset it errs toward a reset, when output reaches the log in the
+  instant of the read, or in the quiet of a reason judged before.
+- **The correction** is the commit "the console helper judges the log
+  as it ends". Each such verdict is given only when the log, after
+  the quiet, still ends where the judged text ended, the rule that
+  the helper's wait for a prompt already had, as one function. Where
+  the log has grown, the verdict is withheld, and the next reading
+  judges the whole log by the rules as they are. The reason for an
+  MVP that hangs is judged on the log read again instead: the
+  sub-agent measured that the size rule refuses the reset of an MVP
+  that keeps printing (3 of 200 calls on a small log; 50 of 50 with
+  2 MB logged since the reset), stopped as its brief required, and
+  put that reason to the owner, who chose the second reading. No
+  template, message, or other rule of the console tool changes. 122
+  lines added and 16 removed, in the helper and the dry run.
+- **The test** is the dry run's new case `stale-read`: the helper
+  loaded by its path, and a row's bytes landing at a fixed point,
+  before a quiet, in it, or after it, with no timing. Twelve rows,
+  each with its bytes and with none landing.
+- **Tried by the sub-agent** (each in its report's logs): the whole
+  dry run with the correction, seven times, each passing, with 42
+  cases; the whole dry run with the helper as it was and the new
+  case, failing by `stale-read` alone; twelve changes of the
+  corrected helper, one guard at a time, each failing the row made
+  for it; the busy MVP still given its reset (200 of 200 calls, and
+  50 of 50 with 2 MB logged).
+- **Tried by the owner** (09:13Z to 09:21Z): the case alone against
+  the corrected helper (twelve rows pass) and against the helper as
+  it was (ten rows fail); six changes of the corrected helper, one
+  guard at a time, each failing its row or rows; the reproduction
+  against both; and the sittings' dry run with the correction, in a
+  built scratch clone: `BE_MVP_K3_SESSION: PASS self_test=195
+  cases=31`.
+- **Found and left**, each a weakness of the reset's rule that is
+  older than M11 and outside this pattern (the README's open items
+  145 to 147): the reset acts on a reading that is one dongle round
+  trip old; past a run's timeout, Fedora's kernel lines are not taken
+  for Fedora's; and a prompt cut before its second byte is taken for
+  a missed stop.
+
+### The soft limits
+
+As the section "M11-B4, first part" counts them, with this range's
+two corrections:
+
+| Lane | Limit | Before this range | Now |
+| --- | ---: | ---: | ---: |
+| The frame | 1,200 | 1,123 | 1,132 |
+| The card's tools and the session's tools, with their dry runs | 12,500 | 11,341 | 11,463 |
+
+By the running counts, which count a rewritten line again: 1,159 and
+11,907. No limit is passed by either count. The other lanes are
+unchanged.
+
+### What was run, and what was not
+
+- **Run:** the board gate and `evaluate`, twice each; the card
+  image's maker, seven times; the reader's dry run, the write, and
+  the read-back; four whole checks, of which the last passed; the
+  two tools' own tests in scratch trees, as above; and the
+  text-level checks of each commit of the range (09:52Z to 09:54Z for
+  the five commits before this section, on four cores at low
+  priority; this section's commit after them).
+- **Beside the first making** (05:09Z to 05:43Z) ran the owner's
+  text-level checks of the section above's commits, on four cores at
+  low priority (05:10Z to 05:24Z), and, by its status page, the M12
+  lane's heavy work (05:05Z to 05:22Z; a build on all 32 threads to
+  05:12Z). Beside the second making's `evaluate` ran the text-level
+  checks of this range, and nothing else of the owner session's;
+  nothing ran beside its whole check, and the M12 lane's lock for
+  heavy work was free throughout.
+- **One start set aside.** The owner started the checks of 06:57Z
+  once before, at 06:57:14Z, under an emptied environment, stopped
+  them within seconds, after the tool lock had passed, and started
+  them again under the session's environment, as every earlier check
+  ran.
+- **Not run:** no board command and no dongle command since the first
+  sitting's end. No other gate: the range changes the frame tool's
+  self-test, the console tool's helper and its dry run, the pins'
+  file, the README, the disclosure, and planning pages. `check` and
+  `evaluate` run the helper's dry runs and the frame's check; no
+  other gate reads them, and `verify`'s inputs are unchanged.
+
+### Departures and readings for review
+
+Each stands unless the responsible human says otherwise.
+
+1. **A board tool was changed on the owner's decision.** The console
+   tool's helper decides when the console tool may type and when it
+   may ask for a reset. The decision record's entry of `fix: go`
+   names the corrections that the first sitting asked for, and this
+   is not one of them. The owner judged that a check which a defect
+   of the tool stops should not be run again until it passes, and
+   that the defect's other places err toward a reset. The change
+   withholds verdicts and grants none. His sign-off of the range
+   accepts it; without it, the helper is as the signed line has it.
+2. **The owner's first reading of the dry run's stop was wrong**,
+   on 2026-11-20 and again after the first stop of 2026-11-21, and
+   the owner told the responsible human that cause twice. The signed
+   section above keeps its words; this section and the README's item
+   142 correct them. The records of the stop of 2026-11-20 were not
+   kept; its lines are those of today's two.
+3. **Two ranges, where the owner had said one.** The owner told the
+   responsible human that one sign-off would cover the first
+   sitting's result and the second sitting's preparation. The first
+   whole check of the pins stopped (above), so the first sitting's
+   result went to him as a range of its own, and this range follows
+   it.
+4. **The pins' first commits were set aside**, with the first build
+   of the range of the section above. The card images were made, and
+   `anchor`'s card written and read back, at those first commits; the
+   card's records name the first form of the card pins' commit. The
+   pins' values are unchanged, and the images were made again at this
+   range's content. B-1's order held in the first form: the builds
+   were recorded at 05:44Z, and the first card image was made at
+   05:45Z.
+5. **The builds were made twice at the words' commit of the section
+   above**, in its first build, not at a commit of their own; and
+   twice again at this range's words' commit, which holds their pins.
+6. **The two hostile-monitor images' cards are pinned before their
+   cards are known**, for a card of the first card's size. A card of
+   another size would need its image made for that size and its pin
+   replaced, in a commit of its own, before its session.
+7. **The first sitting's card is written again before the
+   sign-off**, as its second card was. After the sign-off the commits
+   have other names, so the board gate and the card images are made
+   again at the signed commit and must match the pins.
+8. **The sittings' dry run with the corrected helper was first run in
+   a scratch clone** of the section above's first build, with the
+   correction applied by hand, because the sub-agent's clone lacked
+   two images. The whole check above runs it at this range's content.
+9. **The disclosure's opening** named sections 10 and 11 for the
+   board's work while section 12 existed, since the words' commit of
+   the section above. This range's words make it sections 10 to 13.
+
+### What is not shown
+
+- Anything of the second sitting: no boot of a boundary-on image has
+  been made on the board.
+- That the two hostile-monitor images' cards can be written as
+  pinned: their cards are not known.
+- That the corrected helper behaves on the board as in the dry run:
+  no board step has used it. The first sitting's two runs used the
+  helper as it was.
