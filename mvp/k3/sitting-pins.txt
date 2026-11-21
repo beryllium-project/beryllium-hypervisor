@@ -10,3 +10,6 @@
 # or a card without its line here; the board gate never reads this file.
 firmware two-guests-off sha256=d2b4af5d7e246279cbfb7c665ab48c19c440357b13462eec162232636676c9b4 bytes=540600
 card two-guests-off sha256=cbc68f8c01c0389af5040fa6b56e48601539f232096b82ef994ea8effd43dc49 bytes=31927042048
+firmware anchor sha256=a95128a2140951fdb1a442d178ebbb3ce70219c3f9f582f28a658dd09b254cb4 bytes=540600
+firmware k3-breach-g1 sha256=0fd9b322f91ca805844ddd95d073ca6662a77b0f2ab579595efaa4a9e7a028ff bytes=540600
+firmware k3-breach-c sha256=1f0ad1f9724bef6bdadab2255883bad884b1e7e9b6464b298e85994103d6794b bytes=540600

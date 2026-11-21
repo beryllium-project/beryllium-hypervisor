@@ -2156,3 +2156,39 @@ text above as it says; the text above is otherwise as accepted.
     their card images (B-4), at a commit that holds these facts, with
     each one's SHA-256 recorded here. No board step follows from this
     entry: each sitting, and each session, is on his word.
+- **2026-11-21, the second sitting's three firmware builds** (the
+  board addendum's B-1; M11-B4's second part). The first sitting's
+  facts are in the entry before this one, and force no change to the
+  board's platform description, so the builds are those of the trees
+  as they stand. The board gate built the firmware for the second
+  sitting's three images at the commit "the words for the first
+  sitting's second run", whose `mvp/` tree is
+  `512c0d5d0b80a6f12b51241f29c3b87294157b43`, on the host and again
+  inside the evaluator, from the same inputs, and each pair is equal
+  byte for byte. Each `fw_dynamic.bin` has 540,600 bytes:
+
+  | Image | SHA-256 of `fw_dynamic.bin` | SHA-256 of its device tree |
+  | --- | --- | --- |
+  | `anchor` | `a95128a2140951fdb1a442d178ebbb3ce70219c3f9f582f28a658dd09b254cb4` | `d83ab720a0b0aab813edd567b38a5f6d982c93039b2d865aa5fc438395069b6f` |
+  | `k3-breach-g1` | `0fd9b322f91ca805844ddd95d073ca6662a77b0f2ab579595efaa4a9e7a028ff` | `ab1048bae92079b73a9625b6dc05bc7c52ed01c91f1cd31654bdb54f8ee2deff` |
+  | `k3-breach-c` | `1f0ad1f9724bef6bdadab2255883bad884b1e7e9b6464b298e85994103d6794b` | `9b270f387cd9c273d61ce1a849959da30abe83302fd32cee0c99bb97b895a6d9` |
+
+  - Their inputs are the pinned firmware base with the series and
+    B-2's one addition, as for the first sitting's build, and, for
+    each image, the device tree that the recipe makes in four steps
+    with that image's partition descriptor rendered onto it (B-3).
+  - They are byte for byte the builds that the gates of 2026-11-20
+    made at the commit that holds the corrections, on the host and
+    inside the evaluator, and that the board gate made at the signed
+    commit of the first sitting's second run. Nothing that they are
+    built from has changed since.
+  - The same commit adds the lines `firmware anchor`,
+    `firmware k3-breach-g1`, and `firmware k3-breach-c` to
+    `mvp/k3/sitting-pins.txt`, each with its SHA-256.
+  - No card image was made from these builds before they were
+    recorded. This entry's first form, with the same values, was
+    committed on the working branch at 05:44Z, and the card images of
+    the next entry were made after it. That commit was then set
+    aside, because a tool's self-test had to be corrected before the
+    pins (the evidence record has the account), and this entry
+    follows the correction.
