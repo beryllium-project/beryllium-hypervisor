@@ -1,0 +1,13 @@
+schema=be-mvp-k3-staging-v1
+partition_label=beryllium
+images=1
+image name=be-mvp-two-guests-off-gcc.img bytes=2748416 sha256=5c2b2fb971c3cf68075d075c1ec35b8aecbeba35ed3cda515fab9b2e98cd0287 md5=e8eccc185cc59a54f379b839b10f931b crc32=2c6c5306 source=build/mvp/variants/gcc/two-guests-off/be-mvp-boot.img
+md5_distinct=yes
+crc32_distinct=yes
+partition_uuid_sha256=607fded67dd234740a7bc982215be764668bee51811db80bbcf87c5e4d84f0dc
+device=/dev/nvme0n1p6
+mount_options=rw,nosuid,nodev,noexec,nosymfollow
+verified=rw
+verified=ro
+files=be-mvp-two-guests-off-gcc.img CRC32SUMS lost+found MD5SUMS SHA256SUMS
+verdict=PASS

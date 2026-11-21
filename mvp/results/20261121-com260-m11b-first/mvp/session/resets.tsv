@@ -1,0 +1,7 @@
+seq	offset	utc	method	reason
+1	45257394	2026-11-21T03:40:10.394Z	k3ctl	fedora-down
+2	45261486	2026-11-21T03:47:02.348Z	k3ctl	idle-prompt
+3	45285291	2026-11-21T03:47:47.609Z	k3ctl	terminal-marker
+4	45309098	2026-11-21T03:48:13.548Z	k3ctl	terminal-marker
+5	45332905	2026-11-21T03:52:19.362Z	k3ctl	terminal-marker
+6	45336997	2026-11-21T03:52:57.274Z	k3ctl	idle-prompt

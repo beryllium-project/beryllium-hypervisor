@@ -1,0 +1,10 @@
+schema=be-mvp-k3-sitting-step-v1
+step=stage
+index=03
+attempt=1
+sitting=first
+started=2026-11-21T03:39:40Z
+tool stage exit=0 output=sitting/logs/03-stage-a1-stage.log
+staged be-mvp-two-guests-off-gcc.img sha256=5c2b2fb971c3cf68075d075c1ec35b8aecbeba35ed3cda515fab9b2e98cd0287
+ended=2026-11-21T03:39:41Z
+verdict=PASS

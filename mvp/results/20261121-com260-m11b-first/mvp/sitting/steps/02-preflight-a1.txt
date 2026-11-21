@@ -1,0 +1,11 @@
+schema=be-mvp-k3-sitting-step-v1
+step=preflight
+index=02
+attempt=1
+sitting=first
+started=2026-11-21T03:39:32Z
+tool preflight exit=0 output=sitting/logs/02-preflight-a1-preflight.log
+preflight=PASS
+partition_number=6
+ended=2026-11-21T03:39:35Z
+verdict=PASS

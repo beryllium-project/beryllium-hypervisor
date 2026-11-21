@@ -1,0 +1,11 @@
+schema=be-mvp-k3-sitting-step-v1
+step=end
+index=11
+attempt=1
+sitting=first
+started=2026-11-21T03:52:53Z
+tool fedora exit=0 output=sitting/logs/11-end-a1-fedora.log
+tool preflight exit=0 output=sitting/logs/11-end-a1-preflight.log
+tool remove-command exit=0 output=sitting/logs/11-end-a1-remove-command.log
+ended=2026-11-21T03:53:33Z
+verdict=PASS

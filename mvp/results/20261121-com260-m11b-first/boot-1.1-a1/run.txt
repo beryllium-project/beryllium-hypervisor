@@ -1,0 +1,34 @@
+run=boot-1.1-a1
+step=boot-1.1
+attempt=1
+sitting=first
+session=1
+image=two-guests-off
+image_sha256=5c2b2fb971c3cf68075d075c1ec35b8aecbeba35ed3cda515fab9b2e98cd0287
+board_json_sha256=6f730fdaa65940b5136402d583e0c72ba6e9d9376e500eda3c00f33ea1e3361c
+expect=gen/expect/two-guests-off.json sha256=c027bcee357f580e8a6c9393190f71e89a316c60f0d84e5bda8f64ad3d09019a
+report=none
+kernel=none
+dtb=none
+reference=references/gcc/two-guests-off.json sha256=2d4a736c81981c633019723d86d55c6aeb4a6f517ebd245c3a1bad3ae3801066
+memory=8 GiB
+observed_sha256=none
+toolchain=gcc
+launcher=uboot-autoboot-card
+loader=uboot-autoboot-card be_image=be-mvp-two-guests-off-gcc.img
+be_image=be-mvp-two-guests-off-gcc.img
+remote_image_sha256=5c2b2fb971c3cf68075d075c1ec35b8aecbeba35ed3cda515fab9b2e98cd0287
+card=in
+boot_id_before=reset-2@45261486
+reset_utc=2026-11-21T03:47:02.348Z
+serial_range=45261486-45285291
+outcome=end
+spl_banner=U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)
+uboot_banner=U-Boot 2022.10 (May 21 2026 - 07:43:32 +0000), Build: jenkins-BSP-build-bsp-deb-395
+board_kernel=none (boot from system reset)
+check_status=0
+stops=none
+BE_MVP_RESULT: PASS terminal=shutdown-requested
+usb=clean devices=14 interfaces=27
+banner_audit=PASS
+verdict=PASS

@@ -1,0 +1,15 @@
+schema=be-mvp-k3-sitting-step-v1
+step=card-in-1
+index=05
+attempt=1
+sitting=first
+started=2026-11-21T03:46:53Z
+word=human-authorized:session-two-guests-off
+said=2026-11-21T03:46:44Z
+usb=clean devices=14 interfaces=27
+cited write-two-guests-off-1.txt sha256=7a9cecfa2a576fab9cb7d81f6991e9aae2fc7138d86a9ebd23da802362e5bb6e
+cited readback-two-guests-off-1.txt sha256=ab95f800fa290705542fe5cb5e5fc344fd93e4979ae35b086f6494aa0e6294a6
+cited card.json sha256=3e3dcfeebe5f4d6fdf0aa9b096042a4e8663757b8e8476c752576141f36b2d0a
+card=in session=1 image=two-guests-off step=card-in-1 said=2026-11-21T03:46:44Z recorded=2026-11-21T03:46:53Z log_offset=45261486
+ended=2026-11-21T03:46:53Z
+verdict=PASS

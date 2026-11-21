@@ -1,0 +1,11 @@
+schema=be-mvp-k3-sitting-step-v1
+step=reading-1
+index=10
+attempt=1
+sitting=first
+started=2026-11-21T03:52:09Z
+usb=clean devices=15 interfaces=28
+tool reading exit=0 output=sitting/logs/10-reading-1-a1-reading.log
+compared=reading-0
+ended=2026-11-21T03:52:38Z
+verdict=PASS
