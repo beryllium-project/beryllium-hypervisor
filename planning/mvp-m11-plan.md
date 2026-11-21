@@ -2329,3 +2329,84 @@ text above as it says; the text above is otherwise as accepted.
   - **The record** of the sitting is
     `mvp/results/20261121-com260-m11b-second/`, made by the record
     tool at the sitting's own commit.
+- **2026-11-21, the heap of a board tree with OpenSBI domains, and
+  the second sitting's three firmware builds made again** (an erratum
+  to the board addendum's B-3; B-1; M11-B5). The entry before this
+  one proposed the remedy. It is made, in the two commits before this
+  entry's. The responsible human's sign-off of the range that holds
+  them decides the erratum.
+  - **The erratum.** B-3's step 4 has the partition descriptor's
+    nodes added "as the backend renders them for QEMU". On the board,
+    a tree that holds the OpenSBI domains also carries the firmware
+    base's own property `heap-size` in `/chosen/opensbi-config`. No
+    other tree carries it: not the tree of an image with the boundary
+    off, and no tree for QEMU. The addendum's text is otherwise as
+    accepted.
+  - **The value is 256 KiB** (`0x40000`), the board description's
+    `firmware.heap`, in place of the firmware base's default for
+    sixteen harts, 104 KiB. It was measured under QEMU with what the
+    description gives of the board: sixteen harts, a cold boot hart
+    whose vector length is 256 bits, the PMP's grain of 4 KiB, the
+    M-level APLIC's 512 sources, and D-6's OpenSBI domains for
+    sixteen harts.
+    - With the default heap, the cold boot stops with the two lines
+      that the board printed.
+    - With 256 KiB, the banner shows 105 KB in use and 145 KB free,
+      and D-6's sequence runs.
+    - On the board the IMSIC's identities, which QEMU's IMSIC cannot
+      hold, take about 6 KB more at cold boot. A hart that is started
+      later takes its own allocations from the same heap: under QEMU,
+      in that shape, 142,400 bytes were still free at the end of
+      D-6's sequence, after harts 1 and 2 had started (a scratch run
+      that read the heap's control block; no row reads it).
+  - **The firmware's regions do not move.** The heap grows inside
+    the firmware's read-write region as the firmware rounds it, and
+    the firmware still ends below the first real-time core's entry.
+    The backend refuses a heap that would move either region, and the
+    checker computes the regions from the tree's own property.
+  - **The floor is 64 KiB** (`firmware.heap_free_min`): the least
+    free heap that the banner may print for such a tree. In the
+    second sitting the form refuses a boot whose banner shows less,
+    or another heap than the description's (stop B6).
+  - **The vector length is an inference.** The description's 256
+    bits is not read from a register. The first sitting's banner
+    shows 67 KB of heap in use with the root OpenSBI domain's
+    sixteen switch contexts; the firmware under QEMU, measured with
+    those sixteen contexts, sixteen harts, and the M-level APLIC's
+    sources, uses 61 KB with 256 bits, and the IMSIC's identities
+    account for 6 KB more. 128 bits would give 8 KB less, and 512
+    bits 16 KB more. The second sitting's banner bears it out or
+    not: the form records its heap line.
+  - **What the measurement does not hold of the board:** its IMSIC's
+    identities, and its second kind of hart (harts 8 to 15).
+  - **The builds.** The board gate built the firmware for the second
+    sitting's three images at the commit "the firmware's own failure
+    lines in the card form", whose `mvp/` tree is
+    `436b36c729e4d6d6f18463c12f6fa65d7d273463`, on the host and again
+    inside the evaluator, from the same inputs, and each pair is
+    equal byte for byte. Each `fw_dynamic.bin` has 540,600 bytes:
+
+    | Image | SHA-256 of `fw_dynamic.bin` | SHA-256 of its device tree |
+    | --- | --- | --- |
+    | `anchor` | `fbf78052ae053d1ea07f652db8c0790957593c591040aa9e959dd1668885fa06` | `70303e126f8a7b8b8bf29f77ec6cd5e2d56e4db5db0b95fae300d0d0db5269b9` |
+    | `k3-breach-g1` | `5918f88c95c56b46019d7d2c2c6f6cd276a4f3b6d0e178bf9208517b1f9f4632` | `27babdb2aa00d7c600ec729ee8fc04cfdd6fdca9e098734d6a6a7386997a8fe8` |
+    | `k3-breach-c` | `0d0e340e7528f28f97b5a1e0401259a1af2d477a13c02ec1edd4532eb3de114a` | `0eb6d039571b8f4082a250d9baa70af5bc1dad3b8ddae4f77add8e2c79554980` |
+
+  - They replace the three builds of the entry "the second sitting's
+    three firmware builds", which stand in that entry as the builds
+    of the sitting's first run. Each is built from the same source,
+    series, and configuration as the build that it replaces, with
+    one changed input: its device tree, which is the old tree with
+    that one property added (26 bytes more). In the binary the tree
+    is at the same offset; the read-only data after it lies 32 bytes
+    further on, with every reference to it; and the firmware's
+    layout symbols, `_fw_rw_start` and `_fw_end`, are where they
+    were. So the old and the new binary differ in more than the
+    tree's bytes.
+  - The first sitting's build, `two-guests-off`, is byte for byte
+    what it was: its tree holds no OpenSBI domain.
+  - The same commit replaces the lines `firmware anchor`,
+    `firmware k3-breach-g1`, and `firmware k3-breach-c` of
+    `mvp/k3/sitting-pins.txt`, and takes out the three `card` lines
+    of the images that those builds replace. No card image was made
+    from the new builds before this entry.
