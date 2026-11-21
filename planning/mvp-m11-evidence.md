@@ -3218,3 +3218,228 @@ Nothing in this section is a board step. So it shows nothing of the
 project's firmware on the board, of the form's rules on a real boot
 from a card, or of the corrected tools on the board. The section
 after this one tells the first sitting's second run.
+
+## M11-B4, second part: the first sitting's second run
+
+### Outcome first
+
+- **The first sitting passed** (2026-11-21, 03:38Z to 03:53Z), at the
+  signed commit that holds the corrections
+  (`0d81d673e3901a12bbd89947636ca0c859e85645`), on the responsible
+  human's word and with him at the board: each of its eleven steps at
+  its first attempt, and each of its three boots from the card, which
+  the form admitted with no stop.
+- **The project's firmware printed its banner on the board's
+  console**, in each boot. The vendor's U-Boot then loaded the staged
+  image, and the candidate's `two-guests`, built without the boundary,
+  ran to its shutdown line on harts 0, 1, and 2. Then the firmware
+  halted.
+- **The banner's facts are inside the addendum's thresholds** (B-6):
+  16 PMP entries, a grain of 4 KiB, 38 address bits, and privilege
+  version 1.12. They force no change to the board's platform
+  description.
+- **The NOR and the card are unchanged.** The closing reading equals
+  the opening reading in all six ranges; the card, read back whole,
+  equals its image.
+- **Nothing of the boundary is shown.** No hart was confined, and no
+  claim changes.
+- **M11-B4 is not complete.** Its second part follows: the second
+  sitting's three firmware builds and their card images, at a commit
+  that holds the first sitting's facts.
+
+The plan's decision record has the account of the run ("the first
+sitting, run again"). This section adds what the record of a run
+needs beside it.
+
+### The run
+
+| Step | UTC | Result |
+| --- | --- | --- |
+| `begin` | 03:39:27 | Passed, on his `sitting: go` (03:38:47Z) |
+| `preflight` | 03:39:32 to 03:39:35 | Passed, from the board's own Linux |
+| `stage` | 03:39:40 to 03:39:41 | Passed: `be-mvp-two-guests-off-gcc.img` on partition 6 |
+| `reading-0` | 03:39:49 to 03:40:29 | Passed: the board's Linux halted; one reset; a boot from the NOR; U-Boot's memory, 8 GiB; the flash read twice, equal |
+| `card-in-1` | 03:46:53 | Passed, on his `card in` (03:46:44Z) |
+| `boot-1.1` | 03:47:01 to 03:47:18 | Passed: one reset, nothing typed, the form's verdict `PASS stops=none` |
+| `boot-1.2` | 03:47:42 to 03:48:03 | Passed, the same |
+| `boot-1.3` | 03:48:08 to 03:48:29 | Passed, the same |
+| `card-out-1` | 03:52:03 | Passed, on his `card out` (03:51:53Z) |
+| `reading-1` | 03:52:09 to 03:52:38 | Passed: one reset; a boot from the NOR; each of the six ranges equal to `reading-0`'s |
+| `end` | 03:52:53 to 03:53:33 | Passed: one reset; the board's own Linux up; the preflight's verdict line equal to the first; the session's audit, `banners=6 resets=6 findings=0` |
+
+No other job of the owner session's ran on the workstation during the
+sitting, and the M12 lane's lock for heavy work was last taken on
+2026-11-20 at 12:32Z.
+
+**Each boot from the card**, as the form judged it and as the record
+tool judged it again:
+
+- `BE_MVP_CARD: sitting=first rom_lines=4 … memory=8_GiB
+  product=k3_com260_ifx harts=16 priv_version=v1.12 pmp_count=16
+  pmp_granularity=12_bits pmp_address_bits=38 digest=none parked=none
+  other_lines=0 no_flash_device=d420c000.spi …`: the same line in the
+  three boots;
+- `BE_MVP_COUNTS: boot_hart=0 started=none exits_g0=156 exits_g1=156
+  records=138 wakes=70 … alternations=129`: the same counts in the
+  three boots, with other tick values in each;
+- `BE_MVP_LOG: contract=v1/complete … state=closed count=13`, and each
+  of the thirteen records equal to the reference's;
+- `BE_MVP_BOUNDARY: NOT-APPLICABLE boundary=off`;
+- `BE_MVP_RESULT: PASS terminal=shutdown-requested`;
+- `BE_MVP_CAPTURE[card two-guests-off]: PASS stops=none`.
+
+The three captures have 318 lines each. The banners are equal line
+for line, 63 lines; the rest differs only in times, tick counts, the
+read speed that U-Boot prints for the load, and the round counts of
+the guests' loop.
+
+**The halt held.** U-Boot's own line says that it started a watchdog
+with a timeout of 60 s. After the third boot's last line the board
+stayed halted, with the card in, for 3 min 50 s, until the closing
+reading's reset, and printed nothing: the serial log's offset at that
+reset is the offset at the boot's end. So nothing reset the board in
+that time. Whether U-Boot stops that watchdog before it starts the
+image is not established here.
+
+### The banner, and the build's expectation
+
+The form compares each field of the banner that follows from the
+build with the gate's `board.json` for the image, and the root OpenSBI
+domain's regions line by line. Each was equal, in each boot. What the
+banner adds is the hardware's facts, which no build can give; the
+decision record's entry lists them. Against B-6's thresholds:
+
+| Fact | The banner | The threshold |
+| --- | --- | --- |
+| PMP entries | 16 | at least 14 |
+| PMP grain | 12 bits, 4 KiB | at most 4 KiB |
+| Privilege version | 1.12 | 1.12 or later |
+
+The banner speaks for the boot hart alone (B-6). Its list of ISA
+extensions has no Smepmp, as the published tree's has none.
+
+`mvp/k3/observed.json` (the commit "the first sitting's observed
+facts") holds the facts that the second sitting's form compares its
+boots with. The owner wrote it by hand, in the form that the capture
+checker takes, from the three boots' results, and then compared them
+by a script of its own: the file equals the facts in each of the
+three results, which are equal to each other, and the form's own
+check of the file's shape passes. The frame's check passes with the
+file present (`BE_MVP_K3_FRAME: PASS fragments=8 files=26 tools=11`).
+
+### The NOR, and the card
+
+- **The readings.** Each reading read the whole flash twice at
+  U-Boot's prompt, with the two reads equal, and digested the six
+  ranges of S3-E's item 9. The closing reading's six digests equal the
+  opening reading's. The digests stay in the private store; the
+  record says `equal` for each range.
+- **The lines.** Each boot's capture holds the vendor's line that
+  announces the save of the training record, then its line that it
+  found no valid device for the flash's controller, and none that the
+  form refuses: no flash detected, and no write to the NOR.
+- **The card.** After the sitting the card went back into the reader,
+  and the tool read it back whole (03:54Z to 04:21Z): 31,927,042,048
+  bytes, whose SHA-256 is the image's, and each of the fourteen
+  regions equal to the image's, the environment's among them. The
+  reader's disk had a new sequence number, as it must after the card
+  was out.
+
+### The record
+
+`mvp/results/20261121-com260-m11b-first/` (the commit "the record of
+the first sitting's second run"), 121 files.
+
+- **Where it was made.** In the sitting's clone, at the sitting's own
+  commit, by that tree's record tool, at 04:21Z, as soon as the
+  card's read-back had passed: `BE_MVP_EVIDENCE: PASS sitting …
+  result=closed boots=3 readings=2 readbacks=1 stops=none`. Its bundle
+  says `tool_tree=source`, `source_tree=clean`, and
+  `sitting_source_tree=clean`, names one commit as the source's, the
+  sitting's, and the gate's, and says that nothing changed since the
+  sitting. The read-back and the record were chained in a script of
+  the owner's, started when the sitting had ended.
+- **What it holds.** The eleven steps and the plan, with the
+  workstation's paths replaced by names; for each boot, the form's
+  output, the result with the banner as the form took it, the capture
+  from U-Boot's autoboot line on, the measurement log's export, and
+  the reset's record; the two readings' records; the session's
+  keystrokes, which hold each typed line of the readings and withhold
+  the digest of each digest's output; the six resets; the card's
+  write and two read-backs; the two preflights; the gate's record's
+  digests; the tool lock; and the expectations and references of the
+  sitting's build.
+- **What it does not hold.** The raw captures: each is named by its
+  SHA-256 and kept privately. U-Boot's lines before its autoboot line
+  hold the board's identifiers, and are in no file of the record.
+- **Read before it was committed.** The boot ROM's four lines, which
+  hold no identifier. Each boot's banner and kept capture. A search of
+  every file for a home path, the account's and the host's names, an
+  IPv4 or MAC address, a USB ID, the reader's link, the board's SSH
+  name, and any value of an MD5's form: each such value is the staged
+  image's, but one in each preflight, which is the build host's name
+  in the banner of the board's own kernel, as in MVP 1.0's board
+  records. The record tool's `--verify` passes on the record at its
+  own commit and at the commit that adds it.
+- No row of the claim ledger cites it. A row for a board run needs
+  the claim's words for the board (B-11), which come only with
+  M11-B's result.
+
+### What was run, and what was not
+
+- **On the board:** the sitting's steps, each through the tools. Six
+  resets by the dongle. The typed lines of two readings, each of them
+  one key to stop the autoboot and ten lines from eight templates.
+  Nothing while the card was in.
+- **On the workstation:** the card's read-back; the record; the
+  text-level checks of each commit of this range.
+- **A whole `check`** at the words' commit, the last commit before
+  this section, from a clean clone, 06:05Z to 06:35Z:
+  `BE_MVP_CHECK: PASS`, after the tool lock (`roles=33`). 118 runs
+  under QEMU in 127 attempts; the nine other attempts were refused
+  by `BE_MVP:02` and made again, as before. Six sessions. The frame's
+  check and the sittings' dry run pass with `mvp/k3/observed.json`
+  present. Beside it ran a card's write and read-back for the second
+  sitting, and the text-level checks of this range's commits, on four
+  cores at the lowest priority.
+- **No other gate.** Outside the two records, the range changes the
+  README, the guide, the disclosure, `mvp/k3/observed.json`, and
+  planning pages: no source, tool, test, scenario, or build rule. So
+  the ten gates' results of the two sections above stand, and
+  `verify`'s inputs are unchanged.
+
+### Departures and readings for review
+
+Each stands unless the responsible human says otherwise.
+
+1. **One request for two acts.** The owner asked for the card's
+   removal and its return to the reader together, and recorded his
+   one reply, `card out`, as the removal's. The reader's own record
+   shows the card's return: a new sequence number, and the read-back.
+2. **The record's name holds the run's UTC date**, 2026-11-21, where
+   the first run's holds 2026-11-20. Both are records of the first
+   sitting.
+3. **`mvp/k3/observed.json` is written by hand** (above). No tool
+   writes it; the conventions of M11-B's tools leave it to the owner.
+4. **The disclosure gains a section** for the work since the
+   corrections (section 12), where the plan's work packages name none
+   for M11-B4.
+5. **The halt and U-Boot's watchdog** (above): a reading, for the
+   second sitting, in which the board stays halted between a run's
+   end and the next reset.
+6. **The range was built twice.** It was first built on the
+   sitting's commit, and a whole `check` at its words' commit passed
+   (04:38Z to 05:09Z). The public `main` then had three later commits
+   of the M12 lane (the section above, departure 5). So the owner
+   built the range again on `main` as it stood, with the same changes
+   but for that section's corrected words, and ran its checks again;
+   the whole check above is the second. Under `mvp/` and `bringup/`
+   the two builds of the words' commit have the same trees.
+
+### What is not shown
+
+- Anything of the boundary on the board: no profile was entered, no
+  record was printed, and no hostile-monitor image ran.
+- The PMP of harts 1 and 2: the banner speaks for the boot hart.
+- More than three boots, one card, and one board. The run is
+  diagnostic evidence for one board, never hardware validation.
