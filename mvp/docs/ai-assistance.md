@@ -575,3 +575,46 @@ No AI system accepted a result, decided a stop, re-set a limit, added
 a `Signed-off-by`, or pushed. No AI system wrote to the board's NOR
 flash, changed its saved environment, or typed while a card was in
 the slot.
+
+## 12. After the release: M11-B4, the first sitting's second run
+
+This section covers M11-B4 from the corrections of section 11 to the
+first sitting's second run and its record. It was made in the same
+session as sections 10 and 11, on the workstation, on 2026-11-20 and
+2026-11-21, by the same practice. No sub-agent took part in it, and
+none had access to the board.
+
+- **Before the run.** The owner session, on `claude-fable-5.2`, ran
+  the gates again at the commit that holds the corrections, pinned
+  the firmware build and the card's image, and wrote the card and read
+  it back, as in section 11. After the responsible human's sign-off of
+  that range, a script of the owner session's made the first run's
+  record with the corrected record tool, and then a clean clone at the
+  signed commit with a whole check, the board gate, and the card's
+  image again. The script ran unattended, behind `verify`.
+- **The second run** (2026-11-21). The responsible human gave his
+  word for it and was at the board; he put the card in the slot, took
+  it out, and put it back in the reader. The owner session ran the
+  sitting's eleven steps, each through the tools: the preflight and
+  the staging over SSH, six resets by the dongle, and the typed lines
+  of the two readings of the NOR. Nothing was typed while the card was
+  in. The tools judged each boot from the card before the next reset;
+  the owner session judged none by hand.
+- **The records and the facts.** The record tool made both runs'
+  records. The owner session read each record before it was
+  committed, wrote `mvp/k3/observed.json` from the three boots of the
+  second run, and wrote the decision record's entry, the evidence
+  sections, and the words of the README and the guide.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The gates again, the pins, and the card written and read back again | The owner session | The decision record's entry of the responsible human's `fix: go` |
+| The second run's steps on the board | The owner session, through the tools, with the responsible human at the board | His word for the sitting |
+| The two runs' records | The record tool, run by the owner session, the first run's by its script | The addendum's "The sittings, and their sessions" |
+| `mvp/k3/observed.json`, the decision record's entry, the evidence sections, and the words of the README and the guide | The owner session | The addendum's B-6 and B-8 |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, decided a stop, re-set a limit, added
+a `Signed-off-by`, or pushed. No AI system wrote to the board's NOR
+flash, changed its saved environment, or typed while a card was in
+the slot.

@@ -2001,13 +2001,19 @@ names the candidate's tree once the gates have passed at it.
 This section is about the M11 plan's
 [board addendum](../../planning/mvp-m11-board-addendum.md), which plans
 runs of the M11 candidate on the COM260. What exists is the tools, each
-tested under emulation or on files, and one sitting that stopped.
-**The first sitting ran on 2026-11-20 and stopped at its first boot
-from the card**, before any line of the project's firmware reached the
-console. The M11 plan's decision record has its account, and
-`mvp/results/20261120-com260-m11b-first/` is its record.
-**No boot of the project's firmware has yet shown a line on the
-board**, and nothing here changes a claim. The board's runs are made
+tested under emulation or on files, and the first of the addendum's
+two sittings, which was run twice.
+**Its first run (2026-11-20) stopped at its first boot from the
+card**, before any line of the project's firmware reached the
+console; `mvp/results/20261120-com260-m11b-first/` is its record.
+**Its second run (2026-11-21), after the console's correction,
+passed**: in each of three boots from the card the project's firmware
+printed its banner, the vendor's U-Boot loaded the staged image, and
+the candidate's `two-guests`, built without the boundary, ran to its
+shutdown line; `mvp/results/20261121-com260-m11b-first/` is its
+record. The M11 plan's decision record has the account of both.
+**No run under the boundary has been made on the board**, and nothing
+here changes a claim. The board's runs are made
 in sittings, with the responsible human present, each after his own
 sign-off; their records are board records under `mvp/results/`.
 
@@ -2105,15 +2111,18 @@ board:
   --platform k3-com260`). With the boundary off, the tree is step 4
   itself.
 
-Step 4 came after the first sitting (below), whose first boot from the
-card printed nothing after the SPL's lines: the tree then still had the
-published name alone.
+Step 4 came after the first sitting's first run (above), whose boot
+from the card printed nothing after the SPL's lines: the tree then
+still had the published name alone. With step 4 in the tree, each boot
+of the second run printed the firmware's banner.
 
 Each step must be its input with its own changes and nothing else.
 `mvp/k3/platform.json` is the board's description: each fact that
 these tools read, with its source. Its facts come from the published
-tree and the vendor's published sources; the first sitting's boots are
-what compares them with the board. The independent check of section
+tree and the vendor's published sources. The first sitting's second
+run compared them with the board as far as the firmware's banner
+shows them: each of the banner's fields that follows from the build
+was as expected. The independent check of section
 10 (`mvp/tests/check-partition.py`) has the board's rules too, written
 apart from the backend's.
 
@@ -2130,9 +2139,11 @@ The console's names are checked three times:
 None of them shows that the board's UART sends. QEMU's UART keeps only
 the low four bits of that register, so a run under QEMU looks the same
 whichever name the firmware matched. The checks read names, and they
-rest on one reading of the firmware base's source. The firmware's
-banner on the board's console, at a sitting, is the first direct
-evidence.
+rest on one reading of the firmware base's source. The direct evidence
+is the first sitting's second run: its firmware has the first run's
+sources, series, and configuration, its built-in tree differs from the
+first run's in that one line, and its banner reached the board's
+console.
 
 `check` runs all of this on stand-ins with made-up values
 (`k3-recipe-check`, `k3-partition-check`). The published files are
@@ -2309,6 +2320,12 @@ the rules that judge them under QEMU; and M-mode's commit records.
 `mvp/tests/test-k3-form.py` tests it on captures built from parts,
 with made-up values and no line of a real log.
 
+In the second sitting the form requires more of each boot: the boot
+ROM's lines, the hardware's facts in the firmware's banner, the
+devices that the firmware found, and U-Boot's memory size must be the
+first sitting's. `mvp/k3/observed.json` holds those, as each of the
+three boots of the first sitting's second run gave them.
+
 After a sitting, `./mvp/mvp k3-sitting-record K3_SITTING=first|second
 K3_RUN_ROOT=…` makes its record under `mvp/results/`. It judges each
 boot again from the kept inputs, and it refuses a record that holds a
@@ -2333,18 +2350,30 @@ dongle, the console, the reader, and the gate (`k3-session-check`).
 
 ### What this section does not show
 
-The first sitting is the one board result here, and it is a boot that
-stopped: it shows that the boot ROM takes the card and that the SPL
-runs from it and trains the memory, and nothing of the firmware. Its
-cause is established from sources, not shown on the board. Under QEMU
-these tools show that the firmware halts as built, that the harness
-and the judges handle a machine that halts, that the board's trees and
-tables are what their rules require, and that the sittings' steps run
-in order and stop where they must, on stand-ins. Whether the board's
-firmware boots and prints, whether its banner is what `board.json`
-expects, and whether the board's PMP holds the profiles are what the
-sittings are for. A board run is diagnostic evidence for one board,
-never hardware validation.
+The first sitting's second run is the one passing board result here,
+and it is a run with the boundary built off. It shows the chain: the
+boot ROM and the SPL take the card; the SPL enters the project's
+firmware; the firmware's banner prints, with each field that follows
+from the build as `board.json` expects it; the vendor's U-Boot comes
+up without a flash device and loads the staged image; the monitor
+runs `two-guests` to its shutdown line on three of the board's harts;
+and the firmware halts. It gives the banner's facts for the boot hart,
+among them 16 PMP entries, a grain of 4 KiB, and 38 address bits. The
+readings around its session show the NOR's six ranges equal before
+and after.
+
+It shows nothing of the boundary on the board: no hart was confined,
+and M-mode printed no commit record. Whether the board's PMP holds the
+profiles, and whether the hostile-monitor images' attempts end there
+as declared, are what the second sitting is for. The cause of the
+first run's stop is established from sources; the second run agrees
+with it, and shows no more than that.
+
+Under QEMU these tools show that the firmware halts as built, that the
+harness and the judges handle a machine that halts, that the board's
+trees and tables are what their rules require, and that the sittings'
+steps run in order and stop where they must, on stand-ins. A board run
+is diagnostic evidence for one board, never hardware validation.
 
 This guide documents responsible-human accepted MVP 1.0 release
 candidate 4, exact commit `d70a8535` (`RC4`, accepted 2026-11-05), over

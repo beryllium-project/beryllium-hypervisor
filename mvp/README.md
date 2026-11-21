@@ -568,7 +568,8 @@ plan, "Architecture" and "The triggers for Instance 3").
   - **The firmware's tree** (B-3): made by a recipe from the tree that
     the vendor's published U-Boot image carries (`tools/k3-recipe.py`),
     never written by hand, in four steps, the last naming the console
-    as the firmware needs it (M11-B4, after the first sitting); the
+    as the firmware needs it (M11-B4, after the first sitting's first
+    run); the
     board's description, `k3/platform.json`; the partition backend's
     and the independent checker's board platform.
   - **The board gate** (`./mvp/mvp k3-board-gate`, tier 2, never in
@@ -605,20 +606,21 @@ plan, "Architecture" and "The triggers for Instance 3").
   card's tools; and the sittings' tools. Their comments and messages
   name the tools and their rules in plain words (open item 140,
   closed).
-- **The first sitting, and what it corrected (M11-B4).** The first
-  sitting ran on 2026-11-20, at M11-B3's signed commit, with the
-  responsible human at the board, and stopped at its first boot from
-  the card. The boot ROM took the card, the SPL ran from it and
+- **The first sitting's first run, and what it corrected (M11-B4).**
+  The first sitting's first run was on 2026-11-20, at M11-B3's signed
+  commit, with the responsible human at the board, and it stopped at
+  its first boot from the card. The boot ROM took the card, the SPL
+  ran from it and
   trained the memory, and no line of the project's firmware reached
   the console. The NOR and the card were unchanged afterwards. The M11
   plan's decision record has the account, and
   `results/20261120-com260-m11b-first/` is the sitting's record, made
   by the corrected record tool at the commit that corrected it. The
-  cause is
-  established from sources and is not shown on the board: the
+  cause was established from sources: the
   published tree names the console `ns16550` alone, and for that name
   the firmware base clears the UART's unit enable as it sets its
-  console up. What the sitting corrected, each in a commit of its
+  console up. The second run (below) agrees with it. What the first
+  run corrected, each in a commit of its
   own:
   - **the console's name** (an erratum to the addendum's B-3, on the
     responsible human's decision): the recipe's step 4, the same rule
@@ -639,9 +641,35 @@ plan, "Architecture" and "The triggers for Instance 3").
   - **the sweep** of working names (open item 140).
 
   No image of the candidate's changes, and no claim. The board's
-  trees, firmware builds, and card change with the console's name, so
-  the first sitting's firmware build and card are stale, and new ones
-  are pinned before the next sitting (`k3/sitting-pins.txt`).
+  trees, firmware builds, and card changed with the console's name, so
+  the first sitting's firmware build and card were made and pinned
+  again before its second run (`k3/sitting-pins.txt`).
+- **The first sitting's second run (M11-B4).** On 2026-11-21, at the
+  signed commit that holds those corrections and pins, with the
+  responsible human at the board, the first sitting ran again and
+  passed: each of its eleven steps, and each of its three boots from
+  the card.
+  - **Each boot:** the project's firmware printed its banner, with
+    each field that follows from the build as the gate expected it;
+    the vendor's U-Boot came up with no flash device and loaded the
+    staged image; and the candidate's `two-guests`, built without the
+    boundary, ran to its shutdown line on harts 0, 1, and 2, with the
+    measurement log's records equal to the reference's. Then the
+    firmware halted.
+  - **The banner's facts:** 16 harts; privilege version 1.12; 16 PMP
+    entries, a grain of 4 KiB, and 38 address bits, which are inside
+    the addendum's thresholds. `k3/observed.json` holds the facts
+    that the second sitting's form compares its boots with.
+  - **The NOR and the card:** the NOR's six ranges were equal before
+    and after the session, and the card, read back whole, equals its
+    image.
+  - **The record** is `results/20261121-com260-m11b-first/`, and the
+    M11 plan's decision record has the account.
+
+  The run shows nothing of the boundary on the board: the image was
+  built without it, and no hart was confined. It is diagnostic
+  evidence for one board, never hardware validation, and no claim
+  changes.
 - **Hart region** (port rule `hart-region`, `src/mvp-layout.h`). A NOLOAD
   region of two 64 KiB blocks at `0x1_0204_4000`, right after B7's pool,
   in the pool's segment (Q1). Each block holds the hart's 8 KiB trusted
@@ -13078,6 +13106,20 @@ M5's reset rule.
     M11-B4's correction still cannot show the unit enable: the
     firmware's banner on the board's console is the first direct
     evidence. The other bullets stand.
+
+    **The first sitting's second run (2026-11-21)** showed more. The
+    project's firmware takes the SPL's hand-over from a card, prints
+    its banner, and halts on these cores. The banner gives the boot
+    hart's PMP count and grain. The form's rules for the boot ROM's,
+    the SPL's, the firmware's, and U-Boot's lines, as they stood at
+    the sitting's commit, admitted three real boots from a card. The
+    board's description agrees with the board as far as the banner's
+    fields that follow from the build. The card's tools wrote and
+    read back a real card in a real reader, at M11-B3 and again
+    before this run. The sitting's record was made through its own
+    recipe. Still not shown: the records of confined harts under the
+    board's tables, and the two hostile-monitor images on the board's
+    devices. Those are the second sitting's. Open until it has run.
 140. **M11-B's comments use working names (M11-B1).** The comments of
     M11-B's tools and tests name things that no public page defines:
     the five lanes in which the tools were written (M11-B's entry under
