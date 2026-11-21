@@ -2048,3 +2048,111 @@ text above as it says; the text above is otherwise as accepted.
 
   The image is not committed or published: it holds the vendor's
   files.
+- **2026-11-21, the first sitting, run again** (the board addendum's
+  "The sittings, and their sessions"; M11-B4; the entry of `fix: go`).
+  It ran at the signed commit
+  `0d81d673e3901a12bbd89947636ca0c859e85645`, which holds the
+  corrections and the two entries before this one, on the responsible
+  human's word (`sitting: go`, 03:38:47Z) and with him at the board,
+  and **it passed**: each of its eleven steps at its first attempt,
+  and each of its three boots from the card.
+  - **Before the card.** The preflight from the board's own Linux;
+    the staging of `be-mvp-two-guests-off-gcc.img` on partition 6;
+    and the opening reading of the NOR (03:39Z to 03:40Z), in a boot
+    from the NOR in which U-Boot showed 8 GiB of memory.
+  - **The three boots from the card** (the card in on his word,
+    03:46:44Z; the resets at 03:47:02Z, 03:47:47Z, and 03:48:13Z, by
+    the dongle; nothing typed). The form admitted each with no stop.
+    Each showed, in order:
+    - the boot ROM's four lines of a boot from a card, which are the
+      first run's: `sys: 0x10000200`, `try sd...`, `bm:3`, `j...`;
+    - the vendor SPL's banner;
+    - **the banner of the project's firmware**, whose every field
+      that follows from the build equals the gate's expectation for
+      the image, the root OpenSBI domain's seven regions line by line
+      among them;
+    - the vendor's U-Boot, with 8 GiB of memory and the product name
+      `k3_com260_ifx`, and with no flash device: its line that
+      announces the save of the training record, then its line that
+      it found no valid device for the flash's controller, and its
+      line that the card has no flashing partition;
+    - the load of the staged image from the NVMe (2,748,416 bytes,
+      with the staged image's MD5);
+    - the monitor's lines, `BE_MVP:00` to `BE_MVP:14`: the
+      candidate's `two-guests`, built without the boundary, on harts
+      0, 1, and 2, each VS domain's Linux to its power-off (156 exits
+      in each, 138 records, `shutdown-requested`), and the
+      measurement log's thirteen records equal to the reference's;
+    - and then nothing: the firmware halted.
+  - **The banner's facts** (B-6), the same in the three boots:
+    - sixteen harts, the boot hart 0; privilege version 1.12; base
+      ISA `rv64imafdcbvhx`; the extensions
+      `smaia,smstateen,sscofpmf,sstc,zicntr,zihpm,smcntrpmf,zicboz,zicbom,svpbmt,sdtrig,ssstateen,v,f,d`;
+    - **PMP: 16 entries, a grain of 12 bits (4 KiB), 38 address
+      bits.** B-6's thresholds are met: at least fourteen entries, a
+      grain of at most 4 KiB, and a privilege version of 1.12 or
+      later;
+    - the devices that the firmware found: the IPI device
+      `aia-imsic`; the timer `aclint-mtimer @ 24000000Hz`; the
+      console `uart8250`; the HSM device `spacemit-k3-hsm`; no PMU,
+      suspend, or CPPC device; no reboot device; and the shutdown
+      device `halt`, B-2's addition;
+    - the runtime SBI version 3.0, with the extensions
+      `ipi,base,hsm,srst,dbcn` and the experimental `dcommit`;
+    - the firmware at `0x100000000`, 772 KB, with a heap of 104 KB,
+      of which 67 KB were used;
+    - sixteen programmable counters (`16 (0x0007fff8)`) and four
+      debug triggers.
+  - **B-7's question on the time register is answered for the boot
+    hart.** The firmware base lists `zicntr` only for a hart on which
+    reads of the cycle, time, and instruction counters do not trap.
+    So a read of the time register on that hart is not one of the
+    firmware's emulations. The banner speaks for the boot hart alone.
+  - **No change to the board's platform description is forced.** The
+    form compared each field of the banner that follows from the
+    build, and so from the description, with the backend's
+    expectation, and each is equal; the hardware's facts are inside
+    B-6's thresholds; and U-Boot's memory size is the NOR boot's.
+  - **The NOR is unchanged** (B-5). The closing reading (03:52Z; the
+    card out on his word, 03:51:53Z) equals the opening reading in
+    all six ranges, the range of the memory-training record among
+    them. Each boot's capture holds the vendor's line that announces
+    the save of that record and then its line that it found no
+    device for the flash, and none that reports a flash detected or
+    a write to the NOR.
+  - **The card is unchanged.** Read back whole after the sitting
+    (03:54Z to 04:21Z), it equals its image in each of its fourteen
+    regions.
+  - **The end.** The board's own Linux came up, and the preflight's
+    verdict line after equals the one before. The session made six
+    resets, each by the dongle under the console tool's rule (the
+    board's Linux down; an idle prompt; a run's last line), none by
+    hand, and no boot that was not planned.
+  - **What the run shows.** The chain of the addendum's first
+    sitting: the boot ROM and the SPL take the card; the SPL enters
+    the project's firmware; the banner prints; U-Boot comes up
+    without a flash device and loads the staged image; the monitor
+    runs to its shutdown line; the firmware halts. It is also the
+    first direct evidence for the cause that the first run's entry
+    gives from sources. The two runs' firmware builds have the same
+    sources, series, and configuration, and their built-in trees
+    differ in one line, the console's `compatible`; the first printed
+    nothing, and the second its banner and all that followed.
+  - **What it does not show.** Anything of the boundary. The image
+    was built without it, no hart was confined, and M-mode printed no
+    commit record. Whether the board's PMP holds the profiles is the
+    second sitting's question. It is diagnostic evidence for one
+    board, never hardware validation.
+  - **The observed facts** that the second sitting's form compares
+    its boots with (B-8) are `mvp/k3/observed.json` (the commit "the
+    first sitting's observed facts"): the boot ROM's four lines, the
+    banner's hardware facts and devices, and U-Boot's memory size, as
+    each of the three boots' results holds them.
+  - **The record** is `mvp/results/20261121-com260-m11b-first/`, made
+    by the record tool at the sitting's own commit, after the card's
+    read-back.
+  - **What follows** (M11-B4's second part): the second sitting's
+    three firmware builds, each made twice and compared (B-1), and
+    their card images (B-4), at a commit that holds these facts, with
+    each one's SHA-256 recorded here. No board step follows from this
+    entry: each sitting, and each session, is on his word.
