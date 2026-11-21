@@ -1,0 +1,32 @@
+{
+ "schema": "be-mvp-k3-observed-v1",
+ "rom": [
+  "sys: 0x10000200",
+  "try sd...",
+  "bm:3",
+  "j..."
+ ],
+ "firmware": {
+  "priv_version": "v1.12",
+  "base_isa": "rv64imafdcbvhx",
+  "isa_extensions": "smaia,smstateen,sscofpmf,sstc,zicntr,zihpm,smcntrpmf,zicboz,zicbom,svpbmt,sdtrig,ssstateen,v,f,d",
+  "pmp_count": "16",
+  "pmp_granularity": "12 bits",
+  "pmp_address_bits": "38",
+  "mhpm_info": "16 (0x0007fff8)",
+  "debug_triggers": "4 triggers",
+  "devices": {
+   "ipi": "aia-imsic",
+   "timer": "aclint-mtimer @ 24000000Hz",
+   "console": "uart8250",
+   "hsm": "spacemit-k3-hsm",
+   "pmu": "---",
+   "suspend": "---",
+   "cppc": "---"
+  },
+  "other_lines": []
+ },
+ "uboot": {
+  "memory": "8 GiB"
+ }
+}
