@@ -3801,3 +3801,485 @@ Each stands unless the responsible human says otherwise.
 - That the corrected helper behaves on the board as in the dry run:
   no board step has used it. The first sitting's two runs used the
   helper as it was.
+
+## M11-B5, first part: the second sitting's first run, and the firmware's heap on the board
+
+This section follows the second sitting's preparation. It tells the
+second sitting's first run, which stopped at its first boot from the
+card; the cause; the correction; and the second sitting's firmware
+builds and card images, made again.
+
+### Outcome first
+
+- **The second sitting's first run stopped at its first boot from the
+  card** (the addendum's stop B6). The project's firmware stopped in
+  its cold boot and said why, in two lines: its heap could not hold
+  the switch contexts of the tree's OpenSBI domains. No line of
+  U-Boot or of the monitor was printed, and no hart was confined.
+- **The NOR is unchanged, and the card equals its image.** The
+  closing reading equals the opening reading in all six ranges, and
+  the card, read back whole, equals its image in each of its fourteen
+  regions.
+- **The owner session's first account of the stop was wrong.** It
+  told the responsible human that the firmware had gone silent. The
+  firmware had printed the cause; the form of that time did not quote
+  it, and the owner session had not read the capture's end.
+- **The cause is established** from the capture's two lines, the
+  series' source, and the build's own sizes, and **reproduced under
+  QEMU**: with the board's hart count, vector length, and M-level
+  APLIC sources, the firmware base's default heap stops the cold boot
+  with the same two lines.
+- **The correction** is in two commits. A board tree that holds the
+  OpenSBI domains gives the firmware a heap of 256 KiB, by the
+  firmware base's own property (an erratum to the addendum's B-3,
+  which the responsible human's sign-off of this range decides).
+  Three rows of the firmware's tests size the heap on the board's
+  load. The form now quotes a firmware's own failure lines and judges
+  the banner's heap.
+- **The second sitting's three firmware builds and their card images
+  were made again and pinned.** The first sitting's build and card
+  image are byte for byte what they were.
+- **Not done:** the second sitting. It needs the responsible human's
+  sign-off of this range, the builds and the card images made again
+  at his signed commit, the card written again, and his word for each
+  session.
+
+### What happened, in order
+
+All times are UTC, on 2026-11-21.
+
+| UTC | What | Result |
+| --- | --- | --- |
+| 14:32 | The responsible human chose to run the sitting with the one card of the images' size | Taken by the owner session as his word for the sitting (departure 1) |
+| 14:37 to 14:39 | The owner's precheck; `begin`, the preflight, the staging, and the opening reading | Passed |
+| 14:41 to 14:43 | His direction to use a second card reader afterwards; the card into the board, on his word | `card-in-1` passed |
+| 14:43 to 14:45 | The first boot from the card, one reset by the dongle, nothing typed | **Stopped**: stop B6 |
+| 14:48 | The owner session's first account to him, that the firmware had gone silent | Wrong (departure 2) |
+| 14:57 to 14:59 | The card out, on his word; the closing reading; `end` | Passed: six ranges equal; the preflight's verdict line as before |
+| 15:13 to 15:20 | His one command for the second reader's access rule; the card read back whole through it; the sitting's record | Fourteen regions equal; the record made |
+| 15:20 to 15:30 | The owner session read the capture's end by its lines' forms, the series' source, and the build's sizes | The cause |
+| 15:32 to 18:21 | A sub-agent's design, its measurements under QEMU, and the correction, in three parts and two fix-ups after the owner's reviews | Delivered; read by the owner |
+| 17:10 to 17:35 | The owner judged the four real captures with the changed form, twice | One defect found in the form's first version, and corrected |
+| 18:14 to 18:15 | The two commits of the correction on the working branch | Committed |
+| 18:15 to 19:46 | A whole `check`, the board gate on the host, `evaluate` with the gate inside the evaluator, the U-Boot rehearsal, and the CHERI check, at the second of them | Passed, each step |
+| 19:20 to 19:25 | The firmware pins' commit; the three card images; the card pins' commit; the words' commit | Made |
+| 19:46 to 20:19 | A whole `check`, the board gate, the four builds and the four card images against the pins, at this range's last commit under `mvp/` | Passed, each step |
+| 20:19 to 20:49 | A whole `check` at the first of the correction's two commits | Passed |
+
+### The run, and its stop
+
+The run's record is `mvp/results/20261121-com260-m11b-second/`
+(103 files), made by the sittings' record tool at the
+sitting's commit: `result=closed boots=1 readings=2 readbacks=1
+stops=B6`. The M11 plan's decision record has the account of the run.
+In short:
+
+- **Before the boot:** the preflight from the board's own Linux; the
+  three images staged on partition 6; the opening reading of the NOR,
+  in a boot from the NOR in which U-Boot showed 8 GiB of memory; and
+  the card's insertion.
+- **The boot:** the boot ROM's four lines, as in the first sitting;
+  the vendor SPL's banner; then the project's firmware: its logo, its
+  line for the configuration digest, which is the build's, and
+
+  ```
+  sbi_domain_finalize: domain context allocation failed (error -1004)
+  init_coldboot: domain finalize failed (error -1004)
+  ```
+
+  and nothing for 120 s. The capture is 723 bytes.
+- **The tools:** the form refused the capture with 116 findings and
+  quoted neither line; the driver's stop named the missing U-Boot
+  banner. The console tool admitted the one reset for the closing
+  reading by its rule for a boot from a card that stopped.
+- **The close:** the card out; the closing reading, equal in all six
+  ranges; the board's own Linux; the preflight, with the same verdict
+  line.
+- **The card:** read back whole after the session, equal to its image
+  in each of fourteen regions. The read-back went through a second
+  reader (departure 3).
+
+### The cause
+
+`-1004` is the firmware base's code for no memory, and the first of
+the two lines is the series' own. The series allocates, in the
+firmware's cold boot, one switch context for each pair of an OpenSBI
+domain and a hart that the domain lists, each with a vector area
+sized for the cold boot hart (the M11 plan's design rule "No heap":
+no allocation that a hart's own call could cause after cold boot).
+
+| | Switch contexts | The banner's heap |
+| --- | --- | --- |
+| The first sitting's build: the root OpenSBI domain alone, sixteen harts | 16 | 104 KB in all, 67 KB in use, 34 KB free (on the board) |
+| `anchor`'s tree: the root, `be_boot`, `be_control`, `be_g0`, `be_g1`, and `be_park` | 16 + 3 + 1 + 1 + 1 + 13 = 35 | no banner: the cold boot stopped |
+
+Each context is 768 bytes and, with a vector length of 256 bits, a
+vector area of 1,088 bytes, as the heap aligns them. The firmware
+base sizes its heap from the hart count, 104 KiB for sixteen harts,
+and the nineteen further contexts and five domain structures do not
+fit in the 34 KB that the first sitting's banner shows free.
+
+**Why no gate showed it.** Three things each hid it:
+
+- the suite's row of the board trees' shape ran on QEMU's machine of
+  eight harts, with no vector extension: there the same OpenSBI
+  domains leave 19 KB of a 66 KB heap free;
+- on sixteen harts with a vector length of 256 bits the cold boot
+  still completes under QEMU, with 3 KB free: QEMU's interrupt
+  controllers are smaller than the board's, whose M-level APLIC has
+  512 sources where QEMU's has 96, and the firmware sizes a table on
+  its heap from that count;
+- the firmware's own test of a heap that cannot hold the contexts
+  (`alloc-fail`) shows the stop as a mechanism, and no run sized the
+  heap for the board.
+
+The owner session's research after the first sitting's first run had
+named the heap at this step as a risk, with the property that sets
+it. It was not followed up before this sitting (departure 4).
+
+### The correction
+
+**The heap's size.** A board tree that holds the OpenSBI domains
+carries `heap-size = <0x40000>` in `/chosen/opensbi-config`, the
+firmware base's own property, which its generic platform reads in
+place of its default. The value is the board description's
+`firmware.heap`; the description also holds a floor,
+`firmware.heap_free_min`, 64 KiB, on the free heap that the banner
+prints.
+
+- `mvp/tools/partition-backend.py` writes the property into a board
+  tree with OpenSBI domains, and into no other tree. It refuses a heap
+  that would move either of the firmware's two regions.
+- `mvp/tests/check-partition.py`, which shares no code with the
+  backend, requires the property there with the description's value,
+  refuses it anywhere else and in a tree without OpenSBI domains, and
+  takes the firmware's end from the tree's own property, as the
+  firmware reads it.
+- `mvp/tools/k3-recipe.py`'s check of a board tree against QEMU's
+  requires the property too, and its check of the description
+  requires the M-level APLIC's sources of the published tree.
+- The firmware's two regions in the root OpenSBI domain are where
+  they were: the heap grows inside the read-write region as the
+  firmware rounds it, and the firmware ends below the first real-time
+  core's entry. The tables of every hart are unchanged.
+
+**The measurement.** Three rows of the firmware's own tests
+(`mvp/firmware/tests/fwtest.py`) run on QEMU with what the
+description gives of the board: sixteen harts, a cold boot hart whose
+vector length is 256 bits, the PMP's grain of 4 KiB, the M-level
+APLIC's 512 sources, and D-6's OpenSBI domains for sixteen harts.
+
+| Row | The tree's heap | What it shows |
+| --- | --- | --- |
+| `board-heap-default` | none: the default, 104 KiB | The cold boot stops with the board's two lines, after the configuration digest's line |
+| `board-heap` | 256 KiB | The banner: 256 KB in all, 4 KB reserved, 105 KB in use, 145 KB free; D-6's sequence runs on harts 0 to 2 |
+| `board-heap-floor` | 160 KiB | The banner: 49 KB free, which the floor's rule finds; D-6's sequence still runs |
+
+The sub-agent measured each part of the load apart, before it wrote
+the rows: with the root OpenSBI domain alone, sixteen harts, and a
+vector length of 256 bits, QEMU's firmware uses 51 KB; with the
+APLIC's 512 sources, 61 KB. The first sitting's banner on the board
+shows 67 KB. The 6 KB between them fits the board's IMSIC, by the
+sizes of the firmware's tables for it: its 511 identities cannot be
+given to QEMU's IMSIC, which takes the firmware's enables only up to
+its own 255. No run shows that part.
+
+**What the measurement predicts for the board:** about 6 KB more in
+use than `board-heap` shows, so about 139 KB free at the banner.
+Under QEMU, in that row's shape, 142,400 bytes were still free at the
+end of D-6's sequence, after harts 1 and 2 had started (a scratch run
+that read the heap's control block; no row reads it). The second
+sitting's form requires at least 64 KiB.
+
+**The vector length is an inference** (departure 6). The description
+gives 256 bits because the first sitting's 67 KB fits it: 128 bits
+would give 8 KB less in use, and 512 bits 16 KB more. No register was
+read. With 512 bits the 35 contexts would take about 35 KB more, and
+the heap would still have about 100 KB free.
+
+**The form.** `mvp/tests/check-capture.py`, in its card mode:
+
+- takes a line of the firmware's failure form, `FUNCTION: TEXT (error
+  N)`, between the firmware's version line and U-Boot's banner, for a
+  finding of the sitting's stop, and puts such findings first in the
+  record. The driver's stop takes the first finding of its stop, so
+  it quotes the firmware's line; the driver is unchanged;
+- counts and notes the lines after the banner's last field, up to
+  U-Boot's banner, with the banner's other lines. A line of the
+  vendor U-Boot's time stamp alone is none;
+- records the banner's heap line, and in the second sitting requires
+  it to be of the firmware's form, its total the description's heap,
+  and its free heap at least the floor.
+
+### The form's first version, and the real captures
+
+The owner session judged the first sitting's three captures and the
+stopped capture with the changed form, privately, before it accepted
+the change.
+
+- With the form's first version, each of the first sitting's three
+  captures passed, but each showed one other line, where the
+  committed `mvp/k3/observed.json` has none. The line is the vendor
+  U-Boot's stamp alone: its U-Boot prints a stamped empty line before
+  its banner, with another time in each boot. The form's test could
+  not show it, because its stand-in U-Boot printed no stamp.
+- **With that version, every boot of the second sitting would have
+  stopped**, on a line that says nothing. The sub-agent corrected it:
+  a line that is empty once the stamp is removed is no line. The
+  stand-in's U-Boot now begins with a stamp alone.
+- With the corrected form: the three captures pass as before, with no
+  other line and a heap of 104 KB, 67 in use and 34 free; the stopped
+  capture is refused with the firmware's two lines as its first two
+  findings, under stop B6. `mvp/k3/observed.json` is unchanged.
+
+The owner session also ran the form's banner reader and its rules for
+the OpenSBI domains on the real console of the row `board-heap`: 137
+fields, each known field once and in the form's order, no other line
+inside the banner, and the parked harts assigned to one OpenSBI
+domain of their own. The second sitting's form had been run on no
+real banner with OpenSBI domains before.
+
+### The builds and the card images, made again
+
+**The builds.** At the correction's second commit the board gate
+built the four firmware builds on the host, and `evaluate` built each
+again inside the evaluator: all 38 of the gate's outputs are equal
+byte for byte, and all 865 of `check`'s. The plan's decision record
+has the three new builds' SHA-256 values with their device trees',
+and `mvp/k3/sitting-pins.txt` the three `firmware` lines, replaced.
+
+- Each new tree is its old tree with the one property added, 26
+  bytes more as compiled.
+- Each new build has the size of the old, 540,600 bytes. The tree is
+  at the same offset in it; the read-only data after the tree lies 32
+  bytes further on; `_fw_rw_start` and `_fw_end` are where they were.
+- **The first sitting's build is byte for byte what it was**, and so
+  are its tree, its FIT, and its environment.
+
+**The candidate's images.** Of the 801 outputs of M11-E's
+candidate's record, the 566 that do not carry the build's directory
+are equal byte for byte at each of the three commits that the checks
+ran at, every flat image, boot image, and device tree among them. The
+other 235 are the ELF files and the tables and records that carry the
+directory, as between any two clones.
+
+**The card images.** The three were made again from those builds
+(19:21Z to 19:24Z), after the firmware pins' commit, for a card of
+31,927,042,048 bytes, and are pinned; the decision record has each
+image's SHA-256 with its FIT's and its environment's. Each
+environment is byte for byte what it was. At this range's last commit
+under `mvp/`, the four card images were made once more, and each
+equals its pin, the first sitting's among them.
+
+**The card itself** still holds `anchor`'s image of the first run,
+whose pin is no longer in the tree (departure 10). It is written
+again, whole, with the new image, and read back, before the second
+sitting runs again.
+
+### The soft limits
+
+Counted as the section "M11-B4, first part" counts them, at the
+second commit of the correction: one diff from M11-E's candidate, each
+line given to the lane of the commit that wrote it; and the running
+counts, which count a rewritten line again.
+
+| Lane | Limit | One diff | Running |
+| --- | ---: | ---: | ---: |
+| The addition's tests and the board's build rules | 3,000 | 2,652 | 2,657 |
+| The frame | 1,200 | 1,126 | 1,159 |
+| The tree's recipe, the backend's second platform, the checker on the board's trees, and the hostile-monitor declarations | 3,000 | 2,676 | 2,824 |
+| The card's tools and the session's tools, with their dry runs | 12,500 | 11,468 | 11,917 |
+| The checker's form for a boot from a card, the harness's end of a halting run, and the ledger tool's method | 4,000 | 3,302 | 3,430 |
+
+This range's two commits add 178 lines to the first lane, 237 to the
+third, 10 to the fourth, and 191 to the fifth. No limit is passed by
+either count.
+
+**A reading, for review** (departure 8). The three board rows are 174
+lines of `mvp/firmware/tests/fwtest.py`, a file of M11's own lane
+"the firmware's tests and build rules" (3,000; 2,825 at the
+candidate). They test the board's firmware configuration, so they are
+counted here in the addendum's lane for the board's build rules.
+Counted in M11's lane instead, that lane would stand at 2,999 of its
+3,000.
+
+### The owner's own tests
+
+- **The four real captures**, judged with the changed form, twice
+  (above): the first sitting's three and the stopped one. Private:
+  the captures are not published.
+- **The form's rules for the OpenSBI domains on a real banner**
+  (above): the console of the row `board-heap`.
+- **Eight rules changed one at a time**, each in a copy of the tools,
+  with the test that must then fail:
+  - the backend writing the property into `/chosen` and not into the
+    configuration node; the backend writing another value; the
+    checker comparing only the property's last cell: each failed its
+    test by the rule's own case;
+  - the form taking failure lines only after the banner's last field;
+    the form counting a stamp alone; the floor's comparison made
+    inclusive; the heap's rules applied in the first sitting and not
+    the second: each failed the form's test;
+  - **one survived**: a heap total larger than the description's
+    accepted. The rule was right and its only negative had a smaller
+    total. The sub-agent added a row with a larger one, and the
+    change now fails it.
+- **The old and the new builds compared.** Each of the three new
+  device trees is its old tree with the one property added, as source
+  and as the compiled tree read back (62,239 and 62,265 bytes). In
+  each new firmware build the tree is at the same offset, the 33
+  read-only symbols after it are 32 bytes further on, and
+  `_fw_rw_start` and `_fw_end` are where they were. The old and the
+  new binary therefore differ in more than the tree's bytes; each is
+  540,600 bytes.
+- The sub-agent's own seeded changes, which the owner read and did
+  not run again: 14 of the backend, the checker, and the recipe; 6 of
+  the rows; 10 of the form. Each fails the test that holds its rule.
+
+### What was run, and what was not
+
+- **Run on the board:** the second sitting's first run, as above:
+  three resets by the dongle (the opening reading's, the boot from
+  the card, and the closing reading's), and the typing of the two
+  readings alone. Nothing since `end`.
+- **Run on the card:** one read-back of the whole card, through the
+  second reader. No write.
+- **Run at the correction's second commit**, from clean clones: the
+  tool lock and a whole `check` (18:15Z to 18:46Z: 118 runs under
+  QEMU in 129 attempts; six sessions; the firmware's tests, 44 runs;
+  865 outputs); the board gate on the host (18:47Z: nine steps, 38
+  outputs); `evaluate` with the gate inside the evaluator (18:47Z to
+  19:17Z: all 865 of `check`'s outputs and all 38 of the gate's equal
+  byte for byte); the U-Boot rehearsal (19:17Z to 19:21Z: seven
+  cases); and the CHERI check, from a second clean clone (19:21Z to
+  19:46Z: 56 runs under the CHERI emulator in 57 attempts, the 222
+  plain images equal to those of a plain build of the same commit,
+  and the regression build's 50 runs in 55 attempts).
+- **Run at this range's last commit under `mvp/`**, from a clean
+  clone: the tool lock and a whole `check` (19:46Z to 20:16Z: 118
+  runs under QEMU in 122 attempts; six sessions; 865 outputs); the
+  board gate (20:16Z to 20:17Z: nine steps, 38 outputs); each of the
+  four firmware builds, equal to its pin; and the four card images,
+  made again (20:17Z to 20:19Z), each equal to its pin.
+- **Run at the correction's first commit**, from a clean clone, after
+  the others: the tool lock and a whole `check` (20:19Z to 20:49Z:
+  118 runs under QEMU in 128 attempts; six sessions; the firmware's
+  tests, 44 runs, the three board rows among them; 865 outputs).
+- **The sub-agent's runs**, in its own clone, are not this range's
+  checks: the firmware's tests, the tree's and the form's checks, the
+  sittings' dry run, a whole `check`, the board gate, and the U-Boot
+  rehearsal at its commits.
+- **Beside the checks:** beside the first chain's whole `check`, the
+  owner's count of the lanes, twice, a few seconds each, and, in its
+  first minutes, perhaps the last of the sub-agent's seeded changes
+  (its report came at 18:21Z); beside the first chain's `evaluate`,
+  the text-level checks of the correction's two commits (18:54Z to
+  18:55Z), on eight cores at low priority; beside its CHERI check,
+  the making of the three card images (19:21Z to 19:24Z) and the
+  text-level checks of the pins' and the words' commits (19:25Z to
+  19:27Z). Beside the second chain, and beside the whole `check` at
+  the first commit, the owner read logs, compared lists of outputs,
+  and wrote this section, and ran nothing heavier. The M12 lane's
+  status page, last written at 06:07Z, says that nothing of the
+  lane's runs.
+- **Not run:** `verify`, `kernel-repro`, and the model's two gates.
+  The range changes no path that the proofs' records bind, no guest
+  input, and nothing of the model: the backend, the checker, the
+  recipe, the firmware's tests, the board's description and its Make
+  file, the form and its tests, the pins' file, and pages.
+- **Not run again on the board:** the second sitting. Its card still
+  holds the first run's image.
+
+### Departures and readings for review
+
+Each stands unless the responsible human says otherwise.
+
+1. **The owner took his choice of the card for his word for the
+   sitting.** Asked how to run the sitting with one card of the
+   images' size, he chose to run it with that card (14:32Z). The
+   owner had told him that the first session was ready, and began the
+   sitting on that. He gave his word for the session as he put the
+   card in.
+2. **The owner's first account of the stop was wrong.** Right after
+   the boot it told him that the firmware had gone silent after its
+   digest line, and asked for the card out on that account. The
+   capture held the firmware's own two lines; the owner had read the
+   form's findings, which did not quote them, and not the capture's
+   end. It found them within the hour, after the close, and told him.
+   The form now quotes such lines first.
+3. **A second card reader**, a departure from the letter of QB4 ("the
+   one reader"): a card slot on a USB 3 hub, at his direction,
+   approved by him with the card tool's one command, which replaces
+   the first reader's rule. The card was written through the first
+   reader and read back through the second; the tools accept that,
+   and each record names its reader by a digest.
+4. **A risk that the owner had named was not followed up.** Its
+   research after the first sitting's first run named the heap at the
+   domains' set-up, with the property that sets it. No row sized the
+   heap for the board before the second sitting ran.
+5. **The erratum to the addendum's B-3 is made before his decision.**
+   The board's trees with OpenSBI domains carry `heap-size` in this
+   range's commits; B-3's step 4 has the descriptor's nodes added as
+   the backend renders them for QEMU. His sign-off of the range
+   decides it. Without it, the second sitting cannot run: the
+   firmware of the signed line does not complete its cold boot from
+   those trees.
+6. **The vector length is inferred, and the heap's size and floor are
+   the owner's choices.** 256 KiB and 64 KiB are chosen from the
+   sub-agent's measurements under QEMU, with the vector length that
+   the first sitting's banner suggests. The README's open items 148
+   and 150 say what is not measured.
+7. **The form's first version would have stopped every boot of the
+   second sitting**, and no test showed it. The owner found it by
+   judging the first sitting's real captures, which the tests do not
+   hold: they are private. The stand-in now prints the stamp that
+   showed it. Other differences between the stand-in and the board's
+   real lines may remain; the second sitting's form has still judged
+   no real boot that passes.
+8. **The three board rows are counted in the addendum's lane** for
+   the board's build rules (above). In M11's lane for the firmware's
+   tests they would stand one line under its limit.
+9. **One sentence of the board's description was the owner's and was
+   inexact**: it gave a scratch measurement to the suite's rows. It
+   is corrected in this range, before any pin was made.
+10. **The sitting's pins are replaced, and the old builds' pins are
+    gone from the tree.** The decision record keeps both sets. A
+    card that holds an old image no longer has a pin; the one card is
+    written again before the sitting.
+11. **The chain of checks ran once, at the correction's second
+    commit; the checks at the other commits are fewer.** At the
+    correction's first commit a whole `check` ran, and at the range's
+    last commit under `mvp/` a whole `check`, the board gate, and the
+    builds and card images against their pins. `evaluate`, the
+    rehearsal, and the CHERI check ran at the correction's second
+    commit alone: the three commits after it change the pins' file
+    and pages. The whole `check` at the first commit ran last of all.
+    The first chain's driver, a script of the owner's, stopped after
+    its whole `check`, on a wrong path of its own for the list of
+    outputs; the owner continued it 89 s later from the next step,
+    and no step ran twice. `evaluate` took 43 of its closure's 259
+    packages from Fedora's `updates` repository, and the others from
+    the workstation's cache.
+12. **The owner's estimate of the time between two sessions was
+    low.** With the one card, a read-back, a write, and a read-back
+    lie between two sessions. The owner had told him about an hour;
+    with the first reader, which wrote at 15 MB/s and reads at 19, it
+    is about an hour and a half. The owner corrected it when he asked
+    about the reader. The second reader reads at 89 MB/s; its writing
+    speed is not yet known.
+
+### What is not shown
+
+- **Nothing of the boundary on the board.** No hart was confined, and
+  M-mode printed no commit record there.
+- **That the corrected heap is enough on the board.** It is measured
+  under QEMU and predicted for the board. QEMU's IMSIC is smaller
+  than the board's, and its harts are of one kind.
+- **That nothing else stops the second sitting.** Its first boot
+  ended in the firmware's cold boot, so nothing after that point has
+  run on the board from a tree with OpenSBI domains: the vendor's
+  U-Boot in the boot OpenSBI domain, the monitor's starts and
+  confines, and the hostile-monitor images.
+- **The board's vector length.** It is inferred.
+- No claim changes. The claim's page and the ledger's rows say what
+  they said.
