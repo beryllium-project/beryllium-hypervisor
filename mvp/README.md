@@ -13184,6 +13184,26 @@ M5's reset rule.
     manifests name their commit too, but the list does not hold
     them. Owed: a decision whether the list should hold the fourteen,
     or a comparison that sets them aside by rule. Open.
+144. **The frame tool's self-test rested on the tree's own sitting
+    pins (found at M11-B4).** Two cases of `tools/k3-frame.py`'s
+    self-test added made-up pins for `anchor` to a copy of the tree's
+    `k3/sitting-pins.txt`. Once the tree pinned `anchor`'s firmware
+    build for the second sitting, the first case's copy named
+    `firmware anchor` twice, which the tool rightly refuses, and the
+    case failed: `check` stopped at `k3-frame-check`, on 2026-11-21,
+    in a whole check at a commit that held the second sitting's pins
+    and was set aside. The second case passed there, but no longer by
+    its own lines alone: the tree's own `card anchor` line would have
+    given the same refusal. The tool's rules were right and are
+    unchanged. Both cases now write the copied file whole, for a
+    made-up image `x`, so that each rests on its own lines whatever
+    the tree pins. Found on the way, and left: no case of the
+    self-test covers `k3/firmware-pins.txt` (with that file left out
+    of the pins rule, every case still passes); and where the sitting
+    pins are absent, or the published pins hold no line, the self-test
+    stops with an error and not with a finding, in states that the
+    plan does not allow. Owed: a case for `k3/firmware-pins.txt`.
+    Open.
 
 
 ## Non-claims

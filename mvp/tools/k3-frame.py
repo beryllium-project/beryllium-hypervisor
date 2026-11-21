@@ -433,7 +433,10 @@ def self_test(scratch):
     first = next(line for line in pinned.splitlines()
                  if line.startswith("published "))
     name = first.split()[1]
-    card = f"card anchor sha256={'0' * 64} bytes=1\n"
+    # A made-up image's pins. The two cases that use them write the copied
+    # sitting-pins.txt whole, so that each rests on its own lines alone,
+    # whatever images the tree's file pins.
+    card = f"card x sha256={'0' * 64} bytes=1\n"
     mutations = [
         ("the tree as committed", None, None),
         ("a word in a fixture, and MVP 1.0's tools", lambda t: put(
@@ -529,12 +532,12 @@ def self_test(scratch):
         ("a sitting pin of another kind", lambda t: edit(
             t / k3 / "sitting-pins.txt", head, head + first + "\n"),
          "is not `firmware NAME"),
-        ("a firmware pin and a card pin for one image", lambda t: edit(
-            t / k3 / "sitting-pins.txt", head,
+        ("a firmware pin and a card pin for one image", lambda t: put(
+            t / k3 / "sitting-pins.txt",
             head + card.replace("card", "firmware", 1) + card), None),
-        ("a second card pin for one image", lambda t: edit(
-            t / k3 / "sitting-pins.txt", head, head + card + card),
-         "names card anchor twice"),
+        ("a second card pin for one image", lambda t: put(
+            t / k3 / "sitting-pins.txt", head + card + card),
+         "names card x twice"),
         ("a card pin among the published ones", lambda t: edit(
             t / k3 / "published-pins.txt", first,
             "card" + first[len("published"):]), "is not `published NAME"),
