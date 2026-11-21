@@ -24,14 +24,19 @@ on the revision's acceptance, on the public `main` at `f87ea59d` since
 until he has seen them through the responsible human (the plan's
 sections 6 and 8). This page gains them then; until then it says only
 what was built and run. Stop 10 does not apply: the series is an RFC,
-not a released version.
+not a released version. **His choice, 2026-11-21:** the notes go to
+the series' author first by a private mail, which he sends, and to the
+`opensbi` list later.
 
-**The emulator half waits.** M12-3's suite on the emulator series' next
-version still waits for that version: LIU Zhiwei's QEMU series is at v8
-(2026-07-23), with replies to 2026-11-09 and no v9 as read on
-2026-11-20. That input has not appeared by M12-4's exit, so stop 11
-returns it to the responsible human: to wait, to narrow M12-5 to this
-half, or to close it.
+**The emulator half is narrowed out.** M12-3's suite on the emulator
+series' next version still waits for that version: LIU Zhiwei's QEMU
+series is at v8 (2026-07-23), with replies to 2026-11-09 and no v9 as
+read on 2026-11-20. That input has not appeared by M12-4's exit, so
+stop 11 returned it to the responsible human: to wait, to narrow M12-5
+to this half, or to close it. **His decision, 2026-11-21: narrow.**
+M12-5 is this half, and is complete with it. If the QEMU series' next
+version appears, a revision of the plan may add a step for it; nothing
+is drafted for QEMU in any case (rule 8).
 
 The page has no entry yet in the planning site's navigation or index;
 the owner session adds them.
@@ -88,7 +93,9 @@ runners: 993 added lines of 1,000, with the generated `image.record` and
 `opam.lock` left out. `firmware/` (360 lines) is counted with the tests
 and their harness, as the workload that the runner boots; with it, that
 lane is at 2,103 of 2,500. Counted with the environment instead,
-`firmware/` would pass its limit (stop 13).
+`firmware/` would pass its limit (stop 13). **His decision,
+2026-11-21:** `firmware/` counts with the tests and their harness. No
+limit is re-set.
 
 ## What was run
 
@@ -124,6 +131,7 @@ mvp_m12_5_firmware_exit=tests-repository;main;8cbf6885ca997e40b89791d4af2a0c0aa7
 mvp_m12_5_firmware_bundle=sd-tests-m12-5-8cbf6885ca99.bundle;sha256-acc326735bdf7844bd38dc6ea513f0b52cb8cceea89938f605e0ffa58ebd990d
 mvp_m12_5_firmware_readings=2026-11-20;rules-1-and-11;opensbi-smsd-v7-latest;branch-99370acc;base-7a7a60dc;contributing-unchanged-since-00093a20;qemu-series-v8-no-v9;sail-master-ec5200bd
 mvp_m12_5_firmware_runs=2026-11-20T12:02Z-12:29Z;base-and-series;root-plain-fw-overlap;rv64-rv32;pmp-16-and-0;results-held-for-the-series-author
-mvp_m12_5_emulator=waits-for-the-qemu-series-next-version;stop-11-his-decision
-mvp_m12_soft_limits=environment-993-of-1000;tests-and-firmware-2103-of-2500
+mvp_m12_5_emulator=narrowed-out-by-his-decision-2026-11-21;stop-11;qemu-series-v8-no-v9;a-later-revision-may-add-it
+mvp_m12_5=complete-with-the-firmware-half;notes-to-the-series-author-by-private-mail-first-his-choice-2026-11-21
+mvp_m12_soft_limits=environment-993-of-1000;tests-and-firmware-2103-of-2500;firmware-counted-with-the-tests-his-decision-2026-11-21
 ```
