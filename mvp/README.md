@@ -13129,6 +13129,17 @@ M5's reset rule.
     prompt at once, and a stop there types nothing: the tool's rule is
     not in question. Owed: the stand-in's prompt and echo in one
     write, or its record after the echo. Open.
+143. **Fourteen of M11-B's listed outputs name the commit that they
+    were built from (found at M11-B3).** `check`'s bundle lists 865
+    outputs. Fourteen of them hold the commit's ID: the reference
+    manifests of M11-B's seven rows under QEMU, and the seven files
+    that hold their digests. At one commit they are the same on any
+    host. Between two commits they differ in that one field, so two
+    commits' lists agree in 851 outputs at most, and a comparison of
+    two lists has to set them aside. The bundle's own reference
+    manifests name their commit too, but the list does not hold
+    them. Owed: a decision whether the list should hold the fourteen,
+    or a comparison that sets them aside by rule. Open.
 
 
 ## Non-claims
