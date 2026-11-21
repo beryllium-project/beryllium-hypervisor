@@ -3018,3 +3018,203 @@ Each stands unless the responsible human says otherwise.
   card that stopped, and the close-out after it, ran on stand-ins
   alone.
 - `verify` at the gates' commit, until its result is added.
+
+## M11-B4, first part, continued: `verify`, the first sitting's record, and the second run's preparation
+
+The section above was signed on 2026-11-20 at 23:51Z, while `verify`
+ran: the choice that its departure 4 left to the responsible human.
+This section adds what that section said would follow, and what was
+made ready for the first sitting's second run. It was written before
+that run, and tells nothing of it; the section after this one does.
+
+### `verify` at the gates' commit
+
+`./mvp/mvp verify` ran at the gates' commit (reviewed as `8af29f25`,
+signed as `8a131357515179a206e82e1d0ec4d64f738c01d0`; the same
+tree), in the gates' clone, from 2026-11-20, 19:07Z, to 2026-11-21,
+00:39Z: exit 0 after 19,889 s.
+
+- **Every suite's line is that of M11-B3's gates**, the near-limit
+  list's among them (264 runs that reached their limit): the WP arm
+  proves 130 of 134 goals and kills 18 of 24 mutants; the CN arm
+  proves 5 of 55; CBMC on Leaf A, 336 of 336 properties; CBMC on the
+  ring, 13,547 of 14,931.
+- **Against M11-B3's gates' record on this host**, by the comparison
+  that M11-E used: 32 files; 13 are equal byte for byte, 30 once run
+  metadata is set aside, and two differ, each in one line. Both are
+  the qualification's record, as text and as JSON, and the line is
+  one case: the WP arm's qualification with a wrong implementation,
+  under Alt-Ergo. Three of that case's 19 goals end without a proof
+  in both runs, so the case is unproved in both, which is what the
+  qualification requires of it (`ok=yes`). In M11-B3's run one of the
+  three is recorded as a failure of the prover and two reached their
+  120 s; in this run all three reached it. The case took 121.2 s
+  there and 121.8 s here. The near-limit list does not count a
+  qualification's goals, so its count is the same.
+
+So all ten of M11-B3's gates have passed again at the commit that
+holds the corrections, which is the first of the three things that
+the decision record's entry of `fix: go` asks for before the first
+sitting is run again.
+
+**The reading, for the responsible human (the plan's stop 9).** No
+verdict changes, and no contract or statement. One count of one
+qualification case changes, and only because one prover run reached
+its time limit: the plan has such a count recorded as that and put
+to the responsible human. That case ran at about 19:10Z to 19:12Z.
+The card's read-back ran beside it (departure 4 of the section
+above), and the owner session's text-level checks of the pins'
+commits, on four cores at low priority, ended as it began. The same
+case has ended either way before: at M11-4's point all three runs
+reached the limit, and at M11-E's candidate one was recorded as a
+failure of the prover ("`verify` at the candidate", above). His
+sign-off of this section accepts the reading.
+
+**What ran beside `verify`.** The card's read-back (19:08Z to
+19:36Z); the text-level checks of the pins' commits and of the
+evidence commit, on four cores at low priority, and the sign-off's
+trial and the publication gate's check, which are Git work (19:08Z
+to 19:41Z); and, after the sign-off, the comparison of the signed
+commits and the audit of the archived ref (23:52Z). By its status
+page, the M12 lane's last heavy work had ended at 12:37Z. No whole
+check, build, or other gate ran beside it.
+
+### The first sitting's record
+
+Departure 1 of the section above is closed: the record is
+`mvp/results/20261120-com260-m11b-first/` (the commit "the first
+sitting's record").
+
+- **Where it was made.** At the signed commit of the record tool's
+  correction (`6d647374e985630145c89e0277aa1d93dcc7e626`), in the
+  sitting's own clone, by that tree's tool, on 2026-11-21 at 00:39Z,
+  as soon as `verify` had ended and the gates' clones had left the
+  path that the sitting's plan names. Its bundle says
+  `tool_tree=source` and `source_tree=clean`, names both commits, and
+  lists the two paths that differ from the sitting's commit: the
+  record tool and its dry run.
+- **What the tool printed:** `BE_MVP_EVIDENCE: PASS sitting …
+  result=stopped boots=1 readings=2 readbacks=1 stops=1 B3`. The boot
+  was judged again, with the same output as at the sitting.
+- **What it holds:** 99 files: the sitting's eight steps (six passed,
+  two stopped) and its plan, with the workstation's paths replaced by
+  names; the boot's records; the two readings' records, which hold no
+  digest; the card's write and two read-backs; the gate's record's
+  digests; the tool lock; and the expectations and references of the
+  sitting's build. No raw capture: the boot's 191 bytes are named by
+  their SHA-256 and kept privately.
+- **Read before it was committed:** the boot ROM's four lines hold no
+  identifier; no file holds a home path, the account's or the host's
+  name, an IPv4 or MAC address, a USB ID, the reader's link, or the
+  board's SSH name. The record tool's `--verify` passes on it at its
+  own commit and at the commit that adds it.
+- No row of the claim ledger cites it: a sitting that stopped shows
+  nothing of the claim.
+
+### The second run's preparation
+
+The decision record's entry of `fix: go` has the first sitting run
+again only on the responsible human's word and with him present,
+after three things: M11-B3's gates, all ten, passed again at the
+commit that holds the corrections; that commit signed; and a card
+with the new firmware written and read back. With `verify`, above,
+all three hold.
+
+The sittings' driver asks for one thing more: a clean tree at a
+signed commit that holds the board gate's record, made at that
+commit. The chain made it after the record (2026-11-21):
+
+- **The clone:** a clean clone at the last commit of the range that
+  the responsible human signed on 2026-11-20
+  (`0d81d673e3901a12bbd89947636ca0c859e85645`), at the gates' path.
+- **`./mvp/mvp check`, whole**, after the tool lock (`roles=33`),
+  00:39Z to 01:09Z: `BE_MVP_CHECK: PASS`. 118 runs under QEMU in 124
+  attempts; the six other attempts were refused by `BE_MVP:02` and
+  made again, as before. Six sessions. 851 of its 865 listed outputs
+  are byte for byte the gates'; the fourteen others name the commit
+  that they were built from (the README's open item 143).
+- **The board gate**, on the vendor's published files, 01:10Z:
+  `BE_MVP_K3_GATE: PASS steps=9 images=38`. 34 of its 38 outputs are
+  byte for byte the gates'; the four others are each image's
+  `board.json`, which holds the digest of a reference that names the
+  commit.
+- **The card's image**, 01:10Z, made again from that gate's outputs
+  for the card's size. The board firmware and the image have the
+  SHA-256 values of the sitting's pins (`d2b4af5d…c9b4` and
+  `cbc68f8c…dc49`), and the image's description is byte for byte that
+  of the image that was written on 2026-11-20. So the card that was
+  written and read back then is the second run's card. It has not
+  left the reader since: the reader's disk still has the write's
+  sequence number (read at 01:20Z).
+- **The owner session's check before a sitting**, 01:12Z. It is a
+  scratch script that calls the driver's own functions on the clone's
+  files, the card's records, and the workstation's list of USB
+  devices; it contacts no board, dongle, console, or reader. It
+  passes: the tree clean at that signed commit; the gate's commit that
+  commit; the firmware's pin; the card's write and read-back records
+  and the image's description in agreement; no device of the board on
+  the workstation's USB.
+
+Nothing heavy ran beside that whole check: the owner session read
+and committed the first sitting's record meanwhile.
+
+### What was run, and what was not
+
+- **Run:** `verify` at the gates' commit. The record tool at the
+  signed commit of its correction, and its `--verify` on the record
+  there and at the commit that adds it. In the second run's clone,
+  the tool lock, a whole `check`, the board gate, and the card's
+  image. The text-level checks of the two commits before this one:
+  the release's scan read each of the record's 99 files; one of them,
+  the stopped boot's record of loads, is empty, since that boot
+  loaded nothing.
+- **Not run:** no board command, no dongle command, and no write to a
+  card. No gate but `verify`. No whole `check` at the commits of this
+  range, whose content is a record, two pages' words, an open item,
+  and this section: one is run at the range's tip before its sign-off
+  is asked for.
+
+### Departures and readings for review
+
+Each stands unless the responsible human says otherwise.
+
+1. **The steps after `verify` were chained behind it** in a script
+   of the owner's, so that they did not wait for the session: the
+   gates' clones set aside, the first sitting's record, and the
+   second run's clone. The owner read the record afterwards, and
+   committed it.
+2. **The first sitting's record, the open item, and this section
+   land after the range that they belong to**, in a range of their
+   own.
+3. **The README's open item 143** (the commit "an open item for the
+   listed outputs that name their commit") tracks what departure 13
+   of the section above left; it settles nothing.
+4. **The owner's check wrote a cached-bytecode file into the second
+   run's clone, and the owner removed it.** The check's first run
+   (01:11Z) imported the sittings' driver without the setting that
+   keeps Python from writing bytecode, and left
+   `mvp/tools/__pycache__/k3-sitting.cpython-314.pyc` in the clone: a
+   file of the kind that the README's open item 141 is about, and the
+   one path by which Git then showed the tree as changed. The owner
+   removed the file and its directory at once (01:12Z), and the
+   script now cannot write one. The tree is clean at that signed
+   commit again, as the check's second run, told above, says; and a
+   search finds no such directory outside the clone's build
+   directory. No step of the sitting had run.
+5. **The second run's clone is at the last commit of the signed
+   range, which was not the public `main`'s tip.** Four minutes after
+   the sign-off of 2026-11-20 (23:51Z), two commits of the M12 lane
+   went onto `main` after it, and a third on 2026-11-21 (04:48Z):
+   two planning pages of that lane, and one line of
+   `LLM_POLICY_ALIGNMENT.md`. The owner session saw that only on
+   2026-11-21 at 06:01Z, and until then called that commit the tip.
+   It is a signed commit of the public line, and the three later
+   commits change nothing that the board gate, the card's tools, or
+   the sittings' tools read.
+
+### What is not shown
+
+Nothing in this section is a board step. So it shows nothing of the
+project's firmware on the board, of the form's rules on a real boot
+from a card, or of the corrected tools on the board. The section
+after this one tells the first sitting's second run.
