@@ -1,0 +1,12 @@
+schema=be-mvp-k3-sitting-step-v1
+step=stage
+index=03
+attempt=1
+sitting=second
+started=2026-11-21T14:38:18Z
+tool stage exit=0 output=sitting/logs/03-stage-a1-stage.log
+staged be-mvp-anchor-gcc.img sha256=bd2fc34bfcfefc901961d5ca5b058ddfa3ce1f3679f115046875cd55205736ba
+staged be-mvp-anchor-k3-breach-g1-gcc.img sha256=548e006ce18bf80f7d919046c53cc54088d2775fb36e8c7fb244c6abca00a992
+staged be-mvp-anchor-k3-breach-c-gcc.img sha256=bb6042d66a09d7a897f52f1929a400eafd6b74e3f7661b00813cf501d44febd4
+ended=2026-11-21T14:38:19Z
+verdict=PASS

@@ -1,0 +1,4 @@
+attempt_utc=2026-11-21T14:58:45Z
+fedora=up
+audit=banners=4 resets=4 findings=0
+verdict=PASS

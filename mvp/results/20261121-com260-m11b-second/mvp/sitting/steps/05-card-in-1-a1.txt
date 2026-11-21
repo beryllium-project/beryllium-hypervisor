@@ -1,0 +1,15 @@
+schema=be-mvp-k3-sitting-step-v1
+step=card-in-1
+index=05
+attempt=1
+sitting=second
+started=2026-11-21T14:43:24Z
+word=human-authorized:session-anchor
+said=2026-11-21T14:42:45Z
+usb=clean devices=15 interfaces=25
+cited write-anchor-1.txt sha256=2f402422e0a61e35a992573c2bb62c357d08fef0383ba8e06ceeefd32e576d23
+cited readback-anchor-1.txt sha256=4463fe3ff5a8ddffd1dcbb1896d1f223b916ab42979f2c118f4d349172f5a0b1
+cited card.json sha256=4a441000d25c9f610ce65f9d501a19d118fd8e0cd55b708b96f114d0eec229a6
+card=in session=1 image=anchor step=card-in-1 said=2026-11-21T14:42:45Z recorded=2026-11-21T14:43:24Z log_offset=45463347
+ended=2026-11-21T14:43:24Z
+verdict=PASS

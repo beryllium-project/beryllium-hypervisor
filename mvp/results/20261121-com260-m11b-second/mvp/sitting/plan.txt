@@ -1,0 +1,61 @@
+schema=be-mvp-k3-sitting-plan-v1
+sitting=second
+plan=anchor:3:be-mvp-anchor-gcc.img k3-breach-g1:1:be-mvp-anchor-k3-breach-g1-gcc.img k3-breach-c:1:be-mvp-anchor-k3-breach-c-gcc.img
+steps=begin,preflight,stage,reading-0,card-in-1,boot-1.1,boot-1.2,boot-1.3,card-out-1,reading-1,card-in-2,boot-2.1,card-out-2,reading-2,card-in-3,boot-3.1,card-out-3,reading-3,end
+build=<build>
+gate=<build>/k3/gate
+source=<source>
+observed=<source>/mvp/k3/observed.json
+serial_log=<serial-log>
+source_commit=35498009fc5f7f65fb30f935ebafd2873c584395
+source_state=clean
+gate_commit=35498009fc5f7f65fb30f935ebafd2873c584395
+rehearsal=none
+sitting_pins=<source>/mvp/k3/sitting-pins.txt sha256=434e329d5fe29021d3e4f9f43660714fc4ee52fdbba94ad1af75fdb81359b7ba
+input gate.txt path=<build>/k3/gate/record/gate.txt sha256=4250c8ba2de35fba7cc68bf7d6de1a1a2d6f44e7714de1b7f51e66fe0026f2e1
+input observed path=<source>/mvp/k3/observed.json sha256=fcda69474c2793c4424c100cf8a92c93f448c7012b91f83f45722bec4d11130f
+input anchor.board path=<build>/k3/gate/images/anchor/board.json sha256=082487994eabb3ec0176fe5b04d2fb1c2e7de9b6907428e18ebe22264c80a6e8
+input anchor.board_image path=<build>/gcc/anchor/be-mvp-boot.img sha256=bd2fc34bfcfefc901961d5ca5b058ddfa3ce1f3679f115046875cd55205736ba
+input anchor.expectation path=<build>/gen/anchor/expect/anchor.json sha256=724a9f5e3d5ae1a61aacf025055c436e44f54678800b41df2da47d72d5737423
+input anchor.reference path=<build>/references/gcc/anchor.json sha256=49eef9224fe014e08afdb0657ba24455f32ed2e77ab1eaff63a3ca29a6f8965d
+input anchor.tree path=<build>/k3/gate/images/anchor/anchor.dtb sha256=d83ab720a0b0aab813edd567b38a5f6d982c93039b2d865aa5fc438395069b6f
+input anchor.tables path=<build>/k3/gate/images/anchor/anchor-pmp.json sha256=9bba9d3e443610726cb15920daf1a2beacb7828d95cd2f5c99175197086181e4
+input anchor.root path=<build>/k3/gate/images/anchor/anchor-root.json sha256=48ac0062bac5c5e494aaff3d109972b16b679b8a7f45f02334b3b7d28ae28afe
+input anchor.check path=<build>/k3/gate/images/anchor/anchor-check.json sha256=58bfdba61a61f630173e5c794b17781520390dee96a89d62e86f40b35c9c2b00
+input anchor.partition_authority path=<build>/gen/partition/anchor/authority-report.json sha256=7fef0b7675d7c9eaff4d76093cc451637216d1160bc3c6926891a22bb387d969
+input anchor.firmware path=<build>/k3/gate/images/anchor/fw_dynamic.bin sha256=a95128a2140951fdb1a442d178ebbb3ce70219c3f9f582f28a658dd09b254cb4
+input anchor.firmware_elf path=<build>/k3/gate/images/anchor/fw_dynamic.elf sha256=0f50903353da94c870f9fc6a104c6ea0bdd3bfa72595e20bc7e93effaa3107fd
+input anchor.report path=<build>/gen/anchor/authority-report.json sha256=12cf40668239e36106ec94df67c40054cd2514500b37b331bda87e5bd35e8a1e
+input anchor.kernel path=<build>/guest/Image sha256=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6
+input anchor.dtb path=<build>/guest/mvp-guest-g1-anchor.dtb sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025
+input k3-breach-g1.board path=<build>/k3/gate/images/k3-breach-g1/board.json sha256=ef4fa277ff4cf05f73f43d77fd98876989c936e51301205fbf27ddc2f823b66d
+input k3-breach-g1.board_image path=<build>/k3/check/breach/gcc/k3-breach-g1/be-mvp-boot.img sha256=548e006ce18bf80f7d919046c53cc54088d2775fb36e8c7fb244c6abca00a992
+input k3-breach-g1.expectation path=<build>/k3/check/breach/expect/k3-breach-g1.json sha256=d2b7b47940f424e64459d9606c7048832f4b5d1a56ab20736f0215d7f1c1e01d
+input k3-breach-g1.reference path=<build>/k3/check/references/gcc/k3-breach-g1.json sha256=45811e8f5cc222207a4613c87eb01cc7a0174a5d9e804a41963bcd1003cffe9c
+input k3-breach-g1.tree path=<build>/k3/gate/images/k3-breach-g1/k3-breach-g1.dtb sha256=ab1048bae92079b73a9625b6dc05bc7c52ed01c91f1cd31654bdb54f8ee2deff
+input k3-breach-g1.tables path=<build>/k3/gate/images/k3-breach-g1/k3-breach-g1-pmp.json sha256=d9f666cfcb0a17473917ca95750d8b5a4febbcf3a98600fd3655f865fa3aaef5
+input k3-breach-g1.root path=<build>/k3/gate/images/k3-breach-g1/k3-breach-g1-root.json sha256=bf18593f4824d7196cb27f6070f4eb21b287b7e0bf72895e69335145bc12ea68
+input k3-breach-g1.check path=<build>/k3/gate/images/k3-breach-g1/k3-breach-g1-check.json sha256=8ce0323aa0e1ac135020855c72e75a3704c11baba2cf1cc2fa4577cda81e4a21
+input k3-breach-g1.partition_authority path=<build>/gen/partition/anchor/authority-report.json sha256=7fef0b7675d7c9eaff4d76093cc451637216d1160bc3c6926891a22bb387d969
+input k3-breach-g1.firmware path=<build>/k3/gate/images/k3-breach-g1/fw_dynamic.bin sha256=0fd9b322f91ca805844ddd95d073ca6662a77b0f2ab579595efaa4a9e7a028ff
+input k3-breach-g1.firmware_elf path=<build>/k3/gate/images/k3-breach-g1/fw_dynamic.elf sha256=ebb9c167d4621237caf1c5bf23c8076a182b7ba19f10bff8f8fd958b30a01920
+input k3-breach-g1.report path=<build>/gen/anchor/authority-report.json sha256=12cf40668239e36106ec94df67c40054cd2514500b37b331bda87e5bd35e8a1e
+input k3-breach-g1.kernel path=<build>/guest/Image sha256=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6
+input k3-breach-g1.dtb path=<build>/guest/mvp-guest-g1-anchor.dtb sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025
+input k3-breach-c.board path=<build>/k3/gate/images/k3-breach-c/board.json sha256=179f6f3da75995bcf6556647ae08b50850e380324e246c7cb2db734b480b2ce7
+input k3-breach-c.board_image path=<build>/k3/check/breach/gcc/k3-breach-c/be-mvp-boot.img sha256=bb6042d66a09d7a897f52f1929a400eafd6b74e3f7661b00813cf501d44febd4
+input k3-breach-c.expectation path=<build>/k3/check/breach/expect/k3-breach-c.json sha256=ac3b359eb58c4e5a93c7ab45edd0aeadde9e9643242761f6d38f3925e42e27d2
+input k3-breach-c.reference path=<build>/k3/check/references/gcc/k3-breach-c.json sha256=61af9f5b956e39c2f8629fa44845a9ef0501c31b30e9795606b75d7c7bc51173
+input k3-breach-c.tree path=<build>/k3/gate/images/k3-breach-c/k3-breach-c.dtb sha256=9b270f387cd9c273d61ce1a849959da30abe83302fd32cee0c99bb97b895a6d9
+input k3-breach-c.tables path=<build>/k3/gate/images/k3-breach-c/k3-breach-c-pmp.json sha256=9e8706fed1fce5717e7141180033a025a35a593c6ee5b0eb882ad99b61aa07cd
+input k3-breach-c.root path=<build>/k3/gate/images/k3-breach-c/k3-breach-c-root.json sha256=6c65505e06537dec66b262815c224af52c4b8741932ec971e2bf4d663748e906
+input k3-breach-c.check path=<build>/k3/gate/images/k3-breach-c/k3-breach-c-check.json sha256=6bd7edbdb65db4e78726aa2721a76270243e25eed1f1e90b20ce0961a942c361
+input k3-breach-c.partition_authority path=<build>/gen/partition/anchor/authority-report.json sha256=7fef0b7675d7c9eaff4d76093cc451637216d1160bc3c6926891a22bb387d969
+input k3-breach-c.firmware path=<build>/k3/gate/images/k3-breach-c/fw_dynamic.bin sha256=1f0ad1f9724bef6bdadab2255883bad884b1e7e9b6464b298e85994103d6794b
+input k3-breach-c.firmware_elf path=<build>/k3/gate/images/k3-breach-c/fw_dynamic.elf sha256=e9bd24211ac4d441426291de189286644d5f3601e37f36cc3b394710aaaed833
+input k3-breach-c.report path=<build>/gen/anchor/authority-report.json sha256=12cf40668239e36106ec94df67c40054cd2514500b37b331bda87e5bd35e8a1e
+input k3-breach-c.kernel path=<build>/guest/Image sha256=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6
+input k3-breach-c.dtb path=<build>/guest/mvp-guest-g1-anchor.dtb sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025
+pin anchor.firmware sha256=a95128a2140951fdb1a442d178ebbb3ce70219c3f9f582f28a658dd09b254cb4 bytes=540600
+pin k3-breach-g1.firmware sha256=0fd9b322f91ca805844ddd95d073ca6662a77b0f2ab579595efaa4a9e7a028ff bytes=540600
+pin k3-breach-c.firmware sha256=1f0ad1f9724bef6bdadab2255883bad884b1e7e9b6464b298e85994103d6794b bytes=540600

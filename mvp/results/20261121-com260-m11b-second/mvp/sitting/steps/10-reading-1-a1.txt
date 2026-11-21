@@ -1,0 +1,12 @@
+schema=be-mvp-k3-sitting-step-v1
+step=reading-1
+index=10
+attempt=1
+sitting=second
+started=2026-11-21T14:57:41Z
+flag=--card-hang
+usb=clean devices=15 interfaces=25
+tool reading exit=0 output=sitting/logs/10-reading-1-a1-reading.log
+compared=reading-0
+ended=2026-11-21T14:58:33Z
+verdict=PASS

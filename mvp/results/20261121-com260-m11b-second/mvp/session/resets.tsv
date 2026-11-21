@@ -1,0 +1,5 @@
+seq	offset	utc	method	reason
+1	45459255	2026-11-21T14:38:47.842Z	k3ctl	fedora-down
+2	45463347	2026-11-21T14:43:32.114Z	k3ctl	idle-prompt
+3	45464070	2026-11-21T14:58:14.391Z	k3ctl	card-hang
+4	45468162	2026-11-21T14:58:50.240Z	k3ctl	idle-prompt

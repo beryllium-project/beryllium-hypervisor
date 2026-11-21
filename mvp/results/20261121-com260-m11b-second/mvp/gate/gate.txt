@@ -1,0 +1,16 @@
+schema=be-mvp-k3-gate-v1
+source_commit=35498009fc5f7f65fb30f935ebafd2873c584395
+source_tree=clean
+published_pins_sha256=c2a6d7365a83c1d97a4d76a974753502d6bb8c0e731a84c5bd122324b367686d
+steps=k3-gate-published,k3-gate-recipe,k3-gate-platform,k3-gate-tree,k3-gate-firmware,k3-gate-partition,k3-gate-breach,k3-gate-board,k3-gate-card
+step_k3-gate-published=BE_MVP_K3_GATE[k3-gate-published]: PASS files=6 pins_sha256=c2a6d7365a83c1d97a4d76a974753502d6bb8c0e731a84c5bd122324b367686d
+step_k3-gate-recipe=BE_MVP_K3_GATE[k3-gate-recipe]: PASS
+step_k3-gate-platform=BE_MVP_K3_GATE[k3-gate-platform]: PASS
+step_k3-gate-tree=BE_MVP_K3_GATE[k3-gate-tree]: PASS images=4
+step_k3-gate-firmware=BE_MVP_K3_GATE[k3-gate-firmware]: PASS images=4
+step_k3-gate-partition=BE_MVP_K3_GATE[k3-gate-partition]: PASS images=4
+step_k3-gate-breach=BE_MVP_K3_GATE[k3-gate-breach]: PASS declarations=2
+step_k3-gate-board=BE_MVP_K3_GATE[k3-gate-board]: PASS images=4
+step_k3-gate-card=BE_MVP_K3_GATE[k3-gate-card]: PASS images=4 removed=25 kept=93 kept_spl=5 kept_boot=9 kept_flow=31 kept_data=48 fit_structure=equal
+images=38
+BE_MVP_K3_GATE: PASS steps=9 images=38

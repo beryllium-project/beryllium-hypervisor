@@ -1,0 +1,35 @@
+run=boot-1.1-a1
+step=boot-1.1
+attempt=1
+sitting=second
+session=1
+image=anchor
+image_sha256=bd2fc34bfcfefc901961d5ca5b058ddfa3ce1f3679f115046875cd55205736ba
+board_json_sha256=082487994eabb3ec0176fe5b04d2fb1c2e7de9b6907428e18ebe22264c80a6e8
+expect=gen/anchor/expect/anchor.json sha256=724a9f5e3d5ae1a61aacf025055c436e44f54678800b41df2da47d72d5737423
+report=gen/anchor/authority-report.json sha256=12cf40668239e36106ec94df67c40054cd2514500b37b331bda87e5bd35e8a1e
+kernel=guest/Image sha256=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6
+dtb=guest/mvp-guest-g1-anchor.dtb sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025
+reference=references/gcc/anchor.json sha256=49eef9224fe014e08afdb0657ba24455f32ed2e77ab1eaff63a3ca29a6f8965d
+memory=8 GiB
+observed_sha256=fcda69474c2793c4424c100cf8a92c93f448c7012b91f83f45722bec4d11130f
+toolchain=gcc
+launcher=uboot-autoboot-card
+loader=uboot-autoboot-card be_image=be-mvp-anchor-gcc.img
+be_image=be-mvp-anchor-gcc.img
+remote_image_sha256=bd2fc34bfcfefc901961d5ca5b058ddfa3ce1f3679f115046875cd55205736ba
+card=in
+boot_id_before=reset-2@45463347
+reset_utc=2026-11-21T14:43:32.114Z
+serial_range=45463347-45464070
+outcome=no-banners
+spl_banner=U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)
+uboot_banner=
+board_kernel=none (boot from system reset)
+check_status=1
+stops=B6
+BE_MVP_RESULT: FAIL terminal=none
+usb=clean devices=15 interfaces=25
+banner_audit=PASS
+stop=B6 0 U-Boot banner lines before the markers, expected 1 (stop B6)
+verdict=STOP

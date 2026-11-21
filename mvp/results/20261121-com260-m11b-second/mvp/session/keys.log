@@ -1,0 +1,137 @@
+2026-11-21T14:38:03.785Z	start	session=20261121-com260-m11b-second offset=45440110
+2026-11-21T14:38:48.100Z	reset	seq=1 method=k3ctl reason=fedora-down offset=45459255
+2026-11-21T14:38:49.131Z	banner	seq=1 spl=45459363 uboot=45459524
+2026-11-21T14:38:49.160Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:38:50.222Z	medium	medium=nor rom_lines=8
+2026-11-21T14:38:50.229Z	key	s offset=45462199
+2026-11-21T14:38:50.556Z	prompt	fresh offset=45462203
+2026-11-21T14:38:50.645Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:38:51.673Z	line	first template=sf-probe
+2026-11-21T14:38:51.682Z	send	piece=1/1 offset=45462203 text=sf probe
+2026-11-21T14:38:51.704Z	echo	ok offset=45462203-45462222
+2026-11-21T14:38:51.708Z	key	Enter template=sf-probe
+2026-11-21T14:38:52.087Z	prompt	template=sf-probe output_bytes=139 output_sha256=4dbc56154daff5fb18dd001a7605c71090c76d147e3db5e7e00150fcd655b6ab
+2026-11-21T14:38:52.174Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:38:53.197Z	line	first template=sf-read
+2026-11-21T14:38:53.205Z	send	piece=1/1 offset=45462366 text=sf read 0x140000000 0x0 0x800000
+2026-11-21T14:38:53.230Z	echo	ok offset=45462366-45462398
+2026-11-21T14:38:53.234Z	key	Enter template=sf-read
+2026-11-21T14:38:54.165Z	prompt	template=sf-read output_bytes=55 output_sha256=f3a0cac61faf0fe68776e07eb5d8c39de1d29abe5bebf4c919cbd21e588ca494
+2026-11-21T14:38:54.252Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:38:55.274Z	line	first template=md5-bootinfo
+2026-11-21T14:38:55.283Z	send	piece=1/1 offset=45462458 text=md5sum 0x140000000 0x10000
+2026-11-21T14:38:55.314Z	echo	ok offset=45462458-45462495
+2026-11-21T14:38:55.317Z	key	Enter template=md5-bootinfo
+2026-11-21T14:38:55.649Z	prompt	template=md5-bootinfo output_bytes=70 output_sha256=withheld
+2026-11-21T14:38:55.738Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:38:56.763Z	line	first template=md5-record
+2026-11-21T14:38:56.771Z	send	piece=1/1 offset=45462570 text=md5sum 0x140010000 0xa000
+2026-11-21T14:38:56.800Z	echo	ok offset=45462570-45462606
+2026-11-21T14:38:56.804Z	key	Enter template=md5-record
+2026-11-21T14:38:57.134Z	prompt	template=md5-record output_bytes=70 output_sha256=withheld
+2026-11-21T14:38:57.220Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:38:58.244Z	line	first template=md5-fsbl
+2026-11-21T14:38:58.253Z	send	piece=1/1 offset=45462681 text=md5sum 0x14001a000 0x86000
+2026-11-21T14:38:58.277Z	echo	ok offset=45462681-45462718
+2026-11-21T14:38:58.281Z	key	Enter template=md5-fsbl
+2026-11-21T14:38:58.612Z	prompt	template=md5-fsbl output_bytes=70 output_sha256=withheld
+2026-11-21T14:38:58.696Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:38:59.721Z	line	first template=md5-env
+2026-11-21T14:38:59.730Z	send	piece=1/1 offset=45462793 text=md5sum 0x1400a0000 0x10000
+2026-11-21T14:38:59.753Z	echo	ok offset=45462793-45462830
+2026-11-21T14:38:59.757Z	key	Enter template=md5-env
+2026-11-21T14:39:00.084Z	prompt	template=md5-env output_bytes=70 output_sha256=withheld
+2026-11-21T14:39:00.168Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:39:01.195Z	line	first template=md5-images
+2026-11-21T14:39:01.203Z	send	piece=1/1 offset=45462905 text=md5sum 0x1400b0000 0x750000
+2026-11-21T14:39:01.227Z	echo	ok offset=45462905-45462943
+2026-11-21T14:39:01.231Z	key	Enter template=md5-images
+2026-11-21T14:39:01.611Z	prompt	template=md5-images output_bytes=70 output_sha256=withheld
+2026-11-21T14:39:01.697Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:39:02.725Z	line	first template=md5-whole
+2026-11-21T14:39:02.733Z	send	piece=1/1 offset=45463018 text=md5sum 0x140000000 0x800000
+2026-11-21T14:39:02.758Z	echo	ok offset=45463018-45463056
+2026-11-21T14:39:02.762Z	key	Enter template=md5-whole
+2026-11-21T14:39:03.142Z	prompt	template=md5-whole output_bytes=70 output_sha256=withheld
+2026-11-21T14:39:03.234Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:39:04.265Z	line	first template=sf-read
+2026-11-21T14:39:04.273Z	send	piece=1/1 offset=45463131 text=sf read 0x140000000 0x0 0x800000
+2026-11-21T14:39:04.303Z	echo	ok offset=45463131-45463174
+2026-11-21T14:39:04.308Z	key	Enter template=sf-read
+2026-11-21T14:39:05.241Z	prompt	template=sf-read output_bytes=55 output_sha256=f3a0cac61faf0fe68776e07eb5d8c39de1d29abe5bebf4c919cbd21e588ca494
+2026-11-21T14:39:05.336Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:39:06.360Z	line	first template=md5-whole
+2026-11-21T14:39:06.368Z	send	piece=1/1 offset=45463234 text=md5sum 0x140000000 0x800000
+2026-11-21T14:39:06.398Z	echo	ok offset=45463234-45463272
+2026-11-21T14:39:06.402Z	key	Enter template=md5-whole
+2026-11-21T14:39:06.783Z	prompt	template=md5-whole output_bytes=70 output_sha256=withheld
+2026-11-21T14:43:32.368Z	reset	seq=2 method=k3ctl reason=idle-prompt offset=45463347
+2026-11-21T14:45:32.455Z	stop	stop=1 no SPL and U-Boot banner within 120 s of the reset
+2026-11-21T14:58:14.648Z	reset	seq=3 method=k3ctl reason=card-hang offset=45464070
+2026-11-21T14:58:15.671Z	banner	seq=3 spl=45464178 uboot=45464339
+2026-11-21T14:58:15.707Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:58:16.768Z	medium	medium=nor rom_lines=8
+2026-11-21T14:58:16.775Z	key	s offset=45467014
+2026-11-21T14:58:17.152Z	prompt	fresh offset=45467018
+2026-11-21T14:58:17.247Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:58:18.270Z	line	first template=sf-probe
+2026-11-21T14:58:18.279Z	send	piece=1/1 offset=45467018 text=sf probe
+2026-11-21T14:58:18.306Z	echo	ok offset=45467018-45467037
+2026-11-21T14:58:18.309Z	key	Enter template=sf-probe
+2026-11-21T14:58:18.690Z	prompt	template=sf-probe output_bytes=139 output_sha256=7e9760e9aa193fc703aa42b4a0f32dfa3c5b443e29675567fe9b619c66977d47
+2026-11-21T14:58:18.775Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:58:19.798Z	line	first template=sf-read
+2026-11-21T14:58:19.806Z	send	piece=1/1 offset=45467181 text=sf read 0x140000000 0x0 0x800000
+2026-11-21T14:58:19.831Z	echo	ok offset=45467181-45467213
+2026-11-21T14:58:19.835Z	key	Enter template=sf-read
+2026-11-21T14:58:20.768Z	prompt	template=sf-read output_bytes=55 output_sha256=f3a0cac61faf0fe68776e07eb5d8c39de1d29abe5bebf4c919cbd21e588ca494
+2026-11-21T14:58:20.849Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:58:21.875Z	line	first template=md5-bootinfo
+2026-11-21T14:58:21.883Z	send	piece=1/1 offset=45467273 text=md5sum 0x140000000 0x10000
+2026-11-21T14:58:21.907Z	echo	ok offset=45467273-45467310
+2026-11-21T14:58:21.911Z	key	Enter template=md5-bootinfo
+2026-11-21T14:58:22.240Z	prompt	template=md5-bootinfo output_bytes=70 output_sha256=withheld
+2026-11-21T14:58:22.325Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:58:23.350Z	line	first template=md5-record
+2026-11-21T14:58:23.359Z	send	piece=1/1 offset=45467385 text=md5sum 0x140010000 0xa000
+2026-11-21T14:58:23.380Z	echo	ok offset=45467385-45467421
+2026-11-21T14:58:23.384Z	key	Enter template=md5-record
+2026-11-21T14:58:23.713Z	prompt	template=md5-record output_bytes=70 output_sha256=withheld
+2026-11-21T14:58:23.802Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:58:24.825Z	line	first template=md5-fsbl
+2026-11-21T14:58:24.833Z	send	piece=1/1 offset=45467496 text=md5sum 0x14001a000 0x86000
+2026-11-21T14:58:24.862Z	echo	ok offset=45467496-45467533
+2026-11-21T14:58:24.865Z	key	Enter template=md5-fsbl
+2026-11-21T14:58:25.198Z	prompt	template=md5-fsbl output_bytes=70 output_sha256=withheld
+2026-11-21T14:58:25.293Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:58:26.318Z	line	first template=md5-env
+2026-11-21T14:58:26.326Z	send	piece=1/1 offset=45467608 text=md5sum 0x1400a0000 0x10000
+2026-11-21T14:58:26.348Z	echo	ok offset=45467608-45467645
+2026-11-21T14:58:26.352Z	key	Enter template=md5-env
+2026-11-21T14:58:26.681Z	prompt	template=md5-env output_bytes=70 output_sha256=withheld
+2026-11-21T14:58:26.765Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:58:27.797Z	line	first template=md5-images
+2026-11-21T14:58:27.806Z	send	piece=1/1 offset=45467720 text=md5sum 0x1400b0000 0x750000
+2026-11-21T14:58:27.833Z	echo	ok offset=45467720-45467758
+2026-11-21T14:58:27.836Z	key	Enter template=md5-images
+2026-11-21T14:58:28.214Z	prompt	template=md5-images output_bytes=70 output_sha256=withheld
+2026-11-21T14:58:28.297Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:58:29.326Z	line	first template=md5-whole
+2026-11-21T14:58:29.334Z	send	piece=1/1 offset=45467833 text=md5sum 0x140000000 0x800000
+2026-11-21T14:58:29.364Z	echo	ok offset=45467833-45467871
+2026-11-21T14:58:29.368Z	key	Enter template=md5-whole
+2026-11-21T14:58:29.745Z	prompt	template=md5-whole output_bytes=70 output_sha256=withheld
+2026-11-21T14:58:29.826Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:58:30.852Z	line	first template=sf-read
+2026-11-21T14:58:30.860Z	send	piece=1/1 offset=45467946 text=sf read 0x140000000 0x0 0x800000
+2026-11-21T14:58:30.882Z	echo	ok offset=45467946-45467989
+2026-11-21T14:58:30.885Z	key	Enter template=sf-read
+2026-11-21T14:58:31.814Z	prompt	template=sf-read output_bytes=55 output_sha256=f3a0cac61faf0fe68776e07eb5d8c39de1d29abe5bebf4c919cbd21e588ca494
+2026-11-21T14:58:31.902Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-21T14:58:32.928Z	line	first template=md5-whole
+2026-11-21T14:58:32.936Z	send	piece=1/1 offset=45468049 text=md5sum 0x140000000 0x800000
+2026-11-21T14:58:32.959Z	echo	ok offset=45468049-45468087
+2026-11-21T14:58:32.963Z	key	Enter template=md5-whole
+2026-11-21T14:58:33.342Z	prompt	template=md5-whole output_bytes=70 output_sha256=withheld
+2026-11-21T14:58:50.503Z	reset	seq=4 method=k3ctl reason=idle-prompt offset=45468162
+2026-11-21T14:58:51.528Z	banner	seq=4 spl=45468270 uboot=45468431
