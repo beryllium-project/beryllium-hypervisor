@@ -2224,3 +2224,108 @@ text above as it says; the text above is otherwise as accepted.
 
   The images are not committed or published: each holds the vendor's
   files.
+- **2026-11-21, the second sitting's first run** (the board addendum's
+  "The sittings, and their sessions"; M11-B5). It ran at the signed
+  commit `35498009fc5f7f65fb30f935ebafd2873c584395`, with the
+  responsible human at the board, and **stopped at the first boot of
+  its first session**, the image `anchor`'s (the addendum's stop B6:
+  a capture that the form refuses). The project's firmware stopped in
+  its cold boot and said why: its heap could not hold the switch
+  contexts of the tree's OpenSBI domains. No line of U-Boot or of the
+  monitor was printed, and no hart was confined.
+  - **His word.** Asked how to run the sitting with the one card
+    whose size the images were made for, the responsible human chose
+    to run it with that card, one session after another (14:32Z).
+    The owner session had told him that the first session was ready,
+    and took that choice as his word for the sitting. He gave his
+    word for the session as he put the card in (14:42Z).
+  - **What passed before it.** The preflight from the board's own
+    Linux; the staging of the three images on partition 6; the
+    opening reading of the NOR, in a boot from the NOR in which
+    U-Boot showed 8 GiB of memory; and the card's insertion.
+  - **The boot** (the reset at 14:43:32Z, by the dongle; nothing
+    typed). The boot ROM's four lines, as in the first sitting, and
+    the vendor SPL's banner. Then the project's firmware: its logo;
+    its line for the configuration digest, which is the build's; and
+    two lines more:
+
+    ```
+    sbi_domain_finalize: domain context allocation failed (error -1004)
+    init_coldboot: domain finalize failed (error -1004)
+    ```
+
+    Then nothing for 120 s. The capture is 723 bytes. `-1004` is the
+    firmware base's code for no memory. The first line is the
+    series' own: the cold boot stops there, on hart 0, before it
+    prints the rest of its banner and before any other stage runs.
+  - **What the tools said, and what the owner session said.** The
+    form refused the capture with 116 findings, most of them lines
+    that it expects and did not find; the driver's stop names one of
+    them, the missing U-Boot banner. Neither quotes the firmware's
+    two lines: the form does not know them. The owner session first
+    told the responsible human that the firmware had gone silent
+    after the digest's line. It found the two lines in the capture
+    within the hour, and corrected what it had said.
+  - **The close**, by the sitting's own steps. The card came out on
+    his word (14:57Z). The closing reading followed one reset by the
+    dongle, which the console tool admitted by its rule for a boot
+    from a card that stopped (the first sitting's correction). Then
+    the board's own Linux, and the preflight again, with the same
+    verdict line.
+  - **The NOR and the card are unchanged.** The closing reading
+    equals the opening reading in all six ranges. The card, read
+    back whole after the session (15:14Z to 15:20Z), equals its image
+    in each of its fourteen regions.
+  - **The card's reader.** That read-back was made through a second
+    reader, a card slot on a USB 3 hub, at the responsible human's
+    direction: it read the card at 89 MB/s, where the first reader
+    reads at 19. He approved it with the card tool's one command,
+    which installs the rule under the first reader's file name, so
+    that one reader is approved at a time. QB4 speaks of "the one
+    reader"; this is told here as a departure from its letter.
+  - **The cause**, from the two lines, the series' source, and the
+    build's own sizes. The series allocates at cold boot one switch
+    context for each pair of an OpenSBI domain and a hart that it
+    lists, each with a vector area sized for the cold boot hart (the
+    M11 plan's design rule "No heap": no allocation after cold
+    boot). The first sitting's build has no OpenSBI domain in its
+    tree: sixteen contexts, the root OpenSBI domain's; its banner
+    showed a heap of 104 KB, the firmware base's default for sixteen
+    harts, with 67 KB used and 34 KB free. `anchor`'s tree has five
+    OpenSBI domains: 35 contexts, each of 768 bytes and, on a hart
+    whose vector length is 256 bits, a vector area of 1,088; and
+    five domain structures. By the owner session's arithmetic that
+    is about 44 KiB more than the first sitting's build used. The
+    figure to rely on is the measurement that the correction brings.
+  - **Why no gate showed it.** Under QEMU the board trees' shape
+    runs on a machine of eight harts whose boot hart has no vector
+    extension: there the same OpenSBI domains leave 19 KB of a 66 KB
+    heap free. The firmware's own test `alloc-fail` shows that a
+    heap which cannot hold the contexts stops the cold boot with
+    these lines; no run sized the heap for the board's hart count
+    and vector length. The owner session's research after the first
+    sitting's first run had named the heap at this step as a risk,
+    with its lever. It was not followed up before this sitting.
+  - **What the boot shows.** The boot ROM, the SPL, and the start of
+    the project's firmware, for a second build; that the firmware
+    reads the tree's digest; and that a cold boot which cannot hold
+    its contexts stops before any other stage. Nothing of the
+    boundary on the board.
+  - **Not run:** the session's second and third boots, and the two
+    sessions of the hostile-monitor images, whose builds have the
+    same OpenSBI domains.
+  - **The remedy that the owner session proposes** needs an erratum
+    to the addendum's B-3, whose step 4 adds the descriptor's nodes
+    "as the backend renders them for QEMU": on the board, a tree
+    that holds OpenSBI domains would also carry the firmware base's
+    documented property `heap-size` in the configuration node. It
+    needs no M-mode code, and no change to the series, to the
+    monitor, or to an image of the candidate's. With it come a test
+    of the firmware under QEMU with the board's hart count and
+    vector length, and the form's naming of a firmware line of this
+    kind. It is the responsible human's to decide; a later entry
+    records the value and the decision. This entry changes nothing
+    of the addendum.
+  - **The record** of the sitting is
+    `mvp/results/20261121-com260-m11b-second/`, made by the record
+    tool at the sitting's own commit.
