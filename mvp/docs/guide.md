@@ -1813,7 +1813,7 @@ such boundary, and nothing here changes the [claim](claim.md) for the
 release. The boundary's own claim, with its limit, is on a page of its
 own, [claim-boundary.md](claim-boundary.md), and the
 [M11 plan](../../planning/mvp-m11-plan.md) is its design. Everything
-below is emulation: no run under the boundary has been made on a board.
+below is emulation: no hart has run under the boundary on a board.
 
 ### What it is
 
@@ -2001,18 +2001,26 @@ names the candidate's tree once the gates have passed at it.
 This section is about the M11 plan's
 [board addendum](../../planning/mvp-m11-board-addendum.md), which plans
 runs of the M11 candidate on the COM260. What exists is the tools, each
-tested under emulation or on files, and the first of the addendum's
-two sittings, which was run twice.
-**Its first run (2026-11-20) stopped at its first boot from the
-card**, before any line of the project's firmware reached the
+tested under emulation or on files; the first of the addendum's two
+sittings, which was run twice; and the second sitting's first run,
+which stopped.
+**The first sitting's first run (2026-11-20) stopped at its first boot
+from the card**, before any line of the project's firmware reached the
 console; `mvp/results/20261120-com260-m11b-first/` is its record.
 **Its second run (2026-11-21), after the console's correction,
 passed**: in each of three boots from the card the project's firmware
 printed its banner, the vendor's U-Boot loaded the staged image, and
 the candidate's `two-guests`, built without the boundary, ran to its
 shutdown line; `mvp/results/20261121-com260-m11b-first/` is its
-record. The M11 plan's decision record has the account of both.
-**No run under the boundary has been made on the board**, and nothing
+record.
+**The second sitting's first run (2026-11-21) stopped at its first
+boot from the card**, in the cold boot of the project's firmware: its
+heap could not hold the switch contexts of the tree's OpenSBI domains,
+and it said so in two lines; `mvp/results/20261121-com260-m11b-second/`
+is its record. The heap's size on the board was corrected after it
+("The firmware's device tree", below). The M11 plan's decision record
+has the account of all three.
+**No hart has run under the boundary on the board**, and nothing
 here changes a claim. The board's runs are made
 in sittings, with the responsible human present, each after his own
 sign-off; their records are board records under `mvp/results/`.
@@ -2108,13 +2116,37 @@ board:
 - then, for an image under the boundary, the descriptor's step: the
   image's partition descriptor rendered onto step 4, by the same
   backend that renders QEMU's trees (`mvp/tools/partition-backend.py
-  --platform k3-com260`). With the boundary off, the tree is step 4
-  itself.
+  --platform k3-com260`). On the board the step also gives the
+  firmware the size of its heap: `heap-size = <0x40000>` in
+  `/chosen/opensbi-config`, the description's `firmware.heap`. With
+  the boundary off, the tree is step 4 itself.
 
 Step 4 came after the first sitting's first run (above), whose boot
 from the card printed nothing after the SPL's lines: the tree then
 still had the published name alone. With step 4 in the tree, each boot
 of the second run printed the firmware's banner.
+
+The heap's size came after the second sitting's first run (above).
+The series allocates, at the firmware's cold boot, one switch context
+for each pair of an OpenSBI domain and a hart that it lists, each with
+a vector area sized for the cold boot hart, so that no hart's own call
+allocates later. A board tree with the OpenSBI domains lists 35 such
+pairs, and the firmware base sizes its heap from the hart count alone:
+104 KiB for sixteen harts. The first sitting's build, whose tree has
+no OpenSBI domain, used 67 KB of it. The second sitting's first build
+could not fit, and its cold boot stopped with the firmware's own two
+lines. The firmware base reads a heap's size from the tree where the
+tree gives one, and the board's trees with OpenSBI domains now do:
+256 KiB. Three rows of the firmware's own tests size it under QEMU on
+the board's load, from the description: sixteen harts, a cold boot
+hart whose vector length is 256 bits, the PMP's grain of 4 KiB, and
+the M-level APLIC's 512 sources. There the default heap stops the
+cold boot with the board's two lines, and 256 KiB leaves 145 KB free.
+The description also holds a floor, 64 KiB, on the free heap that the
+banner prints, because a heap that runs short after the banner stops
+a hart with no line (the README's open item 149). QEMU's machine is
+not the board: the README's open items 148 and 150 say what the rows
+do not hold.
 
 Each step must be its input with its own changes and nothing else.
 `mvp/k3/platform.json` is the board's description: each fact that
@@ -2311,6 +2343,17 @@ stops. A line that is merely absent, in a stage that the boot did not
 reach, names no stop of its own; nor does U-Boot's environment line
 where U-Boot did not get past its place.
 
+Where the firmware itself says why it stopped, the form says so
+first. A line of the firmware's failure form, `FUNCTION: TEXT (error
+N)`, between its version line and U-Boot's banner is a finding of the
+sitting's stop, and such findings are the first in the record; the
+driver's stop then quotes the firmware's line. The lines after the
+banner's last field, up to U-Boot's banner, are counted and noted with
+the banner's other lines; a line that holds the vendor U-Boot's time
+stamp and nothing else is none. Before the second sitting's first run
+the form knew neither: it refused that boot for the lines that it
+missed, and quoted neither of the two lines that told the cause.
+
 The form for a boot from a card requires, in order: the boot ROM's
 lines of a boot from a card; the SPL's banner; the firmware's banner,
 with the fields that follow from the build equal to `board.json`'s,
@@ -2324,7 +2367,9 @@ In the second sitting the form requires more of each boot: the boot
 ROM's lines, the hardware's facts in the firmware's banner, the
 devices that the firmware found, and U-Boot's memory size must be the
 first sitting's. `mvp/k3/observed.json` holds those, as each of the
-three boots of the first sitting's second run gave them.
+three boots of the first sitting's second run gave them. The banner's
+heap line must show the description's heap, 256 KiB, with at least its
+floor, 64 KiB, free.
 
 After a sitting, `./mvp/mvp k3-sitting-record K3_SITTING=first|second
 K3_RUN_ROOT=…` makes its record under `mvp/results/`. It judges each
@@ -2369,9 +2414,23 @@ as declared, are what the second sitting is for. The cause of the
 first run's stop is established from sources; the second run agrees
 with it, and shows no more than that.
 
+The second sitting's first run adds little to that. It shows the boot
+ROM, the SPL, and the start of the project's firmware for a second
+build; that the firmware reads the configuration digest of a tree
+with the OpenSBI domains; and that a cold boot which cannot hold its
+switch contexts stops before any other stage runs. Its cause is
+established from the firmware's two lines, the series' source, and
+the build's sizes, and reproduced under QEMU on the board's load. That
+the corrected heap is enough on the board is a prediction from QEMU's
+machine until a boot there prints its banner.
+
 Under QEMU these tools show that the firmware halts as built, that the
 harness and the judges handle a machine that halts, that the board's
-trees and tables are what their rules require, and that the sittings'
+trees and tables are what their rules require, that the firmware's
+cold boot holds OpenSBI domains of the board trees' shape in the
+description's heap on a machine with the hart count, vector length,
+PMP grain, and APLIC sources that the board's description gives, and
+that the sittings'
 steps run in order and stop where they must, on stand-ins. A board run
 is diagnostic evidence for one board, never hardware validation.
 

@@ -33,7 +33,7 @@ and the internal session handoff, are that repository's too and are not
 part of this one. Section 8 discloses the assistance in the release path's
 steps 2 and 3, which made this repository, section 9 the assistance
 in M11, the first milestone made after the release, and sections 10
-to 13 the assistance in M11's work for the board.
+to 14 the assistance in M11's work for the board.
 
 ## 1. The responsible human
 
@@ -665,6 +665,68 @@ in the same session as sections 10 to 12, on the workstation, on
 | The correction of the frame tool's self-test | A sub-agent on Claude Opus 5.5; each line read by the owner session | The README's open item 144 |
 | The correction of the console tool's helper, its case in the dry run, and the reading of the board tools' waits | A second sub-agent on Claude Opus 5.5; each line read by the owner session | The README's open item 142 |
 | The README's words and open items, and the evidence section | The owner session | The addendum |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, decided a stop, re-set a limit, added
+a `Signed-off-by`, or pushed.
+
+## 14. After the release: M11-B5, the second sitting's first run and its correction
+
+This section covers M11-B5 from the second sitting's first run, which
+stopped, to the correction of the firmware's heap on the board and
+the second sitting's builds and card images made again. It was made
+in the same session as sections 10 to 13, on the workstation, on
+2026-11-21, by the same practice.
+
+- **The session at the board.** The responsible human was at the
+  board, moved the card, and gave his word for the sitting and for
+  the card's insertion and removal. The owner session, on
+  `claude-fable-5.2`, ran the sitting's steps through the driver.
+  Each reset was the dongle's, and nothing was typed while the card
+  was in. The first boot from the card stopped in the firmware's cold
+  boot, and the sitting was closed by its own steps.
+- **The owner session's first account of the stop was wrong.** It
+  told the responsible human that the firmware had gone silent after
+  its digest line. The capture holds two lines of the firmware's own
+  that say why it stopped. The form of that time quoted neither, and
+  the owner session had read the form's findings and not the
+  capture's end. It found the lines within the hour, corrected what
+  it had said, and established the cause from them, the series'
+  source, and the build's sizes.
+- **The correction.** One sub-agent on Claude Opus 5.5
+  (`claude-opus-5.5`), in a clone of its own, with no board, device,
+  or network, measured the firmware's heap under QEMU for each part
+  of the board's load, and wrote the change: the heap's size in the
+  board's trees, the three rows that size it, the form's rules for
+  the firmware's failure lines and its heap line, and the firmware
+  page's words. It found that sixteen harts and the vector length do
+  not reproduce the board's stop without the board's APLIC sources,
+  stopped, and put the choice of the size to the owner session, which
+  chose 256 KiB and a floor of 64 KiB. The change is 698 lines added
+  and 121 removed, in thirteen files, the claim ledger's apart.
+- **What the owner session did with it.** It read each line. It
+  judged the first sitting's three captures and the stopped capture
+  with the changed form, privately. That showed that the form's
+  first version counted a stamped empty line of the vendor's U-Boot,
+  with which every boot of the second sitting would have stopped;
+  the sub-agent corrected it. The owner session ran the form's rules
+  for the OpenSBI domains on a real banner of the firmware under
+  QEMU, and changed eight rules of the backend, the checker, and the
+  form one at a time to see their tests fail. One of those changes
+  failed no row, and the sub-agent added a row for it.
+- **The builds and the card images.** The owner session made the
+  second sitting's three firmware builds again on the host and inside
+  the evaluator, compared them, made their card images, and wrote
+  the decision record's entries and the pins, as in section 13.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The sitting's steps, its close, and its record | The owner session, through the sittings' driver, with the responsible human at the board | The addendum's sittings; each session on his word |
+| The cause of the stop | The owner session, from the capture, the series' source, and the build's sizes | The addendum's stop B6 |
+| The heap's size in the board's trees, the three rows, the form's rules, and the firmware page's words | A sub-agent on Claude Opus 5.5; each line read by the owner session | An erratum to the addendum's B-3, decided by the responsible human's sign-off |
+| The choice of 256 KiB and of the floor | The owner session, from the sub-agent's measurements | The same |
+| The three firmware builds, their comparison, the card images, the entries, and the pins | The owner session | The addendum's B-1 and B-4 |
+| The README's and the guide's words, one sentence of the firmware page, the open items, and the evidence section | The owner session | The addendum |
 | Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
 
 No AI system accepted a result, decided a stop, re-set a limit, added

@@ -77,8 +77,8 @@ checked.
   Kconfig's least value, the one setting beyond the call families. It
   sizes the series' static table of per-hart records (32 records of 192
   bytes). The generic platform then manages at most the first 32 enabled
-  harts of its device tree: QEMU's eight here; the K3 belongs to the
-  board addendum.
+  harts of its device tree: QEMU's eight here, or sixteen in the three
+  board rows; the K3 belongs to the board addendum.
 - **Error output** is unchanged: every console driver and every message
   stays.
 
