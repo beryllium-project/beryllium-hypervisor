@@ -180,6 +180,7 @@
 		interrupt-controller@32000000 {
 			compatible = "riscv,aplic";
 			reg = <0x00 0x32000000 0x00 0x4000>;
+			riscv,num-sources = <0x40>;
 			status = "okay";
 		};
 

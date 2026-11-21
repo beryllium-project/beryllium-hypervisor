@@ -14,7 +14,11 @@ PMP and in Smepmp mode, and judge it from what the QEMU oracle
 registers, menvcfg, mseccfg and pc, the payload's step results and entry
 records, and the firmware's table of per-hart commit records, found by its
 symbol in the firmware's ELF. The console gives the firmware's own lines:
-its boot banner, its domain dump, and its commit report.
+its boot banner, its domain dump, and its commit report. The board's rows
+(board-heap and its two beside it) run on the board's load instead, from
+the board's description (k3/platform.json): its harts, the cold boot
+hart's vector length, the PMP's grain, the M-level APLIC's sources, and
+the heap that its trees give the firmware.
 
 Each row writes a device tree of its own from the tree that the locked
 QEMU dumps for the same machine and CPU, compiled by the locked dtc, and a
@@ -152,9 +156,9 @@ SHUTDOWN_ONLY = (SRST, 0, 0, 0)
 COMMIT_CALL = (DCOMMIT, 0, ANY, 0)
 
 
-def standard():
+def standard(harts=HARTS):
     """D-6's shape: a boot domain for harts 0 to 2, one narrow domain for
-    each of them, and the other harts parked."""
+    each of them, and the other harts of HARTS parked."""
     return {
         "boot": Domain("boot", [0, 1, 2], 0, 1, [], inherit_all=True,
                        reset=True, next_arg1=0x100),
@@ -163,8 +167,9 @@ def standard():
                      next_arg1=0x200),
         "h1": Domain("h1", [1], 1, 11, own(1), allow=[], next_arg1=0x201),
         "h2": Domain("h2", [2], 2, 12, own(2), allow=[], next_arg1=0x202),
-        "park": Domain("park", [3, 4, 5, 6, 7], 0, 100, [(WORK(15), X)],
-                       next_arg1=0x300, next_addr=work(15)),
+        "park": Domain("park", list(range(3, harts)), 0, 100,
+                       [(WORK(15), X)], next_arg1=0x300,
+                       next_addr=work(15)),
     }
 
 
@@ -172,7 +177,8 @@ def cpu_ref(hart):
     return f"&{{/cpus/cpu@{hart}}}"
 
 
-def tree_source(base_name, domains, digest, extra=""):
+def tree_source(base_name, domains, digest, extra="", heap=None,
+                overlay=""):
     regions = {}
     for dom in domains:
         for region, _ in dom.regions:
@@ -181,8 +187,10 @@ def tree_source(base_name, domains, digest, extra=""):
              "\t\t/delete-property/ rng-seed;",
              "\t\topensbi-config {",
              '\t\t\tcompatible = "opensbi,config";',
-             f"\t\t\tcold-boot-harts = <{cpu_ref(0)}>;", "\t\t};",
-             "\t\topensbi-domains {",
+             f"\t\t\tcold-boot-harts = <{cpu_ref(0)}>;"]
+    if heap is not None:
+        lines.append(f"\t\t\theap-size = <0x{heap:x}>;")
+    lines += ["\t\t};", "\t\topensbi-domains {",
              '\t\t\tcompatible = "opensbi,domain,config";']
     if digest is not None:
         lines.append("\t\t\tconfig-digest = <" +
@@ -217,8 +225,8 @@ def tree_source(base_name, domains, digest, extra=""):
             lines.append(f"\t\t\t\tecall-allowlist = <{cells}>;"
                          if cells else "\t\t\t\tecall-allowlist;")
         lines.append("\t\t\t};")
-    lines += [extra, "\t\t};", "\t};", "};", ""]
-    return "\n".join(lines)
+    lines += [extra, "\t\t};", "\t};", "};"] + ([overlay] if overlay else [])
+    return "\n".join(lines + [""])
 
 
 # ------------------------------------------------------------- the steps
@@ -337,6 +345,9 @@ class Case:
     end_line: str = ""
     cpu_extra: str = ""
     extra_dts: str = ""
+    harts: int = HARTS
+    heap: int | None = None
+    overlay: str = ""
     witness: dict = dataclasses.field(default_factory=dict)
     report: bool = True
     boot_print: bool = True
@@ -399,7 +410,7 @@ def table_address(nm, elf):
 
 def words_for(case, table):
     words = []
-    for hart in range(HARTS):
+    for hart in range(case.harts):
         for index in range(RECORD_WORDS):
             words.append(oracle.NamedWord(f"t{hart}-{index}",
                                           table + 8 * (hart * RECORD_WORDS
@@ -420,7 +431,7 @@ def words_for(case, table):
 def decode(case, record):
     values = {item["name"]: int(item["value"], 16) for item in record["words"]}
     harts = []
-    for hart in range(HARTS):
+    for hart in range(case.harts):
         rec_words = [values[f"t{hart}-{i}"] for i in range(RECORD_WORDS)]
         rec = dict(zip(RECORD_FIELDS, rec_words[:6]))
         cfg = rec_words[6].to_bytes(8, "little") + \
@@ -599,21 +610,21 @@ class Runner:
         return self.cpu + (",smepmp=true" if mode == "smepmp" else "") + \
             case.cpu_extra
 
-    def base_tree(self, cpu):
-        if cpu in self.bases:
-            return self.bases[cpu]
+    def base_tree(self, cpu, harts):
+        if (cpu, harts) in self.bases:
+            return self.bases[cpu, harts]
         name = f"base-{len(self.bases)}"
         dtb = self.out / f"{name}.dtb"
         subprocess.run([self.args.qemu, "-machine",
                         f"{self.machine},dumpdtb={dtb}", "-cpu", cpu,
-                        "-smp", str(HARTS), "-m", "8G", "-display", "none",
+                        "-smp", str(harts), "-m", "8G", "-display", "none",
                         "-bios", str(self.firmware)],
                        check=True, capture_output=True)
         subprocess.run([self.args.dtc, "-q", "-I", "dtb", "-O", "dts",
                         "-o", str(self.out / f"{name}.dts"), str(dtb)],
                        check=True)
-        self.bases[cpu] = f"{name}.dts"
-        return self.bases[cpu]
+        self.bases[cpu, harts] = f"{name}.dts"
+        return self.bases[cpu, harts]
 
     def run(self, case, mode):
         directory = self.run_case(case, mode)
@@ -623,10 +634,10 @@ class Runner:
         directory = self.out / mode / case.name
         directory.mkdir(parents=True)
         cpu = self.cpu_for(mode, case)
-        base = self.base_tree(cpu)
+        base = self.base_tree(cpu, case.harts)
         shutil.copyfile(self.out / base, directory / base)
         source = tree_source(base, list(case.domains.values()), case.digest,
-                             case.extra_dts)
+                             case.extra_dts, case.heap, case.overlay)
         (directory / "test.dts").write_text(source, encoding="utf-8")
         subprocess.run([self.args.dtc, "-q", "-I", "dts", "-O", "dtb",
                         "-i", str(directory), "-o",
@@ -634,7 +645,8 @@ class Runner:
                         str(directory / "test.dts")], check=True)
         (directory / "script.bin").write_bytes(script_image(case.scripts))
         argv = [self.args.qemu, "-machine", self.machine, "-cpu", cpu,
-                "-smp", str(HARTS), "-m", "8G", "-bios", str(self.firmware),
+                "-smp", str(case.harts), "-m", "8G", "-bios",
+                str(self.firmware),
                 "-dtb", str(directory / "test.dtb"),
                 "-kernel", self.args.payload,
                 "-device", f"loader,file={directory / 'script.bin'},"
@@ -647,7 +659,7 @@ class Runner:
         argv += ["-display", "none", "-serial",
                  f"file:{directory / 'console.log'}", "-no-reboot"]
         config = oracle.OracleConfig(
-            HARTS, "k3-like", False, "readable", "readable",
+            case.harts, "k3-like", False, "readable", "readable",
             "readable" if mode == "smepmp" else "absent", RAM_BASE, RAM_SIZE,
             words_for(case, self.table))
         record = directory / "oracle.json"
@@ -762,7 +774,7 @@ def judge_common(view, findings):
                        "printed digest")
     for hart, final in case.final.items():
         judge_final(view, findings, hart, final)
-    for hart in range(HARTS):
+    for hart in range(case.harts):
         rec = view.harts[hart].record
         if hart not in case.final:
             findings.equal(rec["committed"], 0, f"hart{hart} committed")
@@ -884,8 +896,8 @@ def row(name, modes=("plain", "smepmp")):
     return register
 
 
-def parked(final):
-    for hart in range(3, HARTS):
+def parked(final, harts=HARTS):
+    for hart in range(3, harts):
         final.setdefault(hart, {"domain": None})
     return final
 
@@ -894,10 +906,11 @@ def digest_value(index):
     return DIGEST[2 * index] << 32 | DIGEST[2 * index + 1]
 
 
-def d6(name, control_first):
+def d6(name, control_first, harts=HARTS):
     """D-6's sequence: the boot code on hart 0 starts harts 1 and 2, each
     hart commits to its own narrow domain, in either order, and hart 0
-    ends the run from its narrow domain."""
+    ends the run from its narrow domain; HARTS harts, the others
+    parked."""
     s0 = [sbi(BASE, 0), sbi(BASE, 3, DCOMMIT)]
     s0 += [digest_word(index) for index in range(5)]
     s0 += [hsm_status(1), hsm_status(2), hsm_status(3), send_ipi(3),
@@ -977,10 +990,11 @@ def d6(name, control_first):
                 findings.expect(times[0] > max(times[1:]),
                                 "hart 0 resumed before harts 1 and 2")
 
-    return Case(name, standard(), {0: s0, 1: follower(1), 2: follower(2)},
+    return Case(name, standard(harts),
+                {0: s0, 1: follower(1), 2: follower(2)},
                 final=parked({0: {"domain": "h0"}, 1: {"domain": "h1"},
-                              2: {"domain": "h2"}}),
-                check=check)
+                              2: {"domain": "h2"}}, harts),
+                check=check, harts=harts)
 
 
 @row("d6-vs-first")
@@ -1513,6 +1527,136 @@ def vector(runner, mode):
     case = d6("vector", False)
     case.cpu_extra = ",v=true"
     return case
+
+
+# QEMU's M-level APLIC on the k3-like machine
+APLIC_M = "/soc/interrupt-controller@c000000"
+# The banner's heap line (lib/sbi/sbi_init.c), each figure whole KB
+HEAP_LINE = re.compile(r"([0-9]+) KB \(total\), ([0-9]+) KB \(reserved\), "
+                       r"([0-9]+) KB \(used\), ([0-9]+) KB \(free\)")
+
+
+def board_facts():
+    """The board's description (k3/platform.json), as the board's rows
+    take it: its hart count, the cold boot hart's vector length, the
+    PMP's grain, the M-level APLIC's sources, the heap that a board tree
+    with OpenSBI domains gives the firmware, and the least free heap that
+    the banner may print for such a tree."""
+    facts = json.loads((MVP / "k3" / "platform.json").read_text(
+        encoding="utf-8"))
+    return {"harts": facts["harts"]["count"],
+            "vlen": facts["vector"]["vlen"], "grain": facts["pmp"]["grain"],
+            "sources": facts["root_devices"]["aplic-m"]["sources"],
+            "heap": int(facts["firmware"]["heap"], 16),
+            "floor": int(facts["firmware"]["heap_free_min"], 16)}
+
+
+def board_load(case, facts, heap):
+    """CASE on the board's load: a cold boot hart with the vector
+    extension at the board's vector length and the PMP at the board's
+    grain (pmp-granularity on the CPU), and QEMU's M-level APLIC given the
+    board's sources in the test tree, from which the firmware sizes the
+    APLIC's interrupt table on its heap (QEMU's APLIC ignores sources past
+    its own, and no row raises one); HEAP the tree's heap-size, None for
+    the firmware base's default. QEMU's IMSIC cannot be given the board's
+    identities: past its own it refuses the firmware's enables."""
+    case.cpu_extra = (f",v=true,vlen={facts['vlen']},"
+                      f"pmp-granularity={facts['grain']}")
+    case.overlay = (f"&{{{APLIC_M}}} {{\n\triscv,num-sources = "
+                    f"<{facts['sources']:#x}>;\n}};")
+    case.heap = heap
+    return case
+
+
+def heap_floor(view, floor):
+    """The banner's heap line, recorded in the row's notes, against FLOOR
+    bytes: a finding when the free heap that it prints is below FLOOR, or
+    when the line is not of its form; None when it holds."""
+    line = view.banner.get("Firmware Heap Size", "")
+    view.case.notes.append(f"Firmware Heap Size : {line}")
+    match = HEAP_LINE.fullmatch(line)
+    if match is None:
+        return f"the banner's heap line {line!r} is not of its form"
+    if int(match.group(4)) * 1024 < floor:
+        return (f"the banner's free heap, {match.group(4)} KB, is below the "
+                f"board description's floor of {floor // 1024} KB")
+    return None
+
+
+def board_d6(name, heap, floor_met):
+    """D-6's sequence as the row vector runs it, on the board's load with
+    HEAP; FLOOR_MET whether the banner's free heap must meet the board
+    description's floor, or must fall below it."""
+    facts = board_facts()
+    case = board_load(d6(name, False, facts["harts"]), facts,
+                      facts["heap"] if heap is None else heap)
+    sequence = case.check
+
+    def check(view, findings):
+        sequence(view, findings)
+        findings.equal(view.banner.get("Platform HART Count"),
+                       str(facts["harts"]), "the banner's hart count")
+        findings.equal(view.banner.get("Boot HART PMP Granularity"),
+                       f"{facts['grain'].bit_length() - 1} bits",
+                       "the banner's PMP grain")
+        found = heap_floor(view, facts["floor"])
+        if floor_met:
+            findings.expect(found is None, found)
+        else:
+            findings.expect(found is not None and "below" in found,
+                            "the free heap is not below the floor")
+    case.check = check
+    return case
+
+
+@row("board-heap-default", modes=("plain",))
+def board_heap_default(runner, mode):
+    """The board's own stop at its cold boot of 2026-11-21: the board's
+    load (its sixteen harts, a cold boot hart with the vector extension at
+    the board's vector length, the PMP at the board's grain by
+    pmp-granularity, the board's M-level APLIC sources), D-6's OpenSBI
+    domains for sixteen harts, and the firmware base's default heap. The
+    cold boot stops while it allocates the switch contexts of every
+    OpenSBI domain and hart, with the board's two lines after the domain
+    commit digest, and nothing after them."""
+    facts = board_facts()
+    lines = ["sbi_domain_finalize: domain context allocation failed "
+             "(error -1004)",
+             "init_coldboot: domain finalize failed (error -1004)"]
+
+    def check(view, findings):
+        printed = [line.rstrip("\r") for line in view.text.splitlines()
+                   if line.strip()]
+        findings.equal(printed[-2:], lines, "the console's last two lines")
+        findings.expect(len(printed) > 2 and printed[-3].startswith(
+            "Domain commit digest"), "the domain commit digest before them")
+        findings.equal(view.harts[0].magic, 0, "the payload ran")
+
+    case = Case("board-heap-default", standard(facts["harts"]),
+                {0: [SHUTDOWN]}, payload=False,
+                end_line="domain finalize failed", check=check,
+                boot_print=False, harts=facts["harts"])
+    return board_load(case, facts, None)
+
+
+@row("board-heap", modes=("plain",))
+def board_heap(runner, mode):
+    """The board's load as in board-heap-default, with the board
+    description's heap as the tree's heap-size: the cold boot completes,
+    the banner's free heap is at or above the description's floor, and
+    D-6's sequence runs on harts 0 to 2 as the row vector runs it, so that
+    switches with the board's vector length, PMP grain (pmp-granularity),
+    and hart count are made too."""
+    return board_d6("board-heap", None, True)
+
+
+@row("board-heap-floor", modes=("plain",))
+def board_heap_floor(runner, mode):
+    """The floor's own negative: board-heap with a heap of 160 KiB, which
+    the cold boot of the board's load (pmp-granularity among it) fits with
+    less free than the floor; the floor's rule finds it, and D-6's
+    sequence still runs."""
+    return board_d6("board-heap-floor", 0x28000, False)
 
 
 # ------------------------------------------------------------- main

@@ -73,7 +73,8 @@ k3-partition-check: $(FIRMWARE_ELF) $(GEN)/anchor/authority-report.json \
 		--tree $(K3B_PARTITION_WORK)/$(i)/tree/$(i).dtb \
 		--qemu-tree $(BUILD)/partition/anchor/$(i)/plain/$(i).dtb \
 		--descriptor $(GEN)/partition/anchor/$(i).json \
-		--identity-header $(GEN)/partition/anchor/$(i)-identity.h && \
+		--identity-header $(GEN)/partition/anchor/$(i)-identity.h \
+		--platform $(K3B_DIR)/fixtures/partition/platform.json && \
 		$(K3B_CHECKER) $(K3B_PARTITION_STAND_IN) $(K3B_ANCHOR) \
 		--descriptor $(GEN)/partition/anchor/$(i).json \
 		--partition-authority $(GEN)/partition/anchor/authority-report.json \
@@ -134,7 +135,8 @@ k3b_tree = $(K3B_PARTITION) $(K3B_GATE_BASE) --board-tree --image $(1) \
 	--tree $(K3B_GATE_IMAGES)/$(1)/$(1).dtb \
 	--qemu-tree $(BUILD)/partition/anchor/$(2)/plain/$(2).dtb \
 	--descriptor $(GEN)/partition/anchor/$(2).json \
-	--identity-header $(GEN)/partition/anchor/$(2)-identity.h
+	--identity-header $(GEN)/partition/anchor/$(2)-identity.h \
+	--platform $(K3B_PLATFORM)
 # $(1) an image: its firmware's ELF in the gate, for the backend and D-3's
 # checker; its build's directory.
 k3b_gate_elf = --firmware-elf $(K3B_GATE_IMAGES)/$(1)/fw_dynamic.elf \

@@ -146,6 +146,63 @@ with its own tree, which the firmware replaces with the one it carries.
 `k3-firmware-check` runs the test above and `tools/k3-firmware-rows.py`'s
 self-test and tree check.
 
+## The heap
+
+The firmware allocates from one heap. Its size is the tree's
+`heap-size`, where the tree has one: the first cell of that property of
+the first node compatible with `opensbi,config` after `/chosen` (the
+base's `docs/opensbi_config.md`), aligned up to 1 KiB, as
+`fw_platform_get_heap_size()` in `platform/generic/platform.c` reads it.
+Without it the size is the base's default,
+`fw_platform_calculate_heap_size()` in the same file: 0x8000 bytes,
+0x1000 for each hart (`SBI_PLATFORM_DEFAULT_HEAP_SIZE`,
+`include/sbi/sbi_platform.h`), and 32 bytes times the square of the
+hart count for the TLB queues, aligned up to 1 KiB: 66 KiB for QEMU's
+eight harts, 104 KiB for sixteen. The banner's `Firmware Heap Size`
+prints the total, the part that the heap keeps for its own bookkeeping
+(reserved), the part in use, and the part free, each in whole KB,
+rounded down.
+
+At cold boot `sbi_domain_finalize()` calls the series'
+`sbi_domain_context_alloc()` (`lib/sbi/sbi_domain_context.c`), which
+allocates a switch context for each pair of an OpenSBI domain and a hart
+that the domain lists among its possible harts, the root OpenSBI
+domain's among them: a `struct hart_context` of 720 bytes and, where the
+cold boot hart has the vector extension, a vector area of 16 bytes and
+32 times that hart's `vlenb`. The heap rounds each allocation up to 64
+bytes (`lib/sbi/sbi_heap.c`), so a context takes 768 bytes, and its
+vector area 1,088 more for vectors of 256 bits (the sizes are the
+build's DWARF, read with `gdb`, and the source). The OpenSBI domains of
+the plan's D-6 for sixteen harts (a boot OpenSBI domain for harts 0 to
+2, one for each of them, and one for the thirteen others, parked),
+beside the root's sixteen harts, make 35 contexts: the board rows' shape
+and the board trees'. If the heap cannot hold them, the cold boot prints
+`sbi_domain_finalize: domain context allocation failed (error -1004)`
+and `init_coldboot: domain finalize failed (error -1004)` (`SBI_ENOMEM`),
+and stops.
+
+A board tree with OpenSBI domains carries `heap-size` in
+`/chosen/opensbi-config`: the board description's `firmware.heap`
+(`mvp/k3/platform.json`, 256 KiB), written by
+`mvp/tools/partition-backend.py` and required there, with that value, by
+`mvp/tests/check-partition.py` and by `mvp/tools/k3-recipe.py`'s tree
+check. No other image's tree carries it: the board's tree without
+OpenSBI domains and every QEMU tree take the default. The description's
+`firmware.heap_free_min` (64 KiB) is the least free heap that the banner
+may print for a tree that carries it: the rows `board-heap` and
+`board-heap-floor` judge it under QEMU, and
+`mvp/tests/check-capture.py --mode card` in the second sitting.
+
+A hart started later still takes its warm-start allocations from the
+same heap (the next section). Under QEMU, in `board-heap`'s shape, the
+banner prints 145 KB free, and 142,400 bytes were free at the end of
+D-6's sequence, after harts 1 and 2 had started; in `vector`'s shape
+(eight harts, vectors of 128 bits, the default heap), 7 KB at the banner
+and 1,344 bytes at the end. The two end figures come from scratch runs
+of those shapes that read the heap's control block (`global_hpctrl`)
+through `tests/qemu_oracle.py`, with the machine stopped; no row reads
+them.
+
 ## Allocation after cold boot
 
 The series moves the domain switch contexts, the one allocation a hart's
@@ -178,11 +235,22 @@ after the firmware's build:
   that the locked QEMU dumps for `tests/run-qemu.sh`'s `k3-like` machine
   and CPU, with eight harts, compiles it with the locked `dtc`, loads its
   steps beside the payload, and judges the run through
-  `tests/qemu_oracle.py`, in plain PMP and in Smepmp mode: every hart's
-  PMP registers, `menvcfg`, `mseccfg`, and program counter, the payload's
-  results, and the firmware's table of commit records, read with the
-  machine stopped, against the firmware's own console lines.
-  `fwtest.py list` names the rows.
+  `tests/qemu_oracle.py`, in plain PMP and in Smepmp mode (`vector` in
+  plain PMP alone): every hart's PMP registers, `menvcfg`, `mseccfg`, and
+  program counter, the payload's results, and the firmware's table of
+  commit records, read with the machine stopped, against the firmware's
+  own console lines. The three board rows run instead on the board's load
+  as `mvp/k3/platform.json` describes it, in plain PMP alone: sixteen
+  harts, a cold boot hart with vectors of 256 bits, a PMP grain of 4 KiB,
+  QEMU's M-level APLIC given 512 sources, and D-6's OpenSBI domains for
+  sixteen harts, the board trees' shape. With the firmware base's default
+  heap the cold boot stops with the firmware's two lines of `SBI_ENOMEM`
+  (`board-heap-default`); with the description's `firmware.heap` as the
+  tree's `heap-size` it completes, the banner's free heap is at least the
+  description's floor, and D-6's sequence runs on harts 0 to 2
+  (`board-heap`); with a heap of 160 KiB the banner's free heap is below
+  the floor, as the row requires (`board-heap-floor`). `fwtest.py list`
+  names the rows.
 
 The records are under `build/mvp/records/firmware-test/`, the runs under
 `build/mvp/firmware-test/runs/`.

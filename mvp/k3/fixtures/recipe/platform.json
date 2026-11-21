@@ -9,12 +9,12 @@
   "memory": {"base": "0x80000000", "size": "0x80000000", "source": "stand-in"},
   "boot_hart": {"value": 0, "source": "stand-in"},
   "harts": {"count": 16, "hypervisor": [0, 1, 2, 3, 4, 5, 6, 7], "cache_block": 64, "source": "stand-in"},
-  "firmware": {"load": "0x80000000", "end_max": "0x80300000", "source": "stand-in"},
+  "firmware": {"load": "0x80000000", "end_max": "0x80300000", "heap": "0x40000", "heap_free_min": "0x10000", "source": "stand-in"},
   "low_reserved": {"base": "0x80000000", "size": "0x1000000", "source": "stand-in"},
   "spl_tree": {"room_end": "0x80600000", "source": "stand-in"},
   "root_devices": {
     "console": {"path": "/soc/serial@30000000", "compatible": "ns16550", "base": "0x30000000"},
-    "aplic-m": {"path": "/soc/interrupt-controller@32000000", "compatible": "riscv,aplic", "base": "0x32000000"},
+    "aplic-m": {"path": "/soc/interrupt-controller@32000000", "compatible": "riscv,aplic", "base": "0x32000000", "sources": 64},
     "imsic-m": {"path": "/soc/interrupt-controller@33000000", "compatible": "riscv,imsics", "base": "0x33000000"},
     "clint": {"path": "/soc/timer@31000000", "compatible": "riscv,clint0", "base": "0x31000000"},
     "source": "stand-in"

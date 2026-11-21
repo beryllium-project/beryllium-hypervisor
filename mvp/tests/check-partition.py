@@ -691,7 +691,7 @@ def guard_model(model, expected, count=8):
 
 
 def tree_check(fdt, value, identity, profiles, domains, extent_ranges,
-               control="confined", count=8):
+               control="confined", count=8, heap=None):
     handles = cpu_phandles(fdt, count)
     config, nodes = domain_nodes(fdt)
     expected = expected_tree_model(value, domains, extent_ranges, profiles,
@@ -708,6 +708,15 @@ def tree_check(fdt, value, identity, profiles, domains, extent_ranges,
             [handles[cell] for cell in fdt_cells(fdt_prop(
                 fdt, open_config[0], "cold-boot-harts"))] == [0],
             "cold-boot restriction differs")
+    # The firmware's heap: the board description's firmware.heap, HEAP, in
+    # one cell, where a board tree gives it; else none, the firmware base
+    # sizing the heap itself (platform/generic/platform.c).
+    require(fdt_prop(fdt, open_config[0], "heap-size", False) == (
+        None if heap is None else heap.to_bytes(4, "big")),
+            "heap-size differs")
+    require(not [path for path in fdt.order if path not in open_config and
+                 fdt_prop(fdt, path, "heap-size", False) is not None],
+            "a heap-size outside /chosen/opensbi-config")
     phandles = all_phandles(fdt)
 
     def harts(path):
@@ -961,6 +970,35 @@ def board_facts(path):
     return value
 
 
+def board_heap(facts):
+    """The description's firmware.heap, which a board tree with OpenSBI
+    domains gives the firmware as /chosen/opensbi-config's heap-size: a
+    hex number of whole KiB, which the firmware's alignment leaves as it
+    is, that one cell holds."""
+    text = facts["firmware"].get("heap")
+    require(isinstance(text, str), "the board description has no "
+            "firmware.heap")
+    heap = num(text, "firmware.heap")
+    require(0 < heap < 1 << 32 and heap % 1024 == 0,
+            f"firmware.heap {text} is not a whole number of KiB in one cell")
+    return heap
+
+
+def tree_heap(fdt):
+    """The heap-size that the firmware takes from the tree, as
+    platform/generic/platform.c's fw_platform_get_heap_size() finds it:
+    the first cell of the first opensbi,config node after /chosen, in the
+    tree's order; None where there is none."""
+    if "/chosen" not in fdt.nodes:
+        return None
+    after = fdt.order[fdt.order.index("/chosen") + 1:]
+    config = next((path for path in after
+                   if "opensbi,config" in compatibles(fdt, path)), None)
+    value = None if config is None else fdt_prop(fdt, config, "heap-size",
+                                                 False)
+    return int.from_bytes(value[:4], "big") if value else None
+
+
 def compatibles(fdt, path):
     return fdt_strings(fdt_prop(fdt, path, "compatible", False) or b"\0")
 
@@ -1049,11 +1087,16 @@ def board_regions(fdt, symbols, facts):
     firmware's two at its load address, with the board's harts, ending by
     firmware.end_max; the console's page, shared; the M-level APLIC and
     IMSIC, each its reg at the fact's base; the CLINT's 64 KiB, these
-    four MMIO and found at their facts' paths; and every address."""
+    four MMIO and found at their facts' paths; and every address. The
+    firmware's heap is the tree's heap-size, as the firmware reads it
+    (tree_heap()), else the firmware base's default for the board's
+    harts."""
     load, harts = num(facts["firmware"]["load"], "load"), \
         facts["harts"]["count"]
-    heap = 0x8000 + 0x1000 * harts + \
-        symbols["_tlb_info_size"] * harts * harts
+    heap = tree_heap(fdt)
+    if heap is None:
+        heap = 0x8000 + 0x1000 * harts + \
+            symbols["_tlb_info_size"] * harts * harts
     end = symbols["_fw_end"] + harts * 8192 + ((heap + 1023) & ~1023)
     rows = [Region("firmware-rw", *rounded(
         load + symbols["_fw_rw_start"], end - symbols["_fw_rw_start"]),
@@ -1117,11 +1160,14 @@ def root_check(root, image, firmware, base_dts, roots):
 
 
 def off_rules(fdt):
-    """Boundary off: no OpenSBI node and no config-digest."""
+    """Boundary off: no OpenSBI node and no config-digest; and no
+    heap-size, so that the firmware sizes its heap itself."""
     require(not any(name.startswith("opensbi,") for path in fdt.order
                     for name in compatibles(fdt, path)) and
             not any("config-digest" in rows for rows in fdt.nodes.values()),
             "the boundary-off tree holds an OpenSBI node or a digest")
+    require(not any("heap-size" in rows for rows in fdt.nodes.values()),
+            "the boundary-off tree holds a heap-size")
 
 
 def combine(profile, extent_ranges):
@@ -1499,6 +1545,10 @@ def tree_mutations(descriptor_path, value, identity, domains, extent_ranges,
     check("missing-cold",
           "FDT lacks /chosen/opensbi-config:cold-boot-harts", lambda text:
           text.replace("\n\t\t\tcold-boot-harts = <&{/cpus/cpu@0}>;", ""))
+    check("heap-size", "heap-size differs", lambda text: text.replace(
+        "\n\t\t\tcold-boot-harts = <&{/cpus/cpu@0}>;",
+        "\n\t\t\tcold-boot-harts = <&{/cpus/cpu@0}>;"
+        "\n\t\t\theap-size = <0x40000>;"))
     check("vs-reset", "be_g0: reset differs", lambda text: block(
         text, "be_g0", lambda body: body.replace(
             "\n\t\t\t};", "\n\t\t\t\tsystem-reset-allowed;\n\t\t\t};")))
@@ -1622,7 +1672,7 @@ def tree_mutations(descriptor_path, value, identity, domains, extent_ranges,
         check("step 2 without be_control", "OpenSBI domain names differ",
               lambda text: text, render("step-1.dts", "boot"))
     shutil.rmtree(scratch)
-    return 22 + (control == "boot")
+    return 23 + (control == "boot")
 
 
 def actual_check(args, facts=None):
@@ -1644,7 +1694,8 @@ def actual_check(args, facts=None):
     if facts is not None:
         board_rules(fdt, facts)
     tree_check(fdt, descriptor, identity, profiles, domains, extent_ranges,
-               args.control_hart, count)
+               args.control_hart, count,
+               None if facts is None else board_heap(facts))
     tables, _ = read_json(args.tables, True)
     symbols = firmware_symbols(args.firmware_elf, args.nm, args.readelf)
     roots = None if facts is None else board_regions(fdt, symbols, facts)
@@ -1863,7 +1914,7 @@ def board_mutations(args, facts):
     def checked(tree, tables=tables, root=root, board=facts):
         board_rules(tree, board)
         tree_check(tree, descriptor, identity, profiles, domains,
-                   extent_ranges, args.control_hart, count)
+                   extent_ranges, args.control_hart, count, board_heap(board))
         roots = board_regions(tree, symbols, board)
         tables_check(tables, identity, args.firmware_elf, base, tree,
                      extent_ranges, profiles, symbols, args.control_hart,
@@ -1923,6 +1974,7 @@ def board_mutations(args, facts):
     park, rest = (" ".join(f"&{{{harts[hart]}}}" for hart in span)
                   for span in (range(3, 8), range(8, count)))
     be_park = "/chosen/opensbi-domains/be_park"
+    config, heap = "/chosen/opensbi-config", board_heap(facts)
     for label, text, prefix in (
             ("be_park as QEMU's, harts 3 to 7", override(
                 be_park, f"possible-harts = <{park}>;"),
@@ -1957,8 +2009,36 @@ def board_mutations(args, facts):
              "the tree has a syscon reset node"),
             ("an M-level APLIC of more than one region", override(
                 aplic["path"], cells(num(aplic["base"], "base"), 0x3000)),
-             "the root device aplic-m is not one region")):
+             "the root device aplic-m is not one region"),
+            ("the heap-size deleted", override(
+                config, "/delete-property/ heap-size;"), "heap-size differs"),
+            ("a heap-size 1 KiB larger, which moves no region", override(
+                config, f"heap-size = <{heap + 1024:#x}>;"),
+             "heap-size differs"),
+            ("a heap-size of two cells", override(
+                config, f"heap-size = <0x0 {heap:#x}>;"), "heap-size differs"),
+            ("a second heap-size, in /chosen", override(
+                "/chosen", f"heap-size = <{heap:#x}>;"),
+             "a heap-size outside /chosen/opensbi-config")):
         refused(label, prefix, lambda: checked(compiled(text)))
+    moved = copy.deepcopy(facts)
+    moved["firmware"]["heap"] = "0x100000"
+    # The tree's heap-size and the description's agree, so the heap's rule
+    # holds; the regions, which the firmware takes from the tree's, move.
+    refused("a heap-size that moves the firmware's regions, the "
+            "description's too", "plain: hart 0 boot table",
+            lambda: checked(compiled(override(
+                config, "heap-size = <0x100000>;")), board=moved))
+    for label, heap_text, prefix in (
+            ("a description without firmware.heap", None,
+             "the board description has no firmware.heap"),
+            ("a description's heap of part of a KiB", "0x40001",
+             "firmware.heap 0x40001 is not a whole number of KiB")):
+        changed = copy.deepcopy(facts)
+        changed["firmware"].pop("heap")
+        if heap_text:
+            changed["firmware"]["heap"] = heap_text
+        refused(label, prefix, lambda: board_heap(changed))
     elsewhere = copy.deepcopy(facts)
     elsewhere["root_devices"]["console"]["path"] = "/soc/x"
     # The regions' path rule alone: the console's rule refuses this first.
@@ -1983,6 +2063,11 @@ def board_mutations(args, facts):
             lambda: guard_model(guarded, guarded, count))
     refused("a boundary-off tree holding OpenSBI domains",
             "the boundary-off tree holds", lambda: off_rules(fdt))
+    refused("a boundary-off tree with a heap-size",
+            "the boundary-off tree holds a heap-size",
+            lambda: off_rules(compiled(override(
+                "/chosen", f"heap-size = <{heap:#x}>;"),
+                f'/include/ "{base.name}"\n')))
     refused("a boundary-off tree without its last hart",
             f"the tree's CPUs are not harts 0-{count - 1}",
             lambda: board_rules(compiled(

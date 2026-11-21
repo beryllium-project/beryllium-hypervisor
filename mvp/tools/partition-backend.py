@@ -12,7 +12,11 @@ M11-5's tree, with be_control. The tables name their step either way
 --platform-file (mvp/k3/platform.json): --board-tree renders onto the
 recipe's step 4, --board-tables writes the board's plain-PMP tables and
 the root OpenSBI domain's regions as its banner prints them, and
---self-test runs the board's cases. The default, k3-like, is unchanged."""
+--self-test runs the board's cases. A board tree with OpenSBI domains
+gives the firmware the description's firmware.heap as
+/chosen/opensbi-config's heap-size, and its tables follow from it; a tree
+without them, and every k3-like tree, takes the firmware base's default.
+The default, k3-like, is unchanged."""
 
 import argparse
 import contextlib
@@ -424,15 +428,19 @@ def reset_regmap(fdt, target):
     return False
 
 
-def firmware_regions(firmware, load, harts):
+def firmware_regions(firmware, load, harts, heap=None):
     """The root OpenSBI domain's two firmware regions: the build's layout
-    symbols at LOAD, and HARTS harts' stacks and heap after _fw_end
-    (platform/generic/platform.c, fw_platform_calculate_heap_size)."""
+    symbols at LOAD, and HARTS harts' stacks and heap after _fw_end. The
+    heap is HEAP, a tree's heap-size, or by default the firmware base's
+    own size for HARTS harts, aligned up to 1 KiB either way
+    (platform/generic/platform.c, fw_platform_get_heap_size and
+    fw_platform_calculate_heap_size)."""
     start, rw, linked_end = (firmware[name] + load for name in (
         "_fw_start", "_fw_rw_start", "_fw_end"))
     stack = harts * 8192
-    heap = 0x8000 + 0x1000 * harts + \
-        firmware["_tlb_info_size"] * harts * harts
+    if heap is None:
+        heap = 0x8000 + 0x1000 * harts + \
+            firmware["_tlb_info_size"] * harts * harts
     heap = (heap + 1023) & ~1023
     end = linked_end + stack + heap
     rx_base, rx_size = memregion(start, rw - start)
@@ -495,6 +503,19 @@ def number(text):
     return int(text, 16)
 
 
+def heap_size(facts):
+    """The description's firmware.heap: the heap's size that a board tree
+    with OpenSBI domains gives the firmware, as /chosen/opensbi-config's
+    heap-size, which one cell holds; whole KiB, so that the firmware's
+    alignment leaves it as it is."""
+    text = facts["firmware"].get("heap")
+    require(text is not None, "the board description has no firmware.heap")
+    heap = number(text)
+    require(0 < heap < 1 << 32 and heap % 1024 == 0,
+            f"firmware.heap {text} is not a whole number of KiB in one cell")
+    return heap
+
+
 def harts_by_reg(fdt, count):
     """{hart: CPU node}: each enabled CPU node by its reg, as the generic
     platform counts harts; they must be harts 0 to COUNT - 1."""
@@ -552,15 +573,19 @@ def board_devices(fdt, facts):
     return rows
 
 
-def platform_k3(fdt, firmware, facts):
+def platform_k3(fdt, firmware, facts, heap=None):
     """The root OpenSBI domain's regions on the board, as platform() gives
     k3-like's: the firmware's two at its load address, with the board's
-    harts, ending by firmware.end_max; the root devices; and every
-    address, S/U RWX."""
+    harts and HEAP, a tree's heap-size, or the default heap, ending by
+    firmware.end_max; the root devices; and every address, S/U RWX. A
+    heap-size must leave the firmware's two regions as the default heap
+    has them."""
     count = facts["harts"]["count"]
     harts_by_reg(fdt, count)
-    rows = firmware_regions(firmware, number(facts["firmware"]["load"]),
-                            count)
+    load = number(facts["firmware"]["load"])
+    rows = firmware_regions(firmware, load, count, heap)
+    require(heap is None or rows == firmware_regions(firmware, load, count),
+            "the heap's size moves the firmware's regions")
     require(all(row.base + row.size <= number(facts["firmware"]["end_max"])
                 for row in rows), "the firmware's regions pass end_max")
     return rows + board_devices(fdt, facts) + [
@@ -605,10 +630,12 @@ def board_base(dtc, base, output):
 def board_tree(descriptor_path, image, base, facts, dtc, output, control):
     """The descriptor's step (B-3), rendered onto the recipe's step 4: its
     harts the board's CPU nodes by reg, be_park the descriptor's parked
-    harts and every hart of the board beyond its own; the joined tree may
-    change no dtc warning of step 4's, found in the same run."""
+    harts and every hart of the board beyond its own, and the firmware's
+    heap the description's; the joined tree may change no dtc warning of
+    step 4's, found in the same run."""
     value, identity = strict_descriptor(descriptor_path)
     name, base = image or value["image"], pathlib.Path(base).resolve()
+    heap = heap_size(facts)
     output, expected, fdt = board_base(dtc, base, output)
     count = facts["harts"]["count"]
     cpus = harts_by_reg(fdt, count)
@@ -617,7 +644,7 @@ def board_tree(descriptor_path, image, base, facts, dtc, output, control):
             "parked"] + list(range(len(value["harts"]), count))
     source = output / f"{name}.dts"
     write_new(source, render_tree(value, identity, base.name, control, cpus,
-                                  park).encode())
+                                  park, heap).encode())
     require(board_compile(dtc, source, output / f"{name}.dtb", base.parent)
             == expected, "the joined tree's dtc warnings differ from step 4's")
     parse_fdt((output / f"{name}.dtb").read_bytes())
@@ -630,13 +657,15 @@ def board_tables(descriptor_path, image, base, facts, firmware_elf, dtc,
     """The board's expected tables, plain PMP alone (B-6), for every hart
     of the board, with a descriptor; and always the root OpenSBI domain's
     regions as the banner prints them: from the build's own ELF and the
-    recipe's step 4."""
+    recipe's step 4, with the description's heap where a descriptor's
+    tree gives it (board_tree()), and the default heap without one."""
     value, identity = strict_descriptor(descriptor_path) if \
         descriptor_path else (None, None)
     name, base = image or value["image"], pathlib.Path(base).resolve()
     symbols = firmware_symbols(firmware_elf, nm, readelf)
     output, _, fdt = board_base(dtc, base, output)
-    roots = platform_k3(fdt, symbols, facts)
+    roots = platform_k3(fdt, symbols, facts,
+                        None if value is None else heap_size(facts))
     hashes = sha(firmware_elf), sha(base)
     if value is not None:
         write_new(output / f"{name}-pmp.json", canonical(expected_tables(
@@ -782,7 +811,7 @@ def cells64(value):
 
 
 def render_tree(value, identity, base_name, control="confined", cpus=None,
-                parked=(3, 4, 5, 6, 7)):
+                parked=(3, 4, 5, 6, 7), heap=None):
     extents = {row["name"]: row for row in value["extents"]}
     profiles = {row["hart"]: combine(row, extents)
                 for row in value["profiles"]}
@@ -809,10 +838,11 @@ def render_tree(value, identity, base_name, control="confined", cpus=None,
 
     digest_cells = " ".join(f"0x{int(identity[at:at + 8], 16):08x}"
                             for at in range(0, 64, 8))
+    sized = [] if heap is None else [f"\t\t\theap-size = <0x{heap:x}>;"]
     lines = [f'/include/ "{base_name}"', "/ {", "\tchosen {",
              "\t\topensbi-config {", '\t\t\tcompatible = "opensbi,config";',
-             f"\t\t\tcold-boot-harts = <{cpu(0)}>;", "\t\t};",
-             "\t\topensbi-domains {",
+             f"\t\t\tcold-boot-harts = <{cpu(0)}>;"] + sized + [
+             "\t\t};", "\t\topensbi-domains {",
              '\t\t\tcompatible = "opensbi,domain,config";',
              f"\t\t\tconfig-digest = <{digest_cells}>;"]
     for row in regions:
@@ -1048,6 +1078,18 @@ def board_self_test(descriptor, facts, base, dtc, scratch):
         board[key][field] = new
         return board
 
+    def without(key, field):
+        board = json.loads(json.dumps(facts))
+        del board[key][field]
+        return board
+
+    def heap_alone(text):
+        """The description's heap-size, once, in the configuration node."""
+        start = text.index("\t\topensbi-config {\n")
+        node = text[start:text.index("\t\t};\n", start)]
+        return text.count("heap-size") == 1 and node.endswith(
+            f"\t\t\theap-size = <{facts['firmware']['heap']}>;\n")
+
     def case(label, action, refusal=None):
         try:
             with contextlib.redirect_stdout(io.StringIO()):
@@ -1096,6 +1138,24 @@ def board_self_test(descriptor, facts, base, dtc, scratch):
             ("the root regions as the banner prints them", lambda: require(
                 [banner(row) for row in sorted_regions(platform_k3(
                     fdt, symbols, facts))] == roots, "root regions"), None),
+            ("the description's heap in the configuration node alone",
+             lambda: require(heap_alone(tree()), "heap-size"), None),
+            ("the root regions with the description's heap", lambda: require(
+                [banner(row) for row in sorted_regions(platform_k3(
+                    fdt, symbols, facts, heap_size(facts)))] == roots,
+                "root regions with the heap"), None),
+            ("a description without firmware.heap", lambda: tree(
+                board=without("firmware", "heap")),
+             "the board description has no firmware.heap"),
+            ("a heap of part of a KiB", lambda: tree(board=changed(
+                "firmware", "heap", "0x40200")),
+             "firmware.heap 0x40200 is not a whole number of KiB"),
+            ("a heap that one cell cannot hold", lambda: tree(board=changed(
+                "firmware", "heap", "0x100000000")),
+             "firmware.heap 0x100000000 is not a whole number of KiB"),
+            ("a heap that moves the firmware's regions", lambda: platform_k3(
+                fdt, symbols, facts, 0x100000),
+             "the heap's size moves the firmware's regions"),
             ("a warning of a node that the render defines again",
              lambda: tree(edited(chosen + "\t\tboot-hartid = <0x00>;\n",
                                  cells + "boot-hartid = <0x00>;\nx {\n};\n")),

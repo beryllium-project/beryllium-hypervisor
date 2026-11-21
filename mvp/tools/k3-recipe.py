@@ -8,7 +8,7 @@ U-Boot FIT carries for the board's product, and its tests.
   extract --fit F --pins F --platform F --dtc DTC --out DIR [--twice DIR]
   platform --platform F --dir DIR --out F
   tree --dir DIR --tree DTB [--qemu-tree DTB --descriptor F
-       --identity-header F]
+       --identity-header F --platform F]
   room --dir DIR --platform F DTB...
   --self-test --dtc DTC --fixtures DIR --scratch DIR
 
@@ -22,10 +22,12 @@ before, compiled and read back by the lock's dtc; each must be its input
 with its own changes made and nothing else, and draw no dtc warning that
 its input does not. --twice makes all again elsewhere and requires the
 same bytes. platform checks platform.json's tree facts, the console's
-names among them, and writes the tree's devices with their kinds. tree
-checks a board tree: step 4 with the descriptor's OpenSBI nodes added, the
-descriptor's identity, and the QEMU tree's OpenSBI domains, but be_park's
-harts beyond QEMU's; with the boundary off, step 4 itself. room checks that
+names and the M-level APLIC's sources among them, and writes the tree's
+devices with their kinds. tree checks a board tree: step 4 with the
+descriptor's OpenSBI nodes added, the descriptor's identity, and the QEMU
+tree's OpenSBI domains, but be_park's harts beyond QEMU's and the
+configuration node's heap-size, platform.json's firmware.heap, which
+QEMU's tree has not; with the boundary off, step 4 itself. room checks that
 each tree, put after U-Boot's image, leaves the firmware's fixups 8 KiB.
 
 It shares tools/partition-backend.py's FDT reader and file helpers, loaded
@@ -406,6 +408,12 @@ def platform(facts, work, out):
         return "reg" in four.nodes.get(node, {}) and compatible in \
             FDT.compatible(four, node) and number(base) in bases(four, node)
 
+    def sources(row):
+        """A root device's riscv,num-sources, where the fact names it."""
+        return "sources" not in row or FDT.prop(
+            four, row["path"], "riscv,num-sources", False) == struct.pack(
+                ">I", row["sources"])
+
     def banks(key, tree):
         return [FDT.reg(tree, path) for path in tree.order if
                 MEMORY.fullmatch(path)] == [[(number(facts[key]["base"]),
@@ -434,7 +442,7 @@ def platform(facts, work, out):
         (entries and min(entries) == number(facts["firmware"]["end_max"]),
          "FIRMWARE: end_max"),
         *[(found(row["path"], row["compatible"], row["base"]) and enabled(
-            four, row["path"]), f"ROOT: {name}")
+            four, row["path"]) and sources(row), f"ROOT: {name}")
           for name, row in roots.items() if name != "source"],
         (FDT.compatible(four, console) == [UNIT_ENABLE, roots["console"][
             "compatible"]], f"CONSOLE: {console} is not named "
@@ -493,10 +501,11 @@ def view(fdt):
     return out
 
 
-def tree(work, path, qemu=None, descriptor=None, header=None):
+def tree(work, path, qemu=None, descriptor=None, header=None, facts=None):
     """The test of the descriptor's step (B-3): a board tree against step 4
-    and the QEMU tree of the same descriptor; without one, the boundary-off
-    tree."""
+    and the QEMU tree of the same descriptor, its configuration node's
+    heap-size, which QEMU's tree has not, the description's firmware.heap
+    in one cell; without one, the boundary-off tree."""
     data, base_data = path.read_bytes(), (work / "step4.dtb").read_bytes()
     if descriptor is None:
         require(data == base_data, "TREE: the boundary-off tree is not step 4")
@@ -525,7 +534,11 @@ def tree(work, path, qemu=None, descriptor=None, header=None):
     park = expect.get(DOMAINS + "/be_park", {}).get("possible-harts")
     require(park is not None, "TREE: the QEMU tree has no be_park")
     park += range(len(cpus(other)), len(cpus(board)))
-    require(view(board) == expect,
+    mine = view(board)
+    require(mine.get(CONFIG, {}).pop("heap-size", None) == struct.pack(
+        ">I", number(facts["firmware"]["heap"])), "TREE: /chosen/"
+            "opensbi-config's heap-size is not platform.json's firmware.heap")
+    require(mine == expect,
             "TREE: the OpenSBI domains differ from the QEMU tree's")
     return [f"{TAG}: PASS tree identity={identity} sha256={FDT.sha(path)}"]
 
@@ -760,6 +773,9 @@ def self_test(tool, fixtures, scratch):
             ("a root device disabled", lambda f: f["root_devices"][
                 "aplic-m"].update(path="/soc/gpio@39000000", base="0x39000000",
                                   compatible="made-up,gpio"), "ROOT: aplic-m"),
+            ("the M-level APLIC's sources", lambda f: f["root_devices"][
+                "aplic-m"].update(sources=f["root_devices"]["aplic-m"][
+                    "sources"] + 1), "ROOT: aplic-m"),
             ("the console's scratch register", lambda f: f["breach"][
                 "console_scratch"].update(offset="0x7"),
              "BREACH: console_scratch"),
@@ -818,13 +834,22 @@ def self_test(tool, fixtures, scratch):
     (scratch / "identity.h").write_text(
         f'#define BE_MVP_PARTITION_IDENTITY_HEX "{identity}"\n')
 
-    def rendered(base, park, old="", new=""):
+    cold = "\t\t\tcold-boot-harts = <&{/cpus/cpu@0}>;\n"
+    heap = number(facts["firmware"]["heap"])
+
+    def rendered(base, park, old="", new="", sized=heap):
+        """BASE joined to the stand-in OpenSBI nodes, with a heap-size of
+        SIZED (none for QEMU's tree)."""
         top = scratch / f"render-{next(runs)}"
         top.mkdir()
         shutil.copyfile(base, top / "base.dts")
-        (top / "tree.dts").write_text('/include/ "base.dts"\n' + text(
-            "render.dtsi", old, new).replace("@DIGEST@", " ".join(
-                "0x" + identity[at:at + 8] for at in range(0, 64, 8))).replace(
+        nodes = text("render.dtsi", old, new)
+        require(nodes.count(cold) == 1, "self-test: render.dtsi's config")
+        (top / "tree.dts").write_text('/include/ "base.dts"\n' + nodes.replace(
+            cold, cold + ("" if sized is None else
+                          f"\t\t\theap-size = <{sized:#x}>;\n")).replace(
+                "@DIGEST@", " ".join("0x" + identity[at:at + 8]
+                                     for at in range(0, 64, 8))).replace(
                     "@PARK@", " ".join(f"&{{/cpus/cpu@{index}}}" for index
                                        in park)))
         dtc(tool, top / "tree.dts", top / "tree.dtb")
@@ -832,11 +857,11 @@ def self_test(tool, fixtures, scratch):
 
     step4, park = work / "step4.dts", range(3, 16)
     board = rendered(step4, park)
-    qemu = rendered(fixtures / "qemu.dts", range(3, 8))
+    qemu = rendered(fixtures / "qemu.dts", range(3, 8), sized=None)
 
     def tried(path, qemu=qemu, descriptor=fixtures / "descriptor.json",
               header=scratch / "identity.h"):
-        return tree(work, path, qemu, descriptor, header)
+        return tree(work, path, qemu, descriptor, header, facts)
 
     sorted_ = scratch / "sorted.dtb"
     FDT.run([str(tool), "-s", "-I", "dts", "-O", "dtb", "-o", str(sorted_),
@@ -856,8 +881,21 @@ def self_test(tool, fixtures, scratch):
             ("step 4's reserve map changed", lambda: tried(rendered(
                 reserved, park)), "TREE: step 4's"),
             ("a QEMU tree without be_park", lambda: tried(board, qemu=rendered(
-                fixtures / "qemu.dts", range(3, 8), "be_park {", "x {")),
-             "TREE: the QEMU tree has no be_park"),
+                fixtures / "qemu.dts", range(3, 8), "be_park {", "x {",
+                None)), "TREE: the QEMU tree has no be_park"),
+            ("a board tree without heap-size", lambda: tried(rendered(
+                step4, park, sized=None)), "TREE: /chosen/opensbi-config's "
+             "heap-size"),
+            ("a heap-size 1 KiB larger than platform.json's", lambda: tried(
+                rendered(step4, park, sized=heap + 1024)),
+             "TREE: /chosen/opensbi-config's heap-size"),
+            ("a heap-size of two cells", lambda: tried(rendered(
+                step4, park, cold, cold + "heap-size = <0x0 "
+                f"{heap:#x}>;\n", None)),
+             "TREE: /chosen/opensbi-config's heap-size"),
+            ("a QEMU tree with a heap-size", lambda: tried(
+                board, qemu=rendered(fixtures / "qemu.dts", range(3, 8))),
+             "TREE: the OpenSBI domains"),
             ("a node beyond the descriptor's", lambda: tried(rendered(
                 step4, park, "\t\topensbi-domains {",
                 "x {\n};\nopensbi-domains {")), "TREE: a node"),
@@ -903,7 +941,8 @@ def main(argv):
     for name, options in (
             ("extract", "fit! pins! platform! dtc! out! twice"),
             ("platform", "platform! dir! out!"),
-            ("tree", "dir! tree! qemu-tree descriptor identity-header"),
+            ("tree", "dir! tree! qemu-tree descriptor identity-header "
+             "platform"),
             ("room", "dir! platform!")):
         command = commands.add_parser(name)
         for option in options.split():
@@ -931,10 +970,12 @@ def main(argv):
                 f"{TAG}: {'FAIL' if bad else 'PASS'} platform "
                 f"findings={len(bad)} other={len(lines)}"]
         elif args.command == "tree":
-            given = (args.qemu_tree, args.descriptor, args.identity_header)
-            require(given.count(None) in (0, 3), "give --qemu-tree, "
-                    "--descriptor, and --identity-header, or none")
-            lines = tree(args.dir, args.tree, *given)
+            given = (args.qemu_tree, args.descriptor, args.identity_header,
+                     args.platform)
+            require(given.count(None) in (0, 4), "give --qemu-tree, "
+                    "--descriptor, --identity-header, and --platform, or "
+                    "none")
+            lines = tree(args.dir, args.tree, *given[:3], facts)
         else:
             lines = room(args.dir, facts, args.trees)
     except (Refused, FRAME.Refused, OSError, ValueError, KeyError, TypeError,
