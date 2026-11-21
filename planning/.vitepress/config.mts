@@ -632,6 +632,14 @@ export default defineConfig({
             link: '/mvp-m12-7-4-7-5-not-modelled'
           },
           {
+            text: 'MVP M12-7.6, the deeper review: packet and record',
+            link: '/mvp-m12-7-6-review'
+          },
+          {
+            text: 'MVP M12-5, the firmware half: packet and record',
+            link: '/mvp-m12-5-firmware'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1312,6 +1320,14 @@ export default defineConfig({
             link: '/mvp-m12-7-4-7-5-not-modelled'
           },
           {
+            text: 'MVP M12-7.6, the deeper review: packet and record',
+            link: '/mvp-m12-7-6-review'
+          },
+          {
+            text: 'MVP M12-5, the firmware half: packet and record',
+            link: '/mvp-m12-5-firmware'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1875,6 +1891,14 @@ export default defineConfig({
           {
             text: 'MVP M12-7.4 and M12-7.5, debug and trace, and interrupt assignment: packet and record',
             link: '/mvp-m12-7-4-7-5-not-modelled'
+          },
+          {
+            text: 'MVP M12-7.6, the deeper review: packet and record',
+            link: '/mvp-m12-7-6-review'
+          },
+          {
+            text: 'MVP M12-5, the firmware half: packet and record',
+            link: '/mvp-m12-5-firmware'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',

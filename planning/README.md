@@ -1746,6 +1746,20 @@ public push now.
   that `v0.9` does not contain its two extensions, and the second that
   the model lacks the interrupt files that `Smsdia` needs. Accepted
   2026-11-20 (UTC) by the responsible human's sign-off of its commit.
+- `mvp-m12-7-6-review.md`: the packet and the record of M12-7.6, the
+  deeper review, the last sub-step of M12-7: M12-2's questions
+  revisited on the model, and a review of the specification's text,
+  for its authors through the responsible human. It names the exit
+  commits, records the readings, and says what the review holds. With
+  it, M12-7 is complete. Accepted 2026-11-20 (UTC) by the responsible
+  human's sign-off of its commit.
+- `mvp-m12-5-firmware.md`: the packet and the record of the firmware
+  half of M12-5, the firmware series under the per-hart descriptor,
+  run on the lane's model. It says what was built and run; the results
+  and the review notes are held for the series' author. The emulator
+  half is narrowed out by the responsible human's decision of
+  2026-11-21, so M12-5 is this half, and is complete with it. Accepted
+  2026-11-20 (UTC) by the responsible human's sign-off of its commit.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and
