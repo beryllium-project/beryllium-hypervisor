@@ -13156,23 +13156,51 @@ M5's reset rule.
     tools write none, and none was in the tree that the first sitting
     ran from. Owed: a refusal, or a check that no such file exists,
     where a record is made and where a sitting begins. Open.
-142. **The board-tool dry run's `late-prompt` case can fail under load
-    (found at M11-B4).** The case (item 121) has the stand-in U-Boot
-    print its prompt 1.5 s after the `s` that stopped its autoboot, and
-    then echo the console tool's second `s` at that prompt. The
-    stand-in makes two writes, the prompt and then the echo, and writes
-    a record of its own between them; the dry run gives the console
-    tool a quiet of 0.05 s. Where the stand-in is held up for longer
-    than that between the two writes, the tool reads a prompt with
-    nothing after it, takes it for a fresh one, and stops at its next
-    line, because the prompt's line then holds the `s`:
-    `late-prompt.record: exit 1, expected 0`. It happened once, on
-    2026-11-20, in a whole check that ran beside two other heavy runs
-    of the same session; the same content passed when it ran again.
-    On the board the tool's quiet is 0.3 s, U-Boot's echo follows its
-    prompt at once, and a stop there types nothing: the tool's rule is
-    not in question. Owed: the stand-in's prompt and echo in one
-    write, or its record after the echo. Open.
+142. **The console tool's helper could judge a stale read (found at
+    M11-B4).** `tools/k3-uboot.py` reads the serial log and judges
+    what U-Boot has printed, before the console tool types a line or
+    asks for a reset. Several of its verdicts rested on a text read
+    from the log and on a quiet period that began after the read.
+    Bytes that reached the log between the two were in neither. So
+    its probe after the `s` that stops the autoboot could report a
+    fresh prompt while an echoed `s` already stood on that prompt's
+    line; the console tool's next step then found the line not empty
+    and stopped, typing nothing (stop 1).
+    - **How it showed.** The dry run's `late-prompt` case (item 121),
+      whose stand-in U-Boot echoes the tool's second `s` about a
+      millisecond after its late prompt, stopped three whole checks:
+      one on 2026-11-20, and two in a row on 2026-11-21
+      (`late-prompt.record: exit 1, expected 0`).
+    - **This item's first reading was wrong.** It said that the
+      stand-in had been held up between its two writes, for longer
+      than the dry run's quiet of 0.05 s. The records of the two
+      stops of 2026-11-21 show the stand-in's echo written about a
+      millisecond after its prompt, and the console tool naming a
+      fresh prompt at a log size that holds the echo. The stand-in is
+      as the board is: a prompt, and then the echo of a key that was
+      waiting.
+    - **Which way it erred.** At a late prompt, toward a stop that
+      types nothing, as seen. In the helper's reasons that admit a
+      reset, toward a reset at a moment that the rule forbids, when
+      output reached the log in the instant of the read, or in the
+      quiet of a reason judged before.
+    - **The correction.** Each verdict of the helper that rests on
+      text read from the log and on a quiet is given only when the
+      log, after the quiet, still ends where that text ended, the
+      rule that its wait for a prompt already had: the two verdicts
+      after a stopping `s`, the idle prompt before a typed line, the
+      two ends of a run, and four of the reasons that admit a reset
+      (an idle prompt, Fedora down, and the two after a boot from a
+      card). The reason for an MVP that hangs past its timeout is
+      judged on the log read again, because a busy MVP's log keeps
+      growing. The helper's other waits were read and left.
+    - **The test.** The dry run's `stale-read` case loads the helper
+      by its path and makes bytes land at a fixed point, with no
+      timing: twelve rows, each with its bytes and with none.
+
+    **Closed in M11-B4**, by the commit that corrects the helper.
+    Items 145 to 147 hold what the same reading of the board tools
+    found and left.
 143. **Fourteen of M11-B's listed outputs name the commit that they
     were built from (found at M11-B3).** `check`'s bundle lists 865
     outputs. Fourteen of them hold the commit's ID: the reference
@@ -13204,6 +13232,36 @@ M5's reset rule.
     stops with an error and not with a finding, in states that the
     plan does not allow. Owed: a case for `k3/firmware-pins.txt`.
     Open.
+145. **A reset acts on a reading that is one dongle round trip old
+    (found at M11-B4).** The console tool takes its reason for a reset
+    from the helper (item 142), and then runs the pinned client twice,
+    for the dongle's status and for the reset. The log is not read
+    again before the pulse. With a human's reset, the press may come
+    up to `K3_HUMAN_SECONDS` after the reading. Output that reaches
+    the log in that window is judged by nothing. A second reading
+    before the pulse would narrow the window; it could not close it,
+    since the client's own run takes time. Owed: a decision on that
+    second reading, and its rule for an MVP that hangs. Open.
+146. **Past a run's timeout, Fedora's kernel lines are not taken for
+    Fedora's (found at M11-B4).** The helper's reason for an MVP that
+    hangs (`can-reset --hang`) admits a reset when no U-Boot or Fedora
+    line follows the last `Starting kernel ...`. It looks for such
+    lines in text from which the lines' stamps have been removed, so
+    its two patterns for stamped lines match nothing there. A U-Boot
+    banner and a prompt are still seen; of Fedora, only its login
+    line. If a boot fell through to Fedora, and the run's timeout came
+    before Fedora's login line, the reason would admit a reset while
+    Fedora boots. The run tool's own reading of a fall-through rests
+    on the same login line. Owed: the rule on the text with its
+    stamps. Open.
+147. **A prompt cut before its second byte is taken for a missed stop
+    (found at M11-B4).** After a stopping `s`, a read of the log that
+    ends between the two bytes of the prompt gives "missed" at once:
+    the console tool records an unplanned boot and waits for the
+    reset's rule. It errs toward a stop. The stand-in writes its
+    prompt whole; on the board a boundary between two packets of the
+    serial adapter would have to fall between the two bytes. Owed:
+    the cut prompt awaited, as a cut stamp is. Open.
 
 
 ## Non-claims

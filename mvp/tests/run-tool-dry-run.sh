@@ -263,6 +263,11 @@
 #                     the run's margin; an `s` after its window fails the
 #                     dry run as late under load, and a case's failure on a
 #                     board where one came names that lateness first
+#   stale-read        tools/k3-uboot.py loaded by its path, a row's bytes
+#                     landing before a probe's quiet, in it, or after it:
+#                     wait-prompt, after-stop, idle, can-reset, and
+#                     wait-end give no verdict on the text read before the
+#                     bytes; with none landing, each verdict is as before
 #
 # run-from-reset, campaign, and characterize need tests/check-capture.py's
 # uboot mode (planning/mvp-m5-plan.md, M5-2) for their verdicts: without it
@@ -2841,6 +2846,91 @@ done
 late=$(autoboot_s late "${boards[@]}")
 [ -z "$late" ] || fail "autoboot: $late"
 pass autoboot "$(autoboot_s summary "${boards[@]}")"
+# stale-read: each verdict of tools/k3-uboot.py that rests on text read
+# from the log and on a quiet is given only when the log still ends where
+# that text ended. A row's bytes land at a fixed point, not after a time.
+# It needs no board, and runs last: its failure hides no other case's.
+mkdir -p -- "$out/stale-read"
+"$python" -I -B - "$tools/k3-uboot.py" "$out/stale-read" >"$out/stale-read.txt" \
+	2>&1 <<'EOF' || fail "stale-read: $(tail -n 1 "$out/stale-read.txt")"
+import contextlib, importlib.util, io, pathlib, sys
+spec = importlib.util.spec_from_file_location("k3_uboot", sys.argv[1])
+tool = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(tool)
+tool.PROMPT_QUIET = tool.IDLE_QUIET = 0.05
+log = pathlib.Path(sys.argv[2], "serial.log")
+slot = pathlib.Path(sys.argv[2], "card-slot.txt")
+slot.write_text("card=in log_offset=0\n")
+
+# A row's bytes, appended once at its point; landing in a quiet fails it.
+def land(point):
+    if point in landing:
+        with open(log, "ab") as handle:
+            handle.write(landing.pop(point).encode())
+        return True
+
+def wrapped(path, seconds):
+    land("before")
+    still = quiet(path, seconds) and not land("in")
+    land("after")
+    return still
+
+quiet, tool.quiet = tool.quiet, wrapped
+echo, record = "[   2.696] s", "Domain commit hart7: pmpaddr8=" + ",".join(
+    ["0x" + "0" * 16] * 8) + "\r\n"
+spl, uboot = (f"U-Boot {s}2022.10 (stand-in)\r\n" for s in ("SPL ", ""))
+stop, reset = (tool.after_stop, 0, 5), (tool.can_reset, 0, 0.05)
+ends = (tool.wait_end, 0, 5, 0.05, "BE_MVP:14")
+# Each row: its name, the log, the probe and its arguments after the log,
+# where its bytes land, the bytes, the verdict with them, and without them.
+rows = [
+    ("wait-prompt: s echoed at a prompt read", "printenv\r\n=> ",
+     (tool.wait_prompt, 0, 0.5), "before", echo, 3, "10"),
+    ("after-stop --retried: s echoed at a prompt read alone", "=> ",
+     stop + (True,), "before", echo, 5, 0),
+    ("after-stop --retried: a byte after a late prompt read", "=> " + echo,
+     stop + (True,), "before", "x", 4, 5),
+    ("after-stop: s echoed at a prompt read alone", "=> ", stop, "before",
+     echo, 4, 0),
+    ("idle: a prompt after the quiet", spl + uboot + "=> ", (tool.idle,),
+     "after", "\r\n=> ", 1, 0),
+    ("can-reset: s echoed at an idle prompt read", spl + uboot + "=> ",
+     reset, "before", echo, "none", "idle-prompt"),
+    ("can-reset: a banner after Fedora's halt read", "[  123.560123] "
+     "reboot: Restarting system\r\n", reset, "before", spl, "none",
+     "fedora-down"),
+    ("can-reset --hang: a banner in a terminal marker's quiet",
+     "Starting kernel ...\r\nBE_MVP:FAIL stand-in\r\n", reset + ("--hang",),
+     "in", uboot, "none", "terminal-marker"),
+    ("can-reset --hang: an MVP line in a terminal marker's quiet",
+     "Starting kernel ...\r\nBE_MVP:FAIL stand-in\r\n", reset + ("--hang",),
+     "in", "BE_MVP_G1: busy\r\n", "hang", "terminal-marker"),
+    ("can-reset --card-hang: a banner after a card's boot read",
+     "sys: 0x00000000\r\nbm:3\r\n\r\n" + spl, reset + ("--card-hang",
+     str(slot), 0.05), "before", uboot, "none", "card-hang"),
+    ("wait-end: a second SPL banner after the end line read",
+     spl + uboot + "BE_MVP:14\r\n", ends, "before", spl, "boot", "end"),
+    ("wait-end, hart 7: its record after the terminal line read",
+     spl + uboot + "BE_MVP:14\r\n", ends + (7,), "before", record, "end",
+     "terminal"),
+]
+failed = []
+for name, text, (probe, *args), point, data, want, plain in rows:
+    for landed, expected in ((data, want), ("", plain)):
+        log.write_bytes(text.encode())
+        landing = {point: landed} if landed else {}
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            status = probe(str(log), *args)
+        got = "not-landed" if landing else \
+            (out.getvalue().split() or [status])[0]
+        how = f"{landed[:20]!r} {point} the quiet" if landed else "none lands"
+        print(f"{'ok  ' if got == expected else 'FAIL'} {name}; {how}: {got}")
+        failed += [] if got == expected else [f"{name}; {how}: {got}"]
+print(f"rows={len(rows)} failed={len(failed)}")
+sys.exit(f"stale-read: {failed[0]}" if failed else None)
+EOF
+pass stale-read "an s echoed at a prompt read: wait-prompt 3, no prompt; a second s echoed at a prompt read alone: after-stop --retried 5, not 0; a byte after a late prompt read: 4, not 5; an s echoed at a prompt read alone: after-stop 4, not 0; a prompt after idle's quiet: 1, not 0; an s echoed at an idle prompt read, a banner after Fedora's halt read, a banner in a terminal marker's quiet (--hang), and a banner after a card's boot read (--card-hang): can-reset none, not idle-prompt, fedora-down, hang, or card-hang; an MVP line in that quiet (--hang): hang; a second SPL banner after wait-end's end line read: boot, not end; the last hart's record after its terminal line read: end, not terminal; with none landing, each verdict as before"
 if [ "${#waiting[@]}" != 0 ]; then
 	printf 'BE_MVP_RUN_TOOL_DRY_RUN: INCOMPLETE waiting=%s (tests/check-capture.py --mode uboot)\n' \
 		"${waiting[*]}"

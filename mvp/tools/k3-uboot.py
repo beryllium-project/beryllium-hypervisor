@@ -259,10 +259,17 @@ def poll(seconds, probe):
 
 
 def quiet(path, seconds):
-    """Whether the log stays the same size for SECONDS."""
+    """Whether the log stays the same size for SECONDS: the board quiet from
+    now on. A verdict about text read before it needs quiet_at()."""
     before = size(path)
     time.sleep(seconds)
     return size(path) == before
+
+
+def quiet_at(path, end, seconds):
+    """Whether the log, read up to END, still ends there after a quiet of
+    SECONDS; quiet() alone misses bytes that came between the read and it."""
+    return quiet(path, seconds) and size(path) == end
 
 
 def wait_echo(path, offset, text, seconds):
@@ -285,7 +292,7 @@ def wait_prompt(path, offset, seconds):
         if SPL.search(text.replace("\r", "")):
             return 4
         if "\n" in text and PROMPT_END.search(text.replace("\r", "")) and \
-                quiet(path, PROMPT_QUIET) and size(path) == offset + len(text):
+                quiet_at(path, offset + len(text), PROMPT_QUIET):
             return text
         return None
     text = poll(seconds, probe)
@@ -325,15 +332,17 @@ def wait_autoboot(path, offset, seconds):
 
 def after_stop(path, offset, seconds, retried=False):
     def probe():
-        text = clean(read(path, offset))
+        raw = read(path, offset)
+        text, end = clean(raw), offset + len(raw)
         if retried and LATE_PROMPT.fullmatch(text):
-            return 5 if quiet(path, PROMPT_QUIET) else None
+            return 5 if quiet_at(path, end, PROMPT_QUIET) else None
         if retried and CUT_STAMP.search(text) and \
                 re.fullmatch(r"\s*=> ", CUT_STAMP.sub("", text)):
             return None
         if text.strip() and text.strip() != "=>":
             return 4
-        if re.fullmatch(r"\s*=> ", text) and quiet(path, PROMPT_QUIET):
+        if re.fullmatch(r"\s*=> ", text) and \
+                quiet_at(path, end, PROMPT_QUIET):
             return 0
         return None
     status = poll(seconds, probe)
@@ -341,13 +350,16 @@ def after_stop(path, offset, seconds, retried=False):
 
 
 def at_prompt(path):
-    return bool(PROMPT_END.search(read(path, max(0, size(path) - 64))
-                                  .replace("\r", "")))
+    """The end of the log as read, when it ends at a prompt; else None."""
+    start = max(0, size(path) - 64)
+    text = read(path, start)
+    return start + len(text) if PROMPT_END.search(text.replace("\r", "")) \
+        else None
 
 
 def idle(path):
-    return 0 if at_prompt(path) and quiet(path, IDLE_QUIET) and \
-        at_prompt(path) else 1
+    end = at_prompt(path)
+    return 0 if end is not None and quiet_at(path, end, IDLE_QUIET) else 1
 
 
 def down_at(text):
@@ -374,21 +386,25 @@ def can_reset_before(path, start, end, tail):
 
 
 def can_reset(path, start, tail, flag=None, slot=None, wait=0.0):
-    text = clean(read(path, start))
+    raw = read(path, start)
+    text, end, prompt = clean(raw), start + len(raw), at_prompt(path)
     reason = None
-    if at_prompt(path) and quiet(path, IDLE_QUIET):
+    if prompt is not None and quiet_at(path, prompt, IDLE_QUIET):
         reason = "idle-prompt"
     elif TERMINAL.search(text) and quiet(path, tail):
         reason = "terminal-marker"
-    elif down_at(text) is not None and quiet(path, tail):
+    elif down_at(text) is not None and quiet_at(path, end, tail):
         reason = "fedora-down"
     elif flag == "--hang" and STARTING in text:
+        # The text may be older than output that a quiet above saw: the
+        # hang is judged on the log as it stands.
+        text = clean(read(path, start))
         if not NOT_MVP.search(text, text.rindex(STARTING) + len(STARTING)):
             reason = "hang"
     elif slot is not None and \
             checker().boot_medium(read(path, start)) == "card" and \
             bool(UBOOT.search(text)) == (flag == "--hang") and \
-            card_in_at(slot, start) and quiet(path, wait):
+            card_in_at(slot, start) and quiet_at(path, end, wait):
         reason = "card-uboot-hang" if flag == "--hang" else "card-hang"
     print(reason or "none")
     return 0 if reason else 1
@@ -522,7 +538,7 @@ def wait_end(path, offset, seconds, tail, terminal, last=None):
 
     def probe():
         raw = read(path, offset)
-        text = clean(raw)
+        text, end = clean(raw), offset + len(raw)
         lines = text.split("\n")
         banner = UBOOT.search(text)
         if len(SPL.findall(text)) > 1:
@@ -530,9 +546,9 @@ def wait_end(path, offset, seconds, tail, terminal, last=None):
         if banner and form.boot_medium(raw) == "nor":
             return "nor"
         if ended(lines):
-            return "end" if quiet(path, tail) else None
+            return "end" if quiet_at(path, end, tail) else None
         if last is not None and any(map(terminal.search, lines)):
-            return "terminal" if quiet(path, tail) else None
+            return "terminal" if quiet_at(path, end, tail) else None
         if banner and re.search(r"^=> ", text[banner.end():], re.M):
             return "prompt"
         # Linux's six-decimal stamps, which clean() removes as U-Boot's.
