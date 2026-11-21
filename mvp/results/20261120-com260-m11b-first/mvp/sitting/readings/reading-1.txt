@@ -1,0 +1,2 @@
+attempt_utc=2026-11-20T05:46:00Z
+verdict=STOP stop=1 k3-console.sh reset stopped (exit 1): the port-open rule holds no reason to reset now (no idle prompt, no terminal marker or Fedora halted with 5 s quiet, and no prior halt or terminal marker before a session's first reset); no reset was made

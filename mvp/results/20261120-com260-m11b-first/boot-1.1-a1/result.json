@@ -1,0 +1,158 @@
+{
+ "boot_marker": "FAIL",
+ "capture": {
+  "bytes": 191,
+  "sha256": "401e6304022d98d22d91419b6de0e5911fe980d882269264e9b0abc2ea2a42f5"
+ },
+ "card": {
+  "banner": [],
+  "boundary": "BE_MVP_BOUNDARY: NOT-APPLICABLE boundary=off",
+  "facts": {
+   "digest": "none",
+   "environment_lines": "none",
+   "harts": "16",
+   "mac_addresses": "none",
+   "memory": "none",
+   "no_flash_device": "none",
+   "other_lines": "0",
+   "parked": "none",
+   "pmic": "none",
+   "pmp_address_bits": "none",
+   "pmp_count": "none",
+   "pmp_granularity": "none",
+   "priv_version": "none",
+   "product": "k3_com260_ifx",
+   "reference": "none",
+   "rom_lines": "4",
+   "rom_sha256": "d0e84dc7e158",
+   "sitting": "first"
+  },
+  "notes": [],
+  "sitting": "first",
+  "stops": [
+   "B3",
+   "B5"
+  ]
+ },
+ "costs": {},
+ "expect": {
+  "image": "two-guests-off",
+  "scenario_sha256": "4bda6abe6411e7414b2e0435f73cd90438ae6bbb0956aa44b00509d7a33157f5"
+ },
+ "fields": {
+  "alternations": "0",
+  "boot_hart": "none",
+  "image": "two-guests-off",
+  "launcher_mode": "card",
+  "mode": "card",
+  "sbi_version": "none",
+  "spl_banner": "U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)",
+  "uboot_banner": "none"
+ },
+ "findings": [
+  "no marker line",
+  "0 firmware banner lines before the markers, expected 1",
+  "0 U-Boot banner lines before the markers, expected 1",
+  "0 'DRAM:' lines after U-Boot's banner, expected 1",
+  "0 'Loading Environment from' lines after U-Boot's banner, expected 1 (stop B3)",
+  "0 'TLV item: product_name' lines after U-Boot's banner, expected 1",
+  "0 'save DDR training info' lines after U-Boot's banner, expected 1",
+  "0 'Could not find a valid device for' lines after U-Boot's banner, expected 1",
+  "0 'read PMIC reg 0xab' lines after U-Boot's banner, expected 1",
+  "0 'NO partition bootfs in card' lines after U-Boot's banner, expected 1",
+  "0 U-Boot autoboot lines before the markers, expected 1: one boot per run",
+  "0 U-Boot 'bytes read' lines after the autoboot, expected 1",
+  "0 U-Boot 'digest' lines after the autoboot, expected 1",
+  "0 U-Boot 'Moving Image' lines after the autoboot, expected 1",
+  "0 U-Boot 'Flattened Device Tree' lines after the autoboot, expected 1",
+  "0 U-Boot 'Booting using' lines after the autoboot, expected 1",
+  "0 U-Boot 'Device Tree' lines after the autoboot, expected 1",
+  "0 U-Boot 'Starting kernel' lines after the autoboot, expected 1",
+  "no BE_K3_B3 SHIM line opens the monitor stream",
+  "the sequence stops before 'BE_K3_B3: SHIM hart=0x0000000000000000 shim=0x0000000108000000 fdt=0x<'",
+  "log: no BE_MVP:19 block, which the complete class requires (3.2)",
+  "G0 lacks the required line '[<s>] Linux version 7.2.0 <banner>' (or a later one is out of order)",
+  "G1 lacks the required line '[<s>] Linux version 7.2.0 <banner>' (or a later one is out of order)",
+  "0 alternations between the domains' lines, fewer than K = 8 (Q5)"
+ ],
+ "inputs": {
+  "board": "b30f9f14939f5860394ae3bf07a75b0e804f5b601086d4d0c540559159638195",
+  "memory": "8 GiB",
+  "observed": null,
+  "partition_authority": null,
+  "tables": null
+ },
+ "lines": {
+  "g0": 0,
+  "g1": 0
+ },
+ "log": {
+  "boot_image": "nominal",
+  "contract": {
+   "run": "complete",
+   "sequence": "v1"
+  },
+  "count": null,
+  "export_sha256": null,
+  "launch": {},
+  "lines": 0,
+  "r2": "kept",
+  "reference": "151ceedc12c4d0d3bf94bbb6545e32a343e66436eec293b4eb3ea515b2405199",
+  "registers": {
+   "barrier": null,
+   "replayed": [
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000"
+   ],
+   "replayed_label": "unprotected",
+   "terminal": null
+  },
+  "state": null,
+  "ticks": {
+   "barrier": null,
+   "launch": {}
+  },
+  "volume_bytes": 0
+ },
+ "log_declared": [],
+ "markers": [],
+ "observed": {
+  "firmware": {
+   "base_isa": null,
+   "debug_triggers": null,
+   "devices": {
+    "console": null,
+    "cppc": null,
+    "hsm": null,
+    "ipi": null,
+    "pmu": null,
+    "suspend": null,
+    "timer": null
+   },
+   "isa_extensions": null,
+   "mhpm_info": null,
+   "other_lines": [],
+   "pmp_address_bits": null,
+   "pmp_count": null,
+   "pmp_granularity": null,
+   "priv_version": null
+  },
+  "rom": [
+   "sys: 0x10000200",
+   "try sd...",
+   "bm:3",
+   "j..."
+  ],
+  "schema": "be-mvp-k3-observed-v1",
+  "uboot": {
+   "memory": null
+  }
+ },
+ "probe_values": {},
+ "result": "FAIL",
+ "stops": [],
+ "terminal": "none",
+ "toolchain": "gcc"
+}

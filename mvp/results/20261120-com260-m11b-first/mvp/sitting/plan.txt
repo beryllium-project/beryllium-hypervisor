@@ -1,0 +1,25 @@
+schema=be-mvp-k3-sitting-plan-v1
+sitting=first
+plan=two-guests-off:3:be-mvp-two-guests-off-gcc.img
+steps=begin,preflight,stage,reading-0,card-in-1,boot-1.1,boot-1.2,boot-1.3,card-out-1,reading-1,end
+build=<build>
+gate=<build>/k3/gate
+source=<source>
+observed=none
+serial_log=<serial-log>
+source_commit=2b144c8bf80b4f252e8c403af97485402694c7de
+source_state=clean
+gate_commit=2b144c8bf80b4f252e8c403af97485402694c7de
+rehearsal=2026-11-17
+sitting_pins=<source>/mvp/k3/sitting-pins.txt sha256=8bfadafb9b22caa583b6e071162eaffd4c1105d96929f781fe2020409f577524
+input gate.txt path=<build>/k3/gate/record/gate.txt sha256=f188f16b85816a39451d54f5aec3c12ebf433f309be32aea84d7172699e78d05
+input two-guests-off.board path=<build>/k3/gate/images/two-guests-off/board.json sha256=b30f9f14939f5860394ae3bf07a75b0e804f5b601086d4d0c540559159638195
+input two-guests-off.board_image path=<build>/variants/gcc/two-guests-off/be-mvp-boot.img sha256=5c2b2fb971c3cf68075d075c1ec35b8aecbeba35ed3cda515fab9b2e98cd0287
+input two-guests-off.expectation path=<build>/gen/expect/two-guests-off.json sha256=c027bcee357f580e8a6c9393190f71e89a316c60f0d84e5bda8f64ad3d09019a
+input two-guests-off.reference path=<build>/references/gcc/two-guests-off.json sha256=151ceedc12c4d0d3bf94bbb6545e32a343e66436eec293b4eb3ea515b2405199
+input two-guests-off.tree path=<build>/k3/gate/images/two-guests-off/two-guests-off.dtb sha256=8291e2baf91e879fcd32c77573894f3570a8a57daf88e4abea39959e343f0959
+input two-guests-off.root path=<build>/k3/gate/images/two-guests-off/two-guests-off-root.json sha256=1ad61664c2dbd16de2cb033a5639ee1507c64ceb3350a67f4b2412506d1ac8b8
+input two-guests-off.check path=<build>/k3/gate/images/two-guests-off/two-guests-off-check.json sha256=2174f45bff4d88b9eabdd4db5a86ca51966f85cce4511e685484809b0dc0efb6
+input two-guests-off.firmware path=<build>/k3/gate/images/two-guests-off/fw_dynamic.bin sha256=d2f1b1e4d8e864673ec24617abc9ca3c5a16664f38d9aa93c09ad7236478eb5e
+input two-guests-off.firmware_elf path=<build>/k3/gate/images/two-guests-off/fw_dynamic.elf sha256=6692f5bc474586a71e711708823bc4cc54fffe9f4b50a4cde1a67b5488a28d5b
+pin two-guests-off.firmware sha256=d2f1b1e4d8e864673ec24617abc9ca3c5a16664f38d9aa93c09ad7236478eb5e bytes=540600

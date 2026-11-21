@@ -1,0 +1,70 @@
+2026-11-20T05:32:44.146Z	start	session=20261120-com260-m11b-first offset=44970801
+2026-11-20T05:33:28.746Z	reset	seq=1 method=k3ctl reason=fedora-down offset=44989857
+2026-11-20T05:33:29.776Z	banner	seq=1 spl=44989965 uboot=44990126
+2026-11-20T05:33:29.814Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-20T05:33:30.879Z	medium	medium=nor rom_lines=8
+2026-11-20T05:33:30.886Z	key	s offset=44992801
+2026-11-20T05:33:31.215Z	prompt	fresh offset=44992805
+2026-11-20T05:33:31.302Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-20T05:33:32.328Z	line	first template=sf-probe
+2026-11-20T05:33:32.335Z	send	piece=1/1 offset=44992805 text=sf probe
+2026-11-20T05:33:32.369Z	echo	ok offset=44992805-44992824
+2026-11-20T05:33:32.373Z	key	Enter template=sf-probe
+2026-11-20T05:33:32.758Z	prompt	template=sf-probe output_bytes=139 output_sha256=ddd2f80a86bf7aff0376fb1fb4aec84f792fccf25c9ffc9342d90285fd9690b7
+2026-11-20T05:33:32.851Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-20T05:33:33.873Z	line	first template=sf-read
+2026-11-20T05:33:33.882Z	send	piece=1/1 offset=44992968 text=sf read 0x140000000 0x0 0x800000
+2026-11-20T05:33:33.908Z	echo	ok offset=44992968-44993000
+2026-11-20T05:33:33.912Z	key	Enter template=sf-read
+2026-11-20T05:33:34.844Z	prompt	template=sf-read output_bytes=55 output_sha256=f3a0cac61faf0fe68776e07eb5d8c39de1d29abe5bebf4c919cbd21e588ca494
+2026-11-20T05:33:34.929Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-20T05:33:35.952Z	line	first template=md5-bootinfo
+2026-11-20T05:33:35.960Z	send	piece=1/1 offset=44993060 text=md5sum 0x140000000 0x10000
+2026-11-20T05:33:35.990Z	echo	ok offset=44993060-44993097
+2026-11-20T05:33:35.993Z	key	Enter template=md5-bootinfo
+2026-11-20T05:33:36.326Z	prompt	template=md5-bootinfo output_bytes=70 output_sha256=withheld
+2026-11-20T05:33:36.409Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-20T05:33:37.432Z	line	first template=md5-record
+2026-11-20T05:33:37.440Z	send	piece=1/1 offset=44993172 text=md5sum 0x140010000 0xa000
+2026-11-20T05:33:37.465Z	echo	ok offset=44993172-44993208
+2026-11-20T05:33:37.469Z	key	Enter template=md5-record
+2026-11-20T05:33:37.844Z	prompt	template=md5-record output_bytes=70 output_sha256=withheld
+2026-11-20T05:33:37.927Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-20T05:33:38.953Z	line	first template=md5-fsbl
+2026-11-20T05:33:38.961Z	send	piece=1/1 offset=44993283 text=md5sum 0x14001a000 0x86000
+2026-11-20T05:33:38.992Z	echo	ok offset=44993283-44993320
+2026-11-20T05:33:38.996Z	key	Enter template=md5-fsbl
+2026-11-20T05:33:39.372Z	prompt	template=md5-fsbl output_bytes=70 output_sha256=withheld
+2026-11-20T05:33:39.453Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-20T05:33:40.482Z	line	first template=md5-env
+2026-11-20T05:33:40.490Z	send	piece=1/1 offset=44993395 text=md5sum 0x1400a0000 0x10000
+2026-11-20T05:33:40.512Z	echo	ok offset=44993395-44993432
+2026-11-20T05:33:40.515Z	key	Enter template=md5-env
+2026-11-20T05:33:40.893Z	prompt	template=md5-env output_bytes=70 output_sha256=withheld
+2026-11-20T05:33:40.979Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-20T05:33:42.004Z	line	first template=md5-images
+2026-11-20T05:33:42.013Z	send	piece=1/1 offset=44993507 text=md5sum 0x1400b0000 0x750000
+2026-11-20T05:33:42.040Z	echo	ok offset=44993507-44993545
+2026-11-20T05:33:42.044Z	key	Enter template=md5-images
+2026-11-20T05:33:42.420Z	prompt	template=md5-images output_bytes=70 output_sha256=withheld
+2026-11-20T05:33:42.505Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-20T05:33:43.528Z	line	first template=md5-whole
+2026-11-20T05:33:43.536Z	send	piece=1/1 offset=44993620 text=md5sum 0x140000000 0x800000
+2026-11-20T05:33:43.559Z	echo	ok offset=44993620-44993658
+2026-11-20T05:33:43.562Z	key	Enter template=md5-whole
+2026-11-20T05:33:43.941Z	prompt	template=md5-whole output_bytes=70 output_sha256=withheld
+2026-11-20T05:33:44.026Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-20T05:33:45.050Z	line	first template=sf-read
+2026-11-20T05:33:45.059Z	send	piece=1/1 offset=44993733 text=sf read 0x140000000 0x0 0x800000
+2026-11-20T05:33:45.084Z	echo	ok offset=44993733-44993776
+2026-11-20T05:33:45.088Z	key	Enter template=sf-read
+2026-11-20T05:33:46.017Z	prompt	template=sf-read output_bytes=55 output_sha256=f3a0cac61faf0fe68776e07eb5d8c39de1d29abe5bebf4c919cbd21e588ca494
+2026-11-20T05:33:46.105Z	tmux	pane=%3 command=picocom log_writer=17338
+2026-11-20T05:33:47.128Z	line	first template=md5-whole
+2026-11-20T05:33:47.137Z	send	piece=1/1 offset=44993836 text=md5sum 0x140000000 0x800000
+2026-11-20T05:33:47.161Z	echo	ok offset=44993836-44993874
+2026-11-20T05:33:47.164Z	key	Enter template=md5-whole
+2026-11-20T05:33:47.539Z	prompt	template=md5-whole output_bytes=70 output_sha256=withheld
+2026-11-20T05:38:22.829Z	reset	seq=2 method=k3ctl reason=idle-prompt offset=44993949
+2026-11-20T05:40:22.938Z	stop	stop=1 no SPL and U-Boot banner within 120 s of the reset
+2026-11-20T05:46:05.939Z	stop	stop=1 the port-open rule holds no reason to reset now (no idle prompt, no terminal marker or Fedora halted with 5 s quiet, and no prior halt or terminal marker before a session's first reset); no reset was made

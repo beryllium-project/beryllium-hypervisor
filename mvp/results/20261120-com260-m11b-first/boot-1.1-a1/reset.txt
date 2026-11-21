@@ -1,0 +1,17 @@
+method=k3ctl
+reason=idle-prompt
+reset_seq=2
+offset_before=44993949
+client_sha256=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+client_pin=7ca3d78a47de404becc6ee8450617dfad4382b7e316e37370f203be6e7eea3ec
+device=/dev/k3ctl
+status_before_utc=2026-11-20T05:38:22.517Z
+status_before=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=21011628 ver=1.1.1 inpwr=1 inrst=0 ev=RST
+status_before_exit=0
+reset_utc=2026-11-20T05:38:22.573Z
+reset_reply=OK reset
+reset_exit=0
+status_after_utc=2026-11-20T05:38:22.830Z
+status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=21011934 ver=1.1.1 inpwr=1 inrst=0 ev=RST
+status_after_exit=0
+BE_MVP_K3_CONSOLE: STOP stop=1 no SPL and U-Boot banner within 120 s of the reset

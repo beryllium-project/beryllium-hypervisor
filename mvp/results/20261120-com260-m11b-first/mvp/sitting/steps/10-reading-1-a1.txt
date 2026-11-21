@@ -1,0 +1,10 @@
+schema=be-mvp-k3-sitting-step-v1
+step=reading-1
+index=10
+attempt=1
+sitting=first
+started=2026-11-20T05:46:00Z
+usb=clean devices=11 interfaces=21
+tool reading exit=1 output=sitting/logs/10-reading-1-a1-reading.log
+ended=2026-11-20T05:46:05Z
+verdict=STOP stop=1 k3-console.sh reset stopped (exit 1): the port-open rule holds no reason to reset now (no idle prompt, no terminal marker or Fedora halted with 5 s quiet, and no prior halt or terminal marker before a session's first reset); no reset was made

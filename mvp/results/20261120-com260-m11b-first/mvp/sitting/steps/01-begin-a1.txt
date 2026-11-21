@@ -1,0 +1,13 @@
+schema=be-mvp-k3-sitting-step-v1
+step=begin
+index=01
+attempt=1
+sitting=first
+started=2026-11-20T05:32:44Z
+word=human-authorized:sitting-first
+said=2026-11-20T05:32:09Z
+plan=sitting/plan.txt sha256=cd2a6e778c77e32675af4a75d89f41a9ad43d8c2859e1f6ef506fded1dd04ef0
+tool console-check exit=0 output=sitting/logs/01-begin-a1-console-check.log
+tool console-start exit=0 output=sitting/logs/01-begin-a1-console-start.log
+ended=2026-11-20T05:32:44Z
+verdict=PASS

@@ -1,0 +1,14 @@
+schema=be-mvp-k3-sitting-step-v1
+step=boot-1.1
+index=06
+attempt=1
+sitting=first
+started=2026-11-20T05:38:21Z
+tool reset exit=1 output=boots/boot-1.1-a1/reset.txt
+tool form exit=1 output=boots/boot-1.1-a1/check.txt
+tool audit exit=0 output=sitting/logs/06-boot-1.1-a1-audit.log
+outcome=no-banners
+stops=B3,B5
+usb=clean devices=11 interfaces=21
+ended=2026-11-20T05:40:23Z
+verdict=STOP stop=B3 0 'Loading Environment from' lines after U-Boot's banner, expected 1 (stop B3)

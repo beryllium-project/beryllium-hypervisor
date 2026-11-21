@@ -1,0 +1,3 @@
+card=out step=begin recorded=2026-11-20T05:32:44Z log_offset=44970801
+card=in session=1 image=two-guests-off step=card-in-1 said=2026-11-20T05:38:08Z recorded=2026-11-20T05:38:15Z log_offset=44993949
+card=out session=1 image=two-guests-off step=card-out-1 said=2026-11-20T05:45:41Z recorded=2026-11-20T05:45:54Z log_offset=44994140

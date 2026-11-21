@@ -1,0 +1,10 @@
+schema=be-mvp-k3-sitting-step-v1
+step=card-out-1
+index=09
+attempt=1
+sitting=first
+started=2026-11-20T05:45:54Z
+said=2026-11-20T05:45:41Z
+card=out session=1 image=two-guests-off step=card-out-1 said=2026-11-20T05:45:41Z recorded=2026-11-20T05:45:54Z log_offset=44994140
+ended=2026-11-20T05:45:54Z
+verdict=PASS

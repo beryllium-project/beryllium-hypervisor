@@ -2004,7 +2004,8 @@ runs of the M11 candidate on the COM260. What exists is the tools, each
 tested under emulation or on files, and one sitting that stopped.
 **The first sitting ran on 2026-11-20 and stopped at its first boot
 from the card**, before any line of the project's firmware reached the
-console. The M11 plan's decision record has its account.
+console. The M11 plan's decision record has its account, and
+`mvp/results/20261120-com260-m11b-first/` is its record.
 **No boot of the project's firmware has yet shown a line on the
 board**, and nothing here changes a claim. The board's runs are made
 in sittings, with the responsible human present, each after his own

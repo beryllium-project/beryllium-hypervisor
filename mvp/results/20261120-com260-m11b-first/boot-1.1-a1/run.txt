@@ -1,0 +1,35 @@
+run=boot-1.1-a1
+step=boot-1.1
+attempt=1
+sitting=first
+session=1
+image=two-guests-off
+image_sha256=5c2b2fb971c3cf68075d075c1ec35b8aecbeba35ed3cda515fab9b2e98cd0287
+board_json_sha256=b30f9f14939f5860394ae3bf07a75b0e804f5b601086d4d0c540559159638195
+expect=gen/expect/two-guests-off.json sha256=c027bcee357f580e8a6c9393190f71e89a316c60f0d84e5bda8f64ad3d09019a
+report=none
+kernel=none
+dtb=none
+reference=references/gcc/two-guests-off.json sha256=151ceedc12c4d0d3bf94bbb6545e32a343e66436eec293b4eb3ea515b2405199
+memory=8 GiB
+observed_sha256=none
+toolchain=gcc
+launcher=uboot-autoboot-card
+loader=uboot-autoboot-card be_image=be-mvp-two-guests-off-gcc.img
+be_image=be-mvp-two-guests-off-gcc.img
+remote_image_sha256=5c2b2fb971c3cf68075d075c1ec35b8aecbeba35ed3cda515fab9b2e98cd0287
+card=in
+boot_id_before=reset-2@44993949
+reset_utc=2026-11-20T05:38:22.573Z
+serial_range=44993949-44994140
+outcome=no-banners
+spl_banner=U-Boot SPL 2022.10 (May 21 2026 - 07:43:32 +0000)
+uboot_banner=
+board_kernel=none (boot from system reset)
+check_status=1
+stops=B3,B5
+BE_MVP_RESULT: FAIL terminal=none
+usb=clean devices=11 interfaces=21
+banner_audit=PASS
+stop=B3 0 'Loading Environment from' lines after U-Boot's banner, expected 1 (stop B3)
+verdict=STOP
