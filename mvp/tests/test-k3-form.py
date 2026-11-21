@@ -28,7 +28,8 @@ the command line exits 2, names itself on standard error, and writes no
 record; rom_lines() and boot_medium() give their values on whole, cut,
 and changed captures; and captures of boots cut at each stage give their
 stops exactly, the earliest stage that the boot did not reach first, with
-the product name and hart count that they show. REPORT, IMAGE, and DTB
+the product name and hart count that they show, and a firmware's own
+failure lines first, under its sitting's stop. REPORT, IMAGE, and DTB
 are anchor's authority report and measured inputs.
 
 --write-card-fixtures (the writer, for the sittings' dry run) makes OUT,
@@ -78,7 +79,18 @@ SHAPES = {"off": ("gen/expect/two-guests-off.json", "qemu-two-guests-gcc-m9",
           "hostile": ("gen/anchor/expect/breach-g1.json",
                       "qemu-anchor-gcc-m9", "board-on.json")}
 OTHER = "sbi_stand_in: a line of no field"
+# The firmware's two lines, of its failure form, at the board's stop.
+FAILURE = ("sbi_domain_finalize: domain context allocation failed "
+           "(error -1004)",
+           "init_coldboot: domain finalize failed (error -1004)")
+# The banner's heap line, made up: with the boundary off the base's own
+# heap; with it on the board description's, 256 KB, more than 64 KB free.
+HEAP = {"off": "104 KB (total), 2 KB (reserved), 67 KB (used), 34 KB (free)",
+        "on": "256 KB (total), 4 KB (reserved), 111 KB (used), 141 KB (free)"}
 UBOOT = "U-Boot 2022.10 (Jan 01 2026 - 00:00:00 +0000)"
+# U-Boot's stamp alone: the vendor's U-Boot prints such a line before its
+# banner, with another time in each boot; the form counts it as no line.
+STAMP = "[   0.003]"
 NO_DEVICE = "Could not find a valid device for stand-in.spi"
 # The power chip's line as the board's reboot driver prints it.
 PMIC = "spacemit reboot: read PMIC reg 0xab value 0x{:x}"
@@ -132,7 +144,7 @@ def banner(board, observed, version, art):
     out += [field(f"Firmware {label}", value) for label, value in (
         ("Base", board["firmware"]["load"]), ("Size", "300 KB"),
         ("RW Offset", "0x40000"), ("RW Size", "60 KB"),
-        ("Heap Offset", "0x48000"), ("Heap Size", "32 KB (total)"),
+        ("Heap Offset", "0x48000"), ("Heap Size", HEAP[board["boundary"]]),
         ("Scratch Size", "4096 B (total)"))]
     out += [field("Runtime SBI Version", board["sbi_version"]),
             field("Standard SBI Extensions",
@@ -237,11 +249,12 @@ def capture(root, expect, board, observed, boot, fixture, paths=None,
             environment=None):
     """A passing capture of a boot of EXPECT's image from a card, as
     sections: the boot ROM's, SPL's, firmware banner's, and U-Boot's lines
-    from BOARD and OBSERVED, the environment's in the first shape unless
-    ENVIRONMENT gives its lines; the load of BOOT, the board image's bytes;
-    the monitor's lines, FIXTURE's stand-in, its log rendered by PATHS
-    (reference, boot image; the build's if none); and the records. (The
-    sections, (BOOT's size, CRC-32, MD5).)"""
+    from BOARD and OBSERVED, U-Boot's from its stamp alone (STAMP), the
+    environment's in the first shape unless ENVIRONMENT gives its lines;
+    the load of BOOT, the board image's bytes; the monitor's lines,
+    FIXTURE's stand-in, its log rendered by PATHS (reference, boot image;
+    the build's if none); and the records. (The sections, (BOOT's size,
+    CRC-32, MD5).)"""
     size, crc, md5 = len(boot), zlib.crc32(boot), hashlib.md5(boot).hexdigest()
     standin = CC.current_log_standin(CC.fixture(fixture), expect, root,
                                      paths)
@@ -263,7 +276,8 @@ def capture(root, expect, board, observed, boot, fixture, paths=None,
         "spl": ["U-Boot SPL 2022.10 (Jan 01 2026 - 00:00:00 +0000)",
                 "spl: a stand-in line"],
         "banner": banner(board, observed, top[version].strip(), art),
-        "uboot": ["", "", UBOOT, "", f"DRAM:  {observed['uboot']['memory']}",
+        "uboot": [STAMP, "", UBOOT, "",
+                  f"DRAM:  {observed['uboot']['memory']}",
                   *(environment or ["Loading Environment from MMC... OK"]),
                   "video devices not found or not probed yet: -19",
                   "display devices not found or not probed yet: -19",
@@ -286,7 +300,8 @@ def judge(parts, context):
                    card_memory=context["memory"],
                    card_observed=context["reference"],
                    card_tables=context["tables"],
-                   card_authority=context["authority"])
+                   card_authority=context["authority"],
+                   card_heap=CC.card_heap_rule())
     return CC.evaluate(text(parts), context["expect"], "card", PINS,
                        context["report"], **options)
 
@@ -441,6 +456,14 @@ def rows():
          None, OTHER),
         ("C3.3: another line than the first sitting's", "on",
          other_line(True), f"other lines are not {first}", None),
+        ("C3.3: another line after the banner's last field, the first "
+         "sitting", "off", add("banner", OTHER), None, OTHER),
+        ("C3.3: another line after the banner's last field than the first "
+         "sitting's", "on", refer(add("banner", OTHER)),
+         f"other lines are not {first}", None),
+        ("C3.3: U-Boot's stamp alone at another time than the first "
+         "sitting's", "on", refer(swap("uboot", STAMP, "[   0.004]")), None,
+         None),
         ("C3.5: a digest, the boundary off", "off", add(
             "banner", field("Domain commit digest", "5a" * 32),
             at="Platform Name"), "commit digest or record before the "
@@ -490,6 +513,34 @@ def rows():
         label, "stand-in other")), f"{label} 'stand-in other' is not {first}",
              None) for label in [*CC.CARD_HARDWARE.values(),
                                  *CC.CARD_DEVICES.values()]]
+    # C3.10: a line of the firmware's failure form; C3.11: the heap line,
+    # whose rules hold in the second sitting alone.
+    heap = "Firmware Heap Size"
+    out += [
+        ("C3.10: a line of the firmware's failure form among its fields",
+         "on", add("banner", FAILURE[0], at="Platform Name"),
+         f"the firmware stopped: {FAILURE[0]}", None),
+        ("C3.11: the free heap below the floor", "on", put(
+            heap, "256 KB (total), 4 KB (reserved), 189 KB (used), "
+            "63 KB (free)"), "free heap, 63 KB, is below the board "
+         "description's floor of 64 KB", None),
+        ("C3.11: the free heap at the floor", "on", put(
+            heap, "256 KB (total), 4 KB (reserved), 188 KB (used), "
+            "64 KB (free)"), None, None),
+        ("C3.11: a heap total other than the description's", "on", put(
+            heap, "104 KB (total), 4 KB (reserved), 30 KB (used), "
+            "70 KB (free)"), "heap total, 104 KB, is not the board "
+         "description's firmware.heap, 256 KB", None),
+        ("C3.11: a heap total larger than the description's", "on", put(
+            heap, "512 KB (total), 4 KB (reserved), 111 KB (used), "
+            "397 KB (free)"), "heap total, 512 KB, is not the board "
+         "description's firmware.heap, 256 KB", None),
+        ("C3.11: a heap line not of its form", "on", put(
+            heap, "256 KB (total)"), "heap line '256 KB (total)' is not of "
+         "the firmware's form", None),
+        ("C3.11: a free heap below the floor, the first sitting", "off",
+         put(heap, "104 KB (total), 2 KB (reserved), 97 KB (used), "
+             "5 KB (free)"), None, None)]
     # C4 and C5: U-Boot's banner, and each line required after it, missing.
     out += [(f"C4/5: no {line!r} line", "off", swap("uboot", line), finding,
              stop) for line, finding, stop in (
@@ -696,9 +747,12 @@ def witnessed(shape, card, board):
     form: NOT-APPLICABLE with the boundary off; with it on PASS and
     witness=printed, and hook=not-read for the hostile image alone; the
     power chip's flag, the MAC addresses' count, and the product name and
-    hart count, BOARD's."""
+    hart count, BOARD's; no other line (U-Boot's stamp alone is none)."""
     line, facts = card["boundary"], card["facts"]
-    return facts["pmic"] == "0x0" and facts["mac_addresses"] == "2" and \
+    return facts["heap_kb"] == ",".join(re.findall(
+        r"[0-9]+", HEAP[board["boundary"]])) and \
+        facts["other_lines"] == "0" and \
+        facts["pmic"] == "0x0" and facts["mac_addresses"] == "2" and \
         facts["environment_lines"] == ("2" if shape == "on" else "0") and \
         facts["product"] == board["product_name"] and \
         facts["harts"] == str(len(board["harts"])) and (
@@ -751,6 +805,20 @@ def uboot_until(prefix, *after):
         end = next(index for index, line in enumerate(lines)
                    if line.startswith(prefix))
         parts["uboot"] = lines[:end + 1] + list(after)
+    return edit
+
+
+def stopped(*lines):
+    """An edit: the firmware's banner cut after its digest line, or after
+    its art where it has none, then LINES, and nothing after them."""
+    def edit(parts, context):
+        banner = parts["banner"]
+        digest = [index for index, line in enumerate(banner)
+                  if line.startswith("Domain commit digest")]
+        end = digest[0] + 1 if digest else banner.index("", 2) + 1
+        parts["banner"] = banner[:end] + list(lines)
+        for name in ORDER[ORDER.index("banner") + 1:]:
+            parts[name] = []
     return edit
 
 
@@ -814,18 +882,34 @@ def stop_cases(bases):
              ["B3", "B5"], absent, ("none", "16")),
             ("another product name", "off", sub(
                 "uboot", "= stand_in_product", "= other"), ["B3"],
-             [("product name 'other'", "B3")], ("other", "16"))):
+             [("product name 'other'", "B3")], ("other", "16")),
+            ("the firmware's digest line, then its two failure lines and "
+             "nothing", "on", both(refer(), stopped(*FAILURE)), ["B6"],
+             [(f"the firmware stopped: {FAILURE[0]}", "B6"),
+              (f"the firmware stopped: {FAILURE[1]}", "B6"),
+              ("0 U-Boot banner", "B6")], ("none", "none")),
+            ("the same in the first sitting, after the firmware's art",
+             "off", stopped(*FAILURE), ["B5"],
+             [(f"the firmware stopped: {FAILURE[0]}", "B5"),
+              (f"the firmware stopped: {FAILURE[1]}", "B5"),
+              ("0 U-Boot banner", "B5")], ("none", "none"))):
         parts, context = copy.deepcopy(bases[shape])
         edit(parts, context)
         verdict, record = judge(parts, context)
         card = record["card"]
         tagged = [finding for finding in record["findings"]
                   if re.search(r" \(stop B[0-9]+\)$", finding)]
+        # The firmware's own failure lines are the record's first findings,
+        # and other lines of its banner.
+        failures = [finding for finding in record["findings"]
+                    if finding.startswith("the firmware stopped: ")]
         good = verdict == "FAIL" and card["stops"] == stops and \
             len(tagged) == len(named) and all(
                 part in finding and finding.endswith(f"(stop {stop})")
                 for (part, stop), finding in zip(named, tagged)) and (
-                    card["facts"]["product"], card["facts"]["harts"]) == facts
+                    card["facts"]["product"], card["facts"]["harts"]) == \
+            facts and record["findings"][:len(failures)] == failures and \
+            int(card["facts"]["other_lines"]) >= len(failures)
         print(f"{'ok  ' if good else 'FAIL'} {name} ({shape}): {verdict} "
               f"stops={','.join(card['stops']) or 'none'} product="
               f"{card['facts']['product']} harts={card['facts']['harts']}" + (

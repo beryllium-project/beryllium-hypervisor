@@ -2124,6 +2124,8 @@ stopped_at() {
 # The first sitting's boot from a card cut at each of its later stages:
 # after the firmware's banner (no U-Boot banner, so its reset's wait for
 # the banners stops: outcome no-banners, the reading's reset card-hang);
+# after the firmware's art and two lines of its failure form (the same,
+# the stop's text the first of them, as the form puts it first);
 # at U-Boot's prompt after a load that failed (outcome prompt;
 # idle-prompt); after U-Boot's banner (outcome timeout; the reading's
 # reset card-uboot-hang): each closed out. And after the boot ROM's lines
@@ -2143,6 +2145,13 @@ case_card_stops() {
 		K3_CARD_BOOT_SECONDS=2
 	grep -qx 'BE_MVP_K3_SITTING: STOP step=boot-1.1 attempt=1 stop=B5 0 U-Boot banner lines before the markers, expected 1 (stop B5)' \
 		"$out/card-stop-banner.boot-1.1.txt" || fail "card-stops: the firmware's banner, then nothing: $(tail -n 1 "$out/card-stop-banner.boot-1.1.txt")"
+	# shellcheck disable=SC2016 # sed's last line, $
+	stopped_at card-stop-firmware no-banners card-hang \
+		"$(derived card-stop-firmware "${card_head[@]}" \
+			-e '/^Platform Name /i sbi_domain_finalize: domain context allocation failed (error -1004)\ninit_coldboot: domain finalize failed (error -1004)' \
+			-e '/^Platform Name /,$d')" K3_CARD_BOOT_SECONDS=2
+	grep -qx 'BE_MVP_K3_SITTING: STOP step=boot-1.1 attempt=1 stop=B5 the firmware stopped: sbi_domain_finalize: domain context allocation failed (error -1004) (stop B5)' \
+		"$out/card-stop-firmware.boot-1.1.txt" || fail "card-stops: the firmware's art, then its two failure lines: $(tail -n 1 "$out/card-stop-firmware.boot-1.1.txt")"
 	capture=$(derived card-stop-prompt "${card_head[@]}" \
 		-e "/^Autoboot in 0 seconds\$/{a Failed to load '/be-mvp-two-guests-off-gcc.img'" -e 'q}')
 	printf '=> ' >>"$capture"
@@ -2195,7 +2204,7 @@ case_card_stops() {
 		grep -q '^verdict=STOP stop=1 ' "$record/mvp/sitting/readings/reading-1.txt" &&
 		[ ! -e "$record/mvp/preflight-after.txt" ] && [ -f "$record/mvp/preflight-before.txt" ] ||
 		fail "card-stops: the record's reading-1, or its preflights"
-	pass sitting-card-stops "the first sitting's boot from a card stopped after the firmware's banner (outcome no-banners, stop B5 by U-Boot's banner, the earliest stage not reached; reading-1's reset card-hang), at U-Boot's prompt after a failed load (prompt; idle-prompt), and after U-Boot's banner (timeout, stop B5: U-Boot did not reach its environment's line; card-uboot-hang): each closed out, equal=6, end's audit without a finding, no key in a boot from the card, and its record, closed; after the boot ROM's lines alone (no-banners, stop B4 by the SPL banner): the boot taken up again and reading-1, each with --card-hang, each reset refused with no reset made, STOP stop=1 with the flag's words, the step's record flag=--card-hang, an empty digests.tsv, no end; its record, stopped at boot-1.1, the boot taken up again an attempt with no capture to judge, reading-1's record and stop kept with no digest, preflight_after absent"
+	pass sitting-card-stops "the first sitting's boot from a card stopped after the firmware's banner (outcome no-banners, stop B5 by U-Boot's banner, the earliest stage not reached; reading-1's reset card-hang), after the firmware's art and two lines of its failure form (stop B5, its text the first of them), at U-Boot's prompt after a failed load (prompt; idle-prompt), and after U-Boot's banner (timeout, stop B5: U-Boot did not reach its environment's line; card-uboot-hang): each closed out, equal=6, end's audit without a finding, no key in a boot from the card, and its record, closed; after the boot ROM's lines alone (no-banners, stop B4 by the SPL banner): the boot taken up again and reading-1, each with --card-hang, each reset refused with no reset made, STOP stop=1 with the flag's words, the step's record flag=--card-hang, an empty digests.tsv, no end; its record, stopped at boot-1.1, the boot taken up again an attempt with no capture to judge, reading-1's record and stop kept with no digest, preflight_after absent"
 }
 
 # ------------------ 36: a boot whose form ended before its verdict

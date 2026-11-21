@@ -115,8 +115,14 @@ MVPINIT or kernel timestamp after its start); the last line is whole.
           build's board.json's, B-6's thresholds met, the root OpenSBI
           domain's regions board.json's, each hart assigned to one OpenSBI
           domain (the root alone with the boundary off; the parked harts
-          to one of their own with it on), any other line recorded; one
-          U-Boot banner, then once each and in order its DRAM line
+          to one of their own with it on), in the second sitting its heap
+          line of the firmware's form, its total the board description's
+          firmware.heap, its free heap at least firmware.heap_free_min
+          (mvp/k3/platform.json, read by its path), any other line to
+          U-Boot's banner recorded (a line of U-Boot's stamp alone is none),
+          and a line of the firmware's failure form (CARD_FAILURE) after its
+          version line a finding of the sitting's stop, the record's first;
+          one U-Boot banner, then once each and in order its DRAM line
           (--memory), `Loading Environment from MMC... ` ending in `OK`
           (on that line, or alone on a later one before the product
           name's: the card's driver prints while the load initialises the
@@ -488,6 +494,9 @@ sys.dont_write_bytecode = True
 HERE = pathlib.Path(__file__).resolve().parent
 MVP_DIR = HERE.parent
 LAYOUT_H = MVP_DIR / "src" / "mvp-layout.h"
+# The board's description: the heap that its trees with OpenSBI domains
+# give the firmware, and the floor on the free heap that the banner prints.
+K3_PLATFORM = MVP_DIR / "k3" / "platform.json"
 # beryllium-cheri: the monitor's header, for its console line's length.
 MVP_H = MVP_DIR / "src" / "mvp.h"
 DEFAULT_PINS = MVP_DIR / "guest" / "pins.txt"
@@ -596,6 +605,12 @@ CARD_ROM_NOR = re.compile(r"bm:4|nor m:.*|.*sd f!.*")
 # at the firmware's pin): the version line, the art, `LABEL<pad>: VALUE`.
 CARD_FIRMWARE = re.compile(r"OpenSBI v[0-9]+\.[0-9]+")
 CARD_ART = re.compile(r"[ _/\\|()'.<]+")
+# A line of the firmware's own failure form: lib/sbi/sbi_init.c's and
+# sbi_domain.c's "FUNCTION: TEXT (error N)", and sbi_trap_error's first.
+CARD_FAILURE = re.compile(r"[a-z_][a-z0-9_]*: .+ \(error -?[0-9]+\)")
+# The banner's heap line (lib/sbi/sbi_init.c), each figure in whole KB.
+CARD_HEAP = re.compile(r"([0-9]+) KB \(total\), ([0-9]+) KB \(reserved\), "
+                       r"([0-9]+) KB \(used\), ([0-9]+) KB \(free\)")
 CARD_FIELD = re.compile(r"([A-Z][A-Za-z0-9 ]*?[A-Za-z0-9]) *: ?(.*)")
 CARD_DOMAIN = re.compile(r"Domain([0-9]+) (Name|Init Order|Boot HART|HARTs|"
                          r"Region[0-9]{2}|Next Address|Next Arg1|Next Mode|"
@@ -1492,8 +1507,11 @@ def boot_medium(text):
 def card_banner(lines, start, end):
     """The firmware's banner from its version line, LINES[START], to its
     last field before END: (its lines as printed, its fields in order as
-    (label, value), its other lines as (index, text)). Its art is the lines
-    before its first field (lib/sbi/sbi_init.c's BANNER)."""
+    (label, value), its other lines as (index, text), those after its last
+    field and before END among them). Its art is the lines before its
+    first field (lib/sbi/sbi_init.c's BANNER). A line empty once U-Boot's
+    stamp is gone (uboot_text()) is no line, as an empty one is none: the
+    vendor's U-Boot prints a stamp alone before its banner."""
     fields, other, pending, last = [], [], [], start
     for index in range(start + 1, end):
         text = lines[index].rstrip()
@@ -1502,9 +1520,10 @@ def card_banner(lines, start, end):
                       CARD_DOMAIN.fullmatch(match.group(1))):
             fields.append(match.groups())
             other, pending, last = other + pending, [], index
-        elif text.strip() and (fields or not CARD_ART.fullmatch(text)):
+        elif uboot_text(text) and (fields or not CARD_ART.fullmatch(text)):
             pending.append((index, text))
-    return [line.rstrip() for line in lines[start:last + 1]], fields, other
+    return [line.rstrip() for line in lines[start:last + 1]], fields, \
+        other + pending
 
 
 def card_domains(fields, board, find):
@@ -1609,6 +1628,47 @@ def card_build(value, board, find):
                  f"{what} (B-6)")
 
 
+def card_heap(value, board, heap, find):
+    """The banner's heap line (lib/sbi/sbi_init.c): its four figures in
+    whole KB, (total, reserved, used, free), or None. In the second
+    sitting, whose trees all give the firmware the board description's
+    heap, HEAP's (firmware.heap, firmware.heap_free_min): the line of its
+    form, its total that heap as the banner rounds it, and its free heap
+    at or above the floor, each a finding of the sitting's stop."""
+    line = value("Firmware Heap Size")
+    match = CARD_HEAP.fullmatch(line or "")
+    figures = tuple(int(group) for group in match.groups()) if match \
+        else None
+    if board["sitting"] != "second" or line is None:
+        return figures
+    stop, (size, floor) = CARD_SITTINGS["second"], heap
+    if figures is None:
+        find("heap", f"the banner's heap line {line!r} is not of the "
+             f"firmware's form", stop)
+        return None
+    if figures[0] != size // 1024:
+        find("heap", f"the banner's heap total, {figures[0]} KB, is not the "
+             f"board description's firmware.heap, {size // 1024} KB", stop)
+    if figures[3] * 1024 < floor:
+        find("heap", f"the banner's free heap, {figures[3]} KB, is below "
+             f"the board description's floor of {floor // 1024} KB", stop)
+    return figures
+
+
+def card_heap_rule(path=K3_PLATFORM):
+    """The board description's (firmware.heap, firmware.heap_free_min), in
+    bytes, for the second sitting's heap line; ValueError, naming PATH,
+    where it holds no such pair."""
+    try:
+        firmware = json.loads(pathlib.Path(path).read_bytes())["firmware"]
+        rule = tuple(int(firmware[key], 16) for key in ("heap",
+                                                        "heap_free_min"))
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise ValueError(f"{path}: no firmware.heap and heap_free_min "
+                         f"({error})") from error
+    return rule
+
+
 def card_uboot(texts, start, board, memory, find, banner):
     """U-Boot's lines after its banner at START: once each, its DRAM line
     (MEMORY), its environment's (the card's MMC, OK), its product name's
@@ -1698,11 +1758,13 @@ def card_facts(capture, options, findings, facts):
     did not reach: the boot ROM took the NOR, or no SPL banner (B4); no
     firmware banner; no U-Boot banner (the sitting's). That stage's finding
     names it; a later stage's line that is absent names no stop of its
-    own."""
+    own. A line of the firmware's failure form after its banner's version
+    line is a finding of the sitting's stop, which evaluate() puts first
+    ("failures")."""
     board, memory = options["card_board"], options["card_memory"]
     reference = options.get("card_observed")
     card = {"sitting": board["sitting"], "tagged": [], "notes": [],
-            "banner": []}
+            "banner": [], "failures": []}
     facts.update(launcher_mode="card", card=card)
 
     def find(rule, text, stop=None):
@@ -1744,8 +1806,14 @@ def card_facts(capture, options, findings, facts):
                  f"from a card")
     values, fields, other = {}, [], []
     if len(firmware) == 1:
-        card["banner"], fields, other = card_banner(lines, firmware[0], next(
-            (index for index in uboot if index > firmware[0]), len(lines)))
+        end = next((index for index in uboot if index > firmware[0]),
+                   len(lines))
+        card["banner"], fields, other = card_banner(lines, firmware[0], end)
+        for line in texts[firmware[0] + 1:end]:
+            if CARD_FAILURE.fullmatch(line):
+                find("failure", f"the firmware stopped: {line}",
+                     CARD_SITTINGS[board["sitting"]])
+                card["failures"].append(findings[-1])
         got = [label for label, _ in fields if label in CARD_FIELDS]
         for label in CARD_FIELDS:
             if got.count(label) != 1:
@@ -1759,13 +1827,17 @@ def card_facts(capture, options, findings, facts):
     def value(label):
         return values[label][0] if len(values.get(label, ())) == 1 else None
     card_build(value, board, find)
+    heap = card_heap(value, board, options["card_heap"], find)
     parked = card_domains(fields, board, find) if fields else "none"
     digest = value("Domain commit digest")
     if digest and board["digest"] and digest != board["digest"]:
         find("banner", f"the banner's digest {digest} is not board.json's "
              f"{board['digest']}")
-    card["notes"] = [f"line {index + 1}: {text!r} inside the firmware's "
-                     f"banner" for index, text in other]
+    last = firmware[0] + len(card["banner"]) - 1 if fields else len(lines)
+    card["notes"] = [f"line {index + 1}: {text!r} " + (
+        "inside the firmware's banner" if index < last else
+        "after the firmware's banner's last field")
+                     for index, text in other]
     indexes, read = card_uboot(texts, uboot[0] + 1 if uboot else 0, board,
                                memory, find, bool(uboot))
     for number, text in enumerate(texts, 1):
@@ -1803,6 +1875,7 @@ def card_facts(capture, options, findings, facts):
             key: firmware_facts[key] or "none" for key in CARD_HARDWARE
             if key.startswith(("pmp", "priv"))},
         digest=(digest or "none")[:12], parked=parked,
+        heap_kb=",".join(map(str, heap)) if heap else "none",
         other_lines=str(len(other)),
         no_flash_device=read["no_flash_device"] or "none",
         pmic=read["pmic"] or "none",
@@ -3995,6 +4068,10 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
                 "a boundary-on run is no refusal: its tree restricts the "
                 "cold boot to hart 0"]
     card = facts.pop("card", None)
+    if card is not None:
+        # The firmware's own failure lines say first why the boot stopped.
+        findings = [item for item in card["failures"] if item in findings] + \
+            [item for item in findings if item not in card["failures"]]
     last = capture.monitor[-1].text if capture.monitor else ""
     terminal = "fail-marker" if any(
         line.text.startswith((FAIL_PREFIX, "BE_K3_B3: FAIL"))
@@ -7850,11 +7927,15 @@ def card_options(parser, args, expect, image):
     if why:
         parser.error(f"--expect {args.expect} with --board {args.board}: "
                      f"{why}")
+    try:
+        heap = card_heap_rule()
+    except ValueError as error:
+        parser.error(f"the board description: {error}")
     return {"card_board": loaded["board"], "card_memory": args.memory,
             "card_observed": loaded.get("observed"),
             "card_tables": loaded.get("tables"),
             "card_authority": loaded.get("partition_authority"),
-            "card_inputs": inputs}
+            "card_heap": heap, "card_inputs": inputs}
 
 
 def main(argv):
