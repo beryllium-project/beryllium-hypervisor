@@ -2410,3 +2410,39 @@ text above as it says; the text above is otherwise as accepted.
     `mvp/k3/sitting-pins.txt`, and takes out the three `card` lines
     of the images that those builds replace. No card image was made
     from the new builds before this entry.
+- **2026-11-21, the second sitting's three card images, made again**
+  (the board addendum's B-4; M11-B5). Each was made from the board
+  gate's outputs for the builds of the entry before this one, at the
+  commit that holds that entry, from 19:21Z to 19:24Z, for a card of
+  31,927,042,048 bytes, the size of the one card so far:
+
+  | Image | SHA-256 of `card.img` | SHA-256 of its FIT | SHA-256 of its environment |
+  | --- | --- | --- | --- |
+  | `anchor` | `87696892797cfe960031868a79e278b260caa164f93d84b925857c6fbcb00677` | `d695d9b359e528d8a786f24c015872436547f617bdaa6e3cb0f12904e7ceb70b` | `8e733fecc127b6c9dbc357d2180cbc8f7fb2219afc62f476e44658620b48a022` |
+  | `k3-breach-g1` | `8c633f9b4b0975a060f049221c5a2a795a8990f7975f37ee607c9cc9e3de75f4` | `a57bd7791b1e1fbb60c6808a31ac0619e805bd5ead9546b44151e1c188d11283` | `cb4e027ec1e3cbfcb1a6650257077112821d8b58246c7b054be2d749dcbcb88a` |
+  | `k3-breach-c` | `837760367212f2b2d10028ae338434b723d5dfdd5de61fdb2f86dcdd538e0623` | `91a2cffaf2819f53d0637ee2d71913fc8c515f7dcfec7bfe9e8929ecc95639e2` | `915ec7346927323a5651e8e5ca8c3897dfb24b0606b3987e0b2e0804d841eab0` |
+
+  - Each FIT (541,299, 541,307, and 541,303 bytes, as before) holds
+    its image's build of the entry before this one. Each environment
+    is byte for byte the one of the entry "the second sitting's three
+    card images": nothing that it is made from has changed. The
+    vendor's four published files are byte for byte at their offsets.
+  - They replace the three images of that entry, which stand there as
+    the images of the sitting's first run. The same commit adds the
+    lines `card anchor`, `card k3-breach-g1`, and `card k3-breach-c`
+    to `mvp/k3/sitting-pins.txt` again, with these values.
+  - **The card.** The one card of the images' size still holds
+    `anchor`'s image of the first run, as its read-back after that
+    run showed. It is written again, whole, with `anchor`'s image of
+    this entry, and read back, before the second sitting runs again;
+    the responsible human chose to run all three sessions from that
+    card, one after another, each image written and read back before
+    its session (2026-11-21, 14:32Z).
+  - **The reader.** The card's tools reach it through the second
+    reader, a card slot on a USB 3 hub, which the responsible human
+    approved with the card tool's one command on 2026-11-21 (the
+    entry of the sitting's first run has the departure from QB4's
+    letter).
+
+  The images are not committed or published: each holds the vendor's
+  files.
