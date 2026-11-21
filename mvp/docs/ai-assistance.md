@@ -33,7 +33,7 @@ and the internal session handoff, are that repository's too and are not
 part of this one. Section 8 discloses the assistance in the release path's
 steps 2 and 3, which made this repository, section 9 the assistance
 in M11, the first milestone made after the release, and sections 10
-and 11 the assistance in M11's work for the board.
+to 13 the assistance in M11's work for the board.
 
 ## 1. The responsible human
 
@@ -618,3 +618,54 @@ No AI system accepted a result, decided a stop, re-set a limit, added
 a `Signed-off-by`, or pushed. No AI system wrote to the board's NOR
 flash, changed its saved environment, or typed while a card was in
 the slot.
+
+## 13. After the release: M11-B4, the second sitting's preparation
+
+This section covers M11-B4 from the first sitting's record to the
+second sitting's pins: its three firmware builds, their card images,
+and two corrections of tools that the work brought out. It was made
+in the same session as sections 10 to 12, on the workstation, on
+2026-11-21, by the same practice. Nothing in it touched the board.
+
+- **The builds and the card images.** The owner session, on
+  `claude-fable-5.2`, ran the board gate on the host and `evaluate`
+  with the gate inside the evaluator, so that each of the three
+  firmware builds was made twice and compared. It made the card
+  images, wrote the decision record's two entries and the pins, and
+  wrote `anchor`'s image to the first sitting's card and read it
+  back, through the card reader's tool.
+- **The frame tool's self-test.** A whole check at the first form of
+  the pins' commits failed in that self-test (the README's open item
+  144), and the owner session found the cause. One sub-agent on
+  Claude Opus 5.5 (`claude-opus-5.5`) wrote the correction, in a clone
+  of its own; it used no board, device, or network. The change is
+  nine lines added and six removed, inside the self-test alone. The
+  owner session read each line, ran the self-test with and without
+  the change in the states of the pins file, and tried two changed
+  rules of the tool against it.
+- **The console tool's helper.** Two whole checks then stopped at one
+  case of the board tools' dry run (the README's open item 142). The
+  owner session read the cause from the two runs' records, a stale
+  read of the log in the helper, and reproduced it in scratch without
+  timing. A second sub-agent on `claude-opus-5.5`, in a clone of its
+  own, with no board, device, or network, wrote the correction and a
+  case for the dry run, and read every wait of the board tools for
+  the same pattern. It stopped at one verdict that the small
+  correction did not fit, the reason for an MVP that hangs, and put
+  it to the owner session, which chose the form that it proposed.
+  The change is 122 lines added and 16 removed, in the helper and the
+  dry run. The owner session read each line, ran the new case against
+  the helper before and after, and changed six of its guards one at a
+  time to see the case fail.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The three firmware builds, their comparison, the card images, the two entries, and the pins | The owner session | The addendum's B-1 and B-4 |
+| `anchor`'s image written to the card and read back | The owner session, through the card reader's tool | The addendum's QB4 |
+| The correction of the frame tool's self-test | A sub-agent on Claude Opus 5.5; each line read by the owner session | The README's open item 144 |
+| The correction of the console tool's helper, its case in the dry run, and the reading of the board tools' waits | A second sub-agent on Claude Opus 5.5; each line read by the owner session | The README's open item 142 |
+| The README's words and open items, and the evidence section | The owner session | The addendum |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, decided a stop, re-set a limit, added
+a `Signed-off-by`, or pushed.

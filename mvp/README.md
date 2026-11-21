@@ -670,6 +670,17 @@ plan, "Architecture" and "The triggers for Instance 3").
   built without it, and no hart was confined. It is diagnostic
   evidence for one board, never hardware validation, and no claim
   changes.
+- **The second sitting's preparation (M11-B4).** With the first
+  sitting's facts in hand, the second sitting's three firmware
+  builds, for `anchor`, `k3-breach-g1`, and `k3-breach-c`, were made
+  on the host and inside the evaluator, compared, and pinned, and
+  their card images were made and pinned (`k3/sitting-pins.txt`; the
+  M11 plan's decision record has both entries). `anchor`'s image is
+  on the first sitting's card, written whole and read back. Two tools
+  were corrected first: the frame tool's self-test (open item 144),
+  and the console tool's helper, whose verdicts after a quiet could
+  rest on a stale read of the log (open item 142, closed). The second
+  sitting has not run.
 - **Hart region** (port rule `hart-region`, `src/mvp-layout.h`). A NOLOAD
   region of two 64 KiB blocks at `0x1_0204_4000`, right after B7's pool,
   in the pool's segment (Q1). Each block holds the hart's 8 KiB trusted
