@@ -2192,3 +2192,35 @@ text above as it says; the text above is otherwise as accepted.
     aside, because a tool's self-test had to be corrected before the
     pins (the evidence record has the account), and this entry
     follows the correction.
+- **2026-11-21, the second sitting's three card images** (the board
+  addendum's B-4). Each was made from the board gate's outputs for
+  the builds of the entry before this one, from 05:45Z to 05:46Z,
+  for a card of 31,927,042,048 bytes, the size of the one card that
+  the first sitting used:
+
+  | Image | SHA-256 of `card.img` | SHA-256 of its FIT | SHA-256 of its environment |
+  | --- | --- | --- | --- |
+  | `anchor` | `6338fd6848c198d7482fb41ad168edf0c2bc9c4d1c30ee3972e9a698c5acff41` | `6ed29f3fab63f2c5c9013a224a433c23aa5775f323ed9980b1bb2133366b23c7` | `8e733fecc127b6c9dbc357d2180cbc8f7fb2219afc62f476e44658620b48a022` |
+  | `k3-breach-g1` | `ce9c87b2708a5cee01e61a54245ec7a73fbad05ffa14e0c87e07d696b0bf24a2` | `95f0f5cd959ac1932d2af66cc5e9e91d2740347ef316e5d73a6577871047a713` | `cb4e027ec1e3cbfcb1a6650257077112821d8b58246c7b054be2d749dcbcb88a` |
+  | `k3-breach-c` | `70e2300b5639a911e3b5d777b1f192f5f072c2bed878295eaba440947de18040` | `0d4425dd89023641d97e95bb34f2eee5968721788a30947d2191649a31f99ce1` | `915ec7346927323a5651e8e5ca8c3897dfb24b0606b3987e0b2e0804d841eab0` |
+
+  - Each FIT (541,299, 541,307, and 541,303 bytes) holds its image's
+    build of the entry before this one. Each environment (16,384
+    bytes) is made as the first sitting's was, for its own image's
+    staged name. The vendor's four published files are byte for byte
+    at their offsets. Each FIT and each environment is byte for byte
+    the one that the board gate made.
+  - The same commit adds the lines `card anchor`, `card k3-breach-g1`,
+    and `card k3-breach-c` to `mvp/k3/sitting-pins.txt`.
+  - **The cards (QB3).** `anchor`'s image is written to the first
+    sitting's card, the whole card (05:48Z to 06:23Z), and read back
+    (to 06:51Z): each of the card's fourteen regions equals the
+    image's. The first sitting's image on that card went with the
+    write. The two other images are written when their cards are
+    known: to two more cards, or to this card again between
+    sessions, as the responsible human has been asked. A card of
+    another size needs its image made for that size, and its line
+    here replaced, in a commit of its own.
+
+  The images are not committed or published: each holds the vendor's
+  files.
