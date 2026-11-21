@@ -1717,6 +1717,13 @@ public push now.
   differ, it governs; the plan's other sections stand, and the MVP
   plan's text is not changed. Accepted 2026-11-20 (UTC) by the
   responsible human's sign-off of its commit.
+- `mvp-m12-plan-revision-2.md`: revision 2 of the M12 plan, at the
+  responsible human's direction of 2026-11-21: what M12 does once the
+  people whom he contacts have answered, with a step planned for each
+  answer and none started before it. Every earlier step of the plan
+  and of its revision 1 has ended. Where it and the earlier pages
+  differ, it governs; their other sections stand. Accepted 2026-11-21
+  (UTC) by the responsible human's sign-off of its commit.
 - `mvp-m12-7-1-environment.md`: the packet and the record of M12-7.1,
   the first sub-step of M12-7: M12-1's environment made again for the
   Sail model's `master`, which has the hypervisor extension: the exit

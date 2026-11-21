@@ -616,6 +616,10 @@ export default defineConfig({
             link: '/mvp-m12-plan-revision-1'
           },
           {
+            text: 'MVP M12 plan, revision 2: after the first contacts',
+            link: '/mvp-m12-plan-revision-2'
+          },
+          {
             text: 'MVP M12-7.1, the environment for the model\'s master: packet and record',
             link: '/mvp-m12-7-1-environment'
           },
@@ -1304,6 +1308,10 @@ export default defineConfig({
             link: '/mvp-m12-plan-revision-1'
           },
           {
+            text: 'MVP M12 plan, revision 2: after the first contacts',
+            link: '/mvp-m12-plan-revision-2'
+          },
+          {
             text: 'MVP M12-7.1, the environment for the model\'s master: packet and record',
             link: '/mvp-m12-7-1-environment'
           },
@@ -1875,6 +1883,10 @@ export default defineConfig({
           {
             text: 'MVP M12 plan, revision 1: the Supervisor Domains model in Sail',
             link: '/mvp-m12-plan-revision-1'
+          },
+          {
+            text: 'MVP M12 plan, revision 2: after the first contacts',
+            link: '/mvp-m12-plan-revision-2'
           },
           {
             text: 'MVP M12-7.1, the environment for the model\'s master: packet and record',
