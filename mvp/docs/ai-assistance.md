@@ -33,7 +33,7 @@ and the internal session handoff, are that repository's too and are not
 part of this one. Section 8 discloses the assistance in the release path's
 steps 2 and 3, which made this repository, section 9 the assistance
 in M11, the first milestone made after the release, and sections 10
-to 14 the assistance in M11's work for the board.
+to 15 the assistance in M11's work for the board.
 
 ## 1. The responsible human
 
@@ -727,6 +727,61 @@ in the same session as sections 10 to 13, on the workstation, on
 | The choice of 256 KiB and of the floor | The owner session, from the sub-agent's measurements | The same |
 | The three firmware builds, their comparison, the card images, the entries, and the pins | The owner session | The addendum's B-1 and B-4 |
 | The README's and the guide's words, one sentence of the firmware page, the open items, and the evidence section | The owner session | The addendum |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, decided a stop, re-set a limit, added
+a `Signed-off-by`, or pushed.
+
+## 15. After the release: M11-B5 and M11-B6, the second sitting's second run and the board's result
+
+This section covers the second sitting as it was run again, and the
+words for the board's result. It was made in the same session as
+sections 10 to 14, on the workstation, on 2026-11-22, by the same
+practice.
+
+- **The session at the board.** The responsible human was at the
+  board, moved the one card between the board and the reader six
+  times, and gave his word for the sitting and for each of its three
+  sessions. The owner session, on `claude-fable-5.2`, ran the
+  sitting's steps through the driver. Each of the ten resets was the
+  dongle's, and nothing was typed while the card was in. The form
+  judged each of the five boots before the next reset, and found no
+  stop.
+- **One step was taken up again.** The first preflight stopped,
+  because the board had been reset a little before, not by the
+  session, and was still booting. The owner session read the end of
+  that boot in the serial log by the form of its lines, made one TCP
+  connection to the board's SSH port to see that it answered, and
+  ran the step once more, as the driver allows.
+- **The card between the sessions.** The owner session ran the card
+  tool's read-back, dry run, write, and read-back for the next image
+  from a script of its own, which gave the dry run's confirmation to
+  the write. The owner session did not read the dry run's output
+  between the two.
+- **The record.** The sittings' record tool made it at the sitting's
+  commit. The owner session read it before it was committed: the
+  boot ROM's lines, and a search of every file for an identifier of
+  the board, the workstation, or the account, and for a digest of
+  the flash. It printed M-mode's count lines from the private
+  captures while the sitting ran, to see them; the record's excerpts
+  hold the same lines.
+- **The words.** The claim page's paragraph about the board and the
+  limit's new sentences are the plan's, fixed before the sitting
+  (the board addendum's B-11 and the decision record of
+  2026-11-18); the owner session copied them and compared them with
+  the plan by script. The ledger's board rows, their notes, the
+  README's and the guide's words, the root README's note on M11,
+  three planning pages' statements of what ran on the board, the
+  decision record's entry, and the evidence section are the owner
+  session's. No code was written or changed for this part, and no
+  sub-agent took part in it.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The sitting's steps, its close, and its record | The owner session, through the sittings' driver, with the responsible human at the board | The addendum's sittings; each session on his word |
+| The card's three writes and six read-backs | The owner session, through the card's tools | The addendum's B-4; the reader that the responsible human approved |
+| The claim page's words for the board, and the limit's | The plan's, copied by the owner session | The addendum's B-11, used only if the responsible human accepts the result |
+| The ledger's board rows and their notes, the README's and the guide's words, the root README's note, three planning pages' statements, the decision record's entry, and the evidence section | The owner session | The addendum's M11-B6 |
 | Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
 
 No AI system accepted a result, decided a stop, re-set a limit, added

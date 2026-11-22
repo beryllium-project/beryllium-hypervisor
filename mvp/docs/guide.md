@@ -2001,9 +2001,9 @@ names the candidate's tree once the gates have passed at it.
 This section is about the M11 plan's
 [board addendum](../../planning/mvp-m11-board-addendum.md), which plans
 runs of the M11 candidate on the COM260. What exists is the tools, each
-tested under emulation or on files; the first of the addendum's two
-sittings, which was run twice; and the second sitting's first run,
-which stopped.
+tested under emulation or on files, and the addendum's two sittings,
+each of which was run twice: its first run stopped, and its second
+passed.
 **The first sitting's first run (2026-11-20) stopped at its first boot
 from the card**, before any line of the project's firmware reached the
 console; `mvp/results/20261120-com260-m11b-first/` is its record.
@@ -2018,12 +2018,20 @@ boot from the card**, in the cold boot of the project's firmware: its
 heap could not hold the switch contexts of the tree's OpenSBI domains,
 and it said so in two lines; `mvp/results/20261121-com260-m11b-second/`
 is its record. The heap's size on the board was corrected after it
-("The firmware's device tree", below). The M11 plan's decision record
-has the account of all three.
-**No hart has run under the boundary on the board**, and nothing
-here changes a claim. The board's runs are made
-in sittings, with the responsible human present, each after his own
-sign-off; their records are board records under `mvp/results/`.
+("The firmware's device tree", below).
+**Its second run (2026-11-22), with that correction, passed**: in each
+of five boots from the card with the boundary on, three of `anchor`
+and one of each hostile-monitor image, the project's firmware printed
+its banner, the monitor ran to its shutdown line, and M-mode's printed
+records show harts 0 to 2 confined, with the counts that the image
+declares; `mvp/results/20261122-com260-m11b-second/` is its record.
+The M11 plan's decision record has the account of all four.
+**What the board's runs show is the paragraph about the board on the
+claim's page, with its limit** ([claim-boundary.md](claim-boundary.md),
+"On one board"): on the board, what M-mode prints is the only witness,
+and the evidence is diagnostic, from one board. The board's runs are
+made in sittings, with the responsible human present, each after his
+own sign-off; their records are board records under `mvp/results/`.
 
 ### What is different on the board
 
@@ -2395,8 +2403,8 @@ dongle, the console, the reader, and the gate (`k3-session-check`).
 
 ### What this section does not show
 
-The first sitting's second run is the one passing board result here,
-and it is a run with the boundary built off. It shows the chain: the
+The first sitting's second run is a run with the boundary built off.
+It shows the chain: the
 boot ROM and the SPL take the card; the SPL enters the project's
 firmware; the firmware's banner prints, with each field that follows
 from the build as `board.json` expects it; the vendor's U-Boot comes
@@ -2408,11 +2416,9 @@ readings around its session show the NOR's six ranges equal before
 and after.
 
 It shows nothing of the boundary on the board: no hart was confined,
-and M-mode printed no commit record. Whether the board's PMP holds the
-profiles, and whether the hostile-monitor images' attempts end there
-as declared, are what the second sitting is for. The cause of the
-first run's stop is established from sources; the second run agrees
-with it, and shows no more than that.
+and M-mode printed no commit record. The cause of the first run's stop
+is established from sources; the second run agrees with it, and shows
+no more than that.
 
 The second sitting's first run adds little to that. It shows the boot
 ROM, the SPL, and the start of the project's firmware for a second
@@ -2420,9 +2426,27 @@ build; that the firmware reads the configuration digest of a tree
 with the OpenSBI domains; and that a cold boot which cannot hold its
 switch contexts stops before any other stage runs. Its cause is
 established from the firmware's two lines, the series' source, and
-the build's sizes, and reproduced under QEMU on the board's load. That
-the corrected heap is enough on the board is a prediction from QEMU's
-machine until a boot there prints its banner.
+the build's sizes, and reproduced under QEMU on the board's load.
+
+The second sitting's second run is the one result with the boundary on.
+In five boots it shows what M-mode printed: harts 0 to 2 committed,
+each with the entries of its profile's table; the thirteen other harts
+not committed; and, for the hart of each hostile-monitor image's hook,
+the counts that the image's declaration gives. Its banner shows the
+firmware's heap as the rows under QEMU predicted it. It does not show:
+
+- an attempt's effect. Nothing read the machine from outside, and no
+  hostile-monitor image ran there with the boundary built off;
+- the hostile-monitor images' own records of their attempts, which
+  stay in memory. So the trap of the cache-block instruction, which
+  M-mode's counts do not hold, is not shown on the board;
+- that a fault on a device's register was PMP's;
+- anything with Smepmp: the board's runs use plain PMP;
+- the state of the thirteen harts that the monitor does not use, or
+  anything of the vendor's two real-time cores;
+- more than one board, on one day.
+
+The claim page's limit has these in the plan's words.
 
 Under QEMU these tools show that the firmware halts as built, that the
 harness and the judges handle a machine that halts, that the board's

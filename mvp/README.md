@@ -755,6 +755,51 @@ plan, "Architecture" and "The triggers for Instance 3").
   sitting's three firmware builds and their card images were made
   and pinned again (`k3/sitting-pins.txt`; the M11 plan's decision
   record has both entries).
+- **The second sitting's second run (M11-B5).** On 2026-11-22, at the
+  signed commit that holds the heap's correction and the pins made
+  again, with the responsible human at the board, **each of the
+  second sitting's three sessions passed**: three boots of `anchor`,
+  and one boot each of the board's two hostile-monitor images, from
+  the card with the boundary on. It is the first time that an image
+  with the boundary on ran on the board.
+  - **Each boot:** the boot ROM took the card; the SPL ran; the
+    project's firmware printed its banner, with sixteen harts, and
+    the thirteen that the monitor does not use in an OpenSBI domain
+    of their own; the vendor's U-Boot came up with 8 GiB and without
+    a flash device; the monitor ran `anchor` to its shutdown line as
+    declared; and M-mode printed its commit records before the halt.
+    The form found no stop in any of the five.
+  - **The boundary, by M-mode's printed records:** harts 0 to 2
+    committed in each boot, each with the entries of its profile's
+    table; the thirteen other harts not committed. In `anchor`'s
+    three boots, no count on any hart. In `k3-breach-g1`'s boot, 73
+    access faults and 33 refused calls on hart 2; in `k3-breach-c`'s,
+    85 access faults, 31 refused calls, and 7 rejected calls on
+    hart 0. Those are the sums that the two declarations give, and
+    no other hart has a count.
+  - **The heap:** the banner shows 256 KB in all and 139 KB free in
+    each boot. The rows under QEMU had predicted about 139 KB, and
+    the form requires 64 KB.
+  - **The NOR and the card:** each of the four readings equals the
+    one before it in all six ranges; and the card, read back whole
+    after each write and after each session, equals its image.
+  - **The record** is `results/20261122-com260-m11b-second/`, and the
+    M11 plan's decision record has the account.
+
+  What M-mode printed is the only witness on the board: nothing read
+  the machine from outside, and the hostile-monitor images' own
+  records of their attempts were not read. It is diagnostic evidence
+  from one board, never hardware validation.
+- **M11-B's result (M11-B6).** The claim's page,
+  `docs/claim-boundary.md`, is in the form that the board addendum
+  fixes for a board result (B-11): the clause, which is about
+  emulation, keeps its words; a paragraph about the board follows
+  it; and the limit says what the board's evidence is and what it is
+  not. The ledger's second set has three board rows, the parts of
+  that paragraph, each with the method of a diagnostic board run and
+  each citing a sitting's record; `docs/claim-ledger-boundary.md` is
+  its table. The words are proposed with the result, and are used
+  only if the responsible human accepts it.
 - **Hart region** (port rule `hart-region`, `src/mvp-layout.h`). A NOLOAD
   region of two 64 KiB blocks at `0x1_0204_4000`, right after B7's pool,
   in the pool's segment (Q1). Each block holds the hart's 8 KiB trusted
@@ -1228,8 +1273,8 @@ plan, "Architecture" and "The triggers for Instance 3").
 | `scenarios/anchor/breach.json`, `tools/gen-breach.py` | The hostile-monitor attempts (D-10's column for a VS-domain hart, 112 for each hart) and their generator: the table that the hook runs, and the plan that a run must show, each attempt judged from the hooked hart's profile (new); the control role (`breach-control.json`, 132 attempts), each call judged from the role's call list, with the outcomes of a listed call that the firmware rejects and of a console write of no byte (M11-8); the rules for a declaration that names the board (B-10, stop B9): `board-check` with its mutations, `table` and `plan` with the board's description, and `expect`, a board image's expectation from its candidate image's; QEMU's tables and plans are the same bytes (M11-B1) | M11-7, M11-8, M11-B1 |
 | `src/mvp-breach.{h,c}`, `src/mvp-breach-arch.S` | The test hook of the breach images: its record, its walk of the table, and the attempt helper with the hook's own trap vector; linked into the breach images and no other (new); the control role's hook, record, and page tables, in sections of their own (M11-8) | M11-7, M11-8 |
 | `tests/boundary-negatives.py` | The boundary negatives' device trees, each made from `two-guests`' tree by one named edit; the record of the independent checker's refusal of each; and every tree tried against every run through the gate (new); the control hart's five, from the step-2 tree, and `boundary-control-absent` from step 1's (M11-8) | M11-7, M11-8 |
-| `docs/claim-boundary.md`, `docs/claim-ledger-boundary.md` | The M11 candidate's claim on a page of its own, the clause and its required limit in the M11 plan's words; and the table of the ledger's second set, rendered from `docs/claim-ledger.json` (new). `docs/claim.md` and `docs/claim-ledger.md`, MVP 1.0's, do not change | M11-9 |
-| `tools/claim-ledger.py`, `docs/claim-ledger.json` | The ledger's tool and its source (M4-1; the release's rows and their ten checks, unchanged); the second set, the key `candidate`: seven claim rows that are the parts of the page's clause and eleven non-claim rows that are the sentences of its limit; its eight checks (form, methods, evidence, tree, OpenSBI commit, rendering, page, and the three words), each with seeded mutations of its own; `render` writes both tables (M11-9); the second set's method for a diagnostic board run: a board row cites a board record and no clause row does, every board row comes after every clause row, and the page then has a paragraph about the board; with no board row, as now, every check and the rendering are as before (M11-B1); a cited record of a sitting must have been made by its source's own tool (its bundle's `tool_tree=source`) (M11-B4) | M4-1, M11-9, M11-B1, M11-B4 |
+| `docs/claim-boundary.md`, `docs/claim-ledger-boundary.md` | The M11 candidate's claim on a page of its own, the clause and its required limit in the M11 plan's words; and the table of the ledger's second set, rendered from `docs/claim-ledger.json` (new). `docs/claim.md` and `docs/claim-ledger.md`, MVP 1.0's, do not change (M11-9). The page's paragraph about the runs on one board, in the board addendum's words (B-11); the limit's second sentence as B-11 has it, and its six sentences about the board; and a section that names the board's four records (M11-B6) | M11-9, M11-B6 |
+| `tools/claim-ledger.py`, `docs/claim-ledger.json` | The ledger's tool and its source (M4-1; the release's rows and their ten checks, unchanged); the second set, the key `candidate`: seven claim rows that are the parts of the page's clause and non-claim rows that are the sentences of its limit, eleven at M11-9; its eight checks (form, methods, evidence, tree, OpenSBI commit, rendering, page, and the three words), each with seeded mutations of its own; `render` writes both tables (M11-9); the second set's method for a diagnostic board run: a board row cites a board record and no clause row does, every board row comes after every clause row, and the page then has a paragraph about the board; with no board row every check and the rendering are as before (M11-B1); a cited record of a sitting must have been made by its source's own tool (its bundle's `tool_tree=source`) (M11-B4); the set's three board rows, the parts of the page's paragraph about the board, and its seventeen non-claim rows, with no change to the tool (M11-B6) | M4-1, M11-9, M11-B1, M11-B4, M11-B6 |
 | `tools/rc-record.py` | The record of the gates at a candidate (M4-4); `--kind candidate`, for a milestone's candidate that is no release candidate (M11-9) | M4-4, M11-9 |
 | `tests/run-qemu.sh` | The eight-hart QEMU driver (from B7's): provisional at M0-3, each attempt judged by the capture checker and a REFUSED attempt made again at M0-4; te-poc's runs and variants (M1-4); anchor's runs and four runtime negatives with the measured inputs (M2-5); the QEMU oracle at each attempt's end (`tests/qemu_oracle.py`, new), the firmware base for every run, and the earlier firmware, pinned and required, for `firmware-version` alone (M11-2); a boundary-on run under its pair's step-1 tree (`-dtb`), admitted only by the partition record, with the oracle's boundary-on read, `tests/check-boundary.py`'s check of each attempt, and four columns in `attempts.tsv`; the off copies for the rows without the boundary; the `k3-like` rows with Smepmp; the twelve breach runs; and the fourteen negative runs, `boundary-absent` under the firmware without the extension (M11-7); the control hart's ten negative runs and `breach-c`'s six, and the step in `attempts.tsv` (M11-8); a run whose machine halts ended at a declared last line (`tests/qemu_oracle.py`'s `--halt-line` and `--halt-settle`); the firmware addition's five rows and the board's two hostile-monitor images, each only where `check` made its expectation; and, after the board images' runs, each banner's root regions compared with the partition backend's (M11-B1) | M0-3, M0-4, M1-4, M2-5, M11-2, M11-7, M11-8, M11-B1 |
 | `tests/check-capture.py`, `tests/fixtures/` | The capture checker, its self-test and mutations, and its fixtures (new); the regenerated fixtures and the board's stop-6 capture (M0-C.2); schema-v2 expectations, the denials, the channel, the report, and M1's fixtures (M1-4, M1-5, M1-B); schema-v3 expectations, the pages, the measurement, the requests' HMACs, the management log, the transitions and their order, M2's fixtures, and M1's judged against M1's pins (M2-5); M9's retained captures against the pinned era set `tests/fixtures/pre-m11/`, and the recomputation cases on synthetic stand-ins made from them (M11-2); the stand-ins' layout-derived lines from the current expectation (M11-3); the current images' rules beside the earlier images', chosen by the expectation: the tick and wake bounds, the tick probe's ordered times with its latency recorded and not judged, and the stand-ins' current signalling lines (M11-4); for an expectation that declares the boundary, the boundary-on forms of `BE_MVP:02`, `BE_MVP:08`, and DETAIL, the firmware's commit-digest line, and M-mode's commit records cut from the capture's end; `--check-image` by the image's expectation; and the refused stand-in on `two-guests-off` (M11-7); the boundary-on stand-in under both steps, `confine=<error>` in the boundary class's DETAIL, and stand-ins and mutations of the control hart's negatives (M11-8); no commit record in a run whose firmware has no reset device; the card mode (`--mode card`, `--board`, `--memory`, `--observed`): the form of a boot of the board from a card under the project's firmware, the facts that it writes out, and the stop of the addendum that each finding names; `rom_lines()` and `boot_medium()` for the sittings' tools (M11-B1); the card mode names a refused boot's stop by the earliest stage that the boot did not reach, first among its stops, and writes the product name and the hart count that the capture shows (M11-B4); the card mode takes a line of the firmware's own failure form for a finding of the sitting's stop, first in the record, counts the lines after the banner's last field, records the banner's heap line, and in the second sitting requires the description's heap with its floor free (M11-B5) | M0-4, M0-C, M1-4, M1-5, M1-B, M2-5, M11-2, M11-3, M11-4, M11-7, M11-8, M11-B1, M11-B4, M11-B5 |
@@ -13360,8 +13405,10 @@ M5's reset rule.
     more; 128 bits would give 8 KB less, and 512 bits 16 KB more. No
     row of the suite has that shape. The heap that a board tree
     with OpenSBI domains now gives the firmware has room for either.
-    The second sitting's banner bears the figure out or not: the form
-    records its heap line. Owed: the length read on the board. Open.
+    The second sitting's second run bears the figure out: its banner
+    shows 111 KB in use in each of five boots, which is the 105 KB of
+    the rows under QEMU and the IMSIC's 6 KB (M11-B5). It is still an
+    inference. Owed: the length read on the board. Open.
 149. **A heap that runs short after the firmware's banner stops a
     hart without a line (found at M11-B5).** After its cold boot the
     firmware still allocates for each hart that boot code starts, at
@@ -13384,8 +13431,10 @@ M5's reset rule.
     harts 8 to 15 are of another, which nothing in the firmware or
     the monitor starts. So the heap on the board is measured under
     QEMU and predicted for the board: about 6 KB more in use than
-    the rows show. The second sitting's banner is its first
-    measurement on the board. Open.
+    the rows show. The second sitting's second run is its first
+    measurement on the board: 256 KB in all, 111 KB in use, and
+    139 KB free in each of five boots, as predicted (M11-B5). The
+    rows are as they were. Open.
 
 
 ## Non-claims
