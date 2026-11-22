@@ -1893,7 +1893,7 @@
   ],
   "candidate": {
     "name": "M11 candidate",
-    "scope": "M11-E: the physical boundary under the monitor, under emulation, in the candidate's own images and firmware build. No row here is part of MVP 1.0's claim, and none is about a released image.",
+    "scope": "M11-E: the physical boundary under the monitor, under emulation, in the candidate's own images and firmware build. M11-B: in the board rows, the runs on one board, which are diagnostic. No row here is part of MVP 1.0's claim, and none is about a released image.",
     "page": "claim-boundary.md",
     "opensbi_commit": "ed70256dd22c09962d146e433834239825ef0616",
     "candidate_tree": "7a826991eb80d19c03caae883c19271a52f42963",
@@ -2159,6 +2159,117 @@
             "note": "In the gates' record, host/qemu/ holds the six runs of the hostile-monitor images built without the boundary: three images, both toolchains, each judged PASS with every row allowed (63, 62, and 73). The record also keeps the four attempts of those runs that the monitor refused at its boot check, because the firmware had booted on a VS-domain hart, and that were repeated: such an attempt's .breach.txt says FAIL, since the hook never ran."
           }
         ]
+      },
+      {
+        "id": "M11-C08",
+        "claim": "On one SpacemiT K3 COM260 board, the images that the ledger names ran with plain PMP, booted from a microSD card that held the vendor's published boot chain and, in the firmware's place, a build of that firmware with one more addition, a reset device that only halts, and a device tree built in.",
+        "methods": [
+          "semantic checker",
+          "diagnostic board run"
+        ],
+        "evidence": [
+          {
+            "path": "mvp/results/20261121-com260-m11b-first/MANIFEST.sha256",
+            "sha256": "b1e6557d7afcaebbcd2f5872da446295c5074cc3fbe71b7766c2252ef6e8b819",
+            "note": "The record of the first sitting's second run (2026-11-21), made by tools/evidence.py at the sitting's own commit. The image is two-guests built without the boundary, on that sitting's firmware build. It booted three times from the card, each time reset by the dongle with nothing typed. In each boot the form finds the boot ROM's four lines, the SPL's banner, the firmware's banner with sixteen harts, U-Boot with 8 GiB and without a flash device, and the monitor's run to its shutdown line, and no stop. The NOR's six ranges were equal before and after the session, and the card equal to its image."
+          },
+          {
+            "path": "mvp/results/20261122-com260-m11b-second/MANIFEST.sha256",
+            "sha256": "91796679f6d6c95ccca62d65176c8dc82106b89294438ac661135b77a49fc57e",
+            "note": "The record of the second sitting's second run (2026-11-22), made the same way. The images are anchor, three boots, and the board's two hostile-monitor images, k3-breach-g1 and k3-breach-c, one boot each, from the card with the boundary on, each on its own firmware build. In each of the five boots the form finds no stop, and the boundary's judge names plain PMP. The four readings of the NOR are equal, and the card equals its image after each write and after each session."
+          },
+          {
+            "path": "mvp/k3/sitting-pins.txt",
+            "sha256": "96c8eda51f291f880c30c862ae7d935701c0441cf33ad84904f9237664db6327",
+            "note": "The SHA-256 and the size of each sitting's firmware build and of each card image, by image. Each build was made on the host and inside the evaluator from the same inputs, with equal bytes. The card's tools refuse a build or an image that is not the pinned one, and the sittings' driver names the file's SHA-256 in its plan."
+          },
+          {
+            "path": "mvp/firmware/patches/series",
+            "sha256": "0b89924c9a7b4e6bfdc3c5cb00e1130b5a8c6b1337f7b3af6e7f29fe6f532f77",
+            "note": "The series' eleventh patch is the one more addition: a system reset device that only halts (the board addendum's B-2). The ten before it are the candidate's."
+          },
+          {
+            "path": "mvp/tools/k3-recipe.py",
+            "sha256": "8a95ce23e373eadd94cff3967c90d601700dd6c296f2c645700ad952778a1c2f",
+            "note": "The recipe of the firmware's built-in device tree: the vendor's published tree for this board, changed by the steps that the addendum's B-3 and its errata fix. Among them, the flash's controller is disabled, so that the vendor's U-Boot has no flash device, and the console's node is named for the firmware's driver."
+          },
+          {
+            "path": "mvp/tools/k3-card.py",
+            "sha256": "89f94724008347434b5819dffdc63d589d7d8c844239593d613c615227f20e5c",
+            "note": "The card image's maker: the vendor's published boot chain, each file by its SHA-256 (k3/published-pins.txt); in the firmware's place, the project's build in a FIT of the published FIT's structure; and an environment made from the published one, without its flashing variables."
+          },
+          {
+            "path": "mvp/tests/check-capture.py",
+            "sha256": "1ad293c118683db1131e1c53c8886adb400374dc26f2a946c498d9183060db48",
+            "note": "The form for a boot from a card (--mode card), which judges each boot's capture before the next reset: the boot ROM's and the SPL's lines, the firmware's banner against the build's expectation, U-Boot's lines with no flash device, the monitor's run by its scenario's rules, and, with the boundary on, M-mode's commit records through the boundary's judge."
+          }
+        ]
+      },
+      {
+        "id": "M11-C09",
+        "claim": "In each run with the boundary on, M-mode's printed record showed each of the monitor's three harts confined, with its profile's entries,",
+        "methods": [
+          "semantic checker",
+          "diagnostic board run"
+        ],
+        "evidence": [
+          {
+            "path": "mvp/results/20261122-com260-m11b-second/MANIFEST.sha256",
+            "sha256": "91796679f6d6c95ccca62d65176c8dc82106b89294438ac661135b77a49fc57e",
+            "note": "In each of the record's five boots, check.txt has the judge's line: PASS, plain PMP, the control hart and harts 1 and 2 confined, the thirteen other harts not committed, and the witness printed. handoff-excerpt.log has M-mode's sixteen commit records as it printed them, with each confined hart's sixteen PMP entries."
+          },
+          {
+            "path": "mvp/tests/check-boundary.py",
+            "sha256": "877c7a62ce40aeef0ca0cdf6fd3ef638eb1578d0d6cbb31a154767ba27ad43c2",
+            "note": "judge_board(), the judge of a boundary-on boot from a card, from the capture alone: each of harts 0 to 2 printed committed, with the configuration bytes and the addresses of its profile's table for plain PMP, the invalidate control clear in its menvcfg, and its mseccfg zero; each other hart not committed; and the table that of the image's descriptor, by the identity that the banner's digest and the monitor's own line give."
+          },
+          {
+            "path": "mvp/tools/partition-backend.py",
+            "sha256": "8772fd11a5fbf0913b9a590da0d6667a46c527e95d782ea80847642ceecd89bc",
+            "note": "The board as the backend's second platform: each image's device tree with the descriptor's OpenSBI domains for sixteen harts, the thirteen unused harts parked in one of their own, and the firmware's heap size; and the expected table of each profile's sixteen entries, which the judge compares."
+          },
+          {
+            "path": "mvp/tests/check-partition.py",
+            "sha256": "e5fcf51c732f7bcbb174db72d80f4fa3da56a1e59d4f2592d2237ebc400ea3ec",
+            "note": "The independent checker, on the board's trees: each tree's OpenSBI domains, regions, and tables against the descriptor and the board's description, at the board gate, before a card image is made."
+          }
+        ]
+      },
+      {
+        "id": "M11-C10",
+        "claim": "and, for each hart, counts of access faults, of refused calls, and of rejected calls equal to the sums that the test declares: none in a scenario's run.",
+        "methods": [
+          "adversarial test",
+          "semantic checker",
+          "diagnostic board run"
+        ],
+        "evidence": [
+          {
+            "path": "mvp/results/20261122-com260-m11b-second/MANIFEST.sha256",
+            "sha256": "91796679f6d6c95ccca62d65176c8dc82106b89294438ac661135b77a49fc57e",
+            "note": "M-mode's printed counts in the record's five boots, each in its handoff-excerpt.log: none on any hart in anchor's three boots; in k3-breach-g1's, 73 access faults and 33 refused calls on hart 2, and none on another hart; in k3-breach-c's, 85 access faults, 31 refused calls, and 7 rejected calls on hart 0, and none on another hart. Each boot's check.txt has the judge's PASS."
+          },
+          {
+            "path": "mvp/k3/breach/breach-g1.json",
+            "sha256": "d86ed06c030f66f5615c0a0e1b23c43378cca4607bf21f88a3fbafae4e51e0a1",
+            "note": "The board's declaration of the attempts of a hostile monitor on a VS-domain hart: 112 rows, with the board's devices in place of QEMU's. Its sums for hart 2 are 73 access faults and 33 refused calls."
+          },
+          {
+            "path": "mvp/k3/breach/breach-c.json",
+            "sha256": "697d4f9905f3bfc51f8d47ea341ee0fefed5ce93062ffc4593fc9eefe47a15f5",
+            "note": "The board's declaration of the attempts of a hostile monitor on the control hart: 132 rows. Its sums for hart 0 are 85 access faults, 31 refused calls, and 7 rejected calls."
+          },
+          {
+            "path": "mvp/tools/gen-breach.py",
+            "sha256": "2fb250c642d1a1223cdd4eb95249d0c62db18c456388684b5112599cd296e237",
+            "note": "The generator's rules for a board declaration, and the sums that it gives a run's expectation. Each of the board's two images ran under QEMU first, where the oracle read the hook's record of each attempt (the addendum's B-10)."
+          },
+          {
+            "path": "mvp/tests/check-boundary.py",
+            "sha256": "877c7a62ce40aeef0ca0cdf6fd3ef638eb1578d0d6cbb31a154767ba27ad43c2",
+            "note": "judge_board(): each hart's three printed counts equal the declared sums, and are zero where none is declared."
+          }
+        ]
       }
     ],
     "non_claims": [
@@ -2169,8 +2280,8 @@
       },
       {
         "id": "M11-N02",
-        "sentence": "PMP's behaviour is the emulator's, which has no cache.",
-        "note": "QEMU's PMP is an emulator's, and QEMU has no cache: the cache-block control is shown by its value and by the invalidate instruction's trap (the plan's F22), never by an effect on memory."
+        "sentence": "Under emulation, PMP's behaviour is the emulator's, which has no cache.",
+        "note": "QEMU's PMP is an emulator's, and QEMU has no cache: the cache-block control is shown by its value and by the invalidate instruction's trap (the plan's F22), never by an effect on memory. The sentence's first two words are the board addendum's (B-11): it is about the emulated runs alone."
       },
       {
         "id": "M11-N03",
@@ -2216,6 +2327,36 @@
         "id": "M11-N11",
         "sentence": "The released MVP 1.0 images have no such boundary.",
         "note": "MVP 1.0's claim is claim.md, unchanged, and its rows are the first set's. The tag mvp-1.0 holds none of this candidate's code."
+      },
+      {
+        "id": "M11-N12",
+        "sentence": "On the board this is diagnostic evidence from one board, and it is not hardware validation.",
+        "note": "One COM260 board. The two records that the board rows cite hold eight boots from a card, on two days: three with the boundary built off, and five with it on, all five on one day. The board rows' method is the release's diagnostic board run. No row says that the board, or its PMP, was validated."
+      },
+      {
+        "id": "M11-N13",
+        "sentence": "What M-mode prints there is the only witness: nothing read the machine from outside, and no hostile-monitor image ran with the boundary built off, so no attempt's effect was told apart; M-mode's counts are sums for each hart, not one for each attempt; the hostile-monitor images' own records of their attempts were not read, so the trap of the cache-block instruction, which those counts do not hold, is not shown on the board; and code on the confined control hart could print the same lines.",
+        "note": "On the board no oracle reads the stopped machine: the judge takes M-mode's printed commit records alone, and says so (witness=printed). The two hostile-monitor images ran there with the boundary on only. Their hook keeps its record of each attempt in memory, which nothing reads there (hook=not-read; the plan's decision record, 2026-11-18). M-mode prints through the console that the control hart's call list lets it write."
+      },
+      {
+        "id": "M11-N14",
+        "sentence": "A fault on a device's register there may have a cause other than PMP.",
+        "note": "The board's declarations name registers of the board's own devices among their attempts. M-mode counts an access fault that it takes from a confined hart; a device's register may fault for a reason of the hardware's own, and the count does not tell the two apart."
+      },
+      {
+        "id": "M11-N15",
+        "sentence": "The vendor's boot chain and its two real-time cores with their image are outside the boundary and trusted, as is the recipe that makes the firmware's device tree; nothing in M11 confines those cores.",
+        "note": "The card holds the vendor's published boot information, SPL, real-time image, and U-Boot, unchanged (k3/published-pins.txt names each by its SHA-256). The SPL starts both real-time cores at every boot. The recipe, tools/k3-recipe.py, decides which devices the firmware sees."
+      },
+      {
+        "id": "M11-N16",
+        "sentence": "The thirteen harts that the monitor does not use, the eight without a hypervisor extension among them, are started by nothing in the firmware or the monitor, by their sources; with the boundary on, the firmware's banner shows them parked, as under emulation.",
+        "note": "By their sources: the firmware hands a hart to a lower mode only on a call to start it, and the monitor calls for harts 1 and 2 alone. In each boundary-on boot the form reads the banner's OpenSBI domains, where the thirteen harts are assigned to one of their own (parked=be_park:13), and M-mode's records show each of them not committed."
+      },
+      {
+        "id": "M11-N17",
+        "sentence": "Nothing shows their state.",
+        "note": "No tool reads a hart's state on the board. Under emulation the oracle reads each unused hart's, with the machine stopped."
       }
     ]
   }
