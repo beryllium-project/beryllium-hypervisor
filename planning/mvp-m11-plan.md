@@ -2446,3 +2446,110 @@ text above as it says; the text above is otherwise as accepted.
 
   The images are not committed or published: each holds the vendor's
   files.
+- **2026-11-22, the second sitting, run again** (the board addendum's
+  "The sittings, and their sessions"; M11-B5). It ran at the signed
+  commit `593bf3542054c73543b0fe051a079fed6af82e80`, which holds the
+  heap's correction and the builds and card images made again, with
+  the responsible human at the board. **Each of its three sessions
+  passed**: five boots from the card with the boundary on, each
+  judged by the form before the next reset, and no stop in any of
+  them. It is the first time that an image with the boundary on ran
+  on the board.
+  - **His word.** He said that the board, which he had been using,
+    was free again (06:25Z); the owner session started nothing on it
+    before his word for the sitting, `sitting: go` (15:51:47Z). He
+    gave his word for each session as he put the card in (16:12:16Z,
+    21:43:32Z, and 22:40:53Z), and said when the card was out
+    (16:18:00Z, 21:46:19Z, and 22:45:49Z). He also said that the
+    session may use SSH to the board as it needs (about 16:12Z).
+    Between the first session and the second, more than five hours
+    passed, of which the card's rewriting took forty minutes; the
+    board waited at U-Boot's prompt, and its console printed nothing.
+  - **Before the first session.** `begin`. The preflight from the
+    board's own Linux, whose first attempt stopped: the board did not
+    answer over SSH. It had been reset a little before, not by the
+    session, and was still booting. The owner session saw the end of
+    that boot in the serial log, by the form of its lines; made one
+    TCP connection to the board's SSH port, which answered; and took
+    the step up once, as the driver allows. The second attempt
+    passed. Then the staging of the three images on partition 6, and
+    the opening reading of the NOR, in a boot from the NOR in which
+    U-Boot showed 8 GiB of memory.
+  - **The sessions.** Each boot was reset by the dongle with nothing
+    typed, and ran to the monitor's shutdown line and the halt; each
+    boot's step took less than 30 s.
+
+    | Session | Image | Boots (the resets' steps began at) | The form | M-mode's counts |
+    | --- | --- | --- | --- | --- |
+    | 1 | `anchor` | 16:12:34Z, 16:14:00Z, 16:14:36Z | No stop, in each | None on any hart, in each |
+    | 2 | `k3-breach-g1` | 21:44:14Z | No stop | Hart 2: 73 access faults and 33 refused calls. None on another hart |
+    | 3 | `k3-breach-c` | 22:41:10Z | No stop | Hart 0: 85 access faults, 31 refused calls, and 7 rejected calls. None on another hart |
+
+    The counts of the two hostile-monitor images are the sums that
+    their declarations give.
+  - **What each boot showed**, by the form, the same in all five but
+    where it is said:
+    - the boot ROM's four lines, equal to the first sitting's, and
+      the vendor SPL's banner;
+    - the project's firmware's banner: sixteen harts; privileged
+      specification 1.12; sixteen PMP entries with a grain of 4 KiB
+      and 38 address bits; the configuration digest of the image's
+      own descriptor; the thirteen harts that the monitor does not
+      use assigned to an OpenSBI domain of their own; and no line
+      that the form does not know;
+    - **the firmware's heap: 256 KB in all, 4 KB reserved, 111 KB in
+      use, and 139 KB free.** The measurement under QEMU had
+      predicted about 139 KB free; the form requires 64 KB;
+    - the vendor's U-Boot with 8 GiB of memory, the product name
+      `k3_com260_ifx`, and no flash device: its line for the NOR's
+      controller says that it found no valid device;
+    - the monitor's run of the scenario `anchor`, as declared, with
+      the same counts in each boot: 246 and 128 exits, 4 and 1
+      denials, 13 and 2 management calls, and 174 records. The
+      measurement log's fifteen records equal the build's reference,
+      and its fourteen measured ones the checker's own recomputation;
+    - M-mode's commit records after the monitor's last line: harts
+      0 to 2 committed, each with the configuration bytes and the
+      addresses of its profile's table for plain PMP, the invalidate
+      control clear, and `mseccfg` zero; the thirteen other harts
+      not committed.
+
+    While U-Boot loaded its environment from the card, the card
+    host's driver printed five lines in four of the boots and six in
+    one; the form admits both.
+  - **The readings.** Four: before the first session, and after each
+    session. Each reading after the first equals the one before it
+    in all six ranges: the NOR's contents are unchanged. In each boot
+    from the card the vendor's U-Boot found no flash device, so that
+    it did not probe the NOR.
+  - **The card.** One card, written three times, each time whole,
+    and read back six times: after each write, and after each
+    session. Each read-back found the card's fourteen regions equal
+    to the image's. The writes took 25 minutes each (21.3 MB/s), and
+    all went through the second reader.
+  - **The close.** `end` (22:46:38Z to 22:47:19Z): the board's own
+    Linux, and the preflight again, with the same verdict line as
+    before the sessions. The driver's audit of the serial log: ten
+    banners for ten resets, each by the dongle; no reset by hand,
+    and no boot that the steps did not make. The driver then says
+    that the last sitting has ended, and prints the command that
+    removes the card reader's access rule; it is the responsible
+    human's to run.
+  - **The record** is `mvp/results/20261122-com260-m11b-second/`
+    (156 files), made by the sittings' record tool at the sitting's
+    commit, after the card's last read-back: `result=closed boots=5
+    readings=4 readbacks=3 stops=tool`. The one stop that it names is
+    the first preflight's.
+  - **The board's platform description is unchanged.** Nothing that
+    the boots showed differs from `mvp/k3/platform.json` or from the
+    first sitting's observed facts. The banner's 111 KB in use is
+    6 KB more than under QEMU, which is what the board's IMSIC was
+    expected to add; that agrees with the vector length that the
+    description infers, and is still no reading of it.
+  - **What this is.** Diagnostic evidence from one board, on one day.
+    It is not hardware validation. What M-mode printed is the only
+    witness: nothing read the machine from outside, and the
+    hostile-monitor images' own records of their attempts were not
+    read. The addendum's B-11 has the words for a board result, with
+    the limit that goes with them; they are proposed in the commits
+    after this one, and are used only if M11-B's result is accepted.
