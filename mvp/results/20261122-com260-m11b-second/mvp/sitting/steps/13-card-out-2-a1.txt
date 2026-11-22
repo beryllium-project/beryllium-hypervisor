@@ -1,0 +1,10 @@
+schema=be-mvp-k3-sitting-step-v1
+step=card-out-2
+index=13
+attempt=1
+sitting=second
+started=2026-11-22T21:46:27Z
+said=2026-11-22T21:46:19Z
+card=out session=2 image=k3-breach-g1 step=card-out-2 said=2026-11-22T21:46:19Z recorded=2026-11-22T21:46:27Z log_offset=46740007
+ended=2026-11-22T21:46:27Z
+verdict=PASS

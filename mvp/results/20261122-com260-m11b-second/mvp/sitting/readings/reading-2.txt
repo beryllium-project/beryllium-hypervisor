@@ -1,0 +1,16 @@
+attempt_utc=2026-11-22T21:46:35Z
+medium=nor rom_lines=8
+memory=8 GiB
+sf_probe=8MiB
+sf_read_1=OK
+sf_read_2=OK
+whole_again=equal
+compared=reading-1
+range=bootinfo equal
+range=record equal
+range=fsbl equal
+range=env equal
+range=images equal
+range=whole equal
+published=not-compared
+verdict=PASS

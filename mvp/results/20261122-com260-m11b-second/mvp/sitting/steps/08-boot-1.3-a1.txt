@@ -1,0 +1,15 @@
+schema=be-mvp-k3-sitting-step-v1
+step=boot-1.3
+index=08
+attempt=1
+sitting=second
+started=2026-11-22T16:14:36Z
+tool reset exit=0 output=boots/boot-1.3-a1/reset.txt
+tool wait-end exit=0 output=sitting/logs/08-boot-1.3-a1-wait-end.log
+tool form exit=0 output=boots/boot-1.3-a1/check.txt
+tool audit exit=0 output=sitting/logs/08-boot-1.3-a1-audit.log
+outcome=end
+stops=none
+usb=clean devices=15 interfaces=25
+ended=2026-11-22T16:15:05Z
+verdict=PASS

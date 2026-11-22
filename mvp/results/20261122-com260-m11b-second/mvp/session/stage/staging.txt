@@ -1,0 +1,15 @@
+schema=be-mvp-k3-staging-v1
+partition_label=beryllium
+images=3
+image name=be-mvp-anchor-gcc.img bytes=2748416 sha256=bd2fc34bfcfefc901961d5ca5b058ddfa3ce1f3679f115046875cd55205736ba md5=e13f31b1e08de20d4e7bc7a210a9c202 crc32=fed4b79a source=build/mvp/gcc/anchor/be-mvp-boot.img
+image name=be-mvp-anchor-k3-breach-g1-gcc.img bytes=2748416 sha256=548e006ce18bf80f7d919046c53cc54088d2775fb36e8c7fb244c6abca00a992 md5=18398f5218c333f633abb85f089d7291 crc32=a6dc6ffd source=build/mvp/k3/check/breach/gcc/k3-breach-g1/be-mvp-boot.img
+image name=be-mvp-anchor-k3-breach-c-gcc.img bytes=2748416 sha256=bb6042d66a09d7a897f52f1929a400eafd6b74e3f7661b00813cf501d44febd4 md5=e9f2c924d44f577b7223d0f8d3ee98fe crc32=0efd96e3 source=build/mvp/k3/check/breach/gcc/k3-breach-c/be-mvp-boot.img
+md5_distinct=yes
+crc32_distinct=yes
+partition_uuid_sha256=607fded67dd234740a7bc982215be764668bee51811db80bbcf87c5e4d84f0dc
+device=/dev/nvme0n1p6
+mount_options=rw,nosuid,nodev,noexec,nosymfollow
+verified=rw
+verified=ro
+files=be-mvp-anchor-gcc.img be-mvp-anchor-k3-breach-c-gcc.img be-mvp-anchor-k3-breach-g1-gcc.img CRC32SUMS lost+found MD5SUMS SHA256SUMS
+verdict=PASS

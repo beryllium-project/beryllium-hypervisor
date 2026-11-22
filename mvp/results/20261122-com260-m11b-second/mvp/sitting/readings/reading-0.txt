@@ -1,0 +1,11 @@
+attempt_utc=2026-11-22T15:55:57Z
+fedora_shutdown=clean-halt
+medium=nor rom_lines=8
+memory=8 GiB
+sf_probe=8MiB
+sf_read_1=OK
+sf_read_2=OK
+whole_again=equal
+compared=none
+published=not-compared
+verdict=PASS

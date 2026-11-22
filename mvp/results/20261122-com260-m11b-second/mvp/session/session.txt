@@ -1,0 +1,7 @@
+schema=be-mvp-k3-session-v1
+session=20261122-com260-m11b-second
+start_utc=2026-11-22T15:52:56.974Z
+serial_log=<serial-log>
+serial_log_start=46510291
+tmux_session=consoles-1
+reset=k3ctl

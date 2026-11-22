@@ -1,0 +1,53 @@
+schema=be-mvp-evidence-v1
+kind=board
+record=sitting
+title=M11-B COM260 sitting second
+commits=the boots were run and judged at the sitting with the tools of sitting_commit (the driver, the console tool, and the form), whose records this record copies as the sitting wrote them; this record was made with tools/evidence.py of the tree that ran it, which judged each boot's capture again with that tree's form; that tree is the source, where under the watched trees no tracked path differs from sitting_commit but those of changed_since_sitting, so that form is the sitting's, byte for byte
+sitting=second
+run_root=20261122-com260-m11b-second
+launcher=uboot-autoboot-card
+result=closed
+source_commit=593bf3542054c73543b0fe051a079fed6af82e80
+source_tree=clean
+tool_tree=source
+sitting_commit=593bf3542054c73543b0fe051a079fed6af82e80
+sitting_source_tree=clean
+changed_since_sitting=none
+changed_elsewhere=0
+watched=bringup/,mvp/
+may_change=mvp/tests/test-k3-session.sh,mvp/tools/evidence.py
+gate_commit=593bf3542054c73543b0fe051a079fed6af82e80
+gate_sha256=49a0abdec9bf8f3fbde50f18607f577435f109cf68d45a08c463991cf25c0501
+sitting_pins_sha256=96c8eda51f291f880c30c862ae7d935701c0441cf33ad84904f9237664db6327
+observed_sha256=fcda69474c2793c4424c100cf8a92c93f448c7012b91f83f45722bec4d11130f
+rehearsal=none
+lock_sha256=7fba0ae202de3a9d5f34dad3ab3cbfe4faa2b68d68dd2b59af93dfb65c3fd391
+lock_check_status=0
+closure_sha256=87263109e66099d238da9b90e59fe5ca8d8e3bcbaaed0f09c2c9201f8c862866
+scenario=two-guests scenario_sha256=4bda6abe6411e7414b2e0435f73cd90438ae6bbb0956aa44b00509d7a33157f5
+scenario=te-poc scenario_sha256=d63a495a198e514ac43a3d17e825d290a009fe0f9101dad28acf91360119c658 authority-report.json=564a26593faa56bf30100e47b88c5869f387a77c629cf760a05a5ece220f9b67 policy.te=4a1fac2bdea04cbcf4f3248c21cb41cf2823625b46d284c45d9c69b6a25b8b2d
+scenario=anchor scenario_sha256=b02741278f680b1f5dfeab16fd1cc060fc06795f94c88043bf1445e9571c0d03 authority-report.json=12cf40668239e36106ec94df67c40054cd2514500b37b331bda87e5bd35e8a1e policy.te=bfecfa923eaa64782cca2f662091de1329eba2c969408a59f04a8c0234fc79aa
+inputs=45
+references=3
+log_exports=5
+preflight_before=kept
+preflight_after=kept
+steps=20 pass=19 stop=1
+boot=boot-1.1-a1 image=anchor outcome=end check=0 stops=none usb=clean verdict=PASS judged=again excerpt=kept
+boot=boot-1.2-a1 image=anchor outcome=end check=0 stops=none usb=clean verdict=PASS judged=again excerpt=kept
+boot=boot-1.3-a1 image=anchor outcome=end check=0 stops=none usb=clean verdict=PASS judged=again excerpt=kept
+boot=boot-2.1-a1 image=k3-breach-g1 outcome=end check=0 stops=none usb=clean verdict=PASS judged=again excerpt=kept
+boot=boot-3.1-a1 image=k3-breach-c outcome=end check=0 stops=none usb=clean verdict=PASS judged=again excerpt=kept
+reading=reading-0 verdict=PASS equal=0
+reading=reading-1 verdict=PASS equal=6
+reading=reading-2 verdict=PASS equal=6
+reading=reading-3 verdict=PASS equal=6
+readback=1 image=anchor record=readback-anchor-2.txt verdict=same
+readback=2 image=k3-breach-g1 record=readback-k3-breach-g1-2.txt verdict=same
+readback=3 image=k3-breach-c record=readback-k3-breach-c-2.txt verdict=same
+resets=human=0 k3ctl=10
+unplanned_boots=0
+stops=tool
+published=not-compared
+platform_record=none
+rom_lines=kept in each boot's check.txt and result.json as the form wrote them; they are read before this record is committed

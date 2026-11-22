@@ -1,0 +1,15 @@
+schema=be-mvp-k3-sitting-step-v1
+step=card-in-3
+index=15
+attempt=1
+sitting=second
+started=2026-11-22T22:41:02Z
+word=human-authorized:session-k3-breach-c
+said=2026-11-22T22:40:53Z
+usb=clean devices=15 interfaces=25
+cited write-k3-breach-c-1.txt sha256=803afc225aff7a90ab279f0065d73a7b1c526bc18fced060149d3af0ed4d3f79
+cited readback-k3-breach-c-1.txt sha256=a5b1d434d0f1456f588721b876f8125c7d439c6acaf94982c51c5f646a99229f
+cited card.json sha256=a56c04841021839272b59cd2d90913a2d1169789275effaf2b7db08e2e4676b1
+card=in session=3 image=k3-breach-c step=card-in-3 said=2026-11-22T22:40:53Z recorded=2026-11-22T22:41:02Z log_offset=46744002
+ended=2026-11-22T22:41:02Z
+verdict=PASS

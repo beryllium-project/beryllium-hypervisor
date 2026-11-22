@@ -1,0 +1,10 @@
+schema=be-mvp-k3-sitting-step-v1
+step=preflight
+index=02
+attempt=1
+sitting=second
+started=2026-11-22T15:53:02Z
+tool preflight exit=2 output=sitting/logs/02-preflight-a1-preflight.log
+preflight=
+ended=2026-11-22T15:53:12Z
+verdict=STOP stop=tool the preflight did not pass: no verdict
