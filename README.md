@@ -20,8 +20,18 @@
 > the records of its gates are
 > [`mvp/results/20261118-m11-candidate/`](mvp/results/20261118-m11-candidate/rc.txt)
 > and, beside it, `20261118-verify-m11-candidate/` and
-> `20261118-cheri-check-m11-candidate/`. Nothing of it has run on a
-> board. From M11's first commits on, every image that `main` builds
+> `20261118-cheri-check-m11-candidate/`. Under
+> [the plan's board addendum](planning/mvp-m11-board-addendum.md),
+> the monitor's images then ran on one K3 COM260 board, booted from a
+> microSD card: first with the boundary built off, then with it on.
+> That is diagnostic evidence from one board, and it is not hardware
+> validation: with the boundary on, what M-mode printed is the only
+> witness. The claim page has the words for it, with their limit, and
+> the records are
+> [`mvp/results/20261121-com260-m11b-first/`](mvp/results/20261121-com260-m11b-first/)
+> and
+> [`mvp/results/20261122-com260-m11b-second/`](mvp/results/20261122-com260-m11b-second/).
+> From M11's first commits on, every image that `main` builds
 > differs from MVP 1.0's: the release's images are the tag's.
 >
 > **The project's CHERI platform work** came first, from the research
