@@ -1663,13 +1663,15 @@ public push now.
   host, the firmware base, the switch, the oracle, and the re-proof
   point).
 - `mvp-m11-board-addendum.md`: the board addendum that the M11 plan's
-  D-15 names (M11-B), proposed 2026-11-17: the candidate on one K3
-  COM260 board from a microSD card, under a firmware build of the
+  D-15 names (M11-B), proposed 2026-11-17 and accepted 2026-11-18 by
+  the responsible human's sign-off of its commit: the candidate on one
+  K3 COM260 board from a microSD card, under a firmware build of the
   project's own, with the board's NOR untouched; the answer to the
   choice that Plan revision S3-E left; the one M-mode addition that
-  the board needs; two sittings; and the words for a board result. It
-  is part of the M11 plan only once the responsible human has signed
-  its commit off.
+  the board needs; two sittings; and the words for a board result.
+  Both sittings have been run, each twice (2026-11-20 to 2026-11-22):
+  the M11 plan's decision record and the evidence record have them,
+  and `mvp/docs/claim-boundary.md` the words for the board.
 - `mvp-m12-plan.md`: the bounded plan of milestone M12, the
   supervisor-domain lane beside M11 (Plan revision S3-D's D27): the
   questions for the specification's authors, directed tests, the table
