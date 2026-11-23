@@ -648,6 +648,10 @@ export default defineConfig({
             link: '/mvp-m13-plan'
           },
           {
+            text: 'M13 record: the K3 COM260 board\'s device facts (draft)',
+            link: '/k3-com260-devices'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1344,6 +1348,10 @@ export default defineConfig({
             link: '/mvp-m13-plan'
           },
           {
+            text: 'M13 record: the K3 COM260 board\'s device facts (draft)',
+            link: '/k3-com260-devices'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1923,6 +1931,10 @@ export default defineConfig({
           {
             text: 'MVP M13 plan: the board\'s device facts (proposed 2026-11-23)',
             link: '/mvp-m13-plan'
+          },
+          {
+            text: 'M13 record: the K3 COM260 board\'s device facts (draft)',
+            link: '/k3-com260-devices'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',

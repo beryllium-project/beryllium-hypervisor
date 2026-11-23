@@ -1778,6 +1778,13 @@ public push now.
   It chooses nothing; steps (2) and (3) build on its record. Ten rules,
   M13-1 to M13-5, ten stops, its readings of four accepted rules, and
   Q1 to Q12. Proposed 2026-11-23.
+- `k3-com260-devices.md`: milestone M13's record: the device facts of
+  one K3 COM260 board under the M13 plan's four subjects, each fact with
+  its class and its citation, the questions A1 to D4 with their status,
+  what is not established, and where the inputs disagree. First draft
+  (M13-1): the vendor's documents and sources, the published images,
+  and the board's Linux as the inventory of 2026-11-16 read it; a read
+  session (M13-2) and any probe (M13-4) add their facts later.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and
