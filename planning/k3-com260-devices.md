@@ -9,10 +9,12 @@ masters other than the harts; **B** is interrupts; **C** is reset; **D**
 is which device belongs to whom. The [M13 plan](mvp-m13-plan.md) bounds
 it, and its questions A1 to D4 are the plan's section 4.
 
-**Status: first draft: documents and sources; the board's Linux and any
-probe to come.** M13-1 wrote it. M13-2 adds what the board's own Linux
-shows. M13-4 adds the probes' facts, only if the responsible human
-replies `probes: go` at the review point.
+**Status: documents and sources, and one read session of the board's
+own Linux (M13-2); any probe to come.** M13-1 wrote it from the
+documents and sources, the published images, and the inventory of
+2026-11-16. The read session of 2026-11-23 added what the board's own
+Linux shows (input BL2). M13-4 adds the probes' facts, only if the
+responsible human replies `probes: go` at the review point.
 
 The record is diagnostic: facts from the vendor's documents, its
 sources, and one board. It is not hardware validation, it is evidence
@@ -33,7 +35,11 @@ or that the project supports a device.
 - A citation names an input by its label (the next section), then a
   file and its line or section at that commit. A device tree is cited
   by its node path. A board-Linux fact names its session and what was
-  read in it.
+  read in it: BL is the inventory of 2026-11-16; BL2 is the read
+  session of 2026-11-23, and its citation names the read as the read
+  tool's list (`mvp/tools/k3-read-list.txt`) names it.
+- Row numbers do not change. A row added later takes the next free
+  number of its section, and stands with the rows on its topic.
 - "Inferred from" marks an inference, with its source. An inference is
   not a fact of the board.
 - A question's status is one of: answered; partly answered; needs the
@@ -49,7 +55,8 @@ or that the project supports a device.
 
 Read on 2026-11-23 between 05:46Z and 06:45Z. Each published file
 was checked against its SHA-256 in `mvp/k3/published-pins.txt` before
-use. Line numbers are those of the commits named here.
+use. Line numbers are those of the commits named here. BL2's facts
+were added later the same day, from the session's private records.
 
 | Label | Input | Identity |
 | --- | --- | --- |
@@ -62,6 +69,7 @@ use. Line numbers are those of the commits named here.
 | FT | The firmware's device tree: `u-boot.itb`, FIT image `fdt_13`, `k3_com260_ifx` | Published file, SHA-256 in `mvp/k3/published-pins.txt` |
 | RT0, RT1 | The real-time cores' trees for this board, from `esos.itb` (`com260_ifx`, core 0 and core 1) | Published file, SHA-256 in `mvp/k3/published-pins.txt` |
 | BL | The board's own Linux, kernel `7.3.1-300.0.riscv64.omni.fc45`: its device tree, an excerpt of its kernel log, `/proc/iomem`, and an excerpt of its kernel configuration | Session 2026-11-16 (S3-D.6's inventory); the records are private (rule 8) |
+| BL2 | The board's own Linux (Fedora Linux 45), kernel `7.3.1-300.0.riscv64.omni.fc45.riscv64` as `uname` gave it, read by M13-2's read tool, `mvp/tools/k3-read.py`, with its fixed list of 28 reads | Session 2026-11-23, 08:53:16Z to 08:53:32Z, by the tool as the commit that adds it holds it (its file's SHA-256 `03e693519a7d4d121f93e3fa875cf8f7c3b6c0eb7ebb2ac74e0d50f954053253`, its list's `9d79f5f7d6f485840d511d342330eea14d80ec8f39cb527176fb179fb039acfb`), from a clean clone at that commit, after a whole `./mvp/mvp check` passed there; the records are private (rule 8) |
 | UL | Upstream Linux at the board kernel's base | `torvalds/linux` tag `v7.3`, `c03c1a14507dfaf8b856c2608f9ac216021fc222` |
 | UL74 | Upstream Linux, a later release candidate | `torvalds/linux` tag `v7.4-rc4`, `b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f` |
 | SL | The vendor's upstream-facing Linux branch for K3 PCIe | `spacemit-com/linux`, branch `wip/k3-pcie`, at `bb0989c04ec719d9d5d2ae63ba314aefa108a89a` (2026-06-09) |
@@ -168,6 +176,11 @@ use. Line numbers are those of the commits named here.
 | A-79 | MSI translation | The specification: MSI address translation needs the capability `MSI_FLAT` or `MSI_MRIF` and a device context's MSI page table (`msiptp`) | document | IOMMU `iommu_registers.adoc`:201-204; `iommu_data_structures.adoc`:629-662 |
 | A-80 | Who enables it | No boot stage read writes the IOMMU: no reference to it in the vendor's OpenSBI, U-Boot and SPL, or ESOS; only the vendor's Linux driver does, if its node is enabled | source | OS; UB; ES; VL |
 | A-81 | Device trees | No IOMMU node in the firmware's tree, in upstream Linux's K3 tree, or in the tree that the board's Linux received; no PCIe node of the board's tree has an IOMMU map | files, source, board-Linux | FT; UL `k3.dtsi`; BL 2026-11-16, device tree |
+| A-131 | IOMMU on the board | The board's kernel has the RISC-V IOMMU driver built in | board-Linux | BL2 2026-11-23, kconfig (`CONFIG_RISCV_IOMMU=y`) |
+| A-132 | IOMMU on the board | Linux registers no IOMMU and no IOMMU group: the read of `/sys/class/iommu` and `/sys/kernel/iommu_groups` printed nothing | board-Linux | BL2 2026-11-23, iommu |
+| A-133 | IOMMU on the board | No platform device and no PCI function has an IOMMU group | board-Linux | BL2 2026-11-23, platform; pci |
+| A-134 | IOMMU bypass | The kernel's log has no line from the PCIe driver on the IOMMU bypass, though the driver probes port A; the vendor's driver logs one for each of ports A to C that it probes (A-75) | board-Linux | BL2 2026-11-23, dmesg |
+| A-135 | IOMMU bypass | So the board's PCIe driver does not run the vendor's bypass code | board-Linux, source | Inferred from A-134 and VL `pcie-spacemit-k1.c`:833-851 |
 
 ### The bus masters
 
@@ -201,6 +214,9 @@ use. Line numbers are those of the commits named here.
 | A-107 | Other masters | On the board, Linux drives none of them, by `/proc/iomem` | board-Linux | BL 2026-11-16, `/proc/iomem` |
 | A-108 | "CPU", `REE_W`, `REE_R` | The manual lists them as IOPMP masters and does not say what they are | document | UM 15.4.3.2, 15.4.3.4 |
 | A-109 | Real-time side | The real-time cores' own DMA engines (`pdma@c0884000`, enabled in RT1's tree; `adma3`, enabled for Linux in the vendor's COM260 tree) and their GMAC (`ethernet@20000000`, enabled in RT1's tree) are bus masters; which IOPMP checks them is not stated | files, source | RT1 `/soc/pdma@c0884000`, `/soc/ethernet@20000000`; VL `k3-rdomain.dtsi`:380-392, `k3_com260.dtsi`:1304 |
+| A-136 | Bus mastering on the board | The command registers enable bus mastering on the NVMe drive, the Wi-Fi card, and the root ports of A and E; not on port D's root port, which has no device behind it and is in D3hot | board-Linux | BL2 2026-11-23, pci-config (the five functions; `PCI_COMMAND_MASTER` as UL `include/uapi/linux/pci_regs.h`:43 names it); pci |
+| A-137 | Address widths on the board | Linux gives the NVMe drive a 64-bit DMA mask and the Wi-Fi card a 36-bit one | board-Linux | BL2 2026-11-23, pci (`dma_mask_bits`) |
+| A-138 | Address widths on the board | GMAC1's driver logs that it uses 40-bit DMA addresses | board-Linux | BL2 2026-11-23, dmesg |
 
 ### Other bounds on a device's memory accesses
 
@@ -220,6 +236,13 @@ use. Line numbers are those of the commits named here.
 | A-121 | Cache operations under M11's boundary | The monitor's `henvcfg` holds only `STCE`, so its `CBIE`, `CBCFE`, and `CBZE` fields are 0 | source | PR `mvp/src/mvp.h`:179-194; `mvp/src/mvp-trap.S`:228-237 |
 | A-122 | Cache operations under M11's boundary | In a VS domain, `cbo.clean` and `cbo.flush` therefore raise a virtual-instruction exception (or an illegal-instruction exception, if `menvcfg.CBCFE` is 0) | document | Inferred from A-121 and CMO `cmo.adoc`:578-600 |
 | A-123 | Cache operations under M11's boundary | At `confine`, M-mode makes `cbo.inval` illegal below M-mode on that hart, so a VS domain's `cbo.inval` raises an illegal-instruction exception | source, document | PR `planning/mvp-m11-plan.md`:247; CMO `cmo.adoc`:523-546 |
+| A-139 | PCIe inbound translation on the board | Linux's DesignWare driver finds 31 outbound and 31 inbound regions on port A, and 16 and 16 on each of ports D and E; each is at least 64 KiB and at most 4 GiB | board-Linux | BL2 2026-11-23, dmesg |
+| A-140 | PCIe inbound translation on the board | The driver tries at most one region for each 512 bytes of the controller's `atu` range; the board's tree gives each controller `0x3F20` bytes, so 31 is the most that it can find | source, board-Linux | UL `drivers/pci/controller/dwc/pcie-designware.c`:145, 934-964; BL2 2026-11-23, device-tree (`reg` of `/soc/pcie@80000000`, `/soc/pcie@80c00000`, `/soc/pcie@81000000`) |
+| A-141 | PCIe inbound translation on the board | So port A has at least 31 regions of each kind, and ports D and E have 16 | board-Linux | Inferred from A-139 and A-140 |
+| A-142 | ATS, PASID, PRI | None of the five PCI functions on the board has an ATS, a PASID, or a PRI capability | board-Linux | BL2 2026-11-23, pci-config (the five functions; the capability IDs as UL `include/uapi/linux/pci_regs.h`:740, 744, 752 name them) |
+| A-143 | ACS | Each of the three root ports has an ACS capability. Port A's offers all seven controls: source validation, translation blocking, request redirect, completion redirect, upstream forwarding, egress control, and direct translated P2P. Ports D's and E's offer all but the last | board-Linux | BL2 2026-11-23, pci-config-0000:00:00.0, pci-config-0003:00:00.0, pci-config-0004:00:00.0 (the bits as UL `pci_regs.h`:1018-1026 name them) |
+| A-144 | ACS | On each root port, the control register reads `0x001D`: source validation, request redirect, completion redirect, and upstream forwarding are on; translation blocking, egress control, and direct translated P2P are off | board-Linux | BL2 2026-11-23, pci-config-0000:00:00.0, pci-config-0003:00:00.0, pci-config-0004:00:00.0; UL `pci_regs.h`:1019-1027 |
+| A-145 | ACS | Upstream `v7.3` turns on exactly those four when it sets up a PCI device's DMA on a device-tree system, whether or not an IOMMU is present; it turns on translation blocking only for an external-facing or untrusted device, or with ATS turned off | source | UL `drivers/pci/pci-driver.c`:1692-1715; `drivers/of/device.c`:83-151; `drivers/iommu/of_iommu.c`:114-142; `drivers/pci/pci.c`:1005-1059 |
 
 ### MSIs
 
@@ -232,6 +255,11 @@ use. Line numbers are those of the commits named here.
 | A-128 | PCIe | Every PCIe node's MSIs go to the S-level IMSIC, in the vendor's tree and in the board's | source, board-Linux | VL `k3.dtsi`:2372, 2413, 2455, 2497, 2536; BL 2026-11-16, device tree |
 | A-129 | PCIe | The PCIe page says of ports B/C and D/E that the "RC mode controller can't send MSI to local CPU cores"; what this covers is not stated | document | UM 14.1.3 (`14_connectivity/pcie.md`:77) |
 | A-130 | MSI | A guest's device MSIs are to be translated by an IOMMU that the hypervisor configures | document | AIA `IMSIC.adoc`:121-127 |
+| A-146 | MSIs on the board | Port A's root port has one MSI enabled: 64-bit, address `0xE054_0000`, data 3 | board-Linux | BL2 2026-11-23, pci-config-0000:00:00.0 |
+| A-147 | MSIs on the board | The Wi-Fi card has one MSI enabled: 64-bit, address `0xE054_0000`, data 4 | board-Linux | BL2 2026-11-23, pci-config-0004:01:00.0 |
+| A-148 | MSIs on the board | `0xE054_0000` is hart 5's S-level interrupt file: the S-level IMSIC lists harts 0 to 7 in order, each with 256 KiB | board-Linux | Inferred from B-43 and BL2 2026-11-23, device-tree (`/soc/interrupt-controller@e0400000`, `interrupts-extended`) |
+| A-149 | MSIs on the board | The NVMe drive signals through MSI-X: 65 entries, its table in its BAR0, 9 vectors in use. The table's addresses are in the drive's memory, which the session did not read | board-Linux | BL2 2026-11-23, pci-config-0000:01:00.0; interrupts |
+| A-150 | MSIs on the board | The root ports of D and E have no MSI or MSI-X capability, and Linux gives them no interrupt; its port services (PME, AER, DPC) run on port A's root port alone | board-Linux | BL2 2026-11-23, pci-config-0003:00:00.0, pci-config-0004:00:00.0; pci (`irq`, `msi_irqs`); dmesg |
 
 ### Questions A1 to A5
 
@@ -243,21 +271,26 @@ use. Line numbers are those of the commits named here.
   traffic each instance sees, beyond calling IOPMPs 5 to 9 "DDR IOPMP"
   (A-11). The IOMMU device IDs are known for ports A to C from the
   vendor's tree (A-65 to A-67). Address widths: each IOPMP's (A-02 to
-  A-10); the DMA controller's bus is 64 bits (A-100). Enabled on this
-  board: A-87 to A-102. The PCIe DMA engines' path (through the IOMMU or
-  not, and with which device ID) is not established.
+  A-10); the DMA controller's bus is 64 bits (A-100); and, as the
+  board's Linux uses them, the NVMe drive's 64 bits, the Wi-Fi card's
+  36, and GMAC1's 40 (A-137, A-138). Enabled on this board: A-87 to
+  A-102, with bus mastering as A-136 shows. The PCIe DMA engines' path
+  (through the IOMMU or not, and with which device ID) is not
+  established.
 - **A2. The IOMMU.** *Partly answered.* Its registers (A-56, A-57); the
   ports behind it, A to C by four sources against A, B, and E by two
   (A-69 to A-72; see "Disagreements"); its reset state by the
   specification (A-77) and its bypass after reset (A-72, A-73); who
-  enables it (A-80). Its version, capabilities (ATS, `T2GPA`, MSI
-  translation), and its `ddtp` on this board as booted *need a probe*:
-  no tree that the board's Linux receives has an IOMMU node, so Linux
-  reads nothing of it. Whether the board's PCIe driver sets the bypass
-  bits *needs the board's Linux*: the whole kernel log, and the PCIe
-  devices' driver links (A-75, D-22). Who can reach its registers: the
-  vendor's trees give it to S-mode (A-57); the map does not mark it
-  Secure (A-56).
+  enables it (A-80). On the board, Linux has the IOMMU driver built in
+  but registers no IOMMU and no IOMMU group (A-131 to A-133), and its
+  PCIe driver does not run the vendor's bypass code (A-134, A-135). No
+  source read sets or clears the bypass bits but that vendor driver
+  (A-75, A-76, A-80), so as booted they hold their reset value, with
+  ports A to C bypassing the IOMMU, unless the closed boot ROM or code
+  not read changes them (inferred). Its version, capabilities (ATS,
+  `T2GPA`, MSI translation), its `ddtp`, and the bypass bits as booted
+  *need a probe*. Who can reach its registers: the vendor's trees give
+  it to S-mode (A-57); the map does not mark it Secure (A-56).
 - **A3. The IOPMPs.** *Partly answered.* Each instance's configuration
   (A-02 to A-19); how a violation is reported (A-24, A-25, A-29, A-30);
   what a denied access returns, only in part (A-26); the Secure
@@ -271,22 +304,31 @@ use. Line numbers are those of the commits named here.
   successful read of its registers from HS-mode would itself meet rule
   10's first trigger.
 - **A4. Other bounds.** *Partly answered.* Inbound translation exists
-  (A-110), and Linux programs none of it here (A-111, A-112); what a
-  request that matches no inbound region does is not established: the
-  controller's databook was not among the inputs. Coherence:
-  non-coherent but for the HDMA instances (A-103, A-104, A-116). The
-  cache operations that a driver needs are `Zicbom`'s (A-118); under
-  M11's boundary a VS domain can issue none of them directly: each traps
-  (A-121 to A-123).
+  (A-110): on the board, at least 31 regions on port A and 16 on ports
+  D and E (A-139 to A-141), and Linux programs none of them (A-111,
+  A-112); what a request that matches no inbound region does is not
+  established: the controller's databook was not among the inputs. No
+  PCI function on the board has ATS, PASID, or PRI (A-142). The root
+  ports' ACS has source validation, request and completion redirect,
+  and upstream forwarding on, as upstream Linux sets them, and
+  translation blocking and egress control off (A-143 to A-145).
+  Coherence: non-coherent but for the HDMA instances (A-103, A-104,
+  A-116). The cache operations that a driver needs are `Zicbom`'s
+  (A-118); under M11's boundary a VS domain can issue none of them
+  directly: each traps (A-121 to A-123).
 - **A5. MSIs.** *Partly answered.* An MSI is an ordinary write (A-124).
-  The monitor's interrupt files are S-level files in the non-secure
-  range (A-125, A-127). Nothing read stops a device's write to them on
-  this board: the IOPMPs pass every access after reset unless enabled
-  (A-20), ports A to C bypass the IOMMU after reset (A-73), and the
-  IOMMU translates MSIs only with MSI page tables (A-79). Whether a
-  device's write to the M-level files' range, marked Secure, is accepted
-  is not established, and would need a device-driven probe, which rule 6
-  does not allow.
+  On the board, port A's root port and the Wi-Fi card send theirs as
+  64-bit writes to hart 5's S-level interrupt file (A-146 to A-148);
+  the NVMe drive's MSI-X addresses are in its own memory, not read
+  (A-149); the root ports of D and E have no MSI (A-150), which fits
+  the PCIe page's sentence on those controllers (A-129). The monitor's
+  interrupt files are S-level files in the non-secure range (A-125,
+  A-127). Nothing read stops a device's write to them on this board:
+  the IOPMPs pass every access after reset unless enabled (A-20), ports
+  A to C bypass the IOMMU after reset (A-73), and the IOMMU translates
+  MSIs only with MSI page tables (A-79). Whether a device's write to the
+  M-level files' range, marked Secure, is accepted is not established,
+  and would need a device-driven probe, which rule 6 does not allow.
 
 ## B. Interrupts
 
@@ -314,6 +356,8 @@ use. Line numbers are those of the commits named here.
 | B-18 | ACLINT | Board's tree: an MSWI (16 KiB at `0xF181_0000`), an MTIMER (32 KiB at `0xF181_4000`), and an SSWI (16 KiB at `0xF181_C000`) | board-Linux | BL 2026-11-16, `/soc/interrupt-controller@f1810000`, `/soc/timer@f1814000`, `/soc/interrupt-controller@f181c000` |
 | B-19 | ACLINT | On the board, a driver has claimed the SSWI's range | board-Linux | BL 2026-11-16, `/proc/iomem` |
 | B-20 | ACLINT | Upstream Linux's SSWI driver matches `spacemit,k3-aclint-sswi` in `v7.4-rc4`, not in `v7.3`; so the board's 7.3.1 kernel carries code beyond `v7.3` | source | Inferred from UL74 `drivers/irqchip/irq-aclint-sswi.c`:182, UL `drivers/irqchip/irq-aclint-sswi.c`:180-211, and B-19 |
+| B-59 | ACLINT | On the board, Linux's SSWI driver registers 8 harts, then fails to create its IPIs and to initialize; its register range stays claimed | board-Linux | BL2 2026-11-23, dmesg; iomem |
+| B-60 | ACLINT | In upstream `v7.4-rc4`, that driver claims its range before it creates its IPIs, and keeps the range when that fails; the kernel allows one IPI mux, and here the IMSIC's driver made it first (B-28) | source, board-Linux | UL74 `drivers/irqchip/irq-aclint-sswi.c`:112-145; UL `kernel/irq/ipi-mux.c`:154-161; BL2 2026-11-23, dmesg |
 | B-21 | Real-time cores | Each real-time core's tree has a PLIC (`riscv,plic0`), 64 MiB at `0xE000_0000` | files | RT0 and RT1 `/soc/interrupt-controller@e0000000` |
 
 ### Delegation and how Linux finds it
@@ -329,6 +373,7 @@ use. Line numbers are those of the commits named here.
 | B-28 | Linux | The board's Linux maps 64 local interrupts through AIA, takes its IPIs on IMSIC identity 1, and has 511 identities in each hart's S-level file | board-Linux | BL 2026-11-16, kernel log |
 | B-29 | Linux | The S-level APLIC forwards its 512 sources as MSIs to the S-level IMSIC's base, `0xE040_0000` | board-Linux | BL 2026-11-16, kernel log |
 | B-30 | Linux | The board's Linux runs its timer in S-mode through `Sstc`, and finds the SBI specification v2.0 with the TIME, IPI, RFENCE, SRST, DBCN, HSM, and SUSP extensions | board-Linux | BL 2026-11-16, kernel log |
+| B-66 | The resident firmware | It reports SBI implementation ID 1 (OpenSBI), version `0x10006`, and the SBI specification v2.0; the vendor's OpenSBI source is version 1.6, with implementation ID 1 and SBI v2.0 | board-Linux, source | BL2 2026-11-23, dmesg; OS `include/sbi/sbi_version.h`:13-14, `include/sbi/sbi_ecall.h`:16-18 |
 
 ### Wired sources
 
@@ -352,6 +397,11 @@ use. Line numbers are those of the commits named here.
 | B-41 | KVM | KVM finds GEILEN by writing all ones to `hgeie` and reading it back, takes the smaller of that and the IMSIC's guest files, and logs "AIA available with N guest external interrupts" | source | UL `arch/riscv/kvm/aia.c`:614-628; `arch/riscv/kvm/main.c`:247-248 |
 | B-42 | KVM | The board's kernel has KVM built in; the inventory's excerpt of its kernel log holds no KVM line | board-Linux | BL 2026-11-16, kernel configuration and kernel log |
 | B-43 | The board's guest files | Their layout follows from the board's tree: each hart's S-level file and 63 guest-file slots take 256 KiB, and 8 harts fill the 2 MiB | board-Linux | Inferred from B-15 and AIA `IMSIC.adoc`:183-186 |
+| B-61 | KVM on the board | The board's KVM finds the hypervisor extension, Sv39x4 as its highest G-stage mode, and 14 VMID bits | board-Linux | BL2 2026-11-23, dmesg |
+| B-62 | KVM on the board | It logs "AIA available with 7 guest external interrupts" | board-Linux | BL2 2026-11-23, dmesg |
+| B-63 | The IMSIC's driver | Upstream `v7.3`'s IMSIC driver gives each hart at most `2^guest-index-bits - 1` guest files, and no more than fit in its part of the range; for the board's tree that is 63 for each of the 8 harts | source, board-Linux | UL `drivers/irqchip/irq-riscv-imsic-state.c`:881, 896-897, 926-928; with B-15 |
+| B-64 | KVM | Upstream `v7.3`'s KVM enables virtualization on every online hart when it loads, unless told not to. On each, it finds the highest bit of `hgeie` that it can set, and lowers the number that it will log to that, if smaller; the number starts as the IMSIC driver's count | source | UL `virt/kvm/kvm_main.c`:5600, 5773-5776, 6562; `arch/riscv/kvm/main.c`:69-78, 242-248; `arch/riscv/kvm/aia.c`:613-634, 721-727 |
+| B-65 | GEILEN on the board | So, if the board's kernel does as upstream `v7.3` does, at least one of harts 0 to 7 has GEILEN = 7; the log does not say which | board-Linux, source | Inferred from B-62 to B-64 |
 
 ### APLIC targets in guest files
 
@@ -371,25 +421,42 @@ use. Line numbers are those of the commits named here.
 | B-50 | Shared with the application side | The real-time table also takes the application side's GPIO, GPIO edge, and temperature-sensor signals (`acpu_irq[0]` to `[2]`) | document | UM 7.2 (`07_interrupts.md`:418-420) |
 | B-51 | Names | The two tables use one name for different controllers: `can0_int0` is the application side's CAN0 at source 161 and the real-time side's CAN0 at its source 36; the real-time core 0's tree gives its `can0@c0710000` source 36 | document, files | UM 7.1 (`07_interrupts.md`:179); 7.2 (:361); RT0 `/soc/can0@c0710000` |
 
+### The interrupts that the board's Linux uses
+
+All at the read of 2026-11-23. Linux's CPU numbers are the hart IDs
+here: CPU n is hart n (BL2 2026-11-23, cpuinfo).
+
+| Row | Device or path | Fact | Class | Citation |
+| --- | --- | --- | --- | --- |
+| B-52 | Wired sources in use | Through the S-level APLIC, Linux handles sources 19, 36, 37, 38, 42, 58, 70, 72, 99, 105, 125, 133, 135, and 277 | board-Linux | BL2 2026-11-23, interrupts; irqs |
+| B-53 | Their names | Chapter 7 names them, in that order, `m1_i2c8_int`, `m1_i2c0_int`, `m1_i2c1_int`, `m1_i2c2_int`, `m1_ffuart0_int`, `m1_gpio_int_ap`, `m1_i2c6_int`, `dma_int_ap_non_sec`, `mmc1_int`, `usb2_port_int`, `usb3_portb_int`, `emac1_intr`, `ufs_intr`, and `emac1_wkup_intr`; Linux's handler for each is the driver of the device so named | document, board-Linux | UM 7.1 (`07_interrupts.md`:40, 57-59, 63, 79, 91, 93, 119, 125, 144, 152, 154, 282); BL2 2026-11-23, interrupts |
+| B-54 | Mapped, not handled | Sources 64 (the power-management chip's) and 118 (USB 3.0 port A's) are mapped, with no handler | board-Linux | BL2 2026-11-23, irqs |
+| B-55 | MSIs in use | Through the S-level IMSIC: one MSI of port A's root port, nine MSI-X vectors of the NVMe drive, and one MSI of the Wi-Fi card | board-Linux | BL2 2026-11-23, interrupts; irqs |
+| B-56 | Through the GPIO block | Two edge interrupts: the microSD card's detect line and the Type-C controller's | board-Linux | BL2 2026-11-23, interrupts; irqs |
+| B-57 | Local interrupts | Linux has handlers on every hart for local interrupts 5 (the S-mode timer), 12 (KVM's, for guest external interrupts), and 13 (the PMU's overflow) | board-Linux | BL2 2026-11-23, irqs; interrupts |
+| B-58 | On which harts | Each interrupt in use has one effective hart: I2C0 2, I2C1 3, I2C2 4, I2C6 5, I2C8 6, UART0 1, GPIO 0, DMA 1, the microSD card's controller 0, USB 2.0 2, USB 3.0 port B 4, GMAC1 0 and 1, UFS 7, port A's root port 5, and the Wi-Fi card 5; the NVMe drive's nine vectors are spread over harts 0 to 7 | board-Linux | BL2 2026-11-23, irq-affinity |
+
 ### Questions B1 to B5
 
 - **B1. The interrupt domains and their delegation.** *Answered as the
   sources and trees have them*: the firmware's (B-06, B-08, B-10, B-12,
-  B-17, B-22 to B-27) and Linux's (B-07, B-09, B-11, B-15, B-18, B-28 to
-  B-30). The M-level APLIC's state as booted is the plan's Q5, not
-  M13's.
+  B-17, B-22 to B-27, B-66) and Linux's (B-07, B-09, B-11, B-15, B-18,
+  B-28 to B-30, B-59, B-60). The M-level APLIC's state as booted is the
+  plan's Q5, not M13's.
 - **B2. Wired sources.** *Partly answered* for the devices on this board
   (B-31 to B-38). A full comparison of chapter 7's 296 rows with both
   trees is not made; the rows read agree but for source 64's users and
-  the PCIe nodes' wired interrupts. Which sources the board's Linux uses
-  *needs the board's Linux*: `/proc/interrupts` and each interrupt's
-  `hwirq` under `/sys/kernel/irq/`.
+  the PCIe nodes' wired interrupts. The sources that the board's Linux
+  uses, their names, and their harts are B-52 to B-58: each agrees with
+  chapter 7's name for it; source 64 and port A's source 118 are mapped
+  with no handler (B-54).
 - **B3. The IMSICs.** *Partly answered.* Each hart's files by the trees
-  (B-10 to B-16, B-43). The guest interrupt files of harts 0 to 2:
-  *needs the board's Linux* for KVM's count on the boot hart (B-41,
-  B-42; the read is the whole kernel log), and *needs a probe* for each
-  hart's `hgeie`. GEILEN is 8 by the documents and 7 by a comment in the
-  vendor's tree (see "Disagreements").
+  (B-10 to B-16, B-43). The board's KVM logs 7 guest external
+  interrupts (B-62), so at least one of harts 0 to 7 has GEILEN = 7
+  (B-63 to B-65). The guest interrupt files of each of harts 0 to 2
+  *need a probe* of its `hgeie`. GEILEN is 8 by the documents, and 7 by
+  a comment in the vendor's tree and by the board's KVM (see
+  "Disagreements").
 - **B4. An APLIC's MSI to a guest file.** *Not established*: the
   architecture allows it (B-44, B-45); whether this S-level APLIC's
   Guest Index fields hold nonzero values *needs a probe*.
@@ -415,6 +482,13 @@ use. Line numbers are those of the commits named here.
 | C-09 | Watchdog | The board's tree has no watchdog node | board-Linux | BL 2026-11-16, device tree |
 | C-10 | A chip reset | The real-time subsystem's PMU has a register `FORCE_CHIP_RST` (offset `0x58`): writing 0 resets the chip | document | UM 17.4.2 (`17_clock_reset.md`:2323-2330) |
 | C-11 | IOPMPs | Once enabled, an IOPMP stays enabled "until the next reset"; the manual does not say which reset schemes clear it | document | UM 15.4.5.1 (`15_security.md`:675) |
+| C-37 | Linux's own reset path | The board's Linux binds the power-management chip's reboot driver, `spacemit-p1-reboot` | board-Linux | BL2 2026-11-23, platform; kconfig (`CONFIG_POWER_RESET_SPACEMIT_P1=y`) |
+| C-38 | Linux's own reset path | Upstream `v7.3`'s driver of that name restarts the board by setting bit 1, and powers it off by setting bit 2, of the chip's register `0x7E`, the bits that ESOS sets (C-04); it registers both handlers at the default priority | source | UL `drivers/power/reset/spacemit-p1-reboot.c`:11-14, 22, 37, 56-66; `kernel/reboot.c`:567-595 |
+| C-39 | Linux's own reset path | Upstream `v7.3` registers SBI SRST's restart handler at priority 192, and SRST's power-off at the platform priority, which is below the default; a chain calls its handlers from the highest priority down | source | UL `arch/riscv/kernel/sbi.c`:685-689; `kernel/reboot.c`:622-633; `include/linux/reboot.h`:86-90; `kernel/notifier.c`:17-35 |
+| C-40 | Linux's own reset path | So, if the board's kernel does as upstream `v7.3` does, a restart asks the firmware first (C-03), and a power-off writes the chip first, over I2C8 | board-Linux, source | Inferred from C-37 to C-39 |
+| C-41 | Watchdog | Linux registers no watchdog device | board-Linux | BL2 2026-11-23, classes |
+| C-42 | Watchdog | The board's kernel configuration has no option for a watchdog of this SoC (searched for `SPACEMIT` and `K1` with `WDT` and `WATCHDOG`) | board-Linux | BL2 2026-11-23, kconfig |
+| C-43 | Watchdog | The gates of its bus and function clocks read off | board-Linux | BL2 2026-11-23, clk-summary (`wdt_bus_clk`, `wdt_clk`) |
 
 ### Reset lines and their register bits
 
@@ -433,6 +507,11 @@ use. Line numbers are those of the commits named here.
 | C-22 | GMAC1 | AP PMU `0x3EC` bit 1, its AXI bus reset; the register also holds its PHY interface select, its AXI ID mode, and its clocks | document, source | UM 17.4.2 (`17_clock_reset.md`:1692-1713); VL `reset-spacemit.c`:394 |
 | C-23 | DMA controller | AP PMU `0x64` bit 0, its AXI reset; bit 3, its AXI clock | document, source | UM 17.4.2 (`17_clock_reset.md`:1143-1153); VL `reset-spacemit.c`:339 |
 | C-24 | HDMA | All eight instances share one bus reset and one clock in CIU Dragon, and each has its own DMA reset | source | VL `k3.dtsi`:2170-2262 |
+| C-44 | On the board | Linux's device links name the AP PMU's clock and reset unit as a supplier of every bus master that Linux drives: PCIe A, D, and E, the three USB controllers, UFS, GMAC1, the DMA controller, and the microSD card's controller | board-Linux | BL2 2026-11-23, devlinks |
+| C-45 | On the board | The PCIe nodes give Linux the AP PMU's offsets `0x1F0` (A), `0x1E0` (D), and `0x1E8` (E): the ports' registers of C-14 and C-17 | board-Linux | BL2 2026-11-23, device-tree (`spacemit,apmu` of `/soc/pcie@80000000`, `/soc/pcie@80c00000`, `/soc/pcie@81000000`) |
+| C-46 | NVMe drive | It offers function-level reset; Linux lists `flr` and `bus` as its reset methods | board-Linux | BL2 2026-11-23, pci-config-0000:01:00.0 (the Device Capabilities' bit that UL `include/uapi/linux/pci_regs.h`:510 names); pci (`reset_method`) |
+| C-47 | Wi-Fi card | It offers function-level reset; Linux lists `flr` and `bus` as its reset methods | board-Linux | BL2 2026-11-23, pci-config-0004:01:00.0; pci (`reset_method`) |
+| C-48 | Root ports | None of the three offers function-level reset, and Linux lists no reset method for them | board-Linux | BL2 2026-11-23, pci-config-0000:00:00.0, pci-config-0003:00:00.0, pci-config-0004:00:00.0; pci |
 
 ### Clocks and power domains
 
@@ -450,30 +529,50 @@ use. Line numbers are those of the commits named here.
 | C-34 | Power-management chip | The vendor's COM260 tree disables I2C8 and enables the RPMI regulators | source | VL `k3_com260.dtsi`:459, 1152 |
 | C-35 | Power-management chip | The board's tree gives the chip (`spacemit,p1`, address `0x41`) to Linux, on I2C8 | board-Linux | BL 2026-11-16, device tree, `/soc/i2c@d401d800/pmic@41` |
 | C-36 | Power-management chip | The firmware's tree puts the chip (`spacemit,spm8821`) on I2C8 for U-Boot and the SPL | files | FT `/soc/twsi8@d401d800/pmic@41` |
+| C-49 | Clocks as read | Enabled for a driver: PCIe A's, D's, and E's DBI, master, and slave clocks; the bus clocks of USB 2.0 and of USB 3.0 ports A and B; GMAC1's bus, transmit, and timestamp clocks; the DMA controller's; the microSD card's controller's; UART0's; those of I2C0, I2C1, I2C2, I2C6, and I2C8; and those of GPIO, the pin controller, and the thermal sensor | board-Linux | BL2 2026-11-23, clk-summary |
+| C-50 | Clocks as read | The gates that read off include PCIe B's and C's clocks; the bus clocks of USB 3.0 ports C and D; GMAC0's and GMAC2's bus and transmit clocks; the other two storage card controllers'; the watchdog's (C-43); and UFS's AXI clock, UFS being runtime-suspended | board-Linux | BL2 2026-11-23, clk-summary; platform |
+| C-51 | Clocks as read | A clock named `hdma_clk` is enabled with no user device; the board's tree has no HDMA node (A-104) | board-Linux | BL2 2026-11-23, clk-summary |
+| C-52 | Clocks as read | The summary names no clock for the IOMMU or for an IOPMP (searched for `iommu`, `ioat`, `iopmp`, and `pmp`) | board-Linux | BL2 2026-11-23, clk-summary |
+| C-53 | Clocks | The kernel's log says that it does not disable unused clocks | board-Linux | BL2 2026-11-23, dmesg |
+| C-54 | Power domains | Linux registers no generic power domain: the summary lists none | board-Linux | BL2 2026-11-23, genpd-summary |
+| C-55 | Regulators | Linux drives the power-management chip's 17 regulators (`buck1` to `buck6`, `aldo1` to `aldo4`, `dldo1` to `dldo7`) through the chip's regulator driver, on I2C8; all but `aldo3` have a user | board-Linux | BL2 2026-11-23, regulators; platform |
+| C-56 | Regulators | And four fixed regulators of the tree: `P5V0_SYS`, `SYS_VDD3V3`, `USB30_HUB`, and `USB30_VBUS`; the last has no user | board-Linux | BL2 2026-11-23, regulators |
 
 ### Questions C1 to C4
 
 - **C1. The system's reset paths.** *Partly answered*: the firmware's
   (C-03), the real-time firmware's through the power-management chip
-  (C-04 to C-06), the watchdog's (C-07 to C-09), and a chip reset in the
-  real-time subsystem (C-10). What each resets: the documents say "the
-  whole chip" for power-on and watchdog resets, and differ on what the
-  watchdog's reset spares (see "Disagreements"). Whether the IOPMPs and the
-  real-time cores are reset by each path is not established (C-11). What
-  the chip's register bits do inside the chip is not established: its
+  (C-04 to C-06), the watchdog's (C-07 to C-09), a chip reset in the
+  real-time subsystem (C-10), and the board's Linux's own, through the
+  same chip's register on I2C8 (C-37 to C-40). On the board, Linux
+  registers no watchdog, and the watchdog's clock gates read off (C-41
+  to C-43). What each resets: the documents say "the whole chip" for
+  power-on and watchdog resets, and differ on what the watchdog's reset
+  spares (see "Disagreements"). Whether the IOPMPs and the real-time
+  cores are reset by each path is not established (C-11). What the
+  chip's register bits do inside the chip is not established: its
   datasheet was not among the inputs. The reset dongle's line: not
   established; no input read says which pin of the SoC or of the
   power-management chip it drives.
 - **C2. Each device's reset lines.** *Answered* for the bus masters that
   Linux drives on this board (C-14 to C-24), from the vendor's reset
-  driver and the manual's registers, which agree.
-- **C3. Function-level reset.** *Needs the board's Linux*: whether the
-  NVMe drive and the Wi-Fi card offer function-level reset is in their
-  PCI configuration space, which no input holds. The PCIe controllers'
-  own resets: C-14 to C-17.
+  driver and the manual's registers, which agree. On the board, Linux's
+  device links and its tree point at the same unit and registers (C-44,
+  C-45).
+- **C3. Function-level reset.** *Answered* for the board's PCI
+  functions: the NVMe drive and the Wi-Fi card offer function-level
+  reset, and Linux can also reset each through its bus; the root ports
+  offer none (C-46 to C-48). The PCIe controllers' own resets: C-14 to
+  C-17.
 - **C4. Clocks and power domains, and who controls them.** *Partly
-  answered* (C-25 to C-36). Which clocks are on as booted *needs the
-  board's Linux* (the clock and power-domain summaries).
+  answered* (C-25 to C-36). On the board, as Linux's clock driver sees
+  them at the read: the clocks enabled for its drivers (C-49), the
+  gates that read off (C-50), and one clock enabled with no user
+  (C-51); Linux does not disable unused clocks (C-53), so the states
+  are those that the boot stages and its drivers left. Linux registers
+  no generic power domain (C-54). The regulators that it drives: C-55,
+  C-56. The summary names no clock for the IOMMU or the IOPMPs (C-52),
+  so whether their clocks are on is not established.
 
 ## D. Which device belongs to whom
 
@@ -502,7 +601,31 @@ use. Line numbers are those of the commits named here.
 | D-19 | Real-time audio DMA and I2S | The vendor's COM260 tree gives Linux `adma3` and `ri2s3` of the real-time subsystem | source | VL `k3_com260.dtsi`:1304, 1308 |
 | D-20 | Where Linux's tree comes from | U-Boot's `fdt_chosen()` adds `u-boot,version` to `/chosen`, and the board's tree has it; so U-Boot prepared the tree that Linux received | source, board-Linux | Inferred from UB `common/fdt_support.c`:283, 325-326; BL 2026-11-16, `/chosen` |
 | D-21 | Where Linux's tree comes from | It matches none of the trees read: its interrupt controllers match upstream `v7.4-rc4`'s (63 guest identities, the ACLINT nodes), which has no PCIe nodes; its PCIe nodes use `spacemit,k3-pcie`, as the vendor's `wip/k3-pcie` branch does, with another order of register names | source, board-Linux | UL74 `k3.dtsi`:1414-1495; SL `k3.dtsi`:442-569; VL `k3.dtsi`:2342-2540; BL 2026-11-16, device tree |
-| D-22 | Linux's PCIe driver | Upstream `v7.3`'s SpacemiT PCIe driver matches only `spacemit,k1-pcie`; the board's driver for `spacemit,k3-pcie` is not established | source | UL `drivers/pci/controller/dwc/pcie-spacemit-k1.c`:338 |
+| D-22 | Linux's PCIe driver | Upstream `v7.3`'s SpacemiT PCIe driver matches only `spacemit,k1-pcie` (the board's binding: D-57 to D-59) | source | UL `drivers/pci/controller/dwc/pcie-spacemit-k1.c`:338 |
+| D-51 | Where Linux's tree comes from | `/boot` holds the running kernel's device-tree directory, `/boot/dtb-7.3.1-300.0.riscv64.omni.fc45.riscv64`, and `/boot/dtb` points to it. Its `spacemit/` directory holds three K3 trees: `k3-com260-ifx.dtb`, `k3-deepcomputing-fml13v05.dtb`, and `k3-pico-itx.dtb` | board-Linux | BL2 2026-11-23, boot-files; boot-dtb |
+| D-52 | Where Linux's tree comes from | `/boot` has no `extlinux` directory. A search of `/boot/loader/entries/*.conf` for a device-tree line, run as the account, printed nothing; the read does not show whether the account could read those files | board-Linux | BL2 2026-11-23, boot-files; boot-fdt |
+| D-53 | Where Linux's tree comes from | Every node and property of that `k3-com260-ifx.dtb` is in the tree that Linux holds, with the same value, but for its memory node | board-Linux | BL2 2026-11-23, boot-dtb and device-tree, compared property by property |
+| D-54 | Where Linux's tree comes from | Every other node and property of Linux's tree is of a kind that U-Boot's code adds: `/chosen`'s properties, a boot-hart property, a memory node of its own, the reserved-memory nodes, a ring-oscillator value of the chip, and properties that identify the board, the chip, and the Ethernet port, whose values are left out (rule 8) | board-Linux, source | BL2 2026-11-23, boot-dtb and device-tree (compared); UB `arch/riscv/lib/fdt_fixup.c`:171-252; `board/spacemit/k3/k3.c`:1737-1769, 1814-1831; `common/fdt_support.c`:188-201, 214-272, 283-335, 559-635 |
+| D-55 | Where Linux's tree comes from | So the tree that Linux holds is the distribution's file for this board, with U-Boot's additions. How U-Boot chooses the file is not in the reads; its environment is outside this page (rule 8) | board-Linux, source | Inferred from D-20 and D-51 to D-54 |
+| D-56 | Where Linux's tree comes from | It is the same, property for property, as the tree read on 2026-11-16 | board-Linux | BL2 2026-11-23, device-tree; BL 2026-11-16, device tree (compared) |
+| D-57 | Linux's PCIe driver | On the board, a driver named `spacemit-k1-pcie` binds ports A, D, and E | board-Linux | BL2 2026-11-23, platform |
+| D-58 | Linux's PCIe driver | SL's driver of that name matches `spacemit,k3-pcie`; UL's and VL's match only `spacemit,k1-pcie` | source | SL `drivers/pci/controller/dwc/pcie-spacemit-k1.c`:534-536, 544; UL the same file :337-338, 347; VL the same file :1257-1258, 1266 |
+| D-59 | Linux's PCIe driver | SL's driver has no IOMMU bypass code: neither `iommu` nor `bypass` occurs in it | source | SL `drivers/pci/controller/dwc/pcie-spacemit-k1.c` |
+| D-60 | eFuses | U-Boot's board code reads the chip's product and wafer identifiers and a ring-oscillator value from the eFuses, and adds them to the tree that it passes on; the board's tree has the three properties | source, board-Linux | UB `board/spacemit/k3/k3.c`:1737-1769; BL2 2026-11-23, device-tree |
+
+### Drivers that the board's Linux binds
+
+| Row | Device or path | Fact | Class | Citation |
+| --- | --- | --- | --- | --- |
+| D-61 | PCI functions | The root ports bind `pcieport`; the NVMe drive, `nvme`; the Wi-Fi card, `rtw89_8852be` | board-Linux | BL2 2026-11-23, pci |
+| D-62 | USB | `dwc3-generic-plat` binds all three controllers. Linux registers xHCI hosts for `usb@c0a00000` and `usb@81400000` alone; the tree's default role for `usb3@cad00000` is peripheral | board-Linux | BL2 2026-11-23, platform; iomem; device-tree (`/soc/usb3@cad00000`: `dr_mode`, `role-switch-default-mode`) |
+| D-63 | UFS, GMAC1, DMA, microSD card | `ufshcd-spacemit`, `spacemit-dwmac`, `mmp-pdma`, and `sdhci-spacemit` | board-Linux | BL2 2026-11-23, platform |
+| D-64 | UART0, I2C, GPIO, pins, thermal sensor | `of_serial`; `i2c-k1` for I2C0, I2C1, I2C2, I2C6, and I2C8; `spacemit-gpio`; `k1-pinctrl`; and `k3_thermal` | board-Linux | BL2 2026-11-23, platform |
+| D-65 | Clock and reset units | Linux's `spacemit,k3-ccu` driver binds the APB clock unit, the Main PMU, the PLL block at `0xD409_0000` (`APB_SPARE`), the AP PMU, and CIU Dragon | board-Linux | BL2 2026-11-23, platform |
+| D-66 | Interrupt controllers | `riscv-imsic` and `riscv-aplic` bind the S-level IMSIC and APLIC; the ACLINT's three nodes have no driver link (B-59) | board-Linux | BL2 2026-11-23, platform |
+| D-67 | I2C devices | On I2C0, the Type-C controller (`fusb301`); on I2C1 and on I2C2, a 256-byte EEPROM each (`at24`, read-only); on I2C6, a temperature sensor (`lm63`); on I2C8, the power-management chip (`simple-mfd-i2c`, with the chip's reboot, regulator, and real-time clock drivers) | board-Linux | BL2 2026-11-23, i2c-spi; platform; dmesg |
+| D-68 | SPI | No SPI device | board-Linux | BL2 2026-11-23, i2c-spi |
+| D-69 | VFIO | The kernel builds VFIO as modules, and none is loaded | board-Linux | BL2 2026-11-23, kconfig; modules |
 
 ### What devices share
 
@@ -523,6 +646,7 @@ use. Line numbers are those of the commits named here.
 | D-35 | An interrupt source | Source 64, the power-management chip's interrupt, serves two RPMI nodes in the vendor's tree and the chip's own driver in the board's | document, source, board-Linux | UM 7.1 (`07_interrupts.md`:85); VL `k3.dtsi`:1335-1350; BL 2026-11-16, device tree, `pmic@41` |
 | D-36 | A power domain | The I2C controllers share the dummy RPMI power domain (C-32) | source | VL `k3.dtsi`:737-849 |
 | D-37 | Pins | The application side's pad configuration block is enabled in the real-time cores' trees, and the board's Linux drives it | files, board-Linux | RT0 and RT1 `/soc/pinctrl@d401e000`; BL 2026-11-16, `/proc/iomem` |
+| D-71 | A register | The power-management chip's register `0x7E` is the reset and shutdown register both of Linux's reboot driver, on I2C8, and of ESOS, on `ri2c2` (C-04, C-38) | source | UL `drivers/power/reset/spacemit-p1-reboot.c`:11-14; ES `bsp/spacemit/drivers/rpmi/k3/k3-os0_sysreset.c`:17-19 |
 
 ### Bus masters, and devices that are not
 
@@ -546,27 +670,33 @@ use. Line numbers are those of the commits named here.
 | D-48 | Debug module | Its "sysbus" mode reaches on-chip resources through the System Bus Access port, past the CPU | document | UM 8.4.2 (`08_cpu.md`:124-127); DS 2.1.4 (`k3_ds.md`:216) |
 | D-49 | Debug module | IOPMP6 lists `DBG_AW` and `DBG_AR`, whose source-ID fields are named for the application cores' debug | document | UM 15.4.3.2; 15.4.3.4 (`15_security.md`:200-221) |
 | D-50 | Debug module | In one eFuse lifecycle state, "RMA", JTAG debug is forced on; this board's state is not established | document | UM 15.3.2 (`15_security.md`:37-50) |
+| D-70 | Harts in Linux | Linux's possible, present, and online harts are 0 to 7; none is offline | board-Linux | BL2 2026-11-23, cpus |
 
 ### Questions D1 to D4
 
 - **D1. Which agents touch each device, and who owns it at run time.**
-  *Partly answered* (D-01 to D-22). The boot ROM's: not established
-  (closed). At run time on this board, Linux drives the devices of A-87
-  to A-102 and D-02, D-05, D-16; the real-time firmware and Linux both
-  drive the power-management chip, on two buses (see "Disagreements").
-  Which driver binds each device, the PCIe controllers' among them,
-  *needs the board's Linux*: the platform and I2C devices' driver links.
+  *Partly answered* (D-01 to D-22, D-51 to D-60). The boot ROM's: not
+  established (closed). U-Boot reads the eFuses at each boot (D-60). At
+  run time on this board, Linux drives the devices of A-87 to A-102 and
+  D-02, D-05, D-16, with the drivers of D-61 to D-69; the real-time
+  firmware and Linux both drive the power-management chip, on two
+  buses (see "Disagreements"). Linux's tree is the distribution's file
+  for this board, with U-Boot's additions (D-51 to D-56). Its PCIe
+  driver has the name of upstream's and of the vendor's; which source
+  it comes from is not established, as the board's kernel source was
+  not among the inputs (D-57 to D-59).
 - **D2. What devices share.** *Partly answered*, found so far (D-23 to
-  D-37).
+  D-37, D-71). On the board, every bus master that Linux drives has the
+  AP PMU's clock and reset unit as a supplier (C-44).
 - **D3. Bus masters and devices that are not.** *Partly answered* (D-38,
   D-39). Whether QSPI, the CAN-FD controllers, and the I2S controllers
   master the bus themselves is not established: neither the IOPMP table
   nor their chapters read say.
 - **D4. The other execution contexts.** *Partly answered* (D-40 to
-  D-50). What bounds the real-time cores' and the debug module's
-  accesses on this board is not established; the IOPMPs that list them
-  pass every access after reset (A-20), and no source read enables one
-  (A-33).
+  D-50). The board's Linux knows harts 0 to 7 alone (D-70). What bounds
+  the real-time cores' and the debug module's accesses on this board is
+  not established; the IOPMPs that list them pass every access after
+  reset (A-20), and no source read enables one (A-33).
 
 ## Not established
 
@@ -584,39 +714,46 @@ use. Line numbers are those of the commits named here.
    registers too (A1).
 6. The IOMMU's version, capabilities, and `ddtp` on this board, and the
    bypass bits as booted (A-72 to A-80): nothing on the board reads
-   them.
+   them. Linux registers no IOMMU, and its PCIe driver does not run the
+   vendor's bypass code (A-131 to A-135).
 7. The PCIe DMA engines' path, and which device ID the IOMMU would see
    for them (A-83).
 8. What an inbound PCIe request that matches no inbound region does,
    since the controller's databook was not among the inputs (A-110 to
-   A-112); and what the root port's BARs map (A-113, A-114).
+   A-112, A-139 to A-141); and what the root port's BARs map (A-113,
+   A-114).
 9. What bits 14:11 of `COHERENCY_CONTROL_3` select (A-115).
 10. Which IOPMP checks the HDMA instances, the real-time side's DMA
     engines and GMAC, and the USB controllers by name (A-94, A-105,
     A-109).
 11. Whether a device's write to the M-level interrupt files, in the
     Secure range, is accepted (A5).
-12. The guest interrupt files of harts 0 to 2 (B3), and whether this
+12. Which of harts 0 to 7 have GEILEN = 7, and so the guest interrupt
+    files of each of harts 0 to 2 (B-62 to B-65); and whether this
     S-level APLIC can target them (B4).
 13. Whether `0xE000_0000` in the real-time cores' view is their own
     PLIC or the application side's AIA range (B-21).
 14. Which reset schemes clear an enabled IOPMP and reset the real-time
     cores (C-11); what the power-management chip's reset and shutdown
-    bits do (C-04); which pin the reset dongle drives (no input read
-    says).
-15. Function-level reset of the NVMe drive and the Wi-Fi card (C3).
-16. Which clocks and power domains are on as booted (C4).
-17. Where the tree that the board's Linux receives comes from, and which
-    driver binds its PCIe nodes (D-20 to D-22).
-18. What runs on the A100 harts on this board (D-46), and whether JTAG
-    is enabled (D-50).
+    bits do (C-04, C-38); which pin the reset dongle drives (no input
+    read says).
+15. Which clocks are on for the blocks that Linux's clock driver does
+    not name, the IOMMU and the IOPMPs among them (C-52).
+16. The board kernel's own source, which was not among the inputs: the
+    rows on its PCIe driver (D-57 to D-59), its ACS setting (A-145),
+    its KVM count (B-65), and its order of reset handlers (C-40) rest on
+    upstream's and the vendor's sources.
+17. How U-Boot chooses the file of the tree that the board's Linux
+    receives (D-52, D-55).
+18. What runs on the A100 harts on this board (D-46, D-70), and whether
+    JTAG is enabled (D-50).
 19. Whether QSPI, the CAN-FD controllers, and the I2S controllers
     master the bus (D3).
 20. Whether the firmware's PMP regions for its CLINT cover the SSWI's
     page at `0xF181_C000`, which the board's Linux claims (B-17 to
-    B-19): the regions' extent depends on how the firmware's ACLINT
-    drivers read a `riscv,clint0` node, which was not traced to its
-    end.
+    B-19, B-59): the regions' extent depends on how the firmware's
+    ACLINT drivers read a `riscv,clint0` node, which was not traced to
+    its end.
 
 ## Disagreements
 
@@ -632,7 +769,9 @@ Each item gives both sides. None is reconciled here (the plan's rule 3).
 2. **GEILEN.** The datasheet and the manual give the X100 harts
    GEILEN = 8 (DS 2.1.1; UM 8.1.2). A comment in the vendor's tree says
    that only 7 of the 63 VS-level files are valid on X100 (VL
-   `k3.dtsi`:306-313).
+   `k3.dtsi`:306-313). On the board, KVM logs 7 guest external
+   interrupts; by upstream `v7.3`'s code, at least one hart then has
+   GEILEN = 7 (B-62 to B-65).
 3. **Identities in an interrupt file.** The X100 documents give 512
    M-mode, 512 S-mode, and 64 VS-mode MSIs (DS 2.1.1; UM 8.1.2); the
    A100 section gives 511, 511, and 63 (UM 8.2.2); AIA allows only one
@@ -649,7 +788,9 @@ Each item gives both sides. None is reconciled here (the plan's rule 3).
 6. **The PCIe address-translation regions and DMA channels.** 8
    outbound and 8 inbound entries, and 4 write and 4 read DMA channels
    (DS 2.7.1; UM 14.1.2, `pcie.md`:29-30), against 32 or 16 regions
-   and 8 and 8 channels (UM 14.1.3, `pcie.md`:65-70).
+   and 8 and 8 channels (UM 14.1.3, `pcie.md`:65-70). On the board,
+   Linux finds 31 regions of each kind on port A, the most that its
+   tree's range lets it find, and 16 on ports D and E (A-139 to A-141).
 7. **The `MAS_SEC_CTRL` register.** Bits 2:0 are named for USB3,
    USB 2.0 host, and USB 2.0 secure enables, and described as "DDRC
    TrustZone disable", "DDRC TrustZone lock", and a DDR remap (UM
@@ -686,9 +827,12 @@ Each item gives both sides. None is reconciled here (the plan's rule 3).
 16. **The register at AP PMU `0x1D8`.** Chapter 17's register list
     omits it; the USB page documents it (UM 14.2.6.1).
 17. **Who drives the power-management chip.** The board's Linux drives
-    it on I2C8, with source 64 (BL 2026-11-16). ESOS drives it on
-    `ri2c2` (ES; RT0). The vendor's COM260 tree disables I2C8 and asks
-    the real-time firmware for regulators through RPMI (VL
+    it on I2C8, with its reboot, regulator, and real-time clock drivers
+    (C-37, C-55, D-67); its tree gives the chip source 64 (BL
+    2026-11-16), which Linux maps with no handler (B-54). ESOS drives it
+    on `ri2c2` (ES; RT0), and sets the same reset and shutdown bits
+    (D-71). The vendor's COM260 tree disables I2C8 and asks the
+    real-time firmware for regulators through RPMI (VL
     `k3_com260.dtsi`:459, 1152), and gives source 64 to two RPMI nodes
     (VL `k3.dtsi`:1335-1350). The SPL and U-Boot drive it on I2C8 (FT).
 18. **The two trees.** Beyond the plan's section 3: the firmware's tree

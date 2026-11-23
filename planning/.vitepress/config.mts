@@ -648,7 +648,7 @@ export default defineConfig({
             link: '/mvp-m13-plan'
           },
           {
-            text: 'M13 record: the K3 COM260 board\'s device facts (draft)',
+            text: 'M13 record: the K3 COM260 board\'s device facts',
             link: '/k3-com260-devices'
           },
           {
@@ -1348,7 +1348,7 @@ export default defineConfig({
             link: '/mvp-m13-plan'
           },
           {
-            text: 'M13 record: the K3 COM260 board\'s device facts (draft)',
+            text: 'M13 record: the K3 COM260 board\'s device facts',
             link: '/k3-com260-devices'
           },
           {
@@ -1933,7 +1933,7 @@ export default defineConfig({
             link: '/mvp-m13-plan'
           },
           {
-            text: 'M13 record: the K3 COM260 board\'s device facts (draft)',
+            text: 'M13 record: the K3 COM260 board\'s device facts',
             link: '/k3-com260-devices'
           },
           {
