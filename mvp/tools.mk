@@ -438,7 +438,8 @@ evidence: $(EVIDENCE_STAGES)
 
 # A session's directory, K3_RUN_ROOT, absolute, for each session target.
 K3_SESSION_TARGETS := k3-stage k3-env-record k3-env-install k3-env-restore \
-	k3-characterize k3-campaign k3-probe k3-input-characterize board-evidence
+	k3-characterize k3-campaign k3-probe k3-input-characterize board-evidence \
+	k3-read
 ifneq ($(filter $(K3_SESSION_TARGETS),$(MAKECMDGOALS)),)
 ifeq ($(K3_RUN_ROOT),)
 $(error $(filter $(K3_SESSION_TARGETS),$(MAKECMDGOALS)) needs K3_RUN_ROOT, the session's directory)
@@ -586,6 +587,25 @@ uboot-build:
 	fi
 	test "$$(sha256sum < $(UBOOT_BIN) | cut -d' ' -f1)" = \
 		"$(MVP_PIN_UBOOT_BIN_SHA256)"
+
+# M13-2: the board's Linux, read (planning/mvp-m13-plan.md, rule 5) by
+# tools/k3-read.py and its fixed list, tools/k3-read-list.txt, pinned in it:
+# each read over SSH (K3_SSH, from the environment) as the board's account,
+# or with sudo -n for rule 5's six alone, each with a time limit on the
+# board and here; each read's output and error output in files of their
+# own, with the record, in K3_RUN_ROOT, a new directory that the tool makes
+# in a private one (mode 0700) outside this checkout, since the outputs
+# hold identifiers (rule 8). Its commands write nothing on the board (its
+# logins and sudo may be logged there); it makes no reset, and touches
+# neither the console nor the dongle. Its self-test runs it against a
+# stand-in board, in tools-check.
+.PHONY: k3-read k3-read-check
+tools-check: k3-read-check
+k3-read-check:
+	$(PYTHON) -I -B $(MVP_DIR)/tests/test-k3-read.py --self-test \
+		--scratch $(TMPDIR)/k3-read-self-test
+k3-read:
+	$(PYTHON) -I -B $(MVP_DIR)/tools/k3-read.py run $(K3_RUN_ROOT)
 
 # M11-B (planning/mvp-m11-board-addendum.md): the board's fragments under
 # k3/, each named once, common.mk first. This is the one include directive

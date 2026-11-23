@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
+# The read tool's fixed list (planning/mvp-m13-plan.md, M13-2, rule 5),
+# pinned by its SHA-256 in tools/k3-read.py, read in this order, each once.
+# A line: NAME WHO SECONDS MAX_BYTES COMMAND. An account read is sent as
+# `timeout -k 5 SECONDS sh -c 'COMMAND'`, a superuser read as
+# `timeout -k 5 SECONDS sudo -n COMMAND`, COMMAND one of rule 5's six;
+# {pci} is each function that pci-devices lists.
+
+# What the later reads depend on.
+uname          account     10      4096 uname -srvm
+mounts         account     10   1048576 cat /proc/mounts
+pci-devices    account     10     65536 ls -1 /sys/bus/pci/devices
+# The board as every user sees it, before any read with an effect.
+os-release     account     10     65536 cat /etc/os-release
+cpuinfo        account     10   1048576 cat /proc/cpuinfo
+cpus           account     10      4096 for f in possible present online offline; do printf "%s=" "$f"; cat "/sys/devices/system/cpu/$f"; done
+interrupts     account     10   4194304 cat /proc/interrupts
+irqs           account     30   4194304 for d in /sys/kernel/irq/*; do printf "%s" "${d##*/}"; for a in chip_name hwirq type name actions; do printf "\t%s=%s" "$a" "$(cat "$d/$a" 2>/dev/null)"; done; printf "\n"; done
+irq-affinity   account     30   4194304 for d in /proc/irq/[0-9]*; do printf "%s\t%s\t%s\n" "${d##*/}" "$(cat "$d/smp_affinity_list" 2>/dev/null)" "$(cat "$d/effective_affinity_list" 2>/dev/null)"; done
+modules        account     10   1048576 cat /proc/modules
+kconfig        account     20   4194304 if [ -r /proc/config.gz ]; then zcat /proc/config.gz; else cat "/boot/config-$(uname -r)"; fi
+platform       account     30   4194304 for d in /sys/bus/platform/devices/*; do printf "%s\t%s\t%s\t%s\t%s\n" "${d##*/}" "$(readlink "$d/driver")" "$(readlink "$d/of_node")" "$(readlink "$d/iommu_group")" "$(cat "$d/power/runtime_status" 2>/dev/null)"; done
+i2c-spi        account     10   1048576 for d in /sys/bus/i2c/devices/* /sys/bus/spi/devices/*; do [ -e "$d" ] || continue; printf "%s\t%s\t%s\t%s\n" "$d" "$(cat "$d/name" 2>/dev/null)" "$(readlink "$d/driver")" "$(readlink "$d/of_node")"; done
+regulators     account     10   1048576 for d in /sys/class/regulator/*; do [ -e "$d" ] || continue; printf "%s\t%s\t%s\t%s\t%s\n" "${d##*/}" "$(cat "$d/name" 2>/dev/null)" "$(cat "$d/num_users" 2>/dev/null)" "$(cat "$d/type" 2>/dev/null)" "$(readlink "$d/device")"; done
+pci            account     30   1048576 for d in /sys/bus/pci/devices/*; do [ -e "$d" ] || continue; printf "%s\tpath=%s" "${d##*/}" "$(readlink "$d")"; for a in vendor device class revision subsystem_vendor subsystem_device irq power_state power/runtime_status reset_method dma_mask_bits consistent_dma_mask_bits; do printf "\t%s=%s" "$a" "$(cat "$d/$a" 2>/dev/null)"; done; for l in driver iommu_group of_node; do printf "\t%s=%s" "$l" "$(readlink "$d/$l")"; done; printf "\tmsi_irqs="; for m in "$d"/msi_irqs/*; do [ -e "$m" ] || continue; printf "%s:%s," "${m##*/}" "$(cat "$m")"; done; printf "\n"; done
+iommu          account     10   1048576 for i in /sys/class/iommu/*; do [ -e "$i" ] || continue; printf "iommu %s %s\n" "${i##*/}" "$(readlink "$i/device")"; for d in "$i"/devices/*; do [ -e "$d" ] || continue; printf "  device %s\n" "${d##*/}"; done; done; for g in /sys/kernel/iommu_groups/*; do [ -e "$g" ] || continue; printf "group %s type=%s\n" "${g##*/}" "$(cat "$g/type" 2>/dev/null)"; for d in "$g"/devices/*; do [ -e "$d" ] || continue; printf "  device %s\n" "${d##*/}"; done; printf "%s\n" "$(cat "$g/reserved_regions" 2>/dev/null)"; done
+devlinks       account     20   4194304 for l in /sys/class/devlink/*; do [ -e "$l" ] || continue; printf "%s\t%s\t%s\t%s\n" "${l##*/}" "$(cat "$l/status" 2>/dev/null)" "$(cat "$l/runtime_pm" 2>/dev/null)" "$(cat "$l/sync_state_only" 2>/dev/null)"; done
+classes        account     10     65536 for d in /sys/class/watchdog/* /sys/class/remoteproc/*; do [ -e "$d" ] || continue; printf "%s\t%s\t%s\t%s\n" "$d" "$(cat "$d/identity" 2>/dev/null)" "$(cat "$d/name" 2>/dev/null)" "$(cat "$d/state" 2>/dev/null)"; done
+device-tree    account    120  16777216 cd /proc/device-tree && find . -type f | LC_ALL=C sort | while read -r f; do printf "%s\n" "$f"; od -An -v -tx1 "$f" 2>/dev/null || printf "! unreadable\n"; done
+# The distribution's boot files: where the tree that Linux has comes from.
+boot-files     account     10   1048576 ls -l /boot; for d in "/boot/dtb-$(uname -r)" /boot/dtb; do [ -e "$d" ] || continue; ls -lR "$d/"; done
+boot-fdt       account     10     65536 grep -H -i -E "^[[:space:]]*(fdt|fdtdir|devicetree|devicetreedir|fdtoverlays|devicetree-overlay)[[:space:]]" /boot/extlinux/extlinux.conf /boot/loader/entries/*.conf 2>/dev/null || true
+boot-dtb       account     60  16777216 for f in "/boot/dtb-$(uname -r)"/spacemit/*k3*.dtb /boot/dtb/spacemit/*k3*.dtb; do [ -e "$f" ] || continue; printf "%s\n" "$f"; od -An -v -tx1 "$f" 2>/dev/null || printf "! unreadable\n"; done
+# Rule 5's superuser reads, after every account read; sudo's refusal of
+# the first means no superuser. Those without an effect come first, then
+# the two that have one, through the kernel's own power management.
+iomem          superuser   10   1048576 cat /proc/iomem
+dmesg          superuser   30  16777216 dmesg
+journal-kernel superuser   60  67108864 journalctl -k -b 0 --no-pager
+genpd-summary  superuser   30   1048576 cat /sys/kernel/debug/pm_genpd/pm_genpd_summary
+clk-summary    superuser   60   4194304 cat /sys/kernel/debug/clk/clk_summary
+pci-config     superuser   10      4096 cat /sys/bus/pci/devices/{pci}/config

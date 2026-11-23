@@ -15,13 +15,18 @@
 #          settings beside the caller variables, and under the same
 #          argument rule (the release's security review, S-02).
 # Scope:   the MVP line. Operations whose targets arrive with a later work
-#          package say so and exit 3; nothing here writes outside build/ but
-#          `tool-lock refresh`, which rewrites the lock on the responsible
-#          human's direction, `board-evidence`, which adds a new board
-#          record under mvp/results/, `claim-ledger render`, which
-#          rewrites mvp/docs/claim-ledger.md from its JSON source, and
-#          `rc-record`, which writes the new record its --out names
-#          (mvp/results/<date>-rc/).
+#          package say so and exit 3; nothing here writes on this host
+#          outside build/ but `tool-lock refresh`, which rewrites the lock
+#          on the responsible human's direction; the board's session
+#          commands (k3-read among them), which write in the directory that
+#          K3_RUN_ROOT names, some in the private store K3_ENV_STORE names
+#          too, and `k3-card-write` on the card; `board-evidence` and
+#          `k3-sitting-record`, which add a new board record under
+#          mvp/results/; `claim-ledger render`, which rewrites the ledger's
+#          pages under mvp/docs/ from its JSON source; `rc-record`, which
+#          writes the new record its --out names (mvp/results/<date>-rc/);
+#          and `evaluate` and `verify`, which build their images in
+#          podman's store.
 #
 #   ./mvp help                         this text
 #   ./mvp check [VAR=VALUE ...]        every off-board check (make check)
@@ -111,6 +116,9 @@
 #                                      K3_CARD_DEVICE
 #   ./mvp k3-sitting-record K3_SITTING=first|second K3_RUN_ROOT=DIR
 #                                      the sitting's record
+#   ./mvp k3-read K3_RUN_ROOT=DIR      M13-2's read session (human): each
+#                                      read of tools/k3-read-list.txt over
+#                                      SSH, into the new directory DIR
 #   ./mvp claim-ledger check|render|self-test
 #                                      the claim ledger and the release
 #                                      surfaces under docs/ (M4-1)
@@ -379,6 +387,10 @@ k3-sitting-record)
 	# out of it.
 	extra=(K3_SITTING K3_ENV_STORE)
 	later k3-sitting-record M11-B1 "$@"
+	;;
+k3-read)
+	extra=("${board[@]}")
+	later k3-read M13-2 "$@"
 	;;
 claim-ledger)
 	[ "$#" -eq 1 ] || { usage; exit 2; }
