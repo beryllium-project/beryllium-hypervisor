@@ -1769,6 +1769,15 @@ public push now.
   half is narrowed out by the responsible human's decision of
   2026-11-21, so M12-5 is this half, and is complete with it. Accepted
   2026-11-20 (UTC) by the responsible human's sign-off of its commit.
+- `mvp-m13-plan.md`: the bounded plan of milestone M13, MVP 2.0's first
+  step after M11 (the MVP plan's S3-C.2, step (1)): the device facts of
+  one K3 COM260 board under four subjects (the IOMMU and the IOPMPs,
+  interrupts, reset, and which device belongs to whom), read from the
+  vendor's documents and sources, from the board's own Linux, and, on
+  the responsible human's reply at a review point, from probe images.
+  It chooses nothing; steps (2) and (3) build on its record. Ten rules,
+  M13-1 to M13-5, ten stops, its readings of four accepted rules, and
+  Q1 to Q12. Proposed 2026-11-23.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and
