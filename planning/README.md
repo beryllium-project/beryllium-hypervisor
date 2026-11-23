@@ -1786,6 +1786,15 @@ public push now.
   Linux as the inventory of 2026-11-16 read it (M13-1), and one read
   session of the board's own Linux by M13-2's read tool, 2026-11-23;
   any probe (M13-4) adds its facts later.
+- `mvp-m13-3-review-point.md`: milestone M13's review point (M13-3):
+  the record's questions still open after the reading and the read
+  session, and seven probes in three images, the third held under the
+  plan's rule 10 and run last: six for parts of five open items, and one
+  (P4) that checks the state that U-Boot leaves in a PCIe port. What
+  each reads and writes, why that is safe, how the probes are built and
+  booted, their size, and the reply that decides them (`probes: go`,
+  `probes: go, limit N`, a narrowed list, or `probes: no`). Proposed
+  2026-11-23.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and

@@ -652,6 +652,10 @@ export default defineConfig({
             link: '/k3-com260-devices'
           },
           {
+            text: 'M13-3 review point: the probes (proposed 2026-11-23)',
+            link: '/mvp-m13-3-review-point'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1352,6 +1356,10 @@ export default defineConfig({
             link: '/k3-com260-devices'
           },
           {
+            text: 'M13-3 review point: the probes (proposed 2026-11-23)',
+            link: '/mvp-m13-3-review-point'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1935,6 +1943,10 @@ export default defineConfig({
           {
             text: 'M13 record: the K3 COM260 board\'s device facts',
             link: '/k3-com260-devices'
+          },
+          {
+            text: 'M13-3 review point: the probes (proposed 2026-11-23)',
+            link: '/mvp-m13-3-review-point'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',
