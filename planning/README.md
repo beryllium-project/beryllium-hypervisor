@@ -1797,6 +1797,7 @@ public push now.
   assurance language, Linux/upstream terms, commands, and artifact locations.
 - `roadmap.md`: one-page current-position placemat: milestone status, the
   planned sequence, dropped workstreams, gates, risks, and later phases.
+  Maintained on the development line from 2026-11-23.
 - `HANDOFF.md`: concise session handoff, current decisions, ready tasks, and restart sequence.
 - `pathfinder-comparison.md`: cross-variant evidence matrix, broad
   security-monitor comparison, and selected isolation-engine/authority

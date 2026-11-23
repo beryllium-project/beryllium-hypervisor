@@ -9,8 +9,8 @@ the next, of what was done, what was decided, and what waited on the
 responsible human. It is not part of this repository. Pages here that
 link to it describe the project as it stood at the source commit.
 
-The project's status is in the [roadmap](roadmap.md), part of the planning
-record at the source commit, and in `RELEASE.md` at the repository's
+The project's status is in the [roadmap](roadmap.md), maintained on the
+development line since 2026-11-23, and in `RELEASE.md` at the repository's
 root, this repository's release record.
 
 ## Helium source-of-truth boundary
