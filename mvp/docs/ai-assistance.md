@@ -786,3 +786,54 @@ practice.
 
 No AI system accepted a result, decided a stop, re-set a limit, added
 a `Signed-off-by`, or pushed.
+
+## 16. After the release: M13, the board's device facts
+
+This section covers M13 from its plan to the record's first two parts,
+and the public roadmap written again. They were made in one session on
+the workstation, on 2026-11-23, whose owner session ran on
+`claude-opus-5.5`.
+
+- **The plan.** The owner session wrote the M13 plan from the MVP
+  plan's Plan revisions S3-C to S3-E, the board's inventory of
+  2026-11-16, the project's notes on the board's firmware, and the
+  vendor's published documents and sources at pinned commits. A
+  sub-agent on `claude-opus-5.5`, which could only read, reviewed three
+  of its candidates in turn; the owner session answered each finding in
+  the next candidate. The responsible human signed off the fourth.
+- **The roadmap.** The owner session wrote the public roadmap again,
+  and checked every short commit ID in it by script against the
+  repositories; one wrong ID was found and corrected before the
+  sign-off.
+- **The reading (M13-1).** A sub-agent on `claude-opus-5.5` read the
+  vendor's documents and sources, the published images, the RISC-V
+  specifications, and the private records of the board's inventory of
+  2026-11-16, and drafted the record. The owner session read every
+  line, checked twelve rows' citations against their sources, and
+  changed one phrase.
+- **The read tool (M13-2).** A sub-agent on `claude-opus-5.5` designed
+  the tool, its fixed list, and its self-test, and then wrote them in
+  parts. The owner session reviewed the design and every line of each
+  part, and asked for changes: no superuser command that rule 5 does
+  not name, rule 5's words refused in any command, five small fixes,
+  and four reads that the reading had shown to be needed. When the tool
+  passed its soft limit, the sub-agent stopped, and the responsible
+  human re-set the limit. The owner session wrote the README's rows
+  from the sub-agent's draft, and made the README's paragraph on what
+  writes outside `build/` agree with the wrapper's.
+- **The read session.** On the responsible human's word that the board was free, the owner session ran the tool once, by a script of its own, from a clean clone of the tool's commit after one whole `./mvp/mvp check` had passed there. The session read the board's own Linux over SSH for sixteen seconds; it made no reset, typed nothing at the console, and sent nothing to the reset dongle. Its outputs stay in a private store on the workstation.
+- **The session's facts.** The sub-agent that drafted the record read the session's private outputs and added their facts to it, keeping out every identifier. The owner session read every line, checked six of the facts against the private outputs, and changed one row so that it names the tool by its SHA-256.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The M13 plan | The owner session, with three review passes by a sub-agent | The responsible human's direction of 2026-11-23 |
+| The public roadmap | The owner session | His direction of 2026-11-23 |
+| The record's first draft | A sub-agent, reviewed by the owner session | M13-1 |
+| The read tool, its list, and its self-test | A sub-agent, reviewed by the owner session | M13-2; the soft limit as he re-set it |
+| The README's rows and paragraph | The owner session | M13-2 |
+| The read session | The owner session, through the read tool | His word that the board was free |
+| The session's facts in the record | A sub-agent, reviewed by the owner session | M13-2 |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, re-set a limit, added a
+`Signed-off-by`, or pushed.
