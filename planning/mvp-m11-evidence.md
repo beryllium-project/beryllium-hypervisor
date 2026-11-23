@@ -4283,3 +4283,418 @@ Each stands unless the responsible human says otherwise.
 - **The board's vector length.** It is inferred.
 - No claim changes. The claim's page and the ledger's rows say what
   they said.
+
+## M11-B5, second part: the second sitting's second run; and M11-B6, the words for the board's result
+
+This section follows "M11-B5, first part". It tells the second
+sitting as it was run again, with the heap's correction, and the
+commits that put M11-B's result to the responsible human.
+
+### Outcome first
+
+- **The second sitting passed** (2026-11-22, 15:52Z to 22:47Z), at
+  the signed commit that holds the heap's correction and the builds
+  and card images made again
+  (`593bf3542054c73543b0fe051a079fed6af82e80`), on the responsible
+  human's word and with him at the board. Each of its three sessions
+  passed: three boots of `anchor`, and one boot each of the board's
+  two hostile-monitor images, `k3-breach-g1` and `k3-breach-c`, from
+  the card with the boundary on. The form admitted each of the five
+  boots with no stop.
+- **It is the first time that an image with the boundary on ran on
+  the board.** In each boot M-mode's printed records show harts 0 to
+  2 committed, each with the entries of its profile's table, and the
+  thirteen other harts not committed.
+- **M-mode's counts are the sums that the images declare**: none on
+  any hart in `anchor`'s three boots; 73 access faults and 33
+  refused calls on hart 2 in `k3-breach-g1`'s boot; 85 access
+  faults, 31 refused calls, and 7 rejected calls on hart 0 in
+  `k3-breach-c`'s.
+- **The heap is as the measurement under QEMU predicted.** The
+  banner shows 256 KB in all, 111 KB in use, and 139 KB free in each
+  boot; about 139 KB was predicted, and the form requires 64 KB.
+- **The NOR and the card are unchanged.** Each of the four readings
+  equals the one before it in all six ranges; the card, read back
+  whole after each write and after each session, equals its image.
+- **One step stopped and was taken up once**: the first preflight,
+  before any reset of the sitting's (departure 1).
+- **The words for a board result are proposed** in this range, in the
+  form that the addendum's B-11 fixes: the claim page's paragraph
+  about the board, the limit's sentences for it, and the ledger's
+  three board rows. They are used only if the responsible human
+  accepts M11-B's result; his sign-off of this range is that
+  decision.
+- **This is diagnostic evidence from one board, on one day. It is
+  not hardware validation.** What M-mode printed is the only witness
+  there.
+
+The plan's decision record has the account of the run ("the second
+sitting, run again"). This section adds what the record of a run
+needs beside it.
+
+### The run
+
+All times are UTC, on 2026-11-22.
+
+| Step | UTC | Result |
+| --- | --- | --- |
+| `begin` | 15:52:56 | Passed, on his `sitting: go` (15:51:47Z) |
+| `preflight`, first attempt | 15:53:02 to 15:53:12 | **Stopped**: the board did not answer over SSH (departure 1) |
+| `preflight`, second attempt | 15:55:38 to 15:55:41 | Passed, from the board's own Linux |
+| `stage` | 15:55:46 to 15:55:48 | Passed: the three images on partition 6 |
+| `reading-0` | 15:55:57 to 15:56:37 | Passed: the board's Linux halted; one reset; a boot from the NOR; U-Boot's memory, 8 GiB; the flash read twice, equal |
+| `card-in-1` | 16:12:24 | Passed, on his `card in` (16:12:16Z) |
+| `boot-1.1` | 16:12:34 to 16:12:59 | Passed: one reset, nothing typed, the form's verdict `PASS stops=none` |
+| `boot-1.2` | 16:14:00 to 16:14:29 | Passed, the same |
+| `boot-1.3` | 16:14:36 to 16:15:05 | Passed, the same |
+| `card-out-1` | 16:18:07 | Passed, on his `card out` (16:18:00Z) |
+| `reading-1` | 16:18:22 to 16:18:52 | Passed: one reset; a boot from the NOR; each of the six ranges equal to `reading-0`'s |
+| The card: read back, written with `k3-breach-g1`'s image, read back | 16:18:59 to 16:58:13 | Each read-back equal in fourteen regions |
+| `card-in-2` | 21:44:06 | Passed, on his `card in` (21:43:32Z) |
+| `boot-2.1` | 21:44:14 to 21:44:39 | Passed: one reset, nothing typed, `PASS stops=none` |
+| `card-out-2` | 21:46:27 | Passed, on his `card out` (21:46:19Z) |
+| `reading-2` | 21:46:35 to 21:47:02 | Passed: each of the six ranges equal to `reading-1`'s |
+| The card: read back, written with `k3-breach-c`'s image, read back | 21:48:31 to 22:27:14 | Each read-back equal in fourteen regions |
+| `card-in-3` | 22:41:02 | Passed, on his `card in` (22:40:53Z) |
+| `boot-3.1` | 22:41:10 to 22:41:35 | Passed: one reset, nothing typed, `PASS stops=none` |
+| `card-out-3` | 22:45:57 | Passed, on his `card out` (22:45:49Z) |
+| `reading-3` | 22:46:03 to 22:46:30 | Passed: each of the six ranges equal to `reading-2`'s |
+| `end` | 22:46:38 to 22:47:19 | Passed: one reset; the board's own Linux up; the preflight's verdict line equal to the first; the sitting's audit, `banners=10 resets=10 findings=0` |
+| The card's last read-back; the record | 22:47:44 to 22:54:12 | Equal in fourteen regions; the record made |
+
+No other job of the owner session's ran on the workstation during the
+sitting's steps, but the card's reads and writes between the
+sessions. The M12 lane's status page, last written on 2026-11-21,
+names no run of the lane's since that day.
+
+**Each boot from the card**, as the form judged it and as the record
+tool judged it again, with the same output:
+
+- `BE_MVP_CARD: sitting=second rom_lines=4 … memory=8_GiB
+  product=k3_com260_ifx harts=16 priv_version=v1.12 pmp_count=16
+  pmp_granularity=12_bits pmp_address_bits=38 digest=… parked=be_park:13
+  heap_kb=256,4,111,139 other_lines=0 no_flash_device=d420c000.spi …
+  reference=observed`: the same line in the five boots, but for the
+  digest, which is each image's own, and for the count of the lines
+  that the card host's driver prints while U-Boot loads its
+  environment, which is 5 in four boots and 6 in one. The form admits
+  both;
+- `BE_MVP_COUNTS: boot_hart=0 started=none exits_g0=246 exits_g1=128
+  denials_g0=4 denials_g1=1 mgmt_g0=13 mgmt_g1=2 records=174 …
+  alternations=122`: the same counts in the five boots, with other
+  tick values in each;
+- `BE_MVP_LOG: contract=v3/complete r2=kept state=closed count=15`,
+  and each of the fifteen records equal to the reference's;
+- `BE_MVP_BOUNDARY: PASS image=… pmp_mode=plain control_hart=confined
+  harts=0:confined,1:confined,2:confined others=13:uncommitted
+  witness=printed identity=…`, with `hook=not-read` in the two
+  hostile-monitor images' boots;
+- `BE_MVP_RESULT: PASS terminal=shutdown-requested`;
+- `BE_MVP_CAPTURE[card …]: PASS stops=none`.
+
+The five captures have 496 lines each, but the last, which has 497.
+
+**The halt held, and so did U-Boot's prompt.** After each session's
+last boot the board stayed halted, with the card in, until the next
+reading's reset: for 3 min 27 s, 2 min 4 s, and 4 min 36 s. It
+printed nothing in that time: the serial log's offset at each of
+those resets is the offset at the card's removal. Between the first
+session's closing reading and the second session's boot the board
+waited at U-Boot's prompt for 5 h 25 min, and between the second and
+the third for 54 min; the serial log did not grow, and nothing reset
+the board.
+
+### What M-mode printed
+
+On the board no oracle reads the machine. The boundary's judge takes
+M-mode's commit records as the firmware prints them after the
+monitor's last line, and the banner. In each of the five boots:
+
+- sixteen records, one for each hart, in order;
+- harts 0, 1, and 2: committed; the configuration bytes and the
+  addresses of the sixteen PMP entries those of the hart's profile's
+  table for plain PMP, which the gate's record holds for the image;
+  `menvcfg` with the invalidate control clear; `mseccfg` zero;
+- harts 3 to 15: not committed;
+- the banner's configuration digest, the monitor's own line for it,
+  and the gate's record of the image: one identity.
+
+| Boot | Hart 0 | Hart 1 | Hart 2 | Harts 3 to 15 |
+| --- | --- | --- | --- | --- |
+| `anchor`, three boots | 0, 0, 0 | 0, 0, 0 | 0, 0, 0 | 0, 0, 0 |
+| `k3-breach-g1` | 0, 0, 0 | 0, 0, 0 | 73, 33, 0 | 0, 0, 0 |
+| `k3-breach-c` | 85, 31, 7 | 0, 0, 0 | 0, 0, 0 | 0, 0, 0 |
+
+Each cell: access faults, refused calls, rejected calls. The two
+hostile-monitor images' sums are those of the board's declarations,
+`mvp/k3/breach/breach-g1.json` (112 attempts by the hook on hart 2)
+and `breach-c.json` (132 attempts by the hook on hart 0), which the
+gate's record holds as each image's expectation. Under QEMU, where
+the same two images ran first, the oracle read the hook's record of
+each attempt; on the board that record stays in memory and was not
+read (`hook=not-read`).
+
+**What the counts do not hold.** They are sums for each hart, not one
+for each attempt. The trap of the cache-block instruction is in none
+of them. A fault on a register of one of the board's devices may
+have a cause other than PMP, and would be counted the same. The
+limit on the claim's page says each of these.
+
+### The heap
+
+The banner's line, in each of the five boots: 256 KB in all, 4 KB
+reserved, 111 KB in use, 139 KB free.
+
+| | In all | In use | Free |
+| --- | ---: | ---: | ---: |
+| The row `board-heap` under QEMU | 256 KB | 105 KB | 145 KB |
+| The prediction for the board ("M11-B5, first part") | 256 KB | about 111 KB | about 139 KB |
+| The board, five boots | 256 KB | 111 KB | 139 KB |
+| The form's floor | | | 64 KB |
+
+The 6 KB between QEMU's row and the board is what the board's IMSIC
+was expected to add. That agrees with the vector length of 256 bits
+that the board's description infers; it is still an inference, and
+the README's open item 148 stays open. Nothing reads the heap after
+the banner: what the harts' later allocations took on the board is
+not shown (open item 149).
+
+### The NOR, and the card
+
+- **The readings.** Four: before the first session, and after each
+  session. Each read the whole flash twice at U-Boot's prompt, with
+  the two reads equal, and digested the six ranges of S3-E's item 9.
+  The six digests of each reading after the first equal those of the
+  reading before it. The digests stay in the private store; the
+  record says `equal` for each range.
+- **The lines.** Each boot's capture holds the vendor's line that it
+  found no valid device for the flash's controller, and none that the
+  form refuses: no flash detected, and no write to the NOR.
+- **The card.** One card, of 31,927,042,048 bytes, through the second
+  reader throughout.
+
+  | Image | Written | Read back after the write | Read back after its session |
+  | --- | --- | --- | --- |
+  | `anchor` | 2026-11-21, 21:56 to 22:22 | 22:22 to 22:28 | 2026-11-22, 16:18 to 16:25 |
+  | `k3-breach-g1` | 16:26 to 16:51 | 16:51 to 16:58 | 21:48 to 21:54 |
+  | `k3-breach-c` | 21:55 to 22:20 | 22:20 to 22:27 | 22:47 to 22:54 |
+
+  Each write took 25 minutes (21.3 MB/s) and each read-back less than
+  seven. Each read-back found the whole card's SHA-256 the image's,
+  and each of the fourteen regions equal. A read-back after a
+  session found a new insertion of the card, as it must after the
+  card was out; a read-back after a write, the write's own insertion.
+- **Before the first write**, the owner session compared the first
+  12,582,912 bytes of the card in the reader with the image of the
+  sitting's first run, and found them equal: the card in the slot was
+  the one card, which the responsible human had left there while he
+  used the board for other work.
+
+### The record
+
+`mvp/results/20261122-com260-m11b-second/` (156 files), made by
+`tools/evidence.py --sitting` at the sitting's commit, in the
+sitting's clone, after the card's last read-back:
+`result=closed boots=5 readings=4 readbacks=3 stops=tool`. Its
+bundle says `tool_tree=source` and `source_tree=clean`, and names one
+commit as the source's, the sitting's, and the gate's.
+
+- It holds the sitting's twenty step records; each boot's record,
+  judged again with the same output, with the banner as the form
+  took it, the capture from U-Boot's autoboot line on (269 lines,
+  M-mode's commit records among them), and the measurement log's
+  export; the four readings' records; the card's three writes and
+  six read-backs; the gate's record's digests; and no raw capture.
+- The one stop that it names, `tool`, is the first preflight's.
+- **Read by the owner before it was committed:** the boot ROM's four
+  lines, which hold no identifier; and a search of every file for a
+  home path, the account's and the host's names, an IPv4 or MAC
+  address, a USB ID, a reader's link, the board's SSH name, and any
+  value of an MD5's form. Each such value is a staged image's MD5,
+  which U-Boot prints for the load, or a PMP configuration word of
+  M-mode's records (fifteen: three harts in five boots), but two: the
+  build host's name in the banner of the board's own kernel, which
+  the preflight keeps as MVP 1.0's records do. The preflight also
+  keeps that kernel's boot identifier, as before.
+- The record tool's own verify passes on it, at its commit and on the
+  working branch.
+
+### The words for the board's result (M11-B6)
+
+**The claim's page**, `mvp/docs/claim-boundary.md`, in B-11's form:
+
+- the clause keeps its words;
+- a paragraph about the board follows it, B-11's first blockquote;
+- the limit's second sentence begins "Under emulation,", and the
+  limit gains six sentences at its end: B-11's second blockquote,
+  with the words that the decision record of 2026-11-18 adds after
+  "not one for each attempt;";
+- a section names the board's four records: the two that the board
+  rows cite, and the two runs that stopped.
+
+The owner compared the words with the addendum and the decision
+record by a script: the paragraph, the second sentence, and the six
+sentences are equal to the plan's, and the seven clause rows and the
+ten other sentences of the limit are unchanged.
+
+**The ledger's second set:** three board rows after the clause's
+seven, the parts of the page's paragraph, each with the method of a
+diagnostic board run, and each citing a sitting's record that its
+source's own tool made:
+
+| Row | Part | Records cited |
+| --- | --- | --- |
+| M11-C08 | The images ran on one board with plain PMP, from a card with the vendor's boot chain and the project's firmware build | The first sitting's second run; the second sitting's second run |
+| M11-C09 | M-mode's printed record showed the three harts confined, with their profiles' entries | The second sitting's second run |
+| M11-C10 | The counts equal the sums that the test declares | The second sitting's second run |
+
+Each row also cites, by SHA-256, the tools and the declarations that
+its part rests on. The set has seventeen non-claim rows, one for each
+sentence of the limit. No tool changed: the ledger tool has had the
+rules for board rows since M11-B1, and its check and its self-test
+pass with the rows in place.
+
+**B-11's condition.** B-11 has its form "used only if M11-B's result
+is accepted with every session passed". Each sitting's first run
+stopped, and was corrected and run again from its start; in the runs
+that the board rows cite, every session passed. The owner reads the
+condition as met by those runs (departure 6).
+
+**Other words.** The README's two entries under "Design", its table's
+rows, and its open items 148 and 150; the guide's section 11; the
+disclosure's section 15; on the planning side, the glossary's two
+rows, the hardware page's two bullets, and the planning index's entry
+for the addendum; and the root README's note on M11, which had said
+that nothing of it had run on a board.
+
+### What was run, and what was not
+
+- **Run on the board:** the second sitting, as above: ten resets by
+  the dongle, none by hand; the typing of the four readings alone;
+  nothing typed while the card was in. One TCP connection to the
+  board's SSH port by the owner session, outside the driver's steps
+  (departure 1).
+- **Run on the card:** three writes and six read-backs, through the
+  card's tools.
+- **Run at this range's commits**, from clean clones, on the
+  workstation (2026-11-22 and 23):
+  - at the commit of the claim's words and the ledger's rows
+    (`0d5283cf`), the tool lock and a whole `./mvp/mvp check`
+    (23:09Z to 23:40Z): 118 runs under QEMU in 129 attempts, 82 of
+    them under the boundary; six sessions; the ledger's check, with
+    ten claim rows and seventeen non-claim rows in its second set;
+  - at the last commit before this section (`3cc98103`), which holds
+    every change of the range but this page: the tool lock and a
+    whole check (23:40Z to 00:11Z): 118 runs in 127 attempts, 82
+    under the boundary, six sessions, the firmware's 44 test runs,
+    the same line of the ledger's; the board gate on the host
+    (00:11Z; nine steps, 38 outputs), with each of its four firmware
+    builds equal to its sitting pin; and `evaluate`, with the board
+    gate inside the evaluator (00:11Z to 00:41Z): 865 of 865
+    recorded outputs, and 38 of 38 of the gate's, equal to the
+    host's.
+
+  In each check, each refused attempt is a run without the boundary
+  that QEMU's firmware booted on a VS-domain hart, repeated. Of the
+  865 outputs that a check records, 605 are equal, byte for byte, to
+  those of the check at the sitting's signed commit, made in another
+  directory: every flat image, boot image, device tree, firmware
+  binary, and generated header among them. The 260 others are ELF
+  files, tables, and lists that follow the build directory's name
+  or name their commit.
+- **The text-level checks** of each commit of the range (the
+  release's scan, the text check of the added lines and of the
+  message, and the publication gate's audit; with the ledger's
+  check, lint, and the tool lock for a commit under `mvp/`, and the
+  documentation's checks for the root README's): each passed
+  (23:16Z to 23:41Z; this page's commit after it). Two commits were
+  made again on the way. The root README's commit, in its first
+  form, named the board's vendor in the note and in its message,
+  which the release's scan refuses there; the note now says "one K3
+  COM260 board". And the disclosure's section 15 did not at first
+  name the root README's note and the planning pages among the
+  owner's words; it was amended inside its own commit, and the two
+  commits after it were made again with the same changes.
+- **Not run:** the U-Boot rehearsal, the CHERI check, `verify`,
+  `kernel-repro`, and the model's two gates. The range changes no
+  tool, no image, no pin, and no path that the proofs' records bind:
+  it adds a record, rows of the ledger's JSON with their rendering,
+  and pages.
+- **No counted line** was written: the soft limits stand where the
+  section "M11-B5, first part" has them.
+
+### Departures and readings for review
+
+Each stands unless the responsible human says otherwise.
+
+1. **The first preflight stopped, and the owner made one contact
+   with the board outside the driver's steps.** The preflight's SSH
+   connection timed out. The board had been reset a little before,
+   not by the session, and was still booting its own Linux: the
+   owner read the end of that boot in the serial log by the form of
+   its lines, without printing the log. It then made one TCP
+   connection to the board's SSH port, which answered with the
+   server's banner, to be sure of the one retry that the driver
+   allows, and ran the step again, which passed. The responsible
+   human said afterwards that the session may use SSH to the board
+   as it needs. The reset before the sitting is outside the
+   sitting's audit: its banner came before `begin`.
+2. **His word that the board was free was not taken for his word for
+   the sitting.** He said that the board was free nine hours before
+   he gave his word for the sitting; the owner started no board step
+   in between.
+3. **Long waits between the sessions.** More than five hours passed
+   between the first session and the second, and nearly an hour
+   between the second and the third; the board waited at U-Boot's
+   prompt, and the card in the reader. The sitting's plan has no
+   limit on such a wait. Nothing was printed, and nothing reset the
+   board, in either.
+4. **The card's steps between two sessions ran from a script of the
+   owner's**, which gave the dry run's confirmation to the write. The
+   owner did not read the dry run's output between the two. The
+   read-back before the dry run had shown the card in the reader to
+   be the one card with the last session's image, and the write's
+   own checks are the tool's.
+5. **The owner printed M-mode's count lines from the private
+   captures** while the sitting ran, to see them, and the forms'
+   verdict lines. The record's excerpts hold the same lines. It
+   printed no other line of a capture, and nothing of a reading.
+6. **B-11's condition "with every session passed" is read as met**
+   by the sittings' second runs (above). The two stopped runs are
+   recorded, and the claim page names them.
+7. **The methods of the board rows.** Each has the method of a
+   diagnostic board run. M11-C08 and M11-C09 also have the semantic
+   checker's, for the form and the boundary's judge; M11-C10 also
+   has the adversarial test's, for the hostile-monitor images. The
+   ledger tool admits those methods in a board row; B-11 names none.
+8. **The hardware page's bullet on the X100's PMP now gives the
+   banner's entry count, grain, and address bits** as the project's
+   firmware reports them on one board, for its boot hart. They were
+   in the decision record since the first sitting, and the page had
+   still called the grain not established.
+9. **The card reader's access rule is still installed.** The driver
+   says, at the last sitting's end, that it is to be removed, and
+   prints the command, which is the responsible human's to run.
+10. **After the second session the card reached the reader only on
+    a second request.** The card's removal from the board was
+    recorded on his word; the reader showed no card until he put it
+    in, two minutes later. No step read the reader in between.
+
+### What is not shown
+
+- **An attempt's effect on the board.** Nothing read the machine
+  from outside, and no hostile-monitor image ran there with the
+  boundary built off. What M-mode printed is the only witness, and
+  code on the confined control hart could print the same lines.
+- **The hostile-monitor images' own records** of their attempts, and
+  with them the trap of the cache-block instruction.
+- **That a counted fault on a device's register was PMP's.**
+- **Smepmp on the board.** The runs use plain PMP.
+- **The state of the thirteen harts that the monitor does not use**,
+  and anything of the vendor's two real-time cores, its boot chain,
+  or the resident firmware in the NOR.
+- **The board's vector length**, and the heap's use after the banner.
+- **More than one board, or more than one day.** Three boots of one
+  scenario and one boot of each hostile-monitor image.
+- No claim of MVP 1.0 changes. The claim page's words for the board
+  are proposed, with their limit.
