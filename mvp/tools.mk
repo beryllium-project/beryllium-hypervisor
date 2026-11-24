@@ -773,6 +773,16 @@ k3-m13-held: $(K3_M13_HELD_OBJECTS) opensbi
 		"probe3:3:$$img.img:$$list:k3-like:1:end"; \
 	echo "BE_K3_M13_HELD: PASS"
 
+# M13-4: the probe session's run tool, tools/k3-m13-run.py (planning/
+# mvp-m13-3-review-point.md, sections 3 and 4), whose steps run at the board
+# with the responsible human present; its self-test and dry run, the probe
+# images 1 and 2 on a stand-in board, with no board and no dongle.
+.PHONY: k3-m13-run-check
+tools-check: k3-m13-run-check
+k3-m13-run-check: k3-m13-images
+	$(PYTHON) -I -B $(MVP_DIR)/tests/test-k3-m13-run.py --self-test \
+		--scratch $(TMPDIR)/k3-m13-run-self-test
+
 # M11-B (planning/mvp-m11-board-addendum.md): the board's fragments under
 # k3/, each named once, common.mk first. This is the one include directive
 # here: tools/make-control.py --fragments reads it for mvp/mvp and the Make

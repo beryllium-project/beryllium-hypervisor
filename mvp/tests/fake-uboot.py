@@ -22,9 +22,11 @@ Purpose: let the dry run drive tools/k3-console.sh, k3-env.sh, k3-run.sh,
          board's ssh up with a new boot ID); the installed one loads the
          named image from the fake partition (FAKE_K3_BOARD/partition),
          prints `N bytes read`, the MD5 as U-Boot's md5sum does, booti's
-         lines, and then the image's monitor stream (captures, by the
-         image's SHA-256: a capture from its first BE_ line, the SHIM line's
-         fdt= made U-Boot's relocated control FDT), after which the board
+         lines (the move to RAM's base plus the Image header's text_offset,
+         to L for an image without its magic), and then the image's monitor
+         stream (captures, by the image's SHA-256: a capture from its first
+         BE_ line, the SHIM line's and a probe's ENTRY line's fdt= made
+         U-Boot's relocated control FDT), after which the board
          halts. At the prompt it echoes what is typed (a stamp before a
          line's first character, as this BSP does), runs printenv, setenv
          (hush's quoting and ${} substitution), saveenv (to the saved
@@ -642,8 +644,10 @@ class Board:
             self.say("Bad Linux RISCV Image magic!")
             return
         image = hashlib.sha256(self.memory).hexdigest()
-        self.say(f"Moving Image from 0x140000000 to 0x{L:x}, "
-                 f"end={L + len(self.memory):x}",
+        target = 0x102000000 + int.from_bytes(self.memory[8:16], "little") \
+            if self.memory[0x38:0x3c] == b"RSC\x05" else L
+        self.say(f"Moving Image from 0x140000000 to 0x{target:x}, "
+                 f"end={target + len(self.memory):x}",
                  "## Flattened Device Tree blob at 2fbe8aa50",
                  "   Booting using the fdt blob at 0x2fbe8aa50",
                  "   Loading Device Tree to 00000002fbd6b000, end "
@@ -665,9 +669,10 @@ class Board:
         self.played = bool(capture)
         if capture:
             text = pathlib.Path(capture).read_text(encoding="latin-1")
-            start = min(text.find(tag) for tag in ("BE_K3_B3:", "BE_MVP_SHIM:")
-                        if tag in text)
-            self.feed = re.sub(r"(?m)^(BE_K3_B3: SHIM .* )fdt=0x[0-9a-f]{16}",
+            start = min(text.find(tag) for tag in (
+                "BE_K3_B3:", "BE_MVP_SHIM:", "BE_K3_M13:") if tag in text)
+            self.feed = re.sub(r"(?m)^(BE_K3_B3: SHIM .* |BE_K3_M13: ENTRY "
+                               r".* )fdt=0x[0-9a-f]{16}",
                                r"\g<1>" + FDT_TO, text[start:])
             session = self.config.get("sessions", {}).get(image)
             self.typed, self.segments, self.probe = "", [], None
