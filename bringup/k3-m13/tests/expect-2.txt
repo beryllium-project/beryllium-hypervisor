@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+# Image 2 (planning/mvp-m13-3-review-point.md, sections 2 and 3): P3, then P4, then P2.
+image 2
+harts 1
+probes P3 P4 P2
+# P3: PCIE_SUBSYS_MGMT, offset 0x1D8 of the AP PMU at 0xD428_2800.
+P3 read PCIE_SUBSYS_MGMT 0xd42829d8 4
+# P4: port A's inbound regions 0 to 30, at 0x8030_0000 + 0x200*i + 0x100,
+# CTRL2 at +0x04 and LOWER_TARGET at +0x14; then the root port's BARs.
+repeat 31 0x200
+P4 read CTRL2[{i}]        0x80300104 4
+P4 read LOWER_TARGET[{i}] 0x80300114 4
+end
+P4 read BAR0 0x80000010 4
+P4 read BAR1 0x80000014 4
+# P2: the IOMMU at 0xC0F0_0000.
+P2 read capabilities 0xc0f00000 8
+P2 read fctl         0xc0f00008 4
+P2 read ddtp         0xc0f00010 8

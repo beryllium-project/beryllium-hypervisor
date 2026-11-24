@@ -54,7 +54,8 @@ Rules, each failing closed:
     K3_SITTING_RESUME (a step's name), K3_WORD
     (human-authorized:sitting-NAME or session-IMAGE), K3_HUMAN_SAID (a
     UTC time, YYYY-MM-DDTHH:MM:SSZ), and K3_REHEARSAL (a date,
-    YYYY-MM-DD);
+    YYYY-MM-DD); and M13-4's K3_M13_HELD (an absolute path: the third
+    probe image's held directory, which k3-m13-held reads);
   - the environment may not set MAKEFILES, a variable any MVP makefile, a
     fragment that mvp/tools.mk names, or the tool lock assigns, or a
     variable that changes the compilers, the loader, the shell, or Python;
@@ -137,6 +138,8 @@ CALLER = {
     "K3_HUMAN_SAID": re.compile(r"^20[0-9]{2}-[01][0-9]-[0-3][0-9]T"
                                 r"[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z$"),
     "K3_REHEARSAL": re.compile(r"^20[0-9]{2}-[01][0-9]-[0-3][0-9]$"),
+    # M13-4: the third probe image's held directory (mvp/tools.mk).
+    "K3_M13_HELD": PATH_FORM,
 }
 # Environment names that change Make, the shell, the compilers, the loader,
 # Python, or the guest kernel build, beyond the makefiles' own variables.
@@ -571,6 +574,7 @@ def self_test():
     expect("sitting status", ["k3-sitting", "K3_SITTING=first",
                               "K3_SITTING_STEP=status",
                               "K3_WORD=human-authorized:sitting-first"])
+    expect("held probe image", ["k3-m13-held", "K3_M13_HELD=/home/x/held"])
     refusals = [
         ("caller CC", ["check", "CC=cc"], None, "variable assignment CC"),
         ("caller SHELL", ["check", "SHELL=/bin/sh"], None,
@@ -590,6 +594,8 @@ def self_test():
         ("relative published directory", ["k3-board-gate",
                                           "K3_PUBLISHED=release"], None,
          "not of its form"),
+        ("relative held directory", ["k3-m13-held", "K3_M13_HELD=held"],
+         None, "not of its form"),
         ("card image path", ["k3-card", "K3_CARD_IMAGE=../anchor"], None,
          "not of its form"),
         ("card size in units", ["k3-card", "K3_CARD_BYTES=32G"], None,

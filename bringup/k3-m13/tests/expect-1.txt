@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+# Image 1 (planning/mvp-m13-3-review-point.md, sections 2 and 3): P1, then P7.
+image 1
+harts 3
+probes P1 P7
+# P1: hgeie (CSR 0x607) on harts 0, 1, and 2: as booted; all ones
+# written, then read back; 0 written, then read back.
+repeat 3 0
+P1 csrr hart{i}.hgeie 0x607 8
+P1 csrw hart{i}.hgeie 0x607 8 0xffffffffffffffff
+P1 csrr hart{i}.hgeie 0x607 8
+P1 csrw hart{i}.hgeie 0x607 8 0x0
+P1 csrr hart{i}.hgeie 0x607 8
+end
+# P7: the S-level APLIC at 0xE080_4000, source 200.
+P7 read       domaincfg      0xe0804000 4
+P7 read       sourcecfg[200] 0xe0804320 4
+P7 guard-end  domaincfg      0x80000004
+P7 guard-end  sourcecfg[200] 0x0
+P7 write      sourcecfg[200] 0xe0804320 4 0x1
+P7 read       sourcecfg[200] 0xe0804320 4
+P7 guard-else sourcecfg[200] 0x1
+P7 write      sourcecfg[200] 0xe0804320 4 0x0
+P7 write      target[200]    0xe0807320 4 0x1000
+P7 read       target[200]    0xe0807320 4
+P7 write      target[200]    0xe0807320 4 0x0
+P7 read       target[200]    0xe0807320 4
+P7 write      sourcecfg[200] 0xe0804320 4 0x0
+P7 read       sourcecfg[200] 0xe0804320 4

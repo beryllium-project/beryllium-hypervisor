@@ -607,6 +607,172 @@ k3-read-check:
 k3-read:
 	$(PYTHON) -I -B $(MVP_DIR)/tools/k3-read.py run $(K3_RUN_ROOT)
 
+# M13-4 (planning/mvp-m13-3-review-point.md, sections 2 and 3): the probe
+# images, bringup/k3-m13/ (its README), every output under build/k3-m13/.
+# k3-m13-images links images 1 and 2 at the board's base and QEMU's, and
+# makes each board image only if the two raw images are byte-identical.
+# k3-m13-check: the syntax checks; each image's check and both checkers'
+# self-tests; the host test, its captures and the sample judged; the QEMU
+# rows under the pinned OpenSBI v1.6.
+.PHONY: k3-m13-images k3-m13-check k3-m13-held
+tools-check: k3-m13-check
+K3_M13_DIR := $(REPO_ROOT)/bringup/k3-m13
+K3_M13_BUILD := $(REPO_ROOT)/build/k3-m13
+K3_M13_OBJ := $(K3_M13_BUILD)/obj
+K3_M13_TESTS := $(K3_M13_DIR)/tests
+K3_M13_CC := $(CROSS_COMPILE)gcc -B/usr/bin/$(CROSS_COMPILE)
+K3_M13_WARNINGS := -Wall -Wextra -Werror -Wconversion -Wformat=2 \
+	-Wmissing-prototypes -Wshadow -Wstrict-prototypes -Wundef
+K3_M13_INCLUDES := -I$(K3_M13_DIR)/src -I$(REPO_ROOT)/bringup/k3-b0/src
+K3_M13_ARCH := -march=rv64im_zicsr_zifencei -mabi=lp64 -mno-relax
+K3_M13_CFLAGS := -std=gnu11 $(K3_M13_ARCH) -mcmodel=medany \
+	-msmall-data-limit=0 -ffreestanding -fno-builtin -fno-common -fno-pic \
+	-fno-pie -fno-jump-tables -fno-tree-switch-conversion \
+	-fno-stack-protector -fno-asynchronous-unwind-tables -fno-unwind-tables \
+	-fno-tree-loop-distribute-patterns -fno-zero-initialized-in-bss \
+	-ffunction-sections -fdata-sections -O2 -g $(K3_M13_WARNINGS) \
+	$(K3_M13_INCLUDES)
+K3_M13_LDFLAGS := -nostdlib -nostartfiles -static -no-pie \
+	-Wl,--build-id=none -Wl,--no-relax -Wl,--gc-sections \
+	-Wl,--fatal-warnings -Wl,-z,max-page-size=4096 \
+	-Wl,-T,$(K3_M13_DIR)/src/m13.lds
+K3_M13_BASE_board := 0x102200000
+K3_M13_BASE_qemu := 0x80200000
+K3_M13_NAME_board = be-mvp-m13-probe$(1)-gcc
+K3_M13_NAME_qemu = probe$(1)
+K3_M13_DEPS := $(K3_M13_DIR)/src/m13.h $(REPO_ROOT)/bringup/k3-b0/src/b0-format.h
+K3_M13_OBJECTS_1 := $(addprefix $(K3_M13_OBJ)/,head.o b0-format.o \
+	m13-harts.o harts.o table-1.o)
+K3_M13_OBJECTS_2 := $(addprefix $(K3_M13_OBJ)/,head.o b0-format.o m13.o \
+	table-2.o)
+K3_M13_IMAGES := $(foreach i,1 2,$(K3_M13_BUILD)/board/be-mvp-m13-probe$(i)-gcc.img)
+K3_M13_ROW = $(1):$(2):$(K3_M13_BUILD)/board/be-mvp-m13-probe$(2)-gcc.img:$(K3_M13_TESTS)/expect-$(2).txt:$(3):$(4):$(5)
+K3_M13_ROWS := $(call K3_M13_ROW,probe1,1,k3-like,3,end) \
+	$(call K3_M13_ROW,probe1-one-hart,1,k3-like,1,end) \
+	$(call K3_M13_ROW,probe1-no-h,1,no-h,1,fail-trap) \
+	$(call K3_M13_ROW,probe2,2,k3-like,1,end)
+K3_M13_IMAGE_ARGS = --image $$i --expect $(K3_M13_TESTS)/expect-$$i.txt \
+	--other-base $(K3_M13_BUILD)/qemu/probe$$i.elf \
+	$(K3_M13_BUILD)/board/be-mvp-m13-probe$$i-gcc.elf \
+	$(K3_M13_BUILD)/board/be-mvp-m13-probe$$i-gcc.img
+
+$(K3_M13_OBJ)/%.o: $(K3_M13_DIR)/src/%.S $(K3_M13_DEPS)
+	mkdir -p $(@D)
+	$(K3_M13_CC) $(K3_M13_ARCH) $(K3_M13_INCLUDES) -c -o $@ $<
+$(K3_M13_OBJ)/m13.o $(K3_M13_OBJ)/m13-harts.o: $(K3_M13_DIR)/src/m13.c \
+		$(K3_M13_DEPS)
+	mkdir -p $(@D)
+	$(K3_M13_CC) $(K3_M13_CFLAGS) \
+		-DBE_M13_HARTS=$(if $(filter %-harts.o,$@),1,0) -c -o $@ $<
+$(K3_M13_OBJ)/b0-format.o: $(REPO_ROOT)/bringup/k3-b0/src/b0-format.c \
+		$(K3_M13_DEPS)
+	mkdir -p $(@D)
+	$(K3_M13_CC) $(K3_M13_CFLAGS) -c -o $@ $<
+# $(1) image, $(2) base: the image linked there.
+define k3_m13_link
+$(K3_M13_BUILD)/$(2)/$(call K3_M13_NAME_$(2),$(1)).elf: \
+		$(K3_M13_OBJECTS_$(1)) $(K3_M13_DIR)/src/m13.lds
+	mkdir -p $$(@D)
+	$(K3_M13_CC) $(K3_M13_CFLAGS) $(K3_M13_LDFLAGS) \
+		-Wl,--defsym=BE_M13_LINK_BASE=$(K3_M13_BASE_$(2)) \
+		-Wl,-Map,$$(@:.elf=.map) -o $$@ $(K3_M13_OBJECTS_$(1))
+endef
+$(foreach i,1 2,$(foreach b,board qemu,$(eval $(call k3_m13_link,$(i),$(b)))))
+.SECONDARY: $(foreach i,1 2,$(K3_M13_BUILD)/qemu/probe$(i).bin)
+$(K3_M13_BUILD)/qemu/probe%.bin: $(K3_M13_BUILD)/qemu/probe%.elf
+	$(OBJCOPY) -O binary $< $@
+$(K3_M13_BUILD)/board/be-mvp-m13-probe%-gcc.img: \
+		$(K3_M13_BUILD)/board/be-mvp-m13-probe%-gcc.elf \
+		$(K3_M13_BUILD)/qemu/probe%.bin
+	$(OBJCOPY) -O binary $< $@.new
+	cmp -- $@.new $(word 2,$^)
+	mv -- $@.new $@
+k3-m13-images: $(K3_M13_IMAGES)
+	sha256sum -- $(K3_M13_IMAGES) | sed 's| .*/| |'
+
+$(K3_M13_BUILD)/host/test-m13-%: $(K3_M13_TESTS)/test-m13.c \
+		$(K3_M13_DIR)/src/m13.c $(K3_M13_DIR)/src/table-%.S \
+		$(REPO_ROOT)/bringup/k3-b0/src/b0-format.c $(K3_M13_DEPS)
+	mkdir -p $(@D)
+	$(MVP_TOOL_host_gcc_command) -B/usr/bin/ -std=gnu11 -O2 -g \
+		$(K3_M13_WARNINGS) $(K3_M13_INCLUDES) \
+		-DBE_M13_HARTS=$(if $(filter 1,$*),1,0) -o $@ $(filter %.c %.S,$^)
+k3-m13-check: k3-m13-images opensbi $(K3_M13_BUILD)/host/test-m13-1 \
+		$(K3_M13_BUILD)/host/test-m13-2
+	$(PYTHON) -I -B -c 'import ast, sys; [ast.parse(open(f).read(), f) \
+		for f in sys.argv[1:]]' $(wildcard $(K3_M13_TESTS)/*.py)
+	bash -n $(K3_M13_TESTS)/run-qemu.sh
+	shellcheck $(K3_M13_TESTS)/run-qemu.sh
+	set -e; for i in 1 2; do \
+		$(PYTHON) -I -B $(K3_M13_TESTS)/check-image.py $(K3_M13_IMAGE_ARGS); \
+		$(PYTHON) -I -B $(K3_M13_TESTS)/check-image.py --self-test \
+			$(K3_M13_IMAGE_ARGS); \
+		$(PYTHON) -I -B $(K3_M13_TESTS)/check-capture.py --self-test \
+			--image $$i --expect $(K3_M13_TESTS)/expect-$$i.txt; \
+	done
+	set -e; for i in 1 2; do \
+		dir=$(K3_M13_BUILD)/host/captures-$$i; rm -rf -- "$$dir"; \
+		mkdir -m 700 -- "$$dir"; $(K3_M13_BUILD)/host/test-m13-$$i "$$dir"; \
+		while read -r name end; do printf '%s: ' "$$name"; \
+			$(PYTHON) -I -B $(K3_M13_TESTS)/check-capture.py --image $$i \
+				--mode host --expect $(K3_M13_TESTS)/expect-$$i.txt \
+				--expect-end "$$end" "$$dir/$$name.log"; \
+		done < "$$dir/manifest.txt"; \
+		$(PYTHON) -I -B $(K3_M13_TESTS)/check-capture.py --sample --image $$i \
+			--expect $(K3_M13_TESTS)/expect-$$i.txt > "$$dir/sample.log"; \
+		printf 'sample: '; $(PYTHON) -I -B $(K3_M13_TESTS)/check-capture.py \
+			--image $$i --mode host --expect $(K3_M13_TESTS)/expect-$$i.txt \
+			"$$dir/sample.log"; \
+	done
+	rm -rf -- $(K3_M13_BUILD)/held-dir-test $(K3_M13_BUILD)/qemu-runs
+	$(PYTHON) -I -B $(K3_M13_TESTS)/held-dir.py --self-test \
+		--scratch $(K3_M13_BUILD)/held-dir-test
+	$(K3_M13_TESTS)/run-qemu.sh $(K3_M13_BUILD)/qemu-runs $(QEMU) \
+		$(OPENSBI_FW) $(MVP_PIN_OPENSBI_BIN_SHA256) $(PYTHON) \
+		$(K3_M13_TESTS)/check-capture.py $(K3_M13_ROWS)
+
+# The third image (planning/mvp-m13-3-review-point.md, section 4), run by
+# hand, never in check: its table and list only in K3_M13_HELD
+# (tests/held-dir.py checks it first); the public build's common objects;
+# every output in a new K3_M13_HELD/out-TIME (mode 0700): the build at both
+# bases, the image check, both self-tests, and the QEMU row. Only each
+# step's PASS or FAIL is printed; each step's own output stays in that
+# directory.
+K3_M13_HELD_OBJECTS := $(addprefix $(K3_M13_OBJ)/,head.o b0-format.o m13.o)
+k3-m13-held: $(K3_M13_HELD_OBJECTS) opensbi
+	@set -euo pipefail; set -o noclobber; umask 077; held='$(K3_M13_HELD)'; \
+	$(PYTHON) -I -B $(K3_M13_TESTS)/held-dir.py check "$$held" $(REPO_ROOT); \
+	out=$$held/out-$$(date -u +%Y%m%dT%H%M%SZ); mkdir -m 700 -- "$$out"; \
+	img=$$out/be-mvp-m13-probe3-gcc; list=$$held/expect-3.txt; \
+	step() { if "$${@:2}" > "$$out/$$1.txt" 2>&1; then \
+		echo "BE_K3_M13_HELD[$$1]: PASS"; else \
+		echo "BE_K3_M13_HELD[$$1]: FAIL"; exit 1; fi; }; \
+	link() { $(K3_M13_CC) $(K3_M13_CFLAGS) $(K3_M13_LDFLAGS) \
+		-Wl,--defsym=BE_M13_LINK_BASE=$$1 -Wl,-Map,"$${2%.elf}.map" \
+		-o "$$2" $(K3_M13_HELD_OBJECTS) "$$out/table-3.o"; }; \
+	step table $(K3_M13_CC) $(K3_M13_ARCH) $(K3_M13_INCLUDES) -c \
+		-o "$$out/table-3.o" "$$held/table-3.S"; \
+	step link-board link $(K3_M13_BASE_board) "$$img.elf"; \
+	step link-qemu link $(K3_M13_BASE_qemu) "$$out/probe3.elf"; \
+	step image $(OBJCOPY) -O binary "$$img.elf" "$$img.img"; \
+	step qemu-image $(OBJCOPY) -O binary "$$out/probe3.elf" \
+		"$$out/probe3.bin"; \
+	step identical cmp -- "$$img.img" "$$out/probe3.bin"; \
+	step image-check $(PYTHON) -I -B $(K3_M13_TESTS)/check-image.py \
+		--image 3 --expect "$$list" --other-base "$$out/probe3.elf" \
+		"$$img.elf" "$$img.img"; \
+	step image-self-test $(PYTHON) -I -B $(K3_M13_TESTS)/check-image.py \
+		--self-test --image 3 --expect "$$list" --other-base \
+		"$$out/probe3.elf" "$$img.elf" "$$img.img"; \
+	step capture-self-test $(PYTHON) -I -B \
+		$(K3_M13_TESTS)/check-capture.py --self-test --image 3 \
+		--expect "$$list"; \
+	step qemu $(K3_M13_TESTS)/run-qemu.sh "$$out/qemu-runs" $(QEMU) \
+		$(OPENSBI_FW) $(MVP_PIN_OPENSBI_BIN_SHA256) $(PYTHON) \
+		$(K3_M13_TESTS)/check-capture.py \
+		"probe3:3:$$img.img:$$list:k3-like:1:end"; \
+	echo "BE_K3_M13_HELD: PASS"
+
 # M11-B (planning/mvp-m11-board-addendum.md): the board's fragments under
 # k3/, each named once, common.mk first. This is the one include directive
 # here: tools/make-control.py --fragments reads it for mvp/mvp and the Make
