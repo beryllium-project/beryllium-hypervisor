@@ -201,7 +201,11 @@ class World:
         for command, fake in fakes.items():
             script, word = fake.split()
             path = scratch / "bin" / command
-            path.write_text(f"#!/usr/bin/bash\nexec {PYTHON} -I -B "
+            # The modes of the files that scp sends: scp keeps each one's.
+            sent = ('for f in "$@"; do [ ! -f "$f" ] || stat -c "%a %n" -- '
+                    f'"$f" >>{shlex.quote(str(scratch / "sent.log"))}; done\n'
+                    if command == "scp" else "")
+            path.write_text(f"#!/usr/bin/bash\n{sent}exec {PYTHON} -I -B "
                             f"{shlex.quote(str(HERE / script))} {word} "
                             '"$@"\n')
             path.chmod(0o755)
@@ -563,7 +567,19 @@ def whole(case, world, tool):
     code, output = world.begin(board, root)
     problem = None if code == 0 else output
     problem = problem or world.steps(board, root, "preflight")
+    before = len(lines_of(world.scratch / "sent.log"))
     code, output = world.run(board, root, "stage")
+    sent = [line.split(" ", 1) for line in lines_of(
+        world.scratch / "sent.log")[before:]]
+    staged = sorted((board / "partition").iterdir())
+    case("stage: each file sent to the board (scp keeps its mode) and each "
+         "file on the partition readable by group and others: the board's "
+         "ordinary user checks what root copied there", len(sent) == 6 and
+         len(staged) == 6 and all(int(mode, 8) & 0o044 == 0o044 for mode, _
+                                  in sent) and all(
+             path.stat().st_mode & 0o044 == 0o044 for path in staged),
+         (sent, [f"{path.stat().st_mode & 0o777:o} {path.name}"
+                 for path in staged]))
     case("stage: its line says that it removed every other be-mvp image",
          code == 0 and f"{TAG}: PASS step=stage attempt=1 images=3 "
          "removed=1: the stage tool removed every other be-mvp image from "

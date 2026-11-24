@@ -55,16 +55,21 @@ ones before it. A refusal (exit 5) acts on nothing.
 Records: m13/plan.txt, begin's inputs and checks; m13/steps/NN-STEP-aK.txt,
 attempt K of the NNth step, ending verdict=PASS or verdict=STOP stop=LABEL
 TEXT; m13/logs/, each tool's output. Each file is created exclusively, mode
-0600, never through a link, in directories of mode 0700. They hold the
-board's identifiers and image 3's facts, so the run root stays private (the
-M13 plan's rules 8 and 10); standard output holds verdicts alone. close
-seals the run root (m13/SHA256SUMS); after a session in which every step
-passed, it first writes the public record, mvp/results/DATE-com260-m13-
-probes/ in the source tree, to be read, and committed by hand: record.txt,
-run 1's and run 2's captures from `Autoboot in`, and k3-env.sh's records by
-an allowlist (ENV_LINE), each rewritten by evidence.py's code names, built
-in m13/public-aK/ and copied only if no file holds an identifier, image 3's
-digests or a line of its run, or a time after run 2's end (guards()).
+0600, never through a link, in directories of mode 0700. The stage tool
+runs under umask 022, as every earlier MVP session ran it, on copies of the
+images of mode 0644 (stage/images/), since its board script checks, as the
+board's ordinary user, what root copied onto the partition, and scp and cp
+keep each file's mode; every other tool runs under umask 077. The files
+hold the board's identifiers and image 3's facts, so the run root stays
+private (the M13 plan's rules 8 and 10); standard output holds verdicts
+alone. close seals the run root (m13/SHA256SUMS); after a session in which
+every step passed, it first writes the public record, mvp/results/DATE-
+com260-m13-probes/ in the source tree, to be read, and committed by hand:
+record.txt, run 1's and run 2's captures from `Autoboot in`, and k3-env.sh's
+records by an allowlist (ENV_LINE), each rewritten by evidence.py's code
+names, built in m13/public-aK/ and copied only if no file holds an
+identifier, image 3's digests or a line of its run, or a time after run 2's
+end (guards()).
 Trust: the tree's tools by fixed paths, run from /, Python as
 /usr/bin/python3 -I -B, with no PYTHON* variable, none of the console's
 typing authorizations, and no K3_KEYLOG. Exit status: 0 the step passed;
@@ -416,9 +421,10 @@ class Session:
                 if not name.startswith("PYTHON") and name not in BARRED}
 
     def tool(self, record, name, argv, environment=None, cwd="/",
-             output=None):
-        """(exit, output) of a tool, run from CWD, its output into OUTPUT
-        or m13/logs/, created exclusively."""
+             output=None, umask=None):
+        """(exit, output) of a tool, run from CWD under UMASK (else this
+        process's, 077), its output into OUTPUT or m13/logs/, created
+        exclusively."""
         output = output or self.home / "logs" / f"{record.stem}-{name}.log"
         descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
                              os.O_NOFOLLOW, 0o600)
@@ -427,7 +433,8 @@ class Session:
                 [str(part) for part in argv], cwd=cwd,
                 env=environment or self.child_env(),
                 stdin=subprocess.DEVNULL, stdout=file,
-                stderr=subprocess.STDOUT, check=False).returncode
+                stderr=subprocess.STDOUT, check=False,
+                umask=-1 if umask is None else umask).returncode
         record.line(f"tool {name} exit={code} output="
                     f"{output.relative_to(self.root)}")
         return code, output.read_text(encoding="utf-8", errors="replace")
@@ -666,9 +673,17 @@ class Session:
 
     def act_stage(self, record, step):
         self.set_aside(record, step, "stage")
+        images = self.root / "stage" / "images"
+        os.makedirs(images, 0o700)
+        for image in IMAGES:
+            descriptor = os.open(images / image, os.O_WRONLY | os.O_CREAT |
+                                 os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(descriptor, "wb") as file:
+                os.fchmod(file.fileno(), 0o644)
+                file.write((self.home / "inputs" / image).read_bytes())
         code, text = self.tool(record, "stage", [STAGE, self.root / "stage"] +
-                               [f"{image}={self.home / 'inputs' / image}"
-                                for image in IMAGES])
+                               [f"{image}={images / image}" for image in
+                                IMAGES], umask=0o022)
         if code:
             raise board_stop(text)
         staging = (self.root / "stage" / "staging.txt").read_text(
