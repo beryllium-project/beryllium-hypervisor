@@ -442,7 +442,8 @@ def self_test(scratch):
         ("a word in a fixture, and MVP 1.0's tools", lambda t: put(
             t / k3 / "fixtures/x/capture.txt", word), None),
         ("fragments found by a wildcard", lambda t: edit(
-            t / mk, "$(addprefix", "$(wildcard"), "one include directive"),
+            t / mk, "include $(addprefix", "include $(wildcard"),
+         "one include directive"),
         ("a second include directive", lambda t: edit(
             t / mk, "\ninclude ", "\n-include $(MVP_DIR)/k3/x.mk\ninclude "),
          "one include directive"),
