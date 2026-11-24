@@ -1,0 +1,6 @@
+be_image=be-mvp-m13-probe2-gcc.img
+printenv_be_image=be_image=be-mvp-m13-probe2-gcc.img
+select-01-check_sha256=15a7d83ac0fd6d31c99eba152f36c29852ada4a59c6ab0f895de37fb825bf32a
+select_check=PASS
+saveenv=OK
+verdict=PASS

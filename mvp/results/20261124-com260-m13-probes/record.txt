@@ -1,0 +1,30 @@
+schema=be-mvp-k3-m13-session-v1
+title=M13-4 COM260 probe session
+source_commit=0caf1df1cad356a420c017068753ea545f856cb2
+source_tree=clean
+said=2026-11-24T21:14:22Z
+launcher=uboot-autoboot-nvme
+image name=be-mvp-m13-probe1-gcc.img sha256=61b37e7cd55d46e8646046f86200292b9c7b6ab9a59bb0b7175a1d94604abc6e image_check=BE_K3_M13_IMAGE: PASS image=1 entries=29 bytes=24576 sha256=61b37e7cd55d46e8646046f86200292b9c7b6ab9a59bb0b7175a1d94604abc6e md5=72ee693873d9aa77c843e367dcd0f266
+image name=be-mvp-m13-probe2-gcc.img sha256=1abbc9ca01584acdcde1c745237e6d9661d9e2577a40a9a2c8ca6003a949b98c image_check=BE_K3_M13_IMAGE: PASS image=2 entries=68 bytes=28672 sha256=1abbc9ca01584acdcde1c745237e6d9661d9e2577a40a9a2c8ca6003a949b98c md5=92795fd7f913fb730d62f3f71b45d528
+image name=be-mvp-m13-probe3-gcc.img staged=yes ran=yes
+expect name=expect-1.txt sha256=4d1988289092565ba7b1e71d56212c3002e08762ebcd2780b40edfd81f015849
+expect name=expect-2.txt sha256=e05596f1050914eac71fe23b409c73910062a6fe740e7c5436ec6040a16c6640
+preflight_before=BE_MVP_PREFLIGHT: PASS hart0_dt=h:yes,sstc:yes hart0_cpuinfo=h:yes,sstc:yes hart1_dt=h:yes,sstc:yes hart1_cpuinfo=h:yes,sstc:yes hart2_dt=h:yes,sstc:yes hart2_cpuinfo=h:yes,sstc:yes dt_sstc_harts=8/8 timebase_frequency=24000000 hsm_detected=1 region_check=PASS firmware=ID=0x1,Version=0x10006 partition=6:ext4:no env_k3=PASS k3ctl_client=matches-pin
+staging=PASS images=3 removed=0
+step name=begin verdict=PASS attempts=1 started=2026-11-24T21:14:34Z ended=2026-11-24T21:14:36Z
+step name=preflight verdict=PASS attempts=1 started=2026-11-24T21:14:39Z ended=2026-11-24T21:14:41Z
+step name=stage verdict=PASS attempts=1 started=2026-11-24T21:14:41Z ended=2026-11-24T21:14:42Z
+step name=record verdict=PASS attempts=1 started=2026-11-24T21:14:47Z ended=2026-11-24T21:15:21Z
+step name=install verdict=PASS attempts=1 started=2026-11-24T21:15:29Z ended=2026-11-24T21:15:47Z
+step name=run-1 verdict=PASS attempts=1 started=2026-11-24T21:15:52Z ended=2026-11-24T21:16:08Z
+step name=select-2 verdict=PASS attempts=1 started=2026-11-24T21:16:13Z ended=2026-11-24T21:16:24Z
+step name=run-2 verdict=PASS attempts=1 started=2026-11-24T21:16:24Z ended=2026-11-24T21:16:40Z
+step name=select-3 verdict=PASS
+step name=run-3 verdict=PASS
+step name=restore verdict=PASS
+step name=preflight-after verdict=PASS
+step name=audit verdict=PASS
+run name=run-1 image=be-mvp-m13-probe1-gcc.img outcome=end attribution=PASS capture_check=BE_K3_M13_CAPTURE: PASS image=1 mode=board end=end lines=34 capture=run-1/capture.log
+run name=run-2 image=be-mvp-m13-probe2-gcc.img outcome=end attribution=PASS capture_check=BE_K3_M13_CAPTURE: PASS image=2 mode=board end=end lines=72 capture=run-2/capture.log
+audit_to_run_2=banners=8 resets=8 findings=0
+preflight_after=BE_MVP_PREFLIGHT: PASS hart0_dt=h:yes,sstc:yes hart0_cpuinfo=h:yes,sstc:yes hart1_dt=h:yes,sstc:yes hart1_cpuinfo=h:yes,sstc:yes hart2_dt=h:yes,sstc:yes hart2_cpuinfo=h:yes,sstc:yes dt_sstc_harts=8/8 timebase_frequency=24000000 hsm_detected=1 region_check=PASS firmware=ID=0x1,Version=0x10006 partition=6:ext4:no env_k3=PASS k3ctl_client=matches-pin

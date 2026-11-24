@@ -1,0 +1,60 @@
+[   1.919] Autoboot in 3 seconds
+[   4.928] pcie_dw_spacemit pcie@80000000: Port0 has no device detect gpio
+[   4.941] Now int init_x2_puphy...
+[   4.942] waiting pll lock...
+[   4.944] PHY PLL Locked.
+[   4.957] Now int init_x2_puphy...
+[   4.957] waiting pll lock...
+[   4.960] PHY PLL Locked.
+[   4.962] pcie_dw_spacemit pcie@80000000: pcie config device cmd in rc mode: 0x3bf
+[   5.085] PCIE-0: Link up (Gen3-x4, Bus0)
+[   5.100] Now int init_x1_puphy...
+[   5.100] waiting pll lock...
+[   5.103] PHY PLL Locked.
+[   5.105] pcie_dw_spacemit pcie@80c00000: pcie config device cmd in rc mode: 0x33f
+[   6.214] PCIE-2: Link down
+[   6.245] 24576 bytes read in 1 ms (23.4 MiB/s)
+[   6.246] md5 for 140000000 ... 140005fff ==> 72ee693873d9aa77c843e367dcd0f266
+[   6.253] Moving Image from 0x140000000 to 0x102200000, end=102206000
+[   6.259] ## Flattened Device Tree blob at 2fbe8aa50
+[   6.264]    Booting using the fdt blob at 0x2fbe8aa50
+[   6.269]    Loading Device Tree to 00000002fbd5d000, end 00000002fbd6f2ef ... OK
+fail to get alias node efuse_power
+[   6.481] 
+Starting kernel ...
+
+[   6.481] Removing MTD device #0 (nor0) with use count 1
+BE_K3_M13: ENTRY image=1 hart=0x0000000000000000 base=0x0000000102200000 fdt=0x00000002fbd5d000
+BE_K3_M13: SBI spec=0x0000000002000000 impl=0x0000000000000001 impl_version=0x0000000000010006
+BE_K3_M13: EXT dbcn=1 srst=1 hsm=1 satp=0x0000000000000000
+BE_K3_M13: P1 hart0.hgeie csrr a=0x0000000000000607 w=8 value=0x0000000000000000
+BE_K3_M13: P1 hart0.hgeie csrw a=0x0000000000000607 w=8 wrote=0xffffffffffffffff
+BE_K3_M13: P1 hart0.hgeie csrr a=0x0000000000000607 w=8 value=0x00000000000000fe
+BE_K3_M13: P1 hart0.hgeie csrw a=0x0000000000000607 w=8 wrote=0x0000000000000000
+BE_K3_M13: P1 hart0.hgeie csrr a=0x0000000000000607 w=8 value=0x0000000000000000
+BE_K3_M13: HSM hart=0x0000000000000001 error=0x0000000000000000 state=done
+BE_K3_M13: P1 hart1.hgeie csrr a=0x0000000000000607 w=8 value=0x0000000000000000
+BE_K3_M13: P1 hart1.hgeie csrw a=0x0000000000000607 w=8 wrote=0xffffffffffffffff
+BE_K3_M13: P1 hart1.hgeie csrr a=0x0000000000000607 w=8 value=0x00000000000000fe
+BE_K3_M13: P1 hart1.hgeie csrw a=0x0000000000000607 w=8 wrote=0x0000000000000000
+BE_K3_M13: P1 hart1.hgeie csrr a=0x0000000000000607 w=8 value=0x0000000000000000
+BE_K3_M13: HSM hart=0x0000000000000002 error=0x0000000000000000 state=done
+BE_K3_M13: P1 hart2.hgeie csrr a=0x0000000000000607 w=8 value=0x0000000000000000
+BE_K3_M13: P1 hart2.hgeie csrw a=0x0000000000000607 w=8 wrote=0xffffffffffffffff
+BE_K3_M13: P1 hart2.hgeie csrr a=0x0000000000000607 w=8 value=0x00000000000000fe
+BE_K3_M13: P1 hart2.hgeie csrw a=0x0000000000000607 w=8 wrote=0x0000000000000000
+BE_K3_M13: P1 hart2.hgeie csrr a=0x0000000000000607 w=8 value=0x0000000000000000
+BE_K3_M13: P7 domaincfg read a=0x00000000e0804000 w=4 value=0x0000000080000004
+BE_K3_M13: P7 sourcecfg[200] read a=0x00000000e0804320 w=4 value=0x0000000000000000
+BE_K3_M13: P7 domaincfg guard expect=0x0000000080000004 pass
+BE_K3_M13: P7 sourcecfg[200] guard expect=0x0000000000000000 pass
+BE_K3_M13: P7 sourcecfg[200] write a=0x00000000e0804320 w=4 wrote=0x0000000000000001
+BE_K3_M13: P7 sourcecfg[200] read a=0x00000000e0804320 w=4 value=0x0000000000000001
+BE_K3_M13: P7 sourcecfg[200] guard expect=0x0000000000000001 pass
+BE_K3_M13: P7 target[200] write a=0x00000000e0807320 w=4 wrote=0x0000000000001000
+BE_K3_M13: P7 target[200] read a=0x00000000e0807320 w=4 value=0x0000000000001000
+BE_K3_M13: P7 target[200] write a=0x00000000e0807320 w=4 wrote=0x0000000000000000
+BE_K3_M13: P7 target[200] read a=0x00000000e0807320 w=4 value=0x0000000000000000
+BE_K3_M13: P7 sourcecfg[200] write a=0x00000000e0804320 w=4 wrote=0x0000000000000000
+BE_K3_M13: P7 sourcecfg[200] read a=0x00000000e0804320 w=4 value=0x0000000000000000
+BE_K3_M13: END image=1 accesses=0x0000000000000019 faults=0x0000000000000000

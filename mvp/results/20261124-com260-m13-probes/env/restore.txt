@@ -1,0 +1,7 @@
+restore-check_sha256=3275334439a8198fe7fa627ebb3c2b7afc1acfd59d795366623a72e03abe8d8a
+restore_check=PASS
+saveenv=OK
+record3_sha256=3275334439a8198fe7fa627ebb3c2b7afc1acfd59d795366623a72e03abe8d8a
+restore_check=PASS
+fedora=up
+verdict=PASS
