@@ -837,3 +837,52 @@ the workstation, on 2026-11-23, whose owner session ran on
 
 No AI system accepted a result, re-set a limit, added a
 `Signed-off-by`, or pushed.
+
+## 17. After the release: M13-3 and M13-4, the review point and the probes
+
+This section covers M13's review point, and its probes up to the board
+session. They were made in the same session on the workstation, on
+2026-11-23 and 2026-11-24, whose owner session ran on `claude-opus-5.5`.
+
+- **The review point (M13-3).** A sub-agent on `claude-opus-5.5`, which
+  could only read, gathered facts for it from the project's tree and the
+  pinned inputs. The owner session wrote the page, and made the private
+  checks behind its sentences on what stays held. A sub-agent on
+  `claude-opus-5.5`, which could only read, reviewed two of its
+  candidates in turn (25 findings; then one major and five minor); the
+  owner session answered each finding in the next candidate. The
+  responsible human signed off the third, and replied `probes: go`.
+- **The probes (M13-4).** Two sub-agents on `claude-opus-5.5`, each in a
+  clone of its own: one wrote the probe images, their image and capture
+  checks, their host test, and their QEMU runs; the other wrote the run
+  tool, its records, its dry run, and the fake U-Boot's changes. Each
+  designed first; the owner session reviewed each design and answered
+  its questions, then read every line of each part and asked for
+  changes. Twice the probes passed the plan's soft limit for them; each
+  time the sub-agents stopped, and the responsible human re-set the limit
+  (`probes: go`, 2,000 to 3,500 lines; then `probes: limit 6500`).
+- **The third image.** Its table and expected list are held under the
+  plan's rule 10. The images' sub-agent wrote them in a private
+  directory, from the review point's section 2; the owner session read
+  them there against that section, ran the held target there, and keeps
+  them in the project's internal records. No public file holds them.
+- **The landing.** The owner session put the two lanes' work on the
+  working branch as commits of its own, wrote the MVP README's rows, and
+  ran the whole checks from clean clones. The first whole check stopped
+  in an earlier self-test, M11-B's frame tool's, one of whose mutations
+  had rested on the order of `mvp/tools.mk`; the images' sub-agent wrote
+  the fix, on the owner session's reading of the failure, and it lands
+  first.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The review point | The owner session, with facts gathered by a sub-agent and two review passes by another | M13-3 |
+| The probe images, their checks, their host test, and their QEMU runs | A sub-agent, reviewed by the owner session | M13-4; `probes: go`; the soft limit as he re-set it |
+| The third image's table and list, held | The same sub-agent, read by the owner session | M13-4; the plan's rule 10 |
+| The run tool, its records, its dry run, and the fake U-Boot's changes | A sub-agent, reviewed by the owner session | M13-4; the soft limit as he re-set it |
+| The frame tool's self-test, made to edit the include directive itself | The images' sub-agent, reviewed by the owner session | M13-4's landing |
+| The README's rows, and the landing | The owner session | M13-4 |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, re-set a limit, added a
+`Signed-off-by`, or pushed.
