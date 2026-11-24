@@ -886,3 +886,48 @@ session. They were made in the same session on the workstation, on
 
 No AI system accepted a result, re-set a limit, added a
 `Signed-off-by`, or pushed.
+
+## 18. After the release: M13-4, the probe session and its facts
+
+This section covers the probe session on the board and what followed
+it, on 2026-11-24, in the same session on the workstation. Its owner
+session ran on `claude-opus-5.5` until 21:31Z that day, and on
+`claude-fable-5.2` from then: the responsible human switched it.
+
+- **The first session, and the run tool's fix.** On the responsible
+  human's word (`session: go`), with him present, the owner session ran
+  the run tool's steps. The session stopped at its stage step, before
+  any probe ran: the files that the stage copied to the board were
+  readable by root alone, and the stage's own check could not read
+  them. The owner session read the stop in the session's records and
+  found the cause; the run tool's sub-agent, on `claude-opus-5.5`, wrote
+  the fix, and found its second half; the owner session read every
+  line, and ran its test with the fix and without it. The responsible
+  human had the stopped session closed out and allowed a second
+  (`close out, run again`), and signed the fix off.
+- **The second session.** On his word, with him present, the owner
+  session, on `claude-opus-5.5`, ran each step of the run tool, and
+  every step passed. The tool wrote the session's public record; the
+  owner session, on `claude-fable-5.2`, read every file of it and
+  committed it as the tool wrote it.
+- **The third image.** It ran last. The run tool printed its verdict
+  alone, and the owner session read its capture after the session's
+  closing steps, in the session's private records. Its results are held
+  under the plan's rule 10, whatever they show; no public file holds
+  them.
+- **The record's facts.** The sub-agent that drafted M13's record, on
+  `claude-opus-5.5`, drafted the probe session's rows from the public
+  record alone. The owner session, on `claude-fable-5.2`, read every
+  line, decoded the registers again, checked citations against the
+  pinned inputs, and added two rows and one sentence.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The run tool's fix and its test | The run tool's sub-agent, reviewed by the owner session | M13-4; `close out, run again` |
+| The two probe sessions' steps | The owner session, by the run tool, with the responsible human present | M13-4; `session: go`, each time |
+| The session's public record | Written by the run tool; read by the owner session, and committed unchanged | M13-4 |
+| The probe session's rows in M13's record | A sub-agent, reviewed by the owner session, which added two rows and one sentence | M13-4 |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, re-set a limit, added a
+`Signed-off-by`, or pushed.
