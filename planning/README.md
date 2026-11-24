@@ -1785,7 +1785,8 @@ public push now.
   vendor's documents and sources, the published images, the board's
   Linux as the inventory of 2026-11-16 read it (M13-1), and one read
   session of the board's own Linux by M13-2's read tool, 2026-11-23;
-  any probe (M13-4) adds its facts later.
+  and one probe session on the board, 2026-11-24 (M13-4): probes P1 to
+  P4 and P7; P5 and P6 were run, and their results are held.
 - `mvp-m13-3-review-point.md`: milestone M13's review point (M13-3):
   the record's questions still open after the reading and the read
   session, and seven probes in three images, the third held under the
