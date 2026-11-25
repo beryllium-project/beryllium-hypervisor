@@ -660,6 +660,10 @@ export default defineConfig({
             link: '/mvp-m13-result'
           },
           {
+            text: 'MVP M14 plan: the device and DMA object model (proposed 2026-11-25)',
+            link: '/mvp-m14-plan'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1368,6 +1372,10 @@ export default defineConfig({
             link: '/mvp-m13-result'
           },
           {
+            text: 'MVP M14 plan: the device and DMA object model (proposed 2026-11-25)',
+            link: '/mvp-m14-plan'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1959,6 +1967,10 @@ export default defineConfig({
           {
             text: 'M13 result: the board\'s device facts (proposed 2026-11-25)',
             link: '/mvp-m13-result'
+          },
+          {
+            text: 'MVP M14 plan: the device and DMA object model (proposed 2026-11-25)',
+            link: '/mvp-m14-plan'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',

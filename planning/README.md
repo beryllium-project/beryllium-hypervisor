@@ -1806,6 +1806,20 @@ public push now.
   and what the result changes: three maintained pages, no claim, and no
   accepted text. Proposed 2026-11-25; accepted by the responsible
   human's sign-off of its commit.
+- `mvp-m14-plan.md`: the bounded plan of milestone M14, the second of
+  MVP 2.0's seven steps (the MVP plan's S3-C.2, step (2)): the device
+  and DMA object model, written as security model v1 Revision 5. What
+  a device is as an object, who has authority over each of its parts,
+  what its own memory accesses may reach, how its interrupts reach its
+  owner, its lifecycle (the first handoff out of the boot chain, the
+  restart of the device's owner, and what survives a system reset), the
+  attackers that a device adds, and the notation's classes, with the
+  synthesis's H06 and H07 answered. It chooses no device and no
+  mechanism, and builds nothing; step (3) builds on it. Twenty-three
+  questions for the model, eleven rules, M14-1 to M14-3, ten stops, one
+  accepted rule amended by name (the MVP plan's stop condition 1, whose
+  exception gains the additive Revision 5) and ten read, and Q1 to Q14.
+  Proposed 2026-11-25.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and

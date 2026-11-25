@@ -54,7 +54,7 @@ records are authoritative, with the signed commits of this repository's
 >   plans a step for each answer from the people whose work it builds
 >   on, and none starts before its answer. Nothing goes to another
 >   project but through the responsible human.
-> - **M13, the first of those seven steps, has its result**: the
+> - **M13, the first of those seven steps, is complete**: the
 >   board's device facts (its IOMMU and IOPMPs, its interrupts, its reset
 >   paths, and which device belongs to whom), found before any device is
 >   given to a VS domain. Its [plan](mvp-m13-plan.md) was accepted on
@@ -62,14 +62,21 @@ records are authoritative, with the signed commits of this repository's
 >   the facts, each with its source: the vendor's documents and sources,
 >   the published images, the board's own Linux, and one probe session
 >   on the board. It is diagnostic, and it is evidence for no claim. Its
->   [result](mvp-m13-result.md) (2026-11-25) is proposed by the commit
->   that adds that page, and is accepted when that commit is on this
->   `main` with the responsible human's sign-off. The record shows no
->   mechanism on this board that bounds a device's memory accesses; it
->   does not say what the hardware can do, and the results of two of
->   its probes are held.
-> - **Next:** MVP 2.0's step (2), the device and DMA object model, under
->   a plan of its own, at the responsible human's direction.
+>   [result](mvp-m13-result.md) was accepted on 2026-11-25
+>   (`d6d5492c`). The record shows no mechanism on this board that
+>   bounds a device's memory accesses; it does not say what the
+>   hardware can do, and the results of two of its probes are held.
+> - **M14, the second step, has its plan**: the device and DMA object
+>   model. It is to say what a device is to the security model, as an
+>   additive revision of it: the objects, who has authority over each,
+>   what a device's own memory accesses may reach, and what any device
+>   path has to keep. It chooses no device and no mechanism, builds
+>   nothing, and has no session on the board. Its
+>   [plan](mvp-m14-plan.md) (2026-11-25) is proposed by the commit that
+>   adds that page, and is accepted when that commit is on this `main`
+>   with the responsible human's sign-off.
+> - **Next:** the model itself, security model v1 Revision 5, as its
+>   own commit for the responsible human's sign-off; then M14's result.
 
 ## At a glance
 
@@ -86,8 +93,9 @@ Security model v1, Part 1 Revision 4 ................ accepted 2026-11-11 (0b14b
 MVP plan revision S3-E: the board's firmware ........ accepted 2026-11-16 (8f07d612)
 M11: the physical boundary under the monitor ........ complete: emulation 2026-11-18 (cf79de89); one board 2026-11-23 (489efd38)
 M12: the supervisor-domain lane ..................... its steps ended; revision 2 (2026-11-21) waits on answers
-M13: the board's device facts ....................... plan accepted 2026-11-23 (ac3bd40f); result 2026-11-25, accepted by its commit's sign-off  <- YOU ARE HERE
-MVP 2.0 steps (2) to (7), then its last step ........ planned; each needs its own plan
+M13: the board's device facts ....................... complete: plan 2026-11-23 (ac3bd40f); result 2026-11-25 (d6d5492c)
+M14: the device and DMA object model ................ plan proposed 2026-11-25, accepted by its commit's sign-off  <- YOU ARE HERE
+MVP 2.0 steps (3) to (7), then its last step ........ planned; each needs its own plan
 MVP 3.0 and MVP 4.0 ................................. named in the MVP plan; not planned
 ```
 
@@ -109,7 +117,8 @@ inside the monitor: M11 put a physical boundary, enforced by M-mode,
 under the monitor's own code. M13 then found the board's device facts,
 before the device and DMA object model and the first device path are
 planned; its result says what those steps can rely on, and what they
-cannot.
+cannot. M14 is to write that object model, as an additive revision of
+the security model, before any device path is planned.
 
 ## Milestone status
 
@@ -165,7 +174,8 @@ repository's `main`.
 | MVP 2.0 | M11: the physical boundary under the monitor | Plan accepted 2026-11-11, `77eabce5`; result under emulation accepted 2026-11-18, `cf79de89`; result on one board accepted 2026-11-23, `489efd38`: complete | [Plan](mvp-m11-plan.md), [board addendum](mvp-m11-board-addendum.md), [evidence](mvp-m11-evidence.md) |
 | MVP 2.0 | Plan revision S3-E: the board-firmware amendment | Accepted 2026-11-16, `8f07d612` | [MVP plan](mvp-plan.md) |
 | MVP 2.0 | M12: the supervisor-domain lane | Plan accepted 2026-11-15, `5ea5243a`; M12-1 to M12-4, M12-7.1 to M12-7.6, and M12-5 (narrowed to its firmware half) ended by 2026-11-21; revision 2 accepted 2026-11-21, `87f13d56`: its steps wait on answers | [Plan](mvp-m12-plan.md), [revision 1](mvp-m12-plan-revision-1.md), [revision 2](mvp-m12-plan-revision-2.md) |
-| MVP 2.0 | M13: the board's device facts | Plan accepted 2026-11-23, `ac3bd40f`; result proposed 2026-11-25, and accepted by the sign-off of its commit on `main` | [Plan](mvp-m13-plan.md), [record](k3-com260-devices.md), [result](mvp-m13-result.md) |
+| MVP 2.0 | M13: the board's device facts | Plan accepted 2026-11-23, `ac3bd40f`; result accepted 2026-11-25, `d6d5492c`: complete | [Plan](mvp-m13-plan.md), [record](k3-com260-devices.md), [result](mvp-m13-result.md) |
+| MVP 2.0 | M14: the device and DMA object model | Plan proposed 2026-11-25, and accepted by the sign-off of its commit on `main` | [Plan](mvp-m14-plan.md) |
 
 ## Planned sequence
 
@@ -179,8 +189,8 @@ at its own commit, and none is authorized until then.
 | --- | --- | --- | --- |
 | First | M11: the physical boundary | Each hart that the monitor uses confined by a physical access profile that M-mode programs from a description built offline; the other harts parked | Complete (2026-11-23) |
 | Beside M11 | M12: the supervisor-domain lane | The memory protection tables of the RISC-V Supervisor Domains Access Protection specification, under emulation and outside the claim: questions for its authors, directed tests, its model in the Sail RISC-V model, and review of others' series | Every step of its plan and its revision 1 has ended; revision 2's steps wait on answers |
-| (1) | M13: the board's device facts | The IOMMU and the IOPMPs, interrupts, reset, and device ownership of the K3 COM260 board, from documents, sources, the board's own Linux, and probe images | Its [result](mvp-m13-result.md), 2026-11-25, accepted by the sign-off of its commit |
-| (2) | The device and DMA object model | The synthesis's policy questions H06 ("authority without a mapping") and H07 (when a finer type has security meaning), answered where devices and the service VS domain make them concrete | Planned |
+| (1) | M13: the board's device facts | The IOMMU and the IOPMPs, interrupts, reset, and device ownership of the K3 COM260 board, from documents, sources, the board's own Linux, and probe images | Complete (2026-11-25) |
+| (2) | M14: the device and DMA object model | What a device is to the security model, as an additive revision of it, with the synthesis's policy questions H06 ("authority without a mapping") and H07 (when a finer type has security meaning) answered where devices and the service VS domain make them concrete. It chooses no device and no mechanism | Its [plan](mvp-m14-plan.md), 2026-11-25, accepted by the sign-off of its commit |
 | (3) | One static pass-through device path and the I/O service VS domain | The implementation plan's milestone 5 | Planned |
 | (4) | The serialized mapping and invalidation protocol | The implementation plan's milestone 4, which the device path and dynamic management both need, with its proof targets | Planned |
 | (5) | Dynamic management | Restart, notifications, and a management vocabulary, after the capability and runtime-check triggers (H08, H09) are evaluated for it | Planned |
@@ -304,7 +314,7 @@ own plan.
 | --- | --- | --- | --- |
 | One protected VS domain and OS boundary | A Linux management VS domain plus a protected VS domain; guest SBI, hypercall, notification, lifecycle, restart, failure, and measurement boundaries. | No general cloud/VMM product, broad guest SBI, or accidental stable UAPI. | MVP 1.0 took a static protected VS domain (M2); the dynamic part is MVP 2.0's step (5) |
 | Serialized multicore | Static CPU ownership, per-core fast paths, and one bounded serialized lifecycle, ownership, and invalidation path. | No fine-grained locking, work stealing, or shared run queue. | MVP 1.0 took the static part; the protocol is MVP 2.0's step (4) |
-| I/O service and DMA containment | One restartable service/device class with interrupt, reset, IOMMU/IOPMP, cache, and DMA ownership. | No generic device framework or whole-platform DMA claim. | MVP 2.0's steps (1) to (3); M13 is step (1) |
+| I/O service and DMA containment | One restartable service/device class with interrupt, reset, IOMMU/IOPMP, cache, and DMA ownership. | No generic device framework or whole-platform DMA claim. | MVP 2.0's steps (1) to (3); M13 is step (1), and M14 is step (2) |
 | Policy triggers | Capabilities only for delegation, attenuation, transfer, or revocation needs; a runtime TE check only for an independent mandatory denial. Under M01-A, the TE-family policy specification comes from S2 and is not trigger-gated. | No policy framework in the core or selection by preference. | Evaluated for dynamic management in MVP 2.0's step (5); policy composition is an MVP 3.0 track |
 | Measured launch and attestation | Bind exact core, configuration, and VS-domain artifacts to explicit roots of trust and update/replay rules. | Measurement is not attestation. | Measurement in MVP 1.0 (M9); attestation is MVP 2.0's step (7) |
 | Assurance and source-to-binary | Selected refinement, binary correspondence, coverage, traceability, and deployment crosswalks using open normative tools. | No claim of whole-system proof or certification without an evaluator. | MVP 1.0's first verification plan (M8); MVP 2.0's "formalize"; the rest with milestone 9 |
@@ -342,8 +352,9 @@ security_model_v1_revision_4=accepted-2026-11-11-0b14b3b6
 s3e=accepted-2026-11-16-8f07d612
 m11=complete;plan-77eabce5;emulation-result-cf79de89-2026-11-18;board-result-489efd38-2026-11-23
 m12=plan-5ea5243a-2026-11-15;steps-M12-1-to-M12-5-and-M12-7.1-to-M12-7.6-ended;revision-2-87f13d56-2026-11-21-waits-on-answers
-m13=plan-accepted-ac3bd40f-2026-11-23;result-2026-11-25-accepted-by-its-commit's-sign-off-on-main
-next=MVP-2.0-step-2-under-its-own-plan-at-the-responsible-human's-direction
+m13=complete;plan-ac3bd40f-2026-11-23;result-d6d5492c-2026-11-25
+m14=plan-2026-11-25-accepted-by-its-commit's-sign-off-on-main;the-device-and-DMA-object-model;no-device-and-no-mechanism-chosen
+next=M14's-model-as-security-model-v1-Revision-5-at-its-own-commit;then-M14's-result
 board_results=diagnostic-evidence-from-one-board;not-hardware-validation
 kvm0=dropped-2026-10-08-records-retained
 r8_h1_h4=dropped-2026-10-08-never-authorized
@@ -363,7 +374,7 @@ r8_h1_h4=dropped-2026-10-08-never-authorized
   [evidence record](mvp-m11-evidence.md); the [M12 plan](mvp-m12-plan.md),
   with its revisions and its steps' records; the
   [M13 plan](mvp-m13-plan.md), its [record](k3-com260-devices.md), and
-  its [result](mvp-m13-result.md)
+  its [result](mvp-m13-result.md); and the [M14 plan](mvp-m14-plan.md)
 - MVP 1.0's plans, records, and evidence: the MVP 1.0 rows of
   [milestone status](#milestone-status); its release record,
   `RELEASE.md`
