@@ -555,7 +555,7 @@ Verified public properties:
 
 - Eight X100 RV64 cores with RVH 1.0.
 - Sv39 virtual memory, implying an Sv39x4 G-stage baseline rather than Sv48x4/Sv57x4.
-- AIA with M/S/VS interrupt support, IMSIC/APLIC topology, and GEILEN = 8.
+- AIA with M/S/VS interrupt support and IMSIC/APLIC topology. The K3's documents give the X100 harts GEILEN = 8; on one COM260 board, harts 0, 1, and 2 each have 7 guest interrupt files, by `hgeie`, and the count on harts 3 to 7 is not established ([M13's record](k3-com260-devices.md), B-02, B-69 to B-72, its Disagreement 2, and its "Not established", item 12). Corrected on 2026-11-25, after M13's result: this line had given the documents' number alone.
 - Sstc and the RVA23 hypervisor subextensions listed in the upstream device tree.
 - Hardware IOMMU, PMP/ePMP/Smepmp, and IOPMP support.
 - Only the X100 cluster is a hypervisor target; the A100 AI cores explicitly omit the H extension.
