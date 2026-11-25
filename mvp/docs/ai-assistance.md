@@ -931,3 +931,53 @@ session ran on `claude-opus-5.5` until 21:31Z that day, and on
 
 No AI system accepted a result, re-set a limit, added a
 `Signed-off-by`, or pushed.
+
+## 19. After the release: M13-5, the result
+
+This section covers M13-5, the M13 plan's last work package, on
+2026-11-25, in the same session on the workstation as sections 17 and
+18. Its owner session ran on `claude-fable-5.2`.
+
+- **The record, read once more.** The sub-agent that drafted M13's
+  record, on `claude-opus-5.5`, read the page from top to bottom as a
+  finished page, from the public pages alone. It made each question's
+  status final, said for each open part what would settle it where the
+  page can say so, brought the lists of what is not established and of
+  the disagreements into line with the rows, and corrected one row's
+  wording. From the record's rows, and for one open question from the
+  MVP plan's S3-E.1, it drafted the updates of the hardware roadmap and
+  of the glossary. The owner session read every line, read each cited
+  row against the sentence that cites it, and changed two sentences of
+  the record, six lines of the hardware roadmap, and two rows of the
+  glossary.
+- **The result page.** The owner session wrote
+  `planning/mvp-m13-result.md`, with its account of what MVP 2.0's
+  steps (2) and (3) can rely on, from the record's rows; and the
+  roadmap page's position, the planning index, the site's navigation,
+  and the two links to the page.
+- **The check.** The same sub-agent then read the result page and the
+  owner session's changes, and changed nothing. It checked each commit
+  ID, time, and count against the history and the probe session's
+  public record; each sentence of the account, and each cell of its
+  table, against the row that it cites; and, from the public pages
+  alone, whether any added line lets a reader infer what the two held
+  probes showed. It reported one sentence that said more than the
+  record's rows show, which the record had carried since its first
+  draft and the account repeated; eleven statements that were inexact
+  or overstated; and smaller points, among them five facts that the
+  account left out. The owner session reworded each sentence that the
+  report asked to change, and added the five facts. The sub-agent then
+  read those changes, this section, and the commit messages, and again
+  changed nothing; it asked for a scope on one of the added facts and
+  for three wordings in the messages, which the owner session made.
+- **The held results.** Nothing of them is in these pages. The
+  sub-agent did not have them.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The record's last reading, and the updates of the hardware roadmap and the glossary | A sub-agent, reviewed by the owner session, which changed two sentences, six lines, and two rows | M13-5 |
+| The result page with its account, the roadmap page's position, and the planning index | The owner session; checked by the sub-agent, which changed nothing | M13-5 |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, re-set a limit, added a
+`Signed-off-by`, or pushed.
