@@ -3,7 +3,7 @@
 
 # Beryllium roadmap
 
-**Status date:** 2026-11-23. This is the maintained one-page placemat
+**Status date:** 2026-11-25. This is the maintained one-page placemat
 for the public development line: where the project stands, what comes
 next, and the gates. The linked plans, evidence records, and decision
 records are authoritative, with the signed commits of this repository's
@@ -18,7 +18,7 @@ records are authoritative, with the signed commits of this repository's
 > 1.0's milestones, is in Git history: `git show
 > mvp-1.0:planning/roadmap.md`.
 
-> **Current position (2026-11-23):**
+> **Current position (2026-11-25):**
 >
 > - **MVP 1.0 is published** (2026-11-08): the tag `mvp-1.0`, on the
 >   release commit `0b2a4367`. Its milestones M0 to M10 are complete,
@@ -54,13 +54,22 @@ records are authoritative, with the signed commits of this repository's
 >   plans a step for each answer from the people whose work it builds
 >   on, and none starts before its answer. Nothing goes to another
 >   project but through the responsible human.
-> - **M13, the first of those seven steps, is under way**: the board's
->   device facts (its IOMMU and IOPMPs, its interrupts, its reset paths,
->   and which device belongs to whom), found before any device is given
->   to a VS domain. Its [plan](mvp-m13-plan.md) was accepted on
->   2026-11-23 (`ac3bd40f`).
-> - **Next:** M13's record; then MVP 2.0's step (2), the device and DMA
->   object model, under a plan of its own.
+> - **M13, the first of those seven steps, has its result**: the
+>   board's device facts (its IOMMU and IOPMPs, its interrupts, its reset
+>   paths, and which device belongs to whom), found before any device is
+>   given to a VS domain. Its [plan](mvp-m13-plan.md) was accepted on
+>   2026-11-23 (`ac3bd40f`). Its [record](k3-com260-devices.md) holds
+>   the facts, each with its source: the vendor's documents and sources,
+>   the published images, the board's own Linux, and one probe session
+>   on the board. It is diagnostic, and it is evidence for no claim. Its
+>   [result](mvp-m13-result.md) (2026-11-25) is proposed by the commit
+>   that adds that page, and is accepted when that commit is on this
+>   `main` with the responsible human's sign-off. The record shows no
+>   mechanism on this board that bounds a device's memory accesses; it
+>   does not say what the hardware can do, and the results of two of
+>   its probes are held.
+> - **Next:** MVP 2.0's step (2), the device and DMA object model, under
+>   a plan of its own, at the responsible human's direction.
 
 ## At a glance
 
@@ -77,7 +86,7 @@ Security model v1, Part 1 Revision 4 ................ accepted 2026-11-11 (0b14b
 MVP plan revision S3-E: the board's firmware ........ accepted 2026-11-16 (8f07d612)
 M11: the physical boundary under the monitor ........ complete: emulation 2026-11-18 (cf79de89); one board 2026-11-23 (489efd38)
 M12: the supervisor-domain lane ..................... its steps ended; revision 2 (2026-11-21) waits on answers
-M13: the board's device facts ....................... plan accepted 2026-11-23 (ac3bd40f); under way  <- YOU ARE HERE
+M13: the board's device facts ....................... plan accepted 2026-11-23 (ac3bd40f); result 2026-11-25, accepted by its commit's sign-off  <- YOU ARE HERE
 MVP 2.0 steps (2) to (7), then its last step ........ planned; each needs its own plan
 MVP 3.0 and MVP 4.0 ................................. named in the MVP plan; not planned
 ```
@@ -97,9 +106,10 @@ MVP 1.0, published on 2026-11-08, is a security-research demonstrator
 on three of the COM260's eight X100 harts, under static ownership.
 MVP 2.0 began with the responsible human's direction to assume a breach
 inside the monitor: M11 put a physical boundary, enforced by M-mode,
-under the monitor's own code. The current step, M13, finds the board's
-device facts before the device and DMA object model and the first
-device path are planned.
+under the monitor's own code. M13 then found the board's device facts,
+before the device and DMA object model and the first device path are
+planned; its result says what those steps can rely on, and what they
+cannot.
 
 ## Milestone status
 
@@ -155,7 +165,7 @@ repository's `main`.
 | MVP 2.0 | M11: the physical boundary under the monitor | Plan accepted 2026-11-11, `77eabce5`; result under emulation accepted 2026-11-18, `cf79de89`; result on one board accepted 2026-11-23, `489efd38`: complete | [Plan](mvp-m11-plan.md), [board addendum](mvp-m11-board-addendum.md), [evidence](mvp-m11-evidence.md) |
 | MVP 2.0 | Plan revision S3-E: the board-firmware amendment | Accepted 2026-11-16, `8f07d612` | [MVP plan](mvp-plan.md) |
 | MVP 2.0 | M12: the supervisor-domain lane | Plan accepted 2026-11-15, `5ea5243a`; M12-1 to M12-4, M12-7.1 to M12-7.6, and M12-5 (narrowed to its firmware half) ended by 2026-11-21; revision 2 accepted 2026-11-21, `87f13d56`: its steps wait on answers | [Plan](mvp-m12-plan.md), [revision 1](mvp-m12-plan-revision-1.md), [revision 2](mvp-m12-plan-revision-2.md) |
-| MVP 2.0 | M13: the board's device facts | Plan accepted 2026-11-23, `ac3bd40f`; under way | [Plan](mvp-m13-plan.md) |
+| MVP 2.0 | M13: the board's device facts | Plan accepted 2026-11-23, `ac3bd40f`; result proposed 2026-11-25, and accepted by the sign-off of its commit on `main` | [Plan](mvp-m13-plan.md), [record](k3-com260-devices.md), [result](mvp-m13-result.md) |
 
 ## Planned sequence
 
@@ -169,7 +179,7 @@ at its own commit, and none is authorized until then.
 | --- | --- | --- | --- |
 | First | M11: the physical boundary | Each hart that the monitor uses confined by a physical access profile that M-mode programs from a description built offline; the other harts parked | Complete (2026-11-23) |
 | Beside M11 | M12: the supervisor-domain lane | The memory protection tables of the RISC-V Supervisor Domains Access Protection specification, under emulation and outside the claim: questions for its authors, directed tests, its model in the Sail RISC-V model, and review of others' series | Every step of its plan and its revision 1 has ended; revision 2's steps wait on answers |
-| (1) | M13: the board's device facts | The IOMMU and the IOPMPs, interrupts, reset, and device ownership of the K3 COM260 board, from documents, sources, the board's own Linux, and perhaps probe images | Plan accepted 2026-11-23; under way |
+| (1) | M13: the board's device facts | The IOMMU and the IOPMPs, interrupts, reset, and device ownership of the K3 COM260 board, from documents, sources, the board's own Linux, and probe images | Its [result](mvp-m13-result.md), 2026-11-25, accepted by the sign-off of its commit |
 | (2) | The device and DMA object model | The synthesis's policy questions H06 ("authority without a mapping") and H07 (when a finer type has security meaning), answered where devices and the service VS domain make them concrete | Planned |
 | (3) | One static pass-through device path and the I/O service VS domain | The implementation plan's milestone 5 | Planned |
 | (4) | The serialized mapping and invalidation protocol | The implementation plan's milestone 4, which the device path and dynamic management both need, with its proof targets | Planned |
@@ -269,7 +279,7 @@ planned; they are diagnostic bring-up evidence.
 | Risk | Current evidence | Required response |
 | --- | --- | --- |
 | Board results read as hardware validation | B0-B7, MVP 1.0's campaigns, and M11's two sittings ran on one COM260, under the vendor's firmware or a firmware build of the project's own. | Call them diagnostic evidence from one board, and scope every claim to the exact board, firmware, tools, and procedure, as the claim pages' required limits do. |
-| Devices' memory accesses | The K3's documents describe nine IOPMPs and an IOMMU; no device tree that this board boots with declares either. | M13 finds the facts before any device is given to a VS domain (MVP 2.0's steps (1) to (3)). |
+| Devices' memory accesses | The K3's documents describe nine IOPMPs and an IOMMU; no device tree that this board boots with declares either. M13's record shows no mechanism on this board that bounds a device's memory accesses: as booted the IOMMU is in `Off` mode and three PCIe ports bypass it, and no IOPMP's state is established (the results of two probes are held). | MVP 2.0's steps (2) and (3) plan from M13's record ([its result](mvp-m13-result.md), section 3): what bounds a device's memory accesses, and on what evidence, before any device is given to a VS domain. |
 | The firmware below the boundary | The boundary rests on M-mode code: OpenSBI at a pinned commit, with a small series of the project's own additions. | Keep the firmware pinned and its additions small and reviewed, and name it in every board result (the M11 plan and its board addendum). |
 | Open audit findings | Low-severity findings S5-S8 and S10 remain open; R4's 3 s QEMU budget fails on slow hosts. | Fix under separate direction (the MVP plan's D11). |
 | The verifier's inputs | The verifier image's package closure can no longer be fetched whole from an empty cache (the MVP README's open item 133). | A source for the missing package in the fetch tool, under the responsible human's direction. |
@@ -320,7 +330,7 @@ work may proceed; and `run` means execution evidence exists. These states are
 independent, and none implies another.
 
 ```text
-roadmap_status_date=2026-11-23
+roadmap_status_date=2026-11-25
 roadmap_maintained_on=the-public-development-line-from-2026-11-23
 roadmap_earlier_version=git-show-mvp-1.0:planning/roadmap.md
 mvp_1_0=published-2026-11-08;tag-mvp-1.0;release-commit-0b2a4367;milestones-M0-M10-accepted
@@ -332,8 +342,8 @@ security_model_v1_revision_4=accepted-2026-11-11-0b14b3b6
 s3e=accepted-2026-11-16-8f07d612
 m11=complete;plan-77eabce5;emulation-result-cf79de89-2026-11-18;board-result-489efd38-2026-11-23
 m12=plan-5ea5243a-2026-11-15;steps-M12-1-to-M12-5-and-M12-7.1-to-M12-7.6-ended;revision-2-87f13d56-2026-11-21-waits-on-answers
-m13=plan-accepted-ac3bd40f-2026-11-23;under-way
-next=M13's-record;then-MVP-2.0-step-2-under-its-own-plan
+m13=plan-accepted-ac3bd40f-2026-11-23;result-2026-11-25-accepted-by-its-commit's-sign-off-on-main
+next=MVP-2.0-step-2-under-its-own-plan-at-the-responsible-human's-direction
 board_results=diagnostic-evidence-from-one-board;not-hardware-validation
 kvm0=dropped-2026-10-08-records-retained
 r8_h1_h4=dropped-2026-10-08-never-authorized
@@ -352,7 +362,8 @@ r8_h1_h4=dropped-2026-10-08-never-authorized
   [board addendum](mvp-m11-board-addendum.md), and its
   [evidence record](mvp-m11-evidence.md); the [M12 plan](mvp-m12-plan.md),
   with its revisions and its steps' records; the
-  [M13 plan](mvp-m13-plan.md)
+  [M13 plan](mvp-m13-plan.md), its [record](k3-com260-devices.md), and
+  its [result](mvp-m13-result.md)
 - MVP 1.0's plans, records, and evidence: the MVP 1.0 rows of
   [milestone status](#milestone-status); its release record,
   `RELEASE.md`

@@ -1786,7 +1786,9 @@ public push now.
   Linux as the inventory of 2026-11-16 read it (M13-1), and one read
   session of the board's own Linux by M13-2's read tool, 2026-11-23;
   and one probe session on the board, 2026-11-24 (M13-4): probes P1 to
-  P4 and P7; P5 and P6 were run, and their results are held.
+  P4 and P7; P5 and P6 were run, and their results are held. M13-5
+  read it once more as a whole on 2026-11-25, and its reading is
+  closed.
 - `mvp-m13-3-review-point.md`: milestone M13's review point (M13-3):
   the record's questions still open after the reading and the read
   session, and seven probes in three images, the third held under the
@@ -1796,6 +1798,14 @@ public push now.
   booted, their size, and the reply that decides them (`probes: go`,
   `probes: go, limit N`, a narrowed list, or `probes: no`). Proposed
   2026-11-23.
+- `mvp-m13-result.md`: milestone M13's result (M13-5): what was done,
+  with each work package's commit and the two sessions on the board;
+  what the record holds (393 rows, 18 questions, 25 items not
+  established, 20 disagreements); a short account, binding on neither,
+  of what MVP 2.0's steps (2) and (3) can rely on and what they cannot;
+  and what the result changes: three maintained pages, no claim, and no
+  accepted text. Proposed 2026-11-25; accepted by the responsible
+  human's sign-off of its commit.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and

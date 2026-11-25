@@ -19,6 +19,8 @@ results are held. M13-5 read the page through as a whole once more on
 2026-11-25. The reading is closed: M13 makes no more sessions. A later
 milestone that needs one of these facts, or one that this page leaves
 open, re-reads it or measures it under its own plan.
+[M13's result](mvp-m13-result.md) says what was done, and gives a short
+account of what MVP 2.0's steps (2) and (3) can rely on.
 
 The record is diagnostic: facts from the vendor's documents, its
 sources, and one board. It is not hardware validation, it is evidence

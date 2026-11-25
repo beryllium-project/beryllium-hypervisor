@@ -656,6 +656,10 @@ export default defineConfig({
             link: '/mvp-m13-3-review-point'
           },
           {
+            text: 'M13 result: the board\'s device facts (proposed 2026-11-25)',
+            link: '/mvp-m13-result'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1360,6 +1364,10 @@ export default defineConfig({
             link: '/mvp-m13-3-review-point'
           },
           {
+            text: 'M13 result: the board\'s device facts (proposed 2026-11-25)',
+            link: '/mvp-m13-result'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1947,6 +1955,10 @@ export default defineConfig({
           {
             text: 'M13-3 review point: the probes (proposed 2026-11-23)',
             link: '/mvp-m13-3-review-point'
+          },
+          {
+            text: 'M13 result: the board\'s device facts (proposed 2026-11-25)',
+            link: '/mvp-m13-result'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',
