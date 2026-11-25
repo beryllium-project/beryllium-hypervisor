@@ -9,14 +9,16 @@ masters other than the harts; **B** is interrupts; **C** is reset; **D**
 is which device belongs to whom. The [M13 plan](mvp-m13-plan.md) bounds
 it, and its questions A1 to D4 are the plan's section 4.
 
-**Status: documents and sources, one read session of the board's own
-Linux (M13-2), and one probe session (M13-4).** M13-1 wrote it from the
-documents and sources, the published images, and the inventory of
+**Status: M13's record, as its result (M13-5).** M13-1 wrote it from
+the documents and sources, the published images, and the inventory of
 2026-11-16. The read session of 2026-11-23 added what the board's own
 Linux shows (input BL2). The probe session of 2026-11-24, on the
 responsible human's `probes: go`, added what probes P1, P2, P3, P4, and
 P7 found (input PS). P5 and P6 were run on 2026-11-24, and their
-results are held.
+results are held. M13-5 read the page through as a whole once more on
+2026-11-25. The reading is closed: M13 makes no more sessions. A later
+milestone that needs one of these facts, or one that this page leaves
+open, re-reads it or measures it under its own plan.
 
 The record is diagnostic: facts from the vendor's documents, its
 sources, and one board. It is not hardware validation, it is evidence
@@ -56,8 +58,7 @@ or that the project supports a device.
   number of its section, and stands with the rows on its topic.
 - "Inferred from" marks an inference, with its source. An inference is
   not a fact of the board.
-- A question's status is one of: answered; partly answered; needs the
-  board's Linux, with the read named; needs a probe; or not
+- A question's status is one of: answered; partly answered; or not
   established, with the reason.
 - Addresses are written as the vendor's manual writes them
   (`0xF080_0000`). "X100 harts" have the hypervisor extension; "A100
@@ -309,23 +310,24 @@ the same commits.
 ### Questions A1 to A5
 
 - **A1. Every bus master and its path.** *Partly answered.* The masters
-  are A-02 to A-10, A-82 to A-109. The source IDs that are fixed, and
-  the fields that set the others, are A-15 to A-19 and A-36 to A-55.
-  Which IOPMP checks a master's accesses to other devices' registers (as
-  against memory) is not established: the manual does not say what
+  are A-02 to A-10 and A-82 to A-109. The source IDs that are fixed, and
+  the fields that set the others, are A-15 to A-19 and A-36 to A-55. The
+  IOMMU device IDs of ports A to C are in the vendor's tree (A-65 to
+  A-67); as booted, ports A to C bypass the IOMMU (A-164). Address
+  widths: each IOPMP's (A-02 to A-10); the DMA controller's bus, 64 bits
+  (A-100); and, as the board's Linux uses them, the NVMe drive's 64
+  bits, the Wi-Fi card's 36, and GMAC1's 40 (A-137, A-138). Enabled on
+  this board: A-87 to A-102, with bus mastering as A-136 shows. Not
+  established: which IOPMP checks a master's accesses to other devices'
+  registers, as against memory, since the manual does not say what
   traffic each instance sees, beyond calling IOPMPs 5 to 9 "DDR IOPMP"
-  (A-11). The IOMMU device IDs are known for ports A to C from the
-  vendor's tree (A-65 to A-67); as booted, ports A to C bypass the
-  IOMMU (A-164). Address widths: each IOPMP's (A-02 to
-  A-10); the DMA controller's bus is 64 bits (A-100); and, as the
-  board's Linux uses them, the NVMe drive's 64 bits, the Wi-Fi card's
-  36, and GMAC1's 40 (A-137, A-138). Enabled on this board: A-87 to
-  A-102, with bus mastering as A-136 shows. The PCIe DMA engines' path
-  (through the IOMMU or not, and with which device ID) is not
-  established.
+  (A-11); and the PCIe DMA engines' path, through the IOMMU or not, and
+  with which device ID (A-83). A document that is not among the inputs,
+  on the SoC's interconnect and on the PCIe controller, would settle
+  both.
 - **A2. The IOMMU.** *Partly answered.* Its registers (A-56, A-57); the
   ports behind it, A to C by four sources against A, B, and E by two
-  (A-69 to A-72; see "Disagreements"); its reset state by the
+  (A-69 to A-72; see "Disagreements", item 1); its reset state by the
   specification (A-77) and its bypass after reset (A-72, A-73); who
   enables it (A-80). As booted (P2, P3): it implements version 1.0 of
   the specification (A-151, A-152). Its translation goes up to `Sv48`
@@ -341,18 +343,23 @@ the same commits.
   A-135). Who can reach its registers: the vendor's trees give it to
   S-mode (A-57); the map does not mark it Secure (A-56); P2 read three
   of them from HS-mode (A-151 to A-160). Not established: which ports'
-  requests it sees, and its state and the bypass bits under Linux.
+  requests it sees, and its state and the bypass bits under Linux. A
+  document that shows how the ports are wired to it would settle the
+  first; a read of its registers and of the bypass register under
+  Linux, under a later plan, the second.
 - **A3. The IOPMPs.** *Partly answered.* Each instance's configuration
   (A-02 to A-19); how a violation is reported (A-24, A-25, A-29, A-30);
   what a denied access returns, only in part (A-26); the Secure
   Configuration unit's fields (A-36 to A-55). Not established: each
   instance's state on this board as booted; who enables any of them (no
-  source read does, A-33; the boot ROM is closed); what the "secure
-  environment" is, and whether an application hart can reach the
-  configuration registers in M-mode or HS-mode (A-28, A-35); what "CPU",
-  `REE_W`, and `REE_R` are (A-108). Which instance checks the 2D engine:
-  none lists it (A-42). P5 and P6 were run on 2026-11-24, and their
-  results are held.
+  source read does, A-33; the boot ROM is closed); and whether an
+  application hart can reach the configuration registers in M-mode or
+  HS-mode (A-28, A-35). P5 and P6 were run on 2026-11-24, and their
+  results are held. Also not established, since the documents read do
+  not say: what the vendor's "secure environment" is (A-28); what
+  "CPU", `REE_W`, and `REE_R` are (A-108); and which instance checks the
+  2D engine, which none lists (A-42). A document of the vendor's that is
+  not among the inputs would settle those three.
 - **A4. Other bounds.** *Partly answered.* Inbound translation exists
   (A-110): on the board, at least 31 regions on port A and 16 on ports
   D and E (A-139 to A-141), and Linux programs none of them (A-111,
@@ -360,17 +367,18 @@ the same commits.
   which is what U-Boot's source leaves (A-168 to A-170). Its root port's
   BAR0 and BAR1 are 32-bit memory BARs at `0x0800_0000` and
   `0x1000_0000`, where U-Boot's PCI auto-configuration puts them (A-171
-  to A-175; see "Disagreements"). What a request that matches no
-  inbound region does, and what the root port's BARs map, are not
-  established: the controller's databook was not among the inputs. No
-  PCI function on the board has ATS, PASID, or PRI (A-142). The root
-  ports' ACS has source validation, request and completion redirect,
-  and upstream forwarding on, as upstream Linux sets them, and
-  translation blocking and egress control off (A-143 to A-145).
-  Coherence: non-coherent but for the HDMA instances (A-103, A-104,
-  A-116). The cache operations that a driver needs are `Zicbom`'s
-  (A-118); under M11's boundary a VS domain can issue none of them
-  directly: each traps (A-121 to A-123).
+  to A-175; see "Disagreements", item 20). No PCI function on the board
+  has ATS, PASID, or PRI (A-142). The root ports' ACS has source
+  validation, request and completion redirect, and upstream forwarding
+  on, as upstream Linux sets them, and translation blocking and egress
+  control off (A-143 to A-145). Coherence: non-coherent but for the HDMA
+  instances (A-103, A-104, A-116). The cache operations that a driver
+  needs are `Zicbom`'s (A-118); under M11's boundary a VS domain can
+  issue none of them directly: each traps (A-121 to A-123). Not
+  established: what a request that matches no inbound region does; what
+  the root port's BARs map; and what bits 14:11 of the controller's
+  `COHERENCY_CONTROL_3` select (A-115). The controller's databook, which
+  was not among the inputs, would settle all three.
 - **A5. MSIs.** *Partly answered.* An MSI is an ordinary write (A-124).
   On the board, port A's root port and the Wi-Fi card send theirs as
   64-bit writes to hart 5's S-level interrupt file (A-146 to A-148);
@@ -378,12 +386,13 @@ the same commits.
   (A-149); the root ports of D and E have no MSI (A-150), which fits
   the PCIe page's sentence on those controllers (A-129). The monitor's
   interrupt files are S-level files in the non-secure range (A-125,
-  A-127). Nothing read stops a device's write to them on this board:
-  the IOPMPs pass every access after reset unless enabled (A-20), ports
-  A to C bypass the IOMMU as booted (A-164), and the IOMMU translates
-  MSIs only with MSI page tables (A-79). Whether a device's write to the
-  M-level files' range, marked Secure, is accepted is not established,
-  and would need a device-driven probe, which rule 6 does not allow.
+  A-127). No row here shows anything that stops a device's write to
+  them on this board: the IOPMPs pass every access after reset unless
+  enabled (A-20), ports A to C bypass the IOMMU as booted (A-164), and
+  the IOMMU translates MSIs only with MSI page tables (A-79). Whether a
+  device's write to the M-level files' range, marked Secure, is
+  accepted is not established: only a device that writes there would
+  settle it, and rule 6 allows none in M13.
 
 ## B. Interrupts
 
@@ -511,38 +520,47 @@ here: CPU n is hart n (BL2 2026-11-23, cpuinfo).
 
 ### Questions B1 to B5
 
-- **B1. The interrupt domains and their delegation.** *Answered as the
-  sources and trees have them*: the firmware's (B-06, B-08, B-10, B-12,
-  B-17, B-22 to B-27, B-66 to B-68) and Linux's (B-07, B-09, B-11, B-15,
-  B-18, B-28 to B-30, B-59, B-60). As booted, the S-level APLIC's
-  interrupt domain is in MSI delivery mode with IE = 0, and source 200
-  is delegated to it (B-74 to B-80). The M-level APLIC's state as booted
-  is the plan's Q5, not M13's.
+- **B1. The interrupt domains and their delegation.** *Answered*, as the
+  firmware's source and tree configure them (B-06, B-08, B-10, B-12,
+  B-17, B-22 to B-27, B-66 to B-68) and as Linux finds them (B-07, B-09,
+  B-11, B-15, B-18, B-28 to B-30, B-59, B-60). As booted, the S-level
+  APLIC's interrupt domain is in MSI delivery mode with IE = 0, and
+  source 200 is delegated to it (B-74 to B-80). The M-level APLIC's
+  registers as booted were not read: the plan's Q5 leaves a read from
+  M-mode to step (2) or step (3).
 - **B2. Wired sources.** *Partly answered* for the devices on this board
-  (B-31 to B-38). A full comparison of chapter 7's 296 rows with both
+  (B-31 to B-38). The sources that the board's Linux uses, their names,
+  and their harts are B-52 to B-58: each agrees with chapter 7's name
+  for it; source 64 and USB 3.0 port A's source 118 are mapped with no
+  handler (B-54). A full comparison of chapter 7's 296 rows with both
   trees is not made; the rows read agree but for source 64's users and
-  the PCIe nodes' wired interrupts. The sources that the board's Linux
-  uses, their names, and their harts are B-52 to B-58: each agrees with
-  chapter 7's name for it; source 64 and port A's source 118 are mapped
-  with no handler (B-54).
-- **B3. The IMSICs.** *Answered* for the guest interrupt files of harts
-  0 to 2; *partly answered* for the rest. Each hart's files by the trees
-  (B-10 to B-16, B-43). P1 finds GEILEN = 7 on each of harts 0, 1, and
-  2, so each has 7 guest interrupt files (B-69 to B-73). The board's KVM
-  logs 7 guest external interrupts (B-62), so at least one of harts 0
-  to 7 has GEILEN = 7 (B-63 to B-65); no probe runs on harts 3 to 7
-  (rule 6). GEILEN is 8 by the documents, and 7 by a comment in the
-  vendor's tree, by the board's KVM, and by P1 (see "Disagreements").
+  the PCIe nodes' wired interrupts. That comparison, a further reading
+  of the same inputs, would settle the rest.
+- **B3. The IMSICs.** *Answered.* Each hart's interrupt files by the
+  trees (B-10 to B-16, B-43). The guest interrupt files of harts 0 to 2:
+  P1 finds GEILEN = 7 on each, so each has 7 (B-69 to B-73); the board's
+  KVM logs 7 guest external interrupts (B-62), so at least one of harts
+  0 to 7 has GEILEN = 7 (B-63 to B-65). The question asks for harts 0
+  to 2 alone: the count on harts 3 to 7 is not established ("Not
+  established", item 12). GEILEN is 8 by the documents, and 7 by a
+  comment in the vendor's tree, by the board's KVM, and by P1 (see
+  "Disagreements", item 2). The identities in each file, against the
+  documents and both trees: they disagree, and the board's Linux uses
+  its tree's (B-15, B-28; "Disagreements", item 3).
 - **B4. An APLIC's MSI to a guest file.** *Partly answered.* The
   architecture allows it (B-44, B-45). As booted, this S-level APLIC is
   in MSI delivery mode (B-75), source 200 is delegated to it (B-80), and
   its Guest Index field held 1 for that source (B-81, B-82). Whether an
   MSI from it reaches a guest interrupt file is not established: P7 sent
-  none (B-83).
+  none (B-83). A test that has this APLIC send an MSI to a guest
+  interrupt file, and reads that file, would settle it, under a later
+  plan.
 - **B5. The real-time subsystem's interrupts.** *Partly answered* (B-21,
   B-47 to B-51). Whether the real-time cores' PLIC at `0xE000_0000` is
-  their own or the application side's AIA range is not established (see
-  "Disagreements").
+  their own or the application side's AIA range is not established:
+  their trees and their address map disagree ("Disagreements", item
+  14). The real-time cores' own view of that range would settle it, and
+  no M13 probe runs on them (rule 6).
 
 ## C. Reset
 
@@ -628,19 +646,22 @@ here: CPU n is hart n (BL2 2026-11-23, cpuinfo).
   registers no watchdog, and the watchdog's clock gates read off (C-41
   to C-43). What each resets: the documents say "the whole chip" for
   power-on and watchdog resets, and differ on what the watchdog's reset
-  spares (see "Disagreements"). Whether the IOPMPs and the real-time
-  cores are reset by each path is not established (C-11). What the
-  chip's register bits do inside the chip is not established: its
-  datasheet was not among the inputs. The reset dongle's line: not
-  established; no input read says which pin of the SoC or of the
-  power-management chip it drives.
-- **C2. Each device's reset lines.** *Answered* for the bus masters that
-  Linux drives on this board (C-14 to C-24), from the vendor's reset
-  driver and the manual's registers, which agree. On the board, Linux's
-  device links and its tree point at the same unit and registers (C-44,
-  C-45).
-- **C3. Function-level reset.** *Answered* for the board's PCI
-  functions: the NVMe drive and the Wi-Fi card offer function-level
+  spares (see "Disagreements", item 5). Not established: whether the
+  IOPMPs and the real-time cores are reset by each path, which the
+  manual does not say (C-11); what the chip's register bits do inside
+  the chip; and which pin of the SoC or of the power-management chip
+  the reset dongle's line drives. Documents that are not among the
+  inputs would settle them: one of the vendor's that says what each
+  scheme resets, the chip's datasheet, and the board's schematic.
+- **C2. Each device's reset lines.** *Partly answered.* For the bus
+  masters that Linux drives on this board, the lines and their
+  registers are C-14 to C-24, from the vendor's reset driver and the
+  manual's registers, which agree; on the board, Linux's device links
+  and its tree point at the same unit and registers (C-44, C-45). For
+  the other devices, the record lists no lines: a reading of the
+  vendor's reset driver's tables (C-13), row by row, would settle them.
+- **C3. Function-level reset.** *Answered.* Of the board's PCI
+  functions, the NVMe drive and the Wi-Fi card offer function-level
   reset, and Linux can also reset each through its bus; the root ports
   offer none (C-46 to C-48). The PCIe controllers' own resets: C-14 to
   C-17.
@@ -651,11 +672,11 @@ here: CPU n is hart n (BL2 2026-11-23, cpuinfo).
   (C-51); Linux does not disable unused clocks (C-53), so the states
   are those that the boot stages and its drivers left. Linux registers
   no generic power domain (C-54). The regulators that it drives: C-55,
-  C-56. The summary names no clock for the IOMMU or the IOPMPs (C-52).
-  At probe time, after U-Boot, the IOMMU answered, so it was then
-  clocked, at least for its registers (C-57); whether its clock is on
-  under Linux, and whether the IOPMPs' clocks are on, is not
-  established.
+  C-56. At probe time, after U-Boot, the IOMMU answered, so it was then
+  clocked, at least for its registers (C-57). Not established: whether
+  the IOMMU's clock is on under Linux, which a read of the IOMMU under
+  Linux, under a later plan, would settle; and whether the IOPMPs'
+  clocks are on, since the clock summary names none for them (C-52).
 
 ## D. Which device belongs to whom
 
@@ -684,7 +705,7 @@ here: CPU n is hart n (BL2 2026-11-23, cpuinfo).
 | D-18 | ACLINT | The firmware's configuration builds drivers for the MSWI and the MTIMER; on the board, a Linux driver claims the SSWI (B-19) | source, board-Linux | OS `platform/generic/configs/k3_defconfig`:5, 23; BL 2026-11-16, `/proc/iomem` |
 | D-19 | Real-time audio DMA and I2S | The vendor's COM260 tree gives Linux `adma3` and `ri2s3` of the real-time subsystem | source | VL `k3_com260.dtsi`:1304, 1308 |
 | D-20 | Where Linux's tree comes from | U-Boot's `fdt_chosen()` adds `u-boot,version` to `/chosen`, and the board's tree has it; so U-Boot prepared the tree that Linux received | source, board-Linux | Inferred from UB `common/fdt_support.c`:283, 325-326; BL 2026-11-16, `/chosen` |
-| D-21 | Where Linux's tree comes from | It matches none of the trees read: its interrupt controllers match upstream `v7.4-rc4`'s (63 guest identities, the ACLINT nodes), which has no PCIe nodes; its PCIe nodes use `spacemit,k3-pcie`, as the vendor's `wip/k3-pcie` branch does, with another order of register names | source, board-Linux | UL74 `k3.dtsi`:1414-1495; SL `k3.dtsi`:442-569; VL `k3.dtsi`:2342-2540; BL 2026-11-16, device tree |
+| D-21 | Where Linux's tree comes from | It matches none of the source trees read: its interrupt controllers match upstream `v7.4-rc4`'s (63 guest identities, the ACLINT nodes), which has no PCIe nodes; its PCIe nodes use `spacemit,k3-pcie`, as the vendor's `wip/k3-pcie` branch does, with another order of register names. The file that it comes from is in D-51 to D-55 | source, board-Linux | UL74 `k3.dtsi`:1414-1495; SL `k3.dtsi`:442-569; VL `k3.dtsi`:2342-2540; BL 2026-11-16, device tree |
 | D-22 | Linux's PCIe driver | Upstream `v7.3`'s SpacemiT PCIe driver matches only `spacemit,k1-pcie` (the board's binding: D-57 to D-59) | source | UL `drivers/pci/controller/dwc/pcie-spacemit-k1.c`:338 |
 | D-51 | Where Linux's tree comes from | `/boot` holds the running kernel's device-tree directory, `/boot/dtb-7.3.1-300.0.riscv64.omni.fc45.riscv64`, and `/boot/dtb` points to it. Its `spacemit/` directory holds three K3 trees: `k3-com260-ifx.dtb`, `k3-deepcomputing-fml13v05.dtb`, and `k3-pico-itx.dtb` | board-Linux | BL2 2026-11-23, boot-files; boot-dtb |
 | D-52 | Where Linux's tree comes from | `/boot` has no `extlinux` directory. A search of `/boot/loader/entries/*.conf` for a device-tree line, run as the account, printed nothing; the read does not show whether the account could read those files | board-Linux | BL2 2026-11-23, boot-files; boot-fdt |
@@ -762,29 +783,39 @@ here: CPU n is hart n (BL2 2026-11-23, cpuinfo).
 ### Questions D1 to D4
 
 - **D1. Which agents touch each device, and who owns it at run time.**
-  *Partly answered* (D-01 to D-22, D-51 to D-60, D-72). The boot ROM's:
-  not established (closed). U-Boot reads the eFuses at each boot (D-60).
-  In the probe session, U-Boot brought port A's link up and found port
-  D's down (D-72). At run time on this board, Linux drives the devices
-  of A-87 to A-102 and D-02, D-05, D-16, with the drivers of D-61 to
-  D-69; the real-time firmware and Linux both drive the power-management
-  chip, on two buses (see "Disagreements"). Linux's tree is the
-  distribution's file for this board, with U-Boot's additions (D-51 to
-  D-56). Its PCIe driver has the name of upstream's and of the vendor's;
-  which source it comes from is not established, as the board's kernel
-  source was not among the inputs (D-57 to D-59).
+  *Partly answered* (D-01 to D-22, D-51 to D-60, D-72). U-Boot reads
+  the eFuses at each boot (D-60). In the probe session, U-Boot brought
+  port A's link up and found port D's down (D-72). At run time on this
+  board, Linux drives the devices of A-87 to A-102 and D-02, D-05, D-16,
+  with the drivers of D-61 to D-69; the real-time firmware and Linux
+  both drive the power-management chip, on two buses (see
+  "Disagreements", item 17). Linux's tree is the distribution's file for
+  this board, with U-Boot's additions (D-51 to D-56). Its PCIe driver
+  has the name of upstream's and of the vendor's (D-57 to D-59). Not
+  established: what the boot ROM touches, since it is closed; and which
+  source the board's PCIe driver comes from, which the board's kernel
+  source, not among the inputs, would settle.
 - **D2. What devices share.** *Partly answered*, found so far (D-23 to
   D-37, D-71). On the board, every bus master that Linux drives has the
-  AP PMU's clock and reset unit as a supplier (C-44).
+  AP PMU's clock and reset unit as a supplier (C-44). A full pass over
+  the address map's pages and the trees' clocks, resets, power domains,
+  pin groups, buses, and interrupt sources, a further reading of the
+  same inputs, would complete the list.
 - **D3. Bus masters and devices that are not.** *Partly answered* (D-38,
   D-39). Whether QSPI, the CAN-FD controllers, and the I2S controllers
   master the bus themselves is not established: neither the IOPMP table
-  nor their chapters read say.
+  nor their chapters read say. A document of the vendor's on those
+  controllers, not among the inputs, would settle it.
 - **D4. The other execution contexts.** *Partly answered* (D-40 to
-  D-50). The board's Linux knows harts 0 to 7 alone (D-70). What bounds
-  the real-time cores' and the debug module's accesses on this board is
-  not established; the IOPMPs that list them pass every access after
-  reset (A-20), and no source read enables one (A-33).
+  D-50). The board's Linux knows harts 0 to 7 alone (D-70). Not
+  established: what bounds the real-time cores' and the debug module's
+  accesses on this board, since the IOPMPs that list them pass every
+  access after reset (A-20), no source read enables one (A-33), and
+  each IOPMP's state as booted is not established ("Not established",
+  item 1); what runs on the A100 harts on this board (D-46), where no
+  M13 probe runs (rule 6); and whether JTAG is enabled: one eFuse
+  lifecycle state forces it on, this board's state is not established
+  (D-50), and M13 reads no eFuse (rules 5 and 6).
 
 ## Not established
 
@@ -800,7 +831,7 @@ here: CPU n is hart n (BL2 2026-11-23, cpuinfo).
    which master the `APCORE` source-ID fields serve (A-39, A-108).
 4. What data or error a master receives on a denied access (A-26).
 5. Which traffic each IOPMP sees: memory alone, or other devices'
-   registers too (A1).
+   registers too (A-11; A1).
 6. Which PCIe ports' requests the IOMMU sees (see "Disagreements",
    item 1), and the IOMMU's state and the bypass bits under Linux. The
    probes show its version, capabilities, `fctl`, and `ddtp`, and the
@@ -816,18 +847,20 @@ here: CPU n is hart n (BL2 2026-11-23, cpuinfo).
    and the root port's BARs are at `0x0800_0000` and `0x1000_0000`
    (A-168 to A-175).
 9. What bits 14:11 of `COHERENCY_CONTROL_3` select (A-115).
-10. Which IOPMP checks the HDMA instances, the real-time side's DMA
-    engines and GMAC, and the USB controllers by name (A-94, A-105,
+10. Which IOPMP checks the real-time cores (D-43), the HDMA instances,
+    the real-time side's DMA engines and GMAC, the USB controllers by
+    name, and the 2D engine, which none lists (A-42, A-94, A-105,
     A-109).
 11. Whether a device's write to the M-level interrupt files, in the
-    Secure range, is accepted (A5).
+    Secure range, is accepted (A-125; A5).
 12. Which of harts 3 to 7 have GEILEN = 7 (B-62 to B-65): P1 counts 7
     on each of harts 0, 1, and 2 (B-69 to B-72), and no probe runs on
     another hart (rule 6). Whether an MSI from this S-level APLIC
     reaches a guest interrupt file: its Guest Index field held 1 (B-81,
     B-82), but P7 sent no MSI (B-83).
 13. Whether `0xE000_0000` in the real-time cores' view is their own
-    PLIC or the application side's AIA range (B-21).
+    PLIC or the application side's AIA range (B-21; "Disagreements",
+    item 14).
 14. Which reset schemes clear an enabled IOPMP and reset the real-time
     cores (C-11); what the power-management chip's reset and shutdown
     bits do (C-04, C-38); which pin the reset dongle drives (no input
@@ -845,12 +878,24 @@ here: CPU n is hart n (BL2 2026-11-23, cpuinfo).
 18. What runs on the A100 harts on this board (D-46, D-70), and whether
     JTAG is enabled (D-50).
 19. Whether QSPI, the CAN-FD controllers, and the I2S controllers
-    master the bus (D3).
+    master the bus (D-38, D-39; D3).
 20. Whether the firmware's PMP regions for its CLINT cover the SSWI's
     page at `0xF181_C000`, which the board's Linux claims (B-17 to
     B-19, B-59): the regions' extent depends on how the firmware's
     ACLINT drivers read a `riscv,clint0` node, which was not traced to
     its end.
+21. Whether chapter 7's other rows agree with both trees: the
+    comparison was made only for the devices on this board and the
+    sources that the board's Linux uses (B2).
+22. The reset lines of the devices other than the bus masters that
+    Linux drives: the vendor's reset driver's tables (C-13) were not
+    read row by row (C2).
+23. A complete list of what devices share: the record lists what was
+    found (D2).
+24. What the boot ROM reads or writes of any device: its code is not
+    among the inputs (D1).
+25. The M-level APLIC's state as booted: M13 makes no read from M-mode
+    (the plan's Q5; B1).
 
 ## Disagreements
 
@@ -948,12 +993,14 @@ Each item gives both sides. None is reconciled here (the plan's rule 3).
     IOPMP2's masters (A-03), and source-ID fields named for the
     application cores (A-39). The roadmap lists "Non-coherent SoC DMA"
     ("Cache and coherency"); the manual and the vendor's tree make the
-    eight HDMA instances coherent (A-103, A-104). The implementation
-    plan lists "GEILEN = 8" among the K3's public properties
-    ([implementation plan](implementation-plan.md), "SpacemiT K3 target
-    profile"); on the board, P1 counts 7 on each of harts 0, 1, and 2
-    (B-71; item 2). No accepted claim rests on any of these lines (stop
-    8 of the plan does not apply).
+    eight HDMA instances coherent (A-103, A-104). On 2026-11-25, at
+    M13-5, the hardware roadmap's two lines were brought up to date
+    with this record's rows; the words quoted here are its words before
+    that. The implementation plan lists "GEILEN = 8" among the K3's
+    public properties ([implementation plan](implementation-plan.md),
+    "SpacemiT K3 target profile"); on the board, P1 counts 7 on each of
+    harts 0, 1, and 2 (B-71; item 2). No accepted claim rests on any of
+    these lines (stop 8 of the plan does not apply).
 20. **Against the review point's expectation for P4.** The review
     point expected the address bits of port A's root-port BAR0 and BAR1
     to read 0, since U-Boot's `pcie_dw_setup_host()` writes 0 to them
