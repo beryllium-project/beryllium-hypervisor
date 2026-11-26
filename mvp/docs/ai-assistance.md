@@ -981,3 +981,100 @@ This section covers M13-5, the M13 plan's last work package, on
 
 No AI system accepted a result, re-set a limit, added a
 `Signed-off-by`, or pushed.
+
+## 20. After the release: M14, the device and DMA object model
+
+This section covers M14, from its plan to its result, on 2026-11-25 and
+2026-11-26, in the same session on the workstation as sections 17 to
+19. Its owner session ran on `claude-fable-5.2`, and every sub-agent on
+`claude-opus-5.5`. Each sub-agent worked under a brief that let it
+read, and write only its own notes or its own review, in scratch that
+no repository tracks. In the reading, a brief also let a sub-agent
+fetch the public specifications and sources that it named, read-only.
+None ran a build, an emulator, or a test, and none had the board.
+
+- **The plan.** The owner session wrote the M14 plan from the MVP
+  plan's Plan revisions S3-C and S3-D, M13's result, the security
+  model, and the implementation plan. A sub-agent that had seen none of
+  that work reviewed the first candidate as a whole, and each of the
+  next three in what had changed. Its first review had six major
+  findings and seventeen minor ones, its second nine minor ones, and
+  its third five small points; the owner session took each in the next
+  candidate. Its fourth found those five closed, and nothing new. The
+  responsible human signed off the fourth candidate.
+- **The reading (M14-1).** Six sub-agents each read one kind of input,
+  at its pin, and wrote notes: the RISC-V IOMMU and IOPMP
+  specifications; the AIA, the cache-block chapter, and the two
+  chapters of the supervisor-domain specification on devices and
+  interrupts; seL4 and capDL, with the synthesis's precedent lessons;
+  QEMU's `virt` and its device models, from the source; upstream
+  Linux's code for PCI devices and for the RISC-V IOMMU; and M13's
+  public record. The notes stay in scratch: the model cites the
+  sources, never the notes.
+- **The model (M14-2).** The owner session wrote Revision 5 of the
+  security model from the sources and the notes, in six candidates.
+  The six sub-agents checked each statement of fact in the first three
+  candidates against its source; for the fourth and the fifth, those
+  whose inputs the changes touched did. A further sub-agent, which had
+  seen none of that work, reviewed the first candidate as a whole, and
+  each of the other five in what had changed. The first candidate drew
+  107 findings from the six and 40 from the review, two of which were
+  blockers: the draft said two things about the next boot, and three
+  of its analyses passed configurations that broke the invariants that
+  they were said to check. The owner session answered each finding,
+  and took all but two: one that the sub-agent that raised it calls
+  safe as it stands, and a bar that the review had proposed and then
+  withdrew. The last review found nothing wrong. In review the model
+  grew from 847 lines to 1,061, past its soft limit, which the
+  responsible human re-set with his sign-off.
+- **The result (M14-3).** The sub-agents that had read M13's record and
+  QEMU's source each drafted the tables of the model read against its
+  subject. The owner session condensed the tables into the page,
+  reading most of the record's cited rows and a part of the cited
+  source for itself, and wrote the rest of the page, the glossary's and
+  the hardware roadmap's lines, the roadmap page's position, the
+  planning index, and this section. Each of the two then checked its
+  part of the page against its sources, and the sub-agent that had
+  reviewed the model reviewed the page and those lines as a whole.
+  - *The first draft.* The check against the record reported 33
+    findings and the check against QEMU's source 18, one in each of
+    them a statement that was wrong: the page had a PHY that serves two
+    devices in turn join them, where the model says that it joins none;
+    and it had QEMU's PCI bridges issue no request of their own, where
+    they send messages of their own. The second check also found a fact
+    that Revision 5 does not have, which the page records. The review
+    reported 18 findings, one of them a blocker: a new line of the
+    hardware roadmap took for granted that something on the K3 can
+    confine a bus master. The owner session took every finding but one
+    part of one, which it answered otherwise.
+  - *The second draft.* The three read it again. The check against the
+    record reported eleven more findings and the check against QEMU's
+    source eight, none of them a statement that was wrong; the second
+    corrected its own count of the device models that have the new
+    fact. The review reported seventeen, two of them major: this
+    section had said that each of the model's six candidates was
+    reviewed as a whole; and the page had named one of the two
+    sentences of Revision 5 that miss the new fact. The owner session
+    took them all.
+  - *The third draft.* The three read its changes alone. The review
+    found nothing wrong. The check against the record confirmed its
+    part but for two lists that each left out a class of evidence. The
+    check against QEMU's source confirmed its part but for one more
+    device model that has the new fact, and two points of wording. The
+    owner session took those five points in the words that the checks
+    gave, and no sub-agent read the page again after that.
+- **The held results.** Nothing of them is in these pages. No
+  sub-agent had them: the one that read M13's record read its public
+  pages alone.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The M14 plan | The owner session, with four review passes by a sub-agent | The responsible human's direction of 2026-11-25 |
+| The reading's notes | Six sub-agents | M14-1 |
+| Security model v1 Revision 5 | The owner session; its facts checked by the six sub-agents, and its six candidates reviewed by a further one, the first as a whole and the others in what had changed | M14-2; the soft limit as he re-set it |
+| The result's tables | Two sub-agents' drafts, checked and condensed by the owner session | M14-3 |
+| The result page, the glossary's and the hardware roadmap's lines, the roadmap page's position, and the planning index | The owner session; each part checked by the sub-agent that drafted its tables, and the whole reviewed by the one that reviewed the model | M14-3 |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, re-set a limit, added a
+`Signed-off-by`, or pushed.
