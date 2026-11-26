@@ -104,7 +104,7 @@ Disposition:
 - The X100's entry count is documented. On one COM260 board, the banner of the project's firmware build reports sixteen entries, a grain of 4 KiB, and 38 address bits for its boot hart (the board addendum's sittings). The entries that the board's resident firmware uses or locks, and Smepmp's state after its handoff, are not established.
 - IOMMU and IOPMP are not PoC requirements because the PoC has no DMA.
 - K3 bring-up must inventory firmware ownership, register access, source IDs, locked regions, and default-deny behavior. [M13's record](k3-com260-devices.md) holds part of that inventory, as diagnostic facts from the vendor's documents and sources and from one COM260 board: it is not hardware validation, and it does not say that any device's memory accesses on that board are confined. For the IOPMPs: their source IDs, and the Secure Configuration unit's fields that set some of them (A-14 to A-19, A-36 to A-55); their lock bits, and the default addresses that cannot be written once an instance is enabled (A-22, A-23); by the manual, after a power-on reset an IOPMP passes every access unchecked, and once enabled it checks every access until the next reset (A-20, A-21); and the firmware's tree, the vendor's kernel tree, and the tree that the board's Linux received have no node for one, and none of the sources read writes one (A-32, A-33). For the IOMMU: the vendor's kernel tree describes it, with device IDs for ports A to C, and leaves it disabled (A-57, A-58, A-65 to A-67); no boot stage whose source was read writes it (A-80); and on that board, as booted, it is in `Off` mode, which lets no inbound memory transaction through it, while ports A to C bypass it (A-160 to A-164). Not established: each IOPMP's state as booted, whether any boot stage enables or locks one, what the vendor's "secure environment" is, and whether an application hart in M-mode or HS-mode can reach the IOPMPs' registers (the record's "Not established", items 1 and 2).
-- Device-domain work requires IOMMU/IOPMP enforcement and violation tests.
+- Work that gives a VS domain a unit with a bus master requires that the bus master be confined, and violation tests. [Security model v1 Revision 5](security-model-v1.md#revision-5-2026-11-25-the-device-and-dma-object-model) (M14) states that requirement without naming a mechanism: every bus master of a unit that a VS domain owns is confined by enforcing elements (I29 to I31), and nothing that a VS domain, a confined bus master, a quiesced device, or a confined hart can do widens what their state allows, or stops its enforcement (I32 (c)); and its R5.3 lists the negative cases that a device path would have to test. The K3's documents describe an IOMMU, which the sources read name for PCIe ports alone, and nine IOPMPs; the manual says that only the "secure world" configures an IOPMP, and does not say what that is on this SoC ([M13's record](k3-com260-devices.md), A-01, A-28, A-69 to A-71). Whether, and by what, a bus master on the K3 could be confined is for the plan of MVP 2.0's step (3), on the facts (R5.10); M13's result says that nothing in steps (2) and (3) "can rest on an IOPMP checking a master's accesses, or on the project being able to program one" (its section 3). On M13's record alone, enforcing elements are established for no bus master of one COM260 board; that says what the record's rows hold, the held results apart, and not what the hardware can do ([M14's result](mvp-m14-result.md), section 3).
 
 ### Secure boot and lifecycle
 
@@ -159,7 +159,7 @@ Disposition:
 
 - Shared-memory correctness requires explicit cache-maintenance contracts.
 - PoC avoids DMA but tests CPU-side shared-memory ordering.
-- Device-domain milestones must prove cache and DMA ownership together.
+- Milestones that give a VS domain a device must prove cache and DMA ownership together. Revision 5 says what that takes: a cache-block operation, by an owner or for it, makes nothing that another party wrote be lost, and brings back nothing that was cleared (I34 (c)); and, for a bus master that is not coherent with the harts, whatever the monitor wrote or cleared is visible to that bus master before any request of it can read it (I35 (d)).
 
 ### Debug and trace
 
@@ -258,7 +258,7 @@ These features may become future targets but do not define the K3 PoC.
 
 ### Later research
 
-- IOMMU/IOPMP device domains.
+- VS domains that own devices, and what confines their bus masters. The object model is security model v1 Revision 5 (M14, accepted 2026-11-26); a device path is MVP 2.0's step (3), under a plan of its own.
 - Crypto-backed remote attestation.
 - RAS/RERI containment.
 - GPU/accelerator domains.

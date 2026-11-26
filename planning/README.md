@@ -1820,6 +1820,18 @@ public push now.
   accepted rule amended by name (the MVP plan's stop condition 1, whose
   exception gains the additive Revision 5) and ten read, and Q1 to Q14.
   Proposed 2026-11-25.
+- `mvp-m14-result.md`: milestone M14's result (M14-3): what was done,
+  with each work package's commit; what the model, security model v1
+  Revision 5, holds, and where it answers each of the plan's 23
+  questions; the model read against M13's record of one K3 COM260
+  board and against the emulated machine that the gates run on, as
+  tables: each bus master and each device under the model's classes,
+  its assignment unit, and, invariant by invariant, what a device path
+  would have to show and what the facts have for it; what is not
+  established, and what the plan of MVP 2.0's step (3) inherits; and
+  what the result changes: three maintained pages, no claim, and no
+  code. It chooses no device and no mechanism. Proposed 2026-11-26;
+  accepted by the responsible human's sign-off of its commit.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and
