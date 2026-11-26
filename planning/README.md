@@ -1777,7 +1777,7 @@ public push now.
   the responsible human's reply at a review point, from probe images.
   It chooses nothing; steps (2) and (3) build on its record. Ten rules,
   M13-1 to M13-5, ten stops, its readings of four accepted rules, and
-  Q1 to Q12. Proposed 2026-11-23.
+  Q1 to Q12. Proposed 2026-11-23, and accepted that day at `ac3bd40f`.
 - `k3-com260-devices.md`: milestone M13's record: the device facts of
   one K3 COM260 board under the M13 plan's four subjects, each fact with
   its class and its citation, the questions A1 to D4 with their status,
@@ -1819,7 +1819,7 @@ public push now.
   questions for the model, eleven rules, M14-1 to M14-3, ten stops, one
   accepted rule amended by name (the MVP plan's stop condition 1, whose
   exception gains the additive Revision 5) and ten read, and Q1 to Q14.
-  Proposed 2026-11-25.
+  Proposed 2026-11-25, and accepted that day at `d0ec2aee`.
 - `mvp-m14-result.md`: milestone M14's result (M14-3): what was done,
   with each work package's commit; what the model, security model v1
   Revision 5, holds, and where it answers each of the plan's 23
@@ -1832,6 +1832,25 @@ public push now.
   what the result changes: three maintained pages, no claim, and no
   code. It chooses no device and no mechanism. Proposed 2026-11-26;
   accepted by the responsible human's sign-off of its commit.
+- `mvp-m15-plan.md`: the bounded plan of milestone M15, the third of
+  MVP 2.0's seven steps (the MVP plan's S3-C.2, step (3)): the first
+  device path, under emulation. One assignment unit given to one VS
+  domain, the I/O service VS domain, for a whole boot, on the emulated
+  machine that the gates run on, with an IOMMU model in the path of
+  the device's requests; built against security model v1 Revision 5,
+  and static: no restart, no change of owner, nothing on the board.
+  Where a device path starts and why; what is known at the start;
+  requirements M15-R1 to M15-R17; twenty-one decisions that a design
+  makes; seventeen rules; M15-1 to M15-4 (the plan, the
+  characterization and the design, the path, the words and the gates),
+  with three decisions for the responsible human in order; what may be
+  said, and when; fourteen stops; one accepted stop decided by name
+  for M15 alone (parts of the MVP plan's stop condition 3) and the
+  other accepted rules read, with nothing admitted to stop condition
+  1's exception; and Q1 to Q16. Its acceptance would authorize the
+  characterization, in scratch, and the writing of the design, with
+  the AI-assistance disclosure's section, and no committed code.
+  Proposed 2026-11-26.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and
