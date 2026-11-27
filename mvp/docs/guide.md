@@ -1155,9 +1155,11 @@ runs.
   log shows an idle prompt after a completed command (never during a
   `saveenv`), hart 0's terminal line and then quiet, Fedora shut down
   cleanly (`reboot: Restarting system` and then quiet), or, after a run's
-  own timeout, `Starting kernel ...` with no
-  later U-Boot or Fedora line (an MVP hang). A new boot is an SPL banner,
-  then a U-Boot banner, within `K3_BOOT_SECONDS` of the reset; every
+  own timeout, `Starting kernel ...` with no later U-Boot or Fedora line
+  (an MVP hang; the log is read with the lines' stamps, so that a Fedora
+  that has printed only its kernel's lines is Fedora's). A new boot is an
+  SPL banner, then a U-Boot banner, within `K3_BOOT_SECONDS` of the
+  reset; every
   banner of the session must map to a recorded reset
   (`$K3_RUN_ROOT/resets.tsv`), or the session stops (stop condition 12). A
   missed `s` boots what `bootcmd` says: it is recorded as an unplanned

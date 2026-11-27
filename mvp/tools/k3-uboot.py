@@ -72,8 +72,10 @@ optional stamp.
                issue one; and after the line no SPL or U-Boot banner, TAIL
                seconds quiet); with --hang, after a
                run's own timeout, hang (`Starting kernel ...` and no later
-               U-Boot or Fedora line); with SLOT and QUIET (a sitting's
-               card-slot.txt, and the seconds of quiet asked for), after a
+               U-Boot or Fedora line, read with the lines' stamps, which
+               NOT_MVP's patterns for stamped lines need: item 146); with
+               SLOT and QUIET (a sitting's card-slot.txt, and the seconds
+               of quiet asked for), after a
                boot from a card that stopped, one more: card-uboot-hang
                with --hang, its U-Boot banner and no `Starting kernel
                ...`; card-hang with --card-hang, no U-Boot banner; each
@@ -403,8 +405,10 @@ def can_reset(path, start, tail, flag=None, slot=None, wait=0.0):
         reason = "fedora-down"
     elif flag == "--hang" and STARTING in text:
         # The text may be older than output that a quiet above saw: the
-        # hang is judged on the log as it stands.
-        text = clean(read(path, start))
+        # hang is judged on the log as it stands, with its stamps, which
+        # NOT_MVP reads: U-Boot's three-decimal ones, Linux's six-decimal
+        # ones (mvp/README.md, item 146).
+        text = read(path, start).replace("\r", "")
         if not NOT_MVP.search(text, text.rindex(STARTING) + len(STARTING)):
             reason = "hang"
     elif slot is not None and \

@@ -81,7 +81,10 @@ Scope:   DIR/config.json: session, panes (the session's panes, each
          its prompt is written: its first byte, `=`, at once, the keys
          held between as for late_prompt, so that a read of the log
          between the two writes ends inside the prompt; mvp/README.md,
-         item 147),
+         item 147), slow_login (seconds from a stand-in Fedora's first
+         kernel line to the rest of its boot and its login prompt, the
+         state fedora-booting between, in which keys are dropped and a
+         reset is served, as at any time; mvp/README.md, item 146),
          spurious_boot (seconds after the Nth prompt at which the board
          boots again with no reset, as [N, seconds]), slow_saveenv
          (seconds a saveenv stays in progress after its first words,
@@ -310,6 +313,8 @@ class Board:
         # the first boot; a late prompt's time (late_prompt, split_prompt);
         # and what of that prompt is written already (split_prompt).
         self.window, self.prompt_at, self.cut = None, None, ""
+        # A slow Fedora's login time (slow_login).
+        self.login_at = None
 
     def status(self):
         shown = {"state": self.state, **self.counts}
@@ -669,11 +674,12 @@ class Board:
         self.write(self.stamp() + "\r\nStarting kernel ...\r\n\r\n")
         if self.memory.startswith(b"FEDORA"):
             self.say("[    0.000000] Linux version 7.3.0-65.1.riscv64.omni."
-                     "fc45.riscv64 (fake)", "", "Fedora Linux 45 (Server "
-                     "Edition)", stamped=False)
-            self.write("k3e login: ")
-            self.state = "fedora"
-            self.fedora(True)
+                     "fc45.riscv64 (fake)", stamped=False)
+            if self.faults.get("slow_login"):
+                self.state = "fedora-booting"
+                self.login_at = time.time() + self.faults["slow_login"]
+            else:
+                self.login()
             return
         self.say("Removing MTD device #0 (nor0) with use count 1")
         self.state = "mvp"
@@ -704,6 +710,13 @@ class Board:
                                   data=bytearray(), line=bytearray(), polls=0,
                                   nonzero=0, most=0, terminal=terminal.group(0)
                                   + "\n" if terminal else "")
+
+    def login(self):
+        """A stand-in Fedora's last lines and its login prompt: up."""
+        self.say("", "Fedora Linux 45 (Server Edition)", stamped=False)
+        self.write("k3e login: ")
+        self.state = "fedora"
+        self.fedora(True)
 
     def session(self, text, session):
         """The capture TEXT held in segments: its ready lines, then each
@@ -891,6 +904,8 @@ class Board:
         if self.state == "stopping" and time.time() >= self.prompt_at:
             self.prompt(self.cut)
             self.cut = ""
+        if self.state == "fedora-booting" and time.time() >= self.login_at:
+            self.login()
         keys = self.root / "keys.in"
         if keys.exists() and self.state != "stopping":
             with open(keys, "rb") as handle:

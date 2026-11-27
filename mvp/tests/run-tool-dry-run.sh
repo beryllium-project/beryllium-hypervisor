@@ -173,6 +173,11 @@
 #   fall-through      a selected image not on the partition: load's error,
 #                     bootcmd falls through to Fedora, and the run ends at
 #                     once, stop 3
+#   hang-fedora       the same fall-through to a Fedora whose login prompt
+#                     comes 30 s after its first kernel line, after the
+#                     run's timeout (mvp/README.md, item 146): the reset of
+#                     a hang refused on Fedora's stamped kernel line, no
+#                     reset while Fedora boots, stop 3
 #   reset-*           the dongle's fcrec=1, ver=1.1, ERR, a device error, a
 #                     reset answered ERR, rst=1 after the reset, and a client
 #                     that differs from the pin: each stop 1, with exactly
@@ -274,6 +279,10 @@
 #                     wait-prompt, after-stop, idle, can-reset, and
 #                     wait-end give no verdict on the text read before the
 #                     bytes; with none landing, each verdict is as before
+#   hang-stamps       tools/k3-uboot.py can-reset --hang on the log with
+#                     its stamps (mvp/README.md, item 146): Linux's
+#                     six-decimal line after `Starting kernel ...`, none; a
+#                     guest's prefixed line there, hang
 #
 # run-from-reset, campaign, and characterize need tests/check-capture.py's
 # uboot mode (planning/mvp-m5-plan.md, M5-2) for their verdicts: without it
@@ -1997,6 +2006,36 @@ case_fall_through() {
 	pass fall-through "a missing image: bootcmd falls through to Fedora, the run ends at once, stop 3"
 }
 
+# hang-fedora (mvp/README.md, item 146): as fall-through, a selected image
+# not on the partition, so that bootcmd falls through to Fedora; but a
+# Fedora whose login prompt comes 30 s after its first kernel line (the
+# fake's slow_login, set for the run's boot alone), after the run's
+# timeout, the window plus 3 s, as in mvp-hang. The run's own reading of a
+# fall-through rests on Fedora's login line, so the run times out; then
+# the reset of a hang reads the log with its stamps, finds Fedora's
+# kernel line after `Starting kernel ...`, and is refused (with the rule
+# of 4e0daa11, a reset while Fedora boots, a fresh prompt, and stop 4):
+# the load's error, stop 3, and no reset while Fedora boots.
+case_hang_fedora() {
+	session hang-fedora
+	install hang-fedora
+	rm -f -- "$FAKE_K3_BOARD/partition/$probe_image"
+	printf '{"slow_login": 30}\n' >"$FAKE_UBOOT/faults.json"
+	run_group hang-fedora.run 1 "$probe_image" "K3_WAIT_SECONDS=$((autoboot_seconds + 3))"
+	run=$(find "$K3_RUN_ROOT" -mindepth 2 -maxdepth 2 -name run.txt -printf '%h\n')
+	has "$run/run.txt" outcome=timeout 'stop=3 load-error-outcome-timeout'
+	grep -q "Failed to load '/$probe_image'" "$run/serial.log" || fail "hang-fedora: the load"
+	grep -q '^\[    0\.000000\] Linux version ' "$run/serial.log" ||
+		fail "hang-fedora: no Fedora kernel line in the run's capture"
+	! grep -q ' login: ' "$run/serial.log" ||
+		fail "hang-fedora: Fedora's login line came before the run's timeout"
+	grep -q '	stop	stop=1 the port-open rule holds no reason to reset now ' "$K3_RUN_ROOT/keys.log" ||
+		fail "hang-fedora: the reset of a hang was not refused by the port-open rule"
+	! grep -q '"state": "fedora-booting"' "$FAKE_UBOOT/resets.log" ||
+		fail "hang-fedora: a reset while Fedora booted"
+	pass hang-fedora "a fall-through to a Fedora whose login comes after the run's timeout: the reset of a hang refused on Fedora's stamped kernel line, no reset while Fedora boots, stop 3"
+}
+
 case_reset() {
 	for case in 'fcrec|{"fcrec": 1}|ping status' 'version|{"version": "1.1"}|ping status' \
 		'status-err|{"status": "err"}|ping status' 'status-device|{"status": "device"}|ping status' \
@@ -2748,12 +2787,12 @@ case_input_characterize() {
 cases=(env-session console-window preconditions missed-s late-s late-prompt
 	split-prompt echo-mismatch restore-mismatch unexplained-banner
 	bad-environment-crc saveenv-fresh port-open-rule mvp-hang fall-through
-	reset dongle-firmware run-from-reset staged-sha256 campaign
+	hang-fedora reset dongle-firmware run-from-reset staged-sha256 campaign
 	campaign-session campaign-session-stops characterize diagnostic guest-type
 	input-characterize)
 lanes=("campaign unexplained-banner bad-environment-crc saveenv-fresh late-s campaign-session split-prompt"
 	"echo-mismatch env-session preconditions console-window diagnostic staged-sha256 late-prompt campaign-session-stops"
-	"missed-s restore-mismatch run-from-reset port-open-rule input-characterize"
+	"missed-s restore-mismatch run-from-reset port-open-rule input-characterize hang-fedora"
 	"mvp-hang fall-through reset dongle-firmware characterize guest-type")
 [ "$(printf '%s\n' "${lanes[@]}" | tr ' ' '\n' | sort)" = \
 	"$(printf '%s\n' "${cases[@]}" | sort)" ] || fail "the lanes do not hold each case once"
@@ -2964,6 +3003,37 @@ print(f"rows={len(rows)} failed={len(failed)}")
 sys.exit(f"stale-read: {failed[0]}" if failed else None)
 EOF
 pass stale-read "an s echoed at a prompt read: wait-prompt 3, no prompt; a second s echoed at a prompt read alone: after-stop --retried 5, not 0; a byte after a late prompt read: 4, not 5; an s echoed at a prompt read alone: after-stop 4, not 0; a prompt after idle's quiet: 1, not 0; an s echoed at an idle prompt read, a banner after Fedora's halt read, a banner in a terminal marker's quiet (--hang), and a banner after a card's boot read (--card-hang): can-reset none, not idle-prompt, fedora-down, hang, or card-hang; an MVP line in that quiet (--hang): hang; a second SPL banner after wait-end's end line read: boot, not end; the last hart's record after its terminal line read: end, not terminal; with none landing, each verdict as before"
+# hang-stamps (mvp/README.md, item 146): can-reset --hang reads the log
+# with its stamps, so that Linux's six-decimal line after `Starting kernel
+# ...` is Fedora's, and the reset of a hang is refused; an MVP's guest
+# line is prefixed by its domain, never a stamp at a line's start. It
+# needs no board, and runs after stale-read.
+mkdir -p -- "$out/hang-stamps"
+"$python" -I -B - "$tools/k3-uboot.py" "$out/hang-stamps" >"$out/hang-stamps.txt" \
+	2>&1 <<'EOF' || fail "hang-stamps: $(tail -n 1 "$out/hang-stamps.txt")"
+import contextlib, importlib.util, io, pathlib, sys
+spec = importlib.util.spec_from_file_location("k3_uboot", sys.argv[1])
+tool = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(tool)
+log = pathlib.Path(sys.argv[2], "hang.log")
+start = "Starting kernel ...\r\n\r\n"
+failed = []
+for name, text, want in (
+        ("Fedora's kernel line", start + "[    0.000000] Linux version "
+         "7.3.0 (stand-in)\r\n", "none"),
+        ("a guest's line", start + "BE_MVP_G0: [    0.000000] Linux version "
+         "7.2.0 (stand-in)\r\n", "hang")):
+    log.write_bytes(text.encode())
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        tool.can_reset(str(log), 0, 0.05, "--hang")
+    got = out.getvalue().split()[0]
+    print(f"{'ok  ' if got == want else 'FAIL'} {name} after Starting "
+          f"kernel: {got}")
+    failed += [] if got == want else [f"{name}: {got}, not {want}"]
+sys.exit(f"hang-stamps: {failed[0]}" if failed else None)
+EOF
+pass hang-stamps "can-reset --hang with the log's stamps: Linux's six-decimal line after Starting kernel, none (Fedora's); a guest's prefixed line there, hang"
 if [ "${#waiting[@]}" != 0 ]; then
 	printf 'BE_MVP_RUN_TOOL_DRY_RUN: INCOMPLETE waiting=%s (tests/check-capture.py --mode uboot)\n' \
 		"${waiting[*]}"
