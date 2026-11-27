@@ -13613,7 +13613,13 @@ M5's reset rule.
     are the guest's two constants' halves. The four lines of its excerpt
     are the same two calls and two stores, `0x12` lower, the calls with
     new offsets. Clang's build holds no such immediates, and the other
-    54 recorded symbols are as recorded. Open.
+    54 recorded symbols are as recorded. Its records were derived again
+    at the signed commit `5c4d9243` (`verify/litmus/sequences.txt`, the
+    excerpt, `L1.litmus`, and `verify/target-digests.txt`), after
+    `./mvp/mvp verify` had run with every suite on the same monitors'
+    sources and given every verdict as before. The binding stays: a
+    later change to the plain guest's Image size, or to that budget,
+    needs the same re-derivation. Closed.
 152. **The capture checker's current stand-ins keep the lines that M9's
     guest printed (found with item 130).** The current stand-ins
     (`tests/check-capture.py`, `current_log_standin()`) are made from

@@ -15,8 +15,8 @@ RISCV L1
      sd x6,0(x10)    desc->hart, be_mvp_block_fill      102079202 10207927a
      sd x7,0(x11)    desc->hgatp, be_mvp_block_fill     102079210 102079282
      fence w,w       be_mvp_arch_fence_w_w, through be_mvp_exec_fence_w_w,
-                     called at                          10207c50a 10207c42c
-     sd x8,0(x12)    the generation word, 1             10207c514 10207c438
+                     called at                          10207c4f8 10207c42c
+     sd x8,0(x12)    the generation word, 1             10207c502 10207c438
    P1, the domain hart in be_mvp_hart_main:
      ld x5,0(x12)    the generation word                102070510 1020703ec
      bne x5,x9,LC00  not 1: the hart parks              102070514 1020703f2
@@ -39,7 +39,7 @@ RISCV L1
    Digests (mvp/verify/litmus/sequences.txt):
    be_mvp_block_fill@gcc sha256=f4f18bfe246bc51e94086bb507f94ae9a07df628e59ee73d4ab3699793930501
    be_mvp_block_fill@clang sha256=61ea9d52606ea7fbdcd2d2f44c3e398f8da623d19d71864fe9df9d903f9be41d
-   be_mvp_runtime_main@gcc sha256=26aeb9a112071ee7f8846c2d011f669bb896eda6798a03ded1b60ba31aa0a009
+   be_mvp_runtime_main@gcc sha256=8b3422911814c42972c254e6b3372a4b8ecca1ab5fd5c9ed1d861bc8e4a6e18c
    publish_blocks@clang sha256=8e44d4a05cc28b59a8f149ae111f90e354ca584689996f4b2d74214fa39a6eb0
    be_mvp_exec_fence_w_w@gcc sha256=83f556fa11cc4fae8a5b1581ed6ac85215f02d7193a5cdf504964df09b095f70
    be_mvp_exec_fence_w_w@clang sha256=f585b80756c15c91b6694a02b8c5d0099bf06c62645bfda0d67f46a1c7f07d1b
