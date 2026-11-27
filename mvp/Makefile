@@ -1859,10 +1859,12 @@ firmware-no-boundary: tool-lock-check $(FIRMWARE_NB_BIN)
 	$(MVP_FIRMWARE_NB_PIN_CHECK)
 
 # The firmware's own tests (planning/mvp-m11-plan.md, M11-6): the host
-# tests of the series' two pure decisions, built from the patched header
-# of the firmware build, then every row of firmware/tests/fwtest.py on
-# QEMU's k3-like machine, in plain PMP and in Smepmp mode, each judged
-# through the QEMU oracle; the rows' S-mode payload is built here.
+# tests of the series' three pure decisions (the commit guard, the SBI call
+# filter, and since M11-B2 the halt-only reset device's check), built from
+# the patched header of the firmware build, then every row of
+# firmware/tests/fwtest.py on QEMU's k3-like machine, in plain PMP and in
+# Smepmp mode, each judged through the QEMU oracle; the rows' S-mode
+# payload is built here.
 FIRMWARE_TEST := $(BUILD)/firmware-test
 FIRMWARE_TEST_SRC := $(MVP_DIR)/firmware/tests
 FIRMWARE_TEST_PAYLOAD := $(FIRMWARE_TEST)/fwtest.elf
