@@ -1124,3 +1124,55 @@ project.
 
 No AI system accepted a result, re-set a limit, added a
 `Signed-off-by`, or pushed.
+
+## 22. After the release: the guest's `/proc` on this line
+
+This section covers the guest's `/proc` and seven BusyBox applets, which
+came onto this line on 2026-11-27 at the responsible human's direction
+(the README's item 130), with the CHERI guest in the same change and the
+boot image's budget raised for it. Its owner session ran on
+`claude-opus-5.5` on the workstation, and so did the one sub-agent that
+did its work, in a clone of its own with push disabled. That sub-agent
+had no board, and sent nothing to another project.
+
+- **The design and the change.** The sub-agent mapped the change that
+  was accepted on 2026-11-06 onto this line's files, and proposed how
+  the CHERI guest takes it and how the boot image's budget is raised;
+  the owner session decided each. Then the sub-agent wrote the change in
+  parts, and the owner session read every line of each part before the
+  next began. When the CHERI check refused the larger boot image at its
+  link, the sub-agent found where else the budget was stated, and the
+  owner session decided that each such statement be raised and checked
+  against the header.
+- **The checks.** On the owner session's word for each heavy step, the
+  sub-agent ran:
+  - whole checks at the change's commits;
+  - the CHERI check: its first run met the `shim-rule` variant's known
+    hang (item 137), and its second passed;
+  - the U-Boot rehearsal, `kernel-repro`, the model check, and
+    `evaluate`;
+  - `verify`, once, at a scratch commit of the change with the proofs'
+    records derived in place. Every suite gave the verdicts of the M11
+    candidate's record (`mvp/results/20261118-verify-m11-candidate/`);
+    its counts differ from that record only as M11-B's later runs' did,
+    in three prover runs at their time limits, and its litmus record's
+    digests are those derived for this change.
+- **The words.** The sub-agent drafted the README's items, the file
+  table's rows, the guide's sentences, the ledger's notes, and the
+  commit messages, and built the range on debt sweep 6's. The owner
+  session read each, checked them against the code and the records, and
+  wrote this section.
+- **The network.** The builds fetched public sources at their pins
+  through the build's own fetchers: BusyBox, musl, OpenSBI's tag, and
+  U-Boot's tag. `evaluate` and `verify` fetched nothing.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The change, with its tests | A sub-agent; every line read by the owner session | The responsible human's directions of 2026-11-27 |
+| The checks, `verify` among them | The sub-agent | The owner session's word for each heavy step |
+| The README's items, the file table, the guide, the ledger's notes, and the messages | The sub-agent's drafts, read by the owner session | The same directions |
+| This section | The owner session | The same directions |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, re-set a limit, added a
+`Signed-off-by`, or pushed.
