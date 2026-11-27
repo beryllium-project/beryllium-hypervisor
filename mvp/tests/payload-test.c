@@ -173,7 +173,7 @@ static void test_constants(void)
 	CHECK(BE_MVP_IMAGE_BYTES == KERNEL_OFFSET - 0x1000U);
 	CHECK(BE_MVP_KERNEL_FILE_MAX == 4U * MIB);
 	CHECK(BE_MVP_KERNEL_IMAGE_SIZE_MAX == 8U * MIB);
-	CHECK(BE_MVP_BOOT_IMAGE_MAX == 4U * MIB);
+	CHECK(BE_MVP_BOOT_IMAGE_MAX == BE_U64_C(0x4a7000));
 	CHECK(BE_MVP_DTB_BYTES == 0x1000U);
 	CHECK(BE_MVP_KERNEL_GPA == BE_U64_C(0x80200000));
 	CHECK(BE_MVP_DTB_GPA == BE_U64_C(0x83e00000));
@@ -275,14 +275,16 @@ static void test_layout(void)
 		CHECK(check(&layout, windows, synthetic) ==
 		      BE_MVP_PAYLOAD_LAYOUT);
 	}
-	/* The largest kernel file the 4 MiB boot image admits; the header's
-	 * image_size then differs, which stops the check before the DTB. */
+	/* The largest kernel file the boot image admits (BE_MVP_KERNEL_FILE_MAX
+	 * since the budget took the pinned guests' generic limit); the
+	 * header's image_size then differs, which stops the check before the
+	 * DTB. One page more passes both limits. */
 	layout = synthetic_layout();
-	layout.kernel_bytes = 4U * MIB - KERNEL_OFFSET - 0x2000U;
+	layout.kernel_bytes = BE_MVP_BOOT_IMAGE_MAX - KERNEL_OFFSET - 0x2000U;
 	layout.kernel_image_size = layout.kernel_bytes;
-	layout.dtb_offset[0] = 4U * MIB - 0x2000U;
-	layout.dtb_offset[1] = 4U * MIB - 0x1000U;
-	layout.image_bytes = 4U * MIB;
+	layout.dtb_offset[0] = BE_MVP_BOOT_IMAGE_MAX - 0x2000U;
+	layout.dtb_offset[1] = BE_MVP_BOOT_IMAGE_MAX - 0x1000U;
+	layout.image_bytes = BE_MVP_BOOT_IMAGE_MAX;
 	CHECK(check(&layout, windows, synthetic) == BE_MVP_PAYLOAD_KERNEL_SIZE);
 	layout.kernel_bytes += 1U;
 	layout.kernel_image_size += 1U;

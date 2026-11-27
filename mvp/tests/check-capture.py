@@ -538,9 +538,12 @@ def header_constant(name, path=MVP_H):
 
 STAGING = LAYOUT["STAGING_HPA"]
 # The kexec era's FDT slot after the staged image (test-only, for the
-# retained kexec records; the layout no longer names it since M6, Q3).
+# retained kexec records; the layout no longer names it since M6, Q3),
+# and that era's boot image budget, which bounds the slot (the layout's
+# BE_MVP_BOOT_IMAGE_MAX grew after it, for the CHERI guest).
 KEXEC_FDT_ALIGN = 0x200000
 KEXEC_FDT_MAX = 0x200000
+KEXEC_IMAGE_MAX = 0x400000
 FDT_ALIGN = KEXEC_FDT_ALIGN
 WINDOWS = (LAYOUT["G0_HPA"], LAYOUT["G1_HPA"])
 RING_PEAK_BUDGET = LAYOUT["RING_PEAK_BUDGET"]
@@ -1275,7 +1278,7 @@ def handoff_facts(capture, options, findings, facts):
         if wanted is None and options.get("image_bytes"):
             wanted = STAGING + align_up(options["image_bytes"], FDT_ALIGN)
         lowest = STAGING + FDT_ALIGN
-        highest = STAGING + align_up(LAYOUT["BOOT_IMAGE_MAX"], FDT_ALIGN)
+        highest = STAGING + align_up(KEXEC_IMAGE_MAX, FDT_ALIGN)
         if wanted is not None and fdt != wanted:
             findings.append(f"kexec FDT 0x{fdt:x} is not the loader's "
                             f"0x{wanted:x}")

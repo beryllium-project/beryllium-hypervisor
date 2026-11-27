@@ -12,8 +12,11 @@ control data and BSS at or below 0x1_0201_2000, the read clusters exactly
 0x20000 bytes and the writer-split hart region exactly 0x28000, the MVP
 region's text, constants, data, and BSS together at most 0x3c000 bytes
 (each reported), the flat image exactly 0xa4000 bytes,
-and the boot image at most 4 MiB, with the second link's image
-(be-mvp-boot-pic.img), when the build left it, byte-identical. A
+and the boot image at most BE_MVP_BOOT_IMAGE_MAX, which the image checker
+reads from src/mvp-layout.h (0x4a7000 bytes since item 130, which
+raised the plan's 4 MiB for the CHERI guest with /proc on the responsible
+human's direction; mvp/README.md, open item 130), with the second link's
+image (be-mvp-boot-pic.img), when the build left it, byte-identical. A
 measurement link (--measure) is a toolchain's monitor objects linked with
 the port's linker script while lld reports its ASSERT failures as warnings;
 it is never an image, and only its extents are measured.
@@ -37,7 +40,6 @@ FLAT_BYTES = 0xA4000
 POOL_BYTES = 0x20000
 HART_REGION_BYTES = 0x28000
 MVP_LIMIT = 0x3C000
-BOOT_LIMIT = 0x400000
 PIC_IMAGE = "be-mvp-boot-pic.img"
 
 
@@ -46,6 +48,12 @@ def load_checker():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def boot_limit(checker):
+    """The boot image's budget, BE_MVP_BOOT_IMAGE_MAX, as CHECKER (the
+    image checker) reads it from src/mvp-layout.h."""
+    return checker.LAYOUT["BOOT_IMAGE_MAX"]
 
 
 def measure(elf):
@@ -77,8 +85,9 @@ def measure(elf):
     }
 
 
-def judge(facts, flat=None, boot=None, pic=None):
-    """[(budget, holds, text)] for one image's or measurement's facts."""
+def judge(facts, flat=None, boot=None, pic=None, limit=None):
+    """[(budget, holds, text)] for one image's or measurement's facts;
+    LIMIT, the boot image's budget (boot_limit()), where BOOT is given."""
     rows = [
         ("text", facts["text_end"] <= TEXT_LIMIT,
          f"text_end=0x{facts['text_end']:x} limit=0x{TEXT_LIMIT:x} " +
@@ -103,8 +112,8 @@ def judge(facts, flat=None, boot=None, pic=None):
     if flat is not None:
         rows.append(("flat", flat == FLAT_BYTES, f"flat=0x{flat:x}"))
     if boot is not None:
-        rows.append(("boot", boot <= BOOT_LIMIT,
-                     f"boot=0x{boot:x} limit=0x{BOOT_LIMIT:x}"))
+        rows.append(("boot", boot <= limit,
+                     f"boot=0x{boot:x} limit=0x{limit:x}"))
     if pic is not None:
         rows.append(("links", pic, "two_links=" +
                      ("identical" if pic else "differ")))
@@ -122,6 +131,7 @@ def report(name, rows):
 
 
 def self_test():
+    limit = boot_limit(load_checker())
     good = {"text_end": 0x10200B000, "data_end": 0x102011000,
             "pool": POOL_BYTES, "hart_region": HART_REGION_BYTES,
             "mvp_text": 0x18000, "mvp_rodata": 0x2000,
@@ -139,12 +149,13 @@ def self_test():
         (dict(good, mvp_bytes=MVP_LIMIT + 8), None, None, None, ["mvp"]),
         (good, 0x34000, None, None, ["flat"]),
         (good, FLAT_BYTES + 4, None, None, ["flat"]),
-        (good, None, BOOT_LIMIT + 1, None, ["boot"]),
+        (good, None, limit, None, []),
+        (good, None, limit + 1, None, ["boot"]),
         (good, None, None, False, ["links"]),
     ]
     for facts, flat, boot, pic, wanted in cases:
-        failed = [budget for budget, holds, _ in judge(facts, flat, boot, pic)
-                  if not holds]
+        failed = [budget for budget, holds, _ in
+                  judge(facts, flat, boot, pic, limit) if not holds]
         if failed != wanted:
             print(f"BE_MVP_BUDGETS: FAIL self-test {failed} != {wanted}")
             return 1
@@ -156,6 +167,7 @@ def main(argv):
     if argv[1:] == ["--self-test"]:
         return self_test()
     checker = load_checker()
+    limit = boot_limit(checker)
     specs = argv[1:]
     if not specs or len(specs) % 2:
         print(__doc__.strip().splitlines()[2], file=sys.stderr)
@@ -172,7 +184,7 @@ def main(argv):
                              pathlib.Path(bin_path).stat().st_size,
                              boot.stat().st_size,
                              pic.read_bytes() == boot.read_bytes()
-                             if pic.is_file() else None)
+                             if pic.is_file() else None, limit)
             elif option == "--measure":
                 name, elf_path = spec.split(":")
                 elf = checker.Elf(pathlib.Path(elf_path).read_bytes())

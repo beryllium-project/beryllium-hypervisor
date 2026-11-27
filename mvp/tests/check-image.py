@@ -221,7 +221,7 @@ Boot image (the board file and the ELF QEMU boots):
 - B3's descriptor with the MVP flat image's length, 0xa4000;
 - the monitor flat image at 0x1000, the kernel at 0xa5000, zeros, then
   G0's 4 KiB DTB at the next 4 KiB boundary and G1's right after it,
-  which ends the file (at most 4 MiB);
+  which ends the file (at most BE_MVP_BOOT_IMAGE_MAX);
 - each DTB through an FDT reader for its domain's DT contract (B7's, with
   the MVP model and compatible; in a te-poc or anchor image, the
   scenario's bootargs with each init's role, from --expect), the two

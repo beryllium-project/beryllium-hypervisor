@@ -184,17 +184,17 @@
 #define BE_MVP_FEDORA_KERNEL_HPA	BE_MVP_C(0x102200000)
 
 /* The boot image, staged by every loader at L; the staging reserve the
- * board tools check (M6, Q3): the image's maximum rounded up to 2 MiB plus
- * the 2 MiB slot the kexec era kept after it, so the checked extents are
- * the ones every retained preflight names. */
+ * board tools check (M6, Q3): the 6 MiB every retained preflight names,
+ * which holds the image's maximum (its last 2 MiB were the kexec era's
+ * FDT slot after a 4 MiB image). */
 #define BE_MVP_STAGING_HPA		BE_MVP_C(0x108000000)
 #define BE_MVP_STAGING_BYTES		BE_MVP_C(0x600000)
 #define BE_MVP_BOOT_MONITOR_OFFSET	BE_MVP_C(0x1000)
 #define BE_MVP_BOOT_KERNEL_OFFSET	BE_MVP_C(0xa5000)
-#define BE_MVP_BOOT_IMAGE_MAX		BE_MVP_C(0x400000)
+#define BE_MVP_BOOT_IMAGE_MAX		BE_MVP_C(0x4a7000)
 #define BE_MVP_KERNEL_FILE_MAX		BE_MVP_C(0x400000)
 #define BE_MVP_PLAIN_GUEST_IMAGE_MAX	BE_MVP_C(0x300000)
-#define BE_MVP_PINNED_GUEST_IMAGE_MAX	BE_MVP_C(0x359000)
+#define BE_MVP_PINNED_GUEST_IMAGE_MAX	BE_MVP_C(0x400000)
 #define BE_MVP_KERNEL_IMAGE_SIZE_MAX	BE_MVP_C(0x800000)
 #define BE_MVP_KERNEL_TEXT_OFFSET	BE_MVP_C(0x200000)
 #define BE_MVP_DTB_BYTES		BE_MVP_C(0x1000)
@@ -475,8 +475,8 @@ _Static_assert(BE_MVP_BOOT_KERNEL_OFFSET ==
 	       BE_MVP_BOOT_MONITOR_OFFSET + BE_MVP_IMAGE_BYTES,
 	       "the kernel follows the monitor in the boot image");
 /*
- * The CHERI guest Image, at 0x359000 bytes, is the largest Image pinned by
- * any built variant. The plain guest keeps M7's 0x300000-byte budget.
+ * The largest Image a built variant pins (the CHERI guest's) has the
+ * generic limit; the plain guest keeps M7's 0x300000-byte budget.
  */
 _Static_assert((BE_MVP_PLAIN_GUEST_IMAGE_MAX &
 		(BE_MVP_PAYLOAD_ALIGN - 1)) == 0 &&

@@ -10,11 +10,14 @@
  *          same objects at two bases and requires byte-identical flat
  *          images, so the loaded bytes carry no absolute image address.
  * Scope:   the stub page, the 0xa4000-byte monitor flat image at offset
- *          0x1000, and the guest payload at offset 0xa5000, at most 4 MiB
- *          in all (planning/mvp-m0-plan.md, "Memory and load paths", and
- *          Plan revision M0-A.1). A counted copy of
- *          bringup/k3-b7/src/b7-boot.lds: MVP names and the MVP flat
- *          image.
+ *          0x1000, and the guest payload at offset 0xa5000, at most
+ *          BE_MVP_BOOT_IMAGE_MAX in all (planning/mvp-m0-plan.md, "Memory
+ *          and load paths", and Plan revision M0-A.1; 4 MiB until item
+ *          130 of mvp/README.md). A linker script cannot read
+ *          src/mvp-layout.h, so its two bounds below are that header's
+ *          constants as literals, which tests/check-layout-source.py
+ *          requires. A counted copy of bringup/k3-b7/src/b7-boot.lds: MVP
+ *          names and the MVP flat image.
  */
 
 OUTPUT_ARCH(riscv)
@@ -96,4 +99,5 @@ ASSERT(be_mvp_guest_dtb1 == be_mvp_guest_dtb0_end &&
 ASSERT(__be_mvp_guest_end == be_mvp_guest_dtb1_end &&
 	__be_b3_image_end == __be_mvp_guest_end,
 	"MVP G1 DTB must end the boot image")
-ASSERT(__be_b3_image_size <= 0x400000, "MVP boot image must fit 4 MiB")
+ASSERT(__be_b3_image_size <= 0x4a7000,
+	"MVP boot image must fit BE_MVP_BOOT_IMAGE_MAX")

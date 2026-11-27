@@ -12,7 +12,7 @@
  * is evaluated (planning/mvp-m8-plan.md, D-1 and D-2). The macros
  * listed as not covered have no definition here.
  * source: mvp/src/mvp-layout.h
- * source_sha256: b5536372ace2edbd98b4d233d54c9ceeea6beba7abf17718fd4c26ce234cc16b
+ * source_sha256: 954585062acdd496443faa86b12753fe5bb8ba0d96ad2015af380fe370641be0
  * constants: 153
  * not_covered: 2
  *   BE_MVP_LAYOUT_H  no value
@@ -124,10 +124,10 @@ Definition be_mvp_staging_hpa : N := 0x108000000%N.
 Definition be_mvp_staging_bytes : N := 0x600000%N.
 Definition be_mvp_boot_monitor_offset : N := 0x1000%N.
 Definition be_mvp_boot_kernel_offset : N := 0xa5000%N.
-Definition be_mvp_boot_image_max : N := 0x400000%N.
+Definition be_mvp_boot_image_max : N := 0x4a7000%N.
 Definition be_mvp_kernel_file_max : N := 0x400000%N.
 Definition be_mvp_plain_guest_image_max : N := 0x300000%N.
-Definition be_mvp_pinned_guest_image_max : N := 0x359000%N.
+Definition be_mvp_pinned_guest_image_max : N := 0x400000%N.
 Definition be_mvp_kernel_image_size_max : N := 0x800000%N.
 Definition be_mvp_kernel_text_offset : N := 0x200000%N.
 Definition be_mvp_dtb_bytes : N := 0x1000%N.

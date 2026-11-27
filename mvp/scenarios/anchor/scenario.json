@@ -41,7 +41,7 @@
       {"name": "pool", "class": "memory", "hpa": "0x102020000", "bytes": "0x20000", "type": "monitor_mem_t"},
       {"name": "hart_region", "class": "memory", "hpa": "0x102040000", "bytes": "0x28000", "type": "monitor_mem_t"},
       {"name": "mvp_region", "class": "memory", "hpa": "0x102068000", "bytes": "0x3c000", "type": "monitor_mem_t"},
-      {"name": "staging", "class": "memory", "hpa": "0x108000000", "bytes": "0x400000", "type": "monitor_mem_t"}
+      {"name": "staging", "class": "memory", "hpa": "0x108000000", "bytes": "0x4a7000", "type": "monitor_mem_t"}
     ]
   },
   "need": [
@@ -63,7 +63,7 @@
     {"name": "pool", "class": "memory", "hpa": "0x102020000", "bytes": "0x20000", "owner": "monitor"},
     {"name": "hart_region", "class": "memory", "hpa": "0x102040000", "bytes": "0x28000", "owner": "monitor"},
     {"name": "mvp_region", "class": "memory", "hpa": "0x102068000", "bytes": "0x3c000", "owner": "monitor"},
-    {"name": "staging", "class": "memory", "hpa": "0x108000000", "bytes": "0x400000", "owner": "monitor"}
+    {"name": "staging", "class": "memory", "hpa": "0x108000000", "bytes": "0x4a7000", "owner": "monitor"}
   ],
   "pages": [
     {"index": 0, "name": "request_page", "kind": "channel", "channel": "request", "gpa": "0x84000000", "hpa": "0x118000000", "bytes": "0x1000", "writer": 0, "reader": 1, "rights": [["read", "write"], ["read"]]},

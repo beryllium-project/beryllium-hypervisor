@@ -143,9 +143,9 @@ enum be_mvp_payload_error {
  *          and each DTB's 40-byte headers are read
  * @plans: two plans, G0's then G1's; zeroed first, filled only on success
  *
- * The layout must place the kernel at 0xa5000, hold 64 bytes to 4 MiB of
- * kernel, put G0's 4 KiB DTB at the next 4 KiB boundary and G1's right
- * after it, and end the image there, at most 4 MiB in all. The staged
+ * The layout must place the kernel (64 bytes to BE_MVP_KERNEL_FILE_MAX) at
+ * 0xa5000, G0's 4 KiB DTB at the next 4 KiB boundary and G1's right after
+ * it, and end there, at most BE_MVP_BOOT_IMAGE_MAX in all. The staged
  * image must lie outside both windows, the monitor's core, both pools, the
  * hart region, the MVP region, and the shared pages, M1's channel page
  * among them (planning/mvp-m2-plan.md, "Memory and load paths"), and the
