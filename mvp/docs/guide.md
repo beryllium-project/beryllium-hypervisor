@@ -1753,7 +1753,12 @@ flags, which a merge may not move without the re-proof rule), the
 token-equality of the CN copy with `mvp/src/mvp-sbi.c`, the solver
 qualification, the five litmus tests (L1 to L5, `Never` under RVWMO), and
 the three arms on the two leaves (WP, CN, CBMC on the denial decision;
-CBMC on the ring). About four hours; its records land under
+CBMC on the ring). Its closure's RPMs come into
+`build/mvp-verifier/rpms` as the evaluator's do (from `MVP_RPM_CACHE`
+when it is set, Fedora's repositories, and the updates archive), with
+Fedora's codec repository asked before koji for the codec package that
+only it serves as the closure pins it; a file is admitted only by the
+closure's SHA-256. About four hours; its records land under
 `build/mvp/verify/`, and the retained ones are
 `mvp/results/<date>-verify*/`. Its outcome at M8 was inconclusive under
 the M8 plan's decision rule, and it is re-run verdict for verdict at each

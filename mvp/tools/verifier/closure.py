@@ -33,15 +33,18 @@ transaction's (tools/evaluator/fetch-closure.py's make_keyring,
 check_signature, and header_sha256, imported, not copied). Its file
 SHA-256 is then recorded. `fetch` goes by NEVRA through fetch-closure.py's
 own sources and admission (MVP_RPM_CACHE if set, Fedora's fedora and
-updates repositories, the updates archive, koji): a file enters the cache
-only if its SHA-256 is the closure's. The closure must name the base the
-Containerfile's FROM line names and the roots below.
+updates repositories, the updates archive, koji), with one source of its
+own before koji: Fedora's codec repository, for the codec packages whose
+bytes the closure pins as that repository serves them. A file enters the
+cache only if its SHA-256 is the closure's. The closure must name the
+base the Containerfile's FROM line names and the roots below.
 Scope: the verifier only; the MVP evaluator, its closure, and its lock are
 not touched. Scratch stays under build/, never in /tmp.
 Exit status: 0 PASS; 1 FAIL; 2 usage.
 """
 
 import datetime
+import hashlib
 import importlib.util
 import os
 import pathlib
@@ -49,6 +52,7 @@ import re
 import shutil
 import sys
 import tempfile
+import urllib.parse
 
 sys.dont_write_bytecode = True
 
@@ -60,6 +64,11 @@ CONTAINERFILE = HERE / "Containerfile"
 DEFAULT_CACHE = REPO_ROOT / "build" / "mvp-verifier" / "rpms"
 RESOLVE_ROOT = REPO_ROOT / "build" / "mvp-verifier" / "resolve"
 PODMAN = "/usr/bin/podman"
+# Fedora's codec repository and the packages it serves (its metadata for
+# Fedora 44 lists these three): fetch_sources() asks it before koji.
+CODECS = "https://codecs.fedoraproject.org/openh264"
+CODEC_NAMES = ("mozilla-openh264", "openh264", "openh264-devel")
+CODEC_LABEL = "fedora-cisco-openh264"
 TAG = "BE_MVP_VERIFIER_CLOSURE"
 BASE_FORM = re.compile(r"^registry\.fedoraproject\.org/fedora@sha256:"
                        r"[0-9a-f]{64}$")
@@ -250,6 +259,58 @@ def directory_source(directory, label):
     return source
 
 
+def codec_url(package):
+    """The package's file in the codec repository, where its metadata
+    places it: under Packages/ and the file name's first letter."""
+    return (f"{CODECS}/{FETCH.FEDORA_RELEASE}/x86_64/Packages/"
+            f"{package.file[0]}/{urllib.parse.quote(package.file, safe='')}")
+
+
+def codec_source(runner=FETCH.run):
+    """Fedora's codec repository, for the packages named CODEC_NAMES: the
+    closure pins the bytes it serves, which Fedora's repositories and the
+    updates archive do not hold and koji holds as another file. curl
+    follows the repository's redirect to the vendor's host even over
+    plain HTTP, here alone (its --proto caps its --proto-redir, so both
+    name http; the repository's own URL is HTTPS): fetch() admits a file
+    only if its SHA-256 is the closure's, so bytes that are not the
+    pinned ones never enter the cache. A file curl did not complete is
+    removed."""
+    def source(packages, partial):
+        found = {}
+        for package in packages:
+            if package.name not in CODEC_NAMES:
+                continue
+            path, url = partial / package.file, codec_url(package)
+            status, _, err = runner(
+                [FETCH.CURL, "--fail", "--silent", "--show-error",
+                 "--location", "--proto", "=https,http", "--proto-redir",
+                 "=https,http", "--retry", "3", "--connect-timeout", "30",
+                 "--output", str(path), url])
+            if status == 0 and path.is_file():
+                found[package.nevra] = (path, CODEC_LABEL)
+            else:
+                path.unlink(missing_ok=True)
+                FETCH.log(f"{CODEC_LABEL}: {url}: curl exited {status}: "
+                          f"{err.strip()[:200]}")
+        return found
+    return source
+
+
+def fetch_sources(seed=None, sources=None, codec=None):
+    """SOURCES (fetch-closure.py's own for SEED by default: MVP_RPM_CACHE
+    when SEED names it, Fedora's fedora and updates repositories, the
+    updates archive, koji), with CODEC (codec_source() by default) placed
+    before koji, which must come last: fetch() stops at the first file
+    that is not the closure's, and koji's openh264 is another file."""
+    if sources is None:
+        sources = FETCH.fetch_sources(seed)
+    if not sources or sources[-1][0] != "koji":
+        raise Refused("fetch-closure.py's sources do not end with koji")
+    return sources[:-1] + [(CODEC_LABEL, codec or codec_source())] + \
+        sources[-1:]
+
+
 def resolve(cache):
     base = base_image()
     work = scratch_directory(RESOLVE_ROOT)
@@ -291,7 +352,7 @@ def fetch(cache):
     entries = check_text(CLOSURE.read_text(encoding="utf-8"), base_image(),
                          ROOTS)
     packages = [FETCH.Package(nevra, digest) for nevra, digest in entries]
-    result = FETCH.fetch(packages, cache, FETCH.fetch_sources(
+    result = FETCH.fetch(packages, cache, fetch_sources(
         os.environ.get("MVP_RPM_CACHE")))
     origins = {}
     for _, origin in result.values():
@@ -391,6 +452,7 @@ def self_test():
         expect("no summary", lambda: transaction_count("Nothing to do.\n"),
                "no transaction summary")
         download_cases(scratch, expect, require)
+        codec_cases(scratch, expect, require)
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
     for failure in failures:
@@ -456,10 +518,82 @@ def download_cases(scratch, expect, require):
     expect("a symbolic link among the downloads", lambda: verify_downloads(
         download, 2, keyring, runner()), "is not a regular file")
     (download / "link.rpm").unlink()
-    expect("the fetch's source order is fetch-closure.py's", lambda: require(
-        [label for label, _ in FETCH.fetch_sources("/nonexistent")] ==
-        ["MVP_RPM_CACHE", "fedora-repositories", "updates-archive", "koji"],
-        "source order"))
+    expect("the fetch's source order: fetch-closure.py's, the codec "
+           "repository before koji", lambda: require(
+               [label for label, _ in fetch_sources("/nonexistent")] ==
+               ["MVP_RPM_CACHE", "fedora-repositories", "updates-archive",
+                CODEC_LABEL, "koji"], "source order"))
+    expect("sources that do not end with koji", lambda: fetch_sources(
+        sources=[("koji", None), ("updates-archive", None)]),
+        "do not end with koji")
+
+
+def codec_cases(scratch, expect, require):
+    """The codec repository's source, curl faked as fetch-closure.py's own
+    HTTPS cases fake it: the URL and the redirect rule, its place before
+    koji (which serves another file of the package), a package of
+    another name, bytes that are not the closure's, a broken transfer."""
+    served, asked = {}, []
+
+    def curl(command):
+        asked.append(command)
+        output = pathlib.Path(command[command.index("--output") + 1])
+        if command[-1] not in served:
+            return 22, "", "curl: (22) The requested URL returned error: 404"
+        output.write_bytes(served[command[-1]])
+        return (18, "", "curl: (18) partial file") if \
+            served[command[-1]] == b"partial" else (0, "", "")
+
+    codec, other = (FETCH.Package(nevra) for nevra in (
+        "openh264-2.6.0-3.fc44.x86_64", "make-1:4.4.1-12.fc44.x86_64"))
+    for package in (codec, other):
+        package.digest = hashlib.sha256(package.nevra.encode()).hexdigest()
+    url = ("https://codecs.fedoraproject.org/openh264/44/x86_64/Packages/o/"
+           "openh264-2.6.0-3.fc44.x86_64.rpm")
+    served.update({url: codec.nevra.encode(), other.koji_url():
+                   other.nevra.encode(), codec.koji_url(): b"koji's file"})
+    cache = scratch / "codec-cache"
+
+    def redirects(command):
+        """The protocols curl may follow a redirect to: --proto-redir's,
+        capped by --proto's (curl's rule), each given as `=LIST`."""
+        allowed = []
+        for option in ("--proto", "--proto-redir"):
+            value = command[command.index(option) + 1]
+            require(value.startswith("="), f"{option} {value}")
+            allowed.append(set(value[1:].split(",")))
+        return sorted(allowed[0] & allowed[1])
+
+    def fetched():
+        result = FETCH.fetch([codec, other], cache, fetch_sources(
+            sources=[("koji", FETCH.koji_source(curl))],
+            codec=codec_source(curl)))
+        require(result == {codec.nevra: (codec.digest, CODEC_LABEL),
+                           other.nevra: (other.digest, "koji")},
+                f"origins {result}")
+        require([command[-1] for command in asked] == [
+            url, other.koji_url()], "URLs asked")
+        require([redirects(command) for command in asked] ==
+                [["http", "https"], ["https"]],
+                "redirects to plain HTTP: the codec repository's alone")
+        require(not (cache / FETCH.PARTIAL).exists(), "scratch left behind")
+    expect("the codec repository serves its package, by its URL, before "
+           "koji", fetched)
+    served[url] = b"not the closure's bytes"
+    (cache / codec.file).unlink(missing_ok=True)
+    expect("served bytes that are not the closure's", lambda: FETCH.fetch(
+        [codec], cache, [(CODEC_LABEL, codec_source(curl))]),
+        "not the closure's")
+    expect("they did not enter the cache", lambda: require(
+        not (cache / codec.file).exists() and
+        not (cache / FETCH.PARTIAL).exists(), "foreign bytes cached"))
+    asked.clear()
+    expect("a package of another name is not asked of it", lambda: require(
+        codec_source(curl)([other], scratch) == {} and not asked, "asked"))
+    served[url] = b"partial"
+    expect("a broken transfer leaves no file", lambda: require(
+        codec_source(curl)([codec], scratch) == {} and
+        not (scratch / codec.file).exists(), "partial file kept"))
 
 
 def main(argv):

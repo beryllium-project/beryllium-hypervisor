@@ -13123,31 +13123,34 @@ M5's reset rule.
     compared, and the check runs `ring-full`; no rule requires the two
     to be equal. Left as it is, so that the check's list and its two
     run counts stay what they were. Open.
-133. **`./mvp/mvp verify` cannot start from an empty cache (found at
-    M11-9).** The verifier's image is built from a closure of 481
-    packages, each pinned by its SHA-256
+133. **`./mvp/mvp verify` could not start from an empty cache (found at
+    M11-9; fixed in debt sweep 6).** The verifier's image is built from
+    a closure of 481 packages, each pinned by its SHA-256
     (`tools/verifier/closure.txt`). One of them,
-    `openh264-2.6.0-3.fc44.x86_64`, is pinned by the bytes that
-    Fedora's codec repository serves, which are the vendor's binary.
-    The fetch tries a directory given as `MVP_RPM_CACHE`, then
-    Fedora's `fedora` and `updates` repositories, the updates archive,
-    and koji. Fedora's two repositories and the archive do not hold
-    the package, and koji's copy, signed with Fedora's key, is another
-    file, which the fetch refuses by its SHA-256. So a run whose cache
-    lacks that package stops at the fetch, before the image is built.
-    On 2026-11-17 a run from an empty cache fetched the other 480
-    packages from those sources, each with the closure's SHA-256, and
-    stopped there; the codec repository still served the pinned bytes
-    that day. The closure is the release's, unchanged since M8, so
-    MVP 1.0's `verify` stops the same way. Every `verify` whose record
-    this repository holds ran with a cache that held the package,
-    which is admitted by the same SHA-256, so no result depends on
-    this. Until it is fixed: put the package in a directory and name
-    it, `./mvp/mvp verify MVP_RPM_CACHE=/DIR`; the fetch takes it from
-    there only if its SHA-256 is the closure's (tried the same day:
-    one package from the directory, 480 from the sources). A fix is a
-    source for the codec repository in the fetch, or a closure
-    resolved without the package. Open.
+    `openh264-2.6.0-3.fc44.x86_64`, is pinned by the bytes that Fedora's
+    codec repository serves, which are the vendor's binary. Fedora's two
+    repositories and the updates archive do not hold the package, and
+    koji's copy, signed with Fedora's key, is another file, which the
+    fetch refused by its SHA-256: a run whose cache lacked the package
+    stopped at the fetch. `closure.py fetch` now asks, after
+    `fetch-closure.py`'s other sources and before koji, Fedora's codec
+    repository for the three packages that it serves (`openh264`,
+    `mozilla-openh264`, and `openh264-devel`), at the path that its
+    metadata gives (under `Packages/`, by the file name's first letter),
+    and records the source as `fedora-cisco-openh264`. curl follows that
+    repository's redirect to the vendor's host even over plain HTTP,
+    there alone: the fetch admits a file only if its SHA-256 is the
+    closure's. The evaluator's fetch and closure, the lock, and the
+    verifier's closure are unchanged; `closure.txt`'s header, written at
+    M8, still lists the sources of that time. The self-test (35 cases)
+    fakes curl; its check of curl's flags takes `--proto` as capping
+    `--proto-redir`, as curl does. On 2026-11-27, after a first real
+    fetch had found a defect in those flags and failed closed, a fetch
+    of that package into an empty cache found it in neither of Fedora's
+    two repositories nor the updates archive (404), then asked the codec
+    repository, which redirected to the vendor's host over plain HTTP,
+    and admitted the file by the closure's SHA-256 (`ddd3123c…`).
+    `MVP_RPM_CACHE` works as before. Closed.
 134. **The CHERI check's guard takes a record's candidate by its commit
     (found at M11-9).** Part 2 of `tools/cheri-check.sh` compares the
     plain variant's boot images with a gates' record for as long as
