@@ -1129,8 +1129,9 @@ runs.
   (the M5 plan's stop condition 5). `s` is sent only at `Autoboot in`,
   after any tmux pane mode is cancelled (a scrolled pane takes
   `send-keys` as navigation), and once more after `K3_STOP_RETRY_SECONDS`
-  (0.5) if no prompt has appeared, inside the 3 s window; a stray second
-  `s` at the prompt is caught by the next line's echo check. No other
+  (0.5) if no prompt has appeared (a prompt that has begun, its `=` alone
+  in the log, is awaited), inside the 3 s window; a stray second `s` at
+  the prompt is caught by the next line's echo check. No other
   key is sent but Enter, and Ctrl-C after an echo that differs.
 - **Typing, each echo checked.** A line goes out with `tmux send-keys -l` in
   pieces of at most 60 characters, `K3_TYPE_DELAY` seconds apart; after

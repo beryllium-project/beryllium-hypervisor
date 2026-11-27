@@ -77,6 +77,11 @@ Scope:   DIR/config.json: session, panes (the session's panes, each
          UART holds them, and then echoed at it: a prompt that reaches the
          log after the console tool's K3_STOP_RETRY_SECONDS, so that its
          second `s` lands at the prompt; mvp/README.md, item 121),
+         split_prompt (seconds after a stopping `s` at which the rest of
+         its prompt is written: its first byte, `=`, at once, the keys
+         held between as for late_prompt, so that a read of the log
+         between the two writes ends inside the prompt; mvp/README.md,
+         item 147),
          spurious_boot (seconds after the Nth prompt at which the board
          boots again with no reset, as [N, seconds]), slow_saveenv
          (seconds a saveenv stays in progress after its first words,
@@ -302,8 +307,9 @@ class Board:
         self.typed, self.segments, self.probe = "", [], None
         self.played = False
         # The current boot's autoboot window (autoboot.log), None before
-        # the first boot; and a late prompt's time (late_prompt).
-        self.window, self.prompt_at = None, None
+        # the first boot; a late prompt's time (late_prompt, split_prompt);
+        # and what of that prompt is written already (split_prompt).
+        self.window, self.prompt_at, self.cut = None, None, ""
 
     def status(self):
         shown = {"state": self.state, **self.counts}
@@ -322,8 +328,9 @@ class Board:
             self.write((self.stamp() if stamped and line else "") + line +
                        "\r\n")
 
-    def prompt(self):
-        self.write("=> ")
+    def prompt(self, written=""):
+        """The prompt, `=> `, but for the part of it WRITTEN already."""
+        self.write("=> "[len(written):])
         self.state, self.line = "prompt", ""
         self.counts["prompts"] += 1
         spurious = self.faults.get("spurious_boot")
@@ -345,6 +352,7 @@ class Board:
         """From reset: the ROM, SPL, and U-Boot, then the autoboot wait;
         DIR/faults.json, when there, over the configuration's faults; or
         the card in the slot's capture."""
+        self.cut = ""
         card = load(self.board / "card.json")
         if card:
             self.counts["boots"] += 1
@@ -464,6 +472,11 @@ class Board:
                 if self.faults.get("late_prompt"):
                     self.state = "stopping"
                     self.prompt_at = time.time() + self.faults["late_prompt"]
+                elif self.faults.get("split_prompt"):
+                    self.write("=")
+                    self.state, self.cut = "stopping", "="
+                    self.prompt_at = time.time() + self.faults["split_prompt"]
+                    record["split_prompt"] = self.faults["split_prompt"]
                 else:
                     self.prompt()
             else:
@@ -876,7 +889,8 @@ class Board:
         if self.state == "autoboot" and time.time() >= self.deadline:
             self.autoboot()
         if self.state == "stopping" and time.time() >= self.prompt_at:
-            self.prompt()
+            self.prompt(self.cut)
+            self.cut = ""
         keys = self.root / "keys.in"
         if keys.exists() and self.state != "stopping":
             with open(keys, "rb") as handle:

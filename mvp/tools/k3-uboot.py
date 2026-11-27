@@ -48,7 +48,9 @@ optional stamp.
                environment CRC (`*** Warning - bad CRC`) before it
   after-stop   after `s`: 0 at a prompt with nothing before it but white
                space, 4 when anything else came first (the stop was
-               missed, and the boot command runs); with --retried, after
+               missed, and the boot command runs); a read that ends inside
+               the prompt (`=`, or `=>`) awaited, as a cut stamp is
+               (mvp/README.md, item 147); with --retried, after
                a second `s`, also 5 at the prompt with that `s` echoed at
                it and nothing else (`=> s`, its stamp removed; a stamp cut
                at the read's end awaited): the board is stopped at a
@@ -338,6 +340,10 @@ def after_stop(path, offset, seconds, retried=False):
             return 5 if quiet_at(path, end, PROMPT_QUIET) else None
         if retried and CUT_STAMP.search(text) and \
                 re.fullmatch(r"\s*=> ", CUT_STAMP.sub("", text)):
+            return None
+        # A read that ended inside the prompt, after its `=`: the rest to
+        # come, as a cut stamp's is (mvp/README.md, item 147).
+        if re.fullmatch(r"\s*=", text):
             return None
         if text.strip() and text.strip() != "=>":
             return 4

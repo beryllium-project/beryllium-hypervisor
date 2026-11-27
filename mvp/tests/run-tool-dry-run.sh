@@ -141,6 +141,12 @@
 #                     each stop a late prompt, recorded (the board's
 #                     after-prompt, the tool's late-prompt), the stray `s`
 #                     cleared by Ctrl-C, no MISSED, no unplanned boot
+#   split-prompt      a prompt written in two parts after the `s` that
+#                     stopped the autoboot, its `=` at once and the rest
+#                     1.5 s later (mvp/README.md, item 147), so that the
+#                     tool's first read ends inside it: the records and the
+#                     install PASS with each cut prompt awaited, no second
+#                     `s`, no late prompt, no MISSED, no unplanned boot
 #   echo-mismatch     an echo that loses a character: Ctrl-C and the line
 #                     again; twice: stop 12
 #   restore-mismatch  the saved environment changed after the restore's
@@ -1777,6 +1783,33 @@ EOF
 	pass late-prompt "a prompt 1.5 s after the stopping s: each second s echoed at it, recorded after-prompt by the board and late-prompt by the tool, cleared by Ctrl-C; records and install PASS with no MISSED and no unplanned boot, the saveenv at a fresh prompt"
 }
 
+# split-prompt (mvp/README.md, item 147): a board whose prompt after the
+# `s` that stopped its autoboot reaches the log in two writes, its `=` at
+# once and `> ` 1.5 s later, so that the console tool's first read after
+# the `s` ends inside the prompt, by construction (the fake's received.log
+# marks each such `s`). K3_STOP_RETRY_SECONDS=3 holds the tool's first wait
+# open past the second write: the cut prompt is awaited, and no second `s`
+# is sent. The environment's records and install, each of the session's
+# three stops at a split prompt: no MISSED and no unplanned boot (with the
+# tool of 4e0daa11, MISSED at the first `=`), no second `s`, no late
+# prompt, and each `s` stopped inside its window.
+case_split_prompt() {
+	K3_STOP_RETRY_SECONDS=3 session split-prompt '{}' '{"faults": {"split_prompt": 1.5}}'
+	K3_STOP_RETRY_SECONDS=3 install split-prompt
+	[ "$(autoboot_s counts "$FAKE_UBOOT")" = 'stopped=3 ignored=0 late=0 after-prompt=0' ] ||
+		fail "split-prompt: the s keystrokes, $(autoboot_s counts "$FAKE_UBOOT")"
+	[ "$(grep -c '"split_prompt": 1.5' "$FAKE_UBOOT/received.log")" = 3 ] ||
+		fail "split-prompt: the board's prompts were not split three times"
+	{ [ "$(grep -c '	key	s retry ' "$K3_RUN_ROOT/keys.log")" = 0 ] &&
+		[ "$(grep -c '	late-prompt	' "$K3_RUN_ROOT/keys.log")" = 0 ] &&
+		[ "$(grep -c '	missed-s	' "$K3_RUN_ROOT/keys.log")" = 0 ]; } ||
+		fail "split-prompt: the keystroke log's second s, late prompts, or MISSED"
+	[ ! -s "$K3_RUN_ROOT/env/unplanned.txt" ] || fail "split-prompt: an unplanned boot"
+	has "$K3_RUN_ROOT/env/records.txt" verdict=PASS
+	has "$K3_RUN_ROOT/env/install.txt" install_check=PASS saveenv=OK verdict=PASS
+	pass split-prompt "a prompt in two writes, its = at once and the rest 1.5 s after the stopping s: each awaited, no second s and no late prompt; records and install PASS with no MISSED and no unplanned boot"
+}
+
 case_echo_mismatch() {
 	session echo-mismatch '{}' '{"faults": {"echo_drop": [4]}}'
 	install echo-mismatch
@@ -2713,12 +2746,12 @@ case_input_characterize() {
 # the order of `cases` when all have ended, and a lane's failure fails the
 # dry run.
 cases=(env-session console-window preconditions missed-s late-s late-prompt
-	echo-mismatch restore-mismatch unexplained-banner bad-environment-crc
-	saveenv-fresh port-open-rule mvp-hang fall-through reset dongle-firmware
-	run-from-reset staged-sha256 campaign campaign-session
-	campaign-session-stops characterize diagnostic guest-type
+	split-prompt echo-mismatch restore-mismatch unexplained-banner
+	bad-environment-crc saveenv-fresh port-open-rule mvp-hang fall-through
+	reset dongle-firmware run-from-reset staged-sha256 campaign
+	campaign-session campaign-session-stops characterize diagnostic guest-type
 	input-characterize)
-lanes=("campaign unexplained-banner bad-environment-crc saveenv-fresh late-s campaign-session"
+lanes=("campaign unexplained-banner bad-environment-crc saveenv-fresh late-s campaign-session split-prompt"
 	"echo-mismatch env-session preconditions console-window diagnostic staged-sha256 late-prompt campaign-session-stops"
 	"missed-s restore-mismatch run-from-reset port-open-rule input-characterize"
 	"mvp-hang fall-through reset dongle-firmware characterize guest-type")
