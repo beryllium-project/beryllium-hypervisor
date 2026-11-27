@@ -1176,3 +1176,70 @@ had no board, and sent nothing to another project.
 
 No AI system accepted a result, re-set a limit, added a
 `Signed-off-by`, or pushed.
+
+## 23. After the release: M15's plan and design, the first device path
+
+This section covers M15's plan and its design, on 2026-11-26 and
+2026-11-27, in two sessions on the workstation. The plan's owner session
+was the one of section 20, on `claude-fable-5.2`; the design's ran on
+`claude-opus-5.5`. Every sub-agent ran on `claude-opus-5.5`. Each worked
+under a brief that let it read the public tree and the sources that it
+named, and write only in scratch, outside the project's repositories.
+None had the board.
+
+- **The plan.** The owner session wrote the M15 plan from the MVP plan,
+  Revision 5 of the security model, and M14's result, with two queries
+  of the locked emulator's help, which started no machine. A sub-agent
+  that had seen none of that work reviewed the first candidate as a
+  whole, and each of the next three in what had changed: thirty findings
+  in the first, one of them a blocker and eight major; eight in the
+  second; three small points in the third; none in the fourth. The owner
+  session took each in the next candidate. The responsible human signed
+  off the fourth.
+- **The characterization (M15-2).** A sub-agent read QEMU's source at
+  its tag, with Linux's and the firmware's at their pins, and ran the
+  locked emulator with its witness outside the machine, making twice
+  each run that a fact rests on. The first such sub-agent stopped on a
+  network error, after it had queried the emulator's help and written
+  source notes, a bare-metal test payload, and two scratch tools; a
+  second resumed from those files, checked every fact in them again
+  against the source, and replaced the payload and one tool. It then
+  built prototypes of the path in four checkpoints, on scratch copies of
+  the monitor, the guest, and the scenario tools, with no change to the
+  firmware. The owner session read each checkpoint's report, accepted
+  it, and decided each question that it raised. The characterization's
+  records and its prototypes are scratch, outside the project's
+  repositories (the prototypes were local commits of a scratch clone,
+  never pushed), and none of it is evidence for a claim: the build
+  writes its code afresh, and its tests establish each fact again.
+- **The reading of the model.** A further sub-agent read Revision 5
+  against the plan, and wrote a checklist of its clauses, its negative
+  cases, and its inventory, with the points where the path met them
+  uneasily. The owner session decided each point; three of them led to
+  the fourth checkpoint (the handoff's order, the interrupt file's page,
+  and the legacy interrupt's route).
+- **The design.** The owner session wrote the design's decisions, its
+  rows, the build, what the sign-off decides, and its questions. Two
+  sub-agents drafted sections from the records: one the facts and the
+  table of Revision 5's negative cases, the other the review of the
+  proofs' inputs. The owner session decided every row of both, and
+  condensed them. The characterization's second sub-agent then checked
+  the page's facts against its records, read-only, and a sub-agent that
+  had seen none of that work reviewed the page: as a whole, and then in
+  what changed after its findings.
+- **QEMU's defects.** The characterization found 19 defects and
+  oddities in the emulator's own code. Nothing was sent to QEMU or to
+  anyone else.
+- **The held results.** Nothing of them is in these pages, and no
+  sub-agent had them (the plan's rule 16).
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The M15 plan | The owner session, with four review passes by a sub-agent | The responsible human's direction of 2026-11-26 |
+| The characterization and the prototypes | Two sub-agents in turn, in scratch; each checkpoint accepted by the owner session | M15-2 |
+| The checklist of Revision 5 | A sub-agent | M15-2 |
+| The design | The owner session; two sections drafted by sub-agents and decided by the owner session; its facts checked by the characterization's sub-agent, and the whole reviewed by a further one | M15-2 |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, re-set a limit, added a
+`Signed-off-by`, or pushed.
