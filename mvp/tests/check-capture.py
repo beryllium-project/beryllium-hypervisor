@@ -163,7 +163,9 @@ banner's boot hart (direct, and uboot in QEMU) or the handoff's hart
 line). BE_MVP:02 prints `started=<B>` (decimal) with B's status 0 and every
 other hart's 1, or `started=none` with every status 1 when there is no
 rule line; the shim-rule variant prints its declared rule line and
-`started=none`.
+`started=none`. The shim's `BE_MVP_SHIM: FAIL hart 0 not started` line
+after the rule line (the variant's start rule could not start hart 0,
+mvp/README.md, item 137) is a finding of its own and a fail marker.
 
 Verdicts: PASS, the capture shows its expectation; REFUSED, the precondition
 M0-A.2 declares failed (the boot hart is a domain hart of the run, which
@@ -549,6 +551,9 @@ SHIM_TAG = "BE_K3_B3: "
 MONITOR_TAGS = (RULE_TAG, SHIM_TAG, "BE_R3:", "BE_MVP:")
 RULE = re.compile(r"BE_MVP_SHIM: boot_hart=0x([1-9a-f][0-9a-f]{0,15}) "
                   r"starting hart 0")
+# The shim-rule variant's start rule could not start hart 0 (mvp/README.md,
+# item 137): the shim says so after its rule line and requests shutdown.
+SHIM_FAIL = "BE_MVP_SHIM: FAIL hart 0 not started"
 SHIM_LINE = re.compile(r"BE_K3_B3: SHIM hart=0x([0-9a-f]{16}) "
                        r"shim=0x([0-9a-f]{16}) fdt=0x([0-9a-f]{16}) "
                        r"dest=0x([0-9a-f]{16}) bytes=0x([0-9a-f]{16})")
@@ -1954,6 +1959,11 @@ def shim_findings(stream, expect, boot_hart, kexec_fdt, findings, facts):
         findings.append(f"the loader's boot hart is {boot_hart}, but the "
                         f"start-rule line names "
                         f"{'none' if rule is None else f'0x{rule:x}'}")
+    if stream and stream[0].text.startswith(SHIM_FAIL):
+        findings.append(f"line {stream[0].number}: the start rule did not "
+                        f"start hart 0 (mvp/README.md, item 137):"
+                        f"{stream[0].text[len(SHIM_FAIL):]}")
+        return rule, stream[1:]
     if not stream or not stream[0].text.startswith(SHIM_TAG):
         findings.append("no BE_K3_B3 SHIM line opens the monitor stream")
         return rule, stream
@@ -4074,7 +4084,8 @@ def evaluate(data, expect, mode="direct", pins=None, report=None,
             [item for item in findings if item not in card["failures"]]
     last = capture.monitor[-1].text if capture.monitor else ""
     terminal = "fail-marker" if any(
-        line.text.startswith((FAIL_PREFIX, "BE_K3_B3: FAIL"))
+        line.text.startswith((FAIL_PREFIX, "BE_K3_B3: FAIL",
+                              "BE_MVP_SHIM: FAIL"))
         for line in capture.monitor) else "shutdown-requested" \
         if last.startswith("BE_MVP:14 ") else "none"
     out = {
@@ -5079,6 +5090,15 @@ def cut(text, keep):
     return text_of(parts)
 
 
+def shim_rule_failed(text):
+    """The shim-rule variant's capture TEXT cut after its rule line, with
+    the shim's FAIL line after it: hart 0 still stopping at the start
+    rule's deadline (mvp/README.md, item 137)."""
+    parts = lines(text)
+    return text_of(parts[:where(parts, RULE_TAG) + 1] + [
+        f"{SHIM_FAIL} error=0x{0:016x} status=0x{3:016x}", ""])
+
+
 def probe_at(text, needle, received):
     """TEXT with its BE_MVP:11 line holding NEEDLE moved in time: its
     received= RECEIVED, and its sent= and answered= as far from it as they
@@ -5984,6 +6004,11 @@ def self_test(expects, pins, reports, measured, current, prior, latest,
         text_of(parts[:where(parts, "BE_MVP:13 ")] +
                 [g(0, "BE_MVP:14 SHUTDOWN type=0 reason=0"), ""]),
         expects["te-poc"], "direct", m1, report=report, sbi_version="2.0")
+    # Item 137: the shim-rule variant's FAIL line is a fail marker, and its
+    # finding comes first.
+    _, shim_failed = evaluate(shim_rule_failed(fixture("qemu-shim-rule-gcc")),
+                              expects["shim-rule"], "direct", previous,
+                              sbi_version="2.0")
     # The stopped M2 board run (Plan revision M2-A): its probe among the
     # costs as served in hart 2's request 1's wait, and the counts the
     # board's check recorded.
@@ -6030,6 +6055,11 @@ def self_test(expects, pins, reports, measured, current, prior, latest,
             ("a domain line is never terminal",
              verdict == "FAIL" and short["terminal"] == "none",
              short["findings"]),
+            ("the shim-rule variant's FAIL line (item 137): its finding "
+             "first, a fail marker", shim_failed["result"] == "FAIL" and
+             shim_failed["terminal"] == "fail-marker" and
+             "item 137" in shim_failed["findings"][0],
+             shim_failed["findings"]),
             ("board anchor stop 6 (Plan revision M2-A): the probe in hart "
              "2's request 1's wait among the costs, the counts as recorded",
              waited_verdict == "PASS" and {
@@ -6201,6 +6231,8 @@ def named_mutations():
          replace_in(hart6, RULE_TAG, "0x6", "0x5"), "boot hart is 6"),
         ("started", "two", "a STARTED hart with started=none",
          replace_in(two, "BE_MVP:02 ", "4:1", "4:0"), "hart 4 status 0"),
+        ("started", "shimrule", "the shim's FAIL line after the rule line",
+         shim_rule_failed(fixture("qemu-shim-rule-gcc")), "item 137"),
         ("failure", "two", "a FAIL among a passing run's lines",
          insert(two, "BE_MVP:13 ", "BE_MVP:FAIL ring", after=False),
          "order expects"),
@@ -6399,6 +6431,7 @@ def prelude_mutations():
 
 BASES = {"two": ("qemu-two-guests-gcc", "two-guests", "direct"),
          "hart6": ("qemu-two-guests-clang-hart6", "two-guests", "direct"),
+         "shimrule": ("qemu-shim-rule-gcc", "shim-rule", "direct"),
          "kexec": ("qemu-two-guests-gcc", "two-guests", "kexec"),
          "fallback": ("qemu-ring-full-gcc", "ring-full", "direct"),
          "rdcycle": ("qemu-rdcycle-clang", "rdcycle", "direct"),
@@ -7241,6 +7274,7 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
         if not ok:
             print(f"FAIL [seeded] {base}: {name}: {verdict}")
     bases_ok = verdicts == {"two": "PASS", "hart6": "PASS", "kexec": "PASS",
+                            "shimrule": "PASS",
                             "fallback": "PASS", "rdcycle": "PASS",
                             "payload": "PASS", "refused": "REFUSED",
                             "platform": "PASS", "tepoc": "PASS",

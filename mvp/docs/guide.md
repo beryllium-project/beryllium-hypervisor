@@ -583,7 +583,7 @@ BE_MVP:DETAIL channel=0 domain=1 hart=2 walked=0x460000d7 declared=0x46000053
 | | `init-exit` | G1's DTB runs `/init-exit` | `FAIL guest-reboot` | QEMU |
 | | `rdcycle` | G0's DTB runs `/init-rdcycle` | `FAIL virtual-instruction` | QEMU |
 | | `sbi-time` | both DTBs without `sstc` | passes, with `time` above 0 | QEMU |
-| | `shim-rule` | the shim's start rule forced onto hart 1 | passes, with the rule line and `started=none` | QEMU |
+| | `shim-rule` | the shim's start rule forced onto hart 1, which waits until the firmware reports hart 0 stopped (at most 2^27 ticks) before it starts it | passes, with the rule line and `started=none`; past the wait, the shim's `BE_MVP_SHIM: FAIL hart 0 not started` line and a shutdown, which the checker names | QEMU |
 | | `hostile` (M7) | G0's DTB runs `/init-hostile`, a guest that prints every byte value, a forged monitor line, a forged prefix, a terminal query, and a 300-byte line | passes: every forged line inside a line of its own prefix, every non-printable byte as `?`, the long line split at 256 (section "Console input") | QEMU |
 | `te-poc` (`TE_POC_VARIANTS`) | `reader-write` | the root builder writes W and D into the reader's channel leaf | `FAIL gstage`: the channel check refuses it | QEMU and the board |
 | | `no-inject` | `denial` removed from the accepted-exit set | `FAIL guest-page-fault` at the first denied access | QEMU and the board |

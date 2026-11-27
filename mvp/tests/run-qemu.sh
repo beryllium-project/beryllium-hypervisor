@@ -237,7 +237,7 @@ max_attempts=${BE_MVP_QEMU_ATTEMPTS:-8}
 read -r -a toolchains <<<"${BE_MVP_QEMU_TOOLCHAINS:-gcc clang}"
 read -r -a variant_toolchains <<<"${BE_MVP_QEMU_VARIANT_TOOLCHAINS:-gcc clang}"
 read -r -a probe_toolchains <<<"${BE_MVP_QEMU_PROBE_TOOLCHAINS:-gcc clang}"
-terminal_regex='BE_MVP:14 SHUTDOWN|BE_MVP:FAIL|BE_K3_B3: FAIL'
+terminal_regex='BE_MVP:14 SHUTDOWN|BE_MVP:FAIL|BE_K3_B3: FAIL|BE_MVP_SHIM: FAIL'
 # M11-B (planning/mvp-m11-board-addendum.md, B-2): a run whose expectation
 # names boundary.reset has a machine that halts, and ends halt_settle
 # seconds after its last line: under the halt-only device (halt), the

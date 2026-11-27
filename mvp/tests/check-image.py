@@ -208,7 +208,9 @@ Boot image (the board file and the ELF QEMU boots):
   file, B3's descriptor and report templates, and the start rule's;
 - the shim: B3's instructions plus the start rule's ecall, so SBI DBCN
   write, SRST, and HSM hart_start, and HSM hart_stop only in the QEMU-only
-  shim-rule variant;
+  shim-rule variant, whose start rule's wait for hart 0 (mvp/README.md,
+  item 137) adds HSM hart_get_status, a second SRST, two reads of time,
+  and its FAIL line's template, which no other image holds;
 - the eight ranges pairwise disjoint and in S-mode RAM: the core, the
   pool, the hart region, the MVP region, the staged image at L, the two
   domain windows, and the shared pages
@@ -5016,20 +5018,28 @@ def ecall_sites(decoded):
 
 # The shim's SBI calls (EID, FID): B3's DBCN write and SRST, and the start
 # rule's HSM hart_start; the QEMU-only shim-rule variant adds a second
-# hart_start and two hart_stop (planning/mvp-m0-plan.md, Image checker).
+# hart_start and two hart_stop (planning/mvp-m0-plan.md, Image checker),
+# and its start rule's wait for hart 0 adds hart_get_status and a second
+# SRST, for its FAIL line (mvp/README.md, item 137).
 SBI_DBCN, SBI_SRST, SBI_HSM = 0x4442434E, 0x53525354, 0x48534D
 SHIM_CALLS = {
     False: sorted([(SBI_DBCN, 0), (SBI_SRST, 0), (SBI_HSM, 0)]),
-    True: sorted([(SBI_DBCN, 0), (SBI_SRST, 0), (SBI_HSM, 0), (SBI_HSM, 0),
-                  (SBI_HSM, 1), (SBI_HSM, 1)]),
+    True: sorted([(SBI_DBCN, 0), (SBI_SRST, 0), (SBI_SRST, 0), (SBI_HSM, 0),
+                  (SBI_HSM, 0), (SBI_HSM, 1), (SBI_HSM, 1), (SBI_HSM, 2)]),
 }
 # Every SYSTEM instruction the shim holds: B3's SIE clear, fence.i, and
-# park, and the ecalls above.
-SHIM_SYSTEM = {"csr": 1, "fence.i": 1, "wfi": 1}
+# park, and the ecalls above; the shim-rule variant's wait adds two reads
+# of time (csrrs rd, time, zero).
+SHIM_SYSTEM = {False: {"csr": 1, "fence.i": 1, "wfi": 1},
+               True: {"csr": 3, "fence.i": 1, "wfi": 1}}
 SHIM_SIE_CLEAR = 0x10017073
+SHIM_RDTIME, SHIM_RDTIME_MASK = 0xC0102073, 0xFFFFF07F
 # The start rule's report line, beside B3's two.
 SHIM_TEMPLATE = b"BE_MVP_SHIM: boot_hart=0x" + b"?" * 16 + \
     b" starting hart 0\n"
+# The shim-rule variant's FAIL line, in its image alone (item 137).
+SHIM_FAIL_TEMPLATE = b"BE_MVP_SHIM: FAIL hart 0 not started error=0x" + \
+    b"?" * 16 + b" status=0x" + b"?" * 16 + b"\n"
 # M11-7: a boundary-on boot image's shim has no start rule (D-6, D-12): its
 # report line ends "refused", and its SBI calls are B3's DBCN write and
 # SRST alone.
@@ -5044,7 +5054,8 @@ def shim_template(boundary):
 
 def check_shim(data, rule, boundary=False):
     """B3's instructions plus the start rule's ecall; hart_stop only in
-    the shim-rule variant; no HSM call in a boundary-on image's."""
+    the shim-rule variant, with its wait's hart_get_status, second SRST,
+    and two reads of time; no HSM call in a boundary-on image's."""
     require(not (rule and boundary),
             "the shim-rule variant is built with the boundary")
     b3 = load_b3()
@@ -5066,11 +5077,16 @@ def check_shim(data, rule, boundary=False):
         kind = system_kind(word)
         if kind is not None and kind != "ecall":
             kinds[kind] = kinds.get(kind, 0) + 1
-            require(kind != "csr" or word == SHIM_SIE_CLEAR,
-                    f"the shim accesses a CSR other than sstatus.SIE at "
-                    f"+0x{pc:x}")
-    require(kinds == SHIM_SYSTEM,
-            f"the shim's SYSTEM instructions {kinds} != {SHIM_SYSTEM}")
+            allowed = word == SHIM_SIE_CLEAR or \
+                rule and word & SHIM_RDTIME_MASK == SHIM_RDTIME
+            require(kind != "csr" or allowed,
+                    f"the shim accesses a CSR other than sstatus.SIE"
+                    f"{' and time' if rule else ''} at +0x{pc:x}")
+    require(kinds == SHIM_SYSTEM[rule],
+            f"the shim's SYSTEM instructions {kinds} != {SHIM_SYSTEM[rule]}")
+    times = sum(word & SHIM_RDTIME_MASK == SHIM_RDTIME
+                for _, _, word in decoded)
+    require(times == (2 if rule else 0), f"the shim reads time {times} times")
     calls = sorted((call[1:] for call in ecall_sites(decoded)),
                    key=lambda call: (call[0] is None, call[0] or 0,
                                      call[1] is None, call[1] or 0))
@@ -5119,8 +5135,12 @@ def check_boot(data, text_offset, flat, pins, kernel_expect, variant=None,
     for template in b3.TEMPLATES + (shim_template(boundary),):
         if data[:b3.STUB_PAGE].count(template) != 1:
             findings.append("a shim report-line template is missing")
+    rule = variant == "shim-rule"
+    if data[:b3.STUB_PAGE].count(SHIM_FAIL_TEMPLATE) != int(rule):
+        findings.append("the shim-rule variant's FAIL line template " + (
+            "is missing" if rule else "outside that variant"))
     require(not findings, "; ".join(findings))
-    check_shim(data, variant == "shim-rule", boundary)
+    check_shim(data, rule, boundary)
     require(len(data) <= LAYOUT["BOOT_IMAGE_MAX"],
             f"boot image 0x{len(data):x} exceeds its budget")
     image_pin, image_bytes = files["Image"]
@@ -5483,6 +5503,51 @@ def off_copy_mutations(name, boot_elf, data, reference, pins, kernel,
     raise ImageError(f"variant {name}'s mutation {label!r} was accepted")
 
 
+def shim_rule_mutations(data, pins, kernel, scenario):
+    """The shim-rule variant's wait for hart 0 (mvp/README.md, item 137):
+    each rule of check_shim() and check_boot() on it refuses its mutation
+    of the variant's boot image. Returns their number."""
+    b3 = load_b3()
+    entry = b3.check_header(data, LAYOUT["UBOOT_TEXT_OFFSET"], [])["entry"]
+    decoded = instructions(data, entry, data.index(b3.TEMPLATES[0]), 0)
+
+    def at(value):
+        found = [pc for pc, _, word in decoded if word == value]
+        require(len(found) == 1, f"the shim-rule shim holds 0x{value:08x} "
+                f"{len(found)} times")
+        return found[0]
+    rdtime = next(pc for pc, _, word in decoded
+                  if word & SHIM_RDTIME_MASK == SHIM_RDTIME)
+    srst = min(pc for pc, eid, _ in ecall_sites(decoded) if eid == SBI_SRST)
+    cycle = struct.unpack_from("<I", data, rdtime)[0] & ~(1 << 20)
+    mutations = [
+        ("its FAIL line's template missing", data.index(SHIM_FAIL_TEMPLATE),
+         b"X", "template is missing"),
+        ("a read of cycle for time", rdtime, struct.pack("<I", cycle),
+         "a CSR other than sstatus.SIE and time"),
+        ("a third read of time", at(LUI_T0_WAIT),
+         struct.pack("<I", SHIM_RDTIME | 5 << 7), "SYSTEM instructions"),
+        ("a read of time for the SIE clear", at(SHIM_SIE_CLEAR),
+         struct.pack("<I", SHIM_RDTIME | 5 << 7), "reads time 3 times"),
+        ("hart_get_status's FID another", at(LI_A6_2),
+         struct.pack("<I", LI_A6_2 + (1 << 20)), "the shim calls"),
+        ("an SRST removed", srst, struct.pack("<I", NOP), "the shim calls"),
+    ]
+    for name, offset, value, wanted in mutations:
+        mutated = bytearray(data)
+        mutated[offset:offset + len(value)] = value
+        try:
+            check_boot(bytes(mutated), BOOT_TEXT_OFFSET,
+                       bytes(mutated[MONITOR_OFFSET:MONITOR_OFFSET + SPAN]),
+                       pins, kernel, "shim-rule", scenario=scenario)
+        except ImageError as error:
+            require(wanted in str(error), f"shim-rule's mutation {name!r} "
+                    f"rejected for another reason: {error}")
+            continue
+        raise ImageError(f"shim-rule's mutation {name!r} was accepted")
+    return len(mutations)
+
+
 def cheri_variant_check(name, *args):
     """beryllium-cheri: check_variant() for variant NAME, with a CHERI
     variant's own arm helper hedeleg (CHERI_VARIANT_HEDELEG) in
@@ -5777,8 +5842,11 @@ def shim_ecall(data, eid):
     return found[0]
 
 
-# The SBI argument a6 = 0 (HSM hart_start) and = 1 (hart_stop).
-LI_A6_0, LI_A6_1 = 0x00000813, 0x00100813
+# The SBI argument a6 = 0 (HSM hart_start), = 1 (hart_stop), and = 2
+# (hart_get_status); the shim-rule variant's wait loads its deadline's
+# 2^27 ticks into t0 with one lui (item 137).
+LI_A6_0, LI_A6_1, LI_A6_2 = 0x00000813, 0x00100813, 0x00200813
+LUI_T0_WAIT = 0x080002B7
 CSRS_SIE_T0 = 0x1042A073
 
 
@@ -6503,6 +6571,14 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
             back for back in range(1, 8)
             if struct.unpack_from("<I", boot_img, start_rule - 4 * back)[0]
             == LI_A6_0)
+    # Item 137: room for the shim-rule variant's FAIL line in this image's
+    # stub page, after its report lines.
+    spare = align_up(boot_img.index(b"\n", boot_img.index(
+        SHIM_TEMPLATE[:25])) + 1, 8)
+    require(boot_img[spare:spare + len(SHIM_FAIL_TEMPLATE)] ==
+            bytes(len(SHIM_FAIL_TEMPLATE)) and
+            spare + len(SHIM_FAIL_TEMPLATE) <= MONITOR_OFFSET,
+            "no room after the shim's report lines")
     boot = [
         ("payload byte flip", KERNEL_OFFSET + 0x1000,
          bytes([boot_img[KERNEL_OFFSET + 0x1000] ^ 0x40]),
@@ -6532,7 +6608,14 @@ def mutation_test(toolchain, elf_path, bin_path, boot_path, pins, kernel,
          struct.pack("<I", NOP), "the shim calls"),
         ("a start-rule template missing", boot_img.index(SHIM_TEMPLATE),
          b"X", "template is missing"),
-    ] if not on else boundary_boot_mutations(boot_img))
+    ] if not on else boundary_boot_mutations(boot_img)) + [
+        ("a read of time in the shim",
+         boot_img.index(struct.pack("<I", SHIM_SIE_CLEAR)),
+         struct.pack("<I", SHIM_RDTIME | 6 << 7),
+         "a CSR other than sstatus.SIE at"),
+        ("the shim-rule variant's FAIL line in another image", spare,
+         SHIM_FAIL_TEMPLATE, "outside that variant"),
+    ]
     layouts = [
         ("a block offset moved in the layout",
          {"BLOCK_INBOUND_OFFSET": LAYOUT["BLOCK_INBOUND_OFFSET"] + 0x1000},
@@ -7969,6 +8052,11 @@ def main(argv):
                 print(f"variant {name}: breach rows={rows} mutations "
                       f"rejected: {count}")
                 checked.append(f"variant-{name}-breach-mutations={count}")
+            if name == "shim-rule":
+                # Item 137: its wait's rules, each refusing its mutation.
+                count = shim_rule_mutations(data, pins, kernel, scenario)
+                print(f"variant {name}: mutations rejected: {count}")
+                checked.append(f"variant-{name}-mutations={count}")
             if name in CHERI_TE_POC_VARIANTS:
                 # beryllium-cheri: its mutations, each rejected.
                 count = cheri_variant_mutations(name, reference, pins,

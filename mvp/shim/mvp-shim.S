@@ -24,7 +24,10 @@
  *          still reaches the loader's handler. The SBI calls are DBCN
  *          console write, SRST shutdown, and the start rule's HSM
  *          hart_start; the QEMU-only shim-rule variant adds HSM hart_start
- *          and hart_stop.
+ *          and hart_stop, and, in its start rule's wait for hart 0,
+ *          hart_get_status, a second SRST shutdown, and two reads of the
+ *          time CSR: there a wait past its deadline or a failed start
+ *          prints a FAIL line and requests shutdown in place of a park.
  * Scope:   hart 0 copies, reports one line, and jumps. Any other hart is
  *          the start rule's (Q2): it reports one line, starts hart 0 at this
  *          entry with the same FDT through HSM hart_start, and parks in wfi,
@@ -68,6 +71,12 @@
 #define ASCII_NEWLINE		0x0a
 #define ASCII_ZERO		0x30
 #define ASCII_A_MINUS_10	0x57
+#ifdef BE_MVP_SHIM_RULE
+#define SBI_HSM_HART_GET_STATUS	2
+#define SBI_HSM_STATE_STOPPED	1
+/* The start rule's wait for hart 0: 2^27 ticks, 13.4 s at 10 MHz. */
+#define SHIM_RULE_WAIT_TICKS	0x8000000
+#endif
 
 	.section .text.be_b3_head, "ax", @progbits
 	.globl be_b3_head
@@ -233,6 +242,35 @@ be_mvp_shim_start_rule:
 	lla	a1, be_mvp_shim_line_end
 	jal	be_b3_print
 #if !defined(BE_MVP_BOUNDARY)
+#ifdef BE_MVP_SHIM_RULE
+	/*
+	 * QEMU-only: when the first hart here was hart 0, hart 0 may still be
+	 * stopping itself, and HSM starts only a STOPPED hart (mvp/README.md,
+	 * item 137). Wait for STOPPED through hart_get_status until a deadline
+	 * of SHIM_RULE_WAIT_TICKS of time. An SBI error, the deadline, or a
+	 * failed start prints this shim's FAIL line with the last call's error
+	 * and hart 0's last state, and requests SRST shutdown, so that the run
+	 * fails by its own line and never hangs. s6: the deadline; s7, s8: the
+	 * last error and state.
+	 */
+	rdtime	s6
+	li	t0, SHIM_RULE_WAIT_TICKS
+	add	s6, s6, t0
+4:
+	li	a0, 0
+	li	a6, SBI_HSM_HART_GET_STATUS
+	li	a7, SBI_EID_HSM
+	ecall
+	mv	s7, a0
+	mv	s8, a1
+	bnez	a0, 6f
+	li	t0, SBI_HSM_STATE_STOPPED
+	beq	a1, t0, 5f
+	rdtime	t1
+	bltu	t1, s6, 4b
+	j	6f
+5:
+#endif
 	li	a0, 0
 	lla	a1, be_b3_entry
 	mv	a2, s3
@@ -244,10 +282,28 @@ be_mvp_shim_start_rule:
 	 * QEMU-only: a started hart 0 needs this hart STOPPED, as Linux leaves
 	 * the other harts before a kexec, or hart 0's firmware probe refuses it.
 	 */
-	bnez	a0, be_b3_park
+	mv	s7, a0
+	bnez	a0, 6f
 	li	a6, SBI_HSM_HART_STOP
 	li	a7, SBI_EID_HSM
 	ecall
+	j	be_b3_park
+6:
+	mv	a0, s7
+	lla	a1, be_mvp_shim_fail_error
+	jal	be_b3_hex64
+	mv	a0, s8
+	lla	a1, be_mvp_shim_fail_status
+	jal	be_b3_hex64
+	lla	a0, be_mvp_shim_fail_line
+	lla	a1, be_mvp_shim_fail_line_end
+	jal	be_b3_print
+	li	a0, SBI_SRST_SHUTDOWN
+	li	a1, SBI_SRST_NO_REASON
+	li	a6, SBI_SRST_RESET
+	li	a7, SBI_EID_SRST
+	ecall
+	/* SRST returned: park. */
 #endif
 #endif
 	j	be_b3_park
@@ -375,6 +431,16 @@ be_mvp_shim_line_end:
 	.balign 8
 be_mvp_shim_rule_done:
 	.dword	0
+
+be_mvp_shim_fail_line:
+	.ascii	"BE_MVP_SHIM: FAIL hart 0 not started error=0x"
+be_mvp_shim_fail_error:
+	.ascii	"????????????????"
+	.ascii	" status=0x"
+be_mvp_shim_fail_status:
+	.ascii	"????????????????"
+	.byte	ASCII_NEWLINE
+be_mvp_shim_fail_line_end:
 #endif
 
 	/* The MVP monitor flat image, byte for byte. */
