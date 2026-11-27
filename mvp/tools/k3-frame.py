@@ -25,12 +25,14 @@ paths under K3B_ variables, joining .PHONY, tools-check, and qemu-test
 by k3- prerequisites alone; under
 mvp/k3/, no symbolic link, executable, or script, and outside fixtures/
 only .mk and .txt files with the header and .json files that parse; the
-pins files' lines of their forms (sitting-pins.txt's `firmware` and `card`
-lines), each name of a kind once, and published-pins.txt pinning at
-least one file; observed.json named by no fragment but
-session.mk, and sitting-pins.txt by none but card.mk; the header in each
-new mvp/tools/k3-* and mvp/tests/test-k3-*; and, in all of these but the
-fixtures, none of the words that the claim's phrasing rules keep out.
+three pins files present (published-pins.txt, sitting-pins.txt, and
+firmware-pins.txt), their lines of their forms (sitting-pins.txt's
+`firmware` and `card` lines), each name of a kind once, and
+published-pins.txt pinning at least one file; observed.json named by no
+fragment but session.mk, and sitting-pins.txt by none but card.mk; the
+header in each new mvp/tools/k3-* and mvp/tests/test-k3-*; and, in all of
+these but the fixtures, none of the words that the claim's phrasing rules
+keep out.
 
 published (the gate's first step) reports each pinned file under --dir as
 missing, not a regular file, of another size, or of another SHA-256, or
@@ -270,8 +272,8 @@ def check(root):
                      "mvp/tools.mk" for path in sorted(k3.rglob("*.mk"))
                      if path.relative_to(k3).parts[0] != "fixtures" and
                      path.relative_to(k3).as_posix() not in named]
-    if not (k3 / "published-pins.txt").is_file():
-        findings.append("mvp/k3/published-pins.txt is missing")
+    findings += [f"mvp/k3/{name} is missing" for name in PINS
+                 if not (k3 / name).is_file()]
     for path in sorted(k3.rglob("*")):
         if path.is_symlink() or not (path.is_dir() or path.is_file()):
             findings.append(f"{path.relative_to(root)} is a symbolic link "
@@ -429,13 +431,11 @@ def self_test(scratch):
 
     head = "".join(f"# {part}\n" for part in HEADER)
     word, k3, mk = "S" + "D", "mvp/k3/", "mvp/tools.mk"
-    pinned = (mvp / "k3" / "published-pins.txt").read_text(encoding="utf-8")
-    first = next(line for line in pinned.splitlines()
-                 if line.startswith("published "))
-    name = first.split()[1]
-    # A made-up image's pins. The two cases that use them write the copied
-    # sitting-pins.txt whole, so that each rests on its own lines alone,
-    # whatever images the tree's file pins.
+    # A made-up file's pin and a made-up image's. Each case that changes a
+    # copied pins file writes it whole, so that each rests on its own lines
+    # alone, whatever the tree's files pin, or whether they pin anything
+    # (mvp/README.md, item 144).
+    first, name = f"published x.bin sha256={'1' * 64} bytes=1", "x.bin"
     card = f"card x sha256={'0' * 64} bytes=1\n"
     mutations = [
         ("the tree as committed", None, None),
@@ -511,27 +511,35 @@ def self_test(scratch):
             "published-pins.txt") is None, "link.txt is a symbolic link"),
         ("another kind of file", lambda t: put(t / k3 / "notes.md", head),
          "notes.md is not a .mk"),
-        ("a .txt file without the header", lambda t: edit(
-            t / k3 / "sitting-pins.txt", "# " + HEADER[1], "#"),
+        ("a .txt file without the header", lambda t: put(
+            t / k3 / "sitting-pins.txt", f"# {HEADER[0]}\n#\n"),
          "sitting-pins.txt does not open with the header"),
         ("a .json file that does not parse", lambda t: put(
             t / k3 / "platform.json", "{\n"), "does not parse as JSON"),
         ("the published pins missing", lambda t: (
-            t / k3 / "published-pins.txt").unlink() is None,
+            t / k3 / "published-pins.txt").unlink(missing_ok=True) is None,
          "published-pins.txt is missing"),
-        ("a pin not of its form", lambda t: edit(
-            t / k3 / "published-pins.txt", first,
-            first.replace("sha256=", "sha256=x")), "is not `published NAME"),
-        ("a pin naming a parent directory", lambda t: edit(
-            t / k3 / "published-pins.txt", first,
-            first.replace(" ", " ../", 1)), "is not `published NAME"),
-        ("a file pinned twice", lambda t: edit(
-            t / k3 / "published-pins.txt", first, f"{first}\n{first}"),
+        ("the sitting pins missing", lambda t: (
+            t / k3 / "sitting-pins.txt").unlink(missing_ok=True) is None,
+         "sitting-pins.txt is missing"),
+        ("the firmware pins missing", lambda t: (
+            t / k3 / "firmware-pins.txt").unlink(missing_ok=True) is None,
+         "firmware-pins.txt is missing"),
+        ("a pin not of its form", lambda t: put(
+            t / k3 / "published-pins.txt",
+            head + first.replace("sha256=", "sha256=x") + "\n"),
+         "is not `published NAME"),
+        ("a pin naming a parent directory", lambda t: put(
+            t / k3 / "published-pins.txt",
+            head + first.replace(" ", " ../", 1) + "\n"),
+         "is not `published NAME"),
+        ("a file pinned twice", lambda t: put(
+            t / k3 / "published-pins.txt", f"{head}{first}\n{first}\n"),
          f"names {name} twice"),
         ("no published file pinned", lambda t: put(
             t / k3 / "published-pins.txt", head), "pins no file"),
-        ("a sitting pin of another kind", lambda t: edit(
-            t / k3 / "sitting-pins.txt", head, head + first + "\n"),
+        ("a sitting pin of another kind", lambda t: put(
+            t / k3 / "sitting-pins.txt", head + first + "\n"),
          "is not `firmware NAME"),
         ("a firmware pin and a card pin for one image", lambda t: put(
             t / k3 / "sitting-pins.txt",
@@ -539,9 +547,13 @@ def self_test(scratch):
         ("a second card pin for one image", lambda t: put(
             t / k3 / "sitting-pins.txt", head + card + card),
          "names card x twice"),
-        ("a card pin among the published ones", lambda t: edit(
-            t / k3 / "published-pins.txt", first,
-            "card" + first[len("published"):]), "is not `published NAME"),
+        ("a card pin among the published ones", lambda t: put(
+            t / k3 / "published-pins.txt",
+            head + "card" + first[len("published"):] + "\n"),
+         "is not `published NAME"),
+        ("a pin of another kind among the firmware pins", lambda t: put(
+            t / k3 / "firmware-pins.txt", head + card),
+         "firmware-pins.txt line 3 is not `firmware NAME"),
         ("a new tool without the header", lambda t: put(
             t / "mvp/tools/k3-new.py", "print()\n"),
          "k3-new.py does not open with the header"),

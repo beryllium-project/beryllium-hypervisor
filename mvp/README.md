@@ -1286,7 +1286,7 @@ plan, "Architecture" and "The triggers for Instance 3").
 | `results/20261025-com260/` | M0-5's second campaign's board record, with its platform record, made against the M0-6 content and committed after it | M0-6 |
 | `results/20261027-com260-m1b/` | M1-5's second campaign's board record, with its platform record, made against the M1-6 content and committed after it | M1-6 |
 | `tools.mk` | The harness, rehearsal, board, and evidence targets (from B7's); te-poc's board images and variants (M1-3), its checks (M1-4), `SCENARIO`, and the remote reset (M1-5); anchor's board scenario and its two board variants (M2-1); the shared pages in the board's layout comment (M2-2); anchor's board images, selectors, and variants, and its report and measured inputs in the harness and board targets (M2-5); the firmware base for the harness, the sessions, and the rehearsal, and the earlier firmware for `firmware-version` (M11-2); `partition-check` among the evidence stages (M11-5); `boundary-check` and `breach-check` in `tools-check`, and the firmware without the boundary extension for the harness (M11-7); the one include directive that names the board fragments under `k3/` (M11-B1); `k3-read-check` in `tools-check`, and `k3-read`, the read session, among the session targets that need `K3_RUN_ROOT` (M13-2); `k3-m13-images`, the probe images of `bringup/k3-m13/` at the board's base and QEMU's, `k3-m13-check` in `tools-check`, and `k3-m13-held`, the third image's held target; `k3-m13-run-check` in `tools-check`, the run tool's self-test (M13-4) | M0-4, M1-3, M1-4, M1-5, M2-1, M2-2, M2-5, M11-2, M11-5, M11-7, M11-B1, M13-2, M13-4 |
-| `k3/common.mk`, `k3/frame.mk`, `tools/k3-frame.py`, `k3/published-pins.txt`, `k3/sitting-pins.txt` | M11-B's frame (the board addendum, B-1, B-10). `tools.mk` names the fragments under `k3/` in one include directive, `common.mk` first, which names the four images under test with each one's sitting, board image, expectation, reference, and name on the card. `k3-frame.py check` (`k3-frame-check`, in `tools-check`) holds the source policy of `k3/` and of the board's tools and the fragments' rules: a rule only for a `k3-` target or a path under a `K3B_` variable; `tools-check` and `qemu-test` joined by `k3-` prerequisites alone; only names beginning `K3B_` or `k3b_` assigned; no `export`, `unexport`, `override`, `undefine`, or `vpath`. `published` is the board gate's first step: each file that `published-pins.txt` pins, by size and SHA-256, in the directory `K3_PUBLISHED` names; the published files are never in the repository. `record` writes the gate's record from its steps' records, with the commit and whether the tree was clean. `sitting-pins.txt` holds, for each image of a sitting, its firmware's line and at most one line for its card; empty until a sitting is prepared (new) | M11-B1 |
+| `k3/common.mk`, `k3/frame.mk`, `tools/k3-frame.py`, `k3/published-pins.txt`, `k3/sitting-pins.txt` | M11-B's frame (the board addendum, B-1, B-10). `tools.mk` names the fragments under `k3/` in one include directive, `common.mk` first, which names the four images under test with each one's sitting, board image, expectation, reference, and name on the card. `k3-frame.py check` (`k3-frame-check`, in `tools-check`) holds the source policy of `k3/` and of the board's tools and the fragments' rules: the three pins files present (`published-pins.txt`, `sitting-pins.txt`, and `firmware-pins.txt`; debt sweep 6); a rule only for a `k3-` target or a path under a `K3B_` variable; `tools-check` and `qemu-test` joined by `k3-` prerequisites alone; only names beginning `K3B_` or `k3b_` assigned; no `export`, `unexport`, `override`, `undefine`, or `vpath`. `published` is the board gate's first step: each file that `published-pins.txt` pins, by size and SHA-256, in the directory `K3_PUBLISHED` names; the published files are never in the repository. `record` writes the gate's record from its steps' records, with the commit and whether the tree was clean. `sitting-pins.txt` holds, for each image of a sitting, its firmware's line and at most one line for its card; empty until a sitting is prepared (new) | M11-B1, debt sweep 6 |
 | `firmware/patches/0011-…-that-only-halts.patch`, `k3/firmware.mk`, `k3/firmware-pins.txt`, `tools/k3-firmware-rows.py`, `tests/test-k3-firmware-build.sh`, `partition/base/k3-like-no-reset.dts` | The one M-mode addition of M11-B (B-2) and the firmware's builds for the board (B-1). The patch adds `CONFIG_SBI_SYSTEM_RESET_HALT`, default n: one reset device, for the shutdown type alone, which stops the calling hart and touches no device. `k3-firmware` builds the board's configuration without a tree against its pin; `k3-firmware-rows` (in `qemu-test`) makes the inputs of five rows on QEMU's `k3-like` machine (`k3-halt`, `k3-reset-absent`, `k3-halt-fallback`, `k3-first`, `k3-second`): QEMU's tree without its reset devices, its console named as the board's (M11-B4), rendered and recorded by the independent check for each firmware, and the sittings' two forms, the board's configuration with a tree built in, each pinned; the tool's tree check requires that tree to be the plain base without the two reset nodes and with the console's two names, and nothing else changed; `k3-firmware-check` (in `tools-check`) runs `build.sh`'s refusals on a fixture and the tool's self-test (new) | M11-B2, M11-B1, M11-B4 |
 | `tools/k3-recipe.py`, `k3/platform.json`, `k3/tree.mk`, `k3/fixtures/recipe/`, `k3/fixtures/partition/` | The firmware's device tree for the board (B-3). The recipe takes the tree that the published U-Boot image carries for the board's product (step 0) and makes steps 1 to 4 from it, each a dtc source over the step before, compiled and read back by the lock's dtc: the SPL's memory node and boot hart; the SPI flash's controller disabled; the firmware's mailbox and its clients disabled; the console named `intel,xscale-uart`, then `ns16550`, for which alone the firmware base keeps the UART's unit enable (M11-B4, after the first sitting). Each step must be its input with its own changes and nothing else, and may draw no new dtc warning. `platform.json` is the board's description: each fact that the board's tools read, with its source, and the published tree's devices with their kinds; the recipe's check of it requires the console's two names on step 4. `tree.mk` has `k3-recipe-check` and `k3-partition-check` (tier 1, on the stand-ins under `k3/fixtures/`, every value made up; the partition stand-in is `k3/fixtures/partition/step4.dts`) and the board gate's steps `k3-gate-recipe` to `k3-gate-board` (tier 2) (new); the description gains the heap that a board tree with OpenSBI domains gives the firmware and the floor on its free heap (decisions), the cold boot hart's vector length (an inference), the PMP's grain, and the M-level APLIC's sources, and the recipe's check of a board tree requires that heap in the tree (M11-B5) | M11-B1, M11-B4, M11-B5 |
 | `k3/breach/`, `k3/breach.mk`, `tools/k3-board.py` | The board's two hostile-monitor images (B-10). `k3/breach/breach-g1.json` and `breach-c.json` are the candidate's declarations with the rows on devices on five of the board's devices, in the board's register forms, each write, jump, or call on a device or on M-mode's memory, and each start of a hart, saying what it would do if the boundary failed. `breach.mk` builds `k3-breach-g1` and `k3-breach-c` (in `qemu-test`, GCC, the plain monitor): the candidate's images with the table alone changed, which `k3-board.py only-table` requires; `k3-breach-check` (in `tools-check`) runs the generator's board rules on both declarations with stop B9's mutations. `k3-board.py` also compares a run's banner with the partition backend's model of the root regions (`banner`), requires a gate firmware build to hold its tree (`holds-tree`), and writes each image's `board.json` (`board`), which names everything that a sitting reads for the image; its self-test is `k3-board-check` (new) | M11-B1 |
@@ -13364,26 +13364,31 @@ M5's reset rule.
     manifests name their commit too, but the list does not hold
     them. Owed: a decision whether the list should hold the fourteen,
     or a comparison that sets them aside by rule. Open.
-144. **The frame tool's self-test rested on the tree's own sitting
-    pins (found at M11-B4).** Two cases of `tools/k3-frame.py`'s
-    self-test added made-up pins for `anchor` to a copy of the tree's
-    `k3/sitting-pins.txt`. Once the tree pinned `anchor`'s firmware
-    build for the second sitting, the first case's copy named
-    `firmware anchor` twice, which the tool rightly refuses, and the
-    case failed: `check` stopped at `k3-frame-check`, on 2026-11-21,
-    in a whole check at a commit that held the second sitting's pins
-    and was set aside. The second case passed there, but no longer by
-    its own lines alone: the tree's own `card anchor` line would have
-    given the same refusal. The tool's rules were right and are
-    unchanged. Both cases now write the copied file whole, for a
-    made-up image `x`, so that each rests on its own lines whatever
-    the tree pins. Found on the way, and left: no case of the
-    self-test covers `k3/firmware-pins.txt` (with that file left out
-    of the pins rule, every case still passes); and where the sitting
-    pins are absent, or the published pins hold no line, the self-test
-    stops with an error and not with a finding, in states that the
-    plan does not allow. Owed: a case for `k3/firmware-pins.txt`.
-    Open.
+144. **The frame tool's self-test rested on the tree's own sitting pins
+    (found at M11-B4; fixed in debt sweep 6).** Two cases of
+    `tools/k3-frame.py`'s self-test added made-up pins for `anchor` to a
+    copy of the tree's `k3/sitting-pins.txt`. Once the tree pinned
+    `anchor`'s firmware build for the second sitting, the first case's
+    copy named `firmware anchor` twice, which the tool rightly refuses,
+    and the case failed: `check` stopped at `k3-frame-check`, on
+    2026-11-21, in a whole check at a commit that held the second
+    sitting's pins and was set aside. The second case passed there, but
+    no longer by its own lines alone: the tree's own `card anchor` line
+    would have given the same refusal. The tool's rules were right and
+    were left unchanged then. Both cases now write the copied file
+    whole, for a made-up image `x`, so that each rests on its own lines
+    whatever the tree pins. Found on the way: no case of the self-test
+    covered `k3/firmware-pins.txt` (with that file left out of the pins
+    rule, every case still passed); and where the sitting pins were
+    absent, or the published pins held no line, the self-test stopped
+    with an error and not with a finding. Now `k3-frame.py check`
+    requires all three pins files (`published-pins.txt`,
+    `sitting-pins.txt`, and `firmware-pins.txt`) and names a missing one
+    as a finding of the tree; the self-test reads none of the tree's
+    pins, and writes each copied pins file whole from a made-up pin of
+    its own; and three cases are added: the sitting pins missing, the
+    firmware pins missing, and a pin of another kind among the firmware
+    pins. Each of the two rules fails its cases when undone. Closed.
 145. **A reset acts on a reading that is one dongle round trip old
     (found at M11-B4).** The console tool takes its reason for a reset
     from the helper (item 142), and then runs the pinned client twice,
