@@ -1850,7 +1850,21 @@ public push now.
   1's exception; and Q1 to Q16. Its acceptance would authorize the
   characterization, in scratch, and the writing of the design, with
   the AI-assistance disclosure's section, and no committed code.
-  Proposed 2026-11-26.
+  Proposed 2026-11-26, and accepted on 2026-11-27 at `4e0daa11`.
+- `mvp-m15-design.md`: M15's design (its work package M15-2), the
+  second of the plan's three decisions: one NVMe function of the
+  emulated machine, behind its system IOMMU model, given for a whole
+  boot to the I/O service VS domain of a scenario of its own,
+  `io-service`, which serves one other VS domain through two declared
+  pages. The facts that it rests on, with their evidence; the plan's
+  twenty-one questions answered (the handoff in Revision 5's order by
+  the monitor's boot code, before activation; direct delivery into the
+  owner hart's guest interrupt file; configuration answered from a
+  copy; the function's own stop; no M-mode code); the evidence for each
+  of Revision 5's negative cases; the proof-impact review; the build's
+  work packages, gates, and soft limits; what its sign-off decides by
+  name; and five questions. Its acceptance would authorize M15-3, the
+  build, and nothing on the board. Proposed 2026-11-27.
 - `security-model-v1-revision-2-review-summary.md`: the decision packet
   for security model v1's Revision 2, the console path (M7-5's Part 1
   revision, appended to the accepted text; I17, I18, the operator and

@@ -672,6 +672,10 @@ export default defineConfig({
             link: '/mvp-m15-plan'
           },
           {
+            text: 'MVP M15 design: the first device path, under emulation (proposed 2026-11-27)',
+            link: '/mvp-m15-design'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1392,6 +1396,10 @@ export default defineConfig({
             link: '/mvp-m15-plan'
           },
           {
+            text: 'MVP M15 design: the first device path, under emulation (proposed 2026-11-27)',
+            link: '/mvp-m15-design'
+          },
+          {
             text: 'Security model v1 Revision 2 review packet (the console path)',
             link: '/security-model-v1-revision-2-review-summary'
           },
@@ -1995,6 +2003,10 @@ export default defineConfig({
           {
             text: 'MVP M15 plan: the first device path, under emulation (proposed 2026-11-26)',
             link: '/mvp-m15-plan'
+          },
+          {
+            text: 'MVP M15 design: the first device path, under emulation (proposed 2026-11-27)',
+            link: '/mvp-m15-design'
           },
           {
             text: 'Security model v1 Revision 2 review packet (the console path)',
