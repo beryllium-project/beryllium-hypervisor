@@ -1078,3 +1078,49 @@ None ran a build, an emulator, or a test, and none had the board.
 
 No AI system accepted a result, re-set a limit, added a
 `Signed-off-by`, or pushed.
+
+## 21. After the release: debt sweep 6, the MVP README's open items
+
+This section covers debt sweep 6, on 2026-11-27, at the responsible
+human's direction: the MVP README's open items 133, 137, 141, and 143 to
+150. Its owner session ran on `claude-opus-5.5` on the workstation, and so
+did the one sub-agent that did its work, in a clone of its own with push
+disabled. That sub-agent had no board, and sent nothing to another
+project.
+
+- **The design and the fixes.** The sub-agent proposed which items to
+  fix and how, and the owner session decided each. Then the sub-agent
+  wrote each fix with tests that fail without it, in three parts, and the
+  owner session read every line of each part before the next began. It
+  read the six published files that item 148 names, each checked first
+  by its size and SHA-256.
+- **The checks.** On the owner session's word for each heavy step, the
+  sub-agent ran:
+  - two whole checks, before the sweep and with it;
+  - the comparison of their bundles;
+  - the CHERI check;
+  - six hundred runs of the `shim-rule` variant under QEMU;
+  - one real fetch of the verifier's codec package.
+
+  The first real fetch found a defect in item 133's change and failed
+  closed. The sub-agent proposed the fix; the owner session folded it
+  into that item's commit, and the fetch was made again.
+- **The words.** The sub-agent drafted the README's items, the file
+  table's rows, the guide's text, the ledger's notes, and the commit
+  messages. The owner session read each, checked them against the code
+  and the records, and changed some. It wrote this section.
+- **The network.** The builds fetched public sources at their pins
+  through the build's own fetchers: BusyBox, musl, OpenSBI's tag, and
+  U-Boot's tag. The real fetch asked Fedora's repositories, its updates
+  archive, and its codec repository.
+
+| Work | Made by | Under |
+| --- | --- | --- |
+| The fixes of items 133, 137, 141, and 143 to 147, with their tests | A sub-agent; every line read by the owner session | The responsible human's direction of 2026-11-27 |
+| The checks, the campaign, and the real fetch | The sub-agent | The owner session's word for each heavy step |
+| The README's eleven items, the file table, the guide, the ledger's notes, and the messages | The sub-agent's drafts, read and changed by the owner session | Debt sweep 6 |
+| This section | The owner session | Debt sweep 6 |
+| Every sign-off, and every push to the public repository | The responsible human alone | Each his own act |
+
+No AI system accepted a result, re-set a limit, added a
+`Signed-off-by`, or pushed.
