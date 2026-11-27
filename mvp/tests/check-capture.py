@@ -413,11 +413,14 @@ twelve against M0's (tests/fixtures/m0-guest-pins.txt, guest/pins.txt at
 the M0 result), M1's five against M1's (m1-guest-pins.txt, at the M1
 result), M2's, M5's, and M6's against M2's (m2-guest-pins.txt, at the M2
 result, the same bytes through M7-3, before M7-2's userland changed the
-kernel), and M7's against --pins; each expectation with the --report its
-SHA-256 names, and anchor's with its --kernel and --dtb, but for an anchor
-capture made with M2's pins, whose kernel is not retained: its measurement
-is the one its pinned expectation records (measurement_hex), the
-generator's over the build outputs of its time.
+kernel), and M7's, M7-4's, and M9's against M7's (m7-guest-pins.txt,
+guest/pins.txt at 4e0daa11, before item 130 changed the guest,
+with that time's two-guests session file, m7-guest/two-guests-shell.json);
+the current stand-ins against --pins; each expectation with the --report
+its SHA-256 names, and anchor's with its --kernel and --dtb, but for an
+anchor capture without a log made with M2's or M7's pins, whose kernel is
+not retained: its measurement is the one its pinned expectation records
+(measurement_hex), the generator's over the build outputs of its time.
 Each fixture is also judged against the expectations its image was built
 with: M1's and M2's against te-poc's and anchor's at 366c8af4
 (tests/fixtures/pre-m6/); M0's, M5's, and M6's against every scenario's
@@ -4217,6 +4220,22 @@ M1_PINS_SHA256 = \
 M2_PINS = FIXTURES / "m2-guest-pins.txt"
 M2_PINS_SHA256 = \
     "d1be8ad50ab02bde3b7696be369aa40554db76421d9196b1d3dd4dee02751366"
+# And M7's (guest/pins.txt at 4e0daa11, verbatim; the guest M7-2's
+# userland made, unchanged until item 130): the guest every capture
+# from M7 to item 130 was made with, M7's, M7-4's, and M9's fixtures
+# among them, with the session file of the same time that item 130
+# changed (scenarios/two-guests/sessions/shell.json at 4e0daa11,
+# verbatim, whose /bin count it raised; te-poc's and anchor's sessions
+# are unchanged). Their measured kernel is not retained, so an anchor
+# capture among them without a log is measured as its pinned
+# expectation records it (PINNED_MEASUREMENT).
+M7_PINS = FIXTURES / "m7-guest-pins.txt"
+M7_PINS_SHA256 = \
+    "1244fe7c86e8e8d3d11006b45927ab495cfe148e659b1a7e185684b4fc4132a7"
+M7_SESSIONS = {"two-guests": FIXTURES / "m7-guest" / "two-guests-shell.json"}
+M7_SESSIONS_SHA256 = {
+    "two-guests":
+    "06ccc1f53a0eed19d3f4c28eb62ef213bc5cb1926cef8459c30f1df132cd4f63"}
 PINNED_MEASUREMENT = "pinned"
 # The first te-poc captures, from M1-4's init that made its denied
 # accesses as pid 1, which stopped the work package (stop condition 6,
@@ -4454,6 +4473,24 @@ def m2_pins():
     if hashlib.sha256(M2_PINS.read_bytes()).hexdigest() != M2_PINS_SHA256:
         raise ValueError(f"{M2_PINS} is not M2's guest pins")
     return read_pins(M2_PINS)
+
+
+def m7_pins():
+    """M7's guest pins, as M7's, M7-4's, and M9's fixtures were captured
+    with them."""
+    if hashlib.sha256(M7_PINS.read_bytes()).hexdigest() != M7_PINS_SHA256:
+        raise ValueError(f"{M7_PINS} is not M7's guest pins")
+    return read_pins(M7_PINS)
+
+
+def m7_sessions():
+    """The session files M7's guest was typed with, where its scenario's
+    own has changed since."""
+    for scenario, path in M7_SESSIONS.items():
+        if hashlib.sha256(path.read_bytes()).hexdigest() != \
+                M7_SESSIONS_SHA256[scenario]:
+            raise ValueError(f"{path} is not M7's {scenario} session file")
+    return M7_SESSIONS
 
 
 def m2_fixture(name):
@@ -5453,7 +5490,7 @@ def m9_fixture_cases(expects, reports, references):
     for image, name in M9_SESSION_FIXTURES.items():
         cases.append((f"M9 {image}", image, "direct", fixture(name),
                       session_options(
-                          image, M9_SESSION_FIXTURES,
+                          image, M9_SESSION_FIXTURES, m7_sessions(),
                           **retained_options(
                               expects[image], references,
                               report=report_for(expects[image], reports))),
@@ -5821,19 +5858,22 @@ def probe_received(text, data, sizes=None):
     return text_of(parts)
 
 
-def session_options(image, fixtures=SESSION_FIXTURES, **extra):
+def session_options(image, fixtures=SESSION_FIXTURES, sessions=None,
+                    **extra):
     """A session fixture's options (M7-4's, or FIXTURES'): its keys, its
     nonce, and its scenario's session file, as tests/session-typist.py
-    gives them."""
+    gives them; SESSIONS (m7_sessions()) gives the file of an earlier
+    guest where its scenario's own has changed since."""
     name = fixtures[image]
     scenario = image[:-len("-shell")]
+    path = (sessions or {}).get(scenario, MVP_DIR / "scenarios" / scenario /
+                                "sessions" / "shell.json")
     return dict({"sbi_version": "2.0",
                  "typed": (FIXTURES / f"{name}.typed.txt").read_text(
                      encoding="ascii"),
                  "nonce": (FIXTURES / f"{name}.nonce.txt").read_text(
                      encoding="ascii").strip(),
-                 "session": (MVP_DIR / "scenarios" / scenario / "sessions" /
-                             "shell.json").read_bytes()}, **extra)
+                 "session": path.read_bytes()}, **extra)
 
 
 def hostile_bare(text, forged):
@@ -5848,24 +5888,27 @@ def m74_cases(expects, reports, measured):
     guest's capture, each
     typed session with its keys, nonce, and session file; a session
     without its keys or with another nonce; and the hostile capture with a
-    forged line bare."""
+    forged line bare. Each with M7's guest's session files (m7_sessions()),
+    and an anchor capture measured as MEASURED gives."""
+    era = m7_sessions()
     hostile = fixture(HOSTILE_FIXTURE)
     cases = [("M7-4 hostile", "hostile", "direct", hostile,
               {"sbi_version": "2.0"}, "PASS")]
     for image, name in SESSION_FIXTURES.items():
         cases.append((f"M7-4 {image}", image, "direct", fixture(name),
-                      session_options(image, measured=measured,
+                      session_options(image, sessions=era, measured=measured,
                                       report=report_for(expects[image],
                                                         reports)), "PASS"))
     two = fixture(SESSION_FIXTURES["two-guests-shell"])
-    options = session_options("two-guests-shell")
+    options = session_options("two-guests-shell", sessions=era)
     del options["typed"]
     return cases + [
         ("M7-4 two-guests-shell without its keys", "two-guests-shell",
          "direct", two, options, "FAIL"),
         ("M7-4 two-guests-shell with another run's nonce",
          "two-guests-shell", "direct", two,
-         session_options("two-guests-shell", nonce="0123456789abcdef"),
+         session_options("two-guests-shell", sessions=era,
+                         nonce="0123456789abcdef"),
          "FAIL"),
         ("M7-4 two-guests-shell against two-guests' expectation",
          "two-guests", "direct", two, {"sbi_version": "2.0"}, "FAIL"),
@@ -5884,9 +5927,12 @@ def self_test(expects, pins, reports, measured, current, prior, latest,
     two-guests' at ae3e9537, PRE_M7), for M6's fixtures CURRENT (every
     scenario's at ae3e9537, PRE_M7), for M7's PRIOR (every scenario's at
     ca48456f, PRE_M9), and for M9's retained captures against ERA; current
-    stand-ins use LATEST and the build at ROOT."""
+    stand-ins use LATEST and the build at ROOT. M7's, M7-4's, and M9's
+    retained captures are judged with M7's guest (m7_pins(),
+    m7_sessions()), the current stand-ins with PINS."""
     failed = 0
     previous, m1, m2 = m0_pins(), m1_pins(), m2_pins()
+    m7 = m7_pins()
     report = report_for(expects["te-poc"], reports)
     anchor = report_for(expects["anchor"], reports)
     pinned = PINNED_MEASUREMENT
@@ -5903,11 +5949,11 @@ def self_test(expects, pins, reports, measured, current, prior, latest,
         [case + (expects,) for case in uboot_cases(m2, previous)] + \
         [case + (m2, current)
          for case in m6_cases(current, reports, pinned)] + \
-        [case + (pins, prior)
-         for case in m7_cases(prior, reports, measured)] + \
-        [case + (pins, prior)
-         for case in m74_cases(prior, reports, measured)] + \
-        [case + (pins, era)
+        [case + (m7, prior)
+         for case in m7_cases(prior, reports, pinned)] + \
+        [case + (m7, prior)
+         for case in m74_cases(prior, reports, pinned)] + \
+        [case + (m7, era)
          for case in m9_fixture_cases(era, reports, era_references)] + \
         [case + (pins, latest)
          for case in current_m9_fixture_cases(latest, reports, root)]
@@ -6024,10 +6070,10 @@ def self_test(expects, pins, reports, measured, current, prior, latest,
     # (D-4); a shell's keys give its :18 (src/mvp-input.c's table).
     hostile = fixture(HOSTILE_FIXTURE)
     _, bare_run = evaluate(hostile_bare(hostile, FORGED_RUN),
-                           prior["hostile"], "direct", pins,
+                           prior["hostile"], "direct", m7,
                            sbi_version="2.0")
     _, bare_prefix = evaluate(hostile_bare(hostile, FORGED_PREFIX),
-                              prior["hostile"], "direct", pins,
+                              prior["hostile"], "direct", m7,
                               sbi_version="2.0")
     model, drops, selected, firsts = input_model(
         b"echo x\r~0~~a\r~1~x~2b\r~0\n", [0])
@@ -7180,13 +7226,16 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
     failed = count = 0
     verdicts = {}
     previous, m1, m2 = m0_pins(), m1_pins(), m2_pins()
+    m7, m7_era = m7_pins(), m7_sessions()
 
     def judge(base, text, report_data=None, extra=None):
         name, image, mode = BASES[base]
-        base_pins = previous if name in M0_FIXTURES else m1 \
-            if name in M1_FIXTURES else m2 if m2_fixture(name) else pins
         retained = base.startswith("m9")
         current_m9 = base.startswith("c9")
+        seventh = name in M7_FIXTURES.values() or name in M74_FIXTURES
+        base_pins = previous if name in M0_FIXTURES else m1 \
+            if name in M1_FIXTURES else m2 if m2_fixture(name) else m7 \
+            if seventh or retained else pins
         table = era if retained else latest if current_m9 else prior \
             if name in M7_FIXTURES.values() or \
             name in M74_FIXTURES else current \
@@ -7195,7 +7244,8 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
             report_data = report_for(table[image], reports)
         # A session's keys, nonce, and session file, a retained era
         # reference, or a current stand-in's build.
-        options = dict(session_options(image) if image in SESSION_FIXTURES
+        options = dict(session_options(image, sessions=m7_era)
+                       if image in SESSION_FIXTURES
                        and not (retained or current_m9) else BASE_OPTIONS.get(
                            base, BASE_OPTIONS[mode]),
                        **(retained_options(table[image], era_references)
@@ -7204,8 +7254,8 @@ def mutation_test(expects, pins, reports, measured, current, prior, latest,
                           if current_m9 else {}),
                        **(extra or {}))
         return evaluate(text, table[image], mode, base_pins, report_data,
-                        measured=PINNED_MEASUREMENT if m2_fixture(name)
-                        else measured, **options)
+                        measured=PINNED_MEASUREMENT if m2_fixture(name) or
+                        seventh else measured, **options)
     for base, (name, image, mode) in BASES.items():
         text = kexec_form(fixture(name)) if mode == "kexec" and \
             name not in BOARD_CAPTURES else fixture(name)

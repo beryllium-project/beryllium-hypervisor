@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 James Morris <jamorris@linux.microsoft.com>
+#
+# The MVP guest pins (planning/mvp-m0-plan.md, Guest software, Budgets, and
+# Tests and evidence; B7's guest/pins.txt with the MVP's outputs): the
+# SHA-256 and size of the nolibc init, the management module, the Image,
+# and every DTB that tools/build-guest.sh makes, the Image header facts,
+# and the kernel banner, which both QEMU reference boots printed. They
+# hold for the cross toolchain named on the last line. Since M1
+# (planning/mvp-m1-plan.md, Guest software) the init has its roles and the
+# Image B6's fragment and the MVP's, with /dev/mem; M2-1
+# (planning/mvp-m2-plan.md, Scenarios and the harness) adds the anchor
+# scenario's two DTBs, whose bootargs carry the host's and the protected
+# domain's roles; and M2-4 (Guest software, Q2, Q16) the management
+# module, be-mgmt.ko, which the Image's initramfs holds beside the init,
+# now with M2's roles and HMAC-SHA-256, and the Image built with
+# CONFIG_MODULES=y. M7-2 (planning/mvp-m7-plan.md, D-9, Q5 to Q7, Q13)
+# adds the userland: the two `source` lines below, BusyBox and musl, each
+# an external input never committed, by its release tag (lightweight) and
+# that tag's commit, its release tarball's HTTPS URL and SHA-256, its
+# detached signature's URL, the upstream key in guest/keys/ and the key's
+# primary fingerprint, and its licence; and the outputs busybox (static,
+# rv64imac and lp64, against musl) and musl-libc.a, with BusyBox in the
+# Image's initramfs. Upstream on 2026-11-01: busybox.net marks 1.36.1
+# (2023-05-19) its latest stable release, 1.37.0 and 1.38.0 unstable; musl
+# 1.2.6 is musl.libc.org's latest release. Each tarball's tree is its tag's
+# commit's (BusyBox's lacks the nine .gitignore files); busybox.net's
+# .sha256 file gives the same SHA-256. Each key came from its project's
+# site (https://busybox.net/~vda/vda_pubkey.gpg, Denys Vlasenko's DSA-1024
+# key; https://musl.libc.org/musl.pub, RSA-2048), and keyserver.ubuntu.com
+# gives the same fingerprint; both signatures use SHA-1 digests, which
+# gpgv 2.4.9 accepts, so the SHA-256 pin is the binding check. musl's
+# advisories through 1.2.6, CVE-2026-107891 (regcomp), CVE-2026-6042
+# (iconv), and CVE-2026-40200 (qsort, 32-bit only), reach no guest code:
+# BusyBox's link defines none of regcomp, regexec, iconv, and iconv_open,
+# which tools/build-guest.sh checks, and the guest is 64-bit. M7-4
+# (planning/mvp-m7-plan.md, Q4, D-4) adds the init's `be-anchor pause` and
+# `be-anchor terminate` and its QEMU-only /init-hostile, a further link in
+# the initramfs, and six DTBs: each scenario's shell DTBs, with
+# rdinit=/init-shell (anchor's G0 alone), and G0's hostile DTB, with
+# rdinit=/init-hostile.
+# tools/guest-pins.py checks them; `build-guest.sh --unpinned` prints the
+# output lines for a deliberate update.
+source busybox version=1.36.1 tag=1_36_1 commit=1a64f6a20aaf6ea4dbba68bbfa8cc1ab7e5c57c4 url=https://busybox.net/downloads/busybox-1.36.1.tar.bz2 sha256=b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314 signature=https://busybox.net/downloads/busybox-1.36.1.tar.bz2.sig key=guest/keys/busybox.asc fingerprint=C9E9416F76E610DBD09D040F47B70C55ACC9965B license=GPL-2.0-only
+source musl version=1.2.6 tag=v1.2.6 commit=9fa28ece75d8a2191de7c5bb53bed224c5947417 url=https://musl.libc.org/releases/musl-1.2.6.tar.gz sha256=d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a signature=https://musl.libc.org/releases/musl-1.2.6.tar.gz.asc key=guest/keys/musl.asc fingerprint=836489290BB6B70F99FFDA0556BCDB593020450F license=MIT
+file init sha256=441a5006d87b251fa9e71cc966d0cb0fbb3ad025e4935c197f0326e9c83d9709 bytes=17176
+file be-mgmt.ko sha256=67529a9dca0f682d4130993040fb7c17f88f75a823b96965b3b72da78ae439d1 bytes=5736
+file busybox sha256=26591347cd7e5962e485011b402ea54cca0a2f594180087c894ed56ddcb80b90 bytes=141560
+file musl-libc.a sha256=578556667ef60864f99e4bb57d150f5966138d6ce03cbe122ad37cebe21f6944 bytes=4300500
+file Image sha256=ed64a257bbaba420a2169422859a9fad3312c23870e45363781d8d0b72ee44b6 bytes=2063556
+file mvp-guest-g0.dtb sha256=f51be0c7c1cf25f11eeb721dc4dcf19d34902794cf3f15cd43df0255523e0783 bytes=4096
+file mvp-guest-g1.dtb sha256=ea0a5196104cbf48001ae1d14fb67a2587f3e1859644072446baad4b6780bcea bytes=4096
+file mvp-guest-g1-init-exit.dtb sha256=7cc47c2f65499ca72454588b181d7cf8ebf5a9b45818de2f0e054759a0684afd bytes=4096
+file mvp-guest-g0-rdcycle.dtb sha256=4043572a9cbcdaee41c51d91ed83ebc0b622352167173f7ced97bbcc15c6de66 bytes=4096
+file mvp-guest-g0-sbi-time.dtb sha256=568b90cee8cf8bb9a06f423a0efb212f9ffdd16b2a9384fac983bdf990b79cbf bytes=4096
+file mvp-guest-g1-sbi-time.dtb sha256=d8c1f4d8f43b7ce569ebe5187237c2c21f945cf3eae8c05e27407d566e7d45e0 bytes=4096
+file mvp-guest-g0-reference.dtb sha256=9a523ff8e0834bca6bc09b09aa43d6c7a0bc94fa307a88105c02ce5469a308e1 bytes=4096
+file mvp-guest-g1-reference.dtb sha256=0e079e289a434d44d9c965617c136c8552de0d0ccad305a9e2ea249f044bceb5 bytes=4096
+file mvp-guest-g0-te-poc.dtb sha256=5aca65d93e8488f44f0c8a746993ce8ceb231542fc9aa64bd491ede90fb9156b bytes=4096
+file mvp-guest-g1-te-poc.dtb sha256=d761366dce46edb1fe2ecf17bc517c84f79b4630c1af332d5be58855c3cafef0 bytes=4096
+file mvp-guest-g0-anchor.dtb sha256=55acfb900d8e43daee8f5c3d2b1c13e624f8af7e8cc97dd900d6f23d8728c71b bytes=4096
+file mvp-guest-g1-anchor.dtb sha256=903799a1d59ba17851076a9be688a8db992bd441a737137d64912e0bd6b6a025 bytes=4096
+file mvp-guest-g0-shell.dtb sha256=aabf721bc86adcd78d7bd6c91f081df15e3c564802c154f419647ab71ab749e7 bytes=4096
+file mvp-guest-g1-shell.dtb sha256=ff9e5ca0f2ef0c978fac295c7de6da7137a61ee303ac860b0707df959c4f114c bytes=4096
+file mvp-guest-g0-te-poc-shell.dtb sha256=777d225af04ad8336811a76ce944d6cdb0e6c298b6d2a10ed7d1adf867e987df bytes=4096
+file mvp-guest-g1-te-poc-shell.dtb sha256=b408340c0babce04416957d053b1c23166b416c4b42ecde243f68b3959e817b6 bytes=4096
+file mvp-guest-g0-anchor-shell.dtb sha256=9efc1d9df7f4936aa9efa2956abc1189f1829daa0c913e9e9c11d95debff727e bytes=4096
+file mvp-guest-g0-hostile.dtb sha256=2cee0fc98003e17bbc98684a701a5c1b65752952392b342db00deea721ce9099 bytes=4096
+kernel image_size=0x22bfb0
+kernel text_offset=0x200000
+kernel banner=Linux version 7.2.0 (be@beryllium) (riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1), GNU ld version 2.46.1-1.fc44) #1 PREEMPT Sun Aug 16 21:32:26 UTC 2026
+toolchain gcc=riscv64-linux-gnu-gcc (GCC) 16.2.1 20260819 (Red Hat Cross 16.2.1-1)
