@@ -1540,7 +1540,7 @@ missing reference or export. The bundle holds:
 
 | Path | Contents |
 | --- | --- |
-| `bundle.txt` | `schema`, `kind=development`, the source commit and tree state (`clean`, or `dirty changed=<n>`), the lock's and the closure's SHA-256, the lock check's status, one `scenario=` line per scenario with its SHA-256 (and, for `te-poc` and `anchor`, the report's and the policy's), the image count, the reference and export counts (`references=`, `log_exports=`), the capture checker's self-test and mutation lines, the policy check's lines, the QEMU totals, and the U-Boot rehearsal's lines: `rehearsal=` (its summary's last line, or `absent` or `stale`) and one `rehearsal_<case>=` line per case |
+| `bundle.txt` | `schema`, `kind=development`, the source commit and tree state (`clean`, or `dirty changed=<n>`), the lock's and the closure's SHA-256, the lock check's status, one `scenario=` line per scenario with its SHA-256 (and, for `te-poc` and `anchor`, the report's and the policy's), the image count, the count of listed outputs that name the commit (`images_commit_named=`), the reference and export counts (`references=`, `log_exports=`), the capture checker's self-test and mutation lines, the policy check's lines, the QEMU totals, and the U-Boot rehearsal's lines: `rehearsal=` (its summary's last line, or `absent` or `stale`) and one `rehearsal_<case>=` line per case |
 | `tool-record.txt`, `tool-lock.conf` | The lock check's output while bundling, and the lock |
 | `scenario/` | `two-guests`' `scenario.json` and expectation files, and `scenario/te-poc/` and `scenario/anchor/`, each with its `scenario.json`, `policy.te`, `authority-report.json`, and expectation files, each bound by SHA-256 to the generator's `SCENARIO.txt` |
 | `images.sha256` | The image manifest: every image and guest input, by SHA-256 and path relative to `build/mvp/` |
@@ -1552,6 +1552,13 @@ missing reference or export. The bundle holds:
 | `costs.tsv` | The costs the capture checker derives from each passing run's tick fields, recorded only |
 | `rehearsal/` | Each U-Boot rehearsal case made on the current board image and judged against the current reference: its `status.txt` and each attempt's `console.log`, `check.txt`, `result.json`, `oracle.json`, `session.txt`, `typed.txt`, and `log.json`; and `summary.txt` when every case was |
 | `MANIFEST.sha256` | Every other file's SHA-256 |
+
+Fourteen outputs under `k3/check/references/` name the commit that built
+them. `tools/evidence.py --compare-bundles FIRST SECOND` compares two
+bundles' lists output by output and sets those fourteen aside where the
+bundles' commits differ; anything else that differs, or is missing from one
+list, fails it. Compare only builds made at one path: an ELF file, and each
+table that binds one, names the build's directory.
 
 An attempt's export is required where its image's reference says the image
 logs (every run class but `pre-measurement`) and the checker's verdict is

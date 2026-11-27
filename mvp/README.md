@@ -1281,7 +1281,7 @@ plan, "Architecture" and "The triggers for Instance 3").
 | `tests/kexec-rehearsal.sh`, `tests/kexec-rehearsal/init.c` | The eight-hart kexec rehearsal (from B7's); te-poc's image with its report (M1-4); anchor's with its report and measured inputs (M2-5) | M0-4, M1-4, M2-5 |
 | `tools/kexec-load.py`, `tools/k3-{preflight,run,campaign}.sh`, `tests/test-kexec-load.py`, `tests/fake-board.py`, `tests/run-tool-dry-run.sh` | The board tools with the layout rule, the loader's test, and the dry run (from B7's); the dry run's `same-second` case (after M0-C's review) and its platform-record checks and `tree-state` and `probe-record` cases (M0-6); the remote reset, the te-poc selector, the channel page, the firmware identity, the pause, and their cases (M1-5); the platform record's M1 checks (M1-6); the shared pages in the layout rule and its test (M2-2); `SCENARIO=anchor` and its variants, a v3 expectation's measured inputs, the loader test's purgatory search before the payload, and the anchor cases (M2-5); the firmware-pin cases for the firmware base and the earlier firmware, and the synthetic stand-in logs (M11-2); the layout rule's regions and the dry run's expectations at the role layout's extents (M11-3); `k3-run.sh`'s image check given the image's expectation, the dry run's fixtures in their boundary-on forms, and its `boundary-gate` case, in which one changed byte of a device tree stops a run before QEMU starts (M11-7); the dry run's `port-open-rule` case holding the fake U-Boot's `saveenv` until the test releases it, its `reset-*` cases waiting for the fake board's halt, and the fake board's power-off file written whole, so that none of them depends on a timed sleep (found in M11-7's checks, landed with M11-8); the dry run's third argument, `sittings`, which runs the sittings' cases alone (M11-B1) | M0-4, M0-6, M1-5, M1-6, M2-2, M2-5, M11-2, M11-3, M11-7, M11-8, M11-B1 |
 | `tools/k3ctl.sha256`, `tests/fake-k3ctl.py` | The `k3ctl` client's pin and the dry run's fake dongle (new) | M1-5 |
-| `tools/evidence.py` | The evidence bundle, the board record, and the image comparison (new); the platform record in every board record, and the manifest written again to cover it, and the board record's tree state read before its load-check staging directory exists (M0-6); te-poc in the bundle (M1-4); the resets, the policy records, and the serial-log note in the board record (M1-5); anchor's images, variants, DTBs, and module in the identity set, its scenario, report, and policy records, and the board record's measured inputs and anchor excerpts (M2-5); each QEMU attempt's oracle record (M11-2); the partition outputs in the image manifest (M11-5); each attempt's, session's, and rehearsal case's boundary columns and record, which must agree, with the tree among the partition outputs; each breach attempt's hook record and each breach image's plan; and the firmware without the boundary extension among the compared images, required when a run booted it (M11-7); the step of each attempt under the boundary, and a hook record on hart 0 (M11-8); what `check` makes under `k3/check/` listed and bundled, with the records under `records/k3/` and the board's references; the halt record of a run whose expectation carries the halt mark; and the record of a sitting (`--sitting`): each input by path and SHA-256, each boot judged again whole, the read-back after each session, paths only from their roots, and no host name, digest of the NOR, USB ID, or reader's link (M11-B1); a sitting that stopped is recorded as stopped, and a record may be made at a later commit when, under `mvp/` and `bringup/`, nothing differs from the sitting's commit but this tool and its dry run (M11-B4) | M0-4, M0-6, M1-4, M1-5, M2-5, M11-2, M11-5, M11-7, M11-8, M11-B1, M11-B4 |
+| `tools/evidence.py` | The evidence bundle, the board record, and the image comparison (new); the platform record in every board record, and the manifest written again to cover it, and the board record's tree state read before its load-check staging directory exists (M0-6); te-poc in the bundle (M1-4); the resets, the policy records, and the serial-log note in the board record (M1-5); anchor's images, variants, DTBs, and module in the identity set, its scenario, report, and policy records, and the board record's measured inputs and anchor excerpts (M2-5); each QEMU attempt's oracle record (M11-2); the partition outputs in the image manifest (M11-5); each attempt's, session's, and rehearsal case's boundary columns and record, which must agree, with the tree among the partition outputs; each breach attempt's hook record and each breach image's plan; and the firmware without the boundary extension among the compared images, required when a run booted it (M11-7); the step of each attempt under the boundary, and a hook record on hart 0 (M11-8); what `check` makes under `k3/check/` listed and bundled, with the records under `records/k3/` and the board's references; the halt record of a run whose expectation carries the halt mark; and the record of a sitting (`--sitting`): each input by path and SHA-256, each boot judged again whole, the read-back after each session, paths only from their roots, and no host name, digest of the NOR, USB ID, or reader's link (M11-B1); a sitting that stopped is recorded as stopped, and a record may be made at a later commit when, under `mvp/` and `bringup/`, nothing differs from the sitting's commit but this tool and its dry run (M11-B4); the outputs that name their commit counted in `bundle.txt`, and two development bundles' lists compared (`--compare-bundles`), with those outputs set aside where the commits differ (debt sweep 6) | M0-4, M0-6, M1-4, M1-5, M2-5, M11-2, M11-5, M11-7, M11-8, M11-B1, M11-B4, debt sweep 6 |
 | `tools/platform-record.py` | The platform record of a board record (new; plan, "Platform record"); M1's Resets and Serial log (M1-5); M1's Preflight beside M0's record, te-poc runs, Denials on K3, The channel, and the other runs' failure lines (M1-6); the shared pages' region line (M2-2); M2's sections: anchor runs, the pages, the measurement, management requests, paused and terminated, and requests and responses (M2-5); the tick probe beside the historical IPI probe, and SHUTDOWN's `tick` (M11-4) | M0-6, M1-5, M1-6, M2-2, M2-5, M11-4 |
 | `results/20261025-com260/` | M0-5's second campaign's board record, with its platform record, made against the M0-6 content and committed after it | M0-6 |
 | `results/20261027-com260-m1b/` | M1-5's second campaign's board record, with its platform record, made against the M1-6 content and committed after it | M1-6 |
@@ -13353,17 +13353,29 @@ M5's reset rule.
     **Closed in M11-B4**, by the commit that corrects the helper.
     Items 145 to 147 hold what the same reading of the board tools
     found and left.
-143. **Fourteen of M11-B's listed outputs name the commit that they
-    were built from (found at M11-B3).** `check`'s bundle lists 865
-    outputs. Fourteen of them hold the commit's ID: the reference
-    manifests of M11-B's seven rows under QEMU, and the seven files
-    that hold their digests. At one commit they are the same on any
-    host. Between two commits they differ in that one field, so two
-    commits' lists agree in 851 outputs at most, and a comparison of
-    two lists has to set them aside. The bundle's own reference
-    manifests name their commit too, but the list does not hold
-    them. Owed: a decision whether the list should hold the fourteen,
-    or a comparison that sets them aside by rule. Open.
+143. **Fourteen of M11-B's listed outputs name the commit that they were
+    built from (found at M11-B3; fixed in debt sweep 6).** `check`'s
+    bundle lists 865 outputs. Fourteen of them hold the commit's ID: the
+    reference manifests of M11-B's seven rows under QEMU, and the seven
+    files that hold their digests. At one commit they are the same on
+    any host. Between two commits they differ in that one field, so two
+    commits' lists agree in 851 outputs at most. The bundle's own
+    reference manifests name their commit too, but the list does not
+    hold them. Decided: the list keeps the fourteen, which are outputs
+    of `check` like any other, and a comparison sets them aside by rule.
+    `tools/evidence.py` marks them by path (`COMMIT_NAMED`: a reference
+    manifest, or its pin, under `k3/check/references/`); `bundle.txt`
+    counts them (`images_commit_named=`); and
+    `--compare-bundles FIRST SECOND` compares two development bundles'
+    lists output by output: where the bundles' commits differ, each
+    output that the rule marks and both lists hold is set aside, and
+    anything else that is not the same, an output missing from one list
+    among them, fails the comparison. Only builds made at one path
+    compare (item 77). On 2026-11-27 the bundles of two whole checks
+    built at one path, one before this sweep and one with its changes to
+    the images, gave `aside=14` and `differing=8`: the eight are the
+    `shim-rule` variant's boot images and their ELFs, which item 137
+    changes, and the other 843 were the same. Closed.
 144. **The frame tool's self-test rested on the tree's own sitting pins
     (found at M11-B4; fixed in debt sweep 6).** Two cases of
     `tools/k3-frame.py`'s self-test added made-up pins for `anchor` to a

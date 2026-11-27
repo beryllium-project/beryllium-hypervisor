@@ -20,6 +20,11 @@ harness", the Evidence stage; work package M0-4).
   evidence.py --compare-images HOST OTHER
       two images.sha256 files, image by image (mvp evaluate: the host's
       images against the evaluator's)
+  evidence.py --compare-bundles FIRST SECOND
+      two development bundles' images.sha256, output by output, with the
+      outputs that name their commit (COMMIT_NAMED) set aside where the
+      bundles' commits differ: two builds made at one path (mvp/README.md,
+      items 77 and 143)
   evidence.py --self-test --scratch DIR
 
 Purpose: keep what the checks or a board campaign showed, with what they
@@ -28,7 +33,9 @@ ran on, as one directory under a SHA-256 manifest.
 The development bundle (build/mvp/evidence/check, `make -C mvp evidence`,
 the last step of `check`) holds:
   bundle.txt        the source commit and tree state, the lock's and the
-                    closure's SHA-256, the scenario, and every total
+                    closure's SHA-256, the scenario, and every total, among
+                    them how many listed outputs name the commit
+                    (images_commit_named)
   tool-record.txt   tools/lock/tool-lock.py check, run while bundling
   tool-lock.conf    the lock itself
   scenario/         the scenario (two-guests) and every expectation file
@@ -52,7 +59,12 @@ the last step of `check`) holds:
                     it: required, the bundle refused without it, when an
                     attempt's expectation names it (its boundary's
                     "firmware": "no-boundary", D-10's negative 1,
-                    boundary-absent)
+                    boundary-absent); and every output that check makes
+                    for the board under k3/check/ (M11-B), of which the
+                    reference manifests and their pins under
+                    k3/check/references/ (COMMIT_NAMED) name the commit
+                    that built them: the list keeps them, and two commits'
+                    lists differ in them (mvp/README.md, item 143)
   records/          the checks' outputs: the image checker on the images,
                     the variants, and the probes, with its mutation tests;
                     the budgets; the loader's layout rule; the board-tool
@@ -366,6 +378,13 @@ ELF_FORM = re.compile(r"^(?:(?:gcc|clang)(?:/te-poc|/anchor)?|"
                       r"be-mvp-boot\.elf$")
 EXPECT_FORM = re.compile(r"^[a-z0-9][a-z0-9.-]{0,63}\.json$")
 SHA_FORM = re.compile(r"^[0-9a-f]{64}$")
+# The outputs of images.sha256 that name the commit they were built from
+# (mvp/README.md, item 143): the reference manifests that check makes for
+# the board, each with its source commit (tools/gen-reference.py), and
+# their pins, each the manifest's SHA-256. The list keeps them, and
+# --compare-bundles sets them aside between bundles of two commits.
+COMMIT_NAMED = re.compile(r"^k3/check/references/(?:gcc|clang)/"
+                          r"[a-z0-9][a-z0-9.-]{0,63}\.(?:json|sha256)$")
 VERDICTS = {"0": "PASS", "1": "FAIL", "3": "REFUSED", "4": "STOP"}
 # M9's log (planning/mvp-m9-plan.md, D-3, D-4; mvp/docs/log-profile.md, 3.2,
 # 5.2, 5.3): the export's and the reference's schemas, and the run classes;
@@ -667,6 +686,53 @@ def compare_images(host, other):
     differing = len(lines) - same
     lines.append(f"BE_MVP_IMAGE_IDENTITY: {'FAIL' if differing else 'PASS'} "
                  f"images={len(lines)} same={same} differing={differing}")
+    return differing == 0, lines
+
+
+def bundle_commit(bundle):
+    """The source commit of a development bundle that verifies."""
+    findings = verify(bundle)
+    if findings:
+        raise Refused(f"{bundle} does not verify: {findings[0]}")
+    fields = dict(line.split("=", 1) for line in (
+        bundle / "bundle.txt").read_text(encoding="utf-8").splitlines()
+                  if "=" in line)
+    if fields.get("kind") != "development" or \
+            not COMMIT_FORM.fullmatch(fields.get("source_commit", "")):
+        raise Refused(f"{bundle} is not a development bundle with its "
+                      "source commit")
+    return fields["source_commit"]
+
+
+def compare_bundles(first, second):
+    """One line per output of two development bundles' lists, and whether
+    none differs. Where the bundles' commits differ, an output in both
+    lists that COMMIT_NAMED marks is set aside (`aside`), whatever its
+    digests; anything else not the same differs. Two builds made at one
+    path alone compare: an ELF file, and each table that binds one, names
+    the build's directory (mvp/README.md, items 77 and 143)."""
+    commits = [bundle_commit(bundle) for bundle in (first, second)]
+    left, right = (read_manifest(bundle / "images.sha256")
+                   for bundle in (first, second))
+    lines, counts = [], {"same": 0, "aside": 0}
+    for path in sorted(set(left) | set(right)):
+        if path in left and path in right and \
+                commits[0] != commits[1] and COMMIT_NAMED.match(path):
+            kind = "aside"
+        elif path not in right:
+            kind = "missing-in-second"
+        elif path not in left:
+            kind = "missing-in-first"
+        else:
+            kind = "same" if left[path] == right[path] else "differs"
+        counts[kind] = counts.get(kind, 0) + 1
+        lines.append(f"{kind} {path} first={left.get(path, '-')} "
+                     f"second={right.get(path, '-')}")
+    differing = len(lines) - counts["same"] - counts["aside"]
+    lines.append(f"BE_MVP_IMAGE_LISTS: {'FAIL' if differing else 'PASS'} "
+                 f"outputs={len(lines)} same={counts['same']} "
+                 f"aside={counts['aside']} differing={differing} "
+                 f"first={commits[0][:12]} second={commits[1][:12]}")
     return differing == 0, lines
 
 
@@ -1198,6 +1264,8 @@ def development(build, out, home):
         f"closure_sha256={file_sha(CLOSURE)}",
         *scenario_lines,
         f"images={len(images)}",
+        "images_commit_named=" + str(sum(
+            bool(COMMIT_NAMED.match(path)) for _, path in images)),
         f"references={len(known)}",
         f"log_exports={len(exported)}",
         "records=" + ",".join(RECORDS),
@@ -3143,6 +3211,7 @@ def self_test(scratch):
          "under k3/", ELF_FORM.match("k3/check/breach/gcc/k3-breach-g1/"
                                      "be-mvp-boot.elf") and not
          ELF_FORM.match("k3/work/breach/gcc/k3-breach-g1/be-mvp-boot.elf"))
+    bundle_cases(scratch, board_bundle, first, case, refused)
     reference_file(build, "gcc", "two-guests", "complete",
                    base="k3/check/references")
     case("a board reference of an image that has one already is refused",
@@ -3372,6 +3441,83 @@ def self_test(scratch):
     print(f"BE_MVP_EVIDENCE_SELF_TEST: {'PASS' if passed == len(results) else 'FAIL'} "
           f"cases={passed}/{len(results)}")
     return 0 if passed == len(results) else 1
+
+
+def bundle_cases(scratch, board, plain, case, refused):
+    """COMMIT_NAMED and --compare-bundles (mvp/README.md, item 143) on
+    copies of the self-test's bundle with the board's outputs (BOARD;
+    PLAIN has none), each at a commit of its own and sealed again."""
+    marked = [path for path in read_manifest(board / "images.sha256")
+              if COMMIT_NAMED.match(path)]
+    case("COMMIT_NAMED marks the board's reference manifest and its pin, "
+         "and bundle.txt counts them", marked == [
+             "k3/check/references/gcc/k3-board.json",
+             "k3/check/references/gcc/k3-board.sha256"] and
+         "\nimages_commit_named=2\n" in (board / "bundle.txt").read_text(
+             encoding="ascii") and "\nimages_commit_named=0\n" in
+         (plain / "bundle.txt").read_text(encoding="ascii"))
+
+    def copy(name, commit, change=lambda lines: lines, kind="development"):
+        out = scratch / f"lists-{name}"
+        shutil.copytree(board, out)
+        path = out / "bundle.txt"
+        path.write_text(re.sub(r"(?m)^kind=development$", f"kind={kind}",
+                               re.sub(r"(?m)^source_commit=.*$",
+                                      f"source_commit={commit}",
+                                      path.read_text(encoding="ascii"))),
+                        encoding="ascii")
+        path = out / "images.sha256"
+        path.write_text("".join(change(path.read_text(
+            encoding="ascii").splitlines(keepends=True))), encoding="ascii")
+        write_manifest(out)
+        return out
+
+    def moved(*paths, digest="f" * 64):
+        """The lines of PATHS with another digest."""
+        return lambda lines: [f"{digest}  {line[66:]}"
+                              if line[66:].rstrip("\n") in paths else line
+                              for line in lines]
+
+    def near(digest):
+        """Two paths that resemble the rule's, listed with DIGEST."""
+        return lambda lines: lines + [
+            f"{digest}  k3/check/references/gcc/sub/x.json\n",
+            f"{digest}  references/gcc/x.json\n"]
+
+    first, second = "a" * 40, "b" * 40
+    base = copy("base", first)
+    for name, pair, verdict, counts in (
+            ("two commits, the marked outputs moved: set aside",
+             (base, copy("marked", second, moved(*marked))),
+             "PASS", "aside=2 differing=0"),
+            ("two commits, an output outside the rule moved too",
+             (base, copy("tree", second, moved(*marked,
+                                               "k3/check/tree/board.dtb"))),
+             "FAIL", "aside=2 differing=1"),
+            ("one commit, a marked output moved: not set aside",
+             (base, copy("one", first, moved(marked[0]))),
+             "FAIL", "aside=0 differing=1"),
+            ("two commits, a marked output missing from one list",
+             (base, copy("missing", second, lambda lines: [
+                 line for line in lines if marked[0] not in line])),
+             "FAIL", "aside=1 differing=1"),
+            ("two commits, two paths that resemble the rule's, moved",
+             (copy("near-first", first, near("e" * 64)),
+              copy("near-second", second, near("f" * 64))),
+             "FAIL", "aside=2 differing=2")):
+        same, lines = compare_bundles(*pair)
+        case(f"--compare-bundles: {name}", same == (verdict == "PASS")
+             and lines[-1].startswith(f"BE_MVP_IMAGE_LISTS: {verdict} ")
+             and f" {counts} " in lines[-1])
+    unsealed = copy("unsealed", second)
+    (unsealed / "images.sha256").write_text("", encoding="ascii")
+    case("--compare-bundles: a list changed after its bundle was sealed is "
+         "refused", "does not verify" in (
+             refused(compare_bundles, base, unsealed) or ""))
+    case("--compare-bundles: a bundle that is not a development bundle is "
+         "refused", "is not a development bundle" in (refused(
+             compare_bundles, base, copy("kind", second, kind="board"))
+                                                      or ""))
 
 
 def sitting_self_test(scratch, case, refused):
@@ -3678,6 +3824,8 @@ def main(argv):
     parser.add_argument("--images", type=pathlib.Path, metavar="BUILD")
     parser.add_argument("--compare-images", type=pathlib.Path, nargs=2,
                         metavar=("HOST", "OTHER"))
+    parser.add_argument("--compare-bundles", type=pathlib.Path, nargs=2,
+                        metavar=("FIRST", "SECOND"))
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--scratch", type=pathlib.Path)
     sitting_options(parser)
@@ -3702,6 +3850,10 @@ def main(argv):
             identical, lines = compare_images(*args.compare_images)
             print("\n".join(lines))
             return 0 if identical else 1
+        if args.compare_bundles:
+            same, lines = compare_bundles(*args.compare_bundles)
+            print("\n".join(lines))
+            return 0 if same else 1
         if not args.build or not args.out:
             parser.error("--build and --out are required")
         build, out = args.build.resolve(), args.out.resolve()
