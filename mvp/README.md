@@ -13498,7 +13498,13 @@ M5's reset rule.
     The second sitting's second run bears the figure out: its banner
     shows 111 KB in use in each of five boots, which is the 105 KB of
     the rows under QEMU and the IMSIC's 6 KB (M11-B5). It is still an
-    inference. Owed: the length read on the board. Open.
+    inference. In debt sweep 6, on 2026-11-27, the six published files
+    that `k3/published-pins.txt` names were read, each checked first by
+    its size and SHA-256: the board's tree lists the vector extension,
+    `v`, for every hart, and no `zvl*b` extension or other property that
+    gives its length, and no file of the six holds `zvl`, `vlen`, or
+    `vlenb`. Still owed: the length read on the board, at its next
+    session. Open.
 149. **A heap that runs short after the firmware's banner stops a
     hart without a line (found at M11-B5).** After its cold boot the
     firmware still allocates for each hart that boot code starts, at
@@ -13512,7 +13518,12 @@ M5's reset rule.
     shows less. `firmware/README.md`, "The heap", has what was
     measured under QEMU: one row of the firmware's own tests ends
     with 1,344 bytes free. Owed: a line from the firmware where a
-    warm start cannot allocate. Open.
+    warm start cannot allocate. Not taken up in debt sweep 6: the line
+    is M-mode code (the M11 plan's D-2), and any change of the series
+    moves the firmware's pins and the sittings' card images. It waits
+    for the next change of the firmware's series, and is owed there.
+    Until then the guard is the banner's floor.
+    Open.
 150. **The firmware's board rows do not hold the board's IMSIC or its
     second kind of hart (found at M11-B5).** The three rows that size
     the heap run on QEMU's machine. Its IMSIC holds 255 identities
@@ -13523,8 +13534,13 @@ M5's reset rule.
     QEMU and predicted for the board: about 6 KB more in use than
     the rows show. The second sitting's second run is its first
     measurement on the board: 256 KB in all, 111 KB in use, and
-    139 KB free in each of five boots, as predicted (M11-B5). The
-    rows are as they were. Open.
+    139 KB free in each of five boots, as predicted (M11-B5). The rows
+    are as they were, and stay so: the locked QEMU's `virt` machine has
+    no setting for its IMSIC's identities (its trees give 255) and runs
+    one kind of hart, so no row under QEMU can hold the board's shape. A
+    standing limit of the emulator: the board's heap is measured on the
+    board, as the second sitting's banner measured it. Closed as a limit
+    in debt sweep 6.
 
 
 ## Non-claims
