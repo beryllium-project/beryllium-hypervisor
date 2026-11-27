@@ -423,6 +423,16 @@ sha() {
 	sha256sum -- "$1" | cut -d' ' -f1
 }
 
+# The fixture a SCENARIO's shell session stand-in is made from
+# (tests/check-capture.py, CURRENT_SESSION_FIXTURES): two-guests' is item
+# 130's fresh capture, te-poc's and anchor's are M9's.
+shell_source() {
+	case $1 in
+	two-guests) printf '%s\n' qemu-two-guests-shell-gcc-proc ;;
+	*) printf 'qemu-%s-shell-gcc-m9\n' "$1" ;;
+	esac
+}
+
 # The fakes, first on PATH, each run in isolated mode, so that the hostile
 # traps below see the tools' own Python alone.
 fake_host=fedora@fake-k3-board.invalid
@@ -588,7 +598,7 @@ print(json.dumps(dict(zip(sys.argv[1::2], sys.argv[2::2]))))' \
 		"$(sha "$build/probes/gcc/probe-vmid-distinct/be-mvp-boot.img")" "$fixtures/standin-kexec-probe-vmid-distinct.console.log" \
 		"$(sha "$build/probes/gcc/probe-vmid-shared/be-mvp-boot.img")" "$fixtures/standin-kexec-probe-vmid-shared.console.log" \
 		"$(sha "$build/probes/gcc/probe-console-input/be-mvp-boot.img")" "$fixtures/standin-kexec-probe-console-input.console.log" \
-		"$(sha "$shell_image")" "$fixtures/standin-qemu-two-guests-shell-gcc-m9.log" \
+		"$(sha "$shell_image")" "$fixtures/standin-$(shell_source two-guests).log" \
 		"$(sha "$build/variants/gcc/te-poc-shell/be-mvp-boot.img")" "$fixtures/standin-qemu-te-poc-shell-gcc-m9.log" \
 		"$(sha "$build/variants/gcc/anchor-shell/be-mvp-boot.img")" "$fixtures/standin-qemu-anchor-shell-gcc-m9.log" \
 		"$(sha "$build/variants/gcc/self-report-flip/be-mvp-boot.img")" "$fixtures/standin-qemu-self-report-flip-gcc-m9.log" \
@@ -2426,7 +2436,7 @@ shell_sessions() {
 		directory=$build/gen/$scenario/expect
 		[ "$scenario" != two-guests ] || directory=$expect_dir
 		image=$build/variants/gcc/$scenario-shell/be-mvp-boot.img
-		json="$json${json:+, }\"$(sha "$image")\": {\"expect\": \"$directory/$scenario-shell.json\", \"nonce\": \"$(cat -- "$here/fixtures/qemu-$scenario-shell-gcc-m9.nonce.txt")\"}"
+		json="$json${json:+, }\"$(sha "$image")\": {\"expect\": \"$directory/$scenario-shell.json\", \"nonce\": \"$(cat -- "$here/fixtures/$(shell_source "$scenario").nonce.txt")\"}"
 	done
 	printf '{"sessions": {%s}}\n' "$json"
 }
@@ -2486,7 +2496,7 @@ case_campaign_session() {
 			grep -q '^typist=session typist_status=0 BE_MVP_K3_CONSOLE: PASS guest-type steps=[0-9]* keys=[0-9]*$' "$run/run.txt" &&
 			grep -q "^BE_MVP_CAPTURE\[uboot $name\]: PASS$" "$run/check.txt" &&
 			grep -q "sha256=$(sha "$session")$" "$run/session.txt" &&
-			! grep -qxF "$(cat -- "$here/fixtures/qemu-$name-gcc-m9.nonce.txt")" "$run/nonce.txt" &&
+			! grep -qxF "$(cat -- "$here/fixtures/$(shell_source "${name%-shell}").nonce.txt")" "$run/nonce.txt" &&
 			[ "$(grep -c '^+' "$run/typed.txt")" -gt 0 ]; } ||
 			fail "campaign-session: $name's run"
 	done
@@ -2662,7 +2672,7 @@ guest_keys() {
 case_guest_type() {
 	local start outcome end want keys
 	session_file=$mvp_dir/scenarios/two-guests/sessions/shell.json
-	nonce=$(cat -- "$here/fixtures/qemu-two-guests-shell-gcc-m9.nonce.txt")
+	nonce=$(cat -- "$here/fixtures/$(shell_source two-guests).nonce.txt")
 	board guest-type '{}' "{\"sessions\": {\"$(sha "$shell_image")\": {\"expect\": \"$expect_dir/two-guests-shell.json\", \"nonce\": \"$nonce\"}}}"
 	prepare guest-type "$shell_name"
 	env_step guest-type.record 0 record
@@ -2674,7 +2684,7 @@ case_guest_type() {
 	expect guest-type.no-gate 5 "$console" guest-type "$session_file" "$nonce" \
 		"$K3_RUN_ROOT/refused"
 	guest_run bad-nonce 5 refused "$session_file" 0123456789abcdeg
-	sed 's/{"expect": "18"}/{"wait": "18"}/' -- "$session_file" >"$K3_RUN_ROOT/shell.json"
+	sed 's/{"expect": "25"}/{"wait": "25"}/' -- "$session_file" >"$K3_RUN_ROOT/shell.json"
 	guest_run bad-session 1 refused "$K3_RUN_ROOT/shell.json"
 	{ grep -q 'STOP stop=13 ready-boot: no boot line' "$out/guest-type.at-uboot.txt" &&
 		grep -q 'REFUSED guest-type: typing into the MVP needs K3_GUEST_TYPING' \
@@ -2755,7 +2765,7 @@ case_input_characterize() {
 	local -x K3_WAIT_SECONDS=60
 	session_file=$mvp_dir/scenarios/two-guests/sessions/shell.json
 	shell_group="$shell_name:1:gcc:$shell_image:$build/variants/gcc/two-guests-shell/be-mvp.bin:$expect_dir/two-guests-shell.json::two-guests-shell"
-	board input-characterize '{}' "{\"sessions\": {\"$(sha "$shell_image")\": {\"expect\": \"$expect_dir/two-guests-shell.json\", \"nonce\": \"$(cat -- "$here/fixtures/qemu-two-guests-shell-gcc-m9.nonce.txt")\"}}}"
+	board input-characterize '{}' "{\"sessions\": {\"$(sha "$shell_image")\": {\"expect\": \"$expect_dir/two-guests-shell.json\", \"nonce\": \"$(cat -- "$here/fixtures/$(shell_source two-guests).nonce.txt")\"}}}"
 	prepare input-characterize "$probe_input_name" "$shell_name"
 	env_step input-characterize.record 0 record
 	K3_ENV_CONFIRM=$(bootcmd_sha12) env_step input-characterize.install 0 install \
@@ -2800,7 +2810,7 @@ case_input_characterize() {
 	{ grep -q '^BE_MVP_K3_INPUT: PASS session=shell.json BE_MVP_K3_CONSOLE: PASS guest-type steps=16 keys=100 ' \
 		"$out/input-characterize.session.txt" &&
 		grep -q '^BE_MVP_CAPTURE\[uboot two-guests-shell\]: PASS$' "$session_run/check.txt" &&
-		grep -qv "$(cat -- "$here/fixtures/qemu-two-guests-shell-gcc-m9.nonce.txt")" "$session_run/nonce.txt" &&
+		grep -qv "$(cat -- "$here/fixtures/$(shell_source two-guests).nonce.txt")" "$session_run/nonce.txt" &&
 		grep -q '^variant=two-guests-shell$' "$session_run/run.txt"; } ||
 		fail "input-characterize: the session's run"
 	has "$session_run/run.txt" check_status=0 \

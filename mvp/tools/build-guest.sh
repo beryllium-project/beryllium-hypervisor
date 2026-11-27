@@ -52,20 +52,25 @@
 # relative source paths, so two builds are the same byte for byte.
 #
 # The kernel's .config (planning/mvp-m1-plan.md, Guest software, Q2, Q16;
-# planning/mvp-m2-plan.md, Q16): tinyconfig, B6's fragment unchanged and
-# merged first, then the MVP's own guest/mvp-kernel.config (M1's
-# CONFIG_DEVMEM=y and CONFIG_STRICT_DEVMEM=y, and M2's CONFIG_MODULES=y,
-# which replaces B6's "# CONFIG_MODULES is not set"); every value of both
-# fragments must be in the final .config, B6's but for the symbols the
-# MVP's sets. The .config delta check also configures, never builds, B6's
-# fragment alone in OUT/kconfig-b6 and M1's .config, B6's fragment and the
-# MVP's without M2's lines, in OUT/kconfig-m1, both from the same tree, and
-# requires each step to differ, by symbol, in exactly its declared lines:
-# M1's .config from B6's alone in CONFIG_DEVMEM=y, CONFIG_STRICT_DEVMEM=y,
-# and IO_STRICT_DEVMEM's "is not set" line, which STRICT_DEVMEM makes
-# visible; and the final .config from M1's in the lines CONFIG_MODULES=y
-# makes visible, which guest/mvp-kernel.config's comment lists, as
-# config_delta_m2 below does. Any other line is stop condition 5, printed.
+# planning/mvp-m2-plan.md, Q16; mvp/README.md, open item 130): tinyconfig,
+# B6's fragment unchanged and merged first, then the MVP's own
+# guest/mvp-kernel.config (M1's CONFIG_DEVMEM=y and CONFIG_STRICT_DEVMEM=y,
+# M2's CONFIG_MODULES=y, which replaces B6's "# CONFIG_MODULES is not set",
+# and, since 2026-11-06, CONFIG_PROC_FS=y, for the procfs /init-shell
+# mounts); every value of both fragments must be in the final .config,
+# B6's but for the symbols the MVP's sets. The .config delta check also
+# configures, never builds, B6's fragment alone in OUT/kconfig-b6, M1's
+# .config, B6's fragment and the MVP's without M2's and the /proc lines, in
+# OUT/kconfig-m1, and M2's, B6's fragment and the MVP's without the /proc
+# line, in OUT/kconfig-m2, all from the same tree, and requires each step
+# to differ, by symbol, in exactly its declared lines: M1's .config from
+# B6's alone in CONFIG_DEVMEM=y, CONFIG_STRICT_DEVMEM=y, and
+# IO_STRICT_DEVMEM's "is not set" line, which STRICT_DEVMEM makes visible;
+# M2's from M1's in the lines CONFIG_MODULES=y makes visible; and the final
+# .config from M2's in the lines CONFIG_PROC_FS=y makes visible.
+# guest/mvp-kernel.config's comment lists the last two steps' lines, as
+# config_delta_m2 and config_delta_proc below do. Any other line is stop
+# condition 5, printed.
 # Kbuild's RUSTC, BINDGEN, and PAHOLE (Makefile:549-554@v7.2) name paths
 # under /dev/null, which no host can execute, so Kconfig's probes record
 # CONFIG_RUSTC_VERSION=0 and CONFIG_PAHOLE_VERSION=0 on every host, which is
@@ -179,13 +184,16 @@ advisory_symbols=(regcomp regexec iconv iconv_open)
 # Kbuild's Rust and pahole probes find no tool on any host (Q16).
 kbuild_tools=(RUSTC=/dev/null/rustc BINDGEN=/dev/null/bindgen
 	PAHOLE=/dev/null/pahole)
-# The MVP fragment's M2 lines (planning/mvp-m2-plan.md, Q16): without them
-# it is M1's.
+# The MVP fragment's M2 lines (planning/mvp-m2-plan.md, Q16) and its /proc
+# line (mvp/README.md, open item 130): without both it is M1's, and without
+# the /proc line M2's.
 mvp_m2_lines=('CONFIG_MODULES=y')
+mvp_proc_lines=('CONFIG_PROC_FS=y')
 # The only lines, by symbol, in which M1's .config may differ from B6's
-# fragment's alone, and the final .config from M1's, each in sort(1)'s C
-# order (stop condition 5 of planning/mvp-m1-plan.md and of
-# planning/mvp-m2-plan.md); the second list, measured at M2-4, is also
+# fragment's alone, M2's from M1's, and the final .config from M2's, each in
+# sort(1)'s C order (stop condition 5 of planning/mvp-m1-plan.md and of
+# planning/mvp-m2-plan.md, whose rule the /proc step keeps); the second
+# list, measured at M2-4, and the third, measured on 2026-11-06, are also
 # guest/mvp-kernel.config's.
 config_delta_m1=('# CONFIG_IO_STRICT_DEVMEM is not set'
 	'CONFIG_DEVMEM=y' 'CONFIG_STRICT_DEVMEM=y')
@@ -205,6 +213,16 @@ config_delta_m2=('# CONFIG_MODULE_ALLOW_MISSING_NAMESPACE_IMPORTS is not set'
 	'CONFIG_MODPROBE_PATH="/sbin/modprobe"'
 	'CONFIG_MODULES=y'
 	'CONFIG_MODULES_USE_ELF_RELA=y')
+config_delta_proc=('# CONFIG_CHECKPOINT_RESTORE is not set'
+	'# CONFIG_DYNAMIC_DEBUG is not set'
+	'# CONFIG_DYNAMIC_DEBUG_CORE is not set'
+	'# CONFIG_MEM_ALLOC_PROFILING is not set'
+	'# CONFIG_PROC_CHILDREN is not set'
+	'# CONFIG_PROC_KCORE is not set'
+	'# CONFIG_PROC_PAGE_MONITOR is not set'
+	'# CONFIG_PROC_SYSCTL is not set'
+	'# CONFIG_SCHEDSTATS is not set'
+	'CONFIG_PROC_FS=y')
 
 # B3's pinned Fedora 44 base-repository RPMs, the three a kernel build
 # needs, with the same NEVRA and SHA-256 (bringup/k3-b3/tests/
@@ -469,27 +487,36 @@ build_kernel() {
 	timestamp=$(LC_ALL=C date -u -d "@$epoch" '+%a %b %e %H:%M:%S UTC %Y')
 	render "$fragment" @B6_INITRAMFS_LIST@ "$out/initramfs.list" \
 		"$out/b6-kernel.config"
-	# M1's fragment: the MVP's without M2's lines, each of which it holds
-	# once; and the M2 delta list its comment pins, which must be the
-	# check's.
+	# M1's fragment: the MVP's without M2's and the /proc lines, each of
+	# which it holds once; M2's: the MVP's without the /proc lines; and the
+	# M2 and /proc delta lists its comment pins, in that order, which must
+	# be the check's.
 	cp -- "$mvp_fragment" "$out/m1-kernel.config"
-	for line in "${mvp_m2_lines[@]}"; do
+	cp -- "$mvp_fragment" "$out/m2-kernel.config"
+	for line in "${mvp_m2_lines[@]}" "${mvp_proc_lines[@]}"; do
 		[ "$(grep -cFx -- "$line" "$mvp_fragment" || true)" = 1 ] ||
 			die "guest/mvp-kernel.config holds '$line' other than once"
 		grep -vFx -- "$line" "$out/m1-kernel.config" \
 			>"$out/m1-kernel.config.tmp" || true
 		mv -- "$out/m1-kernel.config.tmp" "$out/m1-kernel.config"
 	done
-	[ "$(sed -n 's/^#   //p' -- "$mvp_fragment")" = \
-		"$(printf '%s\n' "${config_delta_m2[@]}")" ] ||
-		die "guest/mvp-kernel.config's pinned delta is not the check's"
+	for line in "${mvp_proc_lines[@]}"; do
+		grep -vFx -- "$line" "$out/m2-kernel.config" \
+			>"$out/m2-kernel.config.tmp" || true
+		mv -- "$out/m2-kernel.config.tmp" "$out/m2-kernel.config"
+	done
+	[ "$(sed -n 's/^#   //p' -- "$mvp_fragment")" = "$(printf '%s\n' \
+		"${config_delta_m2[@]}" "${config_delta_proc[@]}")" ] ||
+		die "guest/mvp-kernel.config's pinned deltas are not the check's"
 
-	# B6's fragment alone and M1's .config, configured only, for the
+	# B6's fragment alone, M1's .config, and M2's, configured only, for the
 	# .config delta check; then the guest's own .config, with the MVP's
 	# fragment after B6's.
 	configure "$out/kconfig-b6" "$out/kconfig-b6.log" "$out/b6-kernel.config"
 	configure "$out/kconfig-m1" "$out/kconfig-m1.log" "$out/b6-kernel.config" \
 		"$out/m1-kernel.config"
+	configure "$out/kconfig-m2" "$out/kconfig-m2.log" "$out/b6-kernel.config" \
+		"$out/m2-kernel.config"
 	configure "$obj" "$out/merge-config.log" "$out/b6-kernel.config" \
 		"$mvp_fragment"
 	check_config "$out/b6-kernel.config" "$obj/.config" \
@@ -500,10 +527,14 @@ build_kernel() {
 		"$out/config-delta.txt" "M1's .config differs from B6's" \
 		"fragment's alone beyond the declared lines (stop 5 of" \
 		"planning/mvp-m1-plan.md)" -- "${config_delta_m1[@]}"
-	check_delta "$out/kconfig-m1/.config" "$obj/.config" \
-		"$out/config-delta-m2.txt" "the final .config differs from M1's" \
+	check_delta "$out/kconfig-m1/.config" "$out/kconfig-m2/.config" \
+		"$out/config-delta-m2.txt" "M2's .config differs from M1's" \
 		"beyond the lines CONFIG_MODULES=y makes visible (stop 5 of" \
 		"planning/mvp-m2-plan.md)" -- "${config_delta_m2[@]}"
+	check_delta "$out/kconfig-m2/.config" "$obj/.config" \
+		"$out/config-delta-proc.txt" "the final .config differs from M2's" \
+		"beyond the lines CONFIG_PROC_FS=y makes visible (mvp/README.md," \
+		"open item 130)" -- "${config_delta_proc[@]}"
 	for line in CONFIG_RUSTC_VERSION=0 CONFIG_PAHOLE_VERSION=0; do
 		grep -qx -- "$line" "$obj/.config" ||
 			die "the .config lacks $line: a host probe found a tool (Q16)"
@@ -513,6 +544,8 @@ build_kernel() {
 		printf 'config_delta=%s\n' "$(paste -sd';' -- "$out/config-delta.txt")"
 		printf 'config_delta_m2=%s\n' \
 			"$(paste -sd';' -- "$out/config-delta-m2.txt")"
+		printf 'config_delta_proc=%s\n' \
+			"$(paste -sd';' -- "$out/config-delta-proc.txt")"
 		grep -E '^CONFIG_(RUSTC|RUSTC_LLVM|PAHOLE)_VERSION=' -- "$obj/.config"
 	} >>"$out/kernel-record.txt"
 

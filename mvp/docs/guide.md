@@ -155,7 +155,7 @@ firmware are built from pinned sources on each host and never committed:
   once, verifies the SHA-256 and the signature with `gpgv` against a
   keyring holding that key alone, builds musl for `rv64imac`/`lp64` (soft
   float, the locked cross GCC's `lib64/lp64` multilib) and BusyBox static
-  against it from the in-tree `mvp/guest/busybox.config` (`sh` and twelve
+  against it from the in-tree `mvp/guest/busybox.config` (`sh` and nineteen
   applets, nothing else), and checks that BusyBox links none of musl's
   advisory functions. Both builds are reproducible (`kernel-repro` compares
   them with the Image). The evaluator, which has no network, is given the
@@ -173,8 +173,9 @@ firmware are built from pinned sources on each host and never committed:
 `nolibc` init (`mvp/guest/mvp-init.c`), the management module
 (`mvp/guest/mgmt/be-mgmt.c`, the repository's one `GPL-2.0-only` file),
 and, since M7, `/bin/busybox` with its applet links, `/dev/hvc0`, and the
-init's `/init-shell` and verb links, renders the guest DTBs with
-`mvp/tools/gen-dts.py`, and checks each output under `build/mvp/guest/`
+init's `/init-shell` and verb links (since item 130, `/proc` too), renders
+the guest DTBs with `mvp/tools/gen-dts.py`, and checks each output under
+`build/mvp/guest/`
 (`Image`, `init`, `busybox`, `musl-libc.a`, `be-mgmt.ko`, and every DTB)
 against `mvp/guest/pins.txt`. `make -C mvp kernel-repro`, a Make target with
 no wrapper command (about 70 s of kernel build, and not part of `check`),
@@ -665,8 +666,9 @@ guest byte outside `0x20`-`0x7e` prints as `?` and every line begins with
 a tag or the domain's prefix, which the `hostile` variant exercises.
 
 `./mvp/mvp variants` builds each scenario's **shell image**,
-`<scenario>-shell`, whose granted domains boot `/init-shell`: PID 1 starts
-BusyBox's `sh` on `/dev/hvc0`, and the verbs `be-chan write|read`,
+`<scenario>-shell`, whose granted domains boot `/init-shell`: PID 1 mounts
+procfs at `/proc` (`nosuid`, `nodev`, `noexec`) and starts BusyBox's `sh`
+on `/dev/hvc0`, and the verbs `be-chan write|read`,
 `be-deny load-unmapped|store-shared`, and `be-anchor request N|pause|terminate`
 (links to the init) make M1's and M2's demonstrations from the shell. In
 `anchor` only the untrusted host gets a shell; the protected domain keeps

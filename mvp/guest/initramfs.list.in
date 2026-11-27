@@ -11,7 +11,10 @@
 # as /bin/busybox with one link per applet its applet table names
 # (tools/build-guest.sh requires the links to be exactly those); and the
 # init's shell variant and helper verbs as further links; M7-4's
-# QEMU-only hostile variant, /init-hostile (D-4), one more.
+# QEMU-only hostile variant, /init-hostile (D-4), one more. Since
+# 2026-11-06 (mvp/README.md, open item 130): /proc, where /init-shell
+# mounts procfs, and the links of BusyBox's mount, umount, ps, free,
+# uptime, dmesg, and uname (guest/busybox.config).
 # tools/build-guest.sh puts the path of the built init in the /init line,
 # of the built module in the /be-mgmt.ko line, and of the built BusyBox in
 # the /bin/busybox line. Linux execs rdinit= with argv[0] set to the name
@@ -24,6 +27,7 @@ nod /dev/mem 0600 0 0 c 1 1
 nod /dev/be-mgmt 0600 0 0 c 10 243
 nod /dev/hvc0 0600 0 0 c 229 0
 nod /dev/null 0666 0 0 c 1 3
+dir /proc 0555 0 0
 file /init @MVP_GUEST_INIT@ 0755 0 0
 file /be-mgmt.ko @MVP_GUEST_MODULE@ 0644 0 0
 slink /init-exit /init 0777 0 0
@@ -35,16 +39,23 @@ file /bin/busybox @MVP_GUEST_BUSYBOX@ 0755 0 0
 slink /bin/[ busybox 0777 0 0
 slink /bin/ash busybox 0777 0 0
 slink /bin/cat busybox 0777 0 0
+slink /bin/dmesg busybox 0777 0 0
 slink /bin/echo busybox 0777 0 0
 slink /bin/false busybox 0777 0 0
+slink /bin/free busybox 0777 0 0
 slink /bin/head busybox 0777 0 0
 slink /bin/hexdump busybox 0777 0 0
 slink /bin/ls busybox 0777 0 0
+slink /bin/mount busybox 0777 0 0
 slink /bin/printf busybox 0777 0 0
+slink /bin/ps busybox 0777 0 0
 slink /bin/sh busybox 0777 0 0
 slink /bin/sleep busybox 0777 0 0
 slink /bin/test busybox 0777 0 0
 slink /bin/true busybox 0777 0 0
+slink /bin/umount busybox 0777 0 0
+slink /bin/uname busybox 0777 0 0
+slink /bin/uptime busybox 0777 0 0
 slink /bin/wc busybox 0777 0 0
 slink /bin/be-anchor /init 0777 0 0
 slink /bin/be-chan /init 0777 0 0

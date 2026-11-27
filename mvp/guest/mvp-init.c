@@ -114,15 +114,22 @@
  *          does and checks the role arguments as the roles do, but runs no
  *          role and no step. It puts its be.* arguments, in order and
  *          separated by single spaces, in BE_ARGS, the one source of the
- *          verbs' addresses, prints line 11, and forks once: the child
- *          starts a session, opens /dev/hvc0 (the console's tty) as its
- *          controlling terminal and its three standard descriptors, and
- *          executes /bin/sh, BusyBox's ash, with HOME=/, PATH=/bin,
- *          PS1="# ", and BE_ARGS. The init reaps every child until the
- *          shell exits and prints line 11 again; RESULT pass needs a valid
- *          guest ID, pid 1, the pinned kernel, role arguments absent or
- *          valid, and the shell's exit with status 0 (`exit 0` ends a
- *          session whose last command failed); then it powers off:
+ *          verbs' addresses; mounts procfs at /proc, the initramfs's
+ *          directory, with nosuid, nodev, and noexec, and prints nothing
+ *          when that succeeds (the responsible human's direction of
+ *          2026-11-06; mvp/README.md, open item 130); prints line 11; and
+ *          forks once: the child starts a session, opens /dev/hvc0 (the
+ *          console's tty) as its controlling terminal and its three
+ *          standard descriptors, and executes /bin/sh, BusyBox's ash, with
+ *          HOME=/, PATH=/bin, PS1="# ", and BE_ARGS. The init reaps every
+ *          child until the shell exits and prints line 11 again; RESULT
+ *          pass needs a valid guest ID, pid 1, the pinned kernel, role
+ *          arguments absent or valid, /proc mounted, and the shell's exit
+ *          with status 0 (`exit 0` ends a session whose last command
+ *          failed); then it powers off. A step that fails prints the last
+ *          form below with its errno, and the run fails: args, proc, fork,
+ *          or wait in the init, or setsid, open, ctty, dup, or exec in the
+ *          child, which then exits with status 127:
  *            MVPINIT 11 SHELL tty=/dev/hvc0 role=<role|none|malformed>
  *            MVPINIT 11 SHELL exit=<status>
  *            MVPINIT 11 SHELL signal=<signal>
@@ -189,6 +196,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/mount.h>
 #include <sys/reboot.h>
 #include <sys/syscall.h>
 #include <sys/utsname.h>
@@ -357,6 +365,13 @@ _Static_assert(BE_MGMT_IOC_CALL == 0xc0184242UL,
 #define REQUEST_MAX		999999999UL
 #define VERB_FAILED		1
 #define VERB_USAGE		2
+/*
+ * The shell's procfs (mvp/README.md, open item 130): its mount point, which
+ * the initramfs holds, its source and type, and its flags.
+ */
+#define PROC_PATH		"/proc"
+#define PROC_TYPE		"proc"
+#define PROC_FLAGS		(MS_NOSUID | MS_NODEV | MS_NOEXEC)
 /*
  * /init-hostile's output (M7-4; planning/mvp-m7-plan.md, D-4): every byte
  * value in eight lines of 32, and a line of 300 bytes, beyond the
@@ -1238,9 +1253,9 @@ static void start_shell(void)
 
 /*
  * /init-shell, after line 02 (planning/mvp-m7-plan.md, D-9 and Q4): BE_ARGS,
- * line 11, the shell in one child, every child reaped until the shell's
- * exit, line 11 with its status, and finish(). ROLES is mvp_role_args()'s
- * result for ROLE.
+ * procfs at /proc (mvp/README.md, open item 130), line 11, the shell in one
+ * child, every child reaped until the shell's exit, line 11 with its
+ * status, and finish(). ROLES is mvp_role_args()'s result for ROLE.
  */
 static void run_shell(int argc, char *const *argv, int roles,
 		      const struct mvp_role *role) __attribute__((noreturn));
@@ -1257,6 +1272,11 @@ static void run_shell(int argc, char *const *argv, int roles,
 	if (make_args_env(argc, argv) != 0) {
 		failed = 1;
 		say("MVPINIT 11 SHELL error=%d step=args", E2BIG);
+		finish();
+	}
+	if (mount(PROC_TYPE, PROC_PATH, PROC_TYPE, PROC_FLAGS, NULL) != 0) {
+		failed = 1;
+		say("MVPINIT 11 SHELL error=%d step=proc", errno);
 		finish();
 	}
 	say("MVPINIT 11 SHELL tty=%s role=%s", SHELL_TTY, kind);

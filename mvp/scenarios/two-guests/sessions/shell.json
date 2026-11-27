@@ -11,7 +11,7 @@
     {"send": "echo NONCE"},
     {"expect": "NONCE"},
     {"send": "ls /bin | wc -l"},
-    {"expect": "18"},
+    {"expect": "25"},
     {"focus": "g1"},
     {"send": "echo NONCE"},
     {"expect": "NONCE"},

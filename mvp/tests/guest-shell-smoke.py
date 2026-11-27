@@ -55,7 +55,7 @@ READER = (
     ("echo $BE_ARGS",
      [r"be\.guest=1 be\.role=reader be\.channel=0x84000000 "
       r"be\.deny=store@0x84000ff8,load@0x90000000"]),
-    ("ls -1 /bin | wc -l", [r" *18"]),
+    ("ls -1 /bin | wc -l", [r" *25"]),  # 18 until the /proc applets (item 130)
     ("printf 'BEM7' | hexdump -C | head -n 1",
      [r"00000000  42 45 4d 37 +\|BEM7\|"]),
     ("be-deny load-unmapped",

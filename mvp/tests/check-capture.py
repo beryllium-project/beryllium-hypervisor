@@ -4404,6 +4404,19 @@ M9_FIXTURES = {
 M9_SESSION_FIXTURES = {"two-guests-shell": "qemu-two-guests-shell-gcc-m9",
                        "te-poc-shell": "qemu-te-poc-shell-gcc-m9",
                        "anchor-shell": "qemu-anchor-shell-gcc-m9"}
+# Item 130's one fresh capture: two-guests' shell session with the
+# guest that has /proc (tests/session-typist.py run, its one attempt, CRs
+# removed; its keys and nonce beside it). That session's judged line is the
+# guest's own answer to `ls /bin | wc -l`, which no stand-in rewrites, so
+# its current stand-in is made from this capture; te-poc's and anchor's
+# sessions print no count and keep M9's.
+PROC_SESSION_FIXTURES = {"two-guests-shell": "qemu-two-guests-shell-gcc-proc"}
+CURRENT_SESSION_FIXTURES = dict(M9_SESSION_FIXTURES, **PROC_SESSION_FIXTURES)
+# Fresh captures of current boundary-on images, already in that form, made
+# under the firmware base, which reports SBI 3.0 as the QEMU suite's runs
+# do (tests/run-qemu.sh); M9's captures ran under v1.6, which reports 2.0.
+BOUNDARY_ON_CAPTURES = frozenset(PROC_SESSION_FIXTURES.values())
+FRESH_SBI_VERSION = "3.0"
 PRE_M9 = FIXTURES / "pre-m9"
 PRE_M9_SHA256 = \
     "19d0cbd43424333e363a53cac52bf443a419e100a4086adb6adf4a7faec9586f"
@@ -4718,14 +4731,76 @@ def uboot_options(name):
                 image_crc32=crc, image_md5=md5)
 
 
-def current_log_standin(text, expect, root, paths=None):
+def current_log_standin(text, expect, root, paths=None, source=None):
     """TEXT with its whole measurement-log surface rendered for the
     current image from its reference, preserving only the retained run's
-    ticks, and in the boundary-on form where EXPECT declares it; PATHS,
-    (reference, boot image), in place of the build's (default_paths()).
-    The result is a synthetic stand-in, never a captured log."""
-    text = log_standin(text, expect, root, paths)
-    return boundary_form(text, expect) if "boundary" in expect else text
+    ticks, the monitor's lines that carry the guest's bytes rendered from
+    the build (guest_standin()), and in the boundary-on form where EXPECT
+    declares it; PATHS, (reference, boot image), in place of the build's
+    (default_paths()); SOURCE, the fixture's name. The result is a
+    synthetic stand-in, never a captured log."""
+    text = guest_standin(log_standin(text, expect, root, paths), expect, root)
+    # A fresh capture of a current boundary-on image is already in that
+    # form (BOUNDARY_ON_CAPTURES), so boundary_form() would add its lines
+    # a second time; it keeps its own.
+    if "boundary" not in expect or source in BOUNDARY_ON_CAPTURES:
+        return text
+    return boundary_form(text, expect)
+
+
+def guest_standin(text, expect, root):
+    """TEXT with the monitor's lines whose values come from the guest's
+    bytes rendered from the build at ROOT, as the checker takes them: each
+    BE_MVP:04 PAYLOAD_CHECKED's and BE_MVP:06 PAYLOAD_PLACED's
+    kernel_bytes and image_size from the payload header the monitor is
+    built with (gen/mvp-payload-layout.h), and each BE_MVP:12
+    DOMAIN_TERMINATED's sha256= (the domain's launch register) from
+    EXPECT's template of that line. No line the guest printed is
+    changed (item 130)."""
+    header = (pathlib.Path(root) / "gen" / "mvp-payload-layout.h").read_text(
+        encoding="utf-8")
+    payload = {}
+    for field, name in (("kernel_bytes", "KERNEL_BYTES"),
+                        ("image_size", "KERNEL_IMAGE_SIZE")):
+        found = re.findall(rf"^#define\s+BE_MVP_PAYLOAD_{name}\s+"
+                           rf"BE_MVP_C\(({HEX})\)\s*$", header, re.M)
+        if len(found) != 1:
+            raise ValueError(f"the payload header has no one {name}")
+        payload[field] = found[0]
+    launch = {}
+
+    def collect(node):
+        if isinstance(node, dict):
+            for value in node.values():
+                collect(value)
+        elif isinstance(node, list):
+            for value in node:
+                collect(value)
+        elif isinstance(node, str):
+            found = TERMINATED_DIGEST.fullmatch(node)
+            if found:
+                launch.setdefault(found.group(1), found.group(2))
+    collect(expect)
+    parts = lines(text)
+    for index, line in enumerate(parts):
+        if line.startswith(("BE_MVP:04 PAYLOAD_CHECKED ",
+                            "BE_MVP:06 PAYLOAD_PLACED ")):
+            for field, value in payload.items():
+                line = re.sub(rf" {field}={HEX}(?= |$)", f" {field}={value}",
+                              line)
+        found = TERMINATED_DIGEST.fullmatch(line)
+        if found and found.group(1) in launch:
+            line = line.replace(f" sha256={found.group(2)} ",
+                                f" sha256={launch[found.group(1)]} ")
+        parts[index] = line
+    return text_of(parts)
+
+
+# A DOMAIN_TERMINATED line (or its template): its hart, domain, and
+# terminator, and its digest.
+TERMINATED_DIGEST = re.compile(
+    r"(BE_MVP:12 DOMAIN_TERMINATED hart=[0-9]+ domain=[0-9]+ by=[0-9]+) "
+    r"exits=\S+ sha256=([0-9a-f]{64}) ticks=\S+")
 
 
 # M11-7: a stand-in's configuration digest, and the commit-record values
@@ -4950,8 +5025,10 @@ def log_standin(text, expect, root, paths=None):
 def write_fixtures(directory, expects, pins, reports=None, measured=None,
                    images=None, root=DEFAULT_BUILD):
     """The board-tool dry run's synthetic stand-ins, one per board image
-    kind, from M9's retained QEMU fixtures with the whole log surface
-    rendered from the current reference, each behind a handoff from its
+    kind, from M9's retained QEMU fixtures (two-guests' shell session from
+    item 130's fresh capture) with the whole log surface and the
+    monitor's lines that carry the guest's bytes rendered from the current
+    build (current_log_standin()), each behind a handoff from its
     boot hart and judged with the current image's reference manifest and
     build inputs under ROOT: the scenario's, payload's, probe images', and a
     refused one; with te-poc's expectations (and its authority report
@@ -5014,11 +5091,12 @@ def write_fixtures(directory, expects, pins, reports=None, measured=None,
         output = out / f"standin-uboot-{name}.console.log"
         output.write_text(text, encoding="ascii")
         standins.append(f"{output.name} source={source}.log image={image}")
-    current = dict(M9_SESSION_FIXTURES,
+    current = dict(CURRENT_SESSION_FIXTURES,
                    **{"self-report-flip": M9_FIXTURES["self-report-flip"]})
     for image, source in current.items():
         if image in expects:
-            text = current_log_standin(fixture(source), expects[image], root)
+            text = current_log_standin(fixture(source), expects[image], root,
+                                       source=source)
             output = out / f"standin-{source}.log"
             output.write_text(text, encoding="ascii")
             standins.append(
@@ -5517,12 +5595,16 @@ def current_m9_fixture_cases(expects, reports, root):
         cases.append((f"M11 stand-in {kind}", image, "direct", text,
                       dict(base, report=report_for(expects[image], reports)),
                       "REFUSED" if kind == "refused" else "PASS"))
-    for image, name in M9_SESSION_FIXTURES.items():
-        text = current_log_standin(fixture(name), expects[image], root)
+    for image, name in CURRENT_SESSION_FIXTURES.items():
+        text = current_log_standin(fixture(name), expects[image], root,
+                                   source=name)
+        version = (FRESH_SBI_VERSION if name in BOUNDARY_ON_CAPTURES
+                   else base["sbi_version"])
         cases.append((
             f"M11 stand-in {image}", image, "direct", text,
             session_options(
-                image, M9_SESSION_FIXTURES, **base,
+                image, CURRENT_SESSION_FIXTURES,
+                **dict(base, sbi_version=version),
                 report=report_for(expects[image], reports)), "PASS"))
     text = current_log_standin(
         fixture(M9_FIXTURES["te-poc"]), expects["te-poc"], root)

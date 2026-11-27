@@ -97,7 +97,7 @@ static unsigned long trace_failed(int error, const char *step)
 	return 1UL;
 }
 
-/* proc at /proc, which the initramfs does not hold. */
+/* proc at /proc; /init-shell mounts it instead, and no boot does both. */
 static unsigned long mount_proc(void)
 {
 	if (mkdir("/proc", 0555) != 0 && errno != EEXIST)
