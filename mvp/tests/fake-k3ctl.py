@@ -20,11 +20,13 @@ Trust:   test-only. It opens no device and nothing outside the directory
          (every protocol line it received, one per line: the dry run
          requires them to be only ping, status, and reset), argv.log
          (each invocation's arguments), and pulses.log (one line per reset
-         it acknowledged, the 200 ms pulse the firmware would make). Any other command, an argument
-         after the command, any other option, or a missing -d is logged in
-         commands.log and refused with status 2, as a defect in the tools
-         would be; a device other than the spec's fails to open, as the
-         client's would. Nothing it receives is run.
+         it acknowledged, the 200 ms pulse the firmware would make), but
+         the one file that its spec's status_output names (below). Any
+         other command, an argument after the command, any other option,
+         or a missing -d is logged in commands.log and refused with status
+         2, as a defect in the tools would be; a device other than the
+         spec's fails to open, as the client's would. Nothing it receives
+         is run.
 Scope:   MVP board-tool dry run. spec.json keys: device (the one device it
          opens; required); firmware (1.0, the default, or 1.1.1, whose
          status line adds the sensed levels inpwr and inrst and the last
@@ -39,9 +41,13 @@ Scope:   MVP board-tool dry run. spec.json keys: device (the one device it
          the three fields: by default with firmware 1.1.1 alone); gap (the
          text before them; default one space); tail (text after the line);
          ping (ok, or silent: no pong in the client's window); status and
-         reset (ok, err, or device); and after_reset (keys that replace
-         these once a reset has been received). tests/fake-board.py reads
-         pulses.log: each pulse restarts its board.
+         reset (ok, err, or device); after_reset (keys that replace
+         these once a reset has been received); and status_output ([PATH,
+         TEXT]: TEXT appended to the file PATH, the case's serial log, as
+         each status is answered, as if the board printed while the
+         console tool's reset asked the dongle's status: mvp/README.md,
+         item 145). tests/fake-board.py reads pulses.log: each pulse
+         restarts its board.
 """
 
 import json
@@ -55,7 +61,8 @@ FIRMWARES = ("1.0", "1.1.1")
 DEFAULTS = {"firmware": "1.0", "version": None, "rst": 0, "fcrec": 0,
             "pwr": 0, "k3": "n/a", "up": None, "inpwr": 1, "inrst": 1,
             "ev": "-", "sensed": None, "gap": " ", "tail": "", "ping": "ok",
-            "status": "ok", "reset": "ok", "after_reset": {}}
+            "status": "ok", "reset": "ok", "after_reset": {},
+            "status_output": None}
 
 
 def directory():
@@ -117,6 +124,10 @@ def answer(root, settings, command):
     if command == "reset":
         append(root / "pulses.log", "reset")
         return 0, "OK reset", ""
+    if settings["status_output"]:
+        path, text = settings["status_output"]
+        with open(path, "a", encoding="latin-1", newline="") as handle:
+            handle.write(text)
     up = settings["up"]
     if up is None:
         up = 1000 * len(received(root))

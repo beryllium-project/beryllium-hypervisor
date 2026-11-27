@@ -96,8 +96,9 @@
 # (tools/k3ctl.sha256, run as `/usr/bin/python3 -I -B K3CTL -d K3CTL_DEV
 # status` or `... reset`, nothing else, so that no module beside the client
 # or on PYTHONPATH is imported; the client pings first): `status` clean, then
-# `reset` once, then `status` clean again; or K3_RESET=human, the tool asks
-# for the reset and waits K3_HUMAN_SECONDS. A clean `status` is the client's
+# the log read again (below), then `reset` once, then `status` clean again;
+# or K3_RESET=human, the tool asks for the reset and waits
+# K3_HUMAN_SECONDS. A clean `status` is the client's
 # exit status 0 and one whole line, matched by its bytes (LC_ALL=C), of one
 # of two dongle firmware versions: 1.0's,
 #   OK status rst=0 fcrec=0 pwr=0 k3=on|off|n/a up=N ver=1.0
@@ -159,10 +160,19 @@
 # left halted or at an MVP terminal marker by a previous session;
 # tools/k3-uboot.py can-reset-before); an idle prompt is read at the log's
 # end whatever the session, so a board left at the prompt may be reset
-# too. Otherwise no reset is made. U-Boot's report of a bad environment CRC
-# before `Autoboot in` is stop condition 2, after `s`, so that the board
-# waits at the prompt for the human's recovery. A new boot is an SPL
-# banner, then a U-Boot
+# too. Otherwise no reset is made. With K3_RESET=k3ctl the log is read
+# twice (mvp/README.md, item 145): before the dongle's `status`, and again
+# after it, just before the pulse, when the banners' audit runs again
+# (stop condition 12) and the rule's reason must be the first
+# reading's (the record's reason_again=; stop condition 1 otherwise), each
+# with its own quiet; no reset is made unless both readings agree. What
+# lies between the second reading and the pulse is one run of the pinned
+# client (its start, its ping, and the `reset` line). With K3_RESET=human
+# the request follows the one reading, and nothing of the tool's narrows
+# the window from the request to the press. U-Boot's report of a bad
+# environment CRC before `Autoboot in` is stop condition 2, after `s`, so
+# that the board waits at the prompt for the human's recovery. A new boot
+# is an SPL banner, then a U-Boot
 # banner, within K3_BOOT_SECONDS of the reset reply (stop condition 1
 # otherwise). Every reset is a row of K3_RUN_ROOT/resets.tsv, and `audit`
 # maps every banner of the session to one: none before the first reset,
@@ -484,6 +494,17 @@ prior_reason() {
 	printf 'prior-%s\n' "$reason"
 }
 
+# port_reason RULE...: the port-open rule's reason to reset now, can-reset's
+# over the segment (with RULE, reset's flag and a sitting's card ledger),
+# else a session's first reset's prior state; printed, or failure.
+port_reason() {
+	local reason
+
+	reason=$("${uboot[@]}" can-reset "$serial_log" "$(segment_start)" \
+		"$tail_seconds" "$@") || reason=$(prior_reason) || return 1
+	printf '%s\n' "$reason"
+}
+
 audit() {
 	"${uboot[@]}" audit "$serial_log" \
 		"$(sed -n 's/^serial_log_start=//p' -- "$session")" "$resets" \
@@ -627,7 +648,7 @@ reply() {
 }
 
 reset() {
-	local reason offset seq when banners wait_for spl uboot_banner why=
+	local reason again offset seq when banners wait_for spl uboot_banner why=
 	local rule=("$@")
 
 	need_session
@@ -649,8 +670,7 @@ reset() {
 		;;
 	--card-hang) why=", no boot from a card stopped before U-Boot's banner with the card recorded in and ${card_quiet_seconds} s quiet" ;;
 	esac
-	reason=$("${uboot[@]}" can-reset "$serial_log" "$(segment_start)" \
-		"$tail_seconds" "${rule[@]}") || reason=$(prior_reason) ||
+	reason=$(port_reason "${rule[@]}") ||
 		stop 1 "the port-open rule holds no reason to reset now (no idle prompt, no terminal marker or Fedora halted with ${tail_seconds} s quiet$why, and no prior halt or terminal marker before a session's first reset); no reset was made"
 	offset=$(log_size)
 	seq=$(($(grep -c . "$resets" 2>/dev/null || echo 1)))
@@ -663,6 +683,13 @@ reset() {
 		k3ctl_command status
 		reply status_before "$when"
 		status_clean || stop 1 "the dongle's status before the reset is not clean: $k3ctl_reply"
+		# The log read again, just before the pulse (mvp/README.md, item
+		# 145): what reached it since the first reading is judged too.
+		audit
+		again=$(port_reason "${rule[@]}") || again=none
+		printf 'reason_again=%s\n' "$again"
+		[ "$again" = "$reason" ] ||
+			stop 1 "the port-open rule holds no reason to reset now: read again after the dongle's status, the log gives $again where it gave $reason; no reset was made"
 		when=$(utc)
 		k3ctl_command reset
 		printf 'reset_utc=%s\nreset_reply=%s\nreset_exit=%s\n' "$when" \

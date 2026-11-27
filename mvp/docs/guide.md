@@ -1150,16 +1150,21 @@ runs.
   its own (mode 0600), and the log keeps only its size and SHA-256.
 - **Resets.** With `K3_RESET=k3ctl`: the client `K3CTL`, whose SHA-256 must
   equal `mvp/tools/k3ctl.sha256`, on the dongle `K3CTL_DEV`, `status`
-  clean, `reset` once, `status` clean again, and nothing else; otherwise
+  clean, the log read again, `reset` once, `status` clean again, and
+  nothing else; otherwise
   it asks the human and waits. It opens the dongle's port only when the
   log shows an idle prompt after a completed command (never during a
   `saveenv`), hart 0's terminal line and then quiet, Fedora shut down
   cleanly (`reboot: Restarting system` and then quiet), or, after a run's
   own timeout, `Starting kernel ...` with no later U-Boot or Fedora line
   (an MVP hang; the log is read with the lines' stamps, so that a Fedora
-  that has printed only its kernel's lines is Fedora's). A new boot is an
-  SPL banner, then a U-Boot banner, within `K3_BOOT_SECONDS` of the
-  reset; every
+  that has printed only its kernel's lines is Fedora's). The log is read
+  twice, before the dongle's `status` and again after it, just before the
+  pulse: the second reading runs the banners' audit again, and the rule's
+  reason must be the same both times (the reset record's `reason_again=`),
+  or no reset is made. With the human's reset, the press follows the one
+  reading at the human's pace. A new boot is an SPL banner, then a U-Boot
+  banner, within `K3_BOOT_SECONDS` of the reset; every
   banner of the session must map to a recorded reset
   (`$K3_RUN_ROOT/resets.tsv`), or the session stops (stop condition 12). A
   missed `s` boots what `bootcmd` says: it is recorded as an unplanned

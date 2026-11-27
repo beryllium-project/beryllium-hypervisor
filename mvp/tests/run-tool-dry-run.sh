@@ -182,6 +182,12 @@
 #                     reset answered ERR, rst=1 after the reset, and a client
 #                     that differs from the pin: each stop 1, with exactly
 #                     the dongle lines it needed
+#   reset-second-reading  the log read again after the dongle's status, just
+#                     before the pulse (mvp/README.md, item 145), the fake
+#                     client printing on the serial log as it answers: a
+#                     line at an idle prompt, stop 1 (reason=idle-prompt,
+#                     reason_again=none); an SPL banner after Fedora's halt,
+#                     the audit's stop 12; no pulse in either
 #   dongle-firmware   the dongle's firmware 1.1.1, with the pinned client:
 #                     a reset from the bench's status line of 2026-11-16
 #                     (ev=PWR, then RST), and one from the dongle's
@@ -2058,6 +2064,43 @@ case_reset() {
 	pass reset "fcrec, ver 1.1, ERR, a device error, a reset ERR, rst=1 after, a client not the pin's: each stop 1"
 }
 
+# reset-second-reading (mvp/README.md, item 145): the console tool reads
+# the log again after the dongle's status, just before the pulse, and
+# makes no reset unless that reading agrees with the first. The fake
+# client appends to the serial log as it answers status (its spec's
+# status_output), as a board that printed between the two readings: at an
+# idle prompt, a line, which takes the rule's reason away (stop 1, with
+# reason=idle-prompt and reason_again=none in the record); after Fedora's
+# halt, an SPL banner, which no reset explains (the audit's stop 12). No
+# pulse in either: the dongle's lines end at that status (with the tool
+# of 4e0daa11, a pulse in both).
+case_reset_second_reading() {
+	board reset-second-reading
+	expect reset-second-reading.start 0 "$console" start
+	dongle_halt reset-second-reading
+	expect reset-second-reading.first 0 "$console" reset
+	expect reset-second-reading.stop 0 "$console" stop-autoboot
+	dongle_spec '' "\"status_output\": [\"$K3_SERIAL_LOG\", \"[  12.345] stand-in output at the prompt\\r\\n\"]"
+	expect reset-second-reading 1 "$console" reset
+	has "$out/reset-second-reading.txt" reason=idle-prompt reason_again=none
+	grep -qxF "BE_MVP_K3_CONSOLE: STOP stop=1 the port-open rule holds no reason to reset now: read again after the dongle's status, the log gives none where it gave idle-prompt; no reset was made" \
+		"$out/reset-second-reading.txt" || fail "reset-second-reading: not its stop"
+	expect_dongle reset-second-reading "ping status ping reset ping status ping status"
+	board reset-second-banner
+	expect reset-second-banner.start 0 "$console" start
+	dongle_halt reset-second-banner
+	dongle_spec '' "\"status_output\": [\"$K3_SERIAL_LOG\", \"U-Boot SPL 2022.10 (stand-in)\\r\\n\"]"
+	expect reset-second-banner 1 "$console" reset
+	has "$out/reset-second-banner.txt" reason=fedora-down
+	! grep -q '^reason_again=' "$out/reset-second-banner.txt" ||
+		fail "reset-second-banner: a second reason before the audit's stop"
+	grep -q '^BE_MVP_K3_CONSOLE: STOP stop=12 an unexplained banner: unexplained: a banner before the first reset at ' \
+		"$out/reset-second-banner.txt" || fail "reset-second-banner: not the audit's stop"
+	expect_dongle reset-second-banner "ping status"
+	[ ! -e "$FAKE_K3CTL/pulses.log" ] || fail "reset-second-banner: a pulse"
+	pass reset-second-reading "the log read again after the dongle's status: a line at an idle prompt, stop 1 with reason=idle-prompt and reason_again=none; an SPL banner after Fedora's halt, the audit's stop 12; the dongle's lines ending at that status, no pulse"
+}
+
 # dongle-firmware: the dongle's firmware 1.1.1 (reported on the bench on
 # 2026-11-16), whose status line adds the sensed levels inpwr and inrst and
 # the last event ev, with the pinned client. dongle_spec BASE SETTINGS: the
@@ -2164,7 +2207,7 @@ case_dongle_firmware() {
 		status_before_exit=0 'reset_reply=OK reset' reset_exit=0 \
 		"status_after=OK status rst=0 fcrec=0 pwr=0 k3=n/a up=$((1000 * (count + 6))) ver=1.1.1 inpwr=1 inrst=0 ev=RST" \
 		status_after_exit=0 outcome=reset
-	[ "$(sed 's/=.*//' "$out/dongle-1.1.1.txt" | tr '\n' ' ')" = 'method reason reset_seq offset_before client_sha256 client_pin device status_before_utc status_before status_before_exit reset_utc reset_reply reset_exit status_after_utc status_after status_after_exit spl_banner_offset uboot_banner_offset banner_utc outcome ' ] ||
+	[ "$(sed 's/=.*//' "$out/dongle-1.1.1.txt" | tr '\n' ' ')" = 'method reason reset_seq offset_before client_sha256 client_pin device status_before_utc status_before status_before_exit reason_again reset_utc reset_reply reset_exit status_after_utc status_after status_after_exit spl_banner_offset uboot_banner_offset banner_utc outcome ' ] ||
 		fail "dongle-1.1.1: the reset record's keys: $(sed 's/=.*//' "$out/dongle-1.1.1.txt" | tr '\n' ' ')"
 	expect_dongle dongle-1.1.1 "${lines# } ping status ping reset ping status"
 	# Firmware 1.1.1 from its power-up (ev=-, and the README's inrst=1) to
@@ -2787,11 +2830,11 @@ case_input_characterize() {
 cases=(env-session console-window preconditions missed-s late-s late-prompt
 	split-prompt echo-mismatch restore-mismatch unexplained-banner
 	bad-environment-crc saveenv-fresh port-open-rule mvp-hang fall-through
-	hang-fedora reset dongle-firmware run-from-reset staged-sha256 campaign
-	campaign-session campaign-session-stops characterize diagnostic guest-type
-	input-characterize)
+	hang-fedora reset reset-second-reading dongle-firmware run-from-reset
+	staged-sha256 campaign campaign-session campaign-session-stops
+	characterize diagnostic guest-type input-characterize)
 lanes=("campaign unexplained-banner bad-environment-crc saveenv-fresh late-s campaign-session split-prompt"
-	"echo-mismatch env-session preconditions console-window diagnostic staged-sha256 late-prompt campaign-session-stops"
+	"echo-mismatch env-session preconditions console-window diagnostic staged-sha256 late-prompt campaign-session-stops reset-second-reading"
 	"missed-s restore-mismatch run-from-reset port-open-rule input-characterize hang-fedora"
 	"mvp-hang fall-through reset dongle-firmware characterize guest-type")
 [ "$(printf '%s\n' "${lanes[@]}" | tr ' ' '\n' | sort)" = \
