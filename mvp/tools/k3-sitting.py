@@ -15,7 +15,9 @@ K3_RUN_ROOT: begin, preflight, stage, reading-0; for each session S of PLAN
 (IMAGE:BOOTS:STAGED, mvp/k3/session.mk's), card-in-S, boot-S.1 to
 boot-S.B, card-out-S, reading-S; then end. status prints the inputs given
 and each step's state, and contacts nothing. The order is
-order_problem()'s; a refusal acts on nothing.
+order_problem()'s; a refusal acts on nothing. Every step is refused while
+the driver's tree or the source holds cached bytecode under mvp/ or
+bringup/ (bytecode_refusal(); mvp/README.md, item 141).
 
 begin checks every input before it acts (the gate's record, each image's
 board.json and the files it names by SHA-256, the sitting pins' firmware
@@ -83,6 +85,8 @@ import time
 
 HERE = pathlib.Path(__file__).resolve().parent
 MVP_DIR = HERE.parent
+# The tree that runs this driver, whose tools each step runs.
+TREE = MVP_DIR.parent
 PYTHON = "/usr/bin/python3"
 GIT = "/usr/bin/git"
 CONSOLE = HERE / "k3-console.sh"
@@ -262,6 +266,39 @@ def private_problem(info, uid):
         return "is not this account's"
     mode = stat.S_IMODE(info.st_mode)
     return None if mode == 0o700 else f"has mode {mode:04o}, not 0700"
+
+
+def bytecode(tree):
+    """The __pycache__ directories and .pyc files under TREE's mvp/ and
+    bringup/, by their paths from TREE, sorted. python3 -B stops a tool
+    from writing them, not from reading them: a tool that loads another by
+    spec_from_file_location takes that module's NAME.cpython-*.pyc from
+    __pycache__ beside it when the file's recorded source time and size
+    match (mvp/README.md, item 141)."""
+    found = []
+    for top in ("mvp", "bringup"):
+        for directory, names, files in os.walk(tree / top):
+            here = pathlib.Path(directory).relative_to(tree)
+            found += [(here / name).as_posix() for name in names
+                      if name == "__pycache__"]
+            found += [(here / name).as_posix() for name in files
+                      if name.endswith(".pyc")]
+            names[:] = [name for name in names if name != "__pycache__"]
+    return sorted(found)
+
+
+def bytecode_refusal(*trees):
+    """Refused while one of TREES holds cached bytecode (bytecode()),
+    which the rules on a tree's paths, git's tracked files, would not
+    see."""
+    for tree in dict.fromkeys(tree.resolve() for tree in trees):
+        found = bytecode(tree)
+        if found:
+            more = f" and {len(found) - 1} more" if len(found) > 1 else ""
+            raise Refused(
+                f"{tree} holds cached bytecode, which a tool run as python3 "
+                f"-B would read: {found[0]}{more} (mvp/README.md, item 141: "
+                "remove each __pycache__ and .pyc under mvp/ and bringup/)")
 
 
 def last_attempt(text):
@@ -1319,6 +1356,7 @@ class Sitting:
                                 resume)
         if problem:
             raise Refused(problem)
+        bytecode_refusal(TREE, pathlib.Path(self.args.source))
         if not begin:
             self.load()
         kind, number, boot = step_kind(step)
@@ -2556,7 +2594,50 @@ def test_world(cases, scratch):
     cases.case("begin: a source not clean", "source_state=dirty changed=1"
                in world.sitting().facts(now))
     (world.source / "untracked").unlink()
+    test_bytecode(cases, world, scratch / "bytecode")
     test_steps(cases, world, text, now)
+
+
+def test_bytecode(cases, world, scratch):
+    """bytecode() and every step's refusal while the driver's tree (TREE,
+    which ran() rebinds for the one call) or the source holds cached
+    bytecode (mvp/README.md, item 141): begin refused before its needs,
+    and nothing made."""
+    held, clean = scratch / "held", scratch / "clean"
+    planted = world.source / "mvp" / "tools" / "__pycache__" / \
+        "x.cpython-314.pyc"
+    for path in (held / "mvp" / "tests" / "__pycache__" / "x.cpython-314.pyc",
+                 held / "bringup" / "k3-b1" / "y.pyc",
+                 held / "planning" / "__pycache__" / "z.cpython-314.pyc",
+                 clean / "mvp" / "tools" / "x.py", planted):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"")
+    cases.case("bytecode: each __pycache__ and .pyc under mvp/ and bringup/, "
+               "none elsewhere", bytecode(held) == [
+                   "bringup/k3-b1/y.pyc", "mvp/tests/__pycache__"] and
+               bytecode(clean) == [])
+
+    def ran(tree):
+        global TREE
+        saved, TREE = TREE, tree
+        try:
+            world.sitting().run("begin")
+        except Refused as error:
+            return str(error)
+        finally:
+            TREE = saved
+        return "not refused"
+    source = ran(clean)
+    shutil.rmtree(planted.parent)
+    tree, neither = ran(held), ran(clean)
+    cases.case("bytecode: begin refused while the source or the driver's "
+               "tree holds cached bytecode, before its needs; nothing made",
+               source.startswith(f"{world.source.resolve()} holds cached "
+                                 "bytecode, which a tool run as python3 -B "
+                                 "would read: mvp/tools/__pycache__ (") and
+               tree.startswith(f"{held.resolve()} holds cached bytecode")
+               and neither.startswith("needs K3_WORD=") and
+               not os.path.lexists(world.top / "run"))
 
 
 def test_steps(cases, world, text, now):

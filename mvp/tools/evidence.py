@@ -176,7 +176,9 @@ in-tree QEMU captures of the GCC probe images and the QEMU suite's Clang
 probe records as emulation facts; every file of the record must then pass
 identifying() (B0's identifying-data rule and the code names' patterns),
 and MANIFEST.sha256 is written again, in B0's form, to cover the platform
-record and the rewritten copies. An existing record is never overwritten.
+record and the rewritten copies. An existing record is never overwritten,
+and a tree that holds cached bytecode under mvp/ or bringup/ makes none
+(bytecode_refusal(); mvp/README.md, item 141).
 
 Trust: no path read from a record is ever run (S1 H30), and the only one
 read at all is each QEMU attempt's boot ELF, which must have its run's form
@@ -1512,6 +1514,7 @@ def excerpt_tail(capture, home, rewrite):
 def board(campaign, build, out, title, home):
     if out.exists():
         raise Refused(f"{out} exists; a board record is never overwritten")
+    bytecode_refusal(REPO)
     missing = [name for name in SESSION_REQUIRED
                if not (campaign / name).is_file()]
     if missing:
@@ -1788,6 +1791,39 @@ SITTING_TOOL_TREE = {
              "boot judged again gave the same exit status, output, "
              "result.json, and log.json"}
 COMMIT_FORM = re.compile(r"[0-9a-f]{40}")
+
+
+def bytecode(tree):
+    """The __pycache__ directories and .pyc files under TREE's
+    RECORD_WATCHED trees, by their paths from TREE, sorted. python3 -B
+    stops a tool from writing them, not from reading them: a tool that
+    loads another by spec_from_file_location takes that module's
+    NAME.cpython-*.pyc from __pycache__ beside it when the file's recorded
+    source time and size match (mvp/README.md, item 141)."""
+    found = []
+    for top in RECORD_WATCHED:
+        for directory, names, files in os.walk(tree / top):
+            here = pathlib.Path(directory).relative_to(tree)
+            found += [(here / name).as_posix() for name in names
+                      if name == "__pycache__"]
+            found += [(here / name).as_posix() for name in files
+                      if name.endswith(".pyc")]
+            names[:] = [name for name in names if name != "__pycache__"]
+    return sorted(found)
+
+
+def bytecode_refusal(*trees):
+    """Refused while one of TREES holds cached bytecode (bytecode()),
+    which the rules on a tree's paths, git's tracked files, would not
+    see."""
+    for tree in dict.fromkeys(tree.resolve() for tree in trees):
+        found = bytecode(tree)
+        if found:
+            more = f" and {len(found) - 1} more" if len(found) > 1 else ""
+            raise Refused(
+                f"{tree} holds cached bytecode, which a tool run as python3 "
+                f"-B would read: {found[0]}{more} (mvp/README.md, item 141: "
+                "remove each __pycache__ and .pyc under mvp/ and bringup/)")
 
 
 def sitting_options(parser):
@@ -2270,10 +2306,12 @@ def sitting(args, build, out, home):
     later one in whose source no tracked path under RECORD_WATCHED differs
     from it but those of RECORD_MAY_CHANGE (sitting_commits()).
 
-    Before it writes, it requires: plan.txt of the sitting --name; the
-    build, the gate, the source, the sitting pins, and the observed facts
-    given the ones that the sitting ran with; every input that plan.txt
-    names, with its SHA-256; the source as sitting_commits() requires; each
+    Before it writes, it requires: no cached bytecode in the tree that
+    runs it or in the source (bytecode_refusal()); plan.txt of the sitting
+    --name; the build, the gate, the source, the sitting pins, and the
+    observed facts given the ones that the sitting ran with; every input
+    that plan.txt names, with its SHA-256; the source as sitting_commits()
+    requires; each
     step's records, the sitting closed or stopped; each boot's files its
     SHA256SUMS's, its inputs the plan's, and its whole capture judged again
     by the form with them, with the same exit status, output, result.json,
@@ -2304,6 +2342,7 @@ def sitting(args, build, out, home):
         raise Refused(f"{out} exists; a record is never overwritten")
     if not args.name:
         raise Refused("--sitting needs --name, the sitting: first or second")
+    bytecode_refusal(REPO, args.source)
     root = args.sitting.resolve()
     gate = (args.gate or build / "k3" / "gate").resolve()
     store = (args.store or pathlib.Path(os.environ.get("K3_ENV_STORE") or (
@@ -3437,6 +3476,7 @@ def self_test(scratch):
          rules.get("serial number") == SERIAL)
     quiet.close()
     sitting_self_test(scratch / "sitting", case, refused)
+    bytecode_self_test(scratch / "bytecode", case, refused)
     passed = sum(results)
     print(f"BE_MVP_EVIDENCE_SELF_TEST: {'PASS' if passed == len(results) else 'FAIL'} "
           f"cases={passed}/{len(results)}")
@@ -3518,6 +3558,54 @@ def bundle_cases(scratch, board, plain, case, refused):
          "refused", "is not a development bundle" in (refused(
              compare_bundles, base, copy("kind", second, kind="board"))
                                                       or ""))
+
+
+def bytecode_self_test(scratch, case, refused):
+    """bytecode() and its refusals (mvp/README.md, item 141): a sitting's
+    record and MVP 1.0's board record, each refused before anything else
+    that it reads, while the tree that runs this tool (REPO, which judged()
+    rebinds for the one call) or the sitting's source holds any."""
+    held, clean = scratch / "held", scratch / "clean"
+    for path in (held / "mvp" / "tests" / "__pycache__" / "x.cpython-314.pyc",
+                 held / "bringup" / "k3-b1" / "y.pyc",
+                 held / "planning" / "__pycache__" / "z.cpython-314.pyc",
+                 clean / "mvp" / "tools" / "x.py"):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"")
+    case("bytecode(): each __pycache__ and .pyc under mvp/ and bringup/, "
+         "none elsewhere", bytecode(held) == [
+             "bringup/k3-b1/y.pyc", "mvp/tests/__pycache__"] and
+         bytecode(clean) == [])
+
+    def judged(repo, function, *arguments):
+        global REPO
+        saved, REPO = REPO, repo
+        try:
+            return refused(function, *arguments) or "not refused"
+        finally:
+            REPO = saved
+
+    parser, out = argparse.ArgumentParser(), scratch / "no-record"
+    sitting_options(parser)
+
+    def given(source):
+        return parser.parse_args([
+            "--sitting", str(scratch / "no-run-root"), "--name", "first",
+            "--source", str(source)])
+    named = f"{held.resolve()} holds cached bytecode, which a tool run as " \
+        "python3 -B would read: bringup/k3-b1/y.pyc and 1 more"
+    got = [judged(repo, sitting, given(source), scratch / "build", out, "/h")
+           for repo, source in ((clean, held), (held, clean), (clean, clean))]
+    case("a sitting's record: refused while the source or the tree that "
+         "runs the tool holds cached bytecode, before the run root is read",
+         got[0].startswith(named) and got[1].startswith(named) and
+         "is not a sitting's run root" in got[2] and not out.exists())
+    got = [judged(repo, board, scratch / "no-campaign", scratch / "build",
+                  out, "t", "/h") for repo in (held, clean)]
+    case("MVP 1.0's board record: refused while the tree that runs the "
+         "tool holds cached bytecode, before the campaign is read",
+         got[0].startswith(named) and "is not a board session" in got[1]
+         and not out.exists())
 
 
 def sitting_self_test(scratch, case, refused):

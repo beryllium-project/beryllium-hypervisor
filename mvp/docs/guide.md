@@ -1589,8 +1589,10 @@ BE_MVP_EVIDENCE: PASS verify mvp/results/20261028-com260-m2a files=93
 ### A board record
 
 `./mvp/mvp board-evidence` writes `mvp/results/<session>/`, named for the
-session directory `K3_RUN_ROOT`, and never over an existing record. It
-keeps B0's retention of the session's runs and the preflight before
+session directory `K3_RUN_ROOT`, and never over an existing record. A tree
+that holds cached bytecode under `mvp/` or `bringup/` makes no board record
+(section 11). It keeps B0's retention of the session's runs and the
+preflight before
 (`bringup/k3-b0/tests/retain-results.py`, unchanged) with an `mvp/`
 directory beside it. Each run's committed excerpt starts at U-Boot's
 `Autoboot in` (the M5 plan, Q8), so it lacks the SPL and U-Boot banners the
@@ -2404,6 +2406,12 @@ host name or paths.
   tree ran the tool (`tool_tree`).
 - **The claim ledger takes a sitting's record only where the source's
   own tool made it** (`tool_tree=source`).
+- **No step runs, and no record is made, while a tree holds cached
+  bytecode** under `mvp/` or `bringup/` (a `__pycache__` directory
+  or a `.pyc` file): the driver's tree or the source, for a step;
+  the tree that runs the record tool or the source, for a record.
+  Python's `-B` stops a tool writing such files, not reading them.
+  Remove them, and run the step again.
 
 `check` runs both sittings whole on stand-ins of the board, the
 dongle, the console, the reader, and the gate (`k3-session-check`).
